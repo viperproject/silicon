@@ -29,7 +29,7 @@ if defined ProgramFiles(x86) set ARCH=x64
 	REM detect the OS architecture
 
 set ANSICON_CMD=
-set ANSICON_EXE=%ROOT_DIR%\tools\ansicon\%ARCH%\ansicon.exe
+set ANSICON_EXE=%ROOT_DIR%\bin\ansicon\%ARCH%\ansicon.exe
 
 if exist %ANSICON_EXE% (
 	set ANSICON_CMD=%ANSICON_EXE% -p ^&^&
@@ -55,7 +55,7 @@ set _JAVA_OPTS=%_JAVA_OPTS% -Dfile.encoding=UTF-8
 
 REM ========== Assemble final command ==========
 
-set JAVA_CMD=java %_SBT_OPTS% %_JAVA_OPTS% -jar "%ROOT_DIR%\tools\sbt-launch.jar" %*
+set JAVA_CMD=java %_SBT_OPTS% %_JAVA_OPTS% -jar "%ROOT_DIR%\bin\sbt-launch.jar" %*
 set CMD=!ANSICON_CMD! !JAVA_CMD!
 	REM Must use delayed expansion here, otherwise the command will be executed
 	REM immediately. This seems to be due to the '&&' added to ANSICON_CMD.
