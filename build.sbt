@@ -26,4 +26,4 @@ scalacOptions += "-deprecation"
 
 // scalacOptions += "-unchecked"
 
-maxErrors := 6
+maxErrors in Compile := 6
