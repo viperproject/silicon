@@ -2,8 +2,8 @@ package ch.ethz.inf.pm.silicon.state
 
 import ch.ethz.inf.pm.silicon
 import silicon.interfaces.state.{Store, Heap, PathConditions, State, Chunk, 
-		Permission, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory,
-		PermissionFactory}
+		StoreFactory, HeapFactory, PathConditionsFactory, StateFactory
+		/* PermissionFactory */ }
 import silicon.interfaces.state.factoryUtils.Ø
 // import silicon.ast.{Variable, Type, IntClass}
 import silicon.state.terms.Term
@@ -34,10 +34,10 @@ class DefaultStateFactory[V]
 		DefaultState(γ, h, g, π)
 }
 
-class DefaultPermissionFactory extends PermissionFactory[FractionalPermission] {
-	def Full = FullPerm
-	def Eps = EpsPerm
-}
+// class DefaultPermissionFactory extends PermissionFactory[FractionalPermission] {
+	// def Full = FullPerm
+	// def Eps = EpsPerm
+// }
 
 class DefaultPathConditionsFactory
 		extends PathConditionsFactory[MutableSetBackedPathConditions] {

@@ -4,14 +4,22 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 
 import silAST.expressions.{Expression => SILExpression}
-import silAST.programs.symbols.{Function => SILFunction}
+    // PermissionExpression => SILPermissionExpression,
+    // PBinaryExpression => SILPBinaryExpression,
+    // TrueExpression => SILTrue,
+    // FalseExpression => SILFalse,
+    // DomainPredicateExpression => SILDomainPredicateExpression}
+    // BinaryExpression => SILBinaryExpression}
+import silAST.programs.symbols.{
+    Function => SILFunction,
+    ProgramVariable => SILProgramVariable}
 import silAST.expressions.terms.{LiteralTerm => SILLiteral}
-// import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import silAST.expressions.terms.{Term => SILTerm}
 
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult,
 		Failure, Success}
-import interfaces.state.{Permission, Store, Heap, PathConditions, State, 
-		StateFormatter, StateFactory, PermissionFactory, HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, 
+		StateFormatter, StateFactory, HeapMerger}
 import interfaces.decider.Decider
 import interfaces.reporting.{Message}
 // import interfaces.ast.specialVariables
@@ -24,9 +32,9 @@ import ast.{Expression, Variable, FieldAccess, Old, ArithmeticExpr,
 		ExplicitSeq, EmptySeq, SeqLength, SeqCon, SeqAt, SeqIn, SeqTake, SeqDrop,
 		TypeQuantification, IntType}
 */
-import state.{/* FractionalPermission, */ TypeConverter, CounterChunk}
+import state.{TypeConverter, CounterChunk}
 import state.terms
-import state.terms.{Term, Null}
+import state.terms.{Term, Null, Permissions}
 import reporting.ErrorMessages.{InvocationFailed, UnfoldingFailed, 
 		FractionMightBeNegative}
 import reporting.Reasons.{ReceiverMightBeNull, InsufficientPermissions}
@@ -34,22 +42,24 @@ import reporting.{/* Evaluating, IfBranching, ImplBranching, */ Bookkeeper}
 import reporting.utils._
 import state.terms.utils.¬
 
-trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
-											 PC <: PathConditions[PC], S <: State[V, ST, H, S]]
-		extends Evaluator[V, SILExpression, P, ST, H, S]
+trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
+                       H <: Heap[H],
+											 PC <: PathConditions[PC],
+                       S <: State[SILProgramVariable, ST, H, S]]
+		extends Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
 		with    HasLocalState
 		{ this:      Logging
-            with Consumer[V, SILExpression, P, ST, H, S]
-            with Producer[V, SILExpression, P, ST, H, S] =>
+            with Consumer[SILProgramVariable, SILExpression, ST, H, S]
+            with Producer[SILProgramVariable, SILExpression, ST, H, S] =>
 
-	protected val decider: Decider[V, P, ST, H, PC, S]
+	protected val decider: Decider[SILProgramVariable, ST, H, PC, S]
 	import decider.{fresh, assume}
 										
-	protected val stateFactory: StateFactory[V, ST, H, S]
+	protected val stateFactory: StateFactory[SILProgramVariable, ST, H, S]
 	import stateFactory._
 	
-	protected val permissionFactory: PermissionFactory[P]
-	import permissionFactory._
+	// protected val permissionFactory: PermissionFactory[P]
+	// import permissionFactory._
 	
 	//protected val lockSupport: LockSupport[ST, H, S]
 	//protected val creditSupport: CreditSupport[ST, H, S]
@@ -57,10 +67,10 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 	protected val typeConverter: TypeConverter
 	import typeConverter.toSort
 	
-	protected val chunkFinder: ChunkFinder[SILExpression, P, H]
+	protected val chunkFinder: ChunkFinder[SILExpression, H]
 	import chunkFinder.withFieldChunk
 	
-	protected val stateFormatter: StateFormatter[V, ST, H, S, String]
+	protected val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String]
 
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -70,23 +80,34 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
 	
-	def evals(σ: S, es: List[SILExpression], m: Message,
+	def evales(σ: S, es: Seq[SILExpression], m: Message,
 			Q: List[Term] => VerificationResult): VerificationResult =
 
-		evals2(σ, es, Nil, m, ts =>
+		evales2(σ, es, Nil, m, ts =>
 			Q(ts))
 			
-	def eval(σ: S, e: SILExpression, m: Message,
-					 Q: Term => VerificationResult): VerificationResult =
+	def evale(σ: S, e: SILExpression, m: Message, Q: Term => VerificationResult)
+           : VerificationResult =
 			
-		eval(σ, Nil, e, m, t =>
+		evale(σ, Nil, e, m, t =>
 			Q(t))
-	
-	// /* TODO: If we move permission evaluation into a dedicated class we could
-	 // *       implement the DefaultEvaluator for any P <: Permission[P].
-	 // */
-	// def evalp(σ: S, p: ast.FractionalPermission, m: Message,
-			// Q: FractionalPermission => VerificationResult) = p match {
+      
+	def evalts(σ: S, es: Seq[SILTerm], m: Message,
+			Q: List[Term] => VerificationResult): VerificationResult =
+
+		evalts2(σ, es, Nil, m, ts =>
+			Q(ts))
+      
+	def evalt(σ: S, e: SILTerm, m: Message, Q: Term => VerificationResult)
+          : VerificationResult =
+
+		evalt(σ, List[SILFunction](), e, m, t =>
+			Q(t))
+
+	def evalp(σ: S, p: SILTerm, m: Message, Q: Permissions => VerificationResult) =
+    null
+
+    // p match {
 			
 		// case ast.ConstFraction(per, eps) =>
 			// Q(state.ConstFraction(per, eps))
@@ -97,40 +118,58 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 					// Q(state.TermFraction(tPer, tEps))))
 	// }
 			
-	private def evals2(σ: S, es: List[SILExpression], ts: List[Term], m: Message,
+	private def evales2(σ: S, es: Seq[SILExpression], ts: List[Term], m: Message,
 			Q: List[Term] => VerificationResult): VerificationResult = {
 
 		if (es.isEmpty)
 			Q(ts.reverse)
 		else
-			eval(σ, Nil, es.head, m, t =>
-				evals2(σ, es.tail, t :: ts, m, Q))
+			evale(σ, Nil, es.head, m, t =>
+				evales2(σ, es.tail, t :: ts, m, Q))
+	}
+  
+	private def evalts2(σ: S, es: Seq[SILTerm], ts: List[Term], m: Message,
+			Q: List[Term] => VerificationResult): VerificationResult = {
+
+		if (es.isEmpty)
+			Q(ts.reverse)
+		else
+			evalt(σ, Nil, es.head, m, t =>
+				evalts2(σ, es.tail, t :: ts, m, Q))
 	}
 	
-	def evall(lit: SILLiteral): Term = lit match {
-		case _ =>
-			logger.debug("Evaluating literal " + lit)
-			null
-		// case ast.Null() => terms.Null()
-		// case ast.True() => terms.True()
-		// case ast.False() => terms.False()
-		// case ast.IntLiteral(n) => terms.IntLiteral(n)
-		// // case ast.MaxLock() => terms.MaxLock
-		// case ast.BottomLock() => terms.BottomLock()
-		// case ast.EmptySeq(_) => terms.EmptySeq()
-		// case ast.FreshLiteral => fresh
-			// /* TODO: Parameterise FreshLiteral with expected type */
-	}
+	// def evall(lit: SILLiteral): Term = lit match {
+		// case _ =>
+			// logger.debug("Evaluating literal " + lit)
+			// null
+		// // case ast.Null() => terms.Null()
+		// // case ast.True() => terms.True()
+		// // case ast.False() => terms.False()
+		// // case ast.IntLiteral(n) => terms.IntLiteral(n)
+		// // // case ast.MaxLock() => terms.MaxLock
+		// // case ast.BottomLock() => terms.BottomLock()
+		// // case ast.EmptySeq(_) => terms.EmptySeq()
+		// // case ast.FreshLiteral => fresh
+			// // /* TODO: Parameterise FreshLiteral with expected type */
+	// }
 	
 	// def evallm(lm: ast.LockMode): terms.LockMode = lm match {
 		// case ast.ReadLockMode => terms.LockMode.Read
 		// case ast.WriteLockMode => terms.LockMode.Write
 	// }
 	
-	protected def eval(σ: S, cs: List[SILFunction], e: SILExpression, m: Message, 
+	protected def evale(σ: S, cs: List[SILFunction], e: SILExpression, m: Message, 
 			Q: Term => VerificationResult): VerificationResult =
 			
-		eval2(σ, cs, e, m, t => {
+		evale2(σ, cs, e, m, t => {
+			t.setSrcNode(e)
+			Q(t)})
+      
+	protected def evalt(σ: S, cs: List[SILFunction], e: SILTerm, m: Message,
+                      Q: Term => VerificationResult)
+                     : VerificationResult =
+
+		evalt2(σ, cs, e, m, t => {
 			t.setSrcNode(e)
 			Q(t)})
 	
@@ -138,7 +177,7 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 	 *   - eval adds an "Evaluating" operation to the context
 	 *   - eval sets the source node of the resulting term
 	 */
-	protected def eval2(σ: S, cs: List[SILFunction], e: SILExpression, m: Message, 
+	protected def evale2(σ: S, cs: List[SILFunction], e: SILExpression, m: Message, 
 			Q: Term => VerificationResult): VerificationResult = {
 	
 		/* For debugging only */
@@ -148,15 +187,19 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 			// case _: VariableExpr =>
 			// case ThisExpr() =>
 			case _ =>
-				logger.debug("\nEVALUATING " + e)
+				logger.debug("\nEVALUATING EXPRESSION " + e)
+				logger.debug("  " + e.getClass.getName)
 				logger.debug(stateFormatter.format(σ))
 		}
 	
 		e match {
-			case _ =>
-			logger.debug("Evaluating " + e)
-			Success()
-			
+			// case _ =>
+			// // logger.debug("Evaluating expression " + e)
+			// Success()
+      
+      case silAST.expressions.TrueExpression() => Q(terms.True())
+      case silAST.expressions.FalseExpression(_) => Q(terms.False())
+
 			// case Old(e0) =>
 				// eval(σ \ (h = σ.g), cs, e0, m, c, Q)
 
@@ -165,6 +208,156 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 			// case v: Variable => Q(σ.γ(v), c)
 			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
 			// case ThisExpr() => Q(σ.γ(This), c)
+      
+      case silAST.expressions.BinaryExpression(_, op, e0, e1) =>
+        logger.debug("  op = " + op + ", " + op.getClass.getName)
+        logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
+        logger.debug("  e1 = " + e1 + ", " + e1.getClass.getName)
+
+        op match {
+          case silAST.symbols.logical.And() if config.strictConjunctionEvaluation =>
+              evalBinOp(σ, cs, e0, e1, terms.And, m, Q)
+
+          case silAST.symbols.logical.And() =>            
+            var πPre: Set[Term] = Set()
+            var πAux: Set[Term] = Set()
+
+            var t0: Term = terms.True().setSrcNode(e0)
+            var t1: Term = terms.True().setSrcNode(e1)
+
+            evale(σ, cs, e0, m, _t0 => {
+              t0 = _t0
+              πPre = decider.π
+              
+              val r = 
+                assume(t0,
+                  evale(σ, cs, e1, m, _t1 => {
+                    t1 = _t1
+                    πAux = decider.π -- (πPre + t0)
+                    Success()}))
+            
+              r && {
+                val tAux = state.terms.utils.SetAnd(πAux)
+                assume(tAux,
+                  Q(terms.And(t0, t1)))}})
+            
+          case silAST.symbols.logical.Implication()
+               if config.branchOverPureConditionals =>
+
+            evale(σ, cs, e0, m, t0 =>
+              (	if (!decider.assert(¬(t0)))
+                  assume(t0,
+                    evale(σ, cs, e1, m, t1 =>
+                      Q(terms.Implies(t0, t1))))
+                else
+                  Success()
+              ) &&
+              ( if (!decider.assert(t0))
+                  assume(¬(t0),
+                    Q(terms.True()))
+                else
+                  Success()))
+          
+          case silAST.symbols.logical.Implication() =>
+            /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
+             *   fails if e0 establishes a precondition of e1
+             * - Hence we have to assume e0 when evaluating e1, but revoke that
+             *   assumption afterwards
+             * - We also have to keep track of all path conditions that result from
+             *   the evaluation of e0 and e1
+             */
+            val πPre: Set[Term] = decider.π
+              /* Initial set of path conditions */
+            var πIf: Set[Term] = Set()
+              /* Path conditions assumed while evaluating the antecedent */
+            var πThen: Set[Term] = Set()
+              /* Path conditions assumed while evaluating the consequent */
+            
+            var tEvaluatedIf: Term = terms.False()
+              /* The term the antecedent actually evaluates too. */
+            var tEvaluatedThen: Term = terms.True()
+              /* The term the consequent actually evaluates too. */
+              
+            val r =
+              evale(σ, cs, e0, m, t0 => {
+                πIf = decider.π -- πPre
+                tEvaluatedIf = t0
+                assume(t0,
+                  evale(σ, cs, e1, m, t1 => {
+                    πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
+                    tEvaluatedThen = t1
+                    Success()}))})
+            
+            r && {
+              /* The additional path conditions gained while evaluating the
+               * antecedent can be assumed in any case.
+               * If the antecedent holds, then the additional path conditions
+               * related to the consequent can also be assumed.
+               */
+              
+              val tAuxIf = state.terms.utils.SetAnd(πIf)
+              val tAuxThen = state.terms.utils.SetAnd(πThen)
+              val tAuxImplies = terms.Implies(tEvaluatedIf, tAuxThen)
+              val tImplies = terms.Implies(tEvaluatedIf, tEvaluatedThen)
+              
+              assume(Set(tAuxIf, tAuxImplies),
+                Q(tImplies))
+            }
+      }
+
+      case eq: silAST.expressions.GEqualityExpression =>
+        evalBinOp(σ, cs, eq.term1, eq.term2, terms.TermEq, m, Q)
+
+      case silAST.expressions.DomainPredicateExpression(_, predicate, args) =>
+        logger.debug("  predicate = " + predicate + ", " + predicate.getClass.getName)
+        logger.debug("  args = " + args + ", " + args.getClass.getName)
+
+        predicate match {
+          /* Permissions */
+          
+          case silAST.types.permissionLT =>
+            evalBinOp(σ, cs, args(0), args(1), terms.PermLess, m, Q)
+
+          /* Integers */
+
+          case silAST.types.integerEQ =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.TermEq, m, Q)
+
+          case silAST.types.integerNE =>
+            val neq = (t1: Term, t2: Term) => terms.Not(terms.TermEq(t1, t2))
+            evalBinOp(σ, cs, args.args(0), args.args(1), neq, m, Q)
+
+          case silAST.types.integerLE =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtMost, m, Q)
+
+          case silAST.types.integerLT =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Less, m, Q)
+
+          case silAST.types.integerGE =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
+
+          case silAST.types.integerGT =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Greater, m, Q)
+
+          /* Booleans */
+
+          case dp: silAST.domains.DomainPredicate =>
+                   // if dp.name == "EvalBool[Boolean[]]" =>
+            
+            assert(dp.signature.argumentTypes.length == 1, "Expected one argument to %s (%s), but found %s: %s".format(dp, dp.getClass.getName, dp.signature.argumentTypes.length, dp.signature.argumentTypes))
+            
+            logger.debug("[evale2/DomainPredicateExpression/DomainPredicate]")
+            logger.debug("  dp = " + dp)
+            logger.debug("  dp.name = " + dp.name)
+            logger.debug("  dp.signature.argumentTypes = " + dp.signature.argumentTypes)
+            
+            evalts(σ, args, m, tArgs =>
+              Q(terms.DomainPApp(dp, tArgs, terms.sorts.Bool)))
+            
+            // Q(terms.True())
+            // sys.error("")
+            // evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
+        }
 
 			// /* ArithmeticExpr */
 			// case ast.Plus(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Plus.apply, m, c, Q)
@@ -179,32 +372,6 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 				// eval(σ, cs, e0, m, c, (t, c1) =>
 					// Q(terms.Not(t), c1))
 
-			// case ast.And(e0, e1) if config.strictConjunctionEvaluation =>
-				// evalBinOp(σ, cs, e0, e1, terms.And.apply, m, c, Q)
-					
-			// case ast.And(e0, e1) =>
-				// var πPre: Set[Term] = Set()
-				// var πAux: Set[Term] = Set()
-
-				// var t0: Term = terms.True().setSrcNode(e0)
-				// var t1: Term = terms.True().setSrcNode(e1)
-				
-				// eval(σ, cs, e0, m, c, (_t0, c1) => {
-					// t0 = _t0
-					// πPre = decider.π
-					
-					// val r = 
-						// assume(t0, c1, (c2: C) =>
-							// eval(σ, cs, e1, m, c2, (_t1, c3) => {
-								// t1 = _t1
-								// πAux = decider.π -- (πPre + t0)
-								// Success(c3)}))
-				
-					// r && {
-						// val tAux = state.terms.utils.SetAnd(πAux)
-						// assume(tAux, c1, (c2: C) =>
-							// Q(terms.And(t0, t1), c))}})
-					
 			// case ast.Or(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Or.apply, m, c, Q)		
 			// case ast.Iff(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Iff.apply, m, c, Q)
 			
@@ -674,13 +841,80 @@ trait DefaultEvaluator[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 				// Q(creditSupport.DebtFreeExpr(σ.h), c)
 		}
 	}
+  
+	protected def evalt2(σ: S, cs: List[SILFunction], e: SILTerm, m: Message,
+                       Q: Term => VerificationResult)
+                     : VerificationResult = {
+
+		/* For debugging only */
+		e match {
+			// case _: ast.Literal =>
+			// case _: Variable =>
+			// case _: VariableExpr =>
+			// case ThisExpr() =>
+			case _ =>
+				logger.debug("\nEVALUATING TERM " + e)
+				logger.debug("  " + e.getClass.getName)
+				logger.debug(stateFormatter.format(σ))
+		}
+	
+		e match {
+      case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
+        Q(terms.IntLiteral(ilt.value.intValue))
+      
+			// case v: Variable => Q(σ.γ(v), c)
+			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
+      case silAST.expressions.terms.ProgramVariableTerm(_, v) => Q(σ.γ(v))
+      
+      case npt @ silAST.expressions.terms.noPermissionTerm
+           if npt.eq(silAST.expressions.terms.noPermissionTerm) =>
+        // logger.debug("[evalt2] " + e)
+        // logger.debug("[evalt2] " + e.getClass.getName)
+        // logger.debug("[evalt2] " + (e == silAST.expressions.terms.noPermissionTerm))
+        // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
+        Q(terms.ZeroPerms())
+        
+      case fpt @ silAST.expressions.terms.fullPermissionTerm
+           if fpt.eq(silAST.expressions.terms.fullPermissionTerm) =>
+        // logger.debug("[evalt2] " + e)
+        // logger.debug("[evalt2] " + e.getClass.getName)
+        // logger.debug("[evalt2] " + (e == silAST.expressions.terms.noPermissionTerm))
+        // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
+        Q(terms.FullPerms())
+
+      case silAST.expressions.terms.DomainFunctionApplicationTerm(_, f, es) =>
+        evalts(σ, es, m, ts =>
+          Q(terms.DomainFApp(f, ts, toSort(f.signature.resultType))))
+           // if f.name == "True" =>
+           
+        // Q(terms.True())
+        // logger.debug("[evalt2/DomainFunctionApplicationTerm]")
+        // logger.debug("  f = " + f)
+        // logger.debug("  f.name = " + f.name)
+        // logger.debug("  es = " + es)
+        // logger.debug("  es.length = " + es.length)
+        // sys.error("")
+        
+			// case _ =>
+			// logger.debug("Evaluating term " + e)
+			// Success()
+    }
+  }
 
 	private def evalBinOp[T <: Term](σ: S, cs: List[SILFunction],
 			e0: SILExpression, e1: SILExpression, termOp: (Term, Term) => T, m: Message,
 			Q: Term => VerificationResult): VerificationResult =
 
-		eval(σ, cs, e0, m, t0 =>
-			eval(σ, cs, e1, m, t1 =>
+		evale(σ, cs, e0, m, t0 =>
+			evale(σ, cs, e1, m, t1 =>
+				Q(termOp(t0, t1))))
+        
+	private def evalBinOp[T <: Term](σ: S, cs: List[SILFunction],
+			e0: SILTerm, e1: SILTerm, termOp: (Term, Term) => T, m: Message,
+			Q: Term => VerificationResult): VerificationResult =
+
+		evalt(σ, cs, e0, m, t0 =>
+			evalt(σ, cs, e1, m, t1 =>
 				Q(termOp(t0, t1))))
 
 	override def pushLocalState() {

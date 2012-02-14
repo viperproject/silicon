@@ -10,6 +10,7 @@ import com.weiglewilczek.slf4s.Logging
 
 import silAST.{ASTNode => SILASTNode}
 import silAST.expressions.{Expression => SILExpression}
+import silAST.expressions.terms.{Term => SILTerm}
 import silAST.programs.{Program => SILProgram}
 import silAST.programs.symbols.{Function => SILFunction,
     ProgramVariable => SILProgramVariable}
@@ -19,9 +20,9 @@ import silAST.methods.implementations.{Statement => SILStatement,
 import interfaces.{VerificationResult, Failure, Success, /* MemberVerifier, */
 		Producer, Consumer, Executor, Evaluator, /* ProgrammeVerifier, */ MapSupport}
 import interfaces.decider.Decider
-import interfaces.state.{Permission, Store, Heap, PathConditions, State, 
+import interfaces.state.{/* Permission, */ Store, Heap, PathConditions, State, 
 		StoreFactory, HeapFactory, PathConditionsFactory, StateFactory, 
-		PermissionFactory, StateFormatter, HeapMerger}
+		/* PermissionFactory, */ StateFormatter, HeapMerger}
 import interfaces.reporting.{Message, Reason}
 import interfaces.state.factoryUtils.Ø
 // import interfaces.ast.specialVariables
@@ -29,33 +30,32 @@ import interfaces.state.factoryUtils.Ø
 // import ast.utils.collections.SetAnd
 import ast.utils.collections.BigAnd
 import state.{/* FractionalPermission, */ TypeConverter}
-import state.terms.{Term, Null}
+import state.terms.{Term, Null, FullPerms => Full}
 import reporting.ErrorMessages.{ExecutionFailed, NotSupported,
 		PostconditionMightNotHold, SpecsMalformed}
 import reporting.WarningMessages.{ExcludingUnit}
 import reporting.{/* DefaultContext, */ Bookkeeper}
 
-trait AbstractMemberVerifier[P <: Permission[P],
-                             ST <: Store[SILProgramVariable, ST],
+trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
                              H <: Heap[H], PC <: PathConditions[PC],
                              S <: State[SILProgramVariable, ST, H, S]]
 		// extends MemberVerifier
 		extends Logging
-		with    Evaluator[SILProgramVariable, SILExpression, P, ST, H, S]
-		with    Producer[SILProgramVariable, SILExpression, P, ST, H, S]
-		with    Consumer[SILProgramVariable, SILExpression, P, ST, H, S]
+		with    Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
+		with    Producer[SILProgramVariable, SILExpression, ST, H, S]
+		with    Consumer[SILProgramVariable, SILExpression, ST, H, S]
 		with    Executor[SILProgramVariable, SILStatement, ST, H, S] {
 
 	protected val config: Config
 		
-	protected val decider: Decider[SILProgramVariable, P, ST, H, PC, S]
+	protected val decider: Decider[SILProgramVariable, ST, H, PC, S]
 	import decider.{fresh, assume}
 		
 	protected val stateFactory: StateFactory[SILProgramVariable, ST, H, S]
 	import stateFactory._
 	
-	protected val permissionFactory: PermissionFactory[P]
-	import permissionFactory._
+	// protected val permissionFactory: PermissionFactory[P]
+	// import permissionFactory._
 
 	def verify(node: SILASTNode): VerificationResult = {
 		logger.debug("Verify " + node)
@@ -113,14 +113,14 @@ trait AbstractMemberVerifier[P <: Permission[P],
 		 * which are two separate rules in Smans' paper.
 		 */
 		// assume(γ(This) ≠ Null(),
-			produce(σ, fresh, Full, pre, PreErr, σ1 => {
+			produce(σ, fresh, Full(), pre, PreErr, σ1 => {
 				val σ2 = σ1 \ (h = Ø, g = σ1.h)
-			 (produce(σ2, fresh, Full, post, PostErr, _ =>
+			 (produce(σ2, fresh, Full(), post, PostErr, _ =>
 					Success())
 					&&
 				// execs(σ1 \ (g = σ1.h), meth.body, ExecutionFailed, σ2 =>
 				execs(σ1 \ (g = σ1.h), body, ExecutionFailed, σ2 =>
-					consume(σ2, Full, post, PostErr, (σ3, _) =>
+					consume(σ2, Full(), post, PostErr, (σ3, _) =>
 						// consume(σ3, Full, DebtFreeExpr().setPos(meth.pos), PostErr, (_, _) =>
 							Success() /* ) */ )))})
     // )
@@ -185,52 +185,48 @@ trait AbstractMemberVerifier[P <: Permission[P],
 		||  str.matches(config.excludeMembers))
 }
 
-class DefaultMemberVerifier[P <: Permission[P],
-                            ST <: Store[SILProgramVariable, ST],
+class DefaultMemberVerifier[ST <: Store[SILProgramVariable, ST],
 														H <: Heap[H], PC <: PathConditions[PC],
 														S <: State[SILProgramVariable, ST, H, S]]
 		(	val config: Config,
-		  val decider: Decider[SILProgramVariable, P, ST, H, PC, S],
-			val permissionFactory: PermissionFactory[P],
+		  val decider: Decider[SILProgramVariable, ST, H, PC, S],
+			// val permissionFactory: PermissionFactory[P],
 			val stateFactory: StateFactory[SILProgramVariable, ST, H, S],
 			val typeConverter: TypeConverter,
 			// val mapSupport: MapSupport[ST, H, S],
 			// val lockSupport: LockSupport[ST, H, S],
 			// val creditSupport: CreditSupport[ST, H, S],
-			val chunkFinder: ChunkFinder[SILExpression, P, H],
+			val chunkFinder: ChunkFinder[SILExpression, H],
 			val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String],
 			val heapMerger: HeapMerger[H],
 			val bookkeeper: Bookkeeper)
-		extends AbstractMemberVerifier[P, ST, H, PC, S]
+		extends AbstractMemberVerifier[ST, H, PC, S]
       with  Logging
-      with  DefaultEvaluator[SILProgramVariable, P, ST, H, PC, S]
-      with  DefaultProducer[SILProgramVariable, P, ST, H, PC, S]
-      with  DefaultConsumer[SILProgramVariable, P, ST, H, PC, S]
-      with  DefaultExecutor[SILProgramVariable, P, ST, H, PC, S]
-      with  DefaultBrancher[SILProgramVariable, P, ST, H, PC, S] {
+      with  DefaultEvaluator[ST, H, PC, S]
+      with  DefaultProducer[SILProgramVariable, ST, H, PC, S]
+      with  DefaultConsumer[SILProgramVariable, ST, H, PC, S]
+      with  DefaultExecutor[ST, H, PC, S]
+      with  DefaultBrancher[SILProgramVariable, ST, H, PC, S]
 
-	// var thisClass: ast.Class = null
-}
-
-class DefaultVerifier[P <: Permission[P], ST <: Store[SILProgramVariable, ST],
+class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
                       H <: Heap[H], PC <: PathConditions[PC],
                       S <: State[SILProgramVariable, ST, H, S]]
 		(	val config: Config,
-			val decider: Decider[SILProgramVariable, P, ST, H, PC, S],
-			val permissionFactory: PermissionFactory[P],
+			val decider: Decider[SILProgramVariable, ST, H, PC, S],
+			// val permissionFactory: PermissionFactory[P],
 			val stateFactory: StateFactory[SILProgramVariable, ST, H, S],
 			val typeConverter: TypeConverter,
 			// val mapSupport: MapSupport[ST, H, S],
 			// val lockSupport: LockSupport[ST, H, S],
 			// val creditSupport: CreditSupport[ST, H, S],
-			val chunkFinder: ChunkFinder[SILExpression, P, H],
+			val chunkFinder: ChunkFinder[SILExpression, H],
 			val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String],
 			val heapMerger: HeapMerger[H],
 			val bookkeeper: Bookkeeper)
 		// extends ProgrammeVerifier
 			extends Logging {
 	
-	val mv = new DefaultMemberVerifier[P, ST, H, PC, S](config, decider, permissionFactory, 
+	val mv = new DefaultMemberVerifier[ST, H, PC, S](config, decider, /* permissionFactory, */
 																		 stateFactory, typeConverter, /* mapSupport, 
 																		 lockSupport, creditSupport, */ chunkFinder, 
 																		 stateFormatter, heapMerger, bookkeeper)

@@ -1,4 +1,10 @@
 ; Tested with Z3 3.2
+;
+; ATTENTION: Continuing multi-line statements must be indented with at least
+;            one tab or two spaces. All other lines must not start with tabs
+;            or more than one space.
+
+; --- Z3 configurations ---	
 
 (set-option :print-success true) ; Boogie: false
 ; (set-option :print-warning false) ; Boogie: default
@@ -30,13 +36,18 @@
 ; (set-option :SOFT_TIMEOUT 5000)
 ; (set-option :soft-timeout 5000)
 
-; ATTENTION: Continuing multi-line statements must be indented with at least
-;            one tab or two spaces. All other lines must not start with tabs
-;            or more than one space.
-
+; --- Misc ---
 
 (declare-sort $Ref)
 
+; --- Permissions ---
+
+; (declare-sort $Perms)
+; (declare-const $Perms.Write $Perms)
+(declare-const $Perms.Write Int)
+(declare-const $Perms.Zero Int)
+
+(assert (< $Perms.Zero $Perms.Write))
 
 ; (get-proof "stdout")
 ; (get-info statistics)

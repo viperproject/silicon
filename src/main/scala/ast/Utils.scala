@@ -1,7 +1,9 @@
 package ch.ethz.inf.pm.silicon.ast.utils
 
-import silAST.expressions.{Expression => SILExpression,
-    BinaryExpression => SILBinaryExpression, TrueExpression => SILTrue,
+import silAST.expressions.{
+    Expression => SILExpression,
+    BinaryExpression => SILBinaryExpression,
+    TrueExpression => SILTrue,
     ExpressionFactory => SILExpressionFactory}
 import silAST.symbols.logical.{And => SILAnd}
 import silAST.source.{noLocation => SILNoLocation}

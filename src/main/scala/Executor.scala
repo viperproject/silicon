@@ -5,12 +5,14 @@ import com.weiglewilczek.slf4s.Logging
 import silAST.expressions.{Expression => SILExpression}
 import silAST.methods.implementations.{Statement => SILStatement}
 // import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import silAST.expressions.terms.{Term => SILTerm}
+import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 
 import interfaces.{Executor, Evaluator, Producer, Consumer, MapSupport,
 		VerificationResult, Failure, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PermissionFactory, PathConditions, State,
-		StateFactory, FieldChunk, Permission, StateFormatter, HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State,
+		StateFactory, FieldChunk, StateFormatter, HeapMerger}
 import interfaces.reporting.{Message}
 import interfaces.state.factoryUtils.Ø
 // import interfaces.ast.specialVariables.This
@@ -20,7 +22,7 @@ import interfaces.state.factoryUtils.Ø
 		// JoinAsync, Share, Acquire, Release, Unshare, WhileStmt, Free, Credits, Send,
 		// Receive, ChannelClass}
 // import ast.utils.collections.{SetAnd}
-import state.terms.{Term, Null, BottomLock, True, False, /* Token, */ LockMode,
+import state.terms.{Term, Null, /* BottomLock, */ True, False, /* Token, LockMode, */
 		AtLeast, IntLiteral}
 import state.terms.utils.¬
 import state.{DefaultFieldChunk, DefaultPredicateChunk, /* DefaultTokenChunk, */
@@ -43,24 +45,25 @@ import reporting.utils._
  *       and mix it into DefaultExecutor, DefaultEvaluator etc.
  */
 
-trait DefaultExecutor[V, P <: Permission[P], ST <: Store[V, ST],
-											H <: Heap[H], PC <: PathConditions[PC],
-											S <: State[V, ST, H, S]]
-		extends Executor[V, SILStatement, ST, H, S]
+trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
+											H <: Heap[H],
+                      PC <: PathConditions[PC],
+											S <: State[SILProgramVariable, ST, H, S]]
+		extends Executor[SILProgramVariable, SILStatement, ST, H, S]
 		{ this:      Logging
-            with Evaluator[V, SILExpression, P, ST, H, S]
-            with Consumer[V, SILExpression, P, ST, H, S]
-            with Producer[V, SILExpression, P, ST, H, S]
+            with Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
+            with Consumer[SILProgramVariable, SILExpression, ST, H, S]
+            with Producer[SILProgramVariable, SILExpression, ST, H, S]
             with Brancher =>
 							
-	protected val decider: Decider[V, P, ST, H, PC, S]
+	protected val decider: Decider[SILProgramVariable, ST, H, PC, S]
 	import decider.{fresh, assume}
 							
-	protected val stateFactory: StateFactory[V, ST, H, S]
+	protected val stateFactory: StateFactory[SILProgramVariable, ST, H, S]
 	import stateFactory._
 
-	protected val permissionFactory: PermissionFactory[P]
-	import permissionFactory._
+	// protected val permissionFactory: PermissionFactory[P]
+	// import permissionFactory._
 
 	// protected val lockSupport: LockSupport[ST, H, S]
 	// protected val creditSupport: CreditSupport[ST, H, S]
@@ -74,14 +77,12 @@ trait DefaultExecutor[V, P <: Permission[P], ST <: Store[V, ST],
 	// protected val mapSupport: MapSupport[V, ST, H, S]
 	// import mapSupport.update
 	
-	protected val chunkFinder: ChunkFinder[SILExpression, P, H]
+	protected val chunkFinder: ChunkFinder[SILExpression, H]
 	import chunkFinder.withFieldChunk
 
-	protected val stateFormatter: StateFormatter[V, ST, H, S, String]
+	protected val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String]
 
 	protected val config: Config
-	
-	// protected val This: V // = null /* ~~~~~~~~~~ FIX FIX FIX ~~~~~~~~~~~~~~ */
 	
 	/* TODO:
 	 * Since removing or adding of certain chunks, namely mu-field chunks,
@@ -108,16 +109,21 @@ trait DefaultExecutor[V, P <: Permission[P], ST <: Store[V, ST],
 			Q: S => VerificationResult): VerificationResult = {
 
 		logger.debug("\nEXECUTE " + stmt.toString)
+		logger.debug("  " + stmt.getClass.getName)
 		logger.debug(stateFormatter.format(σ))
 		
 		decider.prover.logComment("")
 		decider.prover.logComment(stmt.toString)
 
 		val executed = stmt match {
-			case _ =>
-				logger.info("Executing " + stmt)
-				Success()
+			// case _ =>
+				// // logger.info("Executing " + stmt)
+				// Success()
 
+      case silAST.methods.implementations.AssignmentStatement(_, v, rhs) =>
+        evalt(σ, rhs, m, tRhs =>
+          Q(σ \+ (v, tRhs)))
+        
 			// case BlockStmt(body) => execs(σ, body, m, c, Q)
 
 			// /* TODO: Assert should not forward Q but 'terminate' after the assertion

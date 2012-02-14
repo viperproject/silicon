@@ -3,11 +3,11 @@ package ch.ethz.inf.pm.silicon.state
 import com.weiglewilczek.slf4s.Logging
 import ch.ethz.inf.pm.silicon
 import silicon.interfaces.state.{Store, Heap, PathConditions, State, Chunk, 
-		Permission, StateFormatter, HeapMerger, FieldChunk, PredicateChunk}
+		StateFormatter, HeapMerger, FieldChunk, PredicateChunk}
 // import silicon.interfaces.reporting.Context
 import silicon.interfaces.decider.Decider
 // import silicon.ast.Variable
-import silicon.state.terms.{Term, Var, Sort, IntSort}
+import silicon.state.terms.{Term, Permissions, PermPlus}
 import silicon.reporting.Bookkeeper
 
 /*
@@ -121,10 +121,10 @@ case class DefaultState[V, ST <: Store[V, ST], H <: Heap[H]]
  * Utils
  */
 
-class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
+class DefaultHeapMerger[V, ST <: Store[V, ST], H <: Heap[H],
 												PC <: PathConditions[PC], S <: State[V, ST, H, S]]
-		(val decider: Decider[V, P, ST, H, PC, S],
-		 val distinctnessLowerBound: P,
+		(val decider: Decider[V, ST, H, PC, S],
+		 val distinctnessLowerBound: Permissions,
 		 val bookkeeper: Bookkeeper,
 		 val stateFormatter: StateFormatter[V, ST, H, S, String])
 		extends HeapMerger[H] with Logging {
@@ -137,8 +137,8 @@ class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 	 * resulting List[Term]: additional path conditions resulting from the merging
 	 */
 	def merge(h1in: H, h2in: H): (H, Set[Term]) = {
-		var fcs: List[FieldChunk[P]] = Nil
-		var rfcs: List[FieldChunk[P]] = Nil
+		var fcs: List[FieldChunk] = Nil
+		var rfcs: List[FieldChunk] = Nil
 		
 		var tSnaps = Set[Term]()		
 		var rts = Set[Term]()
@@ -193,7 +193,7 @@ class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 		(rh, tSnaps ++ tDists)
 	}
 
-	private def singleMerge(h1: H, h2: H): (H, List[FieldChunk[P]], Set[Term]) = {
+	private def singleMerge(h1: H, h2: H): (H, List[FieldChunk], Set[Term]) = {
 		bookkeeper.heapMergeIterations += 1
 
 		val (rh, fcs, tSnaps) = {
@@ -201,7 +201,7 @@ class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 			 * fcs: changeset of field chunks (completely new or merged chunks)
 			 * pi: additional path conditions
 			 */
-			val initial = (h1, List[FieldChunk[P]](), Set[Term]())
+			val initial = (h1, List[FieldChunk](), Set[Term]())
 			
 			h2.values.foldLeft(initial) { case ((ah, afcs, ats), c2) =>
 				/* ah: accumulating heap
@@ -210,22 +210,29 @@ class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 				 * c2: current chunk of the new heap h2
 				 */			
 				(decider.getChunk(ah, c2.rcvr, c2.id), c2) match {
-					case (Some(c1: FieldChunk[P]), c2: FieldChunk[P]) =>
+					case (Some(c1: FieldChunk), c2: FieldChunk) =>
 						val c3 = c1 + c2.perm
 						val t1 = if (c1.value == c2.value) terms.True()
 										 else c1.value ≡ c2.value
 						(ah - c1 + c3, c3 :: afcs, ats + t1)
 						
-					case (Some(c1: PredicateChunk[P]), c2: PredicateChunk[P]) =>
+					case (Some(c1: PredicateChunk), c2: PredicateChunk) =>
 						val c3 = c1 + c2.perm
 						val tSnap = if (c1.snap == c2.snap) terms.True()
 												else c1.snap ≡ c2.snap
 						(ah - c1 + c3, afcs, ats + tSnap)
 
 					case (Some(other), _) =>
-						sys.error("[DefaultHeapUtils.merge] Chunks with t = %s, id = %s and types c1 = %s, c2 = %s were not expected to appear in heaps h1 = %s, h2 = %s.".format(c2.rcvr, c2.id, other.getClass.getName, c2.getClass.getName, stateFormatter.format(h1), stateFormatter.format(h2)))
+						sys.error("[DefaultHeapUtils.merge] Chunks with t = %s, id = %s " +
+                      "and types c1 = %s, c2 = %s were not expected to appear in " +
+                      " heaps h1 = %s, h2 = %s.".format(c2.rcvr,
+                                                        c2.id,
+                                                        other.getClass.getName,
+                                                        c2.getClass.getName,
+                                                        stateFormatter.format(h1),
+                                                        stateFormatter.format(h2)))
 
-					case (None, c2: FieldChunk[P]) => (ah + c2, c2 :: afcs, ats)
+					case (None, c2: FieldChunk) => (ah + c2, c2 :: afcs, ats)
 					case (None, _) => (ah + c2, afcs, ats)
 				}}
 		}
@@ -233,7 +240,7 @@ class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 		(rh, fcs, tSnaps)
 	}
 	
-	private def deriveObjectDistinctness(h: H, fcs: List[FieldChunk[P]]): List[Term] = {
+	private def deriveObjectDistinctness(h: H, fcs: List[FieldChunk]): List[Term] = {
 		bookkeeper.objectDistinctnessComputations += 1
 		
 		/* Compute which objects must be distinct by considering field chunks and 
@@ -243,12 +250,12 @@ class DefaultHeapMerger[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 		 * We only consider the changeset fcs and compare each chunk in it to
 		 * all chunks in h having the same field id.
 		 */		
-		val fields = h.values collect {case c: FieldChunk[P] => c}
+		val fields = h.values collect {case c: FieldChunk => c}
 		val gs = fields groupBy(_.id)
 		
 		val tDists = fcs flatMap(c1 => gs(c1.id) map (c2 =>
 			if (	 c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-					&& decider.isAsPermissive(c1.perm + c2.perm, distinctnessLowerBound))
+					&& decider.isAsPermissive(PermPlus(c1.perm, c2.perm), distinctnessLowerBound))
 				terms.Not(terms.TermEq(c1.rcvr, c2.rcvr))
 			else
 				terms.True()))

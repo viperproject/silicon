@@ -43,7 +43,7 @@ trait StateFactory[V, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]]
 	def Σ(γ: ST, h: H, g: H): S
 }
 
-trait PermissionFactory[P <: Permission[P]] {
-	def Full: P
-	def Eps: P
-}
+// trait PermissionFactory[P <: Permission[P]] {
+	// def Full: P
+	// def Eps: P
+// }

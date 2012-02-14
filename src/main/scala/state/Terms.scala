@@ -3,13 +3,14 @@ package ch.ethz.inf.pm.silicon.state.terms
 //import scala.util.parsing.input.{Position, NoPosition}
 import silAST.{ASTNode => SILASTNode}
 import silAST.source.{SourceLocation => SILSourceLocation, noLocation => SILNoLocation}
-import silAST.programs.symbols.{Function => SILFunction}
+// import silAST.programs.symbols.{Function => SILFunction}
+// import silAST.domains.{DomainFunction => SILDomainFunction}
 
 import ch.ethz.inf.pm.silicon
 // import silicon.ast
 // import silicon.ast.commonnodes
 // import silicon.ast.commonnodes.{UnaryOp, BinaryOp}
-import silicon.interfaces.state.{Heap, Permission}
+// import silicon.interfaces.state.{Heap, Permission}
 import silicon.utils.collections.mapReduceLeft
 
 /* TODO: At least Term and Sort should go to the interfaces package.
@@ -20,9 +21,23 @@ import silicon.utils.collections.mapReduceLeft
  *       in order to support e.g. non-integer sequences.
  */
 sealed trait Sort
-object IntSort extends Sort { override val toString = "Int" }
-object BoolSort extends Sort { override val toString = "Bool" }
-object RefSort extends Sort { override val toString = "Ref" }
+
+object sorts {
+  // trait IntSort extends IntSort
+  // object IntSort extends IntSort { override val toString = "Int" }
+  object Int extends Sort { override val toString = "Int" }
+
+  // trait BoolSort extends Sort
+  object Bool extends Sort { override val toString = "Bool" }
+
+  // trait RefSort extends Sort
+  object Ref extends Sort { override val toString = "Ref" }
+
+  // trait SnapshotSort extends Sort
+  object Snap extends Sort { override val toString = "Snap" }
+  
+  object Perms extends Sort { override val toString = "Perm" }
+}
 
 sealed trait Term {
 	/* Attention! Do not use for non-term equalities, e.g. mu == waitlevel or
@@ -31,26 +46,27 @@ sealed trait Term {
 	def ≡(t: Term): TermEq = TermEq(this, t)
 	def ≠(t: Term): Term = Not(TermEq(this, t))
 	
-	/* Alternative:
-	 *   1) Have one wrapper term FromTo(from: Sort, to: Sort)
-	 *   2) Instantiate as needed
-	 *   3) Decider collects all such terms before invoking the prover,
-	 *      declares corresponding wrapper functions and wrapper axioms
-	 *      before sending all terms to the prover.
-	 *      BUT: Depending on the used TermConverter, some wrappers might be
-	 *      unnecessary, e.g. when SeqSort is encoded as Int.
-	 */
-	def convert(from: Sort, to: Sort): Term = (from, to) match {
-		case (IntSort, BoolSort) => IntToBool(this)
-		case (BoolSort, IntSort) => BoolToInt(this)
-		case (s1, s2) if s1 == s2 => this
-		case (s1, s2) =>
-			sys.error("Unexpected sort conversion %s -> %s.".format(from, to))
-	}
+	// /* Alternative:
+	 // *   1) Have one wrapper term FromTo(from: Sort, to: Sort)
+	 // *   2) Instantiate as needed
+	 // *   3) Decider collects all such terms before invoking the prover,
+	 // *      declares corresponding wrapper functions and wrapper axioms
+	 // *      before sending all terms to the prover.
+	 // *      BUT: Depending on the used TermConverter, some wrappers might be
+	 // *      unnecessary, e.g. when SeqSort is encoded as Int.
+	 // */
+	// def convert(from: Sort, to: Sort): Term[S] = (from, to) match {
+		// case (IntSort, BoolSort) => IntToBool(this)
+		// case (BoolSort, IntSort) => BoolToInt(this)
+		// case (s1, s2) if s1 == s2 => this
+		// case (s1, s2) =>
+			// sys.error("Unexpected sort conversion %s -> %s.".format(from, to))
+	// }
 	
-	def convert(to: Sort): Term = convert(this.sort, to)
+	// def convert(to: Sort): Term[S] = convert(this.sort, to)
 	
-	def sort: Sort = IntSort /* Default sort */
+	// def sort: Sort = IntSort /* Default sort */
+  def sort: Sort
 	
 	var srcNode: Option[SILASTNode] = None
 	var srcPos: SILSourceLocation = SILNoLocation
@@ -72,11 +88,18 @@ sealed trait Term {
 }
 
 /* TODO: Rename to Constant/Symbol/Id */
-case class Var(id: String, override val sort: Sort) extends Term
-	{ override val toString = id }
+/* case */ class Var(val id: String, val sort: Sort) extends Term {
+  override val toString = id
+}
+
+object Var extends Function2[String, Sort, Var] {
+  def apply(id: String, sort: Sort) = new Var(id.replace('#', '_'), sort)
+  def unapply(v: Var) = Some((v.id, v.sort))
+}
 	
-case class FApp(f: SILFunction, s: Term, t0: Term, tArgs: List[Term],
-		override val sort: Sort) extends Term {
+case class FApp(f: silAST.programs.symbols.Function, s: Term, t0: Term,
+                tArgs: Seq[Term], val sort: Sort)
+    extends Term {
 	
 	// override def collect[R](f: Term => List[R]) =
 		// f(this) ::: s.collect(f) ::: t0.collect(f) ::: (tArgs flatMap (t => t.collect(f)))
@@ -96,150 +119,156 @@ case class FApp(f: SILFunction, s: Term, t0: Term, tArgs: List[Term],
 
 sealed trait Literal extends Term
 
-case object Unit extends Literal { override val toString = "_" }
+case object Unit extends Literal {
+  val sort = sorts.Snap
 
-case class IntLiteral(n: Int) extends Literal {
+  override val toString = "_"
+ }
+
+case class IntLiteral(n: Int) extends Literal with ArithmeticTerm {
 	def +(m: Int) = IntLiteral(n + m)
 	def -(m: Int) = IntLiteral(n - m)	
 	def *(m: Int) = IntLiteral(n * m)	
 	def /(m: Int) = Div(this, IntLiteral(m))
+
 	override val toString = n.toString
 }
 
 // object Null extends Literal {	override val toString = "Null" }
-case class Null() extends Literal {	override val toString = "Null" }
+case class Null() extends Literal {
+  val sort = sorts.Ref
+  
+  override val toString = "Null" 
+ }
 // object MaxLock extends Literal { override val toString = "MLock" }
 // object BottomLock extends Literal {	override val toString = "BLock" }
-case class BottomLock() extends Literal {	override val toString = "BLock" }
+// case class BottomLock() extends Literal {	override val toString = "BLock" }
 
-// object True extends Literal {
-case class True() extends Literal {
-	override val sort = BoolSort
-	override val toString = "True"
+sealed trait BooleanLiteral extends Literal with BooleanTerm {
+  def value: Boolean
+
+  override def toString = value.toString
 }
 
-// object False extends Literal {
-case class False() extends Literal {
-	override val sort = BoolSort
-	override val toString = "False"
-}
+case class True() extends BooleanLiteral { val value = true }
+case class False() extends BooleanLiteral { val value = false }
 
 /* Quantifiers */
 
-sealed trait Quantifier extends Term { override val sort = BoolSort }
+sealed trait Quantifier // extends Term { override val sort = BoolSort }
 
 object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
-case class Quantification(q: Quantifier, tVars: List[Var], tBody: Term) 
-		extends Term { override val sort = BoolSort }
+case class Quantification(q: Quantifier, tVars: Seq[Var], tBody: Term) 
+		extends BooleanTerm
 
 /* Sequences */
 
-sealed trait SeqTerm extends Term { /* override val sort: Sort = SeqSort */ }
+// sealed trait SeqTerm extends Term { /* override val sort: Sort = SeqSort */ }
 
-case class SeqEq(p0: Term, p1: Term) extends Eq
+// case class SeqEq(p0: Term, p1: Term) extends Eq
 
-case class RangeSeq(p0: Term, p1: Term) extends SeqTerm
-		/* with BinaryOp[Term] */ {	/* override */ val op = ".." }
+// case class RangeSeq(p0: Term, p1: Term) extends SeqTerm
+		// /* with BinaryOp[Term] */ {	/* override */ val op = ".." }
 
-// object EmptySeq extends SeqTerm with Literal
-case class EmptySeq() extends SeqTerm with Literal
-	{ override val toString = "Nil" }
+// // object EmptySeq extends SeqTerm with Literal
+// case class EmptySeq() extends SeqTerm with Literal
+	// { override val toString = "Nil" }
 
-case class SeqElem(p: Term) extends SeqTerm /* with UnaryOp[Term] */
-	{ override val toString = "(" + p + ")" }
+// case class SeqElem(p: Term) extends SeqTerm /* with UnaryOp[Term] */
+	// { override val toString = "(" + p + ")" }
 
-case class SeqCon(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */
-	{	/* override */ val op = "++" }
+// case class SeqCon(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */
+	// {	/* override */ val op = "++" }
 
-// case class SeqSeg(s: Term, i: Term, j: Term) extends SeqTerm
-	// { override val toString = s + "[" + i + ".." + j + "]" }
+// // case class SeqSeg(s: Term, i: Term, j: Term) extends SeqTerm
+	// // { override val toString = s + "[" + i + ".." + j + "]" }
 	
-case class SeqDrop(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
-	override val sort = IntSort
-	override val toString = p0 + "[" + p1 + ":]"
-}
+// case class SeqDrop(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
+	// override val sort = IntSort
+	// override val toString = p0 + "[" + p1 + ":]"
+// }
 
-case class SeqTake(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
-	override val sort = IntSort
-	override val toString = p0 + "[:" + p1 + "]"
-}
+// case class SeqTake(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
+	// override val sort = IntSort
+	// override val toString = p0 + "[:" + p1 + "]"
+// }
 
-case class SeqLen(p: Term) extends SeqTerm /* with UnaryOp[Term] */ {
-	override val sort = IntSort
-	override val toString = "|" + p + "|"
-}
+// case class SeqLen(p: Term) extends SeqTerm /* with UnaryOp[Term] */ {
+	// override val sort = IntSort
+	// override val toString = "|" + p + "|"
+// }
 
-case class SeqAt(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
-	override val sort = IntSort /* TODO: Support non-int sequences */
-	override val toString = p0 + "[" + p1 + "]"
-}
+// case class SeqAt(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
+	// override val sort = IntSort /* TODO: Support non-int sequences */
+	// override val toString = p0 + "[" + p1 + "]"
+// }
 
-case class SeqIn(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
-	override val sort = BoolSort
-	/* override */ val op = "in"
-}
+// case class SeqIn(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
+	// override val sort = BoolSort
+	// /* override */ val op = "in"
+// }
 
 /* Monitors, locks */
 
-sealed trait LockTerm extends Term { override val sort: Sort = BoolSort }
+// sealed trait LockTerm extends Term { override val sort: Sort = BoolSort }
 
-case class LockLess(p0: Term, p1: Term) extends LockTerm with ComparisonTerm
-		/* with BinaryOp[Term] */ { /* override */ val op = "<<" }
+// case class LockLess(p0: Term, p1: Term) extends LockTerm with ComparisonTerm
+		// /* with BinaryOp[Term] */ { /* override */ val op = "<<" }
     
-// object MaxLock extends LockTerm { override val toString = "maxlock" }
-case class MaxLock() extends LockTerm { override val toString = "maxlock" }
+// // object MaxLock extends LockTerm { override val toString = "maxlock" }
+// case class MaxLock() extends LockTerm { override val toString = "maxlock" }
 
-case class MaxLockLess(t: Term, hn: Int, mn: Int, cn: Int) extends LockTerm {
-  val op = "<<"
-  override val toString = "maxlock(%s, %s, %s) %s %s".format(hn, mn, cn, op, t)
-}
+// case class MaxLockLess(t: Term, hn: Int, mn: Int, cn: Int) extends LockTerm {
+  // val op = "<<"
+  // override val toString = "maxlock(%s, %s, %s) %s %s".format(hn, mn, cn, op, t)
+// }
 
-/* TODO: If this should also be an Eq we have to remove BinaryOp from the
- *       declaration of Eq.
- */
-case class MaxLockAtMost(t: Term, hn: Int, mn: Int, cn: Int) extends LockTerm {
-  val op = "=="
-  override val toString = "maxlock(%s, %s, %s) %s %s".format(hn, mn, cn, op, t)
-}
+// /* TODO: If this should also be an Eq we have to remove BinaryOp from the
+ // *       declaration of Eq.
+ // */
+// case class MaxLockAtMost(t: Term, hn: Int, mn: Int, cn: Int) extends LockTerm {
+  // val op = "=="
+  // override val toString = "maxlock(%s, %s, %s) %s %s".format(hn, mn, cn, op, t)
+// }
 
-sealed trait LockMode extends LockTerm
+// sealed trait LockMode extends LockTerm
 
-object LockMode {
-	object Read extends LockMode { override def toString = "R" }
-	object Write extends LockMode { override def toString = "W" }
-	object None extends LockMode { override def toString = "N" }
-}
+// object LockMode {
+	// object Read extends LockMode { override def toString = "R" }
+	// object Write extends LockMode { override def toString = "W" }
+	// object None extends LockMode { override def toString = "N" }
+// }
 
-case class Holds(t: Term, n: Int, p: LockMode) extends LockTerm
-	{ override val toString = "holds(%s, %s, %s)".format(t, n, p) }
+// case class Holds(t: Term, n: Int, p: LockMode) extends LockTerm
+	// { override val toString = "holds(%s, %s, %s)".format(t, n, p) }
 
-case class LockChange(which: List[Term], n1: Int, n2: Int)
-		extends LockTerm {
+// case class LockChange(which: List[Term], n1: Int, n2: Int)
+		// extends LockTerm {
 
-  override val toString = "lockchange([%s], %s, %s)".format(
-			which.mkString(", "), n1, n2)
-}
+  // override val toString = "lockchange([%s], %s, %s)".format(
+			// which.mkString(", "), n1, n2)
+// }
 
-case class Mu(p0: Term, n: Int, p1: Term) extends LockTerm
-		/* with BinaryOp[Term] */ {
+// case class Mu(p0: Term, n: Int, p1: Term) extends LockTerm
+		// /* with BinaryOp[Term] */ {
 
-	override val sort = IntSort
-	override val toString = "mu(%s, %s, %s)".format(p0, n, p1)
-}
+	// override val sort = IntSort
+	// override val toString = "mu(%s, %s, %s)".format(p0, n, p1)
+// }
 
 /* Credits */
 
-case class Credits(t: Term, n: Int) extends Term
-	{ override val toString = "credits(%s, %s)".format(t, n) }
+// case class Credits(t: Term, n: Int) extends Term
+	// { override val toString = "credits(%s, %s)".format(t, n) }
 
-case class DebtFreeExpr(n: Int) extends Term
-	{ override val toString = "debtfree(%s)".format(n) }
+// case class DebtFreeExpr(n: Int) extends Term
+	// { override val toString = "debtfree(%s)".format(n) }
 	
 /* Arithmetic expression terms */
 
-sealed abstract class ArithmeticTerm extends Term
+sealed trait ArithmeticTerm extends Term { val sort = sorts.Int }
 
 case class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
 		/* with commonnodes.Plus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
@@ -300,7 +329,7 @@ case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
 
 /* Boolean expression terms */		
 
-sealed trait BooleanTerm extends Term { override val sort = BoolSort }
+sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 
 case class Not(val p: Term) extends BooleanTerm /* with commonnodes.Not[Term] {
 	override val op = "¬"
@@ -390,7 +419,7 @@ case class Iff(val p0: Term, val p1: Term) extends BooleanTerm
 // }
 
 case class Ite(val t0: Term, val t1: Term, val t2: Term) extends BooleanTerm {
-	assert(t0.sort == BoolSort && t1.sort == t2.sort, /* @elidable */
+	assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
@@ -478,21 +507,76 @@ case class AtLeast(val p0: Term, val p1: Term) extends ComparisonTerm
 	
 	// def unapply(e: AtLeast) = Some((e.p0, e.p1))
 // }
-		
+
+/* Permissions */
+
+sealed trait Permissions extends Term {
+  val sort = sorts.Perms
+}
+
+/* TODO:
+ *   PermTimes etc. should have arguments of type Permissions. This would entail at 
+ *   least the one of the following changes:
+ *   
+ *   a) Evaluator.eval is split further, i.e. into an evalp: SILTerm => Permissions, and
+ *      invoked instead of evale/evalt whenever a term of type Permissions is needed.
+ *
+ *   b) An implicit def term2permissions is brought into scope.
+ *
+ *   c) PermTimes still takes a Term, but checks if the sorts of the arguments are
+ *      sorts.Perm. PermTimes could even be replaced by Times if we require both
+ *      arguments to be of the same sort.
+ *   
+ *   Notice that none of the solutions is totally type-safe, all could lead to
+ *   runtime errors, either because the implementation is buggy or because the SIL
+ *   source is not correctly typed.
+ */
+
+case class FullPerms() extends Permissions { override val toString = "Full" }
+case class ZeroPerms() extends Permissions { override val toString = "Zero" }
+case class EpsPerms() extends Permissions { override val toString = "Eps" }
+
+// case class TermPermissions(value: Term) extends Permissions
+
+case class PermTimes(val p0: Term, val p1: Term) extends Permissions
+case class PermPlus(val p0: Term, val p1: Term) extends Permissions
+case class PermMinus(val p0: Term, val p1: Term) extends Permissions
+
+case class PermLess(val p0: Term, val p1: Term) extends BooleanTerm
+
+/* Domains */
+
+case class DomainFApp(val f: silAST.domains.DomainFunction, val tArgs: Seq[Term],
+                      val sort: Sort)
+    extends Term {
+
+  override val toString = f.name + tArgs.mkString("(", ", ", ")")
+}
+
+case class DomainPApp(val p: silAST.domains.DomainPredicate, val tArgs: Seq[Term],
+                      val sort: Sort)
+    extends Term {
+
+  override val toString = p.name + tArgs.mkString("(", ", ", ")")
+}
+
 /* Auxiliary terms */
-	
-case class Combine(t0: Term, t1: Term) extends Term
+
+case class Combine(t0: Term, t1: Term) extends Term {
+  val sort = sorts.Snap
+
+  override val toString = "(%s, %s)".format(t0, t1)
+}
 
 case class SnapEq(p0: Term, p1: Term) extends Eq
 
 sealed trait SortWrapper extends Term { def t0: Term }
 
-case class BoolToInt(t0: Term) extends SortWrapper
-case class IntToBool(t0: Term) extends SortWrapper
-	{ override val sort = BoolSort }
-	
-case class UpdateMap(id: String, t: Term, n: Int) extends LockTerm
-	{ override val toString = "%s[%s,%s]".format(id, t, n) }
+case class BoolToInt(t0: Term) extends SortWrapper { val sort = sorts.Int }
+case class IntToBool(t0: Term) extends SortWrapper { val sort = sorts.Bool }
+
+// case class UpdateMap(id: String, t: Term, n: Int) extends LockTerm
+	// { override val toString = "%s[%s,%s]".format(id, t, n) }
 
 /* Utility functions */
 		

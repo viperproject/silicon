@@ -11,15 +11,15 @@ import silAST.expressions.{Expression => SILExpression}
 
 import interfaces.{ResultWithMessage, VerificationResult, Failure, Warning, Success, /* MemberVerifier,  */
 		/* Producer, Consumer, Executor, Evaluator, ProgrammeVerifier, */ MapSupport}
-import state.{FractionalPermission, MapBackedStore, DefaultHeapMerger,
+import state.{/* FractionalPermission, */ MapBackedStore, DefaultHeapMerger,
 		MapBackedHeap, MutableSetBackedPathConditions, DefaultState,
-		DefaultStateFactory, DefaultPermissionFactory, DefaultPathConditionsFactory,
+		DefaultStateFactory, /* DefaultPermissionFactory, */ DefaultPathConditionsFactory,
 		DefaultTypeConverter}
 import reporting.{/* DefaultContext, Branching, */ Bookkeeper}
 import decider.DefaultDecider
 
 class Silicon(val config: Config) extends Logging {
-  private type P = FractionalPermission
+  // private type P = FractionalPermission
 	private type V = SILProgramVariable
 	private type ST = MapBackedStore[V]
 	private type H = MapBackedHeap
@@ -31,7 +31,7 @@ class Silicon(val config: Config) extends Logging {
 
 	setLogLevel(config.logLevel)
 	
-	def execute(program: SILProgram) {
+	def execute(program: SILProgram): List[VerificationResult] = {
 		val now = (new SimpleDateFormat("yyyy-MM-dd hh:mm:ss z")).format(Calendar.getInstance().getTime)
 		
 		startTime = System.currentTimeMillis()
@@ -46,7 +46,7 @@ class Silicon(val config: Config) extends Logging {
 	def runVerifier(program: SILProgram): List[VerificationResult] = {
 		val stateFormatter = new DefaultStateFormatter[V, ST, H, S]()
 		val pathConditionFactory = new DefaultPathConditionsFactory()
-		val permissionFactory = new DefaultPermissionFactory()
+		// val permissionFactory = new DefaultPermissionFactory()
 		val typeConverter = new DefaultTypeConverter()
 		val bookkeeper = new Bookkeeper()
 		
@@ -54,24 +54,25 @@ class Silicon(val config: Config) extends Logging {
 			new DefaultDecider[ST, H, PC, S](pathConditionFactory, config)
 		
 		val stateFactory = new DefaultStateFactory[V](decider.π _)
-		// val mapSupport = null // new DefaultMapSupport[P, ST, H, PC, S, C](decider)
+		// val mapSupport = null // new DefaultMapSupport[ST, H, PC, S, C](decider)
 		// val lockSupport = null // new LockSupport[ST, H, S, C](mapSupport)
 		// val creditSupport = null // new CreditSupport[ST, H, S, C](mapSupport)
 		
 		val chunkFinder =
-			new DefaultChunkFinder[V, SILExpression, P, ST, H, PC, S](decider, stateFormatter)
+			new DefaultChunkFinder[V, SILExpression, ST, H, PC, S](decider, stateFormatter)
 		
-		val dlb = permissionFactory.Full + permissionFactory.Eps
+		// val dlb = permissionFactory.Full + permissionFactory.Eps
+    val dlb = state.terms.PermTimes(state.terms.FullPerms(), state.terms.EpsPerms())
 		
 		val heapMerger =
-			new DefaultHeapMerger[V, P, ST, H, PC, S](
+			new DefaultHeapMerger[V, ST, H, PC, S](
 						decider, dlb, bookkeeper, stateFormatter)
 		
 		bookkeeper.branches = 1
 		// decider.lockSupport = lockSupport
 		
 		val verifier =
-			new DefaultVerifier(config, decider, permissionFactory, stateFactory, 
+			new DefaultVerifier(config, decider, /* permissionFactory, */ stateFactory, 
 													typeConverter, /* mapSupport, lockSupport, creditSupport, */
 													chunkFinder, stateFormatter, heapMerger, bookkeeper)
 
@@ -83,7 +84,7 @@ class Silicon(val config: Config) extends Logging {
 		 */
 													
 		var results: List[VerificationResult] = verifier.verify(program)
-		results = results.flatMap(r => r :: r.allPrevious)
+		results = results.flatMap(r => r :: r.allPrevious).filterNot(_ == Success())
 		
 		// /* Removes results that have the same textual representation of their
 		 // * error message.
@@ -196,7 +197,7 @@ object Silicon {
 		// }
 	// }
 
-	def main(program: SILProgram) = {
+	def main(program: SILProgram): List[VerificationResult] = {
 		val config = new Config()
 		val silicon = new Silicon(config)
 

@@ -12,13 +12,11 @@ import silicon.interfaces.decider.{Decider, Unsat}
 import silicon.interfaces.state.{Store, Heap, PathConditions, State, FieldChunk, 
 		PathConditionsFactory, Chunk, PredicateChunk, AccessRestrictedChunk}
 import silicon.interfaces.reporting.{Message}
-import silicon.state.{FractionalPermission, ConstFraction, TermFraction,
-		DefaultFieldChunk, DefaultPredicateChunk,
-		FullPerm => Full, EpsPerm => Eps}
+import silicon.state.{DefaultFieldChunk, DefaultPredicateChunk}
 import silicon.state.terms 
 import silicon.state.terms.{Term, Eq, Not, TermEq, Var, AtLeast, AtMost, Greater, 
-		IntLiteral, Mu, Combine, Ite, FApp, Quantification, And, Or, True,
-		SortWrapper, LockMode}
+		IntLiteral, /* Mu, */ Combine, Ite, FApp, Quantification, And, Or, True,
+		SortWrapper, /* LockMode, */ Permissions}
 // import silicon.ast
 import silicon.reporting.WarningMessages.{SmokeDetected}
 import silicon.reporting.ErrorMessages.{FractionMightBeNegative,
@@ -30,10 +28,10 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
                      S <: State[SILProgramVariable, ST, H, S]]
 		(	private val pathConditionsFactory: PathConditionsFactory[PC],
 			private val config: silicon.Config)
-		extends Decider[SILProgramVariable, FractionalPermission, ST, H, PC, S]
-			with Logging {
+		extends Decider[SILProgramVariable, ST, H, PC, S]
+    with Logging {
 
-	private type P = FractionalPermission
+	// private type P = FractionalPermission
 	
 	// var lockSupport: LockSupport[ST, H, S] = null
 	
@@ -104,7 +102,7 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		asserted || π.exists(_ == t) || prover.assert(t)
 	}
 
-	def isAsPermissive(perm: P, other: P) =
+	def isAsPermissive(perm: Permissions, other: Permissions) =
 		/* TODO:
 		 * Since assertReadAccess is only true for positive fractions, the
 		 * following fails:
@@ -116,81 +114,87 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		 * negative. Still ...
 		 */
 
-		assertReadAccess((perm - other) + ConstFraction(0, 1))
+    true
+		// assertReadAccess((perm - other) + ConstFraction(0, 1))
 			/* Without the additional epsilon isAsPermissive would return false
 			 * if perm == other because assertReadAccess returns false for zero 
 			 * permissions.
 			 */
 	
-	def assertReadAccess(perm: P) = perm match {
-		case ConstFraction(per, eps) => per > 0 || (per == 0 && eps > 0)
+	def assertReadAccess(perm: Permissions) = perm match {
+    case _ => true
+		// case ConstFraction(per, eps) => per > 0 || (per == 0 && eps > 0)
 
-		case TermFraction(per, eps) =>
-			// logger.debug("[assertReadAccess] perm = " + perm)
-			val zero = IntLiteral(0)
-			assert(Or(Greater(per, zero),
-								And(TermEq(per, zero), Greater(eps, zero))))
+		// case TermFraction(per, eps) =>
+			// // logger.debug("[assertReadAccess] perm = " + perm)
+			// val zero = IntLiteral(0)
+			// assert(Or(Greater(per, zero),
+								// And(TermEq(per, zero), Greater(eps, zero))))
 	}
 
-	def assertNoAccess(perm: P) = perm match {
-		case ConstFraction(per, eps) => per == 0 && eps <= 0
+	def assertNoAccess(perm: Permissions) = perm match {
+    case _ => true
+		// case ConstFraction(per, eps) => per == 0 && eps <= 0
 
-		case TermFraction(per, eps) =>
-			// logger.debug("[assertNoAccess] perm = " + perm)
-			val zero = IntLiteral(0)
-			assert(And(TermEq(per, zero), AtMost(eps, zero)))
+		// case TermFraction(per, eps) =>
+			// // logger.debug("[assertNoAccess] perm = " + perm)
+			// val zero = IntLiteral(0)
+			// assert(And(TermEq(per, zero), AtMost(eps, zero)))
 	}
 
-	def assertWriteAccess(perm: P) = perm match {
-		case ConstFraction(per, eps) => per >= 100 && eps >= 0
+	def assertWriteAccess(perm: Permissions) = perm match {
+    case _ => true
+		// case ConstFraction(per, eps) => per >= 100 && eps >= 0
 
-		case TermFraction(per, eps) =>
-			// logger.debug("[assertWriteAccess] perm = " + perm)
-			assert(And(AtLeast(per, IntLiteral(100)),
-								 AtLeast(eps, IntLiteral(0))))
+		// case TermFraction(per, eps) =>
+			// // logger.debug("[assertWriteAccess] perm = " + perm)
+			// assert(And(AtLeast(per, IntLiteral(100)),
+								 // AtLeast(eps, IntLiteral(0))))
 	}
 	
 	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean =
 		getChunk(h, rcvr, id) match {
-			case Some(c: AccessRestrictedChunk[P, _]) => assertReadAccess(c.perm)
+			case Some(c: AccessRestrictedChunk[_]) => assertReadAccess(c.perm)
 			case None => false
 		}
 	
 	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean =
 		getChunk(h, rcvr, id) match {
-			case Some(c: AccessRestrictedChunk[P, _]) => assertWriteAccess(c.perm)
+			case Some(c: AccessRestrictedChunk[_]) => assertWriteAccess(c.perm)
 			case None => false
 		}
 
-	def isNonNegativeFraction(perm: P) = perm match {
-		case ConstFraction(per, eps) => per >= 0 && eps >= 0
+	def isNonNegativeFraction(perm: Permissions) = perm match {
+    case _ => true
+		// case ConstFraction(per, eps) => per >= 0 && eps >= 0
 
-		case TermFraction(per, eps) =>
-			assert(And(AtLeast(per, IntLiteral(0)),
-								 AtLeast(eps, IntLiteral(0))))
+		// case TermFraction(per, eps) =>
+			// assert(And(AtLeast(per, IntLiteral(0)),
+								 // AtLeast(eps, IntLiteral(0))))
 	}
 
 	/* TODO: Extract isGT100(σ, perm) and implement isValidFraction based on
 	 *       isGT100 and isNonNegativeFraction.
 	 */
-	def isValidFraction(perm: P) = perm match {
-		case ConstFraction(per, eps) =>
-			if (per < 0 || eps < 0)
-				Some(FractionMightBeNegative)
-			else if (per > 100)
-				Some(FractionMightBeGT100)
-			else
-				None
+	def isValidFraction(perm: Permissions) = perm match {
+    case _ => None
+		// case ConstFraction(per, eps) =>
+			// if (per < 0 || eps < 0)
+				// Some(FractionMightBeNegative)
+			// else if (per > 100)
+				// Some(FractionMightBeGT100)
+			// else
+				// None
 
-		case TermFraction(per, eps) =>
-			// logger.debug("[Decider.isValidFraction] perm = " + perm)
-			if (!assert(And(AtLeast(per, IntLiteral(0)),
-									    AtLeast(eps, IntLiteral(0)))))
-				Some(FractionMightBeNegative)
-			else if (!assert(AtMost(per, IntLiteral(100))))
-				Some(FractionMightBeGT100)
-			else
-				None
+		// case TermFraction(per, eps) =>
+			// // logger.debug("[Decider.isValidFraction] perm = " + perm)
+			// if (!assert(And(AtLeast(per, IntLiteral(0)),
+									    // AtLeast(eps, IntLiteral(0)))))
+				// Some(FractionMightBeNegative)
+			// else if (!assert(AtMost(per, IntLiteral(100))))
+				// Some(FractionMightBeGT100)
+			// else
+				// None
 	}
 
 	private def prover_assume(term: Term) = prover.assume(term)
@@ -272,12 +276,13 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		r
 	}
 
-	def emitFunctionDeclaration(f: SILFunction) = prover.declare(f)
+	def emitFunctionDeclaration(f: SILFunction) =
+    prover.declareSymbol(f.name, null)
 
 	/* TODO: Have TermConverter declare a default sort */
-	def fresh = prover.fresh("$t", terms.IntSort)
+	def fresh = prover.fresh("$t", terms.sorts.Int)
   
-	def fresh(id: String) = prover.fresh(id, terms.IntSort)
+	def fresh(id: String) = prover.fresh(id, terms.sorts.Int)
   
 	def fresh(v: SILProgramVariable) =
     prover.fresh(v.name, typeConverter.toSort(v.dataType))
@@ -291,14 +296,14 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 	 */
 	
 	def getFieldChunk(h: H, rcvr: Term, id: String) = {
-		val fields = h.values collect {case c: FieldChunk[P] if c.id == id => c}
+		val fields = h.values collect {case c: FieldChunk if c.id == id => c}
 
 		getChunk(h, fields, rcvr)
 	}
 	
 	def getPredicateChunk(h: H, rcvr: Term, id: String) = {
 		val predicates =
-			h.values collect {case c: PredicateChunk[P] if c.id == id => c}
+			h.values collect {case c: PredicateChunk if c.id == id => c}
 
 		getChunk(h, predicates, rcvr)
 	}

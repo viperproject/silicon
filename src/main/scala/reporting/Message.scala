@@ -48,22 +48,23 @@ sealed abstract class AbstractMessage extends Message {
 		
 		if (loc != SILNoLocation)
 			// str += " %s.%s:".format(loc.line, loc.column)
-			str += " %s.%s:".format("?", "?")
+			// str += " %s.%s:".format("?", "?")
+			str += " %s:".format(loc)
 			
 		str += " " + text.format(details: _*)
 		
 		if (reason.isDefined)
 			str += " " + reason.get.text
 		
-		if (loc != SILNoLocation) {
-			// str += "\n" + loc.longString /* Includes caret line to indicate position */
+		// if (loc != SILNoLocation) {
+			// // str += "\n" + loc.longString /* Includes caret line to indicate position */
 			
-			 // /* Exclude caret line */
-			// var lines = loc.longString.lines
-			// if (lines.hasNext)
-				// str += "\n" + lines.next()
-			str += "\n" + loc
-		}
+			 // // /* Exclude caret line */
+			// // var lines = loc.longString.lines
+			// // if (lines.hasNext)
+				// // str += "\n" + lines.next()
+			// str += "\n" + loc
+		// }
 		
 		str
 	}

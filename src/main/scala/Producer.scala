@@ -3,19 +3,21 @@ package ch.ethz.inf.pm.silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 
-import silAST.expressions.{Expression => SILExpression}
+import silAST.expressions.{Expression => SILExpression,
+  PermissionExpression => SILPermissionExpression}
 // import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import silAST.expressions.terms.{Term => SILTerm}
 
 import interfaces.{Producer, Evaluator, VerificationResult, MapSupport, Failure, 
 		Success}
 import interfaces.decider.Decider
-import interfaces.state.{Permission, Store, Heap, PathConditions, State, 
+import interfaces.state.{Store, Heap, PathConditions, State, 
 		StateFactory, StateFormatter, PersistentChunk, FieldChunk, 
-		PredicateChunk, PermissionFactory, HeapMerger}
+		PredicateChunk, HeapMerger}
 import interfaces.reporting.{Message}
 import interfaces.state.factoryUtils.Ø
-import state.terms.{Term, Combine, Null, IntSort, True, And, Or, LockMode, Plus,
-		IntLiteral, TermEq, SnapEq}
+import state.terms.{Term, Combine, Null, sorts, True, And, Or, /* LockMode, */ Plus,
+		IntLiteral, TermEq, SnapEq, Permissions, Times, PermTimes}
 import state.{TypeConverter}
 // import ast.{Expression}
 import state.{DefaultFieldChunk, DefaultPredicateChunk, CounterChunk}
@@ -29,23 +31,23 @@ import state.terms.utils.¬
  *       Use the factory in DefaultConsumer and DefaultExecuter, too.
  */
 
-trait DefaultProducer[V, P <: Permission[P], ST <: Store[V, ST],
+trait DefaultProducer[V, ST <: Store[V, ST],
 											H <: Heap[H], PC <: PathConditions[PC],
 											S <: State[V, ST, H, S]]
-		extends Producer[V, SILExpression, P, ST, H, S]
+		extends Producer[V, SILExpression, ST, H, S]
     with    HasLocalState
 		{ this:      Logging
-            with Evaluator[V, SILExpression, P, ST, H, S]
+            with Evaluator[V, SILExpression, SILTerm, ST, H, S]
             with Brancher =>
 
-	protected val decider: Decider[V, P, ST, H, PC, S]
+	protected val decider: Decider[V, ST, H, PC, S]
 	import decider.{fresh, assume}
 	
 	protected val stateFactory: StateFactory[V, ST, H, S]
 	import stateFactory._
 	
-	protected val permissionFactory: PermissionFactory[P]
-	import permissionFactory._
+	// protected val permissionFactory: PermissionFactory[P]
+	// import permissionFactory._
 
 	protected val heapMerger: HeapMerger[H]
 	import heapMerger.merge
@@ -66,12 +68,9 @@ trait DefaultProducer[V, P <: Permission[P], ST <: Store[V, ST],
 	private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
 	private var snapshotCache: Map[Term, (Term, Term)] = Map()
 	
-	def produce(σ: S, s: Term, p: P, φ: SILExpression, m: Message,
+	def produce(σ: S, s: Term, p: Permissions, φ: SILExpression, m: Message,
 			Q: S => VerificationResult): VerificationResult = {
 
-			// produce2(σ, s, p, φ, m, c, (h, c1) =>
-				// Q(σ \ h, c1))
-			
 		if (!config.selfFramingProductions) {
 			produce2(σ, s, p, φ, m, h => {
 				// Q(σ \ h, c1)})
@@ -98,17 +97,14 @@ trait DefaultProducer[V, P <: Permission[P], ST <: Store[V, ST],
 		}
 	}
 
-	private def produce2(σ: S, s: Term, p: P, φ: SILExpression, m: Message,
+	private def produce2(σ: S, s: Term, p: Permissions, φ: SILExpression, m: Message,
 			Q: H => VerificationResult): VerificationResult = {
 			
 		logger.debug("\nPRODUCE " + φ.toString)
+		logger.debug("  " + φ.getClass.getName)
 		logger.debug(stateFormatter.format(σ))
 		
 		val produced = φ match {
-			case _ =>
-				logger.debug("Producing " + φ)
-				Success()
-				
 			// /* And <: BooleanExpr */
 			// case ast.And(a0, a1) =>
 				// /* TODO: A lot of these snapshot are never used, they'll only polute
@@ -187,8 +183,8 @@ trait DefaultProducer[V, P <: Permission[P], ST <: Store[V, ST],
 						// (c2: C) => produce2(σ, s, p, a1, m, c2 + IfBranching(true, e0, t0), Q),
 						// (c2: C) => produce2(σ, s, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
-			// /* assume acc(e.f) */
-			// case ast.Access(acc @ ast.FieldAccess(e0, id), p0) =>
+			/* assume acc(e.f) */
+			case SILPermissionExpression(sl, eRcvr, field, ePerm) =>
 				// assert(acc.f !=  null, /* @elidable */
 						// "Expected FieldAccess.f to be non-null.")
 				// assert(acc.f.typ !=  null, /* @elidable */
@@ -196,21 +192,21 @@ trait DefaultProducer[V, P <: Permission[P], ST <: Store[V, ST],
 				// assert(acc.f.typ.typ !=  null, /* @elidable */
 						// "Expected FieldAccess.f.typ.typ to be non-null.")
 				
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// assume(t0 ≠ Null(), c1, (c2: C) =>
-						// evalp(σ, p0, m, c2, (gain, c3) =>
-							// decider.isValidFraction(gain) match {
-								// case None =>								
-									// val snap = s.convert(IntSort, toSort(acc.f.typ))
-									// val fc = DefaultFieldChunk(t0, id, snap, gain * p)
+				evalt(σ, eRcvr, m, tRcvr =>
+					assume(tRcvr ≠ Null(),
+						evalp(σ, ePerm, m, tPerm =>
+							decider.isValidFraction(tPerm) match {
+								case None =>
+									val snap = s // s.convert(sorts.Int, toSort(field.dataType))
+									val fc = DefaultFieldChunk(tPerm, field.name, snap, PermTimes(tPerm, p))
 									// val tMu =
 										// if (id == "mu") lockSupport.Mu(σ.h, t0, snap)
 										// else True()
-									// val (mh, mts) = merge(σ.h, H(fc :: Nil))
-									// assume(mts + tMu, c3, (c4: C) =>
-										// Q(mh, c4))
-								// case Some(errmsg) =>
-									// Failure(errmsg at φ withDetails (e0, id), c3)})))
+									val (mh, mts) = merge(σ.h, H(fc :: Nil))
+									assume(mts /* + tMu */,
+										Q(mh))
+								case Some(errmsg) =>
+									Failure(errmsg at sl withDetails (eRcvr, field.name))})))
 
 			// /* assume acc(e.P) */
 			// case ast.Access(ast.PredicateAccess(e0, id), p0) =>
@@ -264,28 +260,28 @@ trait DefaultProducer[V, P <: Permission[P], ST <: Store[V, ST],
 				 // */
 				// Q(σ.h, c)
 
-			// /* Any regular expressions, i.e. boolean and arithmetic. */
-			// case _ =>
-				// eval(σ, φ, m, c, (t, c1) => {
-					// t.setSrcPos(m.loc)
-						// /* TODO: Taking the position from the message - which is not
-						 // * necessarily set at this time - enables smoke warnings that
-						 // * e.g. give the line number of a method invocation where invoked
-						 // * method's postcondition is equivalent to false.
-						 // *
-						 // * This is rather hacky and one should consider completely changing
-						 // * the way line numbers are tracked.
-						 // *
-						 // * Idea: Add a list of Positions (line numbers) to the context.
-						 // * When executing a call statement the call site position p1 is
-						 // * appended to the context's list. When creating a Warning or a
-						 // * Failure the current context's list suffixed with the current
-						 // * position p2 is passed to msg.at. When formatting the msg
-						 // * the list is eventually used to fill all %s of
-						 // * Message.toString + Reason(s).toString.
-						 // */
-					// assume(t, c1, (c2: C) =>
-						// Q(σ.h, c2))})
+			/* Any regular, pure expressions. */
+			case _ =>
+				evale(σ, φ, m, t => {
+					t.setSrcPos(m.loc)
+						/* TODO: Taking the position from the message - which is not
+						 * necessarily set at this time - enables smoke warnings that
+						 * e.g. give the line number of a method invocation where invoked
+						 * method's postcondition is equivalent to false.
+						 *
+						 * This is rather hacky and one should consider completely changing
+						 * the way line numbers are tracked.
+						 *
+						 * Idea: Add a list of Positions (line numbers) to the context.
+						 * When executing a call statement the call site position p1 is
+						 * appended to the context's list. When creating a Warning or a
+						 * Failure the current context's list suffixed with the current
+						 * position p2 is passed to msg.at. When formatting the msg
+						 * the list is eventually used to fill all %s of
+						 * Message.toString + Reason(s).toString.
+						 */
+					assume(t,
+						Q(σ.h))})
 		}
 
 		produced

@@ -4,11 +4,12 @@ import com.weiglewilczek.slf4s.Logging
 
 import silAST.expressions.{Expression => SILExpression}
 // import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import silAST.expressions.terms.{Term => SILTerm}
 
 import interfaces.{Consumer, Evaluator, MapSupport, VerificationResult, Failure, 
 		Success}
-import interfaces.state.{Permission, Store, Heap, StateFormatter,
-		PathConditions, State, StateFactory, PermissionFactory, PersistentChunk}
+import interfaces.state.{Store, Heap, StateFormatter,
+		PathConditions, State, StateFactory, /* PermissionFactory, */ PersistentChunk}
 import interfaces.reporting.{Message, Reason}
 import interfaces.decider.Decider
 import state.terms._
@@ -20,19 +21,19 @@ import reporting.{/* Consuming, ImplBranching, IfBranching, */ Bookkeeper}
 import reporting.utils._
 import state.terms.utils.{¬, SetAnd}
 
-trait DefaultConsumer[V, P <: Permission[P], ST <: Store[V, ST],
+trait DefaultConsumer[V, ST <: Store[V, ST],
 											H <: Heap[H], PC <: PathConditions[PC],
 											S <: State[V, ST, H, S]]
-		extends Consumer[V, SILExpression, P, ST, H, S]
+		extends Consumer[V, SILExpression, ST, H, S]
 		{ this:      Logging
-            with Evaluator[V, SILExpression, P, ST, H, S]
+            with Evaluator[V, SILExpression, SILTerm, ST, H, S]
             with Brancher =>
 
-	protected val decider: Decider[V, P, ST, H, PC, S]
+	protected val decider: Decider[V, ST, H, PC, S]
 	import decider.assume
 	
-	protected val permissionFactory: PermissionFactory[P]
-	import permissionFactory._
+	// protected val permissionFactory: PermissionFactory[P]
+	// import permissionFactory._
 	
 	protected val typeConverter: TypeConverter
 	import typeConverter.toSort
@@ -40,7 +41,7 @@ trait DefaultConsumer[V, P <: Permission[P], ST <: Store[V, ST],
 	// protected val mapSupport: MapSupport[ST, H, S]
 	// import mapSupport.update
 
-	protected val chunkFinder: ChunkFinder[SILExpression, P, H]
+	protected val chunkFinder: ChunkFinder[SILExpression, H]
 	import chunkFinder.{withFieldChunk, withPredicateChunk}
 	
 	// protected val lockSupport: LockSupport[ST, H, S]
@@ -50,7 +51,7 @@ trait DefaultConsumer[V, P <: Permission[P], ST <: Store[V, ST],
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
 	
-	def consume(σ: S, p: P, φ: SILExpression, m: Message,
+	def consume(σ: S, p: Permissions, φ: SILExpression, m: Message,
 			Q: (S, Term) => VerificationResult): VerificationResult =
 
 		consume2(σ, σ.h, p, φ, m, (h1, t) => {
@@ -58,22 +59,23 @@ trait DefaultConsumer[V, P <: Permission[P], ST <: Store[V, ST],
 			// logger.debug("resulting S1 = " + π1)
 			Q(σ \ h1, t)})
 			
-	protected def consume(σ: S, h: H, p: P, φ: SILExpression, m: Message,
+	protected def consume(σ: S, h: H, p: Permissions, φ: SILExpression, m: Message,
 			Q: (H, Term) => VerificationResult): VerificationResult =
 
 		consume2(σ, h, p, φ, m, Q)
 			
-	protected def consume2(σ: S, h: H, p: P, φ: SILExpression, m: Message,
+	protected def consume2(σ: S, h: H, p: Permissions, φ: SILExpression, m: Message,
 			Q: (H, Term) => VerificationResult): VerificationResult = {
 
 		logger.debug("\nCONSUME " + φ.toString)
+    logger.debug("  " + φ.getClass.getName)
 		logger.debug(stateFormatter.format(σ))
 		logger.debug("h = " + stateFormatter.format(h))
 		
 		val consumed = φ match {
-			case _ =>
-				logger.debug("consuming " + φ)
-				Success()
+			// case _ =>
+				// logger.debug("consuming " + φ)
+				// Success()
 		
 			// /* And <: BooleanExpr */
 			// case ast.And(a1, a2) =>
@@ -165,12 +167,18 @@ trait DefaultConsumer[V, P <: Permission[P], ST <: Store[V, ST],
 			// case (_: ast.MaxLockAtMost) | (_: ast.MaxLockLess) =>
 				// assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, c, Q)
 
-			// /* Any regular Expressions, i.e. boolean and arithmetic.
-			 // * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
-			 // * not in the partially consumed heap (h).
-			 // */
-			// case _ =>
-				// assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, c, Q)
+			/* Any regular, pure expressions.
+			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
+			 * not in the partially consumed heap (h).
+			 */
+			case _ =>
+				// assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
+      evale(σ, φ, m, t =>
+        if (decider.assert(t))
+          assume(t,
+            Q(h, Unit))
+        else
+          Failure(m at φ dueTo ExpressionMightEvaluateToFalse))
 		}
 
 		consumed

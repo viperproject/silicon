@@ -8,9 +8,9 @@ import silAST.source.{/* SourceLocation => SILSourceLocation, */ noLocation => S
 import interfaces.{VerificationResult, Success, Warning, Failure}
 import interfaces.decider.Decider
 import interfaces.reporting.{Message}
-import interfaces.state.{Permission, Store, Heap, PathConditions, State, Chunk,
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk,
 		FieldChunk, PredicateChunk, AccessRestrictedChunk, StateFormatter}
-import state.terms.Term
+import state.terms.{Term, Permissions}
 import state.terms.utils.{SetAnd, ¬}
 import reporting.Bookkeeper
 import reporting.Reasons.InsufficientPermissions
@@ -31,11 +31,11 @@ trait Brancher {
 						fFalse: => VerificationResult): VerificationResult
 }
 
-trait DefaultBrancher[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
+trait DefaultBrancher[V, ST <: Store[V, ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[V, ST, H, S]]
 		extends Brancher with HasLocalState {
 
-	val decider: Decider[V, P, ST, H, PC, S]
+	val decider: Decider[V, ST, H, PC, S]
 	import decider.assume
 	
 	val bookkeeper: Bookkeeper
@@ -85,7 +85,7 @@ trait DefaultBrancher[V, P <: Permission[P], ST <: Store[V, ST], H <: Heap[H],
 	}
 }
 
-trait ChunkFinder[E, P <: Permission[P], H <: Heap[H]] {
+trait ChunkFinder[E, H <: Heap[H]] {
 	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, e: E, m: Message,
 								Q: CH => VerificationResult): VerificationResult
 	
@@ -95,25 +95,25 @@ trait ChunkFinder[E, P <: Permission[P], H <: Heap[H]] {
 	 */
 
 	def withFieldChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
-										 Q: FieldChunk[P] => VerificationResult): VerificationResult
+										 Q: FieldChunk => VerificationResult): VerificationResult
 								
 	def withPredicateChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
-										   Q: PredicateChunk[P] => VerificationResult): VerificationResult
+										   Q: PredicateChunk => VerificationResult): VerificationResult
 											 
-	def withFieldChunk(h: H, rcvr: Term, id: String, p: P, e: E, m: Message,
-									  Q: FieldChunk[P] => VerificationResult): VerificationResult
+	def withFieldChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E, m: Message,
+									  Q: FieldChunk => VerificationResult): VerificationResult
 								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, p: P, e: E,
-	                     m: Message, Q: PredicateChunk[P] => VerificationResult)
+	def withPredicateChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E,
+	                     m: Message, Q: PredicateChunk => VerificationResult)
 											: VerificationResult
 }
 
-class DefaultChunkFinder[V, E, P <: Permission[P], ST <: Store[V, ST],
+class DefaultChunkFinder[V, E, ST <: Store[V, ST],
 												 H <: Heap[H], PC <: PathConditions[PC],
 												 S <: State[V, ST, H, S]]
-		(val decider: Decider[V, P, ST, H, PC, S],
+		(val decider: Decider[V, ST, H, PC, S],
 		 val stateFormatter: StateFormatter[V, ST, H, S, String])
-		extends ChunkFinder[E, P, H] with Logging {
+		extends ChunkFinder[E, H] with Logging {
 
 	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, e: E,
 														 m: Message, Q: CH => VerificationResult)
@@ -138,28 +138,28 @@ class DefaultChunkFinder[V, E, P <: Permission[P], ST <: Store[V, ST],
 	}
 	
 	def withFieldChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
-										 Q: FieldChunk[P] => VerificationResult): VerificationResult =
+										 Q: FieldChunk => VerificationResult): VerificationResult =
 										 
 		withChunk(h, rcvr, id, e, m, Q)
 		
 	def withPredicateChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
-											 Q: PredicateChunk[P] => VerificationResult)
+											 Q: PredicateChunk => VerificationResult)
 											: VerificationResult =
 										 
 		withChunk(h, rcvr, id, e, m, Q)
 		
-	def withFieldChunk(h: H, rcvr: Term, id: String, p: P, e: E, m: Message,
-									  Q: FieldChunk[P] => VerificationResult) =
+	def withFieldChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E, m: Message,
+									  Q: FieldChunk => VerificationResult) =
 										
 		withPermissiveChunk(h, rcvr, id, p, e, m, Q)
 								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, p: P, e: E,
-	                     m: Message, Q: PredicateChunk[P] => VerificationResult) =
+	def withPredicateChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E,
+	                     m: Message, Q: PredicateChunk => VerificationResult) =
 		
 		withPermissiveChunk(h, rcvr, id, p, e, m, Q)
 		
-	private def withPermissiveChunk[ARC <: AccessRestrictedChunk[P, ARC]]
-			(h: H, rcvr: Term, id: String, p: P, e: E, m: Message,
+	private def withPermissiveChunk[ARC <: AccessRestrictedChunk[ARC]]
+			(h: H, rcvr: Term, id: String, p: Permissions, e: E, m: Message,
 			 Q: ARC => VerificationResult)
 			: VerificationResult =
 

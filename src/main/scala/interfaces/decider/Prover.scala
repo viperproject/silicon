@@ -23,16 +23,5 @@ trait Prover {
 	def logComment(str: String)
 	
 	def fresh(id: String, sort: Sort): Var
-	// def recordFreshSymbols()
-	// def redeclareFreshSymbols()
-	// def markSymbolsAsPersistent(t: Term)
-	// def declareSymbolsIfNecessary(t: Term)
-	
-	// def declareVariable(v: Var)
-	def declare(f: SILFunction)
-		/* TODO: A terms.Function term should be declared which could wrap an
-		 *       ast.Function and extend it by additional data, if necessary.
-		 *       This decouples the prover from the AST nodes and makes it depend
-		 *       only on terms.
-		 */
+  def declareSymbol(id: String, sort: Sort, argSorts: Sort*)
 }
