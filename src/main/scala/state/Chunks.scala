@@ -3,7 +3,7 @@ package ch.ethz.inf.pm.silicon.state
 import ch.ethz.inf.pm.silicon
 import silicon.interfaces.state.{Heap, FieldChunk, PredicateChunk, Chunk,
     PersistentChunk}
-import silicon.state.terms.{Term, Permissions, /* Token, */ Plus, PermPlus, Minus, PermMinus}
+import silicon.state.terms.{Term, Permissions, /* Token, Plus,*/ PermPlus, /* Minus,*/ PermMinus}
 
 /*
  * Chunks
@@ -34,6 +34,7 @@ case class DefaultPredicateChunk(rcvr: Term, id: String, snap: Term, perm: Permi
 	override def toString = "%s.%s[%s] # %s".format(rcvr, id, snap, perm)
 }
 
+/*
 case class CounterChunk(rcvr: Term, id: String, value: Term)
 		extends PersistentChunk {
 
@@ -42,6 +43,7 @@ case class CounterChunk(rcvr: Term, id: String, value: Term)
 
 	override def toString = "%s.%s -> %s".format(rcvr, id, value)
 }
+*/
 
 /* Could extend CounterChunk */
 case class IntCounterChunk(rcvr: Term, id: String, value: Int)

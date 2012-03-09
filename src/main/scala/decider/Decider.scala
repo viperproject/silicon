@@ -14,8 +14,8 @@ import silicon.interfaces.state.{Store, Heap, PathConditions, State, FieldChunk,
 import silicon.interfaces.reporting.{Message}
 import silicon.state.{DefaultFieldChunk, DefaultPredicateChunk}
 import silicon.state.terms 
-import silicon.state.terms.{Term, Eq, Not, TermEq, Var, AtLeast, AtMost, Greater, 
-		IntLiteral, /* Mu, */ Combine, Ite, FApp, Quantification, And, Or, True,
+import silicon.state.terms.{Term, Eq, Not, TermEq, Var, /* AtLeast, AtMost, Greater, 
+		IntLiteral, Mu, */ Combine, Ite, FApp, Quantification, And, Or, True,
 		SortWrapper, /* LockMode, */ Permissions}
 // import silicon.ast
 import silicon.reporting.WarningMessages.{SmokeDetected}
@@ -280,9 +280,10 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
     prover.declareSymbol(f.name, null)
 
 	/* TODO: Have TermConverter declare a default sort */
-	def fresh = prover.fresh("$t", terms.sorts.Int)
+	// def fresh = prover.fresh("$t", terms.sorts.Int)
+	def fresh = prover.fresh("$t", terms.sorts.Snap)
   
-	def fresh(id: String) = prover.fresh(id, terms.sorts.Int)
+	def fresh(id: String) = prover.fresh(id, terms.sorts.Snap)
   
 	def fresh(v: SILProgramVariable) =
     prover.fresh(v.name, typeConverter.toSort(v.dataType))

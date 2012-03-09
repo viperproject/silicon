@@ -22,8 +22,8 @@ import interfaces.state.factoryUtils.Ø
 		// JoinAsync, Share, Acquire, Release, Unshare, WhileStmt, Free, Credits, Send,
 		// Receive, ChannelClass}
 // import ast.utils.collections.{SetAnd}
-import state.terms.{Term, Null, /* BottomLock, */ True, False, /* Token, LockMode, */
-		AtLeast, IntLiteral}
+import state.terms.{Term, Null, /* BottomLock, */ True, False /* , Token, LockMode, */
+		/* AtLeast, IntLiteral*/, FullPerms => Full }
 import state.terms.utils.¬
 import state.{DefaultFieldChunk, DefaultPredicateChunk, /* DefaultTokenChunk, */
 		TypeConverter}
@@ -123,6 +123,15 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
       case silAST.methods.implementations.AssignmentStatement(_, v, rhs) =>
         evalt(σ, rhs, m, tRhs =>
           Q(σ \+ (v, tRhs)))
+          
+      case silAST.methods.implementations.ExhaleStatement(_, a) =>
+        logger.error("\n[exec/exhale]")
+        logger.error("  stmt = " + stmt)
+        logger.error("  stmt.sourceLocation = " + stmt.sourceLocation)
+        logger.error("  a = " + a)
+        logger.error("  a.sourceLocation = " + a.sourceLocation)
+        consume(σ, Full(), a, AssertionMightNotHold(stmt), (σ1, _) =>
+          Q(σ1))
         
 			// case BlockStmt(body) => execs(σ, body, m, c, Q)
 

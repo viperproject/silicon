@@ -21,6 +21,8 @@ sealed abstract class AbstractMessage extends Message {
 	var details: Seq[Any] = Nil
 	
 	def at(loc: SILSourceLocation) = {
+    println("\n[AbstractMessage/at]")
+    println("  loc = " + loc)
 		this.loc = loc
 		this
 	}	
@@ -80,7 +82,7 @@ case class WarningMessage(code: Int, text: String) extends AbstractMessage
 
 trait RedirectAtToWithDetails extends AbstractMessage {
 	// override def at(loc: SILSourceLocation) = withDetails(loc.line, loc.column)
-	override def at(loc: SILSourceLocation) = withDetails("?", "?")
+	override def at(loc: SILSourceLocation) = withDetails("?", loc.toString)
 }
 
 /* ATTENTION: Increase error message codes in steps of at least 100 in order to

@@ -16,11 +16,11 @@ import interfaces.state.{Store, Heap, PathConditions, State,
 		PredicateChunk, HeapMerger}
 import interfaces.reporting.{Message}
 import interfaces.state.factoryUtils.Ø
-import state.terms.{Term, Combine, Null, sorts, True, And, Or, /* LockMode, */ Plus,
-		IntLiteral, TermEq, SnapEq, Permissions, Times, PermTimes}
+import state.terms.{Term, Combine, Null, sorts, True, And, Or, /* LockMode, Plus,
+		IntLiteral, */ TermEq, SnapEq, Permissions, /* Times, */ PermTimes}
 import state.{TypeConverter}
 // import ast.{Expression}
-import state.{DefaultFieldChunk, DefaultPredicateChunk, CounterChunk}
+import state.{DefaultFieldChunk, DefaultPredicateChunk /* , CounterChunk */ }
 import reporting.{/* Consuming, ImplBranching, IfBranching, IffBranching, */
 		Bookkeeper}
 // import reporting.utils._
@@ -105,46 +105,27 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 		logger.debug(stateFormatter.format(σ))
 		
 		val produced = φ match {
-			// /* And <: BooleanExpr */
-			// case ast.And(a0, a1) =>
-				// /* TODO: A lot of these snapshot are never used, they'll only polute
-				 // *       the path conditions and thus increase the workload.
-				 // */
-
-        // // /* Might not be worth the effort, at least for the test suite
-         // // * the Combine-case occurs only about 40 times.
-         // // */
-        // // val (tSnapEq, s0, s1) = s match {
-          // // /* Scala (2.8.0) doesn't seem to like unicode characters in tuple
-           // // * unpackings ... darn!
-           // // */
-          // // case Combine(sl, sr) =>
-            // // // logger.error("[xxx COMBINE xxx]")
-            // // (True(), sl, sr)
-          // // case _ =>
-            // // // logger.error("[xxx FRESH xxx]")
-            // // val (sl, sr) = (fresh, fresh)
-            // // (SnapEq(s, Combine(sl, sr)), sl, sr)}
-
-				// val (s0, s1) =
-					// if (snapshotCache.contains(s)) {
-						// logger.debug("[Produce(And)] Took cache entry for snapshot " + s)
-						// val (sl, sr) = snapshotCache(s)
-						// (sl, sr)}
-					// else {
-						// val s0 = fresh
-						// val s1 = fresh
-						// if (config.cacheSnapshots) snapshotCache += (s -> (s0, s1))
-						// (s0, s1)}
+			/* And <: BooleanExpr */
+			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.And, a0, a1) =>
+				val (s0, s1) =
+					if (snapshotCache.contains(s)) {
+						logger.debug("[Produce(And)] Took cache entry for snapshot " + s)
+						val (sl, sr) = snapshotCache(s)
+						(sl, sr)}
+					else {
+						val s0 = fresh
+						val s1 = fresh
+						if (config.cacheSnapshots) snapshotCache += (s -> (s0, s1))
+						(s0, s1)}
 				
-				// // val (s0, s1) = (fresh, fresh)
+				// val (s0, s1) = (fresh, fresh)
 				
-				// val tSnapEq = SnapEq(s, Combine(s0, s1))
+				val tSnapEq = SnapEq(s, Combine(s0, s1))
 				
-				// assume(tSnapEq, c, (c1: C) =>
-					// produce2(σ, s0, p, a0, m, c1, (h1, c2) =>
-						// produce2(σ \ h1, s1, p, a1, m, c2, (h2, c3) =>
-							// Q(h2, c3))))
+				assume(tSnapEq,
+					produce2(σ, s0, p, a0, m, h1 =>
+						produce2(σ \ h1, s1, p, a1, m, h2 =>
+							Q(h2))))
 
 			// /* Implies <: BooleanExpr */
 			// case ast.Implies(e0, a0) if !φ.isPure =>
@@ -184,7 +165,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						// (c2: C) => produce2(σ, s, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assume acc(e.f) */
-			case SILPermissionExpression(sl, eRcvr, field, ePerm) =>
+			case e @ SILPermissionExpression(eRcvr, field, ePerm) =>
 				// assert(acc.f !=  null, /* @elidable */
 						// "Expected FieldAccess.f to be non-null.")
 				// assert(acc.f.typ !=  null, /* @elidable */
@@ -206,7 +187,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 									assume(mts /* + tMu */,
 										Q(mh))
 								case Some(errmsg) =>
-									Failure(errmsg at sl withDetails (eRcvr, field.name))})))
+									Failure(errmsg at e.sourceLocation withDetails (eRcvr, field.name))})))
 
 			// /* assume acc(e.P) */
 			// case ast.Access(ast.PredicateAccess(e0, id), p0) =>

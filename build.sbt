@@ -24,6 +24,10 @@ scalaVersion := "2.9.1"
 
 scalacOptions += "-deprecation"
 
-// scalacOptions += "-unchecked"
+// scalacOptions += "-usejavacp"
+
+scalacOptions += "-unchecked"
 
 maxErrors in Compile := 6
+
+// parallelExecution := true

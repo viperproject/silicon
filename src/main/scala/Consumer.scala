@@ -13,7 +13,7 @@ import interfaces.state.{Store, Heap, StateFormatter,
 import interfaces.reporting.{Message, Reason}
 import interfaces.decider.Decider
 import state.terms._
-import state.{CounterChunk, DefaultPredicateChunk, TypeConverter}
+import state.{/* CounterChunk, */ DefaultPredicateChunk, TypeConverter}
 import reporting.ErrorMessages.{FractionMightBeNegative}
 import reporting.Reasons.{ExpressionMightEvaluateToFalse, ReceiverMightBeNull,
 		InsufficientPermissions, InsufficientLockchange, MethodLeavesDebt}
@@ -77,11 +77,11 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 				// logger.debug("consuming " + φ)
 				// Success()
 		
-			// /* And <: BooleanExpr */
-			// case ast.And(a1, a2) =>
-				// consume(σ, h, p, a1, m, c, (h1, s1, c1) =>
-					// consume(σ, h1, p, a2, m, c1, (h2, s2, c2) =>
-						// Q(h2, Combine(s1, s2), c2)))
+			/* And <: BooleanExpr */
+			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.And, a0, a1) =>
+				consume(σ, h, p, a0, m, (h1, s1) =>
+					consume(σ, h1, p, a1, m, (h2, s2) =>
+						Q(h2, Combine(s1, s2))))
 
 			// /* Implies <: BooleanExpr */
 			// case ast.Implies(e0, a0) if !φ.isPure =>
@@ -177,8 +177,13 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
         if (decider.assert(t))
           assume(t,
             Q(h, Unit))
-        else
-          Failure(m at φ dueTo ExpressionMightEvaluateToFalse))
+        else {
+          println("\n[consume/_]")
+          println("  φ = " + φ)
+          println("  φ.sourceLocation = " + φ.sourceLocation)
+          println("  φ.sourceLocation = " + φ.sourceLocation.getClass.getName)
+          println("  m.text = " + m.text)
+          Failure(m at φ dueTo ExpressionMightEvaluateToFalse)})
 		}
 
 		consumed

@@ -32,7 +32,7 @@ import ast.{Expression, Variable, FieldAccess, Old, ArithmeticExpr,
 		ExplicitSeq, EmptySeq, SeqLength, SeqCon, SeqAt, SeqIn, SeqTake, SeqDrop,
 		TypeQuantification, IntType}
 */
-import state.{TypeConverter, CounterChunk}
+import state.{TypeConverter /* , CounterChunk */}
 import state.terms
 import state.terms.{Term, Null, Permissions}
 import reporting.ErrorMessages.{InvocationFailed, UnfoldingFailed, 
@@ -105,7 +105,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			Q(t))
 
 	def evalp(σ: S, p: SILTerm, m: Message, Q: Permissions => VerificationResult) =
-    null
+    error("Not yet implemented.")
 
     // p match {
 			
@@ -198,7 +198,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			// Success()
       
       case silAST.expressions.TrueExpression() => Q(terms.True())
-      case silAST.expressions.FalseExpression(_) => Q(terms.False())
+      case silAST.expressions.FalseExpression() => Q(terms.False())
 
 			// case Old(e0) =>
 				// eval(σ \ (h = σ.g), cs, e0, m, c, Q)
@@ -209,7 +209,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
 			// case ThisExpr() => Q(σ.γ(This), c)
       
-      case silAST.expressions.BinaryExpression(_, op, e0, e1) =>
+      case silAST.expressions.BinaryExpression(op, e0, e1) =>
         logger.debug("  op = " + op + ", " + op.getClass.getName)
         logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
         logger.debug("  e1 = " + e1 + ", " + e1.getClass.getName)
@@ -308,7 +308,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
       case eq: silAST.expressions.GEqualityExpression =>
         evalBinOp(σ, cs, eq.term1, eq.term2, terms.TermEq, m, Q)
 
-      case silAST.expressions.DomainPredicateExpression(_, predicate, args) =>
+      case silAST.expressions.DomainPredicateExpression(predicate, args) =>
         logger.debug("  predicate = " + predicate + ", " + predicate.getClass.getName)
         logger.debug("  args = " + args + ", " + args.getClass.getName)
 
@@ -344,12 +344,12 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           case dp: silAST.domains.DomainPredicate =>
                    // if dp.name == "EvalBool[Boolean[]]" =>
             
-            assert(dp.signature.argumentTypes.length == 1, "Expected one argument to %s (%s), but found %s: %s".format(dp, dp.getClass.getName, dp.signature.argumentTypes.length, dp.signature.argumentTypes))
+            assert(dp.signature.parameterTypes.length == 1, "Expected one argument to %s (%s), but found %s: %s".format(dp, dp.getClass.getName, dp.signature.parameterTypes.length, dp.signature.parameterTypes))
             
             logger.debug("[evale2/DomainPredicateExpression/DomainPredicate]")
             logger.debug("  dp = " + dp)
             logger.debug("  dp.name = " + dp.name)
-            logger.debug("  dp.signature.argumentTypes = " + dp.signature.argumentTypes)
+            logger.debug("  dp.signature.parameterTypes = " + dp.signature.parameterTypes)
             
             evalts(σ, args, m, tArgs =>
               Q(terms.DomainPApp(dp, tArgs, terms.sorts.Bool)))
@@ -855,6 +855,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			case _ =>
 				logger.debug("\nEVALUATING TERM " + e)
 				logger.debug("  " + e.getClass.getName)
+				logger.debug("  " + e.sourceLocation)
 				logger.debug(stateFormatter.format(σ))
 		}
 	
@@ -864,25 +865,25 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
       
 			// case v: Variable => Q(σ.γ(v), c)
 			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
-      case silAST.expressions.terms.ProgramVariableTerm(_, v) => Q(σ.γ(v))
+      case silAST.expressions.terms.ProgramVariableTerm(v) => Q(σ.γ(v))
       
-      case npt @ silAST.expressions.terms.noPermissionTerm
-           if npt.eq(silAST.expressions.terms.noPermissionTerm) =>
+      case npt @ silAST.expressions.terms.NoPermissionTerm() =>
+           // if npt.eq(silAST.expressions.terms.NoPermissionTerm) =>
         // logger.debug("[evalt2] " + e)
         // logger.debug("[evalt2] " + e.getClass.getName)
         // logger.debug("[evalt2] " + (e == silAST.expressions.terms.noPermissionTerm))
         // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
         Q(terms.ZeroPerms())
         
-      case fpt @ silAST.expressions.terms.fullPermissionTerm
-           if fpt.eq(silAST.expressions.terms.fullPermissionTerm) =>
+      case fpt @ silAST.expressions.terms.FullPermissionTerm() =>
+           // if fpt.eq(silAST.expressions.terms.FullPermissionTerm) =>
         // logger.debug("[evalt2] " + e)
         // logger.debug("[evalt2] " + e.getClass.getName)
         // logger.debug("[evalt2] " + (e == silAST.expressions.terms.noPermissionTerm))
         // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
         Q(terms.FullPerms())
 
-      case silAST.expressions.terms.DomainFunctionApplicationTerm(_, f, es) =>
+      case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) =>
         evalts(σ, es, m, ts =>
           Q(terms.DomainFApp(f, ts, toSort(f.signature.resultType))))
            // if f.name == "True" =>

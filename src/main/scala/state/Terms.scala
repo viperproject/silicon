@@ -37,6 +37,10 @@ object sorts {
   object Snap extends Sort { override val toString = "Snap" }
   
   object Perms extends Sort { override val toString = "Perm" }
+  
+  case class NonRef(domain: String) extends Sort {
+    override val toString = "NonRef[%s]".format(domain)
+  }
 }
 
 sealed trait Term {
@@ -129,7 +133,7 @@ case class IntLiteral(n: Int) extends Literal with ArithmeticTerm {
 	def +(m: Int) = IntLiteral(n + m)
 	def -(m: Int) = IntLiteral(n - m)	
 	def *(m: Int) = IntLiteral(n * m)	
-	def /(m: Int) = Div(this, IntLiteral(m))
+	// def /(m: Int) = Div(this, IntLiteral(m))
 
 	override val toString = n.toString
 }
@@ -270,62 +274,62 @@ case class Quantification(q: Quantifier, tVars: Seq[Var], tBody: Term)
 
 sealed trait ArithmeticTerm extends Term { val sort = sorts.Int }
 
-case class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
-		/* with commonnodes.Plus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
+// case class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
+		// /* with commonnodes.Plus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
 
-// object Plus extends Function2[Term, Term, Term] {
-	// val Zero = IntLiteral(0)
+// // object Plus extends Function2[Term, Term, Term] {
+	// // val Zero = IntLiteral(0)
 	
-	// def apply(e0: Term, e1: Term) = (e0, e1) match {
-		// case (t0, Zero) => t0
-		// case (Zero, t1) => t1
-		// case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 + n1)
-		// case _ => new Plus(e0, e1)
-	// }
+	// // def apply(e0: Term, e1: Term) = (e0, e1) match {
+		// // case (t0, Zero) => t0
+		// // case (Zero, t1) => t1
+		// // case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 + n1)
+		// // case _ => new Plus(e0, e1)
+	// // }
 		
-	// def unapply(t: Plus) = Some((t.p0, t.p1))
-// }
+	// // def unapply(t: Plus) = Some((t.p0, t.p1))
+// // }
 
-case class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
-		/* with commonnodes.Minus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
+// case class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
+		// /* with commonnodes.Minus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
 		
-// object Minus extends Function2[Term, Term, Term] {
-	// val Zero = IntLiteral(0)
+// // object Minus extends Function2[Term, Term, Term] {
+	// // val Zero = IntLiteral(0)
 	
-	// def apply(e0: Term, e1: Term) = (e0, e1) match {
-		// case (t0, Zero) => t0
-		// case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 - n1)
-		// case (t0, t1) if t0 == t1 => Zero
-		// case _ => new Minus(e0, e1)
-	// }
+	// // def apply(e0: Term, e1: Term) = (e0, e1) match {
+		// // case (t0, Zero) => t0
+		// // case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 - n1)
+		// // case (t0, t1) if t0 == t1 => Zero
+		// // case _ => new Minus(e0, e1)
+	// // }
 		
-	// def unapply(t: Minus) = Some((t.p0, t.p1))
-// }
+	// // def unapply(t: Minus) = Some((t.p0, t.p1))
+// // }
 
-case class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
-		/* with commonnodes.Times[Term] with commonnodes.StructuralEqualityBinOp[Term] */
+// case class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
+		// /* with commonnodes.Times[Term] with commonnodes.StructuralEqualityBinOp[Term] */
 		
-// object Times extends Function2[Term, Term, Term] {
-	// val Zero = IntLiteral(0)
-	// val One = IntLiteral(1)
+// // object Times extends Function2[Term, Term, Term] {
+	// // val Zero = IntLiteral(0)
+	// // val One = IntLiteral(1)
 
-	// def apply(e0: Term, e1: Term) = (e0, e1) match {
-		// case (t0, Zero) => Zero
-		// case (Zero, t1) => Zero
-		// case (t0, One) => t0
-		// case (One, t1) => t1
-		// case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 * n1)
-		// case _ => new Times(e0, e1)
-	// }
+	// // def apply(e0: Term, e1: Term) = (e0, e1) match {
+		// // case (t0, Zero) => Zero
+		// // case (Zero, t1) => Zero
+		// // case (t0, One) => t0
+		// // case (One, t1) => t1
+		// // case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 * n1)
+		// // case _ => new Times(e0, e1)
+	// // }
 		
-	// def unapply(t: Times) = Some((t.p0, t.p1))
-// }
+	// // def unapply(t: Times) = Some((t.p0, t.p1))
+// // }
 
-case class Div(p0: Term, p1: Term) extends ArithmeticTerm
-		/* with commonnodes.Div[Term] */
+// case class Div(p0: Term, p1: Term) extends ArithmeticTerm
+		// /* with commonnodes.Div[Term] */
 
-case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
-		/* with commonnodes.Mod[Term] */
+// case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
+		// /* with commonnodes.Mod[Term] */
 
 /* Boolean expression terms */		
 
@@ -418,7 +422,7 @@ case class Iff(val p0: Term, val p1: Term) extends BooleanTerm
 	// def unapply(e: Iff) = Some((e.p0, e.p1))
 // }
 
-case class Ite(val t0: Term, val t1: Term, val t2: Term) extends BooleanTerm {
+case class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 	assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
@@ -430,6 +434,8 @@ case class Ite(val t0: Term, val t1: Term, val t2: Term) extends BooleanTerm {
 			case Ite(_t0, _t1, _t2) => t0 == _t0 && t1 == _t1 && t2 == _t2
 			case _ => false
 		})
+    
+  override val sort = t1.sort
 }
 
 // object Ite extends Function3[Term, Term, Term, Term] {
@@ -568,12 +574,15 @@ case class Combine(t0: Term, t1: Term) extends Term {
   override val toString = "(%s, %s)".format(t0, t1)
 }
 
+/* TODO: Can't we replace SnapEq? It is only relevant in the final translation
+ *       to Z3.
+ */
 case class SnapEq(p0: Term, p1: Term) extends Eq
 
 sealed trait SortWrapper extends Term { def t0: Term }
 
-case class BoolToInt(t0: Term) extends SortWrapper { val sort = sorts.Int }
-case class IntToBool(t0: Term) extends SortWrapper { val sort = sorts.Bool }
+// case class BoolToInt(t0: Term) extends SortWrapper { val sort = sorts.Int }
+// case class IntToBool(t0: Term) extends SortWrapper { val sort = sorts.Bool }
 
 // case class UpdateMap(id: String, t: Term, n: Int) extends LockTerm
 	// { override val toString = "%s[%s,%s]".format(id, t, n) }

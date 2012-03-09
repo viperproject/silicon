@@ -8,6 +8,10 @@ import interfaces.decider.TermConverter
 import state.terms._
 import state.terms.utils.SetAnd
 
+/* TODO: Unify terms.And and DomainFApp("∧"), such that only one of them,
+ *       probably the latter, is used by Silicon.
+ */
+
 class TermToSMTLib2Converter extends TermConverter[String, String] {
   def convert(term: Term): String = term match {
 		case Var(id: String, _) => id
@@ -55,22 +59,22 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
 		/* Arithmetics */
 			
-		case Minus(t0, t1) =>
-			"(- " + convert(t0) + " " + convert(t1) + ")"
+		// case Minus(t0, t1) =>
+			// "(- " + convert(t0) + " " + convert(t1) + ")"
 
-		case Plus(t0, t1) =>
-			"(+ " + convert(t0) + " " + convert(t1) + ")"
+		// case Plus(t0, t1) =>
+			// "(+ " + convert(t0) + " " + convert(t1) + ")"
 
-		case Times(t0, t1) =>
-			"(* " + convert(t0) + " " + convert(t1) + ")"
+		// case Times(t0, t1) =>
+			// "(* " + convert(t0) + " " + convert(t1) + ")"
 
-		case Div(t0, t1) =>
-			"(div " + convert(t0) + " " + convert(t1) + ")"
+		// case Div(t0, t1) =>
+			// "(div " + convert(t0) + " " + convert(t1) + ")"
 
-		case Mod(t0, t1) =>
-			"(mod " + convert(t0) + " " + convert(t1) + ")"
+		// case Mod(t0, t1) =>
+			// "(mod " + convert(t0) + " " + convert(t1) + ")"
 			
-		/* Arithmetic comparisons */
+		// /* Arithmetic comparisons */
 
 		case Less(t0, t1) =>
 			"(< " + convert(t0) + " " + convert(t1) + ")"
@@ -161,10 +165,25 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     
     /* Domains */
     
-    case DomainPApp(dp, ts, sort) => dp.name match {
-      case "EvalBool" =>
-        assert(ts.length == 1, "Expected 1 argument to %s, but found %s".format(dp, ts.length))
-        convert(ts(0))
+    case DomainPApp(dp, ts, sort) => (dp.name, ts) match {
+      case ("eval", t0 :: Nil) => convert(t0)
+    }
+    
+    case DomainFApp(f, ts, sort) => (f.name, ts) match {
+      /* Boolean */
+      case ("true", Nil) => "true"
+      case ("false", Nil) => "false"      
+      case ("¬", t0 :: Nil) => "(not " + convert(t0) + ")"
+      case ("∧", t0 :: t1 :: Nil) => "(and " + convert(t0) + " " + convert(t1) + ")"
+      case ("∨", t0 :: t1 :: Nil) => "(or " + convert(t0) + " " + convert(t1) + ")"
+      case ("→", t0 :: t1 :: Nil) => "(==> " + convert(t0) + " " + convert(t1) + ")"
+      case ("↔", t0 :: t1 :: Nil) => "(<==> " + convert(t0) + " " + convert(t1) + ")"
+        
+      /* Integers */
+
+      case ("*", t0 :: t1 :: Nil) => "(* " + convert(t0) + " " + convert(t1) + ")"
+      case ("+", t0 :: t1 :: Nil) => "(+ " + convert(t0) + " " + convert(t1) + ")"
+      case ("-", t0 :: t1 :: Nil) => "(- " + convert(t0) + " " + convert(t1) + ")"
     }
     
 		/* Auxiliary terms */
@@ -185,8 +204,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case SnapEq(t0, t1) =>
 			"($snapEq " + convert(t0) + " " + convert(t1) + ")"
 
-		case BoolToInt(t0) => "($boolToInt " + convert(t0) + ")"
-		case IntToBool(t0) => "($intToBool " + convert(t0) + ")"
+		// case BoolToInt(t0) => "($boolToInt " + convert(t0) + ")"
+		// case IntToBool(t0) => "($intToBool " + convert(t0) + ")"
 		
 		
 		/* These sorts are converted to Z3-sort Int anyway */
@@ -199,8 +218,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 	def convert(sort: Sort) = sort match {
 		case sorts.Int => "Int"
 		case sorts.Bool => "Bool"
-		case sorts.Ref => "$Ref"
 		case sorts.Perms => "Int"
+		case sorts.Snap => "$Snap"
+		case sorts.Ref => "$Ref"
+
+		case sorts.NonRef("Boolean") => "Bool"
+		case sorts.NonRef("Integer") => "Int"
 	}
 	
 	private def quantifierToString(q: Quantifier) = q match {
@@ -220,4 +243,9 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		// case EmptySeq() => "$Seq.nil"
 		// case BottomLock() => "$Locks.bottom"
 	}
+  
+  // @annotation.elidable(annotation.elidable.OFF)
+  // private def assertLength(ts: Seq[_], l: Int, o: AnyRef) {
+    // assert(ts.length == l, "Expected %s argument to %s, but found %s".format(l, o, ts.length))
+  // }
 }

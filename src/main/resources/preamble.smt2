@@ -36,9 +36,36 @@
 ; (set-option :SOFT_TIMEOUT 5000)
 ; (set-option :soft-timeout 5000)
 
-; --- Misc ---
+; --- Snapshots ---
+
+(declare-sort $Snap)
+
+(declare-const $unit $Snap)
+
+(declare-fun $combine ($Snap $Snap) $Snap)
+(declare-fun $snapEq ($Snap $Snap) Bool)
+
+(assert (forall ((x1 $Snap) (x2 $Snap) (y1 $Snap) (y2 $Snap)) (!
+	(implies
+		($snapEq ($combine x1 y1) ($combine x2 y2))
+		(and (= x1 x2) (= y1 y2)))
+	:qid |Combine|
+	:pattern (($snapEq ($combine x1 y1) ($combine x2 y2)))
+	)))
+	
+(assert (forall ((x $Snap) (y $Snap)) (!
+	(implies
+		($snapEq x y)
+		(and (= x y)))
+	:qid |SnapEq|
+	:pattern (($snapEq x y))
+	)))
+
+; --- References ---
 
 (declare-sort $Ref)
+
+(declare-const $null $Ref)
 
 ; --- Permissions ---
 
