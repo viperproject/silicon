@@ -7,7 +7,7 @@ import silicon.interfaces.state.{Store, Heap, PathConditions, State, Chunk,
 // import silicon.interfaces.reporting.Context
 import silicon.interfaces.decider.Decider
 // import silicon.ast.Variable
-import silicon.state.terms.{Term, Permissions, PermPlus}
+import silicon.state.terms.{Term, PermissionTerm}
 import silicon.reporting.Bookkeeper
 
 /*
@@ -124,7 +124,7 @@ case class DefaultState[V, ST <: Store[V, ST], H <: Heap[H]]
 class DefaultHeapMerger[V, ST <: Store[V, ST], H <: Heap[H],
 												PC <: PathConditions[PC], S <: State[V, ST, H, S]]
 		(val decider: Decider[V, ST, H, PC, S],
-		 val distinctnessLowerBound: Permissions,
+		 val distinctnessLowerBound: PermissionTerm,
 		 val bookkeeper: Bookkeeper,
 		 val stateFormatter: StateFormatter[V, ST, H, S, String])
 		extends HeapMerger[H] with Logging {
@@ -255,8 +255,9 @@ class DefaultHeapMerger[V, ST <: Store[V, ST], H <: Heap[H],
 		
 		val tDists = fcs flatMap(c1 => gs(c1.id) map (c2 =>
 			if (	 c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-					&& decider.isAsPermissive(PermPlus(c1.perm, c2.perm), distinctnessLowerBound))
-				terms.Not(terms.TermEq(c1.rcvr, c2.rcvr))
+					&& decider.isAsPermissive(c1.perm + c2.perm, distinctnessLowerBound))
+				// terms.Not(terms.TermEq(c1.rcvr, c2.rcvr))
+				c1.rcvr ≠ c2.rcvr
 			else
 				terms.True()))
 

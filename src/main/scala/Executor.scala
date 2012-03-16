@@ -7,6 +7,7 @@ import silAST.methods.implementations.{Statement => SILStatement}
 // import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 import silAST.expressions.terms.{Term => SILTerm}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import silAST.methods.implementations.{BasicBlock => SILBasicBlock}
 
 import interfaces.{Executor, Evaluator, Producer, Consumer, MapSupport,
 		VerificationResult, Failure, Success}
@@ -22,9 +23,10 @@ import interfaces.state.factoryUtils.Ø
 		// JoinAsync, Share, Acquire, Release, Unshare, WhileStmt, Free, Credits, Send,
 		// Receive, ChannelClass}
 // import ast.utils.collections.{SetAnd}
+import state.terms
 import state.terms.{Term, Null, /* BottomLock, */ True, False /* , Token, LockMode, */
 		/* AtLeast, IntLiteral*/, FullPerms => Full }
-import state.terms.utils.¬
+// import state.terms.utils.¬
 import state.{DefaultFieldChunk, DefaultPredicateChunk, /* DefaultTokenChunk, */
 		TypeConverter}
 import reporting.ErrorMessages.{AssertionMightNotHold, InvocationFailed,
@@ -49,7 +51,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 											H <: Heap[H],
                       PC <: PathConditions[PC],
 											S <: State[SILProgramVariable, ST, H, S]]
-		extends Executor[SILProgramVariable, SILStatement, ST, H, S]
+		extends Executor[SILProgramVariable, SILBasicBlock, ST, H, S]
 		{ this:      Logging
             with Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
             with Consumer[SILProgramVariable, SILExpression, ST, H, S]
@@ -77,26 +79,42 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 	// protected val mapSupport: MapSupport[V, ST, H, S]
 	// import mapSupport.update
 	
-	protected val chunkFinder: ChunkFinder[SILExpression, H]
+	protected val chunkFinder: ChunkFinder[H]
 	import chunkFinder.withFieldChunk
 
 	protected val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String]
 
 	protected val config: Config
-	
-	/* TODO:
-	 * Since removing or adding of certain chunks, namely mu-field chunks,
-	 * triggers additional operations, e.g. adding of Mu or MuUpdate terms,
-	 * it might be less error-prone to consume/produce such chunks instead of
-	 * removing/adding them to the heap directly.
-	 * This way, only produce and consume need to take care about such special
-	 * fields.
-	 * However, this is currently not possible since producing a mu-field
-	 * expression would fail due to the self-framing requirement imposed on
-	 * assertions which are to be produced.
-	 */
-	
-	def execs(σ: S, stmts: Seq[SILStatement], m: Message,
+  
+  def execn(σ: S, bb: SILBasicBlock, m: Message, Q: S => VerificationResult)
+          : VerificationResult = {
+
+    val success = Success().asInstanceOf[VerificationResult]
+    var tConds = Set[Term]()
+
+     /* Execute all statements of the current block. */
+    execs(σ, bb.statements, m, σ1 =>
+        /* Successively follow outgoing edges and execute the reached
+         * statements, but only as long as there is no verification failure.
+         */
+        bb.successors.foldLeft(success){case (r, edge) => {
+          logger.debug("[execn]\n  " + edge)
+
+            (r
+          && evale(σ1, edge.condition, m, tCond => {
+                tConds = tConds + tCond
+                branch(tCond,
+                  execn(σ1, edge.target, m, (σ2: S) =>
+                    Q(σ2)),
+                  Success())}))}}
+         /* If no verification failure ocurred, negate the conditions and
+          * continue, which is most likely verifiying the postcondition.
+          */
+      && assume(terms.utils.BigAnd(tConds),
+            Q(σ1)))
+  }
+
+	private def execs(σ: S, stmts: Seq[SILStatement], m: Message,
 			Q: S => VerificationResult): VerificationResult =
 
 		if(stmts.nonEmpty)
@@ -105,7 +123,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 		else
 			Q(σ)
 
-	def exec(σ: S, stmt: SILStatement, m: Message,
+	private def exec(σ: S, stmt: SILStatement, m: Message,
 			Q: S => VerificationResult): VerificationResult = {
 
 		logger.debug("\nEXECUTE " + stmt.toString)
@@ -124,12 +142,31 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         evalt(σ, rhs, m, tRhs =>
           Q(σ \+ (v, tRhs)))
           
+      case silAST.methods.implementations.FieldAssignmentStatement(_, rcvr, field, rhs) =>
+        val err = HeapWriteFailed at stmt
+        val tRcvr = σ.γ(rcvr)
+				// evalt(σ, rcvr, m, tRcvr =>        
+					if (decider.assert(tRcvr ≠ Null()))
+            evalt(σ, rhs, m, tRhs =>
+						// execRValue(σ, rhs, m, c1, (σ1, t1, c2) =>
+							withFieldChunk(σ.h, tRcvr, field.name, Full(), rcvr.toString, err, fc =>
+								Q(σ \- fc \+ DefaultFieldChunk(tRcvr, field.name, tRhs, fc.perm))))
+					else
+						Failure(err dueTo ReceiverMightBeNull(rcvr.toString, field.name))
+          
+      case silAST.methods.implementations.InhaleStatement(_, a) =>
+        // eval(σ, e, m, c, (t, c1) =>
+					// assume(t, c1, (c2: C) =>
+						// Q(σ, c2)))
+        produce(σ, fresh, Full(), a, m, σ1 =>
+          Q(σ1))
+
       case silAST.methods.implementations.ExhaleStatement(_, a) =>
-        logger.error("\n[exec/exhale]")
-        logger.error("  stmt = " + stmt)
-        logger.error("  stmt.sourceLocation = " + stmt.sourceLocation)
-        logger.error("  a = " + a)
-        logger.error("  a.sourceLocation = " + a.sourceLocation)
+        // logger.error("\n[exec/exhale]")
+        // logger.error("  stmt = " + stmt)
+        // logger.error("  stmt.sourceLocation = " + stmt.sourceLocation)
+        // logger.error("  a = " + a)
+        // logger.error("  a.sourceLocation = " + a.sourceLocation)
         consume(σ, Full(), a, AssertionMightNotHold(stmt), (σ1, _) =>
           Q(σ1))
         
@@ -169,18 +206,6 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 							// Q(σ, c1)})
 				// }
 
-			// case Assume(e) =>
-				// /* We could also produce e instead of eval'ing it, but this requires e
-				 // * to be self-framing, i.e. "rd(x) && x == 0" instead of just "x == 0".
-				 // * This in turn results in additional permissions also being assumed,
-				 // * which is probably not what we want in general.
-				 // * On the other hand, only producing e makes it possible to actually
-				 // * assume permissions.
-				 // */
-				// eval(σ, e, m, c, (t, c1) =>
-					// assume(t, c1, (c2: C) =>
-						// Q(σ, c2)))
-					
 			// case LocalVar(v) => Q(σ \+ (v, fresh(v)), c)
 
 			// case ass @ Assign(lhs, rhs) =>
@@ -491,7 +516,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 							// else
 								// Failure(err dueTo ObjectMightNotBeLocked(ast.WriteLockMode), c1)
 						// else
-							// Failure(err dueTo InsufficientPermissions(e0, id), c1)
+							// Failure(err dueTo InsufficientPermissionTerm(e0, id), c1)
 					// else
 						// Failure(err dueTo ReceiverMightBeNull(e0, id), c1))
 
@@ -552,9 +577,9 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                     // σ1 = σ1 \- fc
                     // Success(c1)}
 									// else
-										// Failure(err dueTo InsufficientPermissions(e0, m.id), c1)
+										// Failure(err dueTo InsufficientPermissionTerm(e0, m.id), c1)
 								// case None =>
-                  // Failure(err dueTo InsufficientPermissions(e0, m.id), c1)}
+                  // Failure(err dueTo InsufficientPermissionTerm(e0, m.id), c1)}
 							// !result.isFatal})
 
             // result && Q(σ1, c1)}

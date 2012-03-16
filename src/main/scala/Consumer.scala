@@ -19,7 +19,7 @@ import reporting.Reasons.{ExpressionMightEvaluateToFalse, ReceiverMightBeNull,
 		InsufficientPermissions, InsufficientLockchange, MethodLeavesDebt}
 import reporting.{/* Consuming, ImplBranching, IfBranching, */ Bookkeeper}
 import reporting.utils._
-import state.terms.utils.{¬, SetAnd}
+// import state.terms.utils.{¬, BigAnd}
 
 trait DefaultConsumer[V, ST <: Store[V, ST],
 											H <: Heap[H], PC <: PathConditions[PC],
@@ -41,7 +41,7 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 	// protected val mapSupport: MapSupport[ST, H, S]
 	// import mapSupport.update
 
-	protected val chunkFinder: ChunkFinder[SILExpression, H]
+	protected val chunkFinder: ChunkFinder[H]
 	import chunkFinder.{withFieldChunk, withPredicateChunk}
 	
 	// protected val lockSupport: LockSupport[ST, H, S]
@@ -51,7 +51,7 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
 	
-	def consume(σ: S, p: Permissions, φ: SILExpression, m: Message,
+	def consume(σ: S, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: (S, Term) => VerificationResult): VerificationResult =
 
 		consume2(σ, σ.h, p, φ, m, (h1, t) => {
@@ -59,12 +59,12 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 			// logger.debug("resulting S1 = " + π1)
 			Q(σ \ h1, t)})
 			
-	protected def consume(σ: S, h: H, p: Permissions, φ: SILExpression, m: Message,
+	protected def consume(σ: S, h: H, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: (H, Term) => VerificationResult): VerificationResult =
 
 		consume2(σ, h, p, φ, m, Q)
 			
-	protected def consume2(σ: S, h: H, p: Permissions, φ: SILExpression, m: Message,
+	protected def consume2(σ: S, h: H, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: (H, Term) => VerificationResult): VerificationResult = {
 
 		logger.debug("\nCONSUME " + φ.toString)
@@ -97,28 +97,37 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 						// (c2: C) => consume(σ, h, p, a1, m, c2 + IfBranching(true, e0, t0), Q),
 						// (c2: C) => consume(σ, h, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
-			// /* assert acc(e.f) */
+			/* assert acc(e.f) */
 			// case ast.Access(acc @ ast.FieldAccess(e0, id), p0) =>
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// if (decider.assert(t0 ≠ Null()))
-						// evalp(σ, p0, m, c1, (pt, c2) =>
-							// if (decider.isNonNegativeFraction(pt)) {
-								// val loss = pt * p
-								// withFieldChunk(h, t0, id, loss, e0, m at φ, c2, fc => {
-									// val snap = fc.value.convert(toSort(acc.f.typ), IntSort)
-										// if (decider.assertNoAccess(fc.perm - loss)) {
-											// val σ1 = σ \ (h - fc)
-											// if (id == "mu")
-												// update(σ1, lockSupport.Mu, t0, c2, (σ2, c3) =>
-													// Q(σ2.h, snap, c3))
-											// else
-												// Q(σ1.h, snap, c2)}
-										// else
-											// Q(h - fc + (fc - loss), snap, c2)})}
+      case silAST.expressions.PermissionExpression(rcvr, field, perm) =>
+				evalt(σ, rcvr, m, tRcvr =>
+					if (decider.assert(tRcvr ≠ Null()))
+						evalp(σ, perm, m, tPerm => {
+							// if (decider.isNonNegativeFraction(tPerm)) {
+                // println("\n[Consumer/PermissionExpression]")
+                // println("  tRcvr = " + tRcvr)
+                // println("  tPerm = " + tPerm)
+                // println("  p = " + p)
+								val loss = tPerm * p
+                // println("  loss = " + loss)
+								withFieldChunk(h, tRcvr, field.name, loss, rcvr.toString, m at φ, fc => {
+                  // println("  [Consumer/PermissionExpression]")
+                  // println("  fc = " + fc)
+									// val snap = fc.value.convert(toSort(field.dataType), sorts.Snap)
+									val snap = fc.value.convert(sorts.Snap)
+                  if (decider.assertNoAccess(fc.perm - loss)) {
+                    val σ1 = σ \ (h - fc)
+                    // if (id == "mu")
+                      // update(σ1, lockSupport.Mu, tRcvr, c2, (σ2, c3) =>
+                        // Q(σ2.h, snap, c3))
+                    // else
+                      Q(σ1.h, snap)}
+                  else
+                    Q(h - fc + (fc - loss), snap)})})
 							// else
-								// Failure(FractionMightBeNegative at φ withDetails (e0, id), c2))
-					// else
-						// Failure(m at e0 dueTo ReceiverMightBeNull(e0, id), c1))
+								// Failure(FractionMightBeNegative at φ withDetails (rcvr, field.name)))
+					else
+						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
 
 			// /* assert acc(e.P) */
 			// case ast.Access(ast.PredicateAccess(e0, id), p0) =>

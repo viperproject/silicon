@@ -35,9 +35,10 @@ class DefaultStateFormatter[V, ST <: Store[V, ST], H <: Heap[H],
 		if (π.isEmpty) "Ø"
 		else
 			"π" + (π.filterNot {
-				case c: Eq if    c.p0.isInstanceOf[Combine]
-											|| c.p1.isInstanceOf[Combine] => true
-				case Not(TermEq(_, Null())) => true
+				case c: Eq if    c.t0.isInstanceOf[Combine]
+											|| c.t1.isInstanceOf[Combine] => true
+				case Not(Eq(_, Null())) => true
+        case True() => true
 				case _ => false
 			}).mkString("(", ", ", ")")	
 	}

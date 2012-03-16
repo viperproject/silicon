@@ -3,8 +3,8 @@ package ch.ethz.inf.pm.silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 
-import silAST.expressions.{Expression => SILExpression,
-  PermissionExpression => SILPermissionExpression}
+import silAST.expressions.{Expression => SILExpression}
+  // PermissionExpression => SILPermissionExpression}
 // import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 import silAST.expressions.terms.{Term => SILTerm}
 
@@ -17,7 +17,7 @@ import interfaces.state.{Store, Heap, PathConditions, State,
 import interfaces.reporting.{Message}
 import interfaces.state.factoryUtils.Ø
 import state.terms.{Term, Combine, Null, sorts, True, And, Or, /* LockMode, Plus,
-		IntLiteral, */ TermEq, SnapEq, Permissions, /* Times, */ PermTimes}
+		IntLiteral, */ Eq, PermissionTerm, Times}
 import state.{TypeConverter}
 // import ast.{Expression}
 import state.{DefaultFieldChunk, DefaultPredicateChunk /* , CounterChunk */ }
@@ -68,7 +68,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 	private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
 	private var snapshotCache: Map[Term, (Term, Term)] = Map()
 	
-	def produce(σ: S, s: Term, p: Permissions, φ: SILExpression, m: Message,
+	def produce(σ: S, s: Term, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: S => VerificationResult): VerificationResult = {
 
 		if (!config.selfFramingProductions) {
@@ -97,7 +97,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 		}
 	}
 
-	private def produce2(σ: S, s: Term, p: Permissions, φ: SILExpression, m: Message,
+	private def produce2(σ: S, s: Term, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: H => VerificationResult): VerificationResult = {
 			
 		logger.debug("\nPRODUCE " + φ.toString)
@@ -120,9 +120,9 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 				
 				// val (s0, s1) = (fresh, fresh)
 				
-				val tSnapEq = SnapEq(s, Combine(s0, s1))
+				val tEq = Eq(s, Combine(s0, s1))
 				
-				assume(tSnapEq,
+				assume(tEq,
 					produce2(σ, s0, p, a0, m, h1 =>
 						produce2(σ \ h1, s1, p, a1, m, h2 =>
 							Q(h2))))
@@ -165,29 +165,27 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						// (c2: C) => produce2(σ, s, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assume acc(e.f) */
-			case e @ SILPermissionExpression(eRcvr, field, ePerm) =>
-				// assert(acc.f !=  null, /* @elidable */
-						// "Expected FieldAccess.f to be non-null.")
-				// assert(acc.f.typ !=  null, /* @elidable */
-						// "Expected FieldAccess.f.typ to be non-null.")
-				// assert(acc.f.typ.typ !=  null, /* @elidable */
-						// "Expected FieldAccess.f.typ.typ to be non-null.")
-				
-				evalt(σ, eRcvr, m, tRcvr =>
+			case e @ silAST.expressions.PermissionExpression(rcvr, field, perm) =>
+				evalt(σ, rcvr, m, tRcvr =>
 					assume(tRcvr ≠ Null(),
-						evalp(σ, ePerm, m, tPerm =>
-							decider.isValidFraction(tPerm) match {
-								case None =>
-									val snap = s // s.convert(sorts.Int, toSort(field.dataType))
-									val fc = DefaultFieldChunk(tPerm, field.name, snap, PermTimes(tPerm, p))
+						evalp(σ, perm, m, tPerm => {
+							// decider.isValidFraction(tPerm) match {
+								// case None =>
+									val snap = s.convert(toSort(field.dataType))
+									val fc = DefaultFieldChunk(tRcvr, field.name, snap, tPerm * p)
 									// val tMu =
 										// if (id == "mu") lockSupport.Mu(σ.h, t0, snap)
 										// else True()
 									val (mh, mts) = merge(σ.h, H(fc :: Nil))
+                  println("\n[Produce/PermissionExpression]")
+                  println("  fc = " + fc)
+                  println("  σ.h = " + σ.h)
+                  println("  mh = " + mh)
+                  println("  mts = " + mts)
 									assume(mts /* + tMu */,
-										Q(mh))
-								case Some(errmsg) =>
-									Failure(errmsg at e.sourceLocation withDetails (eRcvr, field.name))})))
+										Q(mh))})))
+								// case Some(errmsg) =>
+									// Failure(errmsg at e.sourceLocation withDetails (rcvr, field.name))})))
 
 			// /* assume acc(e.P) */
 			// case ast.Access(ast.PredicateAccess(e0, id), p0) =>

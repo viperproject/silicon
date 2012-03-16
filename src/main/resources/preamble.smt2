@@ -76,6 +76,17 @@
 
 (assert (< $Perms.Zero $Perms.Write))
 
+; --- Sort wrappers ---
+
+(declare-fun $sorts.$SnapToInt ($Snap) Int)
+(declare-fun $sorts.IntTo$Snap (Int) $Snap)
+
+(assert (forall ((x Int))
+	(= x ($sorts.$SnapToInt($sorts.IntTo$Snap x)))))
+
+(assert (forall ((x $Snap))
+	(= x ($sorts.IntTo$Snap($sorts.$SnapToInt x)))))
+
 ; (get-proof "stdout")
 ; (get-info statistics)
 

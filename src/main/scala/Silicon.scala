@@ -8,6 +8,7 @@ import com.weiglewilczek.slf4s.Logging
 import silAST.programs.{Program => SILProgram}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 import silAST.expressions.{Expression => SILExpression}
+import silAST.expressions.terms.{Term => SILTerm}
 
 import interfaces.{ResultWithMessage, VerificationResult, Failure, Warning, Success, /* MemberVerifier,  */
 		/* Producer, Consumer, Executor, Evaluator, ProgrammeVerifier, */ MapSupport}
@@ -59,10 +60,10 @@ class Silicon(val config: Config) extends Logging {
 		// val creditSupport = null // new CreditSupport[ST, H, S, C](mapSupport)
 		
 		val chunkFinder =
-			new DefaultChunkFinder[V, SILExpression, ST, H, PC, S](decider, stateFormatter)
+			new DefaultChunkFinder[V, ST, H, PC, S](decider, stateFormatter)
 		
 		// val dlb = permissionFactory.Full + permissionFactory.Eps
-    val dlb = state.terms.PermTimes(state.terms.FullPerms(), state.terms.EpsPerms())
+    val dlb = state.terms.Times(state.terms.FullPerms(), state.terms.EpsPerms())
 		
 		val heapMerger =
 			new DefaultHeapMerger[V, ST, H, PC, S](

@@ -14,8 +14,8 @@ import silAST.expressions.terms.{Term => SILTerm}
 import silAST.programs.{Program => SILProgram}
 import silAST.programs.symbols.{Function => SILFunction,
     ProgramVariable => SILProgramVariable}
-import silAST.methods.implementations.{Statement => SILStatement,
-    Implementation => SILImplementation}
+import silAST.methods.implementations.{ /* Statement => SILStatement, */
+    BasicBlock => SILBasicBlock, Implementation => SILImplementation}
 
 import interfaces.{VerificationResult, Failure, Success, /* MemberVerifier, */
 		Producer, Consumer, Executor, Evaluator, /* ProgrammeVerifier, */ MapSupport}
@@ -44,7 +44,7 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 		with    Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
 		with    Producer[SILProgramVariable, SILExpression, ST, H, S]
 		with    Consumer[SILProgramVariable, SILExpression, ST, H, S]
-		with    Executor[SILProgramVariable, SILStatement, ST, H, S] {
+		with    Executor[SILProgramVariable, SILBasicBlock, ST, H, S] {
 
 	protected val config: Config
 		
@@ -83,6 +83,9 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 	def verify(impl: SILImplementation): VerificationResult = {
 		logger.debug("\n\n" + "-" * 10 + " IMPLEMENTATION " + impl.method.name + "-" * 10 + "\n")
 		
+    /* ATTENTION: Must be set before using e.g. BigAnd, otherwise an NPE will
+     *            be thrown!
+     */
     ast.utils.collections.ef = impl.method.expressionFactory
     
 		decider.prover.logComment(
@@ -93,8 +96,11 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
     // val pre = impl.method.signature.precondition.args
     // val post = impl.method.signature.postcondition.args
     
-    val body = impl.body.startNode.statements
+    // val body = impl.body.startNode.statements
 
+    // println("\n[Verifier/SILImplementation]")
+    // println("  succ = " + impl.body.startNode.successors)
+    
 		val γ = Γ(   /* (This -> fresh(This)) */
 							/* :: */ ins.map(v => (v, fresh(v)))
 							++ outs.map(v => (v, fresh(v))))
@@ -119,7 +125,7 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 					Success())
 					&&
 				// execs(σ1 \ (g = σ1.h), meth.body, ExecutionFailed, σ2 =>
-				execs(σ1 \ (g = σ1.h), body, ExecutionFailed, σ2 =>
+				execn(σ1 \ (g = σ1.h), impl.body.startNode, ExecutionFailed, σ2 =>
 					consume(σ2, Full(), post, PostErr, (σ3, _) =>
 						// consume(σ3, Full, DebtFreeExpr().setPos(meth.pos), PostErr, (_, _) =>
 							Success() /* ) */ )))})
@@ -196,7 +202,7 @@ class DefaultMemberVerifier[ST <: Store[SILProgramVariable, ST],
 			// val mapSupport: MapSupport[ST, H, S],
 			// val lockSupport: LockSupport[ST, H, S],
 			// val creditSupport: CreditSupport[ST, H, S],
-			val chunkFinder: ChunkFinder[SILExpression, H],
+			val chunkFinder: ChunkFinder[H],
 			val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String],
 			val heapMerger: HeapMerger[H],
 			val bookkeeper: Bookkeeper)
@@ -219,7 +225,7 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 			// val mapSupport: MapSupport[ST, H, S],
 			// val lockSupport: LockSupport[ST, H, S],
 			// val creditSupport: CreditSupport[ST, H, S],
-			val chunkFinder: ChunkFinder[SILExpression, H],
+			val chunkFinder: ChunkFinder[H],
 			val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String],
 			val heapMerger: HeapMerger[H],
 			val bookkeeper: Bookkeeper)

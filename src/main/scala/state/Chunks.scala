@@ -3,7 +3,7 @@ package ch.ethz.inf.pm.silicon.state
 import ch.ethz.inf.pm.silicon
 import silicon.interfaces.state.{Heap, FieldChunk, PredicateChunk, Chunk,
     PersistentChunk}
-import silicon.state.terms.{Term, Permissions, /* Token, Plus,*/ PermPlus, /* Minus,*/ PermMinus}
+import silicon.state.terms.{Term, PermissionTerm /*, Token, Plus, Minus */}
 
 /*
  * Chunks
@@ -16,20 +16,20 @@ import silicon.state.terms.{Term, Permissions, /* Token, Plus,*/ PermPlus, /* Mi
  *       trait or interface.
  */
 
-case class DefaultFieldChunk(rcvr: Term, id: String, value: Term, perm: Permissions)
+case class DefaultFieldChunk(rcvr: Term, id: String, value: Term, perm: PermissionTerm)
     extends FieldChunk {
 		
-	def +(perm: Permissions) = this.copy(perm = PermPlus(this.perm, perm))
-	def -(perm: Permissions) = this.copy(perm = PermMinus(this.perm, perm))
+	def +(perm: PermissionTerm) = this.copy(perm = this.perm + perm)
+	def -(perm: PermissionTerm) = this.copy(perm = this.perm - perm)
 	
 	override def toString = "%s.%s -> %s # %s".format(rcvr, id, value, perm)
 }
 
-case class DefaultPredicateChunk(rcvr: Term, id: String, snap: Term, perm: Permissions)
+case class DefaultPredicateChunk(rcvr: Term, id: String, snap: Term, perm: PermissionTerm)
     extends PredicateChunk {
 		
-	def +(perm: Permissions) = this.copy(perm = PermPlus(this.perm, perm))
-	def -(perm: Permissions) = this.copy(perm = PermMinus(this.perm, perm))
+	def +(perm: PermissionTerm) = this.copy(perm = this.perm + perm)
+	def -(perm: PermissionTerm) = this.copy(perm = this.perm - perm)
 		
 	override def toString = "%s.%s[%s] # %s".format(rcvr, id, snap, perm)
 }

@@ -156,7 +156,6 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
 		v
 	}
 	
-  /* TODO: Decouple from SILFunction */
   def declareSymbol(id: String, sort: Sort, argSorts: Sort*) {
 	// def declare(f: SILFunction) {
 		// val str = "(declare-fun %s (Int Int %s) %s)".format(
@@ -167,7 +166,10 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
     val str = "; Declare symbol " + id
 
 		write(str)
-	}	
+	}
+  
+  // def declareSortWrappers() {
+  // }
 	
 	def resetAssertionCounter() = assertionCounter = 0
 	def resetAssumptionCounter() = assumptionCounter = 0

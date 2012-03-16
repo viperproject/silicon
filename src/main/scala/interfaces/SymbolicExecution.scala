@@ -7,7 +7,7 @@ import state.{Store, Heap, State}
 import reporting.{Message}
 import decider.Decider
 import silicon.state.terms
-import silicon.state.terms.{Term, Permissions, Sort}
+import silicon.state.terms.{Term, PermissionTerm, Sort}
 // import silicon.ast.{Expression, Statement, FractionalPermission}
 
 /*
@@ -26,7 +26,7 @@ trait Evaluator[V, E, T, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, 
            
 	def evalt(σ: S, e: T, m: Message, Q: (Term) => VerificationResult): VerificationResult
 
-	def evalp(σ: S, e: T, m: Message, Q: Permissions => VerificationResult)
+	def evalp(σ: S, e: T, m: Message, Q: PermissionTerm => VerificationResult)
            : VerificationResult
 
 	// def evall(lit: SILLiteral): Term // terms.Literal
@@ -34,21 +34,24 @@ trait Evaluator[V, E, T, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, 
 }
 
 trait Producer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def produce(σ: S, s: Term, p: Permissions, φ: A, m: Message,
+	def produce(σ: S, s: Term, p: PermissionTerm, φ: A, m: Message,
 							Q: S => VerificationResult): VerificationResult
 }
 
 trait Consumer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def consume(σ: S, p: Permissions, φ: A, m: Message,
+	def consume(σ: S, p: PermissionTerm, φ: A, m: Message,
 							Q: (S, Term) => VerificationResult): VerificationResult
 }
 
-trait Executor[V, STMT, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def execs(σ: S, stmts: Seq[STMT], m: Message,
-					 Q: S => VerificationResult): VerificationResult
+trait Executor[V, BB, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
+	def execn(σ: S, bb: BB, m: Message,
+					  Q: S => VerificationResult): VerificationResult
 
-	def exec(σ: S, stmt: STMT, m: Message,
-					 Q: S => VerificationResult): VerificationResult
+	// def execs(σ: S, stmts: Seq[STMT], m: Message,
+					  // Q: S => VerificationResult): VerificationResult
+
+	// def exec(σ: S, stmt: STMT, m: Message,
+					 // Q: S => VerificationResult): VerificationResult
 }
 
 trait MapSupport[V, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {

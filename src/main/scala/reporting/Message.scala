@@ -21,8 +21,8 @@ sealed abstract class AbstractMessage extends Message {
 	var details: Seq[Any] = Nil
 	
 	def at(loc: SILSourceLocation) = {
-    println("\n[AbstractMessage/at]")
-    println("  loc = " + loc)
+    // println("\n[AbstractMessage/at]")
+    // println("  loc = " + loc)
 		this.loc = loc
 		this
 	}	

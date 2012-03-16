@@ -6,7 +6,7 @@ import silAST.programs.symbols.{Function => SILFunction}
 // import ch.ethz.inf.pm.silicon
 import interfaces.decider.TermConverter
 import state.terms._
-import state.terms.utils.SetAnd
+// import state.terms.utils.SetAnd
 
 /* TODO: Unify terms.And and DomainFApp("∧"), such that only one of them,
  *       probably the latter, is used by Silicon.
@@ -17,18 +17,18 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case Var(id: String, _) => id
 		case lit: Literal => literalToString(lit)
 
-		case Ite(t0, t1, t2) =>
-			"(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
+		// case Ite(t0, t1, t2) =>
+			// "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
 
 		case FApp(f, s, t0, tArgs, _) =>
 			// "(" + f.fullName + (s :: t0 :: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
 			"(" + f.name + (s +: t0 +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
 			
-		case Quantification(q, tVars, tBody) =>
-			val strVars =
-				tVars.map(v => "(%s %s)".format(v.id, convert(v.sort))).mkString(" ")
-			val strBody = convert(tBody)
-			"(%s (%s) %s)".format(quantifierToString(q), strVars, strBody)			
+		// case Quantification(q, tVars, tBody) =>
+			// val strVars =
+				// tVars.map(v => "(%s %s)".format(v.id, convert(v.sort))).mkString(" ")
+			// val strBody = convert(tBody)
+			// "(%s (%s) %s)".format(quantifierToString(q), strVars, strBody)			
 
 		/* Booleans */
 			
@@ -54,8 +54,13 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		// case SeqEq(t0, t1) =>
 			// "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
 			
-		case TermEq(t0, t1) =>
-				"(= " + convert(t0) + " " + convert(t1) + ")"
+    /* Expects both arguments to be of the same sort. */
+		case Eq(t0, t1) => t0.sort match {
+      case sorts.Snap =>
+        "($snapEq " + convert(t0) + " " + convert(t1) + ")"
+      case _ =>
+        "(= " + convert(t0) + " " + convert(t1) + ")"
+    }
 
 		/* Arithmetics */
 			
@@ -159,13 +164,23 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     
     case FullPerms() => "$Perms.Write"
     case ZeroPerms() => "$Perms.Zero"
+    case Perms(t) => convert(t)
     
-    case PermLess(t0, t1) =>
-      "(< " + convert(t0) + " " + convert(t1) + ")"
+		// // case PermMinus(t0, t1) =>
+			// // "(- " + convert(t0) + " " + convert(t1) + ")"
+
+		// // case PermPlus(t0, t1) =>
+			// // "(+ " + convert(t0) + " " + convert(t1) + ")"
+
+		// // case PermTimes(t0, t1) =>
+			// // "(* " + convert(t0) + " " + convert(t1) + ")"
+
+    // // case PermLess(t0, t1) =>
+      // // "(< " + convert(t0) + " " + convert(t1) + ")"
     
     /* Domains */
     
-    case DomainPApp(dp, ts, sort) => (dp.name, ts) match {
+    case DomainPApp(dp, ts) => (dp.name, ts) match {
       case ("eval", t0 :: Nil) => convert(t0)
     }
     
@@ -201,14 +216,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case Combine(t0, t1) =>
 			"($combine " + convert(t0) + " " + convert(t1) + ")"
 			
-		case SnapEq(t0, t1) =>
-			"($snapEq " + convert(t0) + " " + convert(t1) + ")"
+		// case SnapEq(t0, t1) =>
+			// "($snapEq " + convert(t0) + " " + convert(t1) + ")"
 
 		// case BoolToInt(t0) => "($boolToInt " + convert(t0) + ")"
 		// case IntToBool(t0) => "($intToBool " + convert(t0) + ")"
 		
-		
 		/* These sorts are converted to Z3-sort Int anyway */
+    case SortWrapper(t, sort) =>
+      "($sorts.%sTo%s %s)".format(convert(t.sort), convert(sort), convert(t))
 		// case SeqToInt(t0) => convert(t0)
 		// case IntToSeq(t0) => convert(t0)
 		// case MuToInt(t0) => convert(t0)
@@ -222,14 +238,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case sorts.Snap => "$Snap"
 		case sorts.Ref => "$Ref"
 
-		case sorts.NonRef("Boolean") => "Bool"
-		case sorts.NonRef("Integer") => "Int"
+		// case sorts.NonRef("Boolean") => "Bool"
+		// case sorts.NonRef("Integer") => "Int"
 	}
 	
-	private def quantifierToString(q: Quantifier) = q match {
-		case Forall => "forall"
-		case Exists => "exists"
-	}
+	// private def quantifierToString(q: Quantifier) = q match {
+		// case Forall => "forall"
+		// case Exists => "exists"
+	// }
 	
 	private def literalToString(literal: Literal) = literal match {
 		case IntLiteral(n) =>

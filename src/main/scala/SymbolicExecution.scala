@@ -10,8 +10,8 @@ import interfaces.decider.Decider
 import interfaces.reporting.{Message}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk,
 		FieldChunk, PredicateChunk, AccessRestrictedChunk, StateFormatter}
-import state.terms.{Term, Permissions}
-import state.terms.utils.{SetAnd, ¬}
+import state.terms.{Term, PermissionTerm}
+import state.terms.utils.{BigAnd, ¬}
 import reporting.Bookkeeper
 import reporting.Reasons.InsufficientPermissions
 // import ast.Expression
@@ -48,8 +48,8 @@ trait DefaultBrancher[V, ST <: Store[V, ST], H <: Heap[H],
 	def branch(ts: List[Term], fTrue: => VerificationResult,
 						fFalse: => VerificationResult) = {
 
-		val guardsTrue = SetAnd(ts)
-		val guardsFalse = SetAnd(ts, t => ¬(t))
+		val guardsTrue = BigAnd(ts)
+		val guardsFalse = BigAnd(ts, t => ¬(t))
 									 
 		val exploreTrueBranch = !decider.assert(guardsFalse)
 		val exploreFalseBranch = !decider.assert(guardsTrue)
@@ -85,8 +85,8 @@ trait DefaultBrancher[V, ST <: Store[V, ST], H <: Heap[H],
 	}
 }
 
-trait ChunkFinder[E, H <: Heap[H]] {
-	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, e: E, m: Message,
+trait ChunkFinder[H <: Heap[H]] {
+	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
 								Q: CH => VerificationResult): VerificationResult
 	
 	/* withChunk is sufficient, i.e. withFieldChunk and withPredicateChunk are
@@ -94,28 +94,28 @@ trait ChunkFinder[E, H <: Heap[H]] {
 	 * parameter of withChunk.
 	 */
 
-	def withFieldChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
+	def withFieldChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
 										 Q: FieldChunk => VerificationResult): VerificationResult
 								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
-										   Q: PredicateChunk => VerificationResult): VerificationResult
+	def withPredicateChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
+										     Q: PredicateChunk => VerificationResult): VerificationResult
 											 
-	def withFieldChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E, m: Message,
-									  Q: FieldChunk => VerificationResult): VerificationResult
+	def withFieldChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
+                     m: Message, Q: FieldChunk => VerificationResult): VerificationResult
 								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E,
-	                     m: Message, Q: PredicateChunk => VerificationResult)
-											: VerificationResult
+	def withPredicateChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
+	                       m: Message, Q: PredicateChunk => VerificationResult)
+											  : VerificationResult
 }
 
-class DefaultChunkFinder[V, E, ST <: Store[V, ST],
+class DefaultChunkFinder[V, ST <: Store[V, ST],
 												 H <: Heap[H], PC <: PathConditions[PC],
 												 S <: State[V, ST, H, S]]
 		(val decider: Decider[V, ST, H, PC, S],
 		 val stateFormatter: StateFormatter[V, ST, H, S, String])
-		extends ChunkFinder[E, H] with Logging {
+		extends ChunkFinder[H] with Logging {
 
-	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, e: E,
+	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, rcvrStr: String,
 														 m: Message, Q: CH => VerificationResult)
 														: VerificationResult = {
 
@@ -126,47 +126,47 @@ class DefaultChunkFinder[V, E, ST <: Store[V, ST],
 				val pos = SILNoLocation
 
 				if (decider.checkSmoke)	{
-					logger.debug("%s: Detected inconsistent state looking up a chunk for %s.%s.".format(pos, e, id))
+					logger.debug("%s: Detected inconsistent state looking up a chunk for %s.%s.".format(pos, rcvrStr, id))
 					logger.debug("π = " + stateFormatter.format(decider.π))
 
 					// val warning = Warning(SmokeDetectedAtChunkLookup at pos withDetails(e, id), c)
 					// warning
 					Success()
 				} else
-					Failure(m at pos dueTo InsufficientPermissions(e.toString, id))
+					Failure(m at pos dueTo InsufficientPermissions(rcvrStr, id))
 		}
 	}
 	
-	def withFieldChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
+	def withFieldChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
 										 Q: FieldChunk => VerificationResult): VerificationResult =
 										 
-		withChunk(h, rcvr, id, e, m, Q)
+		withChunk(h, rcvr, id, rcvrStr, m, Q)
 		
-	def withPredicateChunk(h: H, rcvr: Term, id: String, e: E, m: Message,
-											 Q: PredicateChunk => VerificationResult)
-											: VerificationResult =
+	def withPredicateChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
+											   Q: PredicateChunk => VerificationResult)
+											  : VerificationResult =
 										 
-		withChunk(h, rcvr, id, e, m, Q)
+		withChunk(h, rcvr, id, rcvrStr, m, Q)
 		
-	def withFieldChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E, m: Message,
-									  Q: FieldChunk => VerificationResult) =
-										
-		withPermissiveChunk(h, rcvr, id, p, e, m, Q)
+	def withFieldChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
+                     m: Message, Q: FieldChunk => VerificationResult) =
+
+		withPermissiveChunk(h, rcvr, id, p, rcvrStr, m, Q)
 								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, p: Permissions, e: E,
-	                     m: Message, Q: PredicateChunk => VerificationResult) =
+	def withPredicateChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
+	                       m: Message, Q: PredicateChunk => VerificationResult) =
 		
-		withPermissiveChunk(h, rcvr, id, p, e, m, Q)
+		withPermissiveChunk(h, rcvr, id, p, rcvrStr, m, Q)
 		
 	private def withPermissiveChunk[ARC <: AccessRestrictedChunk[ARC]]
-			(h: H, rcvr: Term, id: String, p: Permissions, e: E, m: Message,
+			(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String, m: Message,
 			 Q: ARC => VerificationResult)
 			: VerificationResult =
 
-		withChunk(h, rcvr, id, e, m, (chunk: ARC) => {
+		withChunk(h, rcvr, id, rcvrStr, m, (chunk: ARC) => {
 			val pc = chunk.asInstanceOf[ARC]
 			if (decider.isAsPermissive(pc.perm, p))
 				Q(pc)
 			else
-				Failure(m dueTo InsufficientPermissions(e.toString, id))})
+				Failure(m dueTo InsufficientPermissions(rcvrStr, id))})
 }
