@@ -69,10 +69,9 @@
 
 ; --- Permissions ---
 
-; (declare-sort $Perms)
-; (declare-const $Perms.Write $Perms)
-(declare-const $Perms.Write Int)
-(declare-const $Perms.Zero Int)
+(define-sort $Perms () Int)
+(declare-const $Perms.Write $Perms)
+(declare-const $Perms.Zero $Perms)
 
 (assert (< $Perms.Zero $Perms.Write))
 
@@ -86,6 +85,65 @@
 
 (assert (forall ((x $Snap))
 	(= x ($sorts.IntTo$Snap($sorts.$SnapToInt x)))))
+
+(declare-fun $sorts.$SnapTo$Ref ($Snap) $Ref)
+(declare-fun $sorts.$RefTo$Snap ($Ref) $Snap)
+
+(assert (forall ((x $Ref))
+	(= x ($sorts.$SnapTo$Ref($sorts.$RefTo$Snap x)))))
+
+(assert (forall ((x $Snap))
+	(= x ($sorts.$RefTo$Snap($sorts.$SnapTo$Ref x)))))
+
+; --- Domains ---
+
+(declare-sort Pair<$Ref~Int>)
+
+(declare-fun Pair<$Ref~Int>.create ($Ref Int) Pair<$Ref~Int>)
+(declare-fun Pair<$Ref~Int>.getFirst (Pair<$Ref~Int>) $Ref)
+(declare-fun Pair<$Ref~Int>.getSecond (Pair<$Ref~Int>) Int)
+
+(assert (forall ((r $Ref) (i Int)) (!
+  (= (Pair<$Ref~Int>.getFirst (Pair<$Ref~Int>.create r i)) r)
+  :qid |Pair<$Ref~Int>.getFirst|)))
+
+(assert (forall ((r $Ref) (i Int)) (!
+  (= (Pair<$Ref~Int>.getSecond (Pair<$Ref~Int>.create r i)) i)
+  :qid |Pair<$Ref~Int>.getSecond|)))
+
+(assert (forall ((r1 $Ref) (i1 Int) (r2 $Ref) (i2 Int)) (!
+  (iff
+    (and (= r1 r2) (= i1 i2))
+    (= (Pair<$Ref~Int>.create r1 i1) (Pair<$Ref~Int>.create r2 i2)))
+  :qid |Pair<$Ref~Int>.equality|)))
+  
+
+  
+(declare-sort Map<Pair<$Ref~Int>~$Perms>)
+
+(declare-const Map<Pair<$Ref~Int>~$Perms>.empty Map<Pair<$Ref~Int>~$Perms>)
+
+(declare-fun Map<Pair<$Ref~Int>~$Perms>.get (Map<Pair<$Ref~Int>~$Perms> Pair<$Ref~Int>) $Perms)
+
+(declare-fun Map<Pair<$Ref~Int>~$Perms>.has (Map<Pair<$Ref~Int>~$Perms> Pair<$Ref~Int>) Bool)
+
+(declare-fun Map<Pair<$Ref~Int>~$Perms>.update (Map<Pair<$Ref~Int>~$Perms> Pair<$Ref~Int> $Perms) Map<Pair<$Ref~Int>~$Perms>)
+
+(assert (forall ((p Pair<$Ref~Int>)) (!
+  (not
+    (Map<Pair<$Ref~Int>~$Perms>.has Map<Pair<$Ref~Int>~$Perms>.empty p))
+  :qid |Map<Pair<$Ref~Int>~$Perms>.empty_has_no_entries|)))
+
+(assert (forall ((m Map<Pair<$Ref~Int>~$Perms>) (p1 Pair<$Ref~Int>) (p2 Pair<$Ref~Int>) (p $Perms)) (!
+  (ite
+    (= p1 p2)
+    (=
+      (Map<Pair<$Ref~Int>~$Perms>.get (Map<Pair<$Ref~Int>~$Perms>.update m p1 p) p2)
+      (Map<Pair<$Ref~Int>~$Perms>.get m p2))
+    (=
+      (Map<Pair<$Ref~Int>~$Perms>.get (Map<Pair<$Ref~Int>~$Perms>.update m p1 p) p2)
+      p))
+  :qid |Map<Pair<$Ref~Int>~$Perms>.get_update|)))
 
 ; (get-proof "stdout")
 ; (get-info statistics)

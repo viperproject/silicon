@@ -25,6 +25,7 @@ import reporting.{/* Consuming, ImplBranching, IfBranching, IffBranching, */
 		Bookkeeper}
 // import reporting.utils._
 import state.terms.utils.¬
+// import state.terms.dsl._
 
 /* TODO: Declare a ChunkFactory and use it to create FieldChunks and 
  *       PredicateChunks instead of directly creating e.g. DefaultFieldChunks.
@@ -127,12 +128,12 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						produce2(σ \ h1, s1, p, a1, m, h2 =>
 							Q(h2))))
 
-			// /* Implies <: BooleanExpr */
-			// case ast.Implies(e0, a0) if !φ.isPure =>
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// branch(t0, c,
-						// (c2: C) => produce2(σ, s, p, a0, m, c2 + ImplBranching(true, e0, t0), Q),
-						// (c2: C) => Q(σ.h, c2 + ImplBranching(false, e0, t0))))			
+			/* Implies <: BooleanExpr */
+      case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
+        evale(σ, e0, m, t0 =>
+					branch(t0,
+						produce2(σ, s, p, a1, m, Q),
+						Q(σ.h)))
 			
 			// /* Iffs currently cannot be handled by the evaluator:
 			 // *  - Assume a method such as

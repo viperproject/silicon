@@ -16,6 +16,7 @@ import silAST.programs.symbols.{Function => SILFunction,
     ProgramVariable => SILProgramVariable}
 import silAST.methods.implementations.{ /* Statement => SILStatement, */
     BasicBlock => SILBasicBlock, Implementation => SILImplementation}
+import silAST.domains.{Domain => SILDomain}
 
 import interfaces.{VerificationResult, Failure, Success, /* MemberVerifier, */
 		Producer, Consumer, Executor, Evaluator, /* ProgrammeVerifier, */ MapSupport}
@@ -93,6 +94,7 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 
     val ins = impl.method.signature.parameters.variables
     val outs = impl.method.signature.results.variables
+    val locals = impl.locals
     // val pre = impl.method.signature.precondition.args
     // val post = impl.method.signature.postcondition.args
     
@@ -101,9 +103,9 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
     // println("\n[Verifier/SILImplementation]")
     // println("  succ = " + impl.body.startNode.successors)
     
-		val γ = Γ(   /* (This -> fresh(This)) */
-							/* :: */ ins.map(v => (v, fresh(v)))
-							++ outs.map(v => (v, fresh(v))))
+		val γ = Γ(   ins.map(v => (v, fresh(v)))
+							++ outs.map(v => (v, fresh(v)))
+							++ locals.map(v => (v, fresh(v))))
 
 		val σ = Σ(γ, Ø, Ø)
 		
@@ -240,6 +242,7 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 	def verify(prog: SILProgram): List[VerificationResult] = {
     // logger.debug("prog = " + prog)
 		emitFunctionDeclarations(prog.functions)
+    // emitDomainDeclarations(prog.domains)
 		/* TODO: config.stopOnFirstError must also be considered here! */
 		// prog flatMap verify
 
@@ -269,6 +272,19 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 	
 	private def emitFunctionDeclarations(fs: Set[SILFunction]) {
     fs foreach decider.emitFunctionDeclaration
+
+		decider.prover.push()
+	}
+  
+	private def emitDomainDeclarations(ds: Set[SILDomain]) {
+    val ds1 = (ds -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
+    
+    ds1.foreach(d => {
+      println("d = " + d)
+      // println(d.isInstanceOf[silAST.domains.DomainInstance])
+    })
+    
+    ds1 foreach decider.emitDomainDeclaration
 
 		decider.prover.push()
 	}

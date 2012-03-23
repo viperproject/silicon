@@ -13,6 +13,7 @@ import interfaces.state.{Store, Heap, StateFormatter,
 import interfaces.reporting.{Message, Reason}
 import interfaces.decider.Decider
 import state.terms._
+// import state.terms.dsl._
 import state.{/* CounterChunk, */ DefaultPredicateChunk, TypeConverter}
 import reporting.ErrorMessages.{FractionMightBeNegative}
 import reporting.Reasons.{ExpressionMightEvaluateToFalse, ReceiverMightBeNull,
@@ -83,12 +84,12 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 					consume(σ, h1, p, a1, m, (h2, s2) =>
 						Q(h2, Combine(s1, s2))))
 
-			// /* Implies <: BooleanExpr */
-			// case ast.Implies(e0, a0) if !φ.isPure =>
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// branch(t0, c,
-						// (c2: C) => consume(σ, h, p, a0, m, c2 + ImplBranching(true, e0, t0), Q),
-						// (c2: C) => Q(h, Unit, c2 + ImplBranching(false, e0, t0))))
+			/* Implies <: BooleanExpr */
+			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
+				evale(σ, e0, m, t0 =>
+					branch(t0,
+            consume(σ, h, p, a1, m, Q),
+						Q(h, Unit)))
 
 			// /* IfThenElse <: Expression */
 			// case ast.IfThenElse(e0, a1, a2) =>

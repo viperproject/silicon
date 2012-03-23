@@ -1,6 +1,7 @@
 package ch.ethz.inf.pm.silicon.interfaces.decider
 
 import silAST.programs.symbols.{Function => SILFunction}
+import silAST.domains.{Domain => SILDomain}
 
 import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Term, PermissionTerm, Var}
@@ -18,6 +19,7 @@ trait Decider[V, ST <: Store[V, ST], H <: Heap[H],
 
 	/* TODO: Decouple Decider from ast.Function */
 	def emitFunctionDeclaration(f: SILFunction)
+  def emitDomainDeclaration(d: SILDomain)
 	
 	def enableSmokeChecks(enable: Boolean)
 	def checkSmoke: Boolean

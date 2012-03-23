@@ -5,6 +5,7 @@ import com.weiglewilczek.slf4s.Logging
 
 import silAST.programs.symbols.{Function => SILFunction}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import silAST.domains.{Domain => SILDomain}
 
 import ch.ethz.inf.pm.silicon
 import silicon.interfaces.{VerificationResult, Warning, Success}
@@ -18,6 +19,7 @@ import silicon.state.terms.{Term, Eq, Not, Var, Less, /* AtLeast, AtMost, Greate
 		IntLiteral, Mu, */ Combine, FApp, And, Or, True,
 		SortWrapper, /* LockMode, */ PermissionTerm, ZeroPerms, FullPerms}
 // import silicon.ast
+// import silicon.state.terms.dsl._
 import silicon.reporting.WarningMessages.{SmokeDetected}
 import silicon.reporting.ErrorMessages.{FractionMightBeNegative,
 		FractionMightBeGT100}
@@ -96,8 +98,9 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		val asserted =
 			if (t.isInstanceOf[Eq]) {
 				/* Simple check to see if 't0 == t0' is to be asserted. */
+        /* TODO: Equip Eq with an extractor object that simplifies to True() */
 				val tEq = t.asInstanceOf[Eq]
-				tEq.p0 == tEq.p1
+				tEq.t0 == tEq.t1
 			} else
 				false
 
@@ -226,6 +229,9 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 
 	def emitFunctionDeclaration(f: SILFunction) =
     prover.declareSymbol(f.name, null)
+    
+	def emitDomainDeclaration(d: SILDomain) =
+    prover.axiomatiseDomain(d)
 
 	/* TODO: Have TermConverter declare a default sort */
 	// def fresh = prover.fresh("$t", terms.sorts.Int)

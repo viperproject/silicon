@@ -14,6 +14,20 @@ import ch.ethz.inf.pm.silicon
 // import silicon.interfaces.state.{Heap, Permission}
 import silicon.utils.collections.mapReduceLeft
 
+/* Why not have a Term[S <: Sort]?
+ * Then we cannot have optimising extractor objects anymore, because these
+ * don't take type parameters. However, defining a DSL seems to only be
+ * possible when Term can be parameterised ...
+ * Hm, reusing e.g. Times for Ints and Perms seems to be problematic w.r.t.
+ * to optimising extractor objects because the optimisations depend on the
+ * sort, e.g. IntLiteral(a) * IntLiteral(b) ~~> IntLiteral(a * b),
+ *            Perms(t) * FullPerms() ~~> Perms(t)
+ * It would be better if we could specify dsl.Operand for different
+ * Term[Sorts], along with the optimisations. Maybe some type level
+ * programming can be used to have an implicit that applies the
+ * optimisations, as done in the work on the type safe builder pattern.
+ */
+
 /* TODO: At least Term and Sort should go to the interfaces package.
  *       Maybe also Var and Literal.
  */
@@ -49,9 +63,9 @@ object sorts {
   object Perms extends Sort { override val toString = "Perms" }
   // val Perms = DataTypeSort(silAST.types.permissionType)
   
-  // case class NonRef(domain: String) extends Sort {
-    // override val toString = "NonRef[%s]".format(domain)
-  // }
+  case class UserSort(domain: String) extends Sort {
+    override val toString = format(domain)
+  }
 }
 
 // object types {
@@ -110,8 +124,16 @@ sealed trait Term {
 sealed trait IntegerTerm extends Term { override val sort = sorts.Int }
 sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 sealed trait ComparisonTerm extends BooleanTerm
-sealed trait PermissionTerm extends Term { override val sort = sorts.Perms }
 sealed trait SnapshotTerm extends Term { override val sort = sorts.Snap }
+
+sealed trait PermissionTerm extends Term {
+  override val sort = sorts.Perms
+  
+  def *(other: Term) = PermTimes(this, other)
+  def +(other: Term) = PermPlus(this, other)
+  def -(other: Term) = PermMinus(this, other)
+  def <(other: Term) = PermLess(this, other)
+}
 
 /* Symbols */
 
@@ -236,7 +258,7 @@ sealed trait BinaryOperator extends Term {
 }
 
 case class Plus(val t0: Term, val t1: Term)
-    extends BinaryOperator
+    extends BinaryOperator with IntegerTerm
 		/* with commonnodes.Plus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
 
 // object Plus extends Function2[Term, Term, Term] {
@@ -252,7 +274,7 @@ case class Plus(val t0: Term, val t1: Term)
 	// def unapply(t: Plus) = Some((t.p0, t.p1))
 // }
 
-case class Minus(val t0: Term, val t1: Term) extends BinaryOperator
+case class Minus(val t0: Term, val t1: Term) extends BinaryOperator with IntegerTerm
 		/* with commonnodes.Minus[Term] with commonnodes.StructuralEqualityBinOp[Term] */
 		
 // object Minus extends Function2[Term, Term, Term] {
@@ -268,7 +290,7 @@ case class Minus(val t0: Term, val t1: Term) extends BinaryOperator
 	// def unapply(t: Minus) = Some((t.p0, t.p1))
 // }
 
-case class Times(val t0: Term, val t1: Term) extends BinaryOperator
+case class Times(val t0: Term, val t1: Term) extends BinaryOperator with IntegerTerm
 		/* with commonnodes.Times[Term] with commonnodes.StructuralEqualityBinOp[Term] */
 		
 // object Times extends Function2[Term, Term, Term] {
@@ -478,56 +500,56 @@ object Perms extends Function1[Term, PermissionTerm] {
   def unapply(tp: Perms) = Some(tp.t)
 }
 
-// /* case */ class PermTimes(val p0: Term, val p1: Term) extends Permissions
+/* case */ class PermTimes(val t0: Term, val t1: Term) extends BinaryOperator with PermissionTerm
 
-// object PermTimes extends Function2[Term, Term, Permissions] {
-  // def apply(t0: Term, t1: Term) = (t0, t1) match {
-    // case (FullPerms(), p) => Perms(p)
-    // case (p, FullPerms()) => Perms(p)
-    // case (ZeroPerms(), _) => ZeroPerms()
-    // case (_, ZeroPerms()) => ZeroPerms()
-    // case (_, _) => new PermTimes(t0, t1)
-  // }
+object PermTimes extends Function2[Term, Term, PermissionTerm] {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (FullPerms(), t) => Perms(t)
+    case (t, FullPerms()) => Perms(t)
+    case (ZeroPerms(), _) => ZeroPerms()
+    case (_, ZeroPerms()) => ZeroPerms()
+    case (_, _) => new PermTimes(t0, t1)
+  }
   
-  // def unapply(pt: PermTimes) = Some((pt.p0, pt.p1))
-// }
+  def unapply(pt: PermTimes) = Some((pt.t0, pt.t1))
+}
 
-// /* case */ class PermPlus(val p0: Term, val p1: Term) extends Permissions
+/* case */ class PermPlus(val t0: Term, val t1: Term) extends BinaryOperator with PermissionTerm
 
-// object PermPlus extends Function2[Term, Term, Permissions] {
-  // def apply(t0: Term, t1: Term) = (t0, t1) match {
-    // case (ZeroPerms(), p) => Perms(p)
-    // case (p, ZeroPerms()) => Perms(p)
-    // case (_, _) => new PermPlus(t0, t1)
-  // }
+object PermPlus extends Function2[Term, Term, PermissionTerm] {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (ZeroPerms(), t) => Perms(t)
+    case (t, ZeroPerms()) => Perms(t)
+    case (_, _) => new PermPlus(t0, t1)
+  }
   
-  // def unapply(pp: PermPlus) = Some((pp.p0, pp.p1))
-// }
+  def unapply(pp: PermPlus) = Some((pp.t0, pp.t1))
+}
 
-// /* case */ class PermMinus(val p0: Term, val p1: Term) extends Permissions
+/* case */ class PermMinus(val t0: Term, val t1: Term) extends BinaryOperator with PermissionTerm
 
-// object PermMinus extends Function2[Term, Term, Permissions] {
-  // def apply(t0: Term, t1: Term) = (t0, t1) match {
-    // case (p, ZeroPerms()) => Perms(p)
-    // case (p0, p1) if p0 == p1 => ZeroPerms()
-    // case (_, _) => new PermMinus(t0, t1)
-  // }
+object PermMinus extends Function2[Term, Term, PermissionTerm] {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (p, ZeroPerms()) => Perms(p)
+    case (p0, p1) if p0 == p1 => ZeroPerms()
+    case (_, _) => new PermMinus(t0, t1)
+  }
   
-  // def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
-// }
+  def unapply(pm: PermMinus) = Some((pm.t0, pm.t1))
+}
 
-// /* case */ class PermLess(val p0: Term, val p1: Term) extends BooleanTerm {
-  // override val toString = "%s < %s".format(p0, p1)
-// }
+/* case */ class PermLess(val t0: Term, val t1: Term) extends BinaryOperator with BooleanTerm {
+  override val toString = "%s < %s".format(t0, t1)
+}
 
-// object PermLess extends Function2[Term, Term, BooleanTerm] {
-  // def apply(t0: Term, t1: Term) = (t0, t1) match {
-    // case (p0, p1) if p0 == p1 => False()
-    // case (_, _) => new PermLess(t0, t1)
-  // }
+object PermLess extends Function2[Term, Term, BooleanTerm] {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
+    case (t0, t1) if t0 == t1 => False()
+    case (_, _) => new PermLess(t0, t1)
+  }
   
-  // def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
-// }
+  def unapply(pl: PermLess) = Some((pl.t0, pl.t1))
+}
 
 /* Domains */
 
@@ -588,3 +610,32 @@ object utils {
     assert(t.sort == s, "Expected %s %s to be of sort %s, but found %s.".format(desc, t, s, t.sort))
   }
 }
+
+/* A DSL facilitating working with Terms */
+
+// object dsl {
+  // case class TermOperand private[dsl](t: Term) {
+    // def +(other: TermOperand) = TermOperand(Plus(t, other.t))
+    // def -(other: TermOperand) = TermOperand(Minus(t, other.t))
+    // def *(other: TermOperand) = TermOperand(Times(t, other.t))
+    
+    // def <(other: TermOperand) = TermOperand(Less(t, other.t))
+  // }
+
+  // implicit def termToTermOperand(t: Term): TermOperand = 
+    // TermOperand(t)
+  
+  // implicit def termOperandToTerm(ato: TermOperand): Term =
+    // ato.t
+  
+  // implicit def termToPermissionTerm(t: Term): PermissionTerm =
+    // wrapTermInPerms(t)
+    
+  // implicit def termOperandToPermissions(ato: TermOperand): PermissionTerm =
+    // wrapTermInPerms(ato.t)
+  
+  // private[dsl] def wrapTermInPerms(t: Term): PermissionTerm = {
+    // utils.assertSort(t, "term", sorts.Perms)
+    // t
+  // }
+// }

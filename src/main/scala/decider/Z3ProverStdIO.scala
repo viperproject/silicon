@@ -3,6 +3,7 @@ package ch.ethz.inf.pm.silicon.decider
 import java.io.{PrintWriter, BufferedWriter, FileWriter, File,
 		InputStreamReader, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable.{HashMap, Stack}
+import silAST.domains.{Domain => SILDomain}
 
 // import silAST.programs.symbols.{Function => SILFunction}
 
@@ -167,6 +168,10 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
 
 		write(str)
 	}
+  
+  def axiomatiseDomain (d: SILDomain) {
+    logComment("; Axiomatise " + d)
+  }
   
   // def declareSortWrappers() {
   // }

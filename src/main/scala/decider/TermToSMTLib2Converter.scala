@@ -64,14 +64,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
 		/* Arithmetics */
 			
-		// case Minus(t0, t1) =>
-			// "(- " + convert(t0) + " " + convert(t1) + ")"
+		case Minus(t0, t1) =>
+			"(- " + convert(t0) + " " + convert(t1) + ")"
 
-		// case Plus(t0, t1) =>
-			// "(+ " + convert(t0) + " " + convert(t1) + ")"
+		case Plus(t0, t1) =>
+			"(+ " + convert(t0) + " " + convert(t1) + ")"
 
-		// case Times(t0, t1) =>
-			// "(* " + convert(t0) + " " + convert(t1) + ")"
+		case Times(t0, t1) =>
+			"(* " + convert(t0) + " " + convert(t1) + ")"
 
 		// case Div(t0, t1) =>
 			// "(div " + convert(t0) + " " + convert(t1) + ")"
@@ -79,7 +79,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		// case Mod(t0, t1) =>
 			// "(mod " + convert(t0) + " " + convert(t1) + ")"
 			
-		// /* Arithmetic comparisons */
+		/* Arithmetic comparisons */
 
 		case Less(t0, t1) =>
 			"(< " + convert(t0) + " " + convert(t1) + ")"
@@ -166,40 +166,70 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case ZeroPerms() => "$Perms.Zero"
     case Perms(t) => convert(t)
     
-		// // case PermMinus(t0, t1) =>
-			// // "(- " + convert(t0) + " " + convert(t1) + ")"
+		case PermMinus(t0, t1) =>
+			"(- " + convert(t0) + " " + convert(t1) + ")"
 
-		// // case PermPlus(t0, t1) =>
-			// // "(+ " + convert(t0) + " " + convert(t1) + ")"
+		case PermPlus(t0, t1) =>
+			"(+ " + convert(t0) + " " + convert(t1) + ")"
 
-		// // case PermTimes(t0, t1) =>
-			// // "(* " + convert(t0) + " " + convert(t1) + ")"
+		case PermTimes(t0, t1) =>
+			"(* " + convert(t0) + " " + convert(t1) + ")"
 
-    // // case PermLess(t0, t1) =>
-      // // "(< " + convert(t0) + " " + convert(t1) + ")"
+    case PermLess(t0, t1) =>
+      "(< " + convert(t0) + " " + convert(t1) + ")"
     
     /* Domains */
     
-    case DomainPApp(dp, ts) => (dp.name, ts) match {
-      case ("eval", t0 :: Nil) => convert(t0)
+    case DomainPApp(dp, ts) => dp match {
+      case silAST.types.booleanEvaluate => convert(ts(0))
     }
     
-    case DomainFApp(f, ts, sort) => (f.name, ts) match {
-      /* Boolean */
-      case ("true", Nil) => "true"
-      case ("false", Nil) => "false"      
-      case ("¬", t0 :: Nil) => "(not " + convert(t0) + ")"
-      case ("∧", t0 :: t1 :: Nil) => "(and " + convert(t0) + " " + convert(t1) + ")"
-      case ("∨", t0 :: t1 :: Nil) => "(or " + convert(t0) + " " + convert(t1) + ")"
-      case ("→", t0 :: t1 :: Nil) => "(==> " + convert(t0) + " " + convert(t1) + ")"
-      case ("↔", t0 :: t1 :: Nil) => "(<==> " + convert(t0) + " " + convert(t1) + ")"
+    // case DomainPApp(dp, ts) => (dp.name, ts) match {
+      // case ("eval", t0 :: Nil) => convert(t0)
+    // }
+    
+    case DomainFApp(f, ts, sort) =>
+      sys.error("Found unsupported %s".format(term))
+      // f match {
+      // case silAST.types.booleanTrue => "true"
+      // case silAST.types.booleanFalse => "false"
+      // case silAST.types.booleanNegation => "(not %s)".format(convert(ts(0)))
+      // case silAST.types.booleanConjunction => "(and %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.booleanDisjunction => "(or %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.booleanImplication => "(implies %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.booleanEquivalence => "(iff %s %s)".format(convert(ts(0)), convert(ts(1)))
+      
+      // case silAST.types.nullFunction => "$null"
+      // case silAST.types.referenceEquality => "(= %s %s)".format(convert(ts(0)), convert(ts(1)))
+      
+      // case silAST.types.integerAddition => "(+ %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.integerSubtraction => "(- %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.integerMultiplication => "(* %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case silAST.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
+    // }
+    
+    // case DomainFApp(f, ts, sort) => (f.name, ts) match {
+      // /* Boolean */
+      // case ("true", Nil) => "true"
+      // case ("false", Nil) => "false"      
+      // case ("!", t0 :: Nil) => "(not " + convert(t0) + ")"
+      // case ("∧", t0 :: t1 :: Nil) => "(and " + convert(t0) + " " + convert(t1) + ")"
+      // case ("∨", t0 :: t1 :: Nil) => "(or " + convert(t0) + " " + convert(t1) + ")"
+      // case ("→", t0 :: t1 :: Nil) => "(==> " + convert(t0) + " " + convert(t1) + ")"
+      // case ("↔", t0 :: t1 :: Nil) => "(<==> " + convert(t0) + " " + convert(t1) + ")"
         
-      /* Integers */
+      // /* Integers */
 
-      case ("*", t0 :: t1 :: Nil) => "(* " + convert(t0) + " " + convert(t1) + ")"
-      case ("+", t0 :: t1 :: Nil) => "(+ " + convert(t0) + " " + convert(t1) + ")"
-      case ("-", t0 :: t1 :: Nil) => "(- " + convert(t0) + " " + convert(t1) + ")"
-    }
+      // case ("*", t0 :: t1 :: Nil) => "(* " + convert(t0) + " " + convert(t1) + ")"
+      // case ("+", t0 :: t1 :: Nil) => "(+ " + convert(t0) + " " + convert(t1) + ")"
+      // case ("-", t0 :: t1 :: Nil) => "(- " + convert(t0) + " " + convert(t1) + ")"
+      
+      // /* Integers */
+      
+      // case ("null", Nil) => "$null"
+    // }
     
 		/* Auxiliary terms */
 
@@ -236,10 +266,17 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case sorts.Bool => "Bool"
 		case sorts.Perms => "Int"
 		case sorts.Snap => "$Snap"
-		case sorts.Ref => "$Ref"
-
-		// case sorts.NonRef("Boolean") => "Bool"
-		// case sorts.NonRef("Integer") => "Int"
+		case sorts.Ref => "$Ref"  
+    
+    case sorts.UserSort(d) => (
+      d.replace('[', '<')
+       .replace(']', '>')
+       .replace(',', '~')
+       /* TODO: Get Domain from UserSort, use TypeConverter to convert parameter types. */
+       .replace("Integer", "Int")
+       .replace("Permission", "$Perms")
+       .replace("ref", "$Ref"))
+		// case sorts.UserSort(name) => name.replace("")
 	}
 	
 	// private def quantifierToString(q: Quantifier) = q match {

@@ -62,9 +62,9 @@ class Silicon(val config: Config) extends Logging {
 		val chunkFinder =
 			new DefaultChunkFinder[V, ST, H, PC, S](decider, stateFormatter)
 		
-		// val dlb = permissionFactory.Full + permissionFactory.Eps
-    val dlb = state.terms.Times(state.terms.FullPerms(), state.terms.EpsPerms())
-		
+    val dlb = state.terms.Perms(state.terms.PermTimes(state.terms.FullPerms(),
+                                                  state.terms.EpsPerms()))
+
 		val heapMerger =
 			new DefaultHeapMerger[V, ST, H, PC, S](
 						decider, dlb, bookkeeper, stateFormatter)

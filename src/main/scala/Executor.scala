@@ -27,6 +27,7 @@ import state.terms
 import state.terms.{Term, Null, /* BottomLock, */ True, False /* , Token, LockMode, */
 		/* AtLeast, IntLiteral*/, FullPerms => Full }
 // import state.terms.utils.¬
+// import state.terms.dsl._
 import state.{DefaultFieldChunk, DefaultPredicateChunk, /* DefaultTokenChunk, */
 		TypeConverter}
 import reporting.ErrorMessages.{AssertionMightNotHold, InvocationFailed,
@@ -98,15 +99,30 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
          * statements, but only as long as there is no verification failure.
          */
         bb.successors.foldLeft(success){case (r, edge) => {
+          println("@"*60)
           logger.debug("[execn]\n  " + edge)
 
             (r
           && evale(σ1, edge.condition, m, tCond => {
-                tConds = tConds + tCond
-                branch(tCond,
-                  execn(σ1, edge.target, m, (σ2: S) =>
-                    Q(σ2)),
-                  Success())}))}}
+                // println(":"*60)
+                // println("  edge.target = " + edge.target)
+                // println("  edge.target.controlStatement = " + edge.target.controlStatement)
+                // println("  edge.target.implementation = " + edge.target.implementation)
+                // println("  edge.target.implementation.body = " + edge.target.implementation.body)
+                // println("  edge.target.implementation.body.startNode = " + edge.target.implementation.body.startNode)
+                
+                edge.target match {
+                  case bb: SILBasicBlock =>                
+                    tConds = tConds + tCond
+                    branch(tCond,
+                      execn(σ1, bb, m, (σ2: S) =>
+                        Q(σ2)),
+                        // Q(σ1),
+                      Success())
+                      
+                  case _ => sys.error("Unsupported block %s of type %s".format(edge.target, edge.target.getClass.getSimpleName))
+                  
+                  }}))}}
          /* If no verification failure ocurred, negate the conditions and
           * continue, which is most likely verifiying the postcondition.
           */
@@ -169,7 +185,34 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         // logger.error("  a.sourceLocation = " + a.sourceLocation)
         consume(σ, Full(), a, AssertionMightNotHold(stmt), (σ1, _) =>
           Q(σ1))
-        
+          
+			case silAST.methods.implementations.CallStatement(sl, lhs, rcvr, meth, args) =>
+				// val meth = call.m
+
+				evalt(σ, rcvr, m, tRcvr =>
+					if (decider.assert(tRcvr ≠ Null()))
+						evalts(σ, args, m, tArgs => {
+							// val insγ = Γ(((This, t0) :: meth.ins.zip(tArgs)).toMap)
+							val insγ = Γ(meth.signature.parameters.variables.zip(tArgs).toMap)
+							val err = InvocationFailed(rcvr.toString, meth.name, sl)
+							consume(σ \ insγ, Full(), ast.utils.collections.BigAnd(meth.signature.precondition), err, (σ1, _) => {
+								// val outsγ = Γ(meth.outs.map(v => (v, fresh(v))).toMap)
+								// val σ2 = σ1 \+ outsγ \ (g = σ.h)
+								// val post = ast.And(
+									// meth.post,
+									// ast.LockChangeExpr(meth.lockchange).setPos(meth.pos))
+								// produce(σ2, fresh, Full, post, err, c3, (σ3, c4) => {
+									// val lhsγ = Γ(lhs
+																// .map(_.asVariable)
+																// .zip(meth.outs)
+																// .map(p => (p._1, σ3.γ(p._2))).toMap)
+									// Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
+                Q(σ)})})
+					else
+						Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
+            
+
+
 			// case BlockStmt(body) => execs(σ, body, m, c, Q)
 
 			// /* TODO: Assert should not forward Q but 'terminate' after the assertion
@@ -235,34 +278,6 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 												// exec(σ, els.get, m, c2 + IfBranching(false, guard, t), Q)
 											// else
 												// Q(σ, c2)))
-
-			// case call @ Call(lhs, e0, id, args) =>
-				// assert(call.m != null, "Call.m may not be null") /* @elidable */
-				// assert(call.declares.isEmpty, /* @elidable */
-					// "Call.declares is expected to be empty, but was " +
-							// call.declares)
-
-				// val meth = call.m
-
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// if (decider.assert(t0 ≠ Null())) {
-						// evals(σ, args, m, c1, (tArgs, c2) => {
-							// val insγ = Γ(((This, t0) :: meth.ins.zip(tArgs)).toMap)
-							// val err = InvocationFailed(call)
-							// consume(σ \ insγ, Full, meth.pre, err, c2, (σ1, _, c3) => {
-								// val outsγ = Γ(meth.outs.map(v => (v, fresh(v))).toMap)
-								// val σ2 = σ1 \+ outsγ \ (g = σ.h)
-								// val post = ast.And(
-									// meth.post,
-									// ast.LockChangeExpr(meth.lockchange).setPos(meth.pos))
-								// produce(σ2, fresh, Full, post, err, c3, (σ3, c4) => {
-									// val lhsγ = Γ(lhs
-																// .map(_.asVariable)
-																// .zip(meth.outs)
-																// .map(p => (p._1, σ3.γ(p._2))).toMap)
-									// Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})}
-					// else
-						// Failure(m at stmt dueTo ReceiverMightBeNull(e0, id), c1))
 
 			// case call @ CallAsync(lhs, e0, id, args) =>
 				// val meth = call.m

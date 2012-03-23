@@ -897,9 +897,48 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
         Q(terms.FullPerms())
 
-      case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) =>
-        evalts(σ, es, m, ts =>
-          Q(terms.DomainFApp(f, ts, toSort(f.signature.resultType))))
+      case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) => f match {
+        case silAST.types.booleanTrue => Q(terms.True())
+        case silAST.types.booleanFalse => Q(terms.False())
+        
+        case silAST.types.booleanNegation =>
+          evalt(σ, cs, es(0), m, t0 =>
+            Q(terms.Not(t0)))
+        
+        case silAST.types.booleanConjunction =>
+          evalBinOp(σ, cs, es(0), es(1), terms.And, m, Q)
+        
+        case silAST.types.booleanDisjunction =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Or, m, Q)
+          
+        case silAST.types.booleanImplication =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Implies, m, Q)
+        
+        case silAST.types.booleanEquivalence =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Iff, m, Q)
+        
+        case silAST.types.nullFunction => Q(terms.Null())
+        
+        case silAST.types.referenceEquality =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Eq, m, Q)
+        
+        case silAST.types.integerAddition =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Plus, m, Q)
+        
+        case silAST.types.integerSubtraction =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Minus, m, Q)
+          
+        case silAST.types.integerMultiplication =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Times, m, Q)
+
+        // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
+        // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
+        // case silAST.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
+        
+        case _ =>
+          evalts(σ, es, m, ts =>
+            Q(terms.DomainFApp(f, ts, toSort(f.signature.resultType))))
+      }
            // if f.name == "True" =>
            
         // Q(terms.True())

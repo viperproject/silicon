@@ -4,6 +4,7 @@ import ch.ethz.inf.pm.silicon
 import silicon.interfaces.state.{Heap, FieldChunk, PredicateChunk, Chunk,
     PersistentChunk}
 import silicon.state.terms.{Term, PermissionTerm /*, Token, Plus, Minus */}
+// import silicon.state.terms.dsl._
 
 /*
  * Chunks
