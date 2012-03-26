@@ -188,11 +188,11 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
           assume(t,
             Q(h, Unit))
         else {
-          println("\n[consume/_]")
-          println("  φ = " + φ)
-          println("  φ.sourceLocation = " + φ.sourceLocation)
-          println("  φ.sourceLocation = " + φ.sourceLocation.getClass.getName)
-          println("  m.text = " + m.text)
+          // println("\n[consume/_]")
+          // println("  φ = " + φ)
+          // println("  φ.sourceLocation = " + φ.sourceLocation)
+          // println("  φ.sourceLocation = " + φ.sourceLocation.getClass.getName)
+          // println("  m.text = " + m.text)
           Failure(m at φ dueTo ExpressionMightEvaluateToFalse)})
 		}
 

@@ -29,7 +29,6 @@ import interfaces.state.factoryUtils.Ø
 // import interfaces.ast.specialVariables
 // import interfaces.ast.specialVariables.{This}
 // import ast.utils.collections.SetAnd
-import ast.utils.collections.BigAnd
 import state.{/* FractionalPermission, */ TypeConverter}
 import state.terms.{Term, Null, FullPerms => Full}
 import reporting.ErrorMessages.{ExecutionFailed, NotSupported,
@@ -83,12 +82,7 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 
 	def verify(impl: SILImplementation): VerificationResult = {
 		logger.debug("\n\n" + "-" * 10 + " IMPLEMENTATION " + impl.method.name + "-" * 10 + "\n")
-		
-    /* ATTENTION: Must be set before using e.g. BigAnd, otherwise an NPE will
-     *            be thrown!
-     */
-    ast.utils.collections.ef = impl.method.expressionFactory
-    
+
 		decider.prover.logComment(
         "%s %s %s".format("-" * 10, impl.method.name, "-" * 10))
 
@@ -112,8 +106,10 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 		val PreErr = SpecsMalformed withDetails(impl.method.name)
 		val PostErr = PostconditionMightNotHold
 		
-		val pre = BigAnd(impl.method.signature.precondition.args)
-		val post = BigAnd(impl.method.signature.postcondition.args)
+    val BigAnd = ast.utils.collections.BigAnd(impl.method.expressionFactory) _
+    
+		val pre = BigAnd(impl.method.signature.precondition.args, Predef.identity)
+		val post = BigAnd(impl.method.signature.postcondition.args, Predef.identity)
 											// :: LockChangeExpr(meth.lockchange).setPos(meth.pos)
 											// :: Nil)
 

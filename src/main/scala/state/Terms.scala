@@ -63,8 +63,8 @@ object sorts {
   object Perms extends Sort { override val toString = "Perms" }
   // val Perms = DataTypeSort(silAST.types.permissionType)
   
-  case class UserSort(domain: String) extends Sort {
-    override val toString = format(domain)
+  case class UserSort(domain: silAST.domains.Domain) extends Sort {
+    override val toString = domain.toString
   }
 }
 
@@ -143,7 +143,13 @@ sealed trait PermissionTerm extends Term {
 }
 
 object Var extends Function2[String, Sort, Var] {
-  def apply(id: String, sort: Sort) = new Var(id.replace('#', '_'), sort)
+  def apply(id: String, sort: Sort) = {
+    val z3Id = (id.replace('#', '_')
+                  .replace("τ", "$tau"))
+    
+    new Var(z3Id, sort)
+  }
+  
   def unapply(v: Var) = Some((v.id, v.sort))
 }
 
@@ -309,11 +315,9 @@ case class Times(val t0: Term, val t1: Term) extends BinaryOperator with Integer
 	// def unapply(t: Times) = Some((t.p0, t.p1))
 // }
 
-// case class Div(p0: Term, p1: Term) extends ArithmeticTerm
-		// /* with commonnodes.Div[Term] */
+case class Div(val t0: Term, val t1: Term) extends BinaryOperator with IntegerTerm
 
-// case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
-		// /* with commonnodes.Mod[Term] */
+case class Mod(val t0: Term, val t1: Term) extends BinaryOperator with IntegerTerm
 
 /* Boolean expression terms */		
 

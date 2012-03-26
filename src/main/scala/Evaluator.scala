@@ -24,6 +24,7 @@ import interfaces.decider.Decider
 import interfaces.reporting.{Message}
 // import interfaces.ast.specialVariables
 // import interfaces.ast.specialVariables.This
+import interfaces.state.FieldChunk
 import interfaces.state.factoryUtils.Ø
 /*
 import ast.{Expression, Variable, FieldAccess, Old, ArithmeticExpr,
@@ -333,8 +334,24 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         predicate match {
           /* PermissionTerm */
           
+          case silAST.types.permissionEQ =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Eq, m, Q)
+
+          case silAST.types.permissionNE =>
+            val neq = (t1: Term, t2: Term) => t1 ≠ t2
+            evalBinOp(σ, cs, args.args(0), args.args(1), neq, m, Q)
+
+          case silAST.types.permissionLE =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtMost, m, Q)
+
           case silAST.types.permissionLT =>
-            evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Less, m, Q)
+
+          case silAST.types.permissionGE =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
+
+          case silAST.types.permissionGT =>
+            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Greater, m, Q)
 
           /* Integers */
 
@@ -362,12 +379,12 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           case dp: silAST.domains.DomainPredicate =>
                    // if dp.name == "EvalBool[Boolean[]]" =>
             
-            assert(dp.signature.parameterTypes.length == 1, "Expected one argument to %s (%s), but found %s: %s".format(dp, dp.getClass.getName, dp.signature.parameterTypes.length, dp.signature.parameterTypes))
+            // assert(dp.signature.parameterTypes.length == 1, "Expected one argument to %s (%s), but found %s: %s".format(dp, dp.getClass.getName, dp.signature.parameterTypes.length, dp.signature.parameterTypes))
             
-            logger.debug("[evale2/DomainPredicateExpression/DomainPredicate]")
-            logger.debug("  dp = " + dp)
-            logger.debug("  dp.name = " + dp.name)
-            logger.debug("  dp.signature.parameterTypes = " + dp.signature.parameterTypes)
+            // logger.debug("[evale2/DomainPredicateExpression/DomainPredicate]")
+            // logger.debug("  dp = " + dp)
+            // logger.debug("  dp.name = " + dp.name)
+            // logger.debug("  dp.signature.parameterTypes = " + dp.signature.parameterTypes)
             
             evalts(σ, args, m, tArgs =>
               Q(terms.DomainPApp(dp, tArgs)))
@@ -873,13 +890,22 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
       case silAST.expressions.terms.ProgramVariableTerm(v) => Q(σ.γ(v))
       
+      case silAST.expressions.terms.PermTerm(rcvr, field) =>
+        evalFieldDeref(σ, cs, rcvr, field, m, fc =>
+          Q(fc.perm))
+          
+        // evalt(σ, cs, es(0), m, t0 =>
+        // Q(terms.PermTerm())
+      
       case silAST.expressions.terms.FieldReadTerm(rcvr, field) =>
-				evalt(σ, cs, rcvr, m, tRcvr =>
-					if (decider.assert(tRcvr ≠ Null()))
-						withFieldChunk(σ.h, tRcvr, field.name, rcvr.toString, m at rcvr, fc =>
-							Q(fc.value))
-					else
-						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
+        evalFieldDeref(σ, cs, rcvr, field, m, fc =>
+          Q(fc.value))
+				// evalt(σ, cs, rcvr, m, tRcvr =>
+					// if (decider.assert(tRcvr ≠ Null()))
+						// withFieldChunk(σ.h, tRcvr, field.name, rcvr.toString, m at rcvr, fc =>
+							// Q(fc.value))
+					// else
+						// Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
       
       case npt @ silAST.expressions.terms.NoPermissionTerm() =>
            // if npt.eq(silAST.expressions.terms.NoPermissionTerm) =>
@@ -930,6 +956,12 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           
         case silAST.types.integerMultiplication =>
           evalBinOp(σ, cs, es(0), es(1), terms.Times, m, Q)
+          
+        case silAST.types.integerDivision =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Div, m, Q)
+          
+        case silAST.types.integerModulo =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Mod, m, Q)
 
         // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
         // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
@@ -970,6 +1002,21 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 		evalt(σ, cs, e0, m, t0 =>
 			evalt(σ, cs, e1, m, t1 =>
 				Q(termOp(t0, t1))))
+        
+  private def evalFieldDeref(σ: S,
+                             cs: List[SILFunction],
+                             rcvr: silAST.expressions.terms.Term,
+                             field: silAST.programs.symbols.Field,
+                             m: Message,
+                             Q: FieldChunk => VerificationResult)
+                            : VerificationResult = {
+
+    evalt(σ, cs, rcvr, m, tRcvr =>
+      if (decider.assert(tRcvr ≠ Null()))
+        withFieldChunk(σ.h, tRcvr, field.name, rcvr.toString, m at rcvr, Q)
+      else
+        Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
+  }
 
 	override def pushLocalState() {
 		fappCacheFrames = fappCacheFrames.push(fappCache)

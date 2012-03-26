@@ -188,26 +188,38 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
           
 			case silAST.methods.implementations.CallStatement(sl, lhs, rcvr, meth, args) =>
 				// val meth = call.m
-
+        val BigAnd = ast.utils.collections.BigAnd(meth.expressionFactory) _
+    
 				evalt(σ, rcvr, m, tRcvr =>
 					if (decider.assert(tRcvr ≠ Null()))
 						evalts(σ, args, m, tArgs => {
 							// val insγ = Γ(((This, t0) :: meth.ins.zip(tArgs)).toMap)
-							val insγ = Γ(meth.signature.parameters.variables.zip(tArgs).toMap)
+              /* TODO: Remove hack! */
+              val This = σ.γ.values.keys.find(_.name == "this").get
+              // println("\n[Executor/CallStatement]")
+              // println("  This = " + This)
+              // println("  σ.γ.values = " + σ.γ.values)
+              // println("  σ.γ.values.contains = " + σ.γ.values.contains(This))
+              /* TODO: Can variable substitution be used instead of creating insγ? */
+              val xs: Seq[(SILProgramVariable, Term)] = (This, tRcvr) +: meth.signature.parameters.variables.drop(1).zip(tArgs)
+							val insγ = Γ(xs.toMap)
+              // println("  insγ.values = " + insγ.values)
+              // println("  insγ.values.contains = " + insγ.values.contains(This))
+              // println("  insγ = " + insγ)
 							val err = InvocationFailed(rcvr.toString, meth.name, sl)
-							consume(σ \ insγ, Full(), ast.utils.collections.BigAnd(meth.signature.precondition), err, (σ1, _) => {
-								// val outsγ = Γ(meth.outs.map(v => (v, fresh(v))).toMap)
-								// val σ2 = σ1 \+ outsγ \ (g = σ.h)
+              val pre = BigAnd(meth.signature.precondition, Predef.identity)
+							consume(σ \ insγ, Full(), pre, err, (σ1, _) => {
+								val outsγ = Γ(meth.signature.results.map(v => (v, fresh(v))).toMap)
+								val σ2 = σ1 \+ outsγ \ (g = σ.h)
+                val post = BigAnd(meth.signature.postcondition, Predef.identity)
 								// val post = ast.And(
 									// meth.post,
 									// ast.LockChangeExpr(meth.lockchange).setPos(meth.pos))
-								// produce(σ2, fresh, Full, post, err, c3, (σ3, c4) => {
-									// val lhsγ = Γ(lhs
-																// .map(_.asVariable)
-																// .zip(meth.outs)
-																// .map(p => (p._1, σ3.γ(p._2))).toMap)
-									// Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
-                Q(σ)})})
+								produce(σ2, fresh, Full(), post, err, σ3 => {
+                  val lhsγ = Γ(lhs.zip(meth.signature.results)
+                                  .map(p => (p._1, σ3.γ(p._2))).toMap)
+									Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ))})})})
+                // Q(σ)})})
 					else
 						Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
             

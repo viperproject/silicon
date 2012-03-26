@@ -73,6 +73,7 @@
 (declare-const $Perms.Write $Perms)
 (declare-const $Perms.Zero $Perms)
 
+(assert (= $Perms.Zero 0))
 (assert (< $Perms.Zero $Perms.Write))
 
 ; --- Sort wrappers ---

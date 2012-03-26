@@ -73,11 +73,11 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case Times(t0, t1) =>
 			"(* " + convert(t0) + " " + convert(t1) + ")"
 
-		// case Div(t0, t1) =>
-			// "(div " + convert(t0) + " " + convert(t1) + ")"
+		case Div(t0, t1) =>
+			"(div " + convert(t0) + " " + convert(t1) + ")"
 
-		// case Mod(t0, t1) =>
-			// "(mod " + convert(t0) + " " + convert(t1) + ")"
+		case Mod(t0, t1) =>
+			"(mod " + convert(t0) + " " + convert(t1) + ")"
 			
 		/* Arithmetic comparisons */
 
@@ -189,7 +189,22 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     // }
     
     case DomainFApp(f, ts, sort) =>
-      sys.error("Found unsupported %s".format(term))
+      // println("\n[TermToSMTLib2Converter/DomainFApp]")
+      // println("  f = " + f)
+      // println("  f.domain = " + f.domain)
+      // println("  f.domain.freeTypeVariables = " + f.domain.freeTypeVariables)
+      // println("  f.domain.getType = " + f.domain.getType)
+      // println("  ts = " + ts)
+      // println("  sort = " + sort)
+      
+      val domainStr = convert(f.domain)
+      val argsStr = ts.map(convert).mkString(" ")
+      
+      "(%s.%s %s)".format(domainStr, f.name, argsStr)
+      // val funId = 
+      
+      // sys.error("Found unsupported %s".format(term))
+      
       // f match {
       // case silAST.types.booleanTrue => "true"
       // case silAST.types.booleanFalse => "false"
@@ -267,16 +282,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case sorts.Perms => "Int"
 		case sorts.Snap => "$Snap"
 		case sorts.Ref => "$Ref"  
-    
-    case sorts.UserSort(d) => (
-      d.replace('[', '<')
-       .replace(']', '>')
-       .replace(',', '~')
-       /* TODO: Get Domain from UserSort, use TypeConverter to convert parameter types. */
-       .replace("Integer", "Int")
-       .replace("Permission", "$Perms")
-       .replace("ref", "$Ref"))
-		// case sorts.UserSort(name) => name.replace("")
+    case sorts.UserSort(d) => convert(d)
 	}
 	
 	// private def quantifierToString(q: Quantifier) = q match {
@@ -301,4 +307,20 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
   // private def assertLength(ts: Seq[_], l: Int, o: AnyRef) {
     // assert(ts.length == l, "Expected %s argument to %s, but found %s".format(l, o, ts.length))
   // }
+  
+  /* TODO: Seems more senseful to work on ast....DataTypes than on Domains */
+  private def convert(d: silAST.domains.Domain) = {
+    // println("  d = " + d)
+    // println("  d.getClass.getName = " + d.getClass.getName)
+    // println("  d.freeTypeVariables = " + d.freeTypeVariables)
+    // println("  d.getType = " + d.getType)  
+  (
+    d.fullName.replace('[', '<')
+              .replace(']', '>')
+              .replace(',', '~')
+              /* TODO: Get Domain from UserSort, use TypeConverter to convert parameter types. */
+              .replace("Integer", "Int")
+              .replace("Permission", "$Perms")
+              .replace("ref", "$Ref"))
+  }
 }

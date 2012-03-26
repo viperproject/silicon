@@ -178,11 +178,11 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 										// if (id == "mu") lockSupport.Mu(σ.h, t0, snap)
 										// else True()
 									val (mh, mts) = merge(σ.h, H(fc :: Nil))
-                  println("\n[Produce/PermissionExpression]")
-                  println("  fc = " + fc)
-                  println("  σ.h = " + σ.h)
-                  println("  mh = " + mh)
-                  println("  mts = " + mts)
+                  // println("\n[Produce/PermissionExpression]")
+                  // println("  fc = " + fc)
+                  // println("  σ.h = " + σ.h)
+                  // println("  mh = " + mh)
+                  // println("  mts = " + mts)
 									assume(mts /* + tMu */,
 										Q(mh))})))
 								// case Some(errmsg) =>
