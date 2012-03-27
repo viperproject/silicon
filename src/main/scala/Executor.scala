@@ -34,10 +34,10 @@ import reporting.ErrorMessages.{AssertionMightNotHold, InvocationFailed,
 		HeapWriteFailed, HeapReadFailed,
 		FoldingFailed, UnfoldingFailed, /* ForkFailed, JoinFailed,
 		ShareFailed, AcquireFailed, ReleaseFailed, */ InvalidLockBounds,
-		UnshareFailed, MonitorInvariantMightNotHold, SpecsMalformed, 
+		UnshareFailed, MonitorInvariantMightNotHold, SpecsMalformed,
 		LoopInvNotPreserved, LoopInvNotEstablished, SendFailed, ReceiveFailed}
-import reporting.Reasons.{ExpressionMightEvaluateToFalse,		
-		InsufficientPermissions, TokenNotWriteable, ChannelMightBeNull, 
+import reporting.Reasons.{ExpressionMightEvaluateToFalse,
+		InsufficientPermissions, TokenNotWriteable, ChannelMightBeNull,
 		OperationRequiresCredits, MightNotBeAboveWaitlevel, ObjectMightBeLocked,
 		ObjectMightNotBeLocked, ObjectMightBeShared, ReceiverMightBeNull}
 // import reporting.{IfBranching}
@@ -58,10 +58,10 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
             with Consumer[SILProgramVariable, SILExpression, ST, H, S]
             with Producer[SILProgramVariable, SILExpression, ST, H, S]
             with Brancher =>
-							
+
 	protected val decider: Decider[SILProgramVariable, ST, H, PC, S]
 	import decider.{fresh, assume}
-							
+
 	protected val stateFactory: StateFactory[SILProgramVariable, ST, H, S]
 	import stateFactory._
 
@@ -70,23 +70,23 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 
 	// protected val lockSupport: LockSupport[ST, H, S]
 	// protected val creditSupport: CreditSupport[ST, H, S]
-	
+
 	protected val typeConverter: TypeConverter
-	import typeConverter.toSort	
-	
+	import typeConverter.toSort
+
 	protected val heapMerger: HeapMerger[H]
 	import heapMerger.merge
-	
+
 	// protected val mapSupport: MapSupport[V, ST, H, S]
 	// import mapSupport.update
-	
+
 	protected val chunkFinder: ChunkFinder[H]
 	import chunkFinder.withFieldChunk
 
 	protected val stateFormatter: StateFormatter[SILProgramVariable, ST, H, S, String]
 
 	protected val config: Config
-  
+
   def execn(σ: S, bb: SILBasicBlock, m: Message, Q: S => VerificationResult)
           : VerificationResult = {
 
@@ -99,8 +99,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
          * statements, but only as long as there is no verification failure.
          */
         bb.successors.foldLeft(success){case (r, edge) => {
-          println("@"*60)
-          logger.debug("[execn]\n  " + edge)
+          logger.debug("\n[execn] " + edge)
 
             (r
           && evale(σ1, edge.condition, m, tCond => {
@@ -110,18 +109,74 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                 // println("  edge.target.implementation = " + edge.target.implementation)
                 // println("  edge.target.implementation.body = " + edge.target.implementation.body)
                 // println("  edge.target.implementation.body.startNode = " + edge.target.implementation.body.startNode)
-                
+
                 edge.target match {
-                  case bb: SILBasicBlock =>                
+                  case bb: SILBasicBlock =>
                     tConds = tConds + tCond
                     branch(tCond,
                       execn(σ1, bb, m, (σ2: S) =>
                         Q(σ2)),
-                        // Q(σ1),
                       Success())
-                      
+
+                  case lb: silAST.methods.implementations.LoopBlock =>
+                    println("[execs/LoopBlock]")
+                    println("  edge.condition = " + edge.condition)
+                    println("  lb.condition = " + lb.condition)
+                    val BigAnd = ast.utils.collections.BigAnd(lb.implementation.factory) _
+                    val specsErr = SpecsMalformed withDetails("the loop")
+                    val inv = lb.invariant
+                    val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
+                    val notGuard = lb.implementation.factory.makeUnaryExpression(lb.condition.sourceLocation, silAST.symbols.logical.Not()(lb.condition.sourceLocation), lb.condition)
+                    val invAndNotGuard = BigAnd(inv :: notGuard :: Nil, Predef.identity)
+
+                    val bodyγ = Γ(σ1.γ.values.keys.foldLeft(σ1.γ.values)((map, v) => map.updated(v, fresh(v))))
+                    val σW = Ø \ (γ = bodyγ)
+
+                    /* Verify loop body (including well-formedness check) */
+                    (produce(σW, fresh, Full(), inv, specsErr, σ2 =>
+                      execn(σ2 \ (g = σ1.h), lb.body.startNode, m, σ3 =>
+                        consume(σ3, Full(), lb.invariant, LoopInvNotPreserved, (σ4, _) =>
+                          Success())))
+                      &&
+                    /* Verify call-site */
+                    consume(σ1, Full(), inv, LoopInvNotEstablished, (σ2, _) => {
+                      val σ3 = σ2 \ (g = σ1.h, γ = bodyγ)
+                      produce(σ3, fresh, Full(), invAndNotGuard, m, σ4 =>
+                        Q(σ4 \ (g = σ1.g)))}))
+			// case ws @ WhileStmt(guard, _, _, _, body) =>
+
+				// /* Order of arguments to ast.And is important! The inv must be the
+				 // * first conjunct, because it may contain access assertions which are
+				 // * required in order for the guard to be well-defined.
+				 // */
+				// val lkch = ast.LockChangeExpr(ws.lkch).setPos(ws.pos)
+				// val inv = ast.And(ws.inv, lkch)
+				// val invAndGuard = ast.And(inv, guard)
+				// val invAndNotGuard = ast.And(inv, ast.Not(guard))
+				// val specsErr = SpecsMalformed withDetails("the loop")
+
+				// /* Havoc local variables that are assigned to in the loop body but
+				 // * that have been declared outside of it, i.e. before the loop.
+				 // */
+        // val bodyγ =
+          // Γ((ws.targets -- ws.declares)
+							// .foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
+
+				// /* Verify loop body (including well-formedness check) */
+				// val σW = Ø \ (γ = bodyγ)
+				// (produce(σW, fresh, Full, invAndGuard, specsErr, c, (σ1, c1) =>
+					// exec(σ1 \ (g = σ1.h), body, m, c1, (σ2, c2) =>
+						// consume(σ2, Full, inv, LoopInvNotPreserved, c2, (σ3, _, c3) =>
+							// Success(c3))))
+					// &&
+				// /* Verify call-site */
+				// consume(σ, Full, inv, LoopInvNotEstablished, c, (σ1, _, c1) => {
+					// val σ2 = σ1 \ (g = σ.h, γ = bodyγ)
+					// produce(σ2, fresh, Full, invAndNotGuard, m, c1, (σ3, c2) =>
+						// Q(σ3 \ (g = σ.g), c2))}))
+                    
                   case _ => sys.error("Unsupported block %s of type %s".format(edge.target, edge.target.getClass.getSimpleName))
-                  
+
                   }}))}}
          /* If no verification failure ocurred, negate the conditions and
           * continue, which is most likely verifiying the postcondition.
@@ -145,7 +200,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 		logger.debug("\nEXECUTE " + stmt.toString)
 		logger.debug("  " + stmt.getClass.getName)
 		logger.debug(stateFormatter.format(σ))
-		
+
 		decider.prover.logComment("")
 		decider.prover.logComment(stmt.toString)
 
@@ -157,11 +212,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
       case silAST.methods.implementations.AssignmentStatement(_, v, rhs) =>
         evalt(σ, rhs, m, tRhs =>
           Q(σ \+ (v, tRhs)))
-          
+
       case silAST.methods.implementations.FieldAssignmentStatement(_, rcvr, field, rhs) =>
         val err = HeapWriteFailed at stmt
         val tRcvr = σ.γ(rcvr)
-				// evalt(σ, rcvr, m, tRcvr =>        
+				// evalt(σ, rcvr, m, tRcvr =>
 					if (decider.assert(tRcvr ≠ Null()))
             evalt(σ, rhs, m, tRhs =>
 						// execRValue(σ, rhs, m, c1, (σ1, t1, c2) =>
@@ -169,7 +224,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 								Q(σ \- fc \+ DefaultFieldChunk(tRcvr, field.name, tRhs, fc.perm))))
 					else
 						Failure(err dueTo ReceiverMightBeNull(rcvr.toString, field.name))
-          
+
       case silAST.methods.implementations.InhaleStatement(_, a) =>
         // eval(σ, e, m, c, (t, c1) =>
 					// assume(t, c1, (c2: C) =>
@@ -185,11 +240,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         // logger.error("  a.sourceLocation = " + a.sourceLocation)
         consume(σ, Full(), a, AssertionMightNotHold(stmt), (σ1, _) =>
           Q(σ1))
-          
+
 			case silAST.methods.implementations.CallStatement(sl, lhs, rcvr, meth, args) =>
 				// val meth = call.m
         val BigAnd = ast.utils.collections.BigAnd(meth.expressionFactory) _
-    
+
 				evalt(σ, rcvr, m, tRcvr =>
 					if (decider.assert(tRcvr ≠ Null()))
 						evalts(σ, args, m, tArgs => {
@@ -222,7 +277,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                 // Q(σ)})})
 					else
 						Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
-            
+
 
 
 			// case BlockStmt(body) => execs(σ, body, m, c, Q)
@@ -237,7 +292,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 			// case Assert(a) =>
 				// val err = AssertionMightNotHold(stmt)
 
-				// a match {	
+				// a match {
 					// case _: ast.False =>
 						// if (decider.checkSmoke)
 							// Success(c)
@@ -332,7 +387,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 					// decider.getFieldChunk(σ.h, t0, "joinable") match {
 						// case Some(fc) if fc.value == True() =>
 							// /* TODO: Declare TokenSupport and use σ.h.tokens.get(...)
-							 // *        - we wouldn't have to either cast or match here to get 
+							 // *        - we wouldn't have to either cast or match here to get
 							 // *          the desired chunk type
 							 // *        - we remove the fragile coupling via literal "$env"
 							 // */
@@ -443,7 +498,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 						// withFieldChunk(σ.h, t0, "mu", Full, e0, err, c1, fc =>
 							// if (decider.assert(fc.value ≡ BottomLock())) {
 								// val tMu1 = fresh("$mu")
-								
+
 								// /* When sharing c between lb and ub, the correct proceeding
 								 // * order is:
 								 // *  1. assert c.mu != lockbottom
@@ -455,7 +510,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 								 // *     in ub
 								 // *  5. consume monitor invariant
 								 // */
-							 
+
 								// /* It is always crucial that the mu-version is incremented
 								 // * (lockSupport.MuUpdate) before a mu-term depending on it
 								 // * (lockSupport.Mu) is added to the path conditions, since
@@ -537,7 +592,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 										// val ts: Set[Term] =
 											// Set(lockSupport.Holds(σ2.h, t0, LockMode.None),
 													// lockSupport.Mu(σ2.h, t0, BottomLock()))
-										// assume(ts, c3, (c4: C) =>	{								
+										// assume(ts, c3, (c4: C) =>	{
 											// val nfc = DefaultFieldChunk(t0, id, BottomLock(), Full)
 											// Q(σ2 \+ nfc, c4)})}))
 							// else
@@ -552,7 +607,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 						// "Expected WhileStmt.newInvs to be empty, but was " + ws.newInvs)
 
 				// /* Order of arguments to ast.And is important! The inv must be the
-				 // * first conjunct, because it may contain access assertions which are 
+				 // * first conjunct, because it may contain access assertions which are
 				 // * required in order for the guard to be well-defined.
 				 // */
 				// val lkch = ast.LockChangeExpr(ws.lkch).setPos(ws.pos)
@@ -597,7 +652,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
             // e0.typ.typ.fieldMembers.forall(m => {
 							// /* Predicates don't need to be considered since they must be
 							 // * unfolded in order to have write-access to all fields.
-							 // */							
+							 // */
               // result = decider.getFieldChunk(σ1.h, t0, m.id) match {
 								// case Some(fc) =>
 									// if (decider.assertWriteAccess(fc.perm)) {
@@ -630,7 +685,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 			// case receive @ Receive(e, outs) =>
 				// val ch = e.typ.typ.asInstanceOf[ChannelClass].ch
 				// val err = ReceiveFailed(e) at receive
-				
+
 				// eval(σ, e, m, c, (tCh, c1) =>
 					// if (decider.assert(tCh ≠ Null()))
 						// if (decider.assert(AtLeast(creditSupport.Credits(σ.h, tCh), 1)))
@@ -697,11 +752,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 							// else tInits(i)
 						// if (f.id == "mu")
 							// tMuFct = lockSupport.Mu(σ.h, tRcvr, t)
-						
+
 						// (f.id, DefaultFieldChunk(tRcvr, f.id, t, Full))}).toMap
 
 				// val (h, tMerged) = merge(σ.h, H(fieldChunks.values))
-				// /* TODO: Should we use LM.release here instead of lockSupport.Holds? 
+				// /* TODO: Should we use LM.release here instead of lockSupport.Holds?
 				 // * Syxc might conclude from
 				 // *   assume waitlevel << c1
 				 // *   var c2 := new Cell
@@ -723,7 +778,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 						// assume(ts, c1, (c2: C) =>
 							// establishOrdering(σ1 \+ (vRcvr, tRcvr), eRcvr, lbs, ubs, m, c2, c3 =>
 								// Q(σ1, tRcvr, c3)))
-					
+
 					// case _ =>
 						// assume(ts, c1, (c2: C) =>
 							// Q(σ1, tRcvr, c2))}})}
@@ -791,7 +846,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 					// lbs.map(f(_, faMu).setPos(faMu.pos))),
 				// SetAnd(
 					// ubs.map(f(faMu, _).setPos(faMu.pos))))
-					
+
 		// consume(σ, Full, pre, InvalidLockBounds, c, (_, _, c1) =>
 			// eval(σ, post, m, c1, (tPost, c2) =>
 				// assume(tPost, c2, (c3: C) =>
@@ -802,7 +857,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 	// implicit def expressionToVariable(v: VariableExpr): Variable = v.asVariable
 	// implicit def intToAst(i: Int): ast.IntLiteral = ast.IntLiteral(i)
 	// implicit def intToTerm(i: Int): IntLiteral = IntLiteral(i)
-	
+
 	// /* TODO: Move into appropriate utility package */
 	// protected object astUtils {
 		// def MuFieldAccess(e: Expression) = {
@@ -812,7 +867,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 
 			// fa
 		// }
-		
+
 		// def MaxLockLess(e: Expression) = {
 			// val mll = ast.MaxLockLess(MuFieldAccess(e))
 			// mll.setPos(e.pos)

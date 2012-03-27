@@ -186,17 +186,17 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 	protected def evale2(σ: S, cs: List[SILFunction], e: SILExpression, m: Message, 
 			Q: Term => VerificationResult): VerificationResult = {
 	
-		/* For debugging only */
-		e match {
-			// case _: ast.Literal =>
-			// case _: Variable =>
-			// case _: VariableExpr =>
-			// case ThisExpr() =>
-			case _ =>
-				logger.debug("\nEVALUATING EXPRESSION " + e)
-				logger.debug("  " + e.getClass.getName)
-				logger.debug(stateFormatter.format(σ))
-		}
+		// /* For debugging only */
+		// e match {
+			// // case _: ast.Literal =>
+			// // case _: Variable =>
+			// // case _: VariableExpr =>
+			// // case ThisExpr() =>
+			// case _ =>
+				// logger.debug("\nEVALUATING EXPRESSION " + e)
+				// logger.debug("  " + e.getClass.getName)
+				// logger.debug(stateFormatter.format(σ))
+		// }
 	
 		e match {
 			// case _ =>
@@ -874,18 +874,18 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                        Q: Term => VerificationResult)
                      : VerificationResult = {
 
-		/* For debugging only */
-		e match {
-			// case _: ast.Literal =>
-			// case _: Variable =>
-			// case _: VariableExpr =>
-			// case ThisExpr() =>
-			case _ =>
-				logger.debug("\nEVALUATING TERM " + e)
-				logger.debug("  " + e.getClass.getName)
-				logger.debug("  " + e.sourceLocation)
-				logger.debug(stateFormatter.format(σ))
-		}
+		// /* For debugging only */
+		// e match {
+			// // case _: ast.Literal =>
+			// // case _: Variable =>
+			// // case _: VariableExpr =>
+			// // case ThisExpr() =>
+			// case _ =>
+				// logger.debug("\nEVALUATING TERM " + e)
+				// logger.debug("  " + e.getClass.getName)
+				// logger.debug("  " + e.sourceLocation)
+				// logger.debug(stateFormatter.format(σ))
+		// }
 	
 		e match {
       case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
