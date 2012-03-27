@@ -335,47 +335,52 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           /* PermissionTerm */
           
           case silAST.types.permissionEQ =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Eq, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.Eq, m, Q)
 
           case silAST.types.permissionNE =>
             val neq = (t1: Term, t2: Term) => t1 ≠ t2
-            evalBinOp(σ, cs, args.args(0), args.args(1), neq, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), neq, m, Q)
 
           case silAST.types.permissionLE =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtMost, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.AtMost, m, Q)
 
           case silAST.types.permissionLT =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Less, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
 
           case silAST.types.permissionGE =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.AtLeast, m, Q)
 
           case silAST.types.permissionGT =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Greater, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.Greater, m, Q)
 
           /* Integers */
 
           case silAST.types.integerEQ =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Eq, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.Eq, m, Q)
 
           case silAST.types.integerNE =>
             val neq = (t1: Term, t2: Term) => t1 ≠ t2
-            evalBinOp(σ, cs, args.args(0), args.args(1), neq, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), neq, m, Q)
 
           case silAST.types.integerLE =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtMost, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.AtMost, m, Q)
 
           case silAST.types.integerLT =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Less, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
 
           case silAST.types.integerGE =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.AtLeast, m, Q)
 
           case silAST.types.integerGT =>
-            evalBinOp(σ, cs, args.args(0), args.args(1), terms.Greater, m, Q)
+            evalBinOp(σ, cs, args(0), args(1), terms.Greater, m, Q)
 
           /* Booleans */
 
+          case silAST.types.booleanEvaluate =>
+            evalt(σ, cs, args(0), m, Q)
+
+          /* Domains not directly handled */
+            
           case dp: silAST.domains.DomainPredicate =>
                    // if dp.name == "EvalBool[Boolean[]]" =>
             
@@ -387,7 +392,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             // logger.debug("  dp.signature.parameterTypes = " + dp.signature.parameterTypes)
             
             evalts(σ, args, m, tArgs =>
-              Q(terms.DomainPApp(dp, tArgs)))
+              Q(terms.DomainFApp(dp.fullName, tArgs, terms.sorts.Bool)))
             
             // Q(terms.True())
             // sys.error("")
@@ -969,7 +974,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         
         case _ =>
           evalts(σ, es, m, ts =>
-            Q(terms.DomainFApp(f, ts, toSort(f.signature.resultType))))
+            Q(terms.DomainFApp(f.fullName, ts, toSort(f.signature.resultType))))
       }
            // if f.name == "True" =>
            

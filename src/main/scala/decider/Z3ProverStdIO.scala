@@ -144,38 +144,43 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
 	
 	def logComment(str: String) = if (isLoggingCommentsEnabled) log("; " + str)
 
-	private def freshId(prefix: String) = prefix + "@" + counter.next()
+	private def freshId(prefix: String) =
+    sanitiseIdentifier(prefix + "@" + counter.next())
 	
   /* TODO: Could we decouple fresh from Var, e.g. return the used freshId, without
    *       losing conciseness at call-site?
    */
 	def fresh(id: String, sort: Sort) = {
 		val v = Var(freshId(id), sort)
-		val decl = "(declare-fun %s () %s)".format(v.id, convert(v.sort))
+		val decl = "(declare-fun %s () %s)".format(sanitiseIdentifier(v.id), convert(v.sort))
 		write(decl)
 
 		v
 	}
 	
-  def declareSymbol(id: String, sort: Sort, argSorts: Sort*) {
+  def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort) {
 	// def declare(f: SILFunction) {
 		// val str = "(declare-fun %s (Int Int %s) %s)".format(
 					// f.name,
 					// (f.ins.map(v => convert(typeConverter.toSort(v.t))).mkString(" ")),
 					// convert(typeConverter.toSort(f.out)))
     println("[Prover] declaring symbol " + id)
-    val str = "; Declare symbol " + id
+    // val str = "; declareSymbol %s: %s -> %s ".format(id, argSorts.mkString(" -> "), sort)
+
+    val str = "(declare-fun %s (%s) %s)".format(sanitiseIdentifier(id),
+                                                argSorts.map(convert).mkString(" "),
+                                                convert(sort))
 
 		write(str)
 	}
   
-  def axiomatiseDomain (d: SILDomain) {
-    logComment("; Axiomatise " + d)
+  def declareSort(sort: Sort) {
+    println("[Prover] declaring sort " + sort)
+    val str = "(declare-sort %s)".format(convert(sort))
+
+		write(str)
   }
-  
-  // def declareSortWrappers() {
-  // }
-	
+
 	def resetAssertionCounter() = assertionCounter = 0
 	def resetAssumptionCounter() = assumptionCounter = 0
 	

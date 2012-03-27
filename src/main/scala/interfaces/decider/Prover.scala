@@ -1,7 +1,7 @@
 package ch.ethz.inf.pm.silicon.interfaces.decider
 
-import silAST.programs.symbols.{Function => SILFunction}
-import silAST.domains.{Domain => SILDomain}
+// import silAST.programs.symbols.{Function => SILFunction}
+// import silAST.domains.{Domain => SILDomain}
 
 import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Sort, Term, Var}
@@ -24,6 +24,7 @@ trait Prover {
 	def logComment(str: String)
 	
 	def fresh(id: String, sort: Sort): Var
-  def declareSymbol(id: String, sort: Sort, argSorts: Sort*)
-  def axiomatiseDomain (d: SILDomain)
+  def declareSort(sort: Sort)
+  def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort)
+  // def axiomatiseDomain (d: SILDomain)
 }

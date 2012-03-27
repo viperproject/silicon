@@ -46,7 +46,7 @@ class DefaultTypeConverter extends TypeConverter {
     // case silAST.types.NonReferenceDataType(_, domain) if domain.name == "Boolean[]" =>
       // sorts.Bool
 
-    case silAST.types.NonReferenceDataType(_, domain) => sorts.UserSort(domain)
+    case silAST.types.NonReferenceDataType(_, domain) => sorts.UserSort(domain.fullName)
     
 		// case _ => sys.error("Unsupported data type " + typ + ", " + typ.getClass.getName)
 	}

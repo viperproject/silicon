@@ -14,7 +14,7 @@ import state.terms._
 
 class TermToSMTLib2Converter extends TermConverter[String, String] {
   def convert(term: Term): String = term match {
-		case Var(id: String, _) => id
+		case Var(id: String, _) => sanitiseIdentifier(id)
 		case lit: Literal => literalToString(lit)
 
 		// case Ite(t0, t1, t2) =>
@@ -180,15 +180,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     
     /* Domains */
     
-    case DomainPApp(dp, ts) => dp match {
-      case silAST.types.booleanEvaluate => convert(ts(0))
-    }
+    // case DomainPApp(dp, ts) => dp match {
+      // case silAST.types.booleanEvaluate => convert(ts(0))
+    // }
     
     // case DomainPApp(dp, ts) => (dp.name, ts) match {
       // case ("eval", t0 :: Nil) => convert(t0)
     // }
     
-    case DomainFApp(f, ts, sort) =>
+    case DomainFApp(id, ts, sort) =>
       // println("\n[TermToSMTLib2Converter/DomainFApp]")
       // println("  f = " + f)
       // println("  f.domain = " + f.domain)
@@ -197,10 +197,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
       // println("  ts = " + ts)
       // println("  sort = " + sort)
       
-      val domainStr = convert(f.domain)
+      // val domainStr = convert(f.domain)
       val argsStr = ts.map(convert).mkString(" ")
       
-      "(%s.%s %s)".format(domainStr, f.name, argsStr)
+      "(%s %s)".format(sanitiseIdentifier(id), argsStr)
       // val funId = 
       
       // sys.error("Found unsupported %s".format(term))
@@ -282,7 +282,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		case sorts.Perms => "Int"
 		case sorts.Snap => "$Snap"
 		case sorts.Ref => "$Ref"  
-    case sorts.UserSort(d) => convert(d)
+    case sorts.UserSort(id) => sanitiseIdentifier(id)
 	}
 	
 	// private def quantifierToString(q: Quantifier) = q match {
@@ -317,10 +317,17 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
   (
     d.fullName.replace('[', '<')
               .replace(']', '>')
-              .replace(',', '~')
+              .replace(',', '~'))
               /* TODO: Get Domain from UserSort, use TypeConverter to convert parameter types. */
-              .replace("Integer", "Int")
-              .replace("Permission", "$Perms")
-              .replace("ref", "$Ref"))
+              // .replace("Integer", "Int")
+              // .replace("Permission", "$Perms")
+              // .replace("ref", "$Ref"))
   }
+
+  def sanitiseIdentifier(str: String) = (
+    str.replace('#', '_')
+       .replace("τ", "$tau")
+       .replace('[', '<')
+       .replace(']', '>')
+       .replace(',', '~'))
 }

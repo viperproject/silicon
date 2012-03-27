@@ -238,9 +238,8 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 	def verify(prog: SILProgram): List[VerificationResult] = {
     // logger.debug("prog = " + prog)
 		emitFunctionDeclarations(prog.functions)
-    // emitDomainDeclarations(prog.domains)
-		/* TODO: config.stopOnFirstError must also be considered here! */
-		// prog flatMap verify
+    emitDomainDeclarations(prog.domains)
+    decider.prover.push()
 
     var it: Iterator[SILImplementation] =
       prog.methods.flatMap(_.implementations).iterator
@@ -267,22 +266,25 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 	}
 	
 	private def emitFunctionDeclarations(fs: Set[SILFunction]) {
-    fs foreach decider.emitFunctionDeclaration
-
-		decider.prover.push()
+    fs.foreach(f =>
+      decider.prover.declareSymbol(f.name,
+                                   f.signature.parameters.map(p => typeConverter.toSort(p.dataType)),
+                                   typeConverter.toSort(f.signature.result.dataType)))
 	}
   
-	private def emitDomainDeclarations(ds: Set[SILDomain]) {
-    val ds1 = (ds -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
+	private def emitDomainDeclarations(domains: Set[SILDomain]) {
+    val additionalDomains = (domains -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
     
-    ds1.foreach(d => {
-      println("d = " + d)
-      // println(d.isInstanceOf[silAST.domains.DomainInstance])
+    additionalDomains.foreach(d => {
+      decider.prover.logComment("; Axiomatising " + d.fullName)
+      
+      decider.prover.declareSort(typeConverter.toSort(d.getType))
+      
+      d.functions.foreach(f =>
+        decider.prover.declareSymbol(f.fullName,
+                                     f.signature.parameterTypes.map(typeConverter.toSort),
+                                     typeConverter.toSort(f.signature.resultType)))
     })
-    
-    ds1 foreach decider.emitDomainDeclaration
-
-		decider.prover.push()
 	}
 	
 	// def verify(decl: TopLevelDecl): List[VerificationResult] = decl match {

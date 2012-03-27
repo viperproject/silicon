@@ -63,8 +63,8 @@ object sorts {
   object Perms extends Sort { override val toString = "Perms" }
   // val Perms = DataTypeSort(silAST.types.permissionType)
   
-  case class UserSort(domain: silAST.domains.Domain) extends Sort {
-    override val toString = domain.toString
+  case class UserSort(id: String) extends Sort {
+    override val toString = id
   }
 }
 
@@ -138,20 +138,20 @@ sealed trait PermissionTerm extends Term {
 /* Symbols */
 
 /* TODO: Rename to Constant/Symbol/Id */
-/* case */ class Var(val id: String, val sort: Sort) extends Term {
+case class Var(val id: String, val sort: Sort) extends Term {
   override val toString = id
 }
 
-object Var extends Function2[String, Sort, Var] {
-  def apply(id: String, sort: Sort) = {
-    val z3Id = (id.replace('#', '_')
-                  .replace("τ", "$tau"))
+// object Var extends Function2[String, Sort, Var] {
+  // def apply(id: String, sort: Sort) = {
+    // val z3Id = (id.replace('#', '_')
+                  // .replace("τ", "$tau"))
     
-    new Var(z3Id, sort)
-  }
+    // new Var(z3Id, sort)
+  // }
   
-  def unapply(v: Var) = Some((v.id, v.sort))
-}
+  // def unapply(v: Var) = Some((v.id, v.sort))
+// }
 
 case class FApp(val f: silAST.programs.symbols.Function,
                 val s: Term,
@@ -557,20 +557,21 @@ object PermLess extends Function2[Term, Term, BooleanTerm] {
 
 /* Domains */
 
-case class DomainFApp(val f: silAST.domains.DomainFunction,
+// case class DomainFApp(val f: silAST.domains.DomainFunction,
+case class DomainFApp(val id: String,
                       val tArgs: Seq[Term],
                       val sort: Sort)
     extends Term {
 
-  override val toString = f.name + tArgs.mkString("(", ", ", ")")
+  override val toString = id + tArgs.mkString("(", ", ", ")")
 }
 
-case class DomainPApp(val p: silAST.domains.DomainPredicate,
-                      val tArgs: Seq[Term])
-    extends BooleanTerm {
+// case class DomainPApp(val p: silAST.domains.DomainPredicate,
+                      // val tArgs: Seq[Term])
+    // extends BooleanTerm {
 
-  override val toString = p.name + tArgs.mkString("(", ", ", ")")
-}
+  // override val toString = p.name + tArgs.mkString("(", ", ", ")")
+// }
 
 /* Auxiliary terms */
 

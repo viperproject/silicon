@@ -227,12 +227,6 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		r
 	}
 
-	def emitFunctionDeclaration(f: SILFunction) =
-    prover.declareSymbol(f.name, null)
-    
-	def emitDomainDeclaration(d: SILDomain) =
-    prover.axiomatiseDomain(d)
-
 	/* TODO: Have TermConverter declare a default sort */
 	// def fresh = prover.fresh("$t", terms.sorts.Int)
 	def fresh = prover.fresh("$t", terms.sorts.Snap)
