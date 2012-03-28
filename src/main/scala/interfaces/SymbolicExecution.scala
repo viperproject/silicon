@@ -43,15 +43,19 @@ trait Consumer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] 
 							Q: (S, Term) => VerificationResult): VerificationResult
 }
 
-trait Executor[V, BB, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def execn(σ: S, bb: BB, m: Message,
-					  Q: S => VerificationResult): VerificationResult
+trait Executor[V, X, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
+	// def execn(σ: S, bb: BB, m: Message,
+					  // Q: S => VerificationResult): VerificationResult
 
 	// def execs(σ: S, stmts: Seq[STMT], m: Message,
 					  // Q: S => VerificationResult): VerificationResult
 
 	// def exec(σ: S, stmt: STMT, m: Message,
 					 // Q: S => VerificationResult): VerificationResult
+           
+  def exec(σ: S, x: X, m: Message)
+          (Q: S => VerificationResult)
+          : VerificationResult
 }
 
 trait MapSupport[V, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {

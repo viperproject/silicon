@@ -216,8 +216,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			// case ThisExpr() => Q(σ.γ(This), c)
       
       case silAST.expressions.UnaryExpression(op, e0) =>
-        logger.debug("  op = " + op + ", " + op.getClass.getName)
-        logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
+        // logger.debug("  op = " + op + ", " + op.getClass.getName)
+        // logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
         
         op match {
           case silAST.symbols.logical.Not() =>
@@ -226,9 +226,9 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         }
       
       case silAST.expressions.BinaryExpression(op, e0, e1) =>
-        logger.debug("  op = " + op + ", " + op.getClass.getName)
-        logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
-        logger.debug("  e1 = " + e1 + ", " + e1.getClass.getName)
+        // logger.debug("  op = " + op + ", " + op.getClass.getName)
+        // logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
+        // logger.debug("  e1 = " + e1 + ", " + e1.getClass.getName)
 
         op match {
           case silAST.symbols.logical.And() if config.strictConjunctionEvaluation =>
@@ -328,8 +328,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         evalBinOp(σ, cs, eq.term1, eq.term2, terms.Eq, m, Q)
 
       case silAST.expressions.DomainPredicateExpression(predicate, args) =>
-        logger.debug("  predicate = " + predicate + ", " + predicate.getClass.getName)
-        logger.debug("  args = " + args + ", " + args.getClass.getName)
+        // logger.debug("  predicate = " + predicate + ", " + predicate.getClass.getName)
+        // logger.debug("  args = " + args + ", " + args.getClass.getName)
 
         predicate match {
           /* PermissionTerm */

@@ -14,8 +14,11 @@ import silAST.expressions.terms.{Term => SILTerm}
 import silAST.programs.{Program => SILProgram}
 import silAST.programs.symbols.{Function => SILFunction,
     ProgramVariable => SILProgramVariable}
-import silAST.methods.implementations.{ /* Statement => SILStatement, */
-    BasicBlock => SILBasicBlock, Implementation => SILImplementation}
+import silAST.methods.implementations.{
+    /* Statement => SILStatement, */
+    // BasicBlock => SILBasicBlock,
+    ControlFlowGraph => SILControlFlowGraph,
+    Implementation => SILImplementation}
 import silAST.domains.{Domain => SILDomain}
 
 import interfaces.{VerificationResult, Failure, Success, /* MemberVerifier, */
@@ -44,7 +47,7 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 		with    Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
 		with    Producer[SILProgramVariable, SILExpression, ST, H, S]
 		with    Consumer[SILProgramVariable, SILExpression, ST, H, S]
-		with    Executor[SILProgramVariable, SILBasicBlock, ST, H, S] {
+		with    Executor[SILProgramVariable, SILControlFlowGraph, ST, H, S] {
 
 	protected val config: Config
 		
@@ -123,7 +126,7 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 					Success())
 					&&
 				// execs(σ1 \ (g = σ1.h), meth.body, ExecutionFailed, σ2 =>
-				execn(σ1 \ (g = σ1.h), impl.body.startNode, ExecutionFailed, σ2 =>
+				exec(σ1 \ (g = σ1.h), impl.body, ExecutionFailed)(σ2 =>
 					consume(σ2, Full(), post, PostErr, (σ3, _) =>
 						// consume(σ3, Full, DebtFreeExpr().setPos(meth.pos), PostErr, (_, _) =>
 							Success() /* ) */ )))})

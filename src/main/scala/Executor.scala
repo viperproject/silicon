@@ -7,7 +7,11 @@ import silAST.methods.implementations.{Statement => SILStatement}
 // import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 import silAST.expressions.terms.{Term => SILTerm}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
-import silAST.methods.implementations.{BasicBlock => SILBasicBlock}
+import silAST.methods.implementations.{
+  Block => SILBlock,
+  // BasicBlock => SILBasicBlock,
+  CFGEdge => SILCFGEdge,
+  ControlFlowGraph => SILControlFlowGraph}
 
 import interfaces.{Executor, Evaluator, Producer, Consumer, MapSupport,
 		VerificationResult, Failure, Success}
@@ -52,7 +56,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 											H <: Heap[H],
                       PC <: PathConditions[PC],
 											S <: State[SILProgramVariable, ST, H, S]]
-		extends Executor[SILProgramVariable, SILBasicBlock, ST, H, S]
+		extends Executor[SILProgramVariable, SILControlFlowGraph, ST, H, S]
 		{ this:      Logging
             with Evaluator[SILProgramVariable, SILExpression, SILTerm, ST, H, S]
             with Consumer[SILProgramVariable, SILExpression, ST, H, S]
@@ -87,102 +91,109 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 
 	protected val config: Config
 
-  def execn(σ: S, bb: SILBasicBlock, m: Message, Q: S => VerificationResult)
-          : VerificationResult = {
+  def exec(σ: S, cfg: SILControlFlowGraph, m: Message)
+          (Q: S => VerificationResult)
+          : VerificationResult =
 
-    val success = Success().asInstanceOf[VerificationResult]
-    var tConds = Set[Term]()
+		execb(σ, cfg.startNode, m)(Q)
 
-     /* Execute all statements of the current block. */
-    execs(σ, bb.statements, m, σ1 =>
-        /* Successively follow outgoing edges and execute the reached
-         * statements, but only as long as there is no verification failure.
-         */
-        bb.successors.foldLeft(success){case (r, edge) => {
-          logger.debug("\n[execn] " + edge)
+  /* Continues the execution by following the given edge. The target block
+   * is only executed if the edge condition does not contradict with the
+   * given state.
+   */
+  private def follow(σ: S, edge: SILCFGEdge, m: Message)
+                   (Q: S => VerificationResult)
+                   : VerificationResult = {
 
-            (r
-          && evale(σ1, edge.condition, m, tCond => {
-                // println(":"*60)
-                // println("  edge.target = " + edge.target)
-                // println("  edge.target.controlStatement = " + edge.target.controlStatement)
-                // println("  edge.target.implementation = " + edge.target.implementation)
-                // println("  edge.target.implementation.body = " + edge.target.implementation.body)
-                // println("  edge.target.implementation.body.startNode = " + edge.target.implementation.body.startNode)
+    logger.debug("\n[follow] " + edge)
+                   
+    evale(σ, edge.condition, m, tCond =>
+      branch(tCond,
+        execb(σ, edge.target, m)(Q),
+        Q(σ)))
+  }
+  
+  /* Successively follows each edge in the given list. The state gained
+   * by following one node is NOT used when following the next node.
+   * That is, each edge in the list is followed using the initially
+   * given state σ.
+   *
+   */
+  private def follow(σ: S, edges: Set[SILCFGEdge], m: Message)
+                   (Q: S => VerificationResult)
+                   : VerificationResult = {
 
-                edge.target match {
-                  case bb: SILBasicBlock =>
-                    tConds = tConds + tCond
-                    branch(tCond,
-                      execn(σ1, bb, m, (σ2: S) =>
-                        Q(σ2)),
-                      Success())
+		if (edges.nonEmpty)
+			follow(σ, edges.head, m)(_ => /* Notice: The resulting state is discarded. */				
+        follow(σ, edges.tail, m)(Q))
+		else
+      Q(σ)
+  }
+  
+  /* Leaves the given block. A block can be left by two different ways,
+   * depending on its role in the enclosing CFG.
+   *
+   *   - If the block is the end node of the CFG, then Q is executed.
+   *     Q could, for example, check a postcondition or an invariant.
+   *
+   *   - Otherwise, the block's leaving edges (successors) are followed.
+   *
+   */
+  private def leave(σ: S, block: SILBlock, m: Message)
+                   (Q: S => VerificationResult)
+                   : VerificationResult =
 
-                  case lb: silAST.methods.implementations.LoopBlock =>
-                    println("[execs/LoopBlock]")
-                    println("  edge.condition = " + edge.condition)
-                    println("  lb.condition = " + lb.condition)
-                    val BigAnd = ast.utils.collections.BigAnd(lb.implementation.factory) _
-                    val specsErr = SpecsMalformed withDetails("the loop")
-                    val inv = lb.invariant
-                    val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
-                    val notGuard = lb.implementation.factory.makeUnaryExpression(lb.condition.sourceLocation, silAST.symbols.logical.Not()(lb.condition.sourceLocation), lb.condition)
-                    val invAndNotGuard = BigAnd(inv :: notGuard :: Nil, Predef.identity)
+    if (block == block.cfg.endNode) {
+      assert(block.successors.isEmpty, "The end node of a CFG is expected to have no successors.")
+      Q(σ)
+    } else
+      follow(σ, block.successors, m)(_ =>
+        Success())
 
-                    val bodyγ = Γ(σ1.γ.values.keys.foldLeft(σ1.γ.values)((map, v) => map.updated(v, fresh(v))))
-                    val σW = Ø \ (γ = bodyγ)
+  private def execb(σ: S, block: SILBlock, m: Message)
+                   (Q: S => VerificationResult)
+                   : VerificationResult = {
 
-                    /* Verify loop body (including well-formedness check) */
-                    (produce(σW, fresh, Full(), inv, specsErr, σ2 =>
-                      execn(σ2 \ (g = σ1.h), lb.body.startNode, m, σ3 =>
-                        consume(σ3, Full(), lb.invariant, LoopInvNotPreserved, (σ4, _) =>
-                          Success())))
-                      &&
-                    /* Verify call-site */
-                    consume(σ1, Full(), inv, LoopInvNotEstablished, (σ2, _) => {
-                      val σ3 = σ2 \ (g = σ1.h, γ = bodyγ)
-                      produce(σ3, fresh, Full(), invAndNotGuard, m, σ4 =>
-                        Q(σ4 \ (g = σ1.g)))}))
-			// case ws @ WhileStmt(guard, _, _, _, body) =>
+    logger.debug("\n[execb] " + block.label)
+    // println("  block.successors = " + block.successors)
+    // println("  σ.π = " + σ.π)
+                   
+    block match {
+      case bb: silAST.methods.implementations.BasicBlock =>
+        execs(σ, bb.statements, m, σ1 =>
+          leave(σ1, bb, m)(Q))
 
-				// /* Order of arguments to ast.And is important! The inv must be the
-				 // * first conjunct, because it may contain access assertions which are
-				 // * required in order for the guard to be well-defined.
-				 // */
-				// val lkch = ast.LockChangeExpr(ws.lkch).setPos(ws.pos)
-				// val inv = ast.And(ws.inv, lkch)
-				// val invAndGuard = ast.And(inv, guard)
-				// val invAndNotGuard = ast.And(inv, ast.Not(guard))
-				// val specsErr = SpecsMalformed withDetails("the loop")
+      case lb: silAST.methods.implementations.LoopBlock =>
+        // println("[execb/LoopBlock]")
+        // println("  lb.condition = " + lb.condition)
+        // println("  lb.successors = " + lb.successors)
+        
+        val BigAnd = ast.utils.collections.BigAnd(lb.implementation.factory) _
+        val specsErr = SpecsMalformed withDetails("the loop")
+        val inv = lb.invariant
+        val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
+        val notGuard = lb.implementation.factory.makeUnaryExpression(lb.condition.sourceLocation, silAST.symbols.logical.Not()(lb.condition.sourceLocation), lb.condition)
+        val invAndNotGuard = BigAnd(inv :: notGuard :: Nil, Predef.identity)
 
-				// /* Havoc local variables that are assigned to in the loop body but
-				 // * that have been declared outside of it, i.e. before the loop.
-				 // */
-        // val bodyγ =
-          // Γ((ws.targets -- ws.declares)
-							// .foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
+        val σ1 = σ
+        val bodyγ = Γ(σ1.γ.values.keys.foldLeft(σ1.γ.values)((map, v) => map.updated(v, fresh(v))))
+        val σW = Ø \ (γ = bodyγ)
+        
+        // println("  σ1.γ = " + σ1.γ)
+        // println("  σW.γ = " + σW.γ)
 
-				// /* Verify loop body (including well-formedness check) */
-				// val σW = Ø \ (γ = bodyγ)
-				// (produce(σW, fresh, Full, invAndGuard, specsErr, c, (σ1, c1) =>
-					// exec(σ1 \ (g = σ1.h), body, m, c1, (σ2, c2) =>
-						// consume(σ2, Full, inv, LoopInvNotPreserved, c2, (σ3, _, c3) =>
-							// Success(c3))))
-					// &&
-				// /* Verify call-site */
-				// consume(σ, Full, inv, LoopInvNotEstablished, c, (σ1, _, c1) => {
-					// val σ2 = σ1 \ (g = σ.h, γ = bodyγ)
-					// produce(σ2, fresh, Full, invAndNotGuard, m, c1, (σ3, c2) =>
-						// Q(σ3 \ (g = σ.g), c2))}))
-                    
-                  case _ => sys.error("Unsupported block %s of type %s".format(edge.target, edge.target.getClass.getSimpleName))
-
-                  }}))}}
-         /* If no verification failure ocurred, negate the conditions and
-          * continue, which is most likely verifiying the postcondition.
-          */
-      && assume(terms.utils.BigAnd(tConds),
-            Q(σ1)))
+        /* Verify loop body (including well-formedness check) */
+        (produce(σW, fresh, Full(), invAndGuard, specsErr, σ2 =>
+          exec(σ2 \ (g = σ1.h), lb.body, m)(σ3 =>
+            consume(σ3, Full(), inv, LoopInvNotPreserved, (_, _) =>
+              Success())))
+          &&
+        /* Verify call-site */
+        consume(σ1, Full(), inv, LoopInvNotEstablished, (σ2, _) => {
+          val σ3 = σ2 \ (g = σ1.h, γ = bodyγ)
+          produce(σ3, fresh, Full(), invAndNotGuard, m, σ4 =>
+            leave(σ4 \ (g = σ1.g), lb, m)(Q))}))
+    }
   }
 
 	private def execs(σ: S, stmts: Seq[SILStatement], m: Message,
@@ -336,15 +347,6 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 								// Q(σ1 \- fc \+ DefaultFieldChunk(t0, id, t1, fc.perm), c2)))}
 					// else
 						// Failure(err dueTo ReceiverMightBeNull(e0, id), c1))
-
-			// case IfStmt(guard, thn, els) =>
-				// eval(σ, guard, m, c, (t, c1) =>
-					// branch(t, c1,
-						// (c2: C) => exec(σ, thn, m, c2 + IfBranching(true, guard, t), Q),
-						// (c2: C) => if (els.isDefined)
-												// exec(σ, els.get, m, c2 + IfBranching(false, guard, t), Q)
-											// else
-												// Q(σ, c2)))
 
 			// case call @ CallAsync(lhs, e0, id, args) =>
 				// val meth = call.m
