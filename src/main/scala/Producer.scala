@@ -169,6 +169,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 			case e @ silAST.expressions.PermissionExpression(rcvr, field, perm) =>
 				evalt(σ, rcvr, m, tRcvr =>
 					assume(tRcvr ≠ Null(),
+						// evalp(σ, perm, m, tPerm => {
 						evalp(σ, perm, m, tPerm => {
 							// decider.isValidFraction(tPerm) match {
 								// case None =>

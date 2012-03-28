@@ -95,7 +95,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
           (Q: S => VerificationResult)
           : VerificationResult =
 
-		execb(σ, cfg.startNode, m)(Q)
+		exec(σ, cfg.startNode, m)(Q)
 
   /* Continues the execution by following the given edge. The target block
    * is only executed if the edge condition does not contradict with the
@@ -109,7 +109,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                    
     evale(σ, edge.condition, m, tCond =>
       branch(tCond,
-        execb(σ, edge.target, m)(Q),
+        exec(σ, edge.target, m)(Q),
         Q(σ)))
   }
   
@@ -150,17 +150,17 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
       follow(σ, block.successors, m)(_ =>
         Success())
 
-  private def execb(σ: S, block: SILBlock, m: Message)
+  private def exec(σ: S, block: SILBlock, m: Message)
                    (Q: S => VerificationResult)
                    : VerificationResult = {
 
-    logger.debug("\n[execb] " + block.label)
+    logger.debug("\n[exec] " + block.label)
     // println("  block.successors = " + block.successors)
     // println("  σ.π = " + σ.π)
                    
     block match {
       case bb: silAST.methods.implementations.BasicBlock =>
-        execs(σ, bb.statements, m, σ1 =>
+        exec(σ, bb.statements, m)(σ1 =>
           leave(σ1, bb, m)(Q))
 
       case lb: silAST.methods.implementations.LoopBlock =>
@@ -196,17 +196,19 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
     }
   }
 
-	private def execs(σ: S, stmts: Seq[SILStatement], m: Message,
-			Q: S => VerificationResult): VerificationResult =
+	private def exec(σ: S, stmts: Seq[SILStatement], m: Message)
+                   (Q: S => VerificationResult)
+                   : VerificationResult =
 
 		if(stmts.nonEmpty)
-			exec(σ, stmts.head, m, σ1 =>
-				execs(σ1, stmts.tail, m, Q))
+			exec(σ, stmts.head, m)(σ1 =>
+				exec(σ1, stmts.tail, m)(Q))
 		else
 			Q(σ)
 
-	private def exec(σ: S, stmt: SILStatement, m: Message,
-			Q: S => VerificationResult): VerificationResult = {
+	private def exec(σ: S, stmt: SILStatement, m: Message)
+                  (Q: S => VerificationResult)
+                  : VerificationResult = {
 
 		logger.debug("\nEXECUTE " + stmt.toString)
 		logger.debug("  " + stmt.getClass.getName)
@@ -289,9 +291,10 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 					else
 						Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
 
-
-
-			// case BlockStmt(body) => execs(σ, body, m, c, Q)
+      case silAST.methods.implementations.NewStatement(_, v, dt) =>
+        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
+        Q(σ \+ (v, fresh(v)))
+            
 
 			// /* TODO: Assert should not forward Q but 'terminate' after the assertion
 			 // *       and only then invoke Q. Currently, assert b ==> acc(x) will

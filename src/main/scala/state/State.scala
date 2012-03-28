@@ -263,7 +263,8 @@ class DefaultHeapMerger[V, ST <: Store[V, ST], H <: Heap[H],
 		
 		val tDists = fcs flatMap(c1 => gs(c1.id) map (c2 =>
 			if (	 c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-					&& decider.isAsPermissive(c1.perm + c2.perm, distinctnessLowerBound))
+					// && decider.isAsPermissive(c1.perm + c2.perm, distinctnessLowerBound))
+          && decider.assert(distinctnessLowerBound < c1.perm + c2.perm))
 				// terms.Not(terms.TermEq(c1.rcvr, c2.rcvr))
 				c1.rcvr ≠ c2.rcvr
 			else

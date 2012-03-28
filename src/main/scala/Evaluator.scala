@@ -111,6 +111,10 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
       case silAST.expressions.terms.NoPermissionTerm() => Q(terms.ZeroPerms())
       case silAST.expressions.terms.EpsilonPermissionTerm() => Q(terms.EpsPerms())
       case silAST.expressions.terms.ProgramVariableTerm(v) => Q(terms.Perms(σ.γ(v)))
+      
+      case _ =>
+        evalt(σ, p, m, tp =>
+          Q(terms.Perms(tp)))
     }
 
     // p match {
