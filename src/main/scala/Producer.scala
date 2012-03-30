@@ -69,6 +69,8 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 	private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
 	private var snapshotCache: Map[Term, (Term, Term)] = Map()
 	
+  var implementationFactory: silAST.methods.implementations.ImplementationFactory = null
+  
 	def produce(σ: S, s: Term, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: S => VerificationResult): VerificationResult = {
 
@@ -169,7 +171,6 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 			case e @ silAST.expressions.PermissionExpression(rcvr, field, perm) =>
 				evalt(σ, rcvr, m, tRcvr =>
 					assume(tRcvr ≠ Null(),
-						// evalp(σ, perm, m, tPerm => {
 						evalp(σ, perm, m, tPerm => {
 							// decider.isValidFraction(tPerm) match {
 								// case None =>
@@ -179,11 +180,6 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 										// if (id == "mu") lockSupport.Mu(σ.h, t0, snap)
 										// else True()
 									val (mh, mts) = merge(σ.h, H(fc :: Nil))
-                  // println("\n[Produce/PermissionExpression]")
-                  // println("  fc = " + fc)
-                  // println("  σ.h = " + σ.h)
-                  // println("  mh = " + mh)
-                  // println("  mts = " + mts)
 									assume(mts /* + tMu */,
 										Q(mh))})))
 								// case Some(errmsg) =>
@@ -202,6 +198,24 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 										// Q(mh, c4))
 								// case Some(errmsg) =>
 									// Failure(errmsg at φ withDetails (e0, id), c3)})))
+                  
+      case qe @ silAST.expressions.QuantifierExpression(
+                    silAST.symbols.logical.quantification.Exists(),
+                    qvar,
+                    silAST.expressions.BinaryExpression(
+                        _: silAST.symbols.logical.And,
+                        rdStarConstraints,
+                        pe: silAST.expressions.PermissionExpression))
+           if toSort(qvar.dataType) == sorts.Perms =>
+
+        val witness = ast.utils.lv2pv(qvar).asInstanceOf[V]
+        val tWitness = fresh(witness)
+        val σ1 = σ \+ (witness, tWitness)
+              
+        evale(σ1, rdStarConstraints, m, tRdStarConstraints =>
+          assume(tRdStarConstraints,
+            produce2(σ1, s, p, pe, m, h1 =>
+              Q(h1))))
 
 			// /* TODO: More complex assertions involving holds, e.g. '!!holds(c)'
 			 // *       might not work because they don't match here.

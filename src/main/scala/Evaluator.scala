@@ -330,6 +330,89 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
       case eq: silAST.expressions.EqualityExpression =>
         evalBinOp(σ, cs, eq.term1, eq.term2, terms.Eq, m, Q)
+        
+      case silAST.expressions.QuantifierExpression(quant, qvar, body) =>
+			// case tq @ TypeQuantification(q, ids, t, body) =>
+
+				// val tVars: List[terms.Var] = tq.vars map fresh _
+				// val idsΓ = Γ(tq.vars.zip(tVars).toMap)
+				
+				val tQuantOp = quant match {
+					case silAST.symbols.logical.quantification.Forall() => terms.Forall
+					case silAST.symbols.logical.quantification.Exists() => terms.Exists
+        }
+					
+				// val tRelGuardBody = q match {
+					// case ast.Forall() => terms.Implies.apply _
+					// case ast.Exists() => terms.And.apply _}
+
+				/* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
+				 *  - Assume we have a quantification forall x: int :: x > 0 ==> f(x) > 0
+				 *  - Evaluating the body yields a term Implies(lhs, rhs) which will be
+				 *    used as the body of the Quantification term
+				 *  - The evaluation also yields additional path conditions, for example
+				 *    the relation between the function application and the evaluated
+				 *    function body, e.g. f(x) == 2x
+				 *  - These are not returned but added to the path conditions during they
+				 *    evaluation of the function application
+				 *  - However, we need them to occur inside the quantification, not
+				 *    outside of it, because assumptions outside of the quantification
+				 *    will not be considered even if the quantified variable occurs in
+				 *    them due to the scope of the quantified variables
+				 *  - We thus have to compute these additional path conditions
+				 *    to be able to include them in the quantification
+				 *
+				 * ATTENTION The current implementation unfortunately disallows branching
+				 * evaluations!
+				 * Consider e.g. e0 ==> a1 which could be evaluated by
+				 * branching over e0 if a1 is not pure, executing one branch with t0
+         * and one with ¬t0.
+				 * However, the second branch's result overwrites the first branch's
+				 * result when being assigned to tActualBody. Hence, only the second
+				 * branch is asserted which always succeeds.
+				 *
+				 * A possible solution would be to make tActualBody and πPost lists and
+				 * to eventually invoke Q with a list of conjuncted quantifications.
+				 */
+				
+				val πPre: Set[Term] = decider.π
+				var πPost: Set[Term] = πPre
+				var tActualBody: Term = terms.True()
+				
+				decider.prover.push()
+        decider.prover.logComment("Evaluating " + e)
+				
+        val pv = ast.utils.lv2pv(qvar)
+        val tPv = fresh(pv)
+        
+				val r =
+					evale(σ \+ (pv, tPv), cs, body, m, tBody => {
+						tActualBody = tBody
+						πPost = decider.π
+						/* We could call Q directly instead of returning Success, but in
+						 * that case the path conditions πDelta would also be outside of
+						 * the quantification. Since they are not needed outside of the
+						 * quantification we go the extra mile to get rid of them in order
+						 * to not pollute the path conditions.
+						 *
+						 * Actually, only path conditions in which the quantified variable
+						 * occurrs are waste, others, especially $combine-terms, could be
+						 * relevant and should be in the path conditions to avoid the
+						 * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
+						 * which is currently overcome by caching fapp-terms.
+						 */
+						Success()})
+
+				decider.prover.pop()
+						
+				r && {
+					val πDelta = πPost -- πPre
+					val tAux = state.terms.utils.BigAnd(πDelta)
+					val tQuantAux = terms.Quantification(tQuantOp, tPv, tAux)
+					val tQuant = terms.Quantification(tQuantOp, tPv, tActualBody)
+
+					assume(tQuantAux,
+						Q(tQuant))}
 
       case silAST.expressions.DomainPredicateExpression(predicate, args) =>
         // logger.debug("  predicate = " + predicate + ", " + predicate.getClass.getName)
@@ -702,86 +785,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 						// tq.vars = sq.vars
 						// eval(σ, cs, tq, m, c, Q)}
 				
-			// case tq @ TypeQuantification(q, ids, t, body) =>
-				// assert(ids.length == tq.vars.length, "TypeQuantification seems to be inconsistent w.r.t. the number of quantified variables")
-				
-				// /* Evaluates Chalice type-quantifications to Syxc quantifications:
-				 // *  -    forall x1,...,xr: T :: P  ->  forall x1,...,xr: T :: P
-				 // *  -    exists x1,...,xr: T :: P  ->  exists x1,...,xr: T :: P
-				 // */
-				// val tVars: List[terms.Var] = tq.vars map fresh _
-				// val idsΓ = Γ(tq.vars.zip(tVars).toMap)
-				
-				// val tQuantOp = q match {
-					// case ast.Forall() => terms.Forall
-					// case ast.Exists() => terms.Exists}
-					
-				// val tRelGuardBody = q match {
-					// case ast.Forall() => terms.Implies.apply _
-					// case ast.Exists() => terms.And.apply _}
 
-				// /* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
-				 // *  - Assume we have a quantification forall x: int :: x > 0 ==> f(x) > 0
-				 // *  - Evaluating the body yields a term Implies(lhs, rhs) which will be
-				 // *    used as the body if the Quantification term
-				 // *  - The evaluation also yields additional path conditions, for example
-				 // *    the relation between the function application and the evaluated
-				 // *    function body, e.g. f(x) == 2x
-				 // *  - These are not returned but added to the path conditions during they
-				 // *    evaluation of the function application
-				 // *  - However, we need them to occur inside the quantification, not
-				 // *    outside of it, because assumptions outside of the quantification
-				 // *    will not be considered even if the quantified variable occurs in
-				 // *    them due to the scope of the quantified variables
-				 // *  - We thus have to determine these additional path conditions
-				 // *    to be able to include them in the quantification
-				 // *
-				 // * ATTENTION The current implementation unfortunately disallows branching
-				 // * evaluations!
-				 // * Consider e.g. e0 ==> e1 which could be evaluated by
-				 // * branching over e0, returning once t0 ==> t1 and once ¬t0 ==> true.
-				 // * However, the second branch's result overwrites the first branch's
-				 // * result when being assigned to tActualBody. Hence, only the second
-				 // * branch is asserted which always succeeds.
-				 // *
-				 // * A possible solution would be to make tActualBody and πPost lists and
-				 // * to eventually invoke Q with a list of conjuncted quantifications.
-				 // */
-				
-				// val πPre: Set[Term] = decider.π
-				// var πPost: Set[Term] = πPre
-				// var tActualBody: Term = terms.True()
-				
-				// decider.prover.push()
-				
-				// val r =
-					// eval(σ \+ idsΓ, cs, body, m, c, (tBody, c1) => {
-						// tActualBody = tBody
-						// πPost = decider.π
-						// /* We could call Q directly instead of returning Success, but in
-						 // * that case the path conditions πDelta would also be outside of
-						 // * the quantification. Since they are not needed outside of the
-						 // * quantification we go the extra mile to get ride of them in order
-						 // * to not pollute the path conditions.
-						 // *
-						 // * Actually, only path conditions in which the quantified variable
-						 // * occurrs are waste, others, especially $combine-terms, are actually
-						 // * of interest and should be in the path conditions to avoid the
-						 // * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
-						 // * which is currently overcome by caching fapp-terms.
-						 // */
-						// Success(c1)})
-
-				// decider.prover.pop()
-						
-				// r && {
-					// val πDelta = πPost -- πPre
-					// val tAux = state.terms.utils.SetAnd(πDelta)
-					// val tQuantAux = terms.Quantification(tQuantOp, tVars, tAux)
-					// val tQuant = terms.Quantification(tQuantOp, tVars, tActualBody)
-
-					// assume(tQuantAux, c, (c1: C) =>
-						// Q(tQuant, c1))}
 						
 			// /*
 			 // * Sequences
@@ -898,6 +902,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			// case v: Variable => Q(σ.γ(v), c)
 			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
       case silAST.expressions.terms.ProgramVariableTerm(v) => Q(σ.γ(v))
+      case silAST.expressions.terms.LogicalVariableTerm(v) => Q(σ.γ(ast.utils.lv2pv(v)))
       
       case silAST.expressions.terms.PermTerm(rcvr, field) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>

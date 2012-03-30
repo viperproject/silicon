@@ -24,16 +24,17 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 			// "(" + f.fullName + (s :: t0 :: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
 			"(" + f.name + (s +: t0 +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
 			
-		// case Quantification(q, tVars, tBody) =>
+		case Quantification(quant, qvar, body) =>
 			// val strVars =
-				// tVars.map(v => "(%s %s)".format(v.id, convert(v.sort))).mkString(" ")
-			// val strBody = convert(tBody)
-			// "(%s (%s) %s)".format(quantifierToString(q), strVars, strBody)			
+        // tVars.map(v => "(%s %s)".format(v.id, convert(v.sort))).mkString(" ")
+      var strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))
+			val strBody = convert(body)
+
+			"(%s (%s) %s)".format(convert(quant), strVar, strBody)
 
 		/* Booleans */
 			
 		case Not(f) => "(not " + convert(f) + ")"
-		
 
 		/* TODO: Extract common conversion behaviour of binary expressions. */
 
@@ -285,10 +286,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case sorts.UserSort(id) => sanitiseIdentifier(id)
 	}
 	
-	// private def quantifierToString(q: Quantifier) = q match {
-		// case Forall => "forall"
-		// case Exists => "exists"
-	// }
+	private def convert(q: Quantifier) = q match {
+		case Forall => "forall"
+		case Exists => "exists"
+	}
 	
 	private def literalToString(literal: Literal) = literal match {
 		case IntLiteral(n) =>
@@ -308,21 +309,21 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     // assert(ts.length == l, "Expected %s argument to %s, but found %s".format(l, o, ts.length))
   // }
   
-  /* TODO: Seems more senseful to work on ast....DataTypes than on Domains */
-  private def convert(d: silAST.domains.Domain) = {
-    // println("  d = " + d)
-    // println("  d.getClass.getName = " + d.getClass.getName)
-    // println("  d.freeTypeVariables = " + d.freeTypeVariables)
-    // println("  d.getType = " + d.getType)  
-  (
-    d.fullName.replace('[', '<')
-              .replace(']', '>')
-              .replace(',', '~'))
-              /* TODO: Get Domain from UserSort, use TypeConverter to convert parameter types. */
-              // .replace("Integer", "Int")
-              // .replace("Permission", "$Perms")
-              // .replace("ref", "$Ref"))
-  }
+  // /* TODO: Seems more senseful to work on ast....DataTypes than on Domains */
+  // private def convert(d: silAST.domains.Domain) = {
+    // // println("  d = " + d)
+    // // println("  d.getClass.getName = " + d.getClass.getName)
+    // // println("  d.freeTypeVariables = " + d.freeTypeVariables)
+    // // println("  d.getType = " + d.getType)  
+  // (
+    // d.fullName.replace('[', '<')
+              // .replace(']', '>')
+              // .replace(',', '~'))
+              // /* TODO: Get Domain from UserSort, use TypeConverter to convert parameter types. */
+              // // .replace("Integer", "Int")
+              // // .replace("Permission", "$Perms")
+              // // .replace("ref", "$Ref"))
+  // }
 
   def sanitiseIdentifier(str: String) = (
     str.replace('#', '_')

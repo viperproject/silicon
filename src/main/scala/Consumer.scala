@@ -31,7 +31,7 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
             with Brancher =>
 
 	protected val decider: Decider[V, ST, H, PC, S]
-	import decider.assume
+  import decider.{fresh, assume}
 	
 	// protected val permissionFactory: PermissionFactory[P]
 	// import permissionFactory._
@@ -105,16 +105,8 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 					if (decider.assert(tRcvr ≠ Null()))
 						evalp(σ, perm, m, tPerm => {
 							// if (decider.isNonNegativeFraction(tPerm)) {
-                // println("\n[Consumer/PermissionExpression]")
-                // println("  tRcvr = " + tRcvr)
-                // println("  tPerm = " + tPerm)
-                // println("  p = " + p)
 								val loss = tPerm * p
-                // println("  loss = " + loss)
 								withFieldChunk(h, tRcvr, field.name, loss, rcvr.toString, m at φ, fc => {
-                  // println("  [Consumer/PermissionExpression]")
-                  // println("  fc = " + fc)
-									// val snap = fc.value.convert(toSort(field.dataType), sorts.Snap)
 									val snap = fc.value.convert(sorts.Snap)
                   if (decider.assertNoAccess(fc.perm - loss)) {
                     val σ1 = σ \ (h - fc)
@@ -147,6 +139,28 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 								// Failure(FractionMightBeNegative at φ withDetails (e0, id), c2))
 					// else
 						// Failure(m at e0 dueTo ReceiverMightBeNull(e0, id), c1))
+            
+      case qe @ silAST.expressions.QuantifierExpression(
+                    silAST.symbols.logical.quantification.Exists(),
+                    qvar,
+                    silAST.expressions.BinaryExpression(
+                        _: silAST.symbols.logical.And,
+                        rdStarConstraints,
+                        pe @ silAST.expressions.PermissionExpression(rcvr, field, _)))
+           if toSort(qvar.dataType) == sorts.Perms =>
+
+				evalt(σ, rcvr, m, tRcvr =>
+					if (decider.assert(tRcvr ≠ Null()))
+            withFieldChunk(h, tRcvr, field.name, rcvr.toString, m at φ, fc => {
+              val witness = ast.utils.lv2pv(qvar).asInstanceOf[V]
+              val tWitness = state.terms.Perms(decider.prover.fresh(qvar.name, sorts.Perms))
+              val σ1 = σ \+ (witness, tWitness)
+              evale(σ1, rdStarConstraints, m, tRdStarConstraints => {
+                val tConstraints = state.terms.And(tRdStarConstraints, fc.perm > tWitness)
+                assume(tConstraints,
+                  Q(h - fc + (fc - tWitness), fc.value.convert(sorts.Snap)))})})
+					else
+						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
 
 			// case ast.LockChangeExpr(ast.LockChange(es)) =>
 				// assert(σ, h, φ, m, InsufficientLockchange, c, Q)

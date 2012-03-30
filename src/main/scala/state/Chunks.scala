@@ -20,6 +20,7 @@ import silicon.state.terms.{Term, PermissionTerm /*, Token, Plus, Minus */}
 case class DefaultFieldChunk(rcvr: Term, id: String, value: Term, perm: PermissionTerm)
     extends FieldChunk {
 		
+	def \(perm: PermissionTerm) = this.copy(perm = perm)
 	def +(perm: PermissionTerm) = this.copy(perm = this.perm + perm)
 	def -(perm: PermissionTerm) = this.copy(perm = this.perm - perm)
 	
@@ -29,6 +30,7 @@ case class DefaultFieldChunk(rcvr: Term, id: String, value: Term, perm: Permissi
 case class DefaultPredicateChunk(rcvr: Term, id: String, snap: Term, perm: PermissionTerm)
     extends PredicateChunk {
 		
+  def \(perm: PermissionTerm) = this.copy(perm = perm)
 	def +(perm: PermissionTerm) = this.copy(perm = this.perm + perm)
 	def -(perm: PermissionTerm) = this.copy(perm = this.perm - perm)
 		

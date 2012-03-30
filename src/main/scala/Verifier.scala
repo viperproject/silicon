@@ -253,7 +253,7 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 		if (config.stopOnFirstError) {
 			/* Stops on first error */
 			while (it.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-				results = mv.verify(it.next) :: results
+				results = verify(it.next) :: results
 			}
       
 			results = results.reverse
@@ -262,11 +262,16 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 			 * all members are verified regardless of previous errors.
 			 * However, verification of a single member is aborted on first error.
 			 */
-			results = it map mv.verify toList
+			results = it map verify toList
 		}
 
 		results
 	}
+  
+  def verify(impl: SILImplementation): VerificationResult = {
+    mv.implementationFactory = impl.factory
+    mv.verify(impl)
+  }
 	
 	private def emitFunctionDeclarations(fs: Set[SILFunction]) {
     fs.foreach(f =>

@@ -18,8 +18,9 @@ trait Chunk {
 trait PersistentChunk extends Chunk
  
 trait AccessRestrictedChunk[S <: AccessRestrictedChunk[S]] extends Chunk {
-
 	def perm: PermissionTerm
+
+  def \(perm: PermissionTerm): S
 	def +(perm: PermissionTerm): S
 	def -(perm: PermissionTerm): S
 }

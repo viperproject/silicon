@@ -78,6 +78,7 @@ object sorts {
 // import sorts._
 // import types._
 
+/* TDOO: Separate into interface declaration and implementation. */
 sealed trait Term {
 	/* Attention! Do not use for non-term equalities, e.g. mu == waitlevel or
 	 * seq1 == seq2.
@@ -133,6 +134,7 @@ sealed trait PermissionTerm extends Term {
   def +(other: Term) = PermPlus(this, other)
   def -(other: Term) = PermMinus(this, other)
   def <(other: Term) = PermLess(this, other)
+  def >(other: Term) = PermLess(other, this)
 }
 
 /* Symbols */
@@ -174,7 +176,7 @@ case object Unit extends Literal with SnapshotTerm {
   // val sort = sorts.Snap
 
   override val toString = "_"
- }
+}
 
 case class IntLiteral(n: Int) extends Literal with IntegerTerm {
 	// def +(m: Int) = IntLiteral(n + m)
@@ -200,15 +202,15 @@ sealed trait BooleanLiteral extends Literal with BooleanTerm {
 case class True() extends BooleanLiteral { val value = true }
 case class False() extends BooleanLiteral { val value = false }
 
-// /* Quantifiers */
+/* Quantifiers */
 
-// sealed trait Quantifier // extends Term { override val sort = BoolSort }
+sealed trait Quantifier
 
-// object Forall extends Quantifier { override val toString = "∀ " }
-// object Exists extends Quantifier { override val toString = "∃ " }
+object Forall extends Quantifier { override val toString = "∀ " }
+object Exists extends Quantifier { override val toString = "∃ " }
 
-// case class Quantification(q: Quantifier, tVars: Seq[Var], tBody: Term) 
-		// extends BooleanTerm
+// case class Quantification(q: Quantifier, tVars: Seq[Var], tBody: Term)
+case class Quantification(q: Quantifier, qvar: Var, tBody: Term) extends BooleanTerm
 
 /* Unary operators */
 
@@ -614,6 +616,69 @@ object utils {
   private[terms] def assertSort(t: Term, desc: String, s: Sort) {
     assert(t.sort == s, "Expected %s %s to be of sort %s, but found %s.".format(desc, t, s, t.sort))
   }
+  
+  def transform(t: Term, f: PartialFunction[Term, Term]): Term = {
+    // def foo: String = ""
+    val g = (t: Term) => transform(t, f)
+    val gs = (ts: Seq[Term]) => ts map f
+    
+    val tf = if (f.isDefinedAt(t)) f(t) else t
+    
+    /* WARNING: Sort might get out of sync if replacee and replacement are of
+     *          different sorts.
+     */    
+    tf match {
+      case   _: Var
+           | Unit
+           | _: IntLiteral
+           | _: Null
+           | _: True
+           | _: False
+           | _: FullPerms
+           | _: ZeroPerms
+           | _: EpsPerms
+           => tf
+
+      case FApp(f, s, t0, tArgs, sort) => FApp(f, g(s), g(t0), gs(tArgs), sort)
+      case Quantification(q, qvar, tBody) => Quantification(q, g(qvar).asInstanceOf[Var], g(tBody))
+      case Not(t) => Not(g(t))
+      case Plus(t0, t1) => Plus(g(t0), g(t1))
+      case Minus(t0, t1) => Minus(g(t0), g(t1))
+      case Times(t0, t1) => Times(g(t0), g(t1))
+      case Div(t0, t1) => Div(g(t0), g(t1))
+      case Mod(t0, t1) => Mod(g(t0), g(t1))
+      case Or(t0, t1) => Or(g(t0), g(t1))
+      case And(t0, t1) => And(g(t0), g(t1))
+      case Implies(t0, t1) => Implies(g(t0), g(t1))
+      case Iff(t0, t1) => Iff(g(t0), g(t1))
+      case Eq(t0, t1) => Eq(g(t0), g(t1))
+      case Less(t0, t1) => Less(g(t0), g(t1))
+      case AtMost(t0, t1) => AtMost(g(t0), g(t1))
+      case Greater(t0, t1) => Greater(g(t0), g(t1))
+      case AtLeast(t0, t1) => AtLeast(g(t0), g(t1))
+      case Perms(t0) => Perms(g(t0))
+      case PermTimes(t0, t1) => PermTimes(g(t0), g(t1))
+      case PermPlus(t0, t1) => PermPlus(g(t0), g(t1))
+      case PermMinus(t0, t1) => PermMinus(g(t0), g(t1))
+      case PermLess(t0, t1) => PermLess(g(t0), g(t1))
+      case DomainFApp(id, tArgs, sort) => DomainFApp(id, gs(tArgs), sort)
+      case Combine(t0, t1) => Combine(g(t0), g(t1))
+      case SortWrapper(t0, sort) => SortWrapper(g(t0), sort)
+    }
+  }
+  
+  // val substitute: PartialFunction[(Term, Term, Term), Term] = tWhat => tWith => t =>
+  // t match {
+      // case tSome if tSome == tWhat => tWith
+      // case _ => t
+    // }
+  
+  // def substitute(tWhat: Term, tWith: Term)(t: Term): PartialFunction[Term, Term] =
+  def substitute(tWhat: Term, tWith: Term): PartialFunction[Term, Term] = {
+    // t match {
+      case t if t == tWhat => tWith
+      case t => t
+    }
 }
 
 /* A DSL facilitating working with Terms */
