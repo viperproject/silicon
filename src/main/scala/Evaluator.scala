@@ -938,6 +938,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         Q(terms.FullPerms())
 
       case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) => f match {
+        /* Booleans */        
         case silAST.types.booleanTrue => Q(terms.True())
         case silAST.types.booleanFalse => Q(terms.False())
         
@@ -945,22 +946,28 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           evalt(σ, cs, es(0), m, t0 =>
             Q(terms.Not(t0)))
         
+        /* TODO: Not short-circuiting, combine with AND above. */
         case silAST.types.booleanConjunction =>
           evalBinOp(σ, cs, es(0), es(1), terms.And, m, Q)
         
         case silAST.types.booleanDisjunction =>
           evalBinOp(σ, cs, es(0), es(1), terms.Or, m, Q)
-          
+        
+        /* TODO: Not sufficient, combine with IMPLIES above. */
         case silAST.types.booleanImplication =>
           evalBinOp(σ, cs, es(0), es(1), terms.Implies, m, Q)
         
         case silAST.types.booleanEquivalence =>
           evalBinOp(σ, cs, es(0), es(1), terms.Iff, m, Q)
         
+        /* References */
+        
         case silAST.types.nullFunction => Q(terms.Null())
         
         case silAST.types.referenceEquality =>
           evalBinOp(σ, cs, es(0), es(1), terms.Eq, m, Q)
+          
+        /* Integers */
         
         case silAST.types.integerAddition =>
           evalBinOp(σ, cs, es(0), es(1), terms.Plus, m, Q)
@@ -980,6 +987,25 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
         // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
         // case silAST.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
+        
+        /* Permissions */
+        
+        case silAST.types.permissionAddition =>
+          evalBinOp(σ, cs, es(0), es(1), terms.PermPlus, m, Q)
+        
+        case silAST.types.percentagePermission =>
+          sys.error("Not yet implemented: " + e)
+          
+        case silAST.types.permissionSubtraction =>
+          evalBinOp(σ, cs, es(0), es(1), terms.PermMinus, m, Q)
+          
+        case silAST.types.permissionMultiplication =>
+          evalBinOp(σ, cs, es(0), es(1), terms.PermTimes, m, Q)
+          
+        case silAST.types.permissionIntegerMultiplication =>
+          sys.error("Not yet implemented: " + e)
+        
+        /* Domains not handled directly */
         
         case _ =>
           evalts(σ, es, m, ts =>
