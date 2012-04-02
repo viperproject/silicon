@@ -1,19 +1,15 @@
-package ch.ethz.inf.pm.silicon.reporting
+package ch.ethz.inf.pm.silicon
+package reporting
 
-// import scala.util.parsing.input.{Positional, Position, NoPosition}
 import silAST.{ASTNode => SILASTNode}
-import silAST.source.{SourceLocation => SILSourceLocation, noLocation => SILNoLocation}
-
-import ch.ethz.inf.pm.silicon
-import silicon.interfaces.reporting.{Categorie, Reason, Message}
-// import silicon.ast.{Expression, FunctionApplication, Call, CallAsync, Send,
-		// Receive, LockMode}
-import silicon.state.terms.Term
+import silAST.source.{
+    SourceLocation => SILSourceLocation,
+    noLocation => SILNoLocation}
+import interfaces.reporting.{Categorie, Reason, Message}
 
 sealed abstract class AbstractMessage extends Message {
-	def cat: Categorie
-	def code: Int
-	def text: String
+	protected def majorCode: Int
+	protected def majorText: String
 	
 	var loc: SILSourceLocation = SILNoLocation
 	var reason: Option[Reason] = None
@@ -21,8 +17,6 @@ sealed abstract class AbstractMessage extends Message {
 	var details: Seq[Any] = Nil
 	
 	def at(loc: SILSourceLocation) = {
-    // println("\n[AbstractMessage/at]")
-    // println("  loc = " + loc)
 		this.loc = loc
 		this
 	}	
@@ -40,49 +34,39 @@ sealed abstract class AbstractMessage extends Message {
 		this
 	}
 	
+  def code =
+		majorCode + (if (reason.isDefined)
+                  reason.get.code
+                else
+                  0)
+                  
+  def text = format
+
 	def format = {
-		var code = this.code
-		
-		if (reason.isDefined)
-				code += reason.get.code
-			
 		var str = "%s %s:".format(cat.name, code)
 		
 		if (loc != SILNoLocation)
-			// str += " %s.%s:".format(loc.line, loc.column)
-			// str += " %s.%s:".format("?", "?")
 			str += " %s:".format(loc)
 			
-		str += " " + text.format(details: _*)
+		str += " " + majorText.format(details: _*)
 		
 		if (reason.isDefined)
 			str += " " + reason.get.text
-		
-		// if (loc != SILNoLocation) {
-			// // str += "\n" + loc.longString /* Includes caret line to indicate position */
-			
-			 // // /* Exclude caret line */
-			// // var lines = loc.longString.lines
-			// // if (lines.hasNext)
-				// // str += "\n" + lines.next()
-			// str += "\n" + loc
-		// }
-		
+
 		str
 	}
 
 	override def toString = format
 }
 
-case class ErrorMessage(code: Int, text: String) extends AbstractMessage
+case class ErrorMessage(majorCode: Int, majorText: String) extends AbstractMessage
 	{ val cat = Categories.Error }
 
-case class WarningMessage(code: Int, text: String) extends AbstractMessage
+case class WarningMessage(majorCode: Int, majorText: String) extends AbstractMessage
 	{ val cat = Categories.Warning }
 
 trait RedirectAtToWithDetails extends AbstractMessage {
-	// override def at(loc: SILSourceLocation) = withDetails(loc.line, loc.column)
-	override def at(loc: SILSourceLocation) = withDetails("?", loc.toString)
+	override def at(loc: SILSourceLocation) = withDetails(loc.toString)
 }
 
 /* ATTENTION: Increase error message codes in steps of at least 100 in order to
@@ -112,7 +96,7 @@ object ErrorMessages {
 		
 	def InvocationFailed(id: String, pos: SILSourceLocation) = {
 		val err = new ErrorMessage(200, "Invocation of " + id +
-				" failed at %s.%s.") with RedirectAtToWithDetails
+				" failed at %s.") with RedirectAtToWithDetails
 
 		err.loc = pos
 		err
@@ -124,7 +108,7 @@ object ErrorMessages {
 	def PostconditionMightNotHold = ErrorMessage(300, "Postcondition might not hold.")
 	
 	def AssertionMightNotHold(pos: SILSourceLocation) = {
-		val err = new ErrorMessage(400, "Assertion might not hold at %s.%s.")
+		val err = new ErrorMessage(400, "Assertion might not hold at %s.")
 				with RedirectAtToWithDetails
 		
 		err.loc = pos
@@ -135,7 +119,7 @@ object ErrorMessages {
 	def HeapWriteFailed = ErrorMessage(600, "Heap write failed.")
 	
 	def FoldingFailed(pos: SILSourceLocation) = {
-		val err = new ErrorMessage(700, "Folding failed at %s.%s.")
+		val err = new ErrorMessage(700, "Folding failed at %s.")
 				with RedirectAtToWithDetails
 
 		err.loc = pos
@@ -163,7 +147,7 @@ object ErrorMessages {
 		ErrorMessage(1500, "Unsharing %s failed.".format(obj))
 		
 	def MonitorInvariantMightNotHold(pos: SILSourceLocation) = {
-		val err = new ErrorMessage(1600, "Monitor invariant might not hold at %s.%s.")
+		val err = new ErrorMessage(1600, "Monitor invariant might not hold at %s.")
 				 with RedirectAtToWithDetails
 
 		err.loc = pos
@@ -171,7 +155,7 @@ object ErrorMessages {
 	}
 		
 	def LoopBodyFailed(pos: SILSourceLocation) = {
-		val err = new ErrorMessage(1800, "Loop body verification failed at %s.%s.")
+		val err = new ErrorMessage(1800, "Loop body verification failed at %s.")
 				with RedirectAtToWithDetails
 		
 		err.loc = pos
@@ -186,7 +170,7 @@ object ErrorMessages {
 		
 	// def SendFailed(send: Send) = {
 	def SendFailed(pos: SILSourceLocation) = {
-		val err = new ErrorMessage(2100, "Send at %s.%s failed.") with RedirectAtToWithDetails
+		val err = new ErrorMessage(2100, "Send at %s failed.") with RedirectAtToWithDetails
 		
 		err.loc = pos
 		err
