@@ -1,15 +1,11 @@
 package ch.ethz.inf.pm.silicon.interfaces.decider
 
-// import silAST.programs.symbols.{Function => SILFunction}
-// import silAST.domains.{Domain => SILDomain}
-
 import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Term, PermissionTerm, Var}
 import silicon.interfaces.state.{Store, Heap, PathConditions, State,
 		Chunk, FieldChunk, PredicateChunk}
 import silicon.interfaces.VerificationResult
 import silicon.interfaces.reporting.{Message}
-// import silicon.ast
 
 trait Decider[V, ST <: Store[V, ST], H <: Heap[H],
 							PC <: PathConditions[PC], S <: State[V, ST, H, S]] {
@@ -17,15 +13,10 @@ trait Decider[V, ST <: Store[V, ST], H <: Heap[H],
 	def prover: Prover
 	def π: Set[Term]
 
-	/* TODO: Decouple Decider from ast.Function */
-	// def emitFunctionDeclaration(f: SILFunction)
-  // def emitDomainDeclaration(d: SILDomain)
-	
 	def enableSmokeChecks(enable: Boolean)
 	def checkSmoke: Boolean
 
 	def assert(φ: Term): Boolean
-  // def assume(t: Term)
 	def assume(term: Term, Q: => VerificationResult): VerificationResult
 	
 	def assume(term: Set[Term], Q: => VerificationResult)

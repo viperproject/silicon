@@ -106,8 +106,10 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                    : VerificationResult = {
 
     logger.debug("\n[follow] " + edge)
+    // println("edge.condition.sourceLocation = " + edge.condition.sourceLocation)
+    // println("m at edge.condition = " + (m at edge.condition))
                    
-    evale(σ, edge.condition, m, tCond =>
+    evale(σ, edge.condition, m at edge.condition, tCond =>
       branch(tCond,
         exec(σ, edge.target, m)(Q),
         Q(σ)))
@@ -167,20 +169,19 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         // println("[execb/LoopBlock]")
         // println("  lb.condition = " + lb.condition)
         // println("  lb.successors = " + lb.successors)
+        // println("  lb.writtenVariables = " + lb.writtenVariables)
         
         val BigAnd = ast.utils.collections.BigAnd(lb.implementation.factory) _
         val specsErr = SpecsMalformed withDetails("the loop")
         val inv = lb.invariant
         val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
-        val notGuard = lb.implementation.factory.makeUnaryExpression(lb.condition.sourceLocation, silAST.symbols.logical.Not()(lb.condition.sourceLocation), lb.condition)
+        val notGuard = lb.implementation.factory.makeUnaryExpression(silAST.symbols.logical.Not()(lb.condition.sourceLocation), lb.condition)(lb.condition.sourceLocation)
         val invAndNotGuard = BigAnd(inv :: notGuard :: Nil, Predef.identity)
 
         val σ1 = σ
-        val bodyγ = Γ(σ1.γ.values.keys.foldLeft(σ1.γ.values)((map, v) => map.updated(v, fresh(v))))
+        // val bodyγ = Γ(σ1.γ.values.keys.foldLeft(σ1.γ.values)((map, v) => map.updated(v, fresh(v))))
+        val bodyγ = Γ(lb.writtenVariables.foldLeft(σ1.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σW = Ø \ (γ = bodyγ)
-        
-        // println("  σ1.γ = " + σ1.γ)
-        // println("  σW.γ = " + σW.γ)
 
         /* Verify loop body (including well-formedness check) */
         (produce(σW, fresh, Full(), invAndGuard, specsErr, σ2 =>
@@ -222,11 +223,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 				// // logger.info("Executing " + stmt)
 				// Success()
 
-      case silAST.methods.implementations.AssignmentStatement(_, v, rhs) =>
+      case silAST.methods.implementations.AssignmentStatement(v, rhs) =>
         evalt(σ, rhs, m, tRhs =>
           Q(σ \+ (v, tRhs)))
 
-      case silAST.methods.implementations.FieldAssignmentStatement(_, rcvr, field, rhs) =>
+      case silAST.methods.implementations.FieldAssignmentStatement(rcvr, field, rhs) =>
         val err = HeapWriteFailed at stmt
         val tRcvr = σ.γ(rcvr)
 				// evalt(σ, rcvr, m, tRcvr =>
@@ -238,14 +239,14 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 					else
 						Failure(err dueTo ReceiverMightBeNull(rcvr.toString, field.name))
 
-      case silAST.methods.implementations.InhaleStatement(_, a) =>
+      case silAST.methods.implementations.InhaleStatement( a) =>
         // eval(σ, e, m, c, (t, c1) =>
 					// assume(t, c1, (c2: C) =>
 						// Q(σ, c2)))
         produce(σ, fresh, Full(), a, m, σ1 =>
           Q(σ1))
 
-      case silAST.methods.implementations.ExhaleStatement(_, a) =>
+      case silAST.methods.implementations.ExhaleStatement(a) =>
         // logger.error("\n[exec/exhale]")
         // logger.error("  stmt = " + stmt)
         // logger.error("  stmt.sourceLocation = " + stmt.sourceLocation)
@@ -254,27 +255,28 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         consume(σ, Full(), a, AssertionMightNotHold(stmt), (σ1, _) =>
           Q(σ1))
 
-			case silAST.methods.implementations.CallStatement(sl, lhs, rcvr, meth, args) =>
+			case call @ silAST.methods.implementations.CallStatement(lhs, meth, args) =>
 				// val meth = call.m
         val BigAnd = ast.utils.collections.BigAnd(meth.expressionFactory) _
 
-				evalt(σ, rcvr, m, tRcvr =>
-					if (decider.assert(tRcvr ≠ Null()))
+				// evalt(σ, rcvr, m, tRcvr =>
+					// if (decider.assert(tRcvr ≠ Null()))
 						evalts(σ, args, m, tArgs => {
 							// val insγ = Γ(((This, t0) :: meth.ins.zip(tArgs)).toMap)
               /* TODO: Remove hack! */
-              val This = σ.γ.values.keys.find(_.name == "this").get
+              // val This = σ.γ.values.keys.find(_.name == "this").get
               // println("\n[Executor/CallStatement]")
               // println("  This = " + This)
               // println("  σ.γ.values = " + σ.γ.values)
               // println("  σ.γ.values.contains = " + σ.γ.values.contains(This))
               /* TODO: Can variable substitution be used instead of creating insγ? */
-              val xs: Seq[(SILProgramVariable, Term)] = (This, tRcvr) +: meth.signature.parameters.variables.drop(1).zip(tArgs)
-							val insγ = Γ(xs.toMap)
+              // val xs: Seq[(SILProgramVariable, Term)] = (This, tRcvr) +: meth.signature.parameters.variables.drop(1).zip(tArgs)
+							// val insγ = Γ(xs.toMap)
+							val insγ = Γ(meth.signature.parameters.variables.zip(tArgs))
               // println("  insγ.values = " + insγ.values)
               // println("  insγ.values.contains = " + insγ.values.contains(This))
               // println("  insγ = " + insγ)
-							val err = InvocationFailed(rcvr.toString, meth.name, sl)
+							val err = InvocationFailed(meth.name, call.sourceLocation)
               val pre = BigAnd(meth.signature.precondition, Predef.identity)
 							consume(σ \ insγ, Full(), pre, err, (σ1, _) => {
 								val outsγ = Γ(meth.signature.results.map(v => (v, fresh(v))).toMap)
@@ -288,10 +290,10 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                                   .map(p => (p._1, σ3.γ(p._2))).toMap)
 									Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ))})})})
                 // Q(σ)})})
-					else
-						Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
+					// else
+						// Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
 
-      case silAST.methods.implementations.NewStatement(_, v, dt) =>
+      case silAST.methods.implementations.NewStatement(v, dt) =>
         assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
         Q(σ \+ (v, fresh(v)))
             

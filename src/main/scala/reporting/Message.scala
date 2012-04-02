@@ -110,8 +110,8 @@ object ErrorMessages {
 	// def InvocationFailed(call: Call): ErrorMessage =
 		// InvocationFailed(call.obj, call.id, call)
 		
-	def InvocationFailed(e0: String, id: String, pos: SILSourceLocation) = {
-		val err = new ErrorMessage(200, "Invocation of %s.%s".format(e0, id) +
+	def InvocationFailed(id: String, pos: SILSourceLocation) = {
+		val err = new ErrorMessage(200, "Invocation of " + id +
 				" failed at %s.%s.") with RedirectAtToWithDetails
 
 		err.loc = pos

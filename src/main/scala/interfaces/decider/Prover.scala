@@ -1,11 +1,7 @@
 package ch.ethz.inf.pm.silicon.interfaces.decider
 
-// import silAST.programs.symbols.{Function => SILFunction}
-// import silAST.domains.{Domain => SILDomain}
-
 import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Sort, Term, Var}
-// import silicon.ast
 
 sealed abstract class Result
 object Sat extends Result
@@ -26,5 +22,4 @@ trait Prover {
 	def fresh(id: String, sort: Sort): Var
   def declareSort(sort: Sort)
   def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort)
-  // def axiomatiseDomain (d: SILDomain)
 }

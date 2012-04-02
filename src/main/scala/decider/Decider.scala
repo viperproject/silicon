@@ -1,4 +1,5 @@
-package ch.ethz.inf.pm.silicon.decider
+package ch.ethz.inf.pm.silicon
+package decider
 
 import scala.io.Source
 import com.weiglewilczek.slf4s.Logging
@@ -7,29 +8,28 @@ import silAST.programs.symbols.{Function => SILFunction}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 import silAST.domains.{Domain => SILDomain}
 
-import ch.ethz.inf.pm.silicon
-import silicon.interfaces.{VerificationResult, Warning, Success}
-import silicon.interfaces.decider.{Decider, Unsat}
-import silicon.interfaces.state.{Store, Heap, PathConditions, State, FieldChunk,
+import interfaces.{VerificationResult, Warning, Success}
+import interfaces.decider.{Decider, Unsat}
+import interfaces.state.{Store, Heap, PathConditions, State, FieldChunk,
 		PathConditionsFactory, Chunk, PredicateChunk, AccessRestrictedChunk}
-import silicon.interfaces.reporting.{Message}
-import silicon.state.{DefaultFieldChunk, DefaultPredicateChunk}
-import silicon.state.terms
-import silicon.state.terms.{Term, Eq, Not, Var, Less, /* AtLeast, AtMost, Greater,
+import interfaces.reporting.{Message}
+import state.{DefaultFieldChunk, DefaultPredicateChunk}
+import state.terms
+import state.terms.{Term, Eq, Not, Var, Less, /* AtLeast, AtMost, Greater,
 		IntLiteral, Mu, */ Combine, FApp, And, Or, True,
 		SortWrapper, /* LockMode, */ PermissionTerm, ZeroPerms, FullPerms}
-// import silicon.ast
-// import silicon.state.terms.dsl._
-import silicon.reporting.WarningMessages.{SmokeDetected}
-import silicon.reporting.ErrorMessages.{FractionMightBeNegative,
+// import ast
+// import state.terms.dsl._
+import reporting.WarningMessages.{SmokeDetected}
+import reporting.ErrorMessages.{FractionMightBeNegative,
 		FractionMightBeGT100}
-// import silicon.LockSupport
+// import LockSupport
 
 class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 										 PC <: PathConditions[PC],
                      S <: State[SILProgramVariable, ST, H, S]]
 		(	private val pathConditionsFactory: PathConditionsFactory[PC],
-			private val config: silicon.Config)
+			private val config: Config)
 		extends Decider[SILProgramVariable, ST, H, PC, S]
     with Logging {
 
@@ -42,7 +42,7 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 	def π = pathConditions.values
 
 	private val pathConditions = pathConditionsFactory.Π()
-	private val typeConverter = new silicon.state.DefaultTypeConverter()
+	private val typeConverter = new state.DefaultTypeConverter()
 	private var performSmokeChecks = config.performSmokeChecks
 
 	prover.logComment("-" * 60)
@@ -58,22 +58,23 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		// prover.loadPreamble("/preamble.smt2")
 		// prover.push()
 	// }
-
+  
 	private def pushPreamble() {
-    // val preambleFile = "../../../../../preamble.smt2"
-    // val preambleFile = "/preamble.smt2"
-    // val preambleFile = "."
-		// val in = Thread.currentThread().getContextClassLoader().getResourceAsStream(preambleFile)
-    // println("CCL = " + Thread.currentThread().getContextClassLoader())
-    // sys.exit(0)
-    // if (in == null) sys.error("Could not load resource " + preambleFile)
+    val preambleSource = config.preamble match {
+      case None =>
+        val preambleFile = "preamble.smt2"
+        // println("preambleFile = " + preambleFile)
+        val preambleStream = classOf[Silicon].getClassLoader.getResourceAsStream(preambleFile)
+        // println("preambleStream = " + preambleStream)
+        Predef.assert(preambleStream != null, "Could not load resource " + preambleFile)
+        Source.fromInputStream(preambleStream)
 
-		// var lines =
-			// Source.fromInputStream(in).getLines.toList.filterNot(s =>
-					// s.trim == "" || s.trim.startsWith(";"))
+      case Some(path) =>
+        Source.fromFile(path)
+    }
 
 		var lines =
-			Source.fromFile(config.preamble).getLines.toList.filterNot(s =>
+			preambleSource.getLines.toList.filterNot(s =>
 					s.trim == "" || s.trim.startsWith(";"))
 
 		/* Multi-line assertions are concatenated into a single string and

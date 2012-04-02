@@ -360,6 +360,6 @@ case class Config(
 	var strictConjunctionEvaluation: Boolean = false,
 	// var logLevel: String = "INFO",
 	var logLevel: String = "DEBUG",
-  var preamble: String = "D:\\Develop\\SymbEx\\Silicon\\src\\main\\resources\\preamble.smt2",
+  var preamble: Option[String] = None,
 	var z3exe: String = "z3.exe",
 	var z3log: String = "logfile.smt2")

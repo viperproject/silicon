@@ -122,8 +122,9 @@ class DefaultChunkFinder[V, ST <: Store[V, ST],
 		decider.getChunk(h, rcvr, id) match {
 			case Some(c: CH) => Q(c)
 			case None =>
-				// val pos = if (m.loc != SILNoLocation) m.loc else e.pos
-				val pos = SILNoLocation
+				// val pos = if (m.loc != SILNoLocation) m.loc else e.sourceLocation
+				// val pos = SILNoLocation
+				val pos = if (m.loc != SILNoLocation) m.loc else rcvr.srcPos
 
 				if (decider.checkSmoke)	{
 					logger.debug("%s: Detected inconsistent state looking up a chunk for %s.%s.".format(pos, rcvrStr, id))

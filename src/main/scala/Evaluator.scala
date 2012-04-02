@@ -1051,6 +1051,10 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                              Q: FieldChunk => VerificationResult)
                             : VerificationResult = {
 
+    // println("\n[evalFieldDeref]")
+    // println("  m = " + m)
+    // println("  m at rcvr = " + (m at rcvr))
+                            
     evalt(σ, cs, rcvr, m, tRcvr =>
       if (decider.assert(tRcvr ≠ Null()))
         withFieldChunk(σ.h, tRcvr, field.name, rcvr.toString, m at rcvr, Q)

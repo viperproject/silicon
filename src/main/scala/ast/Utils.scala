@@ -18,8 +18,10 @@ package object utils {
   object collections {
     // var ef: SILExpressionFactory = null
     
-    private def createSILAnd(ef: SILExpressionFactory)(e0: SILExpression, e1: SILExpression) =
-      ef.makeBinaryExpression(e0.sourceLocation, SILAnd()(e0.sourceLocation), e0, e1)
+    private def createSILAnd(ef: SILExpressionFactory)(e0: SILExpression, e1: SILExpression) = {
+      val loc = e0.sourceLocation
+      ef.makeBinaryExpression(SILAnd()(loc), e0, e1)(loc)
+    }
     
     def BigAnd(ef: SILExpressionFactory)(it: Iterable[SILExpression], f: SILExpression => SILExpression = e => e) =
       mapReduceLeft(it, f, createSILAnd(ef), SILTrue()(silAST.source.noLocation))
@@ -29,5 +31,5 @@ package object utils {
   }
   
   /* temporary */ def lv2pv(lv: silAST.symbols.logical.quantification.LogicalVariable) =
-    new silAST.programs.symbols.ProgramVariable(lv.sourceLocation, lv.name, lv.dataType)
+    new silAST.programs.symbols.ProgramVariable(lv.name, lv.dataType)(lv.sourceLocation)
 }
