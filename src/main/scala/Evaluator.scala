@@ -210,14 +210,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
       case silAST.expressions.TrueExpression() => Q(terms.True())
       case silAST.expressions.FalseExpression() => Q(terms.False())
 
-			// case Old(e0) =>
-				// eval(σ \ (h = σ.g), cs, e0, m, c, Q)
-
-			// case lit: ast.Literal => Q(evall(lit), c)
-
-			// case v: Variable => Q(σ.γ(v), c)
-			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
-			// case ThisExpr() => Q(σ.γ(This), c)
+			case silAST.expressions.OldExpression(e0) =>
+				evale(σ \ (h = σ.g), cs, e0, m, Q)
       
       case silAST.expressions.UnaryExpression(op, e0) =>
         // logger.debug("  op = " + op + ", " + op.getClass.getName)
@@ -238,7 +232,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           case silAST.symbols.logical.And() if config.strictConjunctionEvaluation =>
               evalBinOp(σ, cs, e0, e1, terms.And, m, Q)
 
-          case silAST.symbols.logical.And() =>            
+          case silAST.symbols.logical.And() =>
             var πPre: Set[Term] = Set()
             var πAux: Set[Term] = Set()
 
@@ -326,25 +320,19 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             
           case silAST.symbols.logical.Or() =>
             evalBinOp(σ, cs, e0, e1, terms.Or, m, Q)
+            
+          case silAST.symbols.logical.Equivalence() =>
+            evalBinOp(σ, cs, e0, e1, terms.Iff, m, Q)
       }
 
       case eq: silAST.expressions.EqualityExpression =>
         evalBinOp(σ, cs, eq.term1, eq.term2, terms.Eq, m, Q)
         
       case silAST.expressions.QuantifierExpression(quant, qvar, body) =>
-			// case tq @ TypeQuantification(q, ids, t, body) =>
-
-				// val tVars: List[terms.Var] = tq.vars map fresh _
-				// val idsΓ = Γ(tq.vars.zip(tVars).toMap)
-				
 				val tQuantOp = quant match {
 					case silAST.symbols.logical.quantification.Forall() => terms.Forall
 					case silAST.symbols.logical.quantification.Exists() => terms.Exists
         }
-					
-				// val tRelGuardBody = q match {
-					// case ast.Forall() => terms.Implies.apply _
-					// case ast.Exists() => terms.And.apply _}
 
 				/* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
 				 *  - Assume we have a quantification forall x: int :: x > 0 ==> f(x) > 0
@@ -485,79 +473,36 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             // sys.error("")
             // evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
         }
+      
+      // case silAST.expressions.UnfoldingExpression(
+              // silAST.expressions.PredicateExpression(
+                  // rcvr,
+                  // silAST.programs.symbols.Predicate(id)),
+              // e0)
+      
+			// // case Unfolding(acc @ Access(pa @ PredicateAccess(e0, id), p0), e1) =>
+				// val err = UnfoldingFailed
+				// // evalp(σ, p0, m, c, (pt, c1) =>
+					// // if (decider.isNonNegativeFraction(pt))
+						// evalt(σ, cs, rcvr, err, tRcvr =>
+							// /* TODO: tRcvr non-null check */
+							// consume(σ, Full, acc, err, c2, (σ1, snap, c3) => {
+								// val insΓ = Γ((This -> t0))
+									// /* Unfolding only effects the current heap */
+									// produce(σ1 \ insΓ, snap, pt, pa.p.body, err, c3, (σ2, c4) => {
+										// val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+										// eval(σ3, cs, e1, err, c4, Q)})}))
+					// // else
+						// // Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
+        
+        case _: silAST.expressions.PermissionExpression =>
+          sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s found.".format(e))
+          
+        case _: silAST.expressions.PredicateExpression =>
+          sys.error("Not sure why we got here, unexpected %s found.".format(e))
+        
+// [warn] missing combination UnfoldingExpression
 
-			// /* ArithmeticExpr */
-			// case ast.Plus(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Plus.apply, m, c, Q)
-			// case ast.Minus(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Minus.apply, m, c, Q)
-			// case ast.Times(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Times.apply, m, c, Q)
-			
-			// /* TODO: Assert that denominator is not zero. */
-			// case ast.Div(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Div, m, c, Q)
-			// case ast.Mod(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Mod, m, c, Q)
-
-			// case ast.Iff(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Iff.apply, m, c, Q)
-			
-			// case ast.Implies(e0, e1) if config.branchOverPureConditionals =>
-				// eval(σ, cs, e0, m, c, (t0, c1) =>
-					// (	if (!decider.assert(¬(t0)))
-							// assume(t0, c1, (c2: C) => 
-								// eval(σ, cs, e1, m, c2 + ImplBranching(true, e0, t0), (t1, c3) =>
-									// Q(terms.Implies(t0, t1), c3)))
-						// else
-							// Success(c1)
-					// ) &&
-					// ( if (!decider.assert(t0))
-							// assume(¬(t0), c1, (c2: C) =>
-								// Q(terms.True(), c2 + ImplBranching(false, e0, t0)))
-						// else
-							// Success(c1)))
-			
-			// case impl @ ast.Implies(e0, e1) =>
-				// /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
-				 // *   fails if e0 establishes a precondition of e1
-				 // * - Hence we have to assume e0 when evaluating e1, but revoke that
-				 // *   assumption afterwards
-				 // * - We also have to keep track of all path conditions that result from
-				 // *   the evaluation of e0 and e1
-				 // */
-				// val πPre: Set[Term] = decider.π
-					// /* Initial set of path conditions */
-				// var πIf: Set[Term] = Set()
-					// /* Path conditions assumed while evaluating the antecedent */
-				// var πThen: Set[Term] = Set()
-					// /* Path conditions assumed while evaluating the consequent */
-				
-				// var tEvaluatedIf: Term = terms.False()
-					// /* The term the antecedent actually evaluates too. */
-				// var tEvaluatedThen: Term = terms.True()
-					// /* The term the consequent actually evaluates too. */
-					
-				// val r =
-					// eval(σ, cs, e0, m, c, (t0, c1) => {
-						// πIf = decider.π -- πPre
-						// tEvaluatedIf = t0
-						// assume(t0, c1, (c2: C) =>
-							// eval(σ, cs, e1, m, c2, (t1, c3) => {
-								// πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
-								// tEvaluatedThen = t1
-								// Success(c3)}))})
-				
-				// r && {
-					// /* The additional path conditions gained while evaluating the
-					 // * antecedent can be assumed in any case.
-					 // * If the antecedent holds, then the additional path conditions
-					 // * related to the consequent can also be assumed.
-					 // */
-					
-					// val tAuxIf = state.terms.utils.SetAnd(πIf)
-					// val tAuxThen = state.terms.utils.SetAnd(πThen)
-					// val tAuxImplies = terms.Implies(tEvaluatedIf, tAuxThen)
-					// val tImplies = terms.Implies(tEvaluatedIf, tEvaluatedThen)
-					
-					// assume(Set(tAuxIf, tAuxImplies), c, (c1: C) =>
-						// Q(tImplies, c1))
-				// }
-				
 			// case IfThenElse(e0, e1, e2) if config.branchOverPureConditionals =>
 				// eval(σ, cs, e0, m, c, (t0, c1) =>
 					// ((if (!decider.assert(¬(t0)))
@@ -650,44 +595,6 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 								// Q(tActualIte, c2)))
 					// }
 				// }
-
-			// case ast.Less(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Less, m, c, Q)
-			// case ast.AtMost(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.AtMost, m, c, Q)
-			// case ast.AtLeast(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.AtLeast, m, c, Q)
-			// case ast.Greater(e0, e1) => evalBinOp(σ, cs, e0, e1, terms.Greater, m, c, Q)
-			
-			// case eq: ast.EqExpr if eq.p0 == eq.p1 =>
-				// /* Covers, amongst others, the probably very seldomly occuring 
-				 // * comparison 'waitlevel == waitlevel'.
-				 // */
-				// Q(terms.True(), c)
-				
-			// case eq @ ast.Eq(e0, e1) =>
-				// assert(e0.typ != null, /* @elidable */
-						// "Expected ast.Eq(e0, _), e0.typ to be non-null: " + eq)
-				// assert(e1.typ != null, /* @elidable */
-						// "Expected ast.Eq(_, e1), e1.typ to be non-null: " + eq)			
-				// // /* Fails when comparing nil<int> == [] */
-				// // assert((   e0.typ == e1.typ
-								// // || e0.typ.typ == ast.NullClass
-								// // || e1.typ.typ == ast.NullClass), /* @elidable */
-						// // "%s is not well-typed: %s != %s".format(eq, e0.typ, e1.typ))
-				// assert(e0.typ.typ != null, /* @elidable */
-						// "Expected ast.Eq(e0, _). e0.typ.typ to be non-null: " + e0.typ)
-
-				// /* TODO: Have a case class SeqEq and let the ASTConverter convert
-				 // *       Eqs on sequences to SeqEqs.
-				 // *       This will clean up the evaluator.
-				 // */
-				// e0.typ.typ match {
-					// case ast.SeqClass =>
-						// evalBinOp(σ, cs, e0, e1, terms.SeqEq, m, c, Q)
-
-					// case _ =>
-						// /* Int, Bool, Ref, Mu (excluding waitlevel) */
-						// evalBinOp(σ, cs, e0, e1, terms.TermEq, m, c, Q)
-				// }
-			
 			
 			// case fapp @ FunctionApplication(e0, id, args) =>
 				// val err = InvocationFailed(fapp) at fapp
@@ -738,23 +645,6 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 										// Q(tFA, c3)}})}
 						// else
 							// Failure(err dueTo ReceiverMightBeNull(e0, id), c2)}))
-
-			// case Unfolding(acc @ Access(pa @ PredicateAccess(e0, id), p0), e1) =>
-				// assert(pa.p != null, /* @elidable */
-					// "Expected Access.ma to not be null")
-				// val err = UnfoldingFailed
-				// evalp(σ, p0, m, c, (pt, c1) =>
-					// if (decider.isNonNegativeFraction(pt))
-						// eval(σ, cs, e0, err, c1, (t0, c2) =>
-							// /* TODO: t0 non-null check */
-							// consume(σ, Full, acc, err, c2, (σ1, snap, c3) => {
-								// val insΓ = Γ((This -> t0))
-									// /* Unfolding only effects the current heap */
-									// produce(σ1 \ insΓ, snap, pt, pa.p.body, err, c3, (σ2, c4) => {
-										// val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-										// eval(σ3, cs, e1, err, c4, Q)})}))
-					// else
-						// Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
 
 			// /*
 			 // * Quantifications
