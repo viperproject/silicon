@@ -38,8 +38,8 @@ class Silicon(val config: Config) extends Logging {
 		startTime = System.currentTimeMillis()
 		
 		logger.info("Silicon started on " + now)
-		logger.info("Working on Program:")
-		logger.info(program.toString)
+//		logger.info("Working on Program:")
+//		logger.info(program.toString)
     
     runVerifier(program)
 	}

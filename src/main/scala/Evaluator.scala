@@ -797,9 +797,9 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
       case silAST.expressions.terms.PermTerm(rcvr, field) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>
           Q(fc.perm))
-          
-        // evalt(σ, cs, es(0), m, t0 =>
-        // Q(terms.PermTerm())
+
+      case silAST.expressions.terms.OldTerm(e0) =>
+        evalt(σ \ (h = σ.g), cs, e0, m, Q)
       
       case silAST.expressions.terms.FieldReadTerm(rcvr, field) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>

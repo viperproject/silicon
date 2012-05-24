@@ -149,7 +149,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 			 // *  - The evaluator would yield a term tb <==> tc1 == tc2 which is added to
 			 // *    the path conditions
 			 // *  - Producing acc(c1.x, 50) && acc(c2.x, 50) yields two corresponding chunks
-			 // *  - In the if-branch tb == true is assumed, but no heap merg is down and thus
+			 // *  - In the if-branch tb == true is assumed, but no heap merge is done and thus
 			 // *    the assertion fails.
 			 // */
 			// /* Iff <: BooleanExpr */

@@ -96,6 +96,15 @@
 (assert (forall ((x $Snap))
 	(= x ($sorts.$RefTo$Snap($sorts.$SnapTo$Ref x)))))
 
+(declare-fun $sorts.$SnapToBool ($Snap) Bool)
+(declare-fun $sorts.BoolTo$Snap (Bool) $Snap)
+
+(assert (forall ((x Bool))
+	(= x ($sorts.$SnapToBool($sorts.BoolTo$Snap x)))))
+
+(assert (forall ((x $Snap))
+	(= x ($sorts.BoolTo$Snap($sorts.$SnapToBool x)))))
+
 ; --- Domains ---
 
 ; (declare-sort Pair<$Ref~Int>)
