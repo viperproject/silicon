@@ -152,7 +152,7 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
    */
 	def fresh(id: String, sort: Sort) = {
 		val v = Var(freshId(id), sort)
-		val decl = "(declare-fun %s () %s)".format(sanitiseIdentifier(v.id), convert(v.sort))
+		val decl = "(declare-const %s %s)".format(sanitiseIdentifier(v.id), convert(v.sort))
 		write(decl)
 
 		v
@@ -164,7 +164,7 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
 					// f.name,
 					// (f.ins.map(v => convert(typeConverter.toSort(v.t))).mkString(" ")),
 					// convert(typeConverter.toSort(f.out)))
-    println("[Prover] declaring symbol " + id)
+    // println("[Prover] declaring symbol " + id)
     // val str = "; declareSymbol %s: %s -> %s ".format(id, argSorts.mkString(" -> "), sort)
 
     val str = "(declare-fun %s (%s) %s)".format(sanitiseIdentifier(id),

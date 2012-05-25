@@ -22,7 +22,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
 		case FApp(f, s, t0, tArgs, _) =>
 			// "(" + f.fullName + (s :: t0 :: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
-			"(" + f.name + (s +: t0 +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
+			"(" + sanitiseIdentifier(f.name) + (s +: t0 +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
 			
 		case Quantification(quant, qvar, body) =>
 			// val strVars =
@@ -330,5 +330,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
        .replace("τ", "$tau")
        .replace('[', '<')
        .replace(']', '>')
+       .replace("::", ".")
        .replace(',', '~'))
 }

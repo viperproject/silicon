@@ -35,7 +35,7 @@ import ast.{Expression, Variable, FieldAccess, Old, ArithmeticExpr,
 */
 import state.{TypeConverter /* , CounterChunk */}
 import state.terms
-import state.terms.{Term, Null, PermissionTerm}
+import state.terms.{Term, Null, PermissionTerm,  FullPerms => Full}
 import reporting.ErrorMessages.{InvocationFailed, UnfoldingFailed, 
 		FractionMightBeNegative}
 import reporting.Reasons.{ReceiverMightBeNull, InsufficientPermissions}
@@ -496,10 +496,10 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 						// // Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
         
         case _: silAST.expressions.PermissionExpression =>
-          sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s found.".format(e))
+          sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s (%s) found.".format(e, e.getClass.getName))
           
         case _: silAST.expressions.PredicateExpression =>
-          sys.error("Not sure why we got here, unexpected %s found.".format(e))
+          sys.error("Not sure why we got here, unexpected %s (%s) found.".format(e, e.getClass.getName))
         
 // [warn] missing combination UnfoldingExpression
 
@@ -901,19 +901,55 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           evalts(σ, es, m, ts =>
             Q(terms.DomainFApp(f.fullName, ts, toSort(f.signature.resultType))))
       }
-           // if f.name == "True" =>
-           
-        // Q(terms.True())
-        // logger.debug("[evalt2/DomainFunctionApplicationTerm]")
-        // logger.debug("  f = " + f)
-        // logger.debug("  f.name = " + f.name)
-        // logger.debug("  es = " + es)
-        // logger.debug("  es.length = " + es.length)
-        // sys.error("")
-        
-			// case _ =>
-			// logger.debug("Evaluating term " + e)
-			// Success()
+
+      case fapp @ silAST.expressions.terms.FunctionApplicationTerm(eRcvr, f, eArgs) =>
+        val BigAnd = ast.utils.collections.BigAnd(f.factory) _
+        val err = InvocationFailed(f.name, fapp.sourceLocation)
+        // val Result = specialVariables.result(fapp.f.out)
+
+        evalt(σ, cs, eRcvr, m, tRcvr =>
+          evalts(σ, eArgs, m, tArgs => {
+//            if (decider.assert(tRcvr ≠ Null())) {
+            bookkeeper.functionApplications += 1
+//            val insΓ = Γ(((This, t0) :: fapp.f.ins.zip(tArgs)).toMap)
+            val insγ = Γ(f.signature.parameters.variables.zip(tArgs))
+            val σ2 = σ \ insγ
+            val pre = BigAnd(f.signature.precondition, Predef.identity)
+            consume(σ2, Full(), pre, err, (_, s) => {
+              val tFA = terms.FApp(f, s, tRcvr, tArgs, toSort(f.resultType))
+              if (fappCache.contains(tFA)) {
+                logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
+                val piFB = fappCache(tFA)
+                assume(piFB,
+                  Q(tFA))}
+              else {
+                val σ3 = σ2 // \+ (Result, tFA)
+                /* Break recursive cycles */
+                /* TODO: Replace cs by a multiset to have O(1) access */
+                if (cs.count(_ == f) < config.unrollFunctions) {
+                  val πPre = decider.π
+                  val post = BigAnd(f.signature.postcondition, Predef.identity)
+                  //                  if (f.parent.module == thisClass.module) {
+                  if (true) {
+                    bookkeeper.functionBodyEvaluations += 1
+                    evalt(σ3, f :: cs, f.body, m, tFB =>
+                      evale(σ3, f :: cs, post, m, tPost => {
+                      val tFAEqFB = tFA ≡ tFB
+                      if (config.cacheFunctionApplications)
+                        fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
+                      assume(Set(tFAEqFB, tPost),
+                        Q(tFA))}))}
+                  else {
+                    /* Function body is invisible, use postcondition instead */
+                    evale(σ3, f :: cs, post, m, tPost => {
+                    if (config.cacheFunctionApplications)
+                      fappCache += (tFA -> (decider.π -- πPre + tPost))
+                    assume(tPost,
+                      Q(tFA))})}}
+                else
+                  Q(tFA)}})}))
+//            else
+//            Failure(err dueTo ReceiverMightBeNull(e0, id), c2)}))
     }
   }
 

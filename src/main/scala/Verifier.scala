@@ -1,6 +1,5 @@
 package ch.ethz.inf.pm.silicon
 
-import scala.util.parsing.input.Positional
 import scala.collection.Set
 import com.weiglewilczek.slf4s.Logging
 
@@ -33,7 +32,7 @@ import interfaces.state.factoryUtils.Ø
 // import interfaces.ast.specialVariables.{This}
 // import ast.utils.collections.SetAnd
 import state.{/* FractionalPermission, */ TypeConverter}
-import state.terms.{Term, Null, FullPerms => Full}
+import state.terms.{sorts, Term, Null, FullPerms => Full}
 import reporting.ErrorMessages.{ExecutionFailed, NotSupported,
 		PostconditionMightNotHold, SpecsMalformed}
 import reporting.WarningMessages.{ExcludingUnit}
@@ -274,10 +273,11 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
   }
 	
 	private def emitFunctionDeclarations(fs: Set[SILFunction]) {
-    fs.foreach(f =>
-      decider.prover.declareSymbol(f.name,
-                                   f.signature.parameters.map(p => typeConverter.toSort(p.dataType)),
-                                   typeConverter.toSort(f.signature.result.dataType)))
+    fs.foreach(f => {
+      var args = f.signature.parameters.map(p => typeConverter.toSort(p.dataType)).toList
+      args = sorts.Snap :: sorts.Ref :: args
+      decider.prover.declareSymbol(f.name, args, typeConverter.toSort(f.signature.result.dataType))
+    })
 	}
   
 	private def emitDomainDeclarations(domains: Set[SILDomain]) {
