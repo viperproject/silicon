@@ -14,6 +14,8 @@ libraryDependencies += "org.slf4j" % "slf4j-log4j12" %	"1.6.4"
 
 libraryDependencies += "com.github.scopt" %% "scopt" % "1.1.3"
 
+libraryDependencies += "pm.inf.ethz.ch" %% "silast" % "0.1-SNAPSHOT"
+
 // Sbt
 
 traceLevel := 10

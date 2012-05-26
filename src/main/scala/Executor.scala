@@ -246,7 +246,8 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         produce(σ, fresh, Full(), a, m, σ1 =>
           Q(σ1))
 
-      case silAST.methods.implementations.ExhaleStatement(a) =>
+		  //  TODO: integrate message from exhale statement into error message
+      case silAST.methods.implementations.ExhaleStatement(a,msg) =>
         // logger.error("\n[exec/exhale]")
         // logger.error("  stmt = " + stmt)
         // logger.error("  stmt.sourceLocation = " + stmt.sourceLocation)
