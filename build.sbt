@@ -12,7 +12,7 @@ libraryDependencies += "com.weiglewilczek.slf4s" %% "slf4s" % "1.0.7"
 
 libraryDependencies += "org.slf4j" % "slf4j-log4j12" %	"1.6.4"
 
-libraryDependencies += "com.github.scopt" %% "scopt" % "1.1.3"
+libraryDependencies += "com.github.scopt" %% "scopt" % "2.0.1"
 
 libraryDependencies += "pm.inf.ethz.ch" %% "silast" % "0.1-SNAPSHOT"
 
