@@ -168,7 +168,10 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						// (c2: C) => produce2(σ, s, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assume acc(e.f) */
-			case e @ silAST.expressions.PermissionExpression(rcvr, field, perm) =>
+			case e @ silAST.expressions.PermissionExpression(
+                  silAST.expressions.terms.FieldLocation(rcvr, field),
+                  perm) =>
+
 				evalt(σ, rcvr, m, tRcvr =>
 					assume(tRcvr ≠ Null(),
 						evalp(σ, perm, m, tPerm => {

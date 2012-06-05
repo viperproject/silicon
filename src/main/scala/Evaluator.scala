@@ -430,24 +430,24 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
           /* Integers */
 
-          case silAST.types.integerEQ =>
-            evalBinOp(σ, cs, args(0), args(1), terms.Eq, m, Q)
-
-          case silAST.types.integerNE =>
-            val neq = (t1: Term, t2: Term) => t1 ≠ t2
-            evalBinOp(σ, cs, args(0), args(1), neq, m, Q)
-
-          case silAST.types.integerLE =>
-            evalBinOp(σ, cs, args(0), args(1), terms.AtMost, m, Q)
-
-          case silAST.types.integerLT =>
-            evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
-
-          case silAST.types.integerGE =>
-            evalBinOp(σ, cs, args(0), args(1), terms.AtLeast, m, Q)
-
-          case silAST.types.integerGT =>
-            evalBinOp(σ, cs, args(0), args(1), terms.Greater, m, Q)
+//          case silAST.types.integerEQ =>
+//            evalBinOp(σ, cs, args(0), args(1), terms.Eq, m, Q)
+//
+//          case silAST.types.integerNE =>
+//            val neq = (t1: Term, t2: Term) => t1 ≠ t2
+//            evalBinOp(σ, cs, args(0), args(1), neq, m, Q)
+//
+//          case silAST.types.integerLE =>
+//            evalBinOp(σ, cs, args(0), args(1), terms.AtMost, m, Q)
+//
+//          case silAST.types.integerLT =>
+//            evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
+//
+//          case silAST.types.integerGE =>
+//            evalBinOp(σ, cs, args(0), args(1), terms.AtLeast, m, Q)
+//
+//          case silAST.types.integerGT =>
+//            evalBinOp(σ, cs, args(0), args(1), terms.Greater, m, Q)
 
           /* Booleans */
 
@@ -497,9 +497,10 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         
         case _: silAST.expressions.PermissionExpression =>
           sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s (%s) found.".format(e, e.getClass.getName))
-          
-        case _: silAST.expressions.PredicateExpression =>
-          sys.error("Not sure why we got here, unexpected %s (%s) found.".format(e, e.getClass.getName))
+
+//        case _: silAST.expressions.PermissionExpression =>
+////        case _: silAST.expressions.PredicateExpression =>
+//          sys.error("Not sure why we got here, unexpected %s (%s) found.".format(e, e.getClass.getName))
         
 // [warn] missing combination UnfoldingExpression
 
@@ -794,14 +795,14 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
       case silAST.expressions.terms.ProgramVariableTerm(v) => Q(σ.γ(v))
       case silAST.expressions.terms.LogicalVariableTerm(v) => Q(σ.γ(ast.utils.lv2pv(v)))
       
-      case silAST.expressions.terms.PermTerm(rcvr, field) =>
+      case silAST.expressions.terms.PermTerm(silAST.expressions.terms.FieldLocation(rcvr, field)) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>
           Q(fc.perm))
 
       case silAST.expressions.terms.OldTerm(e0) =>
         evalt(σ \ (h = σ.g), cs, e0, m, Q)
       
-      case silAST.expressions.terms.FieldReadTerm(rcvr, field) =>
+      case silAST.expressions.terms.FieldReadTerm(silAST.expressions.terms.FieldLocation(rcvr, field)) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>
           Q(fc.value))
 				// evalt(σ, cs, rcvr, m, tRcvr =>

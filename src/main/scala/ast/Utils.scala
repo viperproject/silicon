@@ -20,7 +20,7 @@ package object utils {
     
     private def createSILAnd(ef: SILExpressionFactory)(e0: SILExpression, e1: SILExpression) = {
       val loc = e0.sourceLocation
-      ef.makeBinaryExpression(SILAnd()(loc), e0, e1)(loc)
+      ef.makeBinaryExpression(SILAnd()(loc), e0, e1, loc, Nil)
     }
     
     def BigAnd(ef: SILExpressionFactory)(it: Iterable[SILExpression], f: SILExpression => SILExpression = e => e) =
@@ -31,5 +31,5 @@ package object utils {
   }
   
   /* temporary */ def lv2pv(lv: silAST.symbols.logical.quantification.LogicalVariable) =
-    new silAST.programs.symbols.ProgramVariable(lv.name, lv.dataType)(lv.sourceLocation)
+    new silAST.programs.symbols.ProgramVariable(lv.name, lv.dataType)(lv.sourceLocation, Nil)
 }

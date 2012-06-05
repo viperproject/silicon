@@ -100,7 +100,10 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 
 			/* assert acc(e.f) */
 			// case ast.Access(acc @ ast.FieldAccess(e0, id), p0) =>
-      case silAST.expressions.PermissionExpression(rcvr, field, perm) =>
+      case silAST.expressions.PermissionExpression(
+              silAST.expressions.terms.FieldLocation(rcvr, field),
+              perm) =>
+//      case silAST.expressions.PermissionExpression(rcvr, field, perm) =>
 				evalt(σ, rcvr, m, tRcvr =>
 					if (decider.assert(tRcvr ≠ Null()))
 						evalp(σ, perm, m, tPerm => {
@@ -146,7 +149,9 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
                     silAST.expressions.BinaryExpression(
                         _: silAST.symbols.logical.And,
                         rdStarConstraints,
-                        pe @ silAST.expressions.PermissionExpression(rcvr, field, _)))
+                        pe @ silAST.expressions.PermissionExpression(
+                          silAST.expressions.terms.FieldLocation(rcvr, field),
+                          _)))
            if toSort(qvar.dataType) == sorts.Perms =>
 
 				evalt(σ, rcvr, m, tRcvr =>

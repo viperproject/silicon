@@ -175,7 +175,12 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         val specsErr = SpecsMalformed withDetails("the loop")
         val inv = lb.invariant
         val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
-        val notGuard = lb.implementation.factory.makeUnaryExpression(silAST.symbols.logical.Not()(lb.condition.sourceLocation), lb.condition)(lb.condition.sourceLocation)
+        val notGuard =
+          lb.implementation.factory.makeUnaryExpression(
+            silAST.symbols.logical.Not()(lb.condition.sourceLocation),
+            lb.condition,
+            lb.condition.sourceLocation,
+            Nil)
         val invAndNotGuard = BigAnd(inv :: notGuard :: Nil, Predef.identity)
 
         val σ1 = σ
