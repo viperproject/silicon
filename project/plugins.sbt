@@ -1,3 +1,3 @@
-// resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
+resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
 
-// addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "0.11.2")
+addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0-SNAPSHOT")

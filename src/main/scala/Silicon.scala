@@ -7,8 +7,8 @@ import com.weiglewilczek.slf4s.Logging
 
 import silAST.programs.{Program => SILProgram}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
-import silAST.expressions.{Expression => SILExpression}
-import silAST.expressions.terms.{Term => SILTerm}
+//import silAST.expressions.{Expression => SILExpression}
+//import silAST.expressions.terms.{Term => SILTerm}
 
 import interfaces.{ResultWithMessage, VerificationResult, Failure, Warning, Success, /* MemberVerifier,  */
 		/* Producer, Consumer, Executor, Evaluator, ProgrammeVerifier, */ MapSupport}
