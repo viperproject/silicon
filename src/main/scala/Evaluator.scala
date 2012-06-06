@@ -190,17 +190,15 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 	protected def evale2(σ: S, cs: List[SILFunction], e: SILExpression, m: Message, 
 			Q: Term => VerificationResult): VerificationResult = {
 	
-		// /* For debugging only */
-		// e match {
-			// // case _: ast.Literal =>
-			// // case _: Variable =>
-			// // case _: VariableExpr =>
-			// // case ThisExpr() =>
-			// case _ =>
-				// logger.debug("\nEVALUATING EXPRESSION " + e)
-				// logger.debug("  " + e.getClass.getName)
-				// logger.debug(stateFormatter.format(σ))
-		// }
+		/* For debugging only */
+//		e match {
+//			case _: silAST.expressions.AtomicExpression =>
+//      case _: silAST.expressions.terms.AtomicTerm =>
+//			case _ =>
+//				logger.debug("\nEVALUATING EXPRESSION " + e)
+//				logger.debug("  " + e.getClass.getName)
+//				logger.debug(stateFormatter.format(σ))
+//		}
 	
 		e match {
 			// case _ =>
@@ -773,18 +771,16 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                        Q: Term => VerificationResult)
                      : VerificationResult = {
 
-		// /* For debugging only */
-		// e match {
-			// // case _: ast.Literal =>
-			// // case _: Variable =>
-			// // case _: VariableExpr =>
-			// // case ThisExpr() =>
-			// case _ =>
-				// logger.debug("\nEVALUATING TERM " + e)
-				// logger.debug("  " + e.getClass.getName)
-				// logger.debug("  " + e.sourceLocation)
-				// logger.debug(stateFormatter.format(σ))
-		// }
+		/* For debugging only */
+//		e match {
+//			case _: silAST.expressions.AtomicExpression =>
+//			case _: silAST.expressions.terms.AtomicTerm =>
+//			case _ =>
+//				logger.debug("\nEVALUATING TERM " + e)
+//				logger.debug("  " + e.getClass.getName)
+//				logger.debug("  " + e.sourceLocation)
+//				logger.debug(stateFormatter.format(σ))
+//		}
 	
 		e match {
       case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
@@ -828,8 +824,15 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
         Q(terms.FullPerms())
 
-      case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) => f match {
-        /* Booleans */        
+      case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) =>
+//        println("\n[evalt2] silAST.expressions.terms.DomainFunctionApplicationTerm")
+//        println("  f = " + f)
+//        println("  es = " + es)
+
+        f match {
+
+        /* Booleans */
+
         case silAST.types.booleanTrue => Q(terms.True())
         case silAST.types.booleanFalse => Q(terms.False())
         
@@ -874,6 +877,25 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           
         case silAST.types.integerModulo =>
           evalBinOp(σ, cs, es(0), es(1), terms.Mod, m, Q)
+
+        case silAST.types.integerEQ =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Eq, m, Q)
+
+        case silAST.types.integerNE =>
+          val neq = (t1: Term, t2: Term) => t1 ≠ t2
+          evalBinOp(σ, cs, es(0), es(1), neq, m, Q)
+
+        case silAST.types.integerLE =>
+          evalBinOp(σ, cs, es(0), es(1), terms.AtMost, m, Q)
+
+        case silAST.types.integerLT =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Less, m, Q)
+
+        case silAST.types.integerGE =>
+          evalBinOp(σ, cs, es(0), es(1), terms.AtLeast, m, Q)
+
+        case silAST.types.integerGT =>
+          evalBinOp(σ, cs, es(0), es(1), terms.Greater, m, Q)
 
         // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
         // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
