@@ -168,7 +168,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						// (c2: C) => produce2(σ, s, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assume acc(e.f) */
-			case e @ silAST.expressions.PermissionExpression(
+			case e @ silAST.expressions.FieldPermissionExpression(
                   silAST.expressions.terms.FieldLocation(rcvr, field),
                   perm) =>
 
@@ -188,19 +188,22 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 								// case Some(errmsg) =>
 									// Failure(errmsg at e.sourceLocation withDetails (rcvr, field.name))})))
 
-			// /* assume acc(e.P) */
-			// case ast.Access(ast.PredicateAccess(e0, id), p0) =>
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// assume(t0 ≠ Null(), c1, (c2: C) =>
-						// evalp(σ, p0, m, c2, (gain, c3) =>
-							// decider.isValidFraction(gain) match {
-								// case None =>
-									// val pc = DefaultPredicateChunk(t0, id, s, gain * p)
-									// val (mh, mts) = merge(σ.h, H(pc :: Nil))
-									// assume(mts, c3, (c4: C) =>
-										// Q(mh, c4))
-								// case Some(errmsg) =>
-									// Failure(errmsg at φ withDetails (e0, id), c3)})))
+			/* assume acc(e.P) */
+      case e @ silAST.expressions.PredicatePermissionExpression(
+                  silAST.expressions.terms.PredicateLocation(rcvr, predicate),
+                  perm) =>
+
+        evalt(σ, rcvr, m, tRcvr =>
+					assume(tRcvr ≠ Null(),
+            evalp(σ, perm, m, tPerm => {
+//							decider.isValidFraction(gain) match {
+//								case None =>
+									val pc = DefaultPredicateChunk(tRcvr, predicate.name, s, tPerm * p)
+									val (mh, mts) = merge(σ.h, H(pc :: Nil))
+									assume(mts,
+										Q(mh))})))
+//								case Some(errmsg) =>
+//									Failure(errmsg at φ withDetails (e0, id), c3)})))
                   
       case qe @ silAST.expressions.QuantifierExpression(
                     silAST.symbols.logical.quantification.Exists(),

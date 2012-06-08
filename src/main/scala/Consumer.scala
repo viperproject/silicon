@@ -99,11 +99,10 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 						// (c2: C) => consume(σ, h, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assert acc(e.f) */
-			// case ast.Access(acc @ ast.FieldAccess(e0, id), p0) =>
-      case silAST.expressions.PermissionExpression(
+      case silAST.expressions.FieldPermissionExpression(
               silAST.expressions.terms.FieldLocation(rcvr, field),
               perm) =>
-//      case silAST.expressions.PermissionExpression(rcvr, field, perm) =>
+
 				evalt(σ, rcvr, m, tRcvr =>
 					if (decider.assert(tRcvr ≠ Null()))
 						evalp(σ, perm, m, tPerm => {
@@ -125,23 +124,26 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 					else
 						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
 
-			// /* assert acc(e.P) */
-			// case ast.Access(ast.PredicateAccess(e0, id), p0) =>
-				// val err = m at φ
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// if (decider.assert(t0 ≠ Null()))
-						// evalp(σ, p0, m, c1, (pt, c2) =>
-							// if (decider.isNonNegativeFraction(pt)) {
-								// val loss = pt * p
-								// withPredicateChunk(h, t0, id, loss, e0, err, c2, pc =>
-									// if (decider.assertNoAccess(pc.perm - loss))
-										// Q(h - pc, pc.snap, c2)
-									// else
-										// Q(h - pc + (pc - loss), pc.snap, c2))}
-							// else
-								// Failure(FractionMightBeNegative at φ withDetails (e0, id), c2))
-					// else
-						// Failure(m at e0 dueTo ReceiverMightBeNull(e0, id), c1))
+			/* assert acc(e.P) */
+      case e @ silAST.expressions.PredicatePermissionExpression(
+                  silAST.expressions.terms.PredicateLocation(rcvr, predicate),
+                  perm) =>
+
+				val err = m at φ
+        evalt(σ, rcvr, m, tRcvr =>
+          if (decider.assert(tRcvr ≠ Null()))
+            evalp(σ, perm, m, tPerm => {
+//							if (decider.isNonNegativeFraction(pt)) {
+								val loss = tPerm * p
+								withPredicateChunk(h, tRcvr, predicate.name, loss, rcvr.toString, err, pc =>
+									if (decider.assertNoAccess(pc.perm - loss))
+										Q(h - pc, pc.snap)
+									else
+										Q(h - pc + (pc - loss), pc.snap))})
+//							else
+//								Failure(FractionMightBeNegative at φ withDetails (e0, id), c2))
+					else
+						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, predicate.name)))
             
       case qe @ silAST.expressions.QuantifierExpression(
                     silAST.symbols.logical.quantification.Exists(),
@@ -149,7 +151,7 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
                     silAST.expressions.BinaryExpression(
                         _: silAST.symbols.logical.And,
                         rdStarConstraints,
-                        pe @ silAST.expressions.PermissionExpression(
+                        pe @ silAST.expressions.FieldPermissionExpression(
                           silAST.expressions.terms.FieldLocation(rcvr, field),
                           _)))
            if toSort(qvar.dataType) == sorts.Perms =>

@@ -471,28 +471,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             // sys.error("")
             // evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
         }
-      
-      // case silAST.expressions.UnfoldingExpression(
-              // silAST.expressions.PredicateExpression(
-                  // rcvr,
-                  // silAST.programs.symbols.Predicate(id)),
-              // e0)
-      
-			// // case Unfolding(acc @ Access(pa @ PredicateAccess(e0, id), p0), e1) =>
-				// val err = UnfoldingFailed
-				// // evalp(σ, p0, m, c, (pt, c1) =>
-					// // if (decider.isNonNegativeFraction(pt))
-						// evalt(σ, cs, rcvr, err, tRcvr =>
-							// /* TODO: tRcvr non-null check */
-							// consume(σ, Full, acc, err, c2, (σ1, snap, c3) => {
-								// val insΓ = Γ((This -> t0))
-									// /* Unfolding only effects the current heap */
-									// produce(σ1 \ insΓ, snap, pt, pa.p.body, err, c3, (σ2, c4) => {
-										// val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-										// eval(σ3, cs, e1, err, c4, Q)})}))
-					// // else
-						// // Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
-        
+
         case _: silAST.expressions.PermissionExpression =>
           sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s (%s) found.".format(e, e.getClass.getName))
 
@@ -973,6 +952,31 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                   Q(tFA)}})}))
 //            else
 //            Failure(err dueTo ReceiverMightBeNull(e0, id), c2)}))
+
+      case silAST.expressions.terms.UnfoldingTerm(
+              acc @ silAST.expressions.PredicatePermissionExpression(
+                silAST.expressions.terms.PredicateLocation(rcvr, predicate),
+                ePerm),
+              eIn) =>
+
+        val err = UnfoldingFailed
+        evalt(σ, rcvr, err, tRcvr =>
+          if (decider.assert(tRcvr ≠ Null()))
+            evalp(σ, ePerm, err, tPerm =>
+//              if (decider.isNonNegativeFraction(pt))
+//                consume(σ2, Full(), pre, err, (_, s) => {
+                consume(σ, Full(), acc, err, (σ1, snap) => {
+//                val body = predicate.expression.substitute(
+//                  impl.makeProgramVariableSubstitution(Set((predicate.factory.thisVar, tRcvr))))
+                val insΓ = Γ((predicate.factory.thisVar -> tRcvr))
+                /* Unfolding only effects the current heap */
+                produce(σ1 \ insΓ, snap, tPerm, predicate.expression, err, σ2 => {
+                val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                evalt(σ3, eIn, err, Q)})}))
+//              else
+//                Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
+          else
+            Failure(err at rcvr dueTo ReceiverMightBeNull(rcvr.toString, predicate.name)))
     }
   }
 
