@@ -302,7 +302,69 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
       case silAST.methods.implementations.NewStatement(v, dt) =>
         assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
         Q(σ \+ (v, fresh(v)))
-            
+
+//      case Fold(Access(pa @ PredicateAccess(e0, id), p0)) =>
+      case silAST.methods.implementations.FoldStatement(
+              silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+              ePerm) =>
+
+        evalt(σ, eRcvr, m, tRcvr =>
+          if (decider.assert(tRcvr ≠ Null()))
+            evalp(σ, ePerm, m, tPerm =>
+              decider.isValidFraction(tPerm) match {
+                case None =>
+                  val err = FoldingFailed(stmt)
+//                  val insγ = Γ((This -> t0))
+                  consume(σ /*\ insγ*/, tPerm,predicate.expression, err, (σ1, snap) => {
+                    /* Producing Access is unfortunately not an option here
+                    * since the following would fail due to productions
+                    * starting in an empty heap:
+                    *
+                    *   predicate V { acc(x) }
+                    *
+                    *   function f(a: int): int
+                    *	   requires rd(x)
+                    * 	 { x + a }
+                    *
+                    *   method test(a: int)
+                    *     requires ... ensures ...
+                    *   { fold acc(V, f(a)) }
+                    *
+                    * Fold would fail since acc(V, f(a)) is produced in an
+                    * empty and thus f(a) fails due to missing permissions to
+                    * read x.
+                    *
+                    * TODO: Use heap merge function here!
+                    */
+                    val (h, t, tPerm1) = decider.getPredicateChunk(σ1.h, tRcvr, predicate.name) match {
+                      case Some(pc) => (σ1.h - pc, pc.snap ≡ snap, pc.perm + tPerm)
+                      case None => (σ1.h, True(), tPerm)}
+                    assume(t,
+                      Q(σ \ h \+ DefaultPredicateChunk(tRcvr, predicate.name, snap, tPerm1)))})
+                  case Some(errmsg) =>
+                    Failure(errmsg at stmt withDetails(eRcvr, predicate.name))})
+          else
+            Failure(m at stmt dueTo ReceiverMightBeNull(eRcvr.toString, predicate.name)))
+
+      case silAST.methods.implementations.UnfoldStatement(
+              acc @ silAST.expressions.PredicatePermissionExpression(
+                      silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+                      ePerm)) =>
+
+        evalt(σ, eRcvr, m, tRcvr =>
+          if (decider.assert(tRcvr ≠ Null()))
+            evalp(σ, ePerm, m, tPerm =>
+              decider.isValidFraction(tPerm) match {
+                case None =>
+//                  val insγ = Γ((This -> t0))
+                  consume(σ, Full(), acc, UnfoldingFailed, (σ1, snap) =>
+                    produce(σ1 /*\ insγ*/, snap, tPerm, predicate.expression, m, σ2 =>
+                      Q(σ2 /*\ σ.γ*/)))
+                case Some(errmsg) =>
+                  Failure(errmsg at stmt withDetails (eRcvr, predicate.name))})
+          else
+            Failure(m at stmt dueTo ReceiverMightBeNull(eRcvr.toString, predicate.name)))
+
 
 			// /* TODO: Assert should not forward Q but 'terminate' after the assertion
 			 // *       and only then invoke Q. Currently, assert b ==> acc(x) will
@@ -424,70 +486,6 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 									// c2)})
 						// case other =>
 							// Failure(JoinFailed at stmt withDetails(e0) dueTo TokenNotWriteable, c1)})
-
-			// case Fold(Access(pa @ PredicateAccess(e0, id), p0)) =>
-				// assert(pa.p != null, /* @elidable */
-						// "Expected Access.ma to not be null")
-
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// if (decider.assert(t0 ≠ Null()))
-						// evalp(σ, p0, m, c1, (pt, c2) =>
-							// decider.isValidFraction(pt) match {
-								// case None =>
-									// val err = FoldingFailed(stmt)
-									// val insγ = Γ((This -> t0))
-									// consume(σ \ insγ, pt, pa.p.body, err, c2, (σ1, snap, c3) => {
-										// /* Producing Access is unfortunately not an option here
-										 // * since the following would fail due to productions
-										 // * starting in an empty heap:
-										 // *
-										 // *   predicate V { acc(x) }
-										 // *
-										 // *   function f(a: int): int
-										 // *	   requires rd(x)
-										 // * 	 { x + a }
-										 // *
-										 // *   method test(a: int)
-										 // *     requires ... ensures ...
-										 // *   { fold acc(V, f(a)) }
-										 // *
-										 // * Fold would fail since acc(V, f(a)) is produced in an
-										 // * empty and thus f(a) fails due to missing permissions to
-										 // * read x.
-										 // *
-										 // * TODO: Use heap merge function here!
-										 // */
-										// val (h, t, perm) =
-											// decider.getPredicateChunk(σ1.h, t0, id) match {
-												// case Some(pc) =>
-													// (σ1.h - pc, pc.snap ≡ snap, pc.perm + pt)
-												// case None =>
-													// (σ1.h, True(), pt)}
-
-										// assume(t, c3, (c4: C) =>
-											// Q(σ \ h \+ DefaultPredicateChunk(t0, id, snap, perm), c4))})
-								// case Some(errmsg) =>
-									// Failure(errmsg at stmt withDetails (e0, id), c2)})
-					// else
-						// Failure(m at stmt dueTo ReceiverMightBeNull(e0, id), c1))
-
-			// case Unfold(acc @ Access(pa @ PredicateAccess(e0, id), p0)) =>
-				// assert(pa.p != null, /* @elidable */
-						// "Expected Access.ma to not be null")
-
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// if (decider.assert(t0 ≠ Null()))
-						// evalp(σ, p0, m, c1, (pt, c2) =>
-							// decider.isValidFraction(pt) match {
-								// case None =>
-									// val insγ = Γ((This -> t0))
-									// consume(σ, Full, acc, UnfoldingFailed, c2, (σ1, snap, c3) =>
-										// produce(σ1 \ insγ, snap, pt, pa.p.body, m, c3, (σ2, c4) =>
-											// Q(σ2 \ σ.γ, c4)))
-								// case Some(errmsg) =>
-									// Failure(errmsg at stmt withDetails (e0, id), c2)})
-					// else
-						// Failure(m at stmt dueTo ReceiverMightBeNull(e0, id), c1))
 
 			// /* TODO: Separate and limit
 			 // *  - one rule only for "share c between waitlevel and mu's"

@@ -472,14 +472,33 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             // evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
         }
 
-        case _: silAST.expressions.PermissionExpression =>
-          sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s (%s) found.".format(e, e.getClass.getName))
+      case _: silAST.expressions.PermissionExpression =>
+        sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s (%s) found.".format(e, e.getClass.getName))
 
-//        case _: silAST.expressions.PermissionExpression =>
-////        case _: silAST.expressions.PredicateExpression =>
-//          sys.error("Not sure why we got here, unexpected %s (%s) found.".format(e, e.getClass.getName))
-        
-// [warn] missing combination UnfoldingExpression
+      case silAST.expressions.UnfoldingExpression(
+              acc @ silAST.expressions.PredicatePermissionExpression(
+                silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+                ePerm),
+              eIn) =>
+
+        val err = UnfoldingFailed
+        evalt(σ, eRcvr, err, tRcvr =>
+          if (decider.assert(tRcvr ≠ Null()))
+            evalp(σ, ePerm, err, tPerm =>
+            //              if (decider.isNonNegativeFraction(pt))
+            //                consume(σ2, Full(), pre, err, (_, s) => {
+              consume(σ, Full(), acc, err, (σ1, snap) => {
+                //                val body = predicate.expression.substitute(
+                //                  impl.makeProgramVariableSubstitution(Set((predicate.factory.thisVar, tRcvr))))
+                val insΓ = Γ((predicate.factory.thisVar -> tRcvr))
+                /* Unfolding only effects the current heap */
+                produce(σ1 \ insΓ, snap, tPerm, predicate.expression, err, σ2 => {
+                  val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                  evale(σ3, eIn, err, Q)})}))
+          //              else
+          //                Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
+          else
+            Failure(err at eRcvr dueTo ReceiverMightBeNull(eRcvr.toString, predicate.name)))
 
 			// case IfThenElse(e0, e1, e2) if config.branchOverPureConditionals =>
 				// eval(σ, cs, e0, m, c, (t0, c1) =>
@@ -881,13 +900,18 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         // case silAST.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
         
         /* Permissions */
-        
+
+        case silAST.types.percentagePermission => es(0) match {
+          case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
+            Q(terms.PercPerms(ilt.value))
+
+          case _ =>
+            sys.error("Expected percentagePermission %s to wrap an IntegerLiteralTerm, but " +
+                      "found %s (%s)".format(f, es(0), es(0).getClass.getName))}
+
         case silAST.types.permissionAddition =>
           evalBinOp(σ, cs, es(0), es(1), terms.PermPlus, m, Q)
-        
-        case silAST.types.percentagePermission =>
-          sys.error("Not yet implemented: " + e)
-          
+
         case silAST.types.permissionSubtraction =>
           evalBinOp(σ, cs, es(0), es(1), terms.PermMinus, m, Q)
           
@@ -895,7 +919,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           evalBinOp(σ, cs, es(0), es(1), terms.PermTimes, m, Q)
           
         case silAST.types.permissionIntegerMultiplication =>
-          sys.error("Not yet implemented: " + e)
+          evalBinOp(σ, cs, es(0), es(1), terms.PermTimes, m, Q)
         
         /* Domains not handled directly */
         
@@ -955,12 +979,12 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
       case silAST.expressions.terms.UnfoldingTerm(
               acc @ silAST.expressions.PredicatePermissionExpression(
-                silAST.expressions.terms.PredicateLocation(rcvr, predicate),
+                silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
                 ePerm),
               eIn) =>
 
         val err = UnfoldingFailed
-        evalt(σ, rcvr, err, tRcvr =>
+        evalt(σ, eRcvr, err, tRcvr =>
           if (decider.assert(tRcvr ≠ Null()))
             evalp(σ, ePerm, err, tPerm =>
 //              if (decider.isNonNegativeFraction(pt))
@@ -976,7 +1000,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 //              else
 //                Failure(FractionMightBeNegative at e withDetails (e0, id), c1))
           else
-            Failure(err at rcvr dueTo ReceiverMightBeNull(rcvr.toString, predicate.name)))
+            Failure(err at eRcvr dueTo ReceiverMightBeNull(eRcvr.toString, predicate.name)))
     }
   }
 

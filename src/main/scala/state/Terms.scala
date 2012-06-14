@@ -490,6 +490,7 @@ case class AtLeast(val t0: Term, val t1: Term) extends BinaryOperator with Compa
 case class FullPerms() extends PermissionTerm { override val toString = "Full" }
 case class ZeroPerms() extends PermissionTerm { override val toString = "Zero" }
 case class EpsPerms() extends PermissionTerm { override val toString = "Eps" }
+case class PercPerms(n: BigInt) extends PermissionTerm { override val toString = n + "%" }
 
 /* case */ class Perms(val t: Term) extends PermissionTerm {
   utils.assertSort(t, "term", sorts.Perms)
