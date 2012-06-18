@@ -123,12 +123,14 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 				val σ2 = σ1 \ (h = Ø, g = σ1.h)
 			 (produce(σ2, fresh, Full(), post, PostErr, _ =>
 					Success())
-					&&
+					&& {
+         println("\n[Verifier/SILImplementation]")
+         println("  impl.body = " + impl.body)
 				// execs(σ1 \ (g = σ1.h), meth.body, ExecutionFailed, σ2 =>
 				exec(σ1 \ (g = σ1.h), impl.body, ExecutionFailed)(σ2 =>
 					consume(σ2, Full(), post, PostErr, (σ3, _) =>
 						// consume(σ3, Full, DebtFreeExpr().setPos(meth.pos), PostErr, (_, _) =>
-							Success() /* ) */ )))})
+							Success() /* ) */ ))})})
     // )
 	}
 	
@@ -284,14 +286,43 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
     val additionalDomains = (domains -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
     
     additionalDomains.foreach(d => {
-      decider.prover.logComment("; Axiomatising " + d.fullName)
+      decider.prover.logComment(";\n; Axiomatising " + d.fullName)
       
       decider.prover.declareSort(typeConverter.toSort(d.getType))
       
+//      println("\n[Domain] " + d.fullName)
+//      println("  functions = " + d.functions)
+//      println("  predicates = " + d.predicates)
+//      println("  axioms = " + d.axioms)
+
+      decider.prover.logComment("; Functions")
       d.functions.foreach(f =>
         decider.prover.declareSymbol(f.fullName,
                                      f.signature.parameterTypes.map(typeConverter.toSort),
                                      typeConverter.toSort(f.signature.resultType)))
+
+      decider.prover.logComment("; Predicates")
+      d.predicates.foreach(p =>
+        decider.prover.declareSymbol(p.fullName,
+          p.signature.parameterTypes.map(typeConverter.toSort),
+          sorts.Bool))
+
+      decider.prover.logComment("; Axioms (eval)")
+      val axioms = d.axioms.map(a => {
+        import stateFactory._
+
+        val σ = Σ(Ø, Ø, Ø)
+        val err = SpecsMalformed withDetails(d.fullName + "." + a.name)
+        var t: Term = null
+        mv.evale(σ, a.expression, err, _t => {
+          t = _t
+          Success()
+        })
+        t
+      })
+
+      decider.prover.logComment("; Axioms")
+      axioms.foreach(decider.prover.assume)
     })
 	}
 	

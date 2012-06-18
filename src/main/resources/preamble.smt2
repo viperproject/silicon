@@ -69,12 +69,12 @@
 
 ; --- Permissions ---
 
-(define-sort $Perms () Int)
-(declare-const $Perms.Write $Perms)
-(declare-const $Perms.Zero $Perms)
+(define-sort $Perms () Real)
+(define-const $Perms.Zero $Perms 0.0)
+(define-const $Perms.Write $Perms 1.0)
 
-(assert (= $Perms.Zero 0))
-(assert (< $Perms.Zero $Perms.Write))
+;(assert (= $Perms.Zero 0))
+;(assert (< $Perms.Zero $Perms.Write))
 
 ; --- Sort wrappers ---
 

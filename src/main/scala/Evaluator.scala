@@ -903,7 +903,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
         case silAST.types.percentagePermission => es(0) match {
           case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
-            Q(terms.PercPerms(ilt.value))
+            Q(terms.PercPerms(ilt.value.toInt))
 
           case _ =>
             sys.error("Expected percentagePermission %s to wrap an IntegerLiteralTerm, but " +
@@ -919,7 +919,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
           evalBinOp(σ, cs, es(0), es(1), terms.PermTimes, m, Q)
           
         case silAST.types.permissionIntegerMultiplication =>
-          evalBinOp(σ, cs, es(0), es(1), terms.PermTimes, m, Q)
+          evalBinOp(σ, cs, es(0), es(1), terms.IntPermTimes, m, Q)
         
         /* Domains not handled directly */
         
@@ -992,9 +992,9 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                 consume(σ, Full(), acc, err, (σ1, snap) => {
 //                val body = predicate.expression.substitute(
 //                  impl.makeProgramVariableSubstitution(Set((predicate.factory.thisVar, tRcvr))))
-                val insΓ = Γ((predicate.factory.thisVar -> tRcvr))
+                val insγ = Γ((predicate.factory.thisVar -> tRcvr))
                 /* Unfolding only effects the current heap */
-                produce(σ1 \ insΓ, snap, tPerm, predicate.expression, err, σ2 => {
+                produce(σ1 \ insγ, snap, tPerm, predicate.expression, err, σ2 => {
                 val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                 evalt(σ3, eIn, err, Q)})}))
 //              else
@@ -1010,6 +1010,9 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
 		evale(σ, cs, e0, m, t0 =>
 			evale(σ, cs, e1, m, t1 =>
+        /* NOTE: t0,t1 cannot be casted to any specific term, e.g., PermissionTerm,
+         * due to variables (terms.Var).
+         */
 				Q(termOp(t0, t1))))
         
 	private def evalBinOp[T <: Term](σ: S, cs: List[SILFunction],

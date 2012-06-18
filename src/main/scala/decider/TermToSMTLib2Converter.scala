@@ -165,16 +165,20 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     
     case FullPerms() => "$Perms.Write"
     case ZeroPerms() => "$Perms.Zero"
+    case PercPerms(n) => (n / 100.0).toString
     case Perms(t) => convert(t)
-    
+
 		case PermMinus(t0, t1) =>
-			"(- " + convert(t0) + " " + convert(t1) + ")"
+			"(- " + convert2real(t0) + " " + convert2real(t1) + ")"
 
 		case PermPlus(t0, t1) =>
-			"(+ " + convert(t0) + " " + convert(t1) + ")"
+			"(+ " + convert2real(t0) + " " + convert2real(t1) + ")"
 
 		case PermTimes(t0, t1) =>
-			"(* " + convert(t0) + " " + convert(t1) + ")"
+			"(* " + convert2real(t0) + " " + convert2real(t1) + ")"
+
+    case IntPermTimes(t0, t1) =>
+      "(* " + convert2real(t0) + " " + convert2real(t1) + ")"
 
     case PermLess(t0, t1) =>
       "(< " + convert(t0) + " " + convert(t1) + ")"
@@ -200,8 +204,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
       
       // val domainStr = convert(f.domain)
       val argsStr = ts.map(convert).mkString(" ")
-      
-      "(%s %s)".format(sanitiseIdentifier(id), argsStr)
+      val sid = sanitiseIdentifier(id)
+
+      if (ts.isEmpty)
+        sid
+      else
+        "(%s %s)".format(sid, argsStr)
       // val funId = 
       
       // sys.error("Found unsupported %s".format(term))
@@ -280,7 +288,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 	def convert(sort: Sort) = sort match {
 		case sorts.Int => "Int"
 		case sorts.Bool => "Bool"
-		case sorts.Perms => "Int"
+		case sorts.Perms => "$Perms"
 		case sorts.Snap => "$Snap"
 		case sorts.Ref => "$Ref"  
     case sorts.UserSort(id) => sanitiseIdentifier(id)
@@ -324,6 +332,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
               // // .replace("Permission", "$Perms")
               // // .replace("ref", "$Ref"))
   // }
+
+  private def convert2real(t: Term): String =
+    if (t.sort == sorts.Int)
+      "(to_real " + convert(t) + ")"
+    else
+      convert(t)
 
   def sanitiseIdentifier(str: String) = (
     str.replace('#', '_')

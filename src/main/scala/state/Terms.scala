@@ -28,13 +28,14 @@ import silicon.utils.collections.mapReduceLeft
  * optimisations, as done in the work on the type safe builder pattern.
  */
 
-/* TODO: At least Term and Sort should go to the interfaces package.
- *       Maybe also Var and Literal.
- */
- 
 /* TODO: Sorts currently take not type parameters, will probably is necessary
  *       in order to support e.g. non-integer sequences.
  */
+
+/* TODO: Can we use scala.FunctionN instead of UnaryOperator, BinaryOperator?
+ *
+ */
+
 sealed trait Sort
 
 // case class DataTypeSort(d: silAST.types.DataType) extends Sort
@@ -490,7 +491,7 @@ case class AtLeast(val t0: Term, val t1: Term) extends BinaryOperator with Compa
 case class FullPerms() extends PermissionTerm { override val toString = "Full" }
 case class ZeroPerms() extends PermissionTerm { override val toString = "Zero" }
 case class EpsPerms() extends PermissionTerm { override val toString = "Eps" }
-case class PercPerms(n: BigInt) extends PermissionTerm { override val toString = n + "%" }
+case class PercPerms(n: Int) extends PermissionTerm { override val toString = n + "%" }
 
 /* case */ class Perms(val t: Term) extends PermissionTerm {
   utils.assertSort(t, "term", sorts.Perms)
@@ -547,6 +548,11 @@ object PermMinus extends Function2[Term, Term, PermissionTerm] {
 
 /* case */ class PermLess(val t0: Term, val t1: Term) extends BinaryOperator with BooleanTerm {
   override val toString = "%s < %s".format(t0, t1)
+}
+
+case class IntPermTimes(t0: Term, t1: Term) extends /*BinaryOperator with*/ PermissionTerm {
+  utils.assertSort(t0, "first operand", sorts.Int)
+  utils.assertSort(t1, "second operand", sorts.Perms)
 }
 
 object PermLess extends Function2[Term, Term, BooleanTerm] {
@@ -618,68 +624,68 @@ object utils {
     assert(t.sort == s, "Expected %s %s to be of sort %s, but found %s.".format(desc, t, s, t.sort))
   }
   
-  def transform(t: Term, f: PartialFunction[Term, Term]): Term = {
-    // def foo: String = ""
-    val g = (t: Term) => transform(t, f)
-    val gs = (ts: Seq[Term]) => ts map f
-    
-    val tf = if (f.isDefinedAt(t)) f(t) else t
-    
-    /* WARNING: Sort might get out of sync if replacee and replacement are of
-     *          different sorts.
-     */    
-    tf match {
-      case   _: Var
-           | Unit
-           | _: IntLiteral
-           | _: Null
-           | _: True
-           | _: False
-           | _: FullPerms
-           | _: ZeroPerms
-           | _: EpsPerms
-           => tf
-
-      case FApp(f, s, t0, tArgs, sort) => FApp(f, g(s), g(t0), gs(tArgs), sort)
-      case Quantification(q, qvar, tBody) => Quantification(q, g(qvar).asInstanceOf[Var], g(tBody))
-      case Not(t) => Not(g(t))
-      case Plus(t0, t1) => Plus(g(t0), g(t1))
-      case Minus(t0, t1) => Minus(g(t0), g(t1))
-      case Times(t0, t1) => Times(g(t0), g(t1))
-      case Div(t0, t1) => Div(g(t0), g(t1))
-      case Mod(t0, t1) => Mod(g(t0), g(t1))
-      case Or(t0, t1) => Or(g(t0), g(t1))
-      case And(t0, t1) => And(g(t0), g(t1))
-      case Implies(t0, t1) => Implies(g(t0), g(t1))
-      case Iff(t0, t1) => Iff(g(t0), g(t1))
-      case Eq(t0, t1) => Eq(g(t0), g(t1))
-      case Less(t0, t1) => Less(g(t0), g(t1))
-      case AtMost(t0, t1) => AtMost(g(t0), g(t1))
-      case Greater(t0, t1) => Greater(g(t0), g(t1))
-      case AtLeast(t0, t1) => AtLeast(g(t0), g(t1))
-      case Perms(t0) => Perms(g(t0))
-      case PermTimes(t0, t1) => PermTimes(g(t0), g(t1))
-      case PermPlus(t0, t1) => PermPlus(g(t0), g(t1))
-      case PermMinus(t0, t1) => PermMinus(g(t0), g(t1))
-      case PermLess(t0, t1) => PermLess(g(t0), g(t1))
-      case DomainFApp(id, tArgs, sort) => DomainFApp(id, gs(tArgs), sort)
-      case Combine(t0, t1) => Combine(g(t0), g(t1))
-      case SortWrapper(t0, sort) => SortWrapper(g(t0), sort)
-    }
-  }
-  
-  // val substitute: PartialFunction[(Term, Term, Term), Term] = tWhat => tWith => t =>
-  // t match {
-      // case tSome if tSome == tWhat => tWith
-      // case _ => t
-    // }
-  
-  // def substitute(tWhat: Term, tWith: Term)(t: Term): PartialFunction[Term, Term] =
-  def substitute(tWhat: Term, tWith: Term): PartialFunction[Term, Term] = {
-    // t match {
-      case t if t == tWhat => tWith
-      case t => t
-    }
+//  def transform(t: Term, f: PartialFunction[Term, Term]): Term = {
+//    // def foo: String = ""
+//    val g = (t: Term) => transform(t, f)
+//    val gs = (ts: Seq[Term]) => ts map f
+//
+//    val tf = if (f.isDefinedAt(t)) f(t) else t
+//
+//    /* WARNING: Sort might get out of sync if replacee and replacement are of
+//     *          different sorts.
+//     */
+//    tf match {
+//      case   _: Var
+//           | Unit
+//           | _: IntLiteral
+//           | _: Null
+//           | _: True
+//           | _: False
+//           | _: FullPerms
+//           | _: ZeroPerms
+//           | _: EpsPerms
+//           => tf
+//
+//      case FApp(f, s, t0, tArgs, sort) => FApp(f, g(s), g(t0), gs(tArgs), sort)
+//      case Quantification(q, qvar, tBody) => Quantification(q, g(qvar).asInstanceOf[Var], g(tBody))
+//      case Not(t) => Not(g(t))
+//      case Plus(t0, t1) => Plus(g(t0), g(t1))
+//      case Minus(t0, t1) => Minus(g(t0), g(t1))
+//      case Times(t0, t1) => Times(g(t0), g(t1))
+//      case Div(t0, t1) => Div(g(t0), g(t1))
+//      case Mod(t0, t1) => Mod(g(t0), g(t1))
+//      case Or(t0, t1) => Or(g(t0), g(t1))
+//      case And(t0, t1) => And(g(t0), g(t1))
+//      case Implies(t0, t1) => Implies(g(t0), g(t1))
+//      case Iff(t0, t1) => Iff(g(t0), g(t1))
+//      case Eq(t0, t1) => Eq(g(t0), g(t1))
+//      case Less(t0, t1) => Less(g(t0), g(t1))
+//      case AtMost(t0, t1) => AtMost(g(t0), g(t1))
+//      case Greater(t0, t1) => Greater(g(t0), g(t1))
+//      case AtLeast(t0, t1) => AtLeast(g(t0), g(t1))
+//      case Perms(t0) => Perms(g(t0))
+//      case PermTimes(t0, t1) => PermTimes(g(t0), g(t1))
+//      case PermPlus(t0, t1) => PermPlus(g(t0), g(t1))
+//      case PermMinus(t0, t1) => PermMinus(g(t0), g(t1))
+//      case PermLess(t0, t1) => PermLess(g(t0), g(t1))
+//      case DomainFApp(id, tArgs, sort) => DomainFApp(id, gs(tArgs), sort)
+//      case Combine(t0, t1) => Combine(g(t0), g(t1))
+//      case SortWrapper(t0, sort) => SortWrapper(g(t0), sort)
+//    }
+//  }
+//
+//  // val substitute: PartialFunction[(Term, Term, Term), Term] = tWhat => tWith => t =>
+//  // t match {
+//      // case tSome if tSome == tWhat => tWith
+//      // case _ => t
+//    // }
+//
+//  // def substitute(tWhat: Term, tWith: Term)(t: Term): PartialFunction[Term, Term] =
+//  def substitute(tWhat: Term, tWith: Term): PartialFunction[Term, Term] = {
+//    // t match {
+//      case t if t == tWhat => tWith
+//      case t => t
+//    }
 }
 
 /* A DSL facilitating working with Terms */

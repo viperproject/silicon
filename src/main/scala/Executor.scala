@@ -314,8 +314,8 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
               decider.isValidFraction(tPerm) match {
                 case None =>
                   val err = FoldingFailed(stmt)
-//                  val insγ = Γ((This -> t0))
-                  consume(σ /*\ insγ*/, tPerm,predicate.expression, err, (σ1, snap) => {
+                  val insγ = Γ((predicate.factory.thisVar -> tRcvr))
+                  consume(σ \ insγ, tPerm,predicate.expression, err, (σ1, snap) => {
                     /* Producing Access is unfortunately not an option here
                     * since the following would fail due to productions
                     * starting in an empty heap:
@@ -356,10 +356,10 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
             evalp(σ, ePerm, m, tPerm =>
               decider.isValidFraction(tPerm) match {
                 case None =>
-//                  val insγ = Γ((This -> t0))
+                  val insγ = Γ((predicate.factory.thisVar -> tRcvr))
                   consume(σ, Full(), acc, UnfoldingFailed, (σ1, snap) =>
-                    produce(σ1 /*\ insγ*/, snap, tPerm, predicate.expression, m, σ2 =>
-                      Q(σ2 /*\ σ.γ*/)))
+                    produce(σ1 \ insγ, snap, tPerm, predicate.expression, m, σ2 =>
+                      Q(σ2 \ σ.γ)))
                 case Some(errmsg) =>
                   Failure(errmsg at stmt withDetails (eRcvr, predicate.name))})
           else
