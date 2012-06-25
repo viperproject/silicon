@@ -235,30 +235,25 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
       case silAST.methods.implementations.FieldAssignmentStatement(rcvr, field, rhs) =>
         val err = HeapWriteFailed at stmt
         val tRcvr = σ.γ(rcvr)
-				// evalt(σ, rcvr, m, tRcvr =>
-					if (decider.assert(tRcvr ≠ Null()))
-            evalt(σ, rhs, m, tRhs =>
-						// execRValue(σ, rhs, m, c1, (σ1, t1, c2) =>
-							withFieldChunk(σ.h, tRcvr, field.name, Full(), rcvr.toString, err, fc =>
-								Q(σ \- fc \+ DefaultFieldChunk(tRcvr, field.name, tRhs, fc.perm))))
-					else
-						Failure(err dueTo ReceiverMightBeNull(rcvr.toString, field.name))
+        if (decider.assert(tRcvr ≠ Null()))
+          evalt(σ, rhs, m, tRhs =>
+            withFieldChunk(σ.h, tRcvr, field.name, Full(), rcvr.toString, err, fc =>
+              Q(σ \- fc \+ DefaultFieldChunk(tRcvr, field.name, tRhs, fc.perm))))
+        else
+          Failure(err dueTo ReceiverMightBeNull(rcvr.toString, field.name))
 
       case silAST.methods.implementations.InhaleStatement( a) =>
-        // eval(σ, e, m, c, (t, c1) =>
-					// assume(t, c1, (c2: C) =>
-						// Q(σ, c2)))
         produce(σ, fresh, Full(), a, m, σ1 =>
           Q(σ1))
 
-		  //  TODO: integrate message from exhale statement into error message
-      case silAST.methods.implementations.ExhaleStatement(a,msg) =>
-        // logger.error("\n[exec/exhale]")
-        // logger.error("  stmt = " + stmt)
-        // logger.error("  stmt.sourceLocation = " + stmt.sourceLocation)
-        // logger.error("  a = " + a)
-        // logger.error("  a.sourceLocation = " + a.sourceLocation)
-        consume(σ, Full(), a, AssertionMightNotHold(stmt), (σ1, _) =>
+      case silAST.methods.implementations.ExhaleStatement(a, msgOpt) =>
+        val err =
+          if (msgOpt.isDefined)
+            AssertionMightNotHold(stmt, msgOpt.get)
+          else
+            AssertionMightNotHold(stmt)
+
+        consume(σ, Full(), a, err, (σ1, _) =>
           Q(σ1))
 
 			case call @ silAST.methods.implementations.CallStatement(lhs, meth, args) =>

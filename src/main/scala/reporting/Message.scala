@@ -106,14 +106,15 @@ object ErrorMessages {
 		// InvocationFailed(call.obj, call.id, call)
 
 	def PostconditionMightNotHold = ErrorMessage(300, "Postcondition might not hold.")
-	
-	def AssertionMightNotHold(pos: SILSourceLocation) = {
-		val err = new ErrorMessage(400, "Assertion might not hold at %s.")
-				with RedirectAtToWithDetails
-		
-		err.loc = pos
-		err
-	}
+
+  def AssertionMightNotHold(pos: SILSourceLocation, msg: String) = {
+    val err = new ErrorMessage(400, msg) with RedirectAtToWithDetails
+    err.loc = pos
+    err
+  }
+
+	def AssertionMightNotHold(pos: SILSourceLocation): ErrorMessage =
+    AssertionMightNotHold(pos, "Assertion might not hold at %s.")
 	
 	def HeapReadFailed = ErrorMessage(500, "Heap read failed.")
 	def HeapWriteFailed = ErrorMessage(600, "Heap write failed.")

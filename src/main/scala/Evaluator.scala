@@ -938,7 +938,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 //            if (decider.assert(tRcvr ≠ Null())) {
             bookkeeper.functionApplications += 1
 //            val insΓ = Γ(((This, t0) :: fapp.f.ins.zip(tArgs)).toMap)
-            val insγ = Γ(f.signature.parameters.variables.zip(tArgs))
+            val insγ = Γ(  (f.factory.thisVar -> tRcvr)
+                         +: f.signature.parameters.variables.zip(tArgs))
             val σ2 = σ \ insγ
             val pre = BigAnd(f.signature.precondition, Predef.identity)
             consume(σ2, Full(), pre, err, (_, s) => {

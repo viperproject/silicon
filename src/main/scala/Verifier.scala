@@ -286,7 +286,7 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
     val additionalDomains = (domains -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
     
     additionalDomains.foreach(d => {
-      decider.prover.logComment(";\n; Axiomatising " + d.fullName)
+      decider.prover.logComment(";\n; Declaring domain " + d.fullName)
       
       decider.prover.declareSort(typeConverter.toSort(d.getType))
       
@@ -306,8 +306,14 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
         decider.prover.declareSymbol(p.fullName,
           p.signature.parameterTypes.map(typeConverter.toSort),
           sorts.Bool))
+    })
+
+    additionalDomains.foreach(d => {
+      decider.prover.logComment(";\n; Axiomatising domain " + d.fullName)
+
 
       decider.prover.logComment("; Axioms (eval)")
+      decider.prover.push()
       val axioms = d.axioms.map(a => {
         import stateFactory._
 
@@ -320,6 +326,7 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
         })
         t
       })
+      decider.prover.pop()
 
       decider.prover.logComment("; Axioms")
       axioms.foreach(decider.prover.assume)
