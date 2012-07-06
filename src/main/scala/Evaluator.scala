@@ -492,7 +492,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                 //                  impl.makeProgramVariableSubstitution(Set((predicate.factory.thisVar, tRcvr))))
                 val insΓ = Γ((predicate.factory.thisVar -> tRcvr))
                 /* Unfolding only effects the current heap */
-                produce(σ1 \ insΓ, snap, tPerm, predicate.expression, err, σ2 => {
+                produce(σ1 \ insΓ, s => snap.convert(s), tPerm, predicate.expression, err, σ2 => {
                   val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                   evale(σ3, eIn, err, Q)})}))
           //              else
@@ -995,7 +995,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 //                  impl.makeProgramVariableSubstitution(Set((predicate.factory.thisVar, tRcvr))))
                 val insγ = Γ((predicate.factory.thisVar -> tRcvr))
                 /* Unfolding only effects the current heap */
-                produce(σ1 \ insγ, snap, tPerm, predicate.expression, err, σ2 => {
+                produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.expression, err, σ2 => {
                 val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                 evalt(σ3, eIn, err, Q)})}))
 //              else

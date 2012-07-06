@@ -1,6 +1,8 @@
-package ch.ethz.inf.pm.silicon.interfaces.decider
+package ch.ethz.inf.pm
+package silicon
+package interfaces
+package decider
 
-import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Sort, Term, Var}
 
 sealed abstract class Result
@@ -9,6 +11,7 @@ object Unsat extends Result
 object Unknown extends Result
 
 trait Prover {
+  def termConverter: TermConverter[String] /* TODO: Generalise to S instead of String */
   def push(n: Int = 1)
   def pop(n: Int = 1)
 	def	push(label: String)
@@ -18,8 +21,7 @@ trait Prover {
 	def check(): Result
 	def enableLoggingComments(enabled: Boolean)
 	def logComment(str: String)
-	
-	def fresh(id: String, sort: Sort): Var
+  def fresh(id: String, sort: Sort): Var
   def declareSort(sort: Sort)
   def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort)
 }

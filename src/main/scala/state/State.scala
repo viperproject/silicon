@@ -26,16 +26,23 @@ case class MapBackedStore[V](private val map: Map[V, Term])
 
 	val values = map
 	def empty = new MapBackedStore()
-	
-  def apply(key: V) = get(key).get
 
-	def get(key: V) = {
+  def apply(key: V) = {
+    val optTerm = get(key)
+    assert(optTerm.isDefined, "Looking up %s in %s failed.".format(key, map))
+    optTerm.get
+  }
+
+	def get(key: V): Option[Term] = {
     /* TODO: Remove hack! */
     val pa = key.asInstanceOf[silAST.programs.symbols.ProgramVariable]
     val mpa = map.asInstanceOf[Map[silAST.programs.symbols.ProgramVariable, Term]]
-    mpa.get(mpa.keys.find(_.name == pa.name).get)
+
+    val optKey = mpa.keys.find(_.name == pa.name)
+    assert(optKey.isDefined, "Looking up %s in %s failed.".format(pa, mpa))
+    mpa.get(optKey.get)
   }
-    
+
 	def +(entry: (V, Term)) = MapBackedStore(map + entry)
 	def +(other: MapBackedStore[V]) = MapBackedStore(map ++ other.map)
 }

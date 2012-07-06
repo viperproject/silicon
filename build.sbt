@@ -30,6 +30,6 @@ scalacOptions += "-deprecation"
 
 scalacOptions += "-unchecked"
 
-maxErrors in Compile := 6
+maxErrors := 6
 
 // parallelExecution := true

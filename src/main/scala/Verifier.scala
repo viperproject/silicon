@@ -32,7 +32,7 @@ import interfaces.state.factoryUtils.Ø
 // import interfaces.ast.specialVariables.{This}
 // import ast.utils.collections.SetAnd
 import state.{/* FractionalPermission, */ TypeConverter}
-import state.terms.{sorts, Term, Null, FullPerms => Full}
+import state.terms.{sorts, Term, SortWrapper, FullPerms => Full}
 import reporting.ErrorMessages.{ExecutionFailed, NotSupported,
 		PostconditionMightNotHold, SpecsMalformed}
 import reporting.WarningMessages.{ExcludingUnit}
@@ -241,8 +241,9 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 
 	def verify(prog: SILProgram): List[VerificationResult] = {
     // logger.debug("prog = " + prog)
-		emitFunctionDeclarations(prog.functions)
     emitDomainDeclarations(prog.domains)
+    emitSortWrappers(prog.domains)
+    emitFunctionDeclarations(prog.functions)
     decider.prover.push()
 
     var it: Iterator[SILImplementation] =
@@ -281,7 +282,22 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
       decider.prover.declareSymbol(f.name, args, typeConverter.toSort(f.signature.result.dataType))
     })
 	}
-  
+
+  private def emitSortWrappers(domains: Set[SILDomain]) {
+    val snapSortId = decider.prover.termConverter.convert(sorts.Snap)
+
+    domains.foreach(d => {
+      val domainSort = typeConverter.toSort(d.getType)
+      val domainSortId = decider.prover.termConverter.convert(domainSort)
+      val wrapperId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
+        /* TODO: Sort wrapper naming schema must be the same as used by the
+         *       TermConverter when converting SortWrapper(t, to) terms!!!
+         */
+
+      decider.prover.declareSymbol(wrapperId, Seq(domainSort), sorts.Snap)
+    })
+  }
+
 	private def emitDomainDeclarations(domains: Set[SILDomain]) {
     val additionalDomains = (domains -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
     

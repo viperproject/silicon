@@ -353,7 +353,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
                 case None =>
                   val insγ = Γ((predicate.factory.thisVar -> tRcvr))
                   consume(σ, Full(), acc, UnfoldingFailed, (σ1, snap) =>
-                    produce(σ1 \ insγ, snap, tPerm, predicate.expression, m, σ2 =>
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.expression, m, σ2 =>
                       Q(σ2 \ σ.γ)))
                 case Some(errmsg) =>
                   Failure(errmsg at stmt withDetails (eRcvr, predicate.name))})

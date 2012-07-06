@@ -1,9 +1,11 @@
-package ch.ethz.inf.pm.silicon.interfaces.decider
+package ch.ethz.inf.pm
+package silicon
+package interfaces
+package decider
 
-import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Term, Sort}
 
-trait TermConverter[T, S] {
-	def convert(term: Term): T
+trait TermConverter[S] {
+	def convert(term: Term): S
 	def convert(sort: Sort): S
 }

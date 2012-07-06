@@ -1,29 +1,19 @@
-package ch.ethz.inf.pm.silicon
+package ch.ethz.inf.pm
+package silicon
 package decider
 
 import scala.io.Source
 import com.weiglewilczek.slf4s.Logging
-
-import silAST.programs.symbols.{Function => SILFunction}
 import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
-import silAST.domains.{Domain => SILDomain}
-
-import interfaces.{VerificationResult, Warning, Success}
+import interfaces.{VerificationResult, Warning}
 import interfaces.decider.{Decider, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, FieldChunk,
 		PathConditionsFactory, Chunk, PredicateChunk, AccessRestrictedChunk}
-import interfaces.reporting.{Message}
-import state.{DefaultFieldChunk, DefaultPredicateChunk}
 import state.terms
-import state.terms.{Term, Eq, Not, Var, Less, /* AtLeast, AtMost, Greater,
-		IntLiteral, Mu, */ Combine, FApp, And, Or, True,
-		SortWrapper, /* LockMode, */ PermissionTerm, ZeroPerms, FullPerms}
-// import ast
-// import state.terms.dsl._
+import state.terms.{Sort, Term, Eq, Or, True, PermissionTerm, ZeroPerms, FullPerms}
 import reporting.WarningMessages.{SmokeDetected}
 import reporting.ErrorMessages.{FractionMightBeNegative,
 		FractionMightBeGT100}
-// import LockSupport
 
 class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 										 PC <: PathConditions[PC],
@@ -228,14 +218,14 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 		r
 	}
 
-	/* TODO: Have TermConverter declare a default sort */
-	// def fresh = prover.fresh("$t", terms.sorts.Int)
-	def fresh = prover.fresh("$t", terms.sorts.Snap)
 
-	def fresh(id: String) = prover.fresh(id, terms.sorts.Snap)
+  def fresh(s: Sort) = prover.fresh("$t", s)
+  def fresh(id: String, s: Sort) = prover.fresh(id, s)
+//  def fresh(v: ast.Variable) = prover_fresh(v.id, typeConverter.toSort(v.t))
 
-	def fresh(v: SILProgramVariable) =
-    prover.fresh(v.name, typeConverter.toSort(v.dataType))
+//	def fresh(id: String) = prover.fresh(id, terms.sorts.Snap)
+
+	def fresh(v: SILProgramVariable) = prover.fresh(v.name, typeConverter.toSort(v.dataType))
 
 	def getChunk(h: H, rcvr: Term, id: String) =
 		getChunk(h, h.values filter (c => c.id == id), rcvr)

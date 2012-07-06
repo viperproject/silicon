@@ -590,12 +590,13 @@ case class Combine(t0: Term, t1: Term) extends BinaryOperator with SnapshotTerm 
   override val toString = "(%s, %s)".format(t0, t1)
 }
 
-// /* TODO: Can't we replace SnapEq? It is only relevant in the final translation
- // *       to Z3.
- // */
-// case class SnapEq(p0: Term, p1: Term) extends Eq
+case class First(t: Term) extends SnapshotTerm {
+  utils.assertSort(t, "term", sorts.Snap)
+}
 
-// sealed trait SortWrapper extends Term { def t0: Term }
+case class Second(t: Term) extends SnapshotTerm {
+  utils.assertSort(t, "term", sorts.Snap)
+}
 
 case class SortWrapper(t: Term, to: Sort) extends Term {
   override val toString = "(%s) %s".format(to, t)

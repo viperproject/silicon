@@ -1,31 +1,20 @@
-package ch.ethz.inf.pm.silicon
+package ch.ethz.inf.pm
+package silicon
 
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
-
 import silAST.expressions.{Expression => SILExpression}
-  // PermissionExpression => SILPermissionExpression}
-// import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
 import silAST.expressions.terms.{Term => SILTerm}
-
-import interfaces.{Producer, Evaluator, VerificationResult, MapSupport, Failure, 
-		Success}
+import interfaces.{Producer, Evaluator, VerificationResult, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, 
-		StateFactory, StateFormatter, PersistentChunk, FieldChunk, 
-		PredicateChunk, HeapMerger}
+		StateFactory, StateFormatter, PersistentChunk, HeapMerger}
 import interfaces.reporting.{Message}
 import interfaces.state.factoryUtils.Ø
-import state.terms.{Term, Combine, Null, sorts, True, And, Or, /* LockMode, Plus,
-		IntLiteral, */ Eq, PermissionTerm, Times}
+import state.terms.{Sort, Term, First, Second, Null, sorts, Eq, PermissionTerm}
 import state.{TypeConverter}
-// import ast.{Expression}
-import state.{DefaultFieldChunk, DefaultPredicateChunk /* , CounterChunk */ }
-import reporting.{/* Consuming, ImplBranching, IfBranching, IffBranching, */
-		Bookkeeper}
-// import reporting.utils._
-import state.terms.utils.¬
-// import state.terms.dsl._
+import state.{DefaultFieldChunk, DefaultPredicateChunk}
+import reporting.{Bookkeeper}
 
 /* TODO: Declare a ChunkFactory and use it to create FieldChunks and 
  *       PredicateChunks instead of directly creating e.g. DefaultFieldChunks.
@@ -47,35 +36,27 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 	protected val stateFactory: StateFactory[V, ST, H, S]
 	import stateFactory._
 	
-	// protected val permissionFactory: PermissionFactory[P]
-	// import permissionFactory._
-
 	protected val heapMerger: HeapMerger[H]
 	import heapMerger.merge
 	
 	protected val typeConverter: TypeConverter
 	import typeConverter.toSort
-	
-	// protected val mapSupport: MapSupport[ST, H, S]
-	// import mapSupport.update
-	
-	// protected val lockSupport: LockSupport[ST, H, S]
-	// protected val creditSupport: CreditSupport[ST, H, S]
+
 	protected val stateFormatter: StateFormatter[V, ST, H, S, String]
 
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
-	
+
 	private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
 	private var snapshotCache: Map[Term, (Term, Term)] = Map()
-	
+
   var implementationFactory: silAST.methods.implementations.ImplementationFactory = null
-  
-	def produce(σ: S, s: Term, p: PermissionTerm, φ: SILExpression, m: Message,
+
+	def produce(σ: S, sf: Sort => Term, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: S => VerificationResult): VerificationResult = {
 
 		if (!config.selfFramingProductions) {
-			produce2(σ, s, p, φ, m, h => {
+			produce2(σ, sf, p, φ, m, h => {
 				// Q(σ \ h, c1)})
 				
 				if (decider.checkSmoke)
@@ -90,7 +71,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 			/* Persistent chunks (pcs) have to remain in the heap, all other
 			 * chunks (npcs) are finally merged with the newly produced chunks.
 			 */
-			produce2(σ \ (h = H(pcs)), s, p, φ, m, h =>
+			produce2(σ \ (h = H(pcs)), sf, p, φ, m, h =>
 				if (decider.checkSmoke)
 					Success() /* TODO: Create smoke warning */
 				else {
@@ -100,41 +81,88 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 		}
 	}
 
-	private def produce2(σ: S, s: Term, p: PermissionTerm, φ: SILExpression, m: Message,
-			Q: H => VerificationResult): VerificationResult = {
-			
-		logger.debug("\nPRODUCE " + φ.toString)
-		logger.debug("  " + φ.getClass.getName)
-		logger.debug(stateFormatter.format(σ))
-		
+  private def produce2(σ: S, sf: Sort => Term, p: PermissionTerm, φ: SILExpression, m: Message,
+  Q: H => VerificationResult): VerificationResult = {
+
+    logger.debug("\nPRODUCE " + φ.toString)
+    logger.debug("  " + φ.getClass.getName)
+    logger.debug(stateFormatter.format(σ))
+
 		val produced = φ match {
 			/* And <: BooleanExpr */
 			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.And, a0, a1) =>
-				val (s0, s1) =
-					if (snapshotCache.contains(s)) {
-						logger.debug("[Produce(And)] Took cache entry for snapshot " + s)
-						val (sl, sr) = snapshotCache(s)
-						(sl, sr)}
-					else {
-						val s0 = fresh
-						val s1 = fresh
-						if (config.cacheSnapshots) snapshotCache += (s -> (s0, s1))
-						(s0, s1)}
-				
-				// val (s0, s1) = (fresh, fresh)
-				
-				val tEq = Eq(s, Combine(s0, s1))
-				
-				assume(tEq,
-					produce2(σ, s0, p, a0, m, h1 =>
-						produce2(σ \ h1, s1, p, a1, m, h2 =>
-							Q(h2))))
+//				val (s0, s1) =
+//					if (snapshotCache.contains(s)) {
+//						logger.debug("[Produce(And)] Took cache entry for snapshot " + s)
+//						val (sl, sr) = snapshotCache(s)
+//						(sl, sr)}
+//					else {
+//						val s0 = fresh
+//						val s1 = fresh
+//						if (config.cacheSnapshots) snapshotCache += (s -> (s0, s1))
+//						(s0, s1)}
+//
+//				// val (s0, s1) = (fresh, fresh)
+//
+//				val tEq = Eq(s, Combine(s0, s1))
+//
+//				assume(tEq,
+//					produce2(σ, s0, p, a0, m, h1 =>
+//						produce2(σ \ h1, s1, p, a1, m, h2 =>
+//							Q(h2))))
+
+
+//        val (sf0: (Sort => Term), sf1: (Sort => Term)) = {
+        val (sf0, sf1) = {
+//          if (a1.isPure)
+//            (sf, (sort: Sort) => fresh(sort))
+//          else if (a0.isPure)
+//            ((sort: Sort) => fresh(sort), sf)
+//          else {
+            val s = sf(sorts.Snap)
+
+            /* WARNING! These assumptions do not get their own push-pop
+            *           scope! They will only be popped in the context of
+            *           a regular assume.
+            *
+            * TODO: Make sure that the brancher is used whenever an
+            *       operation might backtrack. It would then be
+            *       sufficient to open new push-pop scope whenever
+            *       the brancher is used, and decider.assume could
+            *       be implemented without a continuation.
+            */
+
+            val _sf0 = (sort: Sort) => {
+              val s0 = fresh(sort)
+              decider.prover.assume(Eq(s0.convert(sorts.Snap), First(s)))
+              s0
+            }
+
+            val _sf1 = (sort: Sort) => {
+              val s1 = fresh(sort)
+              decider.prover.assume(Eq(s1.convert(sorts.Snap), Second(s)))
+              s1
+            }
+
+            (_sf0, _sf1)
+          }
+
+//        val s0 = fresh(sorts.Snap)
+//        val s1 = fresh(sorts.Snap)
+//        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
+//        val sf0 = (sort: Sort) => s0.convert(sort)
+//        val sf1 = (sort: Sort) => s1.convert(sort)
+
+//        assume(tSnapEq,
+          produce2(σ, sf0, p, a0, m, h1 =>
+            produce2(σ \ h1, sf1, p, a1, m, h2 =>
+              Q(h2))) // )
 
 			/* Implies <: BooleanExpr */
       case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
         evale(σ, e0, m, t0 =>
 					branch(t0,
-						produce2(σ, s, p, a1, m, Q),
+						produce2(σ, sf, p, a1, m, Q),
 						Q(σ.h)))
 			
 			// /* Iffs currently cannot be handled by the evaluator:
@@ -177,7 +205,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						evalp(σ, perm, m, tPerm => {
 							// decider.isValidFraction(tPerm) match {
 								// case None =>
-									val snap = s.convert(toSort(field.dataType))
+									val snap = sf(toSort(field.dataType)) // s.convert(toSort(field.dataType))
 									val fc = DefaultFieldChunk(tRcvr, field.name, snap, tPerm * p)
 									// val tMu =
 										// if (id == "mu") lockSupport.Mu(σ.h, t0, snap)
@@ -198,7 +226,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
             evalp(σ, perm, m, tPerm => {
 //							decider.isValidFraction(gain) match {
 //								case None =>
-									val pc = DefaultPredicateChunk(tRcvr, predicate.name, s, tPerm * p)
+									val pc = DefaultPredicateChunk(tRcvr, predicate.name, sf(sorts.Snap), tPerm * p)
 									val (mh, mts) = merge(σ.h, H(pc :: Nil))
 									assume(mts,
 										Q(mh))})))
@@ -220,7 +248,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
               
         evale(σ1, rdStarConstraints, m, tRdStarConstraints =>
           assume(tRdStarConstraints,
-            produce2(σ1, s, p, pe, m, h1 =>
+            produce2(σ1, sf, p, pe, m, h1 =>
               Q(h1))))
 
 			// /* TODO: More complex assertions involving holds, e.g. '!!holds(c)'
@@ -281,6 +309,10 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						 * the list is eventually used to fill all %s of
 						 * Message.toString + Reason(s).toString.
 						 */
+          println("\n[producer/_]")
+          println("  φ = " + φ)
+          println("  t = " + t)
+          println("  t.sort = " + t.sort)
 					assume(t,
 						Q(σ.h))})
 		}

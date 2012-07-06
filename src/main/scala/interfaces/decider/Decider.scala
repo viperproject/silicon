@@ -1,11 +1,11 @@
-package ch.ethz.inf.pm.silicon.interfaces.decider
+package ch.ethz.inf.pm
+package silicon
+package interfaces
+package decider
 
-import ch.ethz.inf.pm.silicon
-import silicon.state.terms.{Term, PermissionTerm, Var}
-import silicon.interfaces.state.{Store, Heap, PathConditions, State,
-		Chunk, FieldChunk, PredicateChunk}
-import silicon.interfaces.VerificationResult
-import silicon.interfaces.reporting.{Message}
+import silicon.state.terms.{Sort, Term, PermissionTerm, Var}
+import state.{Store, Heap, PathConditions, State, Chunk, FieldChunk, PredicateChunk}
+import reporting.{Message}
 
 trait Decider[V, ST <: Store[V, ST], H <: Heap[H],
 							PC <: PathConditions[PC], S <: State[V, ST, H, S]] {
@@ -36,7 +36,7 @@ trait Decider[V, ST <: Store[V, ST], H <: Heap[H],
 	def isNonNegativeFraction(p: PermissionTerm): Boolean
 	def isAsPermissive(perm: PermissionTerm, other: PermissionTerm): Boolean
 
-	def fresh: Var
-	def fresh(id: String): Var
-	def fresh(v: V): Var
+  def fresh(s: Sort): Var
+  def fresh(id: String, s: Sort): Var
+  def fresh(v: V): Var
 }

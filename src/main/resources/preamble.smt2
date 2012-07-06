@@ -38,34 +38,38 @@
 
 ; --- Snapshots ---
 
-(declare-sort $Snap)
+(declare-datatypes () (($Snap $Snap.unit ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
-(declare-const $unit $Snap)
+(declare-fun $Snap.snapEq ($Snap $Snap) Bool)
 
-(declare-fun $combine ($Snap $Snap) $Snap)
-(declare-fun $snapEq ($Snap $Snap) Bool)
-
-(assert (forall ((x1 $Snap) (x2 $Snap) (y1 $Snap) (y2 $Snap)) (!
-	(implies
-		($snapEq ($combine x1 y1) ($combine x2 y2))
-		(and (= x1 x2) (= y1 y2)))
-	:qid |Combine|
-	:pattern (($snapEq ($combine x1 y1) ($combine x2 y2)))
-	)))
+;(declare-sort $Snap)
+;
+;(declare-const $unit $Snap)
+;
+;(declare-fun $combine ($Snap $Snap) $Snap)
+;(declare-fun $snapEq ($Snap $Snap) Bool)
+;
+;(assert (forall ((x1 $Snap) (x2 $Snap) (y1 $Snap) (y2 $Snap)) (!
+;	(implies
+;		($snapEq ($combine x1 y1) ($combine x2 y2))
+;		(and (= x1 x2) (= y1 y2)))
+;	:qid |Combine|
+;	:pattern (($snapEq ($combine x1 y1) ($combine x2 y2)))
+;	)))
 	
 (assert (forall ((x $Snap) (y $Snap)) (!
 	(implies
-		($snapEq x y)
+		($Snap.snapEq x y)
 		(and (= x y)))
-	:qid |SnapEq|
-	:pattern (($snapEq x y))
+	:qid |$Snap.snapEq|
+	:pattern (($Snap.snapEq x y))
 	)))
 
 ; --- References ---
 
 (declare-sort $Ref)
 
-(declare-const $null $Ref)
+(declare-const $Ref.null $Ref)
 
 ; --- Permissions ---
 
@@ -78,32 +82,32 @@
 
 ; --- Sort wrappers ---
 
-(declare-fun $sorts.$SnapToInt ($Snap) Int)
-(declare-fun $sorts.IntTo$Snap (Int) $Snap)
-
-(assert (forall ((x Int))
-	(= x ($sorts.$SnapToInt($sorts.IntTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($sorts.IntTo$Snap($sorts.$SnapToInt x)))))
-
-(declare-fun $sorts.$SnapTo$Ref ($Snap) $Ref)
-(declare-fun $sorts.$RefTo$Snap ($Ref) $Snap)
-
-(assert (forall ((x $Ref))
-	(= x ($sorts.$SnapTo$Ref($sorts.$RefTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($sorts.$RefTo$Snap($sorts.$SnapTo$Ref x)))))
-
-(declare-fun $sorts.$SnapToBool ($Snap) Bool)
-(declare-fun $sorts.BoolTo$Snap (Bool) $Snap)
-
-(assert (forall ((x Bool))
-	(= x ($sorts.$SnapToBool($sorts.BoolTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($sorts.BoolTo$Snap($sorts.$SnapToBool x)))))
+;(declare-fun $sorts.$SnapToInt ($Snap) Int)
+;(declare-fun $sorts.IntTo$Snap (Int) $Snap)
+;
+;(assert (forall ((x Int))
+;	(= x ($sorts.$SnapToInt($sorts.IntTo$Snap x)))))
+;
+;(assert (forall ((x $Snap))
+;	(= x ($sorts.IntTo$Snap($sorts.$SnapToInt x)))))
+;
+;(declare-fun $sorts.$SnapTo$Ref ($Snap) $Ref)
+;(declare-fun $sorts.$RefTo$Snap ($Ref) $Snap)
+;
+;(assert (forall ((x $Ref))
+;	(= x ($sorts.$SnapTo$Ref($sorts.$RefTo$Snap x)))))
+;
+;(assert (forall ((x $Snap))
+;	(= x ($sorts.$RefTo$Snap($sorts.$SnapTo$Ref x)))))
+;
+;(declare-fun $sorts.$SnapToBool ($Snap) Bool)
+;(declare-fun $sorts.BoolTo$Snap (Bool) $Snap)
+;
+;(assert (forall ((x Bool))
+;	(= x ($sorts.$SnapToBool($sorts.BoolTo$Snap x)))))
+;
+;(assert (forall ((x $Snap))
+;	(= x ($sorts.BoolTo$Snap($sorts.$SnapToBool x)))))
 
 ; --- Domains ---
 

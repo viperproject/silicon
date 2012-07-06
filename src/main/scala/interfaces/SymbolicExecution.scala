@@ -1,14 +1,11 @@
-package ch.ethz.inf.pm.silicon.interfaces
-
-import silAST.expressions.terms.{LiteralTerm => SILLiteral}
+package ch.ethz.inf.pm
+package silicon
+package interfaces
 
 import ch.ethz.inf.pm.silicon
 import state.{Store, Heap, State}
 import reporting.{Message}
-import decider.Decider
-import silicon.state.terms
 import silicon.state.terms.{Term, PermissionTerm, Sort}
-// import silicon.ast.{Expression, Statement, FractionalPermission}
 
 /*
  * Symbolic execution components
@@ -28,32 +25,31 @@ trait Evaluator[V, E, T, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, 
 
 	def evalp(σ: S, e: T, m: Message, Q: PermissionTerm => VerificationResult)
            : VerificationResult
-
-	// def evall(lit: SILLiteral): Term // terms.Literal
-	// def evallm(lm: silicon.ast.LockMode): terms.LockMode
 }
 
 trait Producer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def produce(σ: S, s: Term, p: PermissionTerm, φ: A, m: Message,
-							Q: S => VerificationResult): VerificationResult
+	def produce(σ: S,
+              sf: Sort => Term,
+              p: PermissionTerm,
+              φ: A,
+              m: Message,
+							Q: S => VerificationResult)
+             : VerificationResult
 }
 
 trait Consumer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def consume(σ: S, p: PermissionTerm, φ: A, m: Message,
-							Q: (S, Term) => VerificationResult): VerificationResult
+	def consume(σ: S,
+              p: PermissionTerm,
+              φ: A,
+              m: Message,
+							Q: (S, Term) => VerificationResult)
+             : VerificationResult
 }
 
 trait Executor[V, X, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	// def execn(σ: S, bb: BB, m: Message,
-					  // Q: S => VerificationResult): VerificationResult
-
-	// def execs(σ: S, stmts: Seq[STMT], m: Message,
-					  // Q: S => VerificationResult): VerificationResult
-
-	// def exec(σ: S, stmt: STMT, m: Message,
-					 // Q: S => VerificationResult): VerificationResult
-           
-  def exec(σ: S, x: X, m: Message)
+  def exec(σ: S,
+           x: X,
+           m: Message)
           (Q: S => VerificationResult)
           : VerificationResult
 }
@@ -61,6 +57,9 @@ trait Executor[V, X, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] 
 trait MapSupport[V, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
 	def getRevision(h: H, id: String): Int
 	
-	def update(σ: S, id: String, where: Term,
-						 Q: S => VerificationResult): VerificationResult
+	def update(σ: S,
+             id: String,
+             where: Term,
+						 Q: S => VerificationResult)
+            : VerificationResult
 }

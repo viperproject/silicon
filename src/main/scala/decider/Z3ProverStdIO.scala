@@ -20,7 +20,7 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
 	var assertionCounter = 0
 	var assumptionCounter = 0			
   
-	private val termConverter = new TermToSMTLib2Converter()
+	val termConverter = new TermToSMTLib2Converter()
 	import termConverter._
 	
 	private val typeConverter = new silicon.state.DefaultTypeConverter()

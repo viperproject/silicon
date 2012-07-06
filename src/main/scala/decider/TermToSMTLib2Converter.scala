@@ -12,7 +12,7 @@ import state.terms._
  *       probably the latter, is used by Silicon.
  */
 
-class TermToSMTLib2Converter extends TermConverter[String, String] {
+class TermToSMTLib2Converter extends TermConverter[String] {
   def convert(term: Term): String = term match {
 		case Var(id: String, _) => sanitiseIdentifier(id)
 		case lit: Literal => literalToString(lit)
@@ -58,7 +58,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     /* Expects both arguments to be of the same sort. */
 		case Eq(t0, t1) => t0.sort match {
       case sorts.Snap =>
-        "($snapEq " + convert(t0) + " " + convert(t1) + ")"
+        "($Snap.snapEq " + convert(t0) + " " + convert(t1) + ")"
       case _ =>
         "(= " + convert(t0) + " " + convert(t1) + ")"
     }
@@ -268,7 +268,13 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 			// "(%s %s %s)".format(fctUpdate, convert(t), n)
 		
 		case Combine(t0, t1) =>
-			"($combine " + convert(t0) + " " + convert(t1) + ")"
+			"($Snap.combine " + convert(t0) + " " + convert(t1) + ")"
+
+    case First(t) =>
+      "($Snap.first " + convert(t) + ")"
+
+    case Second(t) =>
+      "($Snap.second " + convert(t) + ")"
 			
 		// case SnapEq(t0, t1) =>
 			// "($snapEq " + convert(t0) + " " + convert(t1) + ")"
@@ -278,7 +284,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 		
 		/* These sorts are converted to Z3-sort Int anyway */
     case SortWrapper(t, sort) =>
-      "($sorts.%sTo%s %s)".format(convert(t.sort), convert(sort), convert(t))
+      "($SortWrappers.%sTo%s %s)".format(convert(t.sort), convert(sort), convert(t))
 		// case SeqToInt(t0) => convert(t0)
 		// case IntToSeq(t0) => convert(t0)
 		// case MuToInt(t0) => convert(t0)
@@ -304,10 +310,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 			if (n >= 0) n.toString
 			else "(- 0 %s)".format((-n).toString)
 			
-		case Unit => "$unit"
+		case Unit => "$Snap.unit"
 		case True() => "true"
 		case False() => "false"
-		case Null() => "$null"
+		case Null() => "$Ref.null"
 		// case EmptySeq() => "$Seq.nil"
 		// case BottomLock() => "$Locks.bottom"
 	}
