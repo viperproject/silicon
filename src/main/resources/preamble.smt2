@@ -82,6 +82,23 @@
 
 ; --- Sort wrappers ---
 
+; Only declare sort wrappers for sorts that are build into Silicon,
+; and that can be used as types in SIL.
+;
+
+(declare-fun $SortWrappers.BoolTo$Snap (Bool) $Snap)
+(declare-fun $SortWrappers.$SnapToBool ($Snap) Bool)
+
+(declare-fun $SortWrappers.IntTo$Snap (Int) $Snap)
+(declare-fun $SortWrappers.$SnapToInt ($Snap) Int)
+
+(declare-fun $SortWrappers.$PermsTo$Snap ($Perms) $Snap)
+(declare-fun $SortWrappers.$SnapTo$Perms ($Snap) $Perms)
+
+(declare-fun $SortWrappers.$RefTo$Snap ($Ref) $Snap)
+(declare-fun $SortWrappers.$SnapTo$Ref ($Snap) $Ref)
+
+
 ;(declare-fun $sorts.$SnapToInt ($Snap) Int)
 ;(declare-fun $sorts.IntTo$Snap (Int) $Snap)
 ;

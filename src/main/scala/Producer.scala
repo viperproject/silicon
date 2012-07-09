@@ -226,6 +226,12 @@ trait DefaultProducer[V, ST <: Store[V, ST],
             evalp(σ, perm, m, tPerm => {
 //							decider.isValidFraction(gain) match {
 //								case None =>
+                  /* TODO: Can we change predicate chunks s.t. they take Sort => Term as
+                   * a snapshot, instead of directly taking a term? This would allow us
+                   * to defer stating the sort of the snapshot until it is actually used.
+                   * An obvious question is, how does heap merging an snapshot comparing
+                   * work if we'd make this change?
+                   */
 									val pc = DefaultPredicateChunk(tRcvr, predicate.name, sf(sorts.Snap), tPerm * p)
 									val (mh, mts) = merge(σ.h, H(pc :: Nil))
 									assume(mts,

@@ -285,50 +285,66 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
 
   private def emitSortWrappers(domains: Set[SILDomain]) {
     val snapSortId = decider.prover.termConverter.convert(sorts.Snap)
+    val additionalDomains = domains -- typeConverter.manuallyHandledDomains
 
-    domains.foreach(d => {
+    decider.prover.logComment("")
+    decider.prover.logComment("Declaring additional sort wrappers")
+    decider.prover.logComment("")
+
+    additionalDomains.foreach(d => {
       val domainSort = typeConverter.toSort(d.getType)
       val domainSortId = decider.prover.termConverter.convert(domainSort)
-      val wrapperId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
+      val toSnapId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
+      val fromSnapId = "$SortWrappers.%sTo%s".format(snapSortId, domainSortId)
         /* TODO: Sort wrapper naming schema must be the same as used by the
          *       TermConverter when converting SortWrapper(t, to) terms!!!
          */
 
-      decider.prover.declareSymbol(wrapperId, Seq(domainSort), sorts.Snap)
+      decider.prover.declareSymbol(toSnapId, Seq(domainSort), sorts.Snap)
+      decider.prover.declareSymbol(fromSnapId, Seq(sorts.Snap), domainSort)
     })
   }
 
 	private def emitDomainDeclarations(domains: Set[SILDomain]) {
-    val additionalDomains = (domains -- typeConverter.manuallyHandledDomains).filter(_.freeTypeVariables.isEmpty)
-    
-    additionalDomains.foreach(d => {
-      decider.prover.logComment(";\n; Declaring domain " + d.fullName)
-      
-      decider.prover.declareSort(typeConverter.toSort(d.getType))
-      
-//      println("\n[Domain] " + d.fullName)
-//      println("  functions = " + d.functions)
-//      println("  predicates = " + d.predicates)
-//      println("  axioms = " + d.axioms)
+    val additionalDomains = domains -- typeConverter.manuallyHandledDomains
 
-      decider.prover.logComment("; Functions")
+    decider.prover.logComment("")
+    decider.prover.logComment("Declaring additional domains")
+    decider.prover.logComment("")
+
+    /* Declare domains. */
+    additionalDomains.foreach(d => {
+      decider.prover.logComment("Declaring domain " + d.fullName)
+      decider.prover.declareSort(typeConverter.toSort(d.getType))
+    })
+
+    /* Declare functions and predicates of each domain.
+     * Since these can reference arbitrary other domains, make sure that
+     * all domains have been declared first.
+     */
+    additionalDomains.foreach(d => {
+      decider.prover.logComment("Functions of " + d.fullName)
       d.functions.foreach(f =>
         decider.prover.declareSymbol(f.fullName,
                                      f.signature.parameterTypes.map(typeConverter.toSort),
                                      typeConverter.toSort(f.signature.resultType)))
 
-      decider.prover.logComment("; Predicates")
+      decider.prover.logComment("Predicates of " + d.fullName)
       d.predicates.foreach(p =>
         decider.prover.declareSymbol(p.fullName,
           p.signature.parameterTypes.map(typeConverter.toSort),
           sorts.Bool))
     })
 
+    /* Axiomatise each domain.
+     * Since the axioms can reference arbitrary domains, functions and
+     * predicates, make sure that all domains, functions and predicates have
+     * been declared first.
+     */
     additionalDomains.foreach(d => {
-      decider.prover.logComment(";\n; Axiomatising domain " + d.fullName)
+      decider.prover.logComment("Axiomatising domain " + d.fullName)
 
-
-      decider.prover.logComment("; Axioms (eval)")
+      decider.prover.logComment("Axioms (eval)")
       decider.prover.push()
       val axioms = d.axioms.map(a => {
         import stateFactory._
@@ -344,71 +360,8 @@ class DefaultVerifier[ST <: Store[SILProgramVariable, ST],
       })
       decider.prover.pop()
 
-      decider.prover.logComment("; Axioms")
+      decider.prover.logComment("Axioms")
       axioms.foreach(decider.prover.assume)
     })
 	}
-	
-	// def verify(decl: TopLevelDecl): List[VerificationResult] = decl match {
-		// case cl: Class =>
-			// mv.thisClass = cl
-			// verify(cl)
-			
-		// case ch: Channel =>
-			// mv.thisClass = ChannelClass(ch)
-			// verify(ch)
-	// }
-	
-	// def verify(clss: Class): List[VerificationResult] = {
-		// var results: List[VerificationResult] = Nil
-		
-		// logger.debug("\n\n" + "-" * 10 + " Class " + clss.id + "-" * 10 + "\n")
-		
-		// /* Verification can be parallelised by forking DefaultMemberVerifiers. */
-		
-		// if (config.stopOnFirstError) {
-			// /* Stops on first error */
-			// var it = clss.members.iterator
-			// while (it.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-				// results = mv.verify(it.next) :: results
-			// }
-			// results = results.reverse
-		// } else {
-			// /* Verify members. Verification continues if errors are found, i.e.
-			 // * all members are verified regardless of previous errors.
-			 // * However, verification of a single member is aborted on first error!
-			 // */
-			// results = clss.members map mv.verify /* Continues */
-		// }
-		
-		// results
-	// }
-	
-	// def verify(ch: Channel): List[VerificationResult] = {
-		// logger.debug("\n\n" + "-" * 10 + " CHANNEL " + ch.id + "-" * 10 + "\n")
-		
-		// if (mv.filter(ch.id)) {
-			// logger.warn((ExcludingUnit withDetails(ch.id)).format)
-			// return Success() :: Nil
-		// }
-		
-		// import stateFactory._
-		// import permissionFactory.Full
-		// import decider.{fresh, assume}
-		// import mv.produce
-		
-		// val γ = Γ(This -> fresh(This) :: ch.params.map(v => (v, fresh(v))))
-		// val σ = Σ(γ, Ø, Ø)
-		// // val c = new DefaultContext()
-		
-		// val err = SpecsMalformed withDetails(ch.id)
-
-		// /* Well-formedness check */
-		// val r =
-			// assume(γ(This) ≠ Null(),
-				// produce(σ, fresh, Full, ch.where, err, _ =>
-					// Success()))
-
-		// r :: Nil
-	// }
 }

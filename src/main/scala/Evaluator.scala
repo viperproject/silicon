@@ -822,6 +822,9 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
         Q(terms.FullPerms())
 
+      case ept @ silAST.expressions.terms.EpsilonPermissionTerm() =>
+        sys.error("Epsilon/Counting permissions are not yet supported by Silicon: " + ept)
+
       case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) =>
 //        println("\n[evalt2] silAST.expressions.terms.DomainFunctionApplicationTerm")
 //        println("  f = " + f)
