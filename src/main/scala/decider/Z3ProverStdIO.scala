@@ -175,7 +175,6 @@ class Z3ProverStdIO(z3path: String, logpath: String) extends Prover {
 	}
   
   def declareSort(sort: Sort) {
-    println("[Prover] declaring sort " + sort)
     val str = "(declare-sort %s)".format(convert(sort))
 
 		write(str)

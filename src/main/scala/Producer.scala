@@ -315,10 +315,6 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						 * the list is eventually used to fill all %s of
 						 * Message.toString + Reason(s).toString.
 						 */
-          println("\n[producer/_]")
-          println("  φ = " + φ)
-          println("  t = " + t)
-          println("  t.sort = " + t.sort)
 					assume(t,
 						Q(σ.h))})
 		}

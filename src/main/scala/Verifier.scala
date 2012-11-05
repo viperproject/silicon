@@ -124,8 +124,6 @@ trait AbstractMemberVerifier[ST <: Store[SILProgramVariable, ST],
 			 (produce(σ2, fresh, Full(), post, PostErr, _ =>
 					Success())
 					&& {
-         println("\n[Verifier/SILImplementation]")
-         println("  impl.body = " + impl.body)
 				// execs(σ1 \ (g = σ1.h), meth.body, ExecutionFailed, σ2 =>
 				exec(σ1 \ (g = σ1.h), impl.body, ExecutionFailed)(σ2 =>
 					consume(σ2, Full(), post, PostErr, (σ3, _) =>
