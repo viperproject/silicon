@@ -359,7 +359,7 @@ case class Config(
 	var branchOverPureConditionals: Boolean = false,
 	var strictConjunctionEvaluation: Boolean = false,
 	// var logLevel: String = "INFO",
-	var logLevel: String = "DEBUG",
+	var logLevel: String = "INFO",
   var preamble: Option[String] = None,
 	var z3exe: String = "z3.exe",
 	var z3log: String = "logfile.smt2")
