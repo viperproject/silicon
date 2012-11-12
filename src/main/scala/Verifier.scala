@@ -7,18 +7,18 @@ import com.weiglewilczek.slf4s.Logging
 		// Predicate, MonitorInvariant, LockChangeExpr, And, Channel,
 		// DebtFreeExpr, ChannelClass}
 
-import silAST.{ASTNode => SILASTNode}
-import silAST.expressions.{Expression => SILExpression}
-import silAST.expressions.terms.{Term => SILTerm}
-import silAST.programs.{Program => SILProgram}
-import silAST.programs.symbols.{Function => SILFunction,
+import semper.sil.ast.{ASTNode => SILASTNode}
+import semper.sil.ast.expressions.{Expression => SILExpression}
+import semper.sil.ast.expressions.terms.{Term => SILTerm}
+import semper.sil.ast.programs.{Program => SILProgram}
+import semper.sil.ast.programs.symbols.{Function => SILFunction,
     ProgramVariable => SILProgramVariable}
-import silAST.methods.implementations.{
+import semper.sil.ast.methods.implementations.{
     /* Statement => SILStatement, */
     // BasicBlock => SILBasicBlock,
     ControlFlowGraph => SILControlFlowGraph,
     Implementation => SILImplementation}
-import silAST.domains.{Domain => SILDomain}
+import semper.sil.ast.domains.{Domain => SILDomain}
 
 import interfaces.{VerificationResult, Failure, Success, /* MemberVerifier, */
 		Producer, Consumer, Executor, Evaluator, /* ProgrammeVerifier, */ MapSupport}

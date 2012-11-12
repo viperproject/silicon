@@ -1,7 +1,7 @@
 package ch.ethz.inf.pm.silicon.interfaces.reporting
 
 // import scala.util.parsing.input.Position
-import silAST.source.{SourceLocation => SILSourceLocation}
+import semper.sil.ast.source.{SourceLocation => SILSourceLocation}
 
 trait Categorie {
 	def name: String

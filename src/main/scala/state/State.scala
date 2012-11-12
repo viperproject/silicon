@@ -35,8 +35,8 @@ case class MapBackedStore[V](private val map: Map[V, Term])
 
 	def get(key: V): Option[Term] = {
     /* TODO: Remove hack! */
-    val pa = key.asInstanceOf[silAST.programs.symbols.ProgramVariable]
-    val mpa = map.asInstanceOf[Map[silAST.programs.symbols.ProgramVariable, Term]]
+    val pa = key.asInstanceOf[semper.sil.ast.programs.symbols.ProgramVariable]
+    val mpa = map.asInstanceOf[Map[semper.sil.ast.programs.symbols.ProgramVariable, Term]]
 
     val optKey = mpa.keys.find(_.name == pa.name)
     assert(optKey.isDefined, "Looking up %s in %s failed.".format(pa, mpa))

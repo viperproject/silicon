@@ -2,12 +2,12 @@ package ch.ethz.inf.pm.silicon
 
 import com.weiglewilczek.slf4s.Logging
 
-import silAST.expressions.{Expression => SILExpression}
-import silAST.methods.implementations.{Statement => SILStatement}
-// import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
-import silAST.expressions.terms.{Term => SILTerm}
-import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
-import silAST.methods.implementations.{
+import semper.sil.ast.expressions.{Expression => SILExpression}
+import semper.sil.ast.methods.implementations.{Statement => SILStatement}
+// import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
+import semper.sil.ast.expressions.terms.{Term => SILTerm}
+import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
+import semper.sil.ast.methods.implementations.{
   Block => SILBlock,
   // BasicBlock => SILBasicBlock,
   CFGEdge => SILCFGEdge,
@@ -161,11 +161,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
     // println("  σ.π = " + σ.π)
                    
     block match {
-      case bb: silAST.methods.implementations.BasicBlock =>
+      case bb: semper.sil.ast.methods.implementations.BasicBlock =>
         exec(σ, bb.statements, m)(σ1 =>
           leave(σ1, bb, m)(Q))
 
-      case lb: silAST.methods.implementations.LoopBlock =>
+      case lb: semper.sil.ast.methods.implementations.LoopBlock =>
         // println("[execb/LoopBlock]")
         // println("  lb.condition = " + lb.condition)
         // println("  lb.successors = " + lb.successors)
@@ -177,7 +177,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
         val notGuard =
           lb.implementation.factory.makeUnaryExpression(
-            silAST.symbols.logical.Not()(lb.condition.sourceLocation),
+            semper.sil.ast.symbols.logical.Not()(lb.condition.sourceLocation),
             lb.condition,
             lb.condition.sourceLocation,
             Nil)
@@ -228,11 +228,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 				// // logger.info("Executing " + stmt)
 				// Success()
 
-      case silAST.methods.implementations.AssignmentStatement(v, rhs) =>
+      case semper.sil.ast.methods.implementations.AssignmentStatement(v, rhs) =>
         evalt(σ, rhs, m, tRhs =>
           Q(σ \+ (v, tRhs)))
 
-      case silAST.methods.implementations.FieldAssignmentStatement(rcvr, field, rhs) =>
+      case semper.sil.ast.methods.implementations.FieldAssignmentStatement(rcvr, field, rhs) =>
         val err = HeapWriteFailed at stmt
         val tRcvr = σ.γ(rcvr)
         if (decider.assert(tRcvr ≠ Null()))
@@ -242,11 +242,11 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         else
           Failure(err dueTo ReceiverMightBeNull(rcvr.toString, field.name))
 
-      case silAST.methods.implementations.InhaleStatement( a) =>
+      case semper.sil.ast.methods.implementations.InhaleStatement( a) =>
         produce(σ, fresh, Full(), a, m, σ1 =>
           Q(σ1))
 
-      case silAST.methods.implementations.ExhaleStatement(a, msgOpt) =>
+      case semper.sil.ast.methods.implementations.ExhaleStatement(a, msgOpt) =>
         val err =
           if (msgOpt.isDefined)
             AssertionMightNotHold(stmt, msgOpt.get)
@@ -256,7 +256,7 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
         consume(σ, Full(), a, err, (σ1, _) =>
           Q(σ1))
 
-			case call @ silAST.methods.implementations.CallStatement(lhs, meth, args) =>
+			case call @ semper.sil.ast.methods.implementations.CallStatement(lhs, meth, args) =>
 				// val meth = call.m
         val BigAnd = ast.utils.collections.BigAnd(meth.expressionFactory) _
 
@@ -294,13 +294,13 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
 					// else
 						// Failure(m at stmt dueTo ReceiverMightBeNull(rcvr.toString, meth.name)))
 
-      case silAST.methods.implementations.NewStatement(v, dt) =>
+      case semper.sil.ast.methods.implementations.NewStatement(v, dt) =>
         assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
         Q(σ \+ (v, fresh(v)))
 
 //      case Fold(Access(pa @ PredicateAccess(e0, id), p0)) =>
-      case silAST.methods.implementations.FoldStatement(
-              silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+      case semper.sil.ast.methods.implementations.FoldStatement(
+              semper.sil.ast.expressions.terms.PredicateLocation(eRcvr, predicate),
               ePerm) =>
 
         evalt(σ, eRcvr, m, tRcvr =>
@@ -341,9 +341,9 @@ trait DefaultExecutor[ST <: Store[SILProgramVariable, ST],
           else
             Failure(m at stmt dueTo ReceiverMightBeNull(eRcvr.toString, predicate.name)))
 
-      case silAST.methods.implementations.UnfoldStatement(
-              acc @ silAST.expressions.PredicatePermissionExpression(
-                      silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+      case semper.sil.ast.methods.implementations.UnfoldStatement(
+              acc @ semper.sil.ast.expressions.PredicatePermissionExpression(
+                      semper.sil.ast.expressions.terms.PredicateLocation(eRcvr, predicate),
                       ePerm)) =>
 
         evalt(σ, eRcvr, m, tRcvr =>

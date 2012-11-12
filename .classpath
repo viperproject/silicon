@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" output="target/scala-2.9.1/classes" path="src/main/scala"/>
-	<classpathentry kind="src" output="target/scala-2.9.1/classes" path="src/main/java"/>
 	<classpathentry kind="src" output="target/scala-2.9.1/test-classes" path="src/test/scala"/>
-	<classpathentry kind="src" output="target/scala-2.9.1/test-classes" path="src/test/java"/>
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/silast"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/SIL"/>
 	<classpathentry kind="var" path="IVY_HOME/cache/com.weiglewilczek.slf4s/slf4s_2.9.1/jars/slf4s_2.9.1-1.0.7.jar"/>
 	<classpathentry kind="var" path="IVY_HOME/cache/org.slf4j/slf4j-log4j12/jars/slf4j-log4j12-1.6.4.jar"/>
 	<classpathentry kind="var" path="IVY_HOME/cache/org.slf4j/slf4j-api/jars/slf4j-api-1.6.4.jar"/>

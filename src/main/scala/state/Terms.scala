@@ -2,10 +2,10 @@ package ch.ethz.inf.pm.silicon.state
 package terms
 
 //import scala.util.parsing.input.{Position, NoPosition}
-import silAST.{ASTNode => SILASTNode}
-import silAST.source.{SourceLocation => SILSourceLocation, noLocation => SILNoLocation}
-// import silAST.programs.symbols.{Function => SILFunction}
-// import silAST.domains.{DomainFunction => SILDomainFunction}
+import semper.sil.ast.{ASTNode => SILASTNode}
+import semper.sil.ast.source.{SourceLocation => SILSourceLocation, noLocation => SILNoLocation}
+// import semper.sil.ast.programs.symbols.{Function => SILFunction}
+// import semper.sil.ast.domains.{DomainFunction => SILDomainFunction}
 
 import ch.ethz.inf.pm.silicon
 // import silicon.ast
@@ -38,7 +38,7 @@ import silicon.utils.collections.mapReduceLeft
 
 sealed trait Sort
 
-// case class DataTypeSort(d: silAST.types.DataType) extends Sort
+// case class DataTypeSort(d: semper.sil.ast.types.DataType) extends Sort
 
 object sorts {
   // trait SnapshotSort extends Sort
@@ -49,20 +49,20 @@ object sorts {
   object Int extends Sort { override val toString = "Int" }
   // object IntSort extends IntSort { override val toString = "Int" }
   // object Int extends Sort { override val toString = "Int" }
-  // val Int = DataTypeSort(silAST.types.integerType)
+  // val Int = DataTypeSort(semper.sil.ast.types.integerType)
 
   // trait Bool extends Sort
   object Bool extends Sort { override val toString = "Bool" }
-  // val Bool = DataTypeSort(silAST.types.booleanType)
+  // val Bool = DataTypeSort(semper.sil.ast.types.booleanType)
 
   // trait Ref extends Sort
   object Ref extends Sort { override val toString = "Ref" }  
-  // val Ref = DataTypeSort(silAST.types.referenceType)
+  // val Ref = DataTypeSort(semper.sil.ast.types.referenceType)
   
   // object Perms extends Sort { override val toString = "Perm" }
   // trait Perms extends Sort
   object Perms extends Sort { override val toString = "Perms" }
-  // val Perms = DataTypeSort(silAST.types.permissionType)
+  // val Perms = DataTypeSort(semper.sil.ast.types.permissionType)
   
   case class UserSort(id: String) extends Sort {
     override val toString = id
@@ -156,7 +156,7 @@ case class Var(val id: String, val sort: Sort) extends Term {
   // def unapply(v: Var) = Some((v.id, v.sort))
 // }
 
-case class FApp(val f: silAST.programs.symbols.Function,
+case class FApp(val f: semper.sil.ast.programs.symbols.Function,
                 val s: Term,
                 val t0: Term,
                 val tArgs: Seq[Term],
@@ -566,7 +566,7 @@ object PermLess extends Function2[Term, Term, BooleanTerm] {
 
 /* Domains */
 
-// case class DomainFApp(val f: silAST.domains.DomainFunction,
+// case class DomainFApp(val f: semper.sil.ast.domains.DomainFunction,
 case class DomainFApp(val id: String,
                       val tArgs: Seq[Term],
                       val sort: Sort)
@@ -575,7 +575,7 @@ case class DomainFApp(val id: String,
   override val toString = id + tArgs.mkString("(", ", ", ")")
 }
 
-// case class DomainPApp(val p: silAST.domains.DomainPredicate,
+// case class DomainPApp(val p: semper.sil.ast.domains.DomainPredicate,
                       // val tArgs: Seq[Term])
     // extends BooleanTerm {
 

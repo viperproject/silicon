@@ -2,9 +2,9 @@ package ch.ethz.inf.pm.silicon
 
 import com.weiglewilczek.slf4s.Logging
 
-import silAST.expressions.{Expression => SILExpression}
-// import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
-import silAST.expressions.terms.{Term => SILTerm}
+import semper.sil.ast.expressions.{Expression => SILExpression}
+// import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
+import semper.sil.ast.expressions.terms.{Term => SILTerm}
 
 import interfaces.{Consumer, Evaluator, MapSupport, VerificationResult, Failure, 
 		Success}
@@ -79,13 +79,13 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 				// Success()
 		
 			/* And <: BooleanExpr */
-			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.And, a0, a1) =>
+			case semper.sil.ast.expressions.BinaryExpression(_: semper.sil.ast.symbols.logical.And, a0, a1) =>
 				consume(σ, h, p, a0, m, (h1, s1) =>
 					consume(σ, h1, p, a1, m, (h2, s2) =>
 						Q(h2, Combine(s1, s2))))
 
 			/* Implies <: BooleanExpr */
-			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
+			case semper.sil.ast.expressions.BinaryExpression(_: semper.sil.ast.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
 				evale(σ, e0, m, t0 =>
 					branch(t0,
             consume(σ, h, p, a1, m, Q),
@@ -99,8 +99,8 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 						// (c2: C) => consume(σ, h, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assert acc(e.f) */
-      case silAST.expressions.FieldPermissionExpression(
-              silAST.expressions.terms.FieldLocation(rcvr, field),
+      case semper.sil.ast.expressions.FieldPermissionExpression(
+              semper.sil.ast.expressions.terms.FieldLocation(rcvr, field),
               perm) =>
 
 				evalt(σ, rcvr, m, tRcvr =>
@@ -125,8 +125,8 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
 
 			/* assert acc(e.P) */
-      case e @ silAST.expressions.PredicatePermissionExpression(
-                  silAST.expressions.terms.PredicateLocation(rcvr, predicate),
+      case e @ semper.sil.ast.expressions.PredicatePermissionExpression(
+                  semper.sil.ast.expressions.terms.PredicateLocation(rcvr, predicate),
                   perm) =>
 
 				val err = m at φ
@@ -145,14 +145,14 @@ trait DefaultConsumer[V, ST <: Store[V, ST],
 					else
 						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, predicate.name)))
             
-      case qe @ silAST.expressions.QuantifierExpression(
-                    silAST.symbols.logical.quantification.Exists(),
+      case qe @ semper.sil.ast.expressions.QuantifierExpression(
+                    semper.sil.ast.symbols.logical.quantification.Exists(),
                     qvar,
-                    silAST.expressions.BinaryExpression(
-                        _: silAST.symbols.logical.And,
+                    semper.sil.ast.expressions.BinaryExpression(
+                        _: semper.sil.ast.symbols.logical.And,
                         rdStarConstraints,
-                        pe @ silAST.expressions.FieldPermissionExpression(
-                          silAST.expressions.terms.FieldLocation(rcvr, field),
+                        pe @ semper.sil.ast.expressions.FieldPermissionExpression(
+                          semper.sil.ast.expressions.terms.FieldLocation(rcvr, field),
                           _)))
            if toSort(qvar.dataType) == sorts.Perms =>
 

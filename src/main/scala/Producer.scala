@@ -3,8 +3,8 @@ package silicon
 
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
-import silAST.expressions.{Expression => SILExpression}
-import silAST.expressions.terms.{Term => SILTerm}
+import semper.sil.ast.expressions.{Expression => SILExpression}
+import semper.sil.ast.expressions.terms.{Term => SILTerm}
 import interfaces.{Producer, Evaluator, VerificationResult, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, 
@@ -50,7 +50,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 	private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
 	private var snapshotCache: Map[Term, (Term, Term)] = Map()
 
-  var implementationFactory: silAST.methods.implementations.ImplementationFactory = null
+  var implementationFactory: semper.sil.ast.methods.implementations.ImplementationFactory = null
 
 	def produce(σ: S, sf: Sort => Term, p: PermissionTerm, φ: SILExpression, m: Message,
 			Q: S => VerificationResult): VerificationResult = {
@@ -90,7 +90,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 
 		val produced = φ match {
 			/* And <: BooleanExpr */
-			case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.And, a0, a1) =>
+			case semper.sil.ast.expressions.BinaryExpression(_: semper.sil.ast.symbols.logical.And, a0, a1) =>
 //				val (s0, s1) =
 //					if (snapshotCache.contains(s)) {
 //						logger.debug("[Produce(And)] Took cache entry for snapshot " + s)
@@ -159,7 +159,7 @@ trait DefaultProducer[V, ST <: Store[V, ST],
               Q(h2))) // )
 
 			/* Implies <: BooleanExpr */
-      case silAST.expressions.BinaryExpression(_: silAST.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
+      case semper.sil.ast.expressions.BinaryExpression(_: semper.sil.ast.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
         evale(σ, e0, m, t0 =>
 					branch(t0,
 						produce2(σ, sf, p, a1, m, Q),
@@ -196,8 +196,8 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 						// (c2: C) => produce2(σ, s, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
 
 			/* assume acc(e.f) */
-			case e @ silAST.expressions.FieldPermissionExpression(
-                  silAST.expressions.terms.FieldLocation(rcvr, field),
+			case e @ semper.sil.ast.expressions.FieldPermissionExpression(
+                  semper.sil.ast.expressions.terms.FieldLocation(rcvr, field),
                   perm) =>
 
 				evalt(σ, rcvr, m, tRcvr =>
@@ -217,8 +217,8 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 									// Failure(errmsg at e.sourceLocation withDetails (rcvr, field.name))})))
 
 			/* assume acc(e.P) */
-      case e @ silAST.expressions.PredicatePermissionExpression(
-                  silAST.expressions.terms.PredicateLocation(rcvr, predicate),
+      case e @ semper.sil.ast.expressions.PredicatePermissionExpression(
+                  semper.sil.ast.expressions.terms.PredicateLocation(rcvr, predicate),
                   perm) =>
 
         evalt(σ, rcvr, m, tRcvr =>
@@ -239,13 +239,13 @@ trait DefaultProducer[V, ST <: Store[V, ST],
 //								case Some(errmsg) =>
 //									Failure(errmsg at φ withDetails (e0, id), c3)})))
                   
-      case qe @ silAST.expressions.QuantifierExpression(
-                    silAST.symbols.logical.quantification.Exists(),
+      case qe @ semper.sil.ast.expressions.QuantifierExpression(
+                    semper.sil.ast.symbols.logical.quantification.Exists(),
                     qvar,
-                    silAST.expressions.BinaryExpression(
-                        _: silAST.symbols.logical.And,
+                    semper.sil.ast.expressions.BinaryExpression(
+                        _: semper.sil.ast.symbols.logical.And,
                         rdStarConstraints,
-                        pe: silAST.expressions.PermissionExpression))
+                        pe: semper.sil.ast.expressions.PermissionExpression))
            if toSort(qvar.dataType) == sorts.Perms =>
 
         val witness = ast.utils.lv2pv(qvar).asInstanceOf[V]

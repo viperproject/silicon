@@ -1,7 +1,7 @@
 package ch.ethz.inf.pm.silicon
 package decider
 
-import silAST.programs.symbols.{Function => SILFunction}
+import semper.sil.ast.programs.symbols.{Function => SILFunction}
 
 // import ch.ethz.inf.pm.silicon
 import interfaces.decider.TermConverter
@@ -186,7 +186,7 @@ class TermToSMTLib2Converter extends TermConverter[String] {
     /* Domains */
     
     // case DomainPApp(dp, ts) => dp match {
-      // case silAST.types.booleanEvaluate => convert(ts(0))
+      // case semper.sil.ast.types.booleanEvaluate => convert(ts(0))
     // }
     
     // case DomainPApp(dp, ts) => (dp.name, ts) match {
@@ -215,23 +215,23 @@ class TermToSMTLib2Converter extends TermConverter[String] {
       // sys.error("Found unsupported %s".format(term))
       
       // f match {
-      // case silAST.types.booleanTrue => "true"
-      // case silAST.types.booleanFalse => "false"
-      // case silAST.types.booleanNegation => "(not %s)".format(convert(ts(0)))
-      // case silAST.types.booleanConjunction => "(and %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.booleanDisjunction => "(or %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.booleanImplication => "(implies %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.booleanEquivalence => "(iff %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.booleanTrue => "true"
+      // case semper.sil.ast.types.booleanFalse => "false"
+      // case semper.sil.ast.types.booleanNegation => "(not %s)".format(convert(ts(0)))
+      // case semper.sil.ast.types.booleanConjunction => "(and %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.booleanDisjunction => "(or %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.booleanImplication => "(implies %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.booleanEquivalence => "(iff %s %s)".format(convert(ts(0)), convert(ts(1)))
       
-      // case silAST.types.nullFunction => "$null"
-      // case silAST.types.referenceEquality => "(= %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.nullFunction => "$null"
+      // case semper.sil.ast.types.referenceEquality => "(= %s %s)".format(convert(ts(0)), convert(ts(1)))
       
-      // case silAST.types.integerAddition => "(+ %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.integerSubtraction => "(- %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.integerMultiplication => "(* %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
-      // case silAST.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
+      // case semper.sil.ast.types.integerAddition => "(+ %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.integerSubtraction => "(- %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.integerMultiplication => "(* %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
+      // case semper.sil.ast.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
     // }
     
     // case DomainFApp(f, ts, sort) => (f.name, ts) match {
@@ -324,7 +324,7 @@ class TermToSMTLib2Converter extends TermConverter[String] {
   // }
   
   // /* TODO: Seems more senseful to work on ast....DataTypes than on Domains */
-  // private def convert(d: silAST.domains.Domain) = {
+  // private def convert(d: semper.sil.ast.domains.Domain) = {
     // // println("  d = " + d)
     // // println("  d.getClass.getName = " + d.getClass.getName)
     // // println("  d.freeTypeVariables = " + d.freeTypeVariables)

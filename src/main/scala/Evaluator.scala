@@ -3,18 +3,18 @@ package ch.ethz.inf.pm.silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 
-import silAST.expressions.{Expression => SILExpression}
+import semper.sil.ast.expressions.{Expression => SILExpression}
     // PermissionExpression => SILPermissionExpression,
     // PBinaryExpression => SILPBinaryExpression,
     // TrueExpression => SILTrue,
     // FalseExpression => SILFalse,
     // DomainPredicateExpression => SILDomainPredicateExpression}
     // BinaryExpression => SILBinaryExpression}
-import silAST.programs.symbols.{
+import semper.sil.ast.programs.symbols.{
     Function => SILFunction,
     ProgramVariable => SILProgramVariable}
-import silAST.expressions.terms.{LiteralTerm => SILLiteral}
-import silAST.expressions.terms.{Term => SILTerm}
+import semper.sil.ast.expressions.terms.{LiteralTerm => SILLiteral}
+import semper.sil.ast.expressions.terms.{Term => SILTerm}
 
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult,
 		Failure, Success}
@@ -107,10 +107,10 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
 	def evalp(σ: S, p: SILTerm, m: Message, Q: PermissionTerm => VerificationResult) =
     p match {
-      case silAST.expressions.terms.FullPermissionTerm() => Q(terms.FullPerms())
-      case silAST.expressions.terms.NoPermissionTerm() => Q(terms.ZeroPerms())
-      case silAST.expressions.terms.EpsilonPermissionTerm() => Q(terms.EpsPerms())
-      case silAST.expressions.terms.ProgramVariableTerm(v) => Q(terms.Perms(σ.γ(v)))
+      case semper.sil.ast.expressions.terms.FullPermissionTerm() => Q(terms.FullPerms())
+      case semper.sil.ast.expressions.terms.NoPermissionTerm() => Q(terms.ZeroPerms())
+      case semper.sil.ast.expressions.terms.EpsilonPermissionTerm() => Q(terms.EpsPerms())
+      case semper.sil.ast.expressions.terms.ProgramVariableTerm(v) => Q(terms.Perms(σ.γ(v)))
       
       case _ =>
         evalt(σ, p, m, tp =>
@@ -192,8 +192,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 	
 		/* For debugging only */
 //		e match {
-//			case _: silAST.expressions.AtomicExpression =>
-//      case _: silAST.expressions.terms.AtomicTerm =>
+//			case _: semper.sil.ast.expressions.AtomicExpression =>
+//      case _: semper.sil.ast.expressions.terms.AtomicTerm =>
 //			case _ =>
 //				logger.debug("\nEVALUATING EXPRESSION " + e)
 //				logger.debug("  " + e.getClass.getName)
@@ -205,32 +205,32 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 			// // logger.debug("Evaluating expression " + e)
 			// Success()
       
-      case silAST.expressions.TrueExpression() => Q(terms.True())
-      case silAST.expressions.FalseExpression() => Q(terms.False())
+      case semper.sil.ast.expressions.TrueExpression() => Q(terms.True())
+      case semper.sil.ast.expressions.FalseExpression() => Q(terms.False())
 
-			case silAST.expressions.OldExpression(e0) =>
+			case semper.sil.ast.expressions.OldExpression(e0) =>
 				evale(σ \ (h = σ.g), cs, e0, m, Q)
       
-      case silAST.expressions.UnaryExpression(op, e0) =>
+      case semper.sil.ast.expressions.UnaryExpression(op, e0) =>
         // logger.debug("  op = " + op + ", " + op.getClass.getName)
         // logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
         
         op match {
-          case silAST.symbols.logical.Not() =>
+          case semper.sil.ast.symbols.logical.Not() =>
             evale(σ, cs, e0, m, t0 =>
               Q(terms.Not(t0)))
         }
       
-      case silAST.expressions.BinaryExpression(op, e0, e1) =>
+      case semper.sil.ast.expressions.BinaryExpression(op, e0, e1) =>
         // logger.debug("  op = " + op + ", " + op.getClass.getName)
         // logger.debug("  e0 = " + e0 + ", " + e0.getClass.getName)
         // logger.debug("  e1 = " + e1 + ", " + e1.getClass.getName)
 
         op match {
-          case silAST.symbols.logical.And() if config.strictConjunctionEvaluation =>
+          case semper.sil.ast.symbols.logical.And() if config.strictConjunctionEvaluation =>
               evalBinOp(σ, cs, e0, e1, terms.And, m, Q)
 
-          case silAST.symbols.logical.And() =>
+          case semper.sil.ast.symbols.logical.And() =>
             var πPre: Set[Term] = Set()
             var πAux: Set[Term] = Set()
 
@@ -253,7 +253,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                 assume(tAux,
                   Q(terms.And(t0, t1)))}})
             
-          case silAST.symbols.logical.Implication()
+          case semper.sil.ast.symbols.logical.Implication()
                if config.branchOverPureConditionals =>
 
             evale(σ, cs, e0, m, t0 =>
@@ -270,7 +270,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                 else
                   Success()))
           
-          case silAST.symbols.logical.Implication() =>
+          case semper.sil.ast.symbols.logical.Implication() =>
             /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
              *   fails if e0 establishes a precondition of e1
              * - Hence we have to assume e0 when evaluating e1, but revoke that
@@ -316,20 +316,20 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
                 Q(tImplies))
             }
             
-          case silAST.symbols.logical.Or() =>
+          case semper.sil.ast.symbols.logical.Or() =>
             evalBinOp(σ, cs, e0, e1, terms.Or, m, Q)
             
-          case silAST.symbols.logical.Equivalence() =>
+          case semper.sil.ast.symbols.logical.Equivalence() =>
             evalBinOp(σ, cs, e0, e1, terms.Iff, m, Q)
       }
 
-      case eq: silAST.expressions.EqualityExpression =>
+      case eq: semper.sil.ast.expressions.EqualityExpression =>
         evalBinOp(σ, cs, eq.term1, eq.term2, terms.Eq, m, Q)
         
-      case silAST.expressions.QuantifierExpression(quant, qvar, body) =>
+      case semper.sil.ast.expressions.QuantifierExpression(quant, qvar, body) =>
 				val tQuantOp = quant match {
-					case silAST.symbols.logical.quantification.Forall() => terms.Forall
-					case silAST.symbols.logical.quantification.Exists() => terms.Exists
+					case semper.sil.ast.symbols.logical.quantification.Forall() => terms.Forall
+					case semper.sil.ast.symbols.logical.quantification.Exists() => terms.Exists
         }
 
 				/* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
@@ -400,61 +400,61 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 					assume(tQuantAux,
 						Q(tQuant))}
 
-      case silAST.expressions.DomainPredicateExpression(predicate, args) =>
+      case semper.sil.ast.expressions.DomainPredicateExpression(predicate, args) =>
         // logger.debug("  predicate = " + predicate + ", " + predicate.getClass.getName)
         // logger.debug("  args = " + args + ", " + args.getClass.getName)
 
         predicate match {
           /* PermissionTerm */
           
-          case silAST.types.permissionEQ =>
+          case semper.sil.ast.types.permissionEQ =>
             evalBinOp(σ, cs, args(0), args(1), terms.Eq, m, Q)
 
-          case silAST.types.permissionNE =>
+          case semper.sil.ast.types.permissionNE =>
             val neq = (t1: Term, t2: Term) => t1 ≠ t2
             evalBinOp(σ, cs, args(0), args(1), neq, m, Q)
 
-          case silAST.types.permissionLE =>
+          case semper.sil.ast.types.permissionLE =>
             evalBinOp(σ, cs, args(0), args(1), terms.AtMost, m, Q)
 
-          case silAST.types.permissionLT =>
+          case semper.sil.ast.types.permissionLT =>
             evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
 
-          case silAST.types.permissionGE =>
+          case semper.sil.ast.types.permissionGE =>
             evalBinOp(σ, cs, args(0), args(1), terms.AtLeast, m, Q)
 
-          case silAST.types.permissionGT =>
+          case semper.sil.ast.types.permissionGT =>
             evalBinOp(σ, cs, args(0), args(1), terms.Greater, m, Q)
 
           /* Integers */
 
-//          case silAST.types.integerEQ =>
+//          case semper.sil.ast.types.integerEQ =>
 //            evalBinOp(σ, cs, args(0), args(1), terms.Eq, m, Q)
 //
-//          case silAST.types.integerNE =>
+//          case semper.sil.ast.types.integerNE =>
 //            val neq = (t1: Term, t2: Term) => t1 ≠ t2
 //            evalBinOp(σ, cs, args(0), args(1), neq, m, Q)
 //
-//          case silAST.types.integerLE =>
+//          case semper.sil.ast.types.integerLE =>
 //            evalBinOp(σ, cs, args(0), args(1), terms.AtMost, m, Q)
 //
-//          case silAST.types.integerLT =>
+//          case semper.sil.ast.types.integerLT =>
 //            evalBinOp(σ, cs, args(0), args(1), terms.Less, m, Q)
 //
-//          case silAST.types.integerGE =>
+//          case semper.sil.ast.types.integerGE =>
 //            evalBinOp(σ, cs, args(0), args(1), terms.AtLeast, m, Q)
 //
-//          case silAST.types.integerGT =>
+//          case semper.sil.ast.types.integerGT =>
 //            evalBinOp(σ, cs, args(0), args(1), terms.Greater, m, Q)
 
           /* Booleans */
 
-          case silAST.types.booleanEvaluate =>
+          case semper.sil.ast.types.booleanEvaluate =>
             evalt(σ, cs, args(0), m, Q)
 
           /* Domains not directly handled */
             
-          case dp: silAST.domains.DomainPredicate =>
+          case dp: semper.sil.ast.domains.DomainPredicate =>
                    // if dp.name == "EvalBool[Boolean[]]" =>
             
             // assert(dp.signature.parameterTypes.length == 1, "Expected one argument to %s (%s), but found %s: %s".format(dp, dp.getClass.getName, dp.signature.parameterTypes.length, dp.signature.parameterTypes))
@@ -472,12 +472,12 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             // evalBinOp(σ, cs, args.args(0), args.args(1), terms.AtLeast, m, Q)
         }
 
-      case _: silAST.expressions.PermissionExpression =>
+      case _: semper.sil.ast.expressions.PermissionExpression =>
         sys.error("PermissionExpressions should be handled by produce/consume, unexpected %s (%s) found.".format(e, e.getClass.getName))
 
-      case silAST.expressions.UnfoldingExpression(
-              acc @ silAST.expressions.PredicatePermissionExpression(
-                silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+      case semper.sil.ast.expressions.UnfoldingExpression(
+              acc @ semper.sil.ast.expressions.PredicatePermissionExpression(
+                semper.sil.ast.expressions.terms.PredicateLocation(eRcvr, predicate),
                 ePerm),
               eIn) =>
 
@@ -771,8 +771,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
 		/* For debugging only */
 //		e match {
-//			case _: silAST.expressions.AtomicExpression =>
-//			case _: silAST.expressions.terms.AtomicTerm =>
+//			case _: semper.sil.ast.expressions.AtomicExpression =>
+//			case _: semper.sil.ast.expressions.terms.AtomicTerm =>
 //			case _ =>
 //				logger.debug("\nEVALUATING TERM " + e)
 //				logger.debug("  " + e.getClass.getName)
@@ -781,22 +781,22 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 //		}
 	
 		e match {
-      case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
+      case ilt: semper.sil.ast.expressions.terms.IntegerLiteralTerm =>
         Q(terms.IntLiteral(ilt.value.intValue))
       
 			// case v: Variable => Q(σ.γ(v), c)
 			// case v: VariableExpr => Q(σ.γ(v.asVariable), c)
-      case silAST.expressions.terms.ProgramVariableTerm(v) => Q(σ.γ(v))
-      case silAST.expressions.terms.LogicalVariableTerm(v) => Q(σ.γ(ast.utils.lv2pv(v)))
+      case semper.sil.ast.expressions.terms.ProgramVariableTerm(v) => Q(σ.γ(v))
+      case semper.sil.ast.expressions.terms.LogicalVariableTerm(v) => Q(σ.γ(ast.utils.lv2pv(v)))
       
-      case silAST.expressions.terms.PermTerm(silAST.expressions.terms.FieldLocation(rcvr, field)) =>
+      case semper.sil.ast.expressions.terms.PermTerm(semper.sil.ast.expressions.terms.FieldLocation(rcvr, field)) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>
           Q(fc.perm))
 
-      case silAST.expressions.terms.OldTerm(e0) =>
+      case semper.sil.ast.expressions.terms.OldTerm(e0) =>
         evalt(σ \ (h = σ.g), cs, e0, m, Q)
       
-      case silAST.expressions.terms.FieldReadTerm(silAST.expressions.terms.FieldLocation(rcvr, field)) =>
+      case semper.sil.ast.expressions.terms.FieldReadTerm(semper.sil.ast.expressions.terms.FieldLocation(rcvr, field)) =>
         evalFieldDeref(σ, cs, rcvr, field, m, fc =>
           Q(fc.value))
 				// evalt(σ, cs, rcvr, m, tRcvr =>
@@ -806,27 +806,27 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 					// else
 						// Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
       
-      case npt @ silAST.expressions.terms.NoPermissionTerm() =>
-           // if npt.eq(silAST.expressions.terms.NoPermissionTerm) =>
+      case npt @ semper.sil.ast.expressions.terms.NoPermissionTerm() =>
+           // if npt.eq(semper.sil.ast.expressions.terms.NoPermissionTerm) =>
         // logger.debug("[evalt2] " + e)
         // logger.debug("[evalt2] " + e.getClass.getName)
-        // logger.debug("[evalt2] " + (e == silAST.expressions.terms.noPermissionTerm))
-        // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
+        // logger.debug("[evalt2] " + (e == semper.sil.ast.expressions.terms.noPermissionTerm))
+        // logger.debug("[evalt2] " + e.eq(semper.sil.ast.expressions.terms.noPermissionTerm))
         Q(terms.ZeroPerms())
         
-      case fpt @ silAST.expressions.terms.FullPermissionTerm() =>
-           // if fpt.eq(silAST.expressions.terms.FullPermissionTerm) =>
+      case fpt @ semper.sil.ast.expressions.terms.FullPermissionTerm() =>
+           // if fpt.eq(semper.sil.ast.expressions.terms.FullPermissionTerm) =>
         // logger.debug("[evalt2] " + e)
         // logger.debug("[evalt2] " + e.getClass.getName)
-        // logger.debug("[evalt2] " + (e == silAST.expressions.terms.noPermissionTerm))
-        // logger.debug("[evalt2] " + e.eq(silAST.expressions.terms.noPermissionTerm))
+        // logger.debug("[evalt2] " + (e == semper.sil.ast.expressions.terms.noPermissionTerm))
+        // logger.debug("[evalt2] " + e.eq(semper.sil.ast.expressions.terms.noPermissionTerm))
         Q(terms.FullPerms())
 
-      case ept @ silAST.expressions.terms.EpsilonPermissionTerm() =>
+      case ept @ semper.sil.ast.expressions.terms.EpsilonPermissionTerm() =>
         sys.error("Epsilon/Counting permissions are not yet supported by Silicon: " + ept)
 
-      case silAST.expressions.terms.DomainFunctionApplicationTerm(f, es) =>
-//        println("\n[evalt2] silAST.expressions.terms.DomainFunctionApplicationTerm")
+      case semper.sil.ast.expressions.terms.DomainFunctionApplicationTerm(f, es) =>
+//        println("\n[evalt2] semper.sil.ast.expressions.terms.DomainFunctionApplicationTerm")
 //        println("  f = " + f)
 //        println("  es = " + es)
 
@@ -834,94 +834,94 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 
         /* Booleans */
 
-        case silAST.types.booleanTrue => Q(terms.True())
-        case silAST.types.booleanFalse => Q(terms.False())
+        case semper.sil.ast.types.booleanTrue => Q(terms.True())
+        case semper.sil.ast.types.booleanFalse => Q(terms.False())
         
-        case silAST.types.booleanNegation =>
+        case semper.sil.ast.types.booleanNegation =>
           evalt(σ, cs, es(0), m, t0 =>
             Q(terms.Not(t0)))
         
         /* TODO: Not short-circuiting, combine with AND above. */
-        case silAST.types.booleanConjunction =>
+        case semper.sil.ast.types.booleanConjunction =>
           evalBinOp(σ, cs, es(0), es(1), terms.And, m, Q)
         
-        case silAST.types.booleanDisjunction =>
+        case semper.sil.ast.types.booleanDisjunction =>
           evalBinOp(σ, cs, es(0), es(1), terms.Or, m, Q)
         
         /* TODO: Not sufficient, combine with IMPLIES above. */
-        case silAST.types.booleanImplication =>
+        case semper.sil.ast.types.booleanImplication =>
           evalBinOp(σ, cs, es(0), es(1), terms.Implies, m, Q)
         
-        case silAST.types.booleanEquivalence =>
+        case semper.sil.ast.types.booleanEquivalence =>
           evalBinOp(σ, cs, es(0), es(1), terms.Iff, m, Q)
         
         /* References */
         
-        case silAST.types.nullFunction => Q(terms.Null())
+        case semper.sil.ast.types.nullFunction => Q(terms.Null())
         
-        case silAST.types.referenceEquality =>
+        case semper.sil.ast.types.referenceEquality =>
           evalBinOp(σ, cs, es(0), es(1), terms.Eq, m, Q)
           
         /* Integers */
         
-        case silAST.types.integerAddition =>
+        case semper.sil.ast.types.integerAddition =>
           evalBinOp(σ, cs, es(0), es(1), terms.Plus, m, Q)
         
-        case silAST.types.integerSubtraction =>
+        case semper.sil.ast.types.integerSubtraction =>
           evalBinOp(σ, cs, es(0), es(1), terms.Minus, m, Q)
           
-        case silAST.types.integerMultiplication =>
+        case semper.sil.ast.types.integerMultiplication =>
           evalBinOp(σ, cs, es(0), es(1), terms.Times, m, Q)
           
-        case silAST.types.integerDivision =>
+        case semper.sil.ast.types.integerDivision =>
           evalBinOp(σ, cs, es(0), es(1), terms.Div, m, Q)
           
-        case silAST.types.integerModulo =>
+        case semper.sil.ast.types.integerModulo =>
           evalBinOp(σ, cs, es(0), es(1), terms.Mod, m, Q)
 
-        case silAST.types.integerEQ =>
+        case semper.sil.ast.types.integerEQ =>
           evalBinOp(σ, cs, es(0), es(1), terms.Eq, m, Q)
 
-        case silAST.types.integerNE =>
+        case semper.sil.ast.types.integerNE =>
           val neq = (t1: Term, t2: Term) => t1 ≠ t2
           evalBinOp(σ, cs, es(0), es(1), neq, m, Q)
 
-        case silAST.types.integerLE =>
+        case semper.sil.ast.types.integerLE =>
           evalBinOp(σ, cs, es(0), es(1), terms.AtMost, m, Q)
 
-        case silAST.types.integerLT =>
+        case semper.sil.ast.types.integerLT =>
           evalBinOp(σ, cs, es(0), es(1), terms.Less, m, Q)
 
-        case silAST.types.integerGE =>
+        case semper.sil.ast.types.integerGE =>
           evalBinOp(σ, cs, es(0), es(1), terms.AtLeast, m, Q)
 
-        case silAST.types.integerGT =>
+        case semper.sil.ast.types.integerGT =>
           evalBinOp(σ, cs, es(0), es(1), terms.Greater, m, Q)
 
-        // case silAST.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
-        // case silAST.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
-        // case silAST.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
+        // case semper.sil.ast.types.integerDivision => "(/ %s %s)".format(convert(ts(0)), convert(ts(1)))
+        // case semper.sil.ast.types.integerModulo => "(% %s %s)".format(convert(ts(0)), convert(ts(1)))
+        // case semper.sil.ast.types.integerNegation => "(- 0 %s)".format(convert(ts(0)))
         
         /* Permissions */
 
-        case silAST.types.percentagePermission => es(0) match {
-          case ilt: silAST.expressions.terms.IntegerLiteralTerm =>
+        case semper.sil.ast.types.percentagePermission => es(0) match {
+          case ilt: semper.sil.ast.expressions.terms.IntegerLiteralTerm =>
             Q(terms.PercPerms(ilt.value.toInt))
 
           case _ =>
             sys.error("Expected percentagePermission %s to wrap an IntegerLiteralTerm, but " +
                       "found %s (%s)".format(f, es(0), es(0).getClass.getName))}
 
-        case silAST.types.permissionAddition =>
+        case semper.sil.ast.types.permissionAddition =>
           evalBinOp(σ, cs, es(0), es(1), terms.PermPlus, m, Q)
 
-        case silAST.types.permissionSubtraction =>
+        case semper.sil.ast.types.permissionSubtraction =>
           evalBinOp(σ, cs, es(0), es(1), terms.PermMinus, m, Q)
           
-        case silAST.types.permissionMultiplication =>
+        case semper.sil.ast.types.permissionMultiplication =>
           evalBinOp(σ, cs, es(0), es(1), terms.PermTimes, m, Q)
           
-        case silAST.types.permissionIntegerMultiplication =>
+        case semper.sil.ast.types.permissionIntegerMultiplication =>
           evalBinOp(σ, cs, es(0), es(1), terms.IntPermTimes, m, Q)
         
         /* Domains not handled directly */
@@ -931,7 +931,7 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
             Q(terms.DomainFApp(f.fullName, ts, toSort(f.signature.resultType))))
       }
 
-      case fapp @ silAST.expressions.terms.FunctionApplicationTerm(eRcvr, f, eArgs) =>
+      case fapp @ semper.sil.ast.expressions.terms.FunctionApplicationTerm(eRcvr, f, eArgs) =>
         val BigAnd = ast.utils.collections.BigAnd(f.factory) _
         val err = InvocationFailed(f.name, fapp.sourceLocation)
         // val Result = specialVariables.result(fapp.f.out)
@@ -981,9 +981,9 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
 //            else
 //            Failure(err dueTo ReceiverMightBeNull(e0, id), c2)}))
 
-      case silAST.expressions.terms.UnfoldingTerm(
-              acc @ silAST.expressions.PredicatePermissionExpression(
-                silAST.expressions.terms.PredicateLocation(eRcvr, predicate),
+      case semper.sil.ast.expressions.terms.UnfoldingTerm(
+              acc @ semper.sil.ast.expressions.PredicatePermissionExpression(
+                semper.sil.ast.expressions.terms.PredicateLocation(eRcvr, predicate),
                 ePerm),
               eIn) =>
 
@@ -1029,8 +1029,8 @@ trait DefaultEvaluator[ST <: Store[SILProgramVariable, ST],
         
   private def evalFieldDeref(σ: S,
                              cs: List[SILFunction],
-                             rcvr: silAST.expressions.terms.Term,
-                             field: silAST.programs.symbols.Field,
+                             rcvr: semper.sil.ast.expressions.terms.Term,
+                             field: semper.sil.ast.programs.symbols.Field,
                              m: Message,
                              Q: FieldChunk => VerificationResult)
                             : VerificationResult = {

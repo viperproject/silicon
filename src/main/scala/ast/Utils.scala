@@ -1,11 +1,11 @@
 package ch.ethz.inf.pm.silicon.ast
 
-import silAST.expressions.{
+import semper.sil.ast.expressions.{
     Expression => SILExpression,
     BinaryExpression => SILBinaryExpression,
     TrueExpression => SILTrue,
     ExpressionFactory => SILExpressionFactory}
-import silAST.symbols.logical.{And => SILAnd}
+import semper.sil.ast.symbols.logical.{And => SILAnd}
 import ch.ethz.inf.pm.silicon
 import silicon.utils.collections.mapReduceLeft
 	
@@ -24,12 +24,12 @@ package object utils {
     }
     
     def BigAnd(ef: SILExpressionFactory)(it: Iterable[SILExpression], f: SILExpression => SILExpression = e => e) =
-      mapReduceLeft(it, f, createSILAnd(ef), SILTrue()(silAST.source.noLocation))
+      mapReduceLeft(it, f, createSILAnd(ef), SILTrue()(semper.sil.ast.source.noLocation))
 
     // def BigOr(it: Iterable[SILExpression], f: SILExpression => SILExpression = e => e) =
       // mapReduceLeft(it, f, Or.apply, True())
   }
   
-  /* temporary */ def lv2pv(lv: silAST.symbols.logical.quantification.LogicalVariable) =
-    new silAST.programs.symbols.ProgramVariable(lv.name, lv.dataType)(lv.sourceLocation, Nil)
+  /* temporary */ def lv2pv(lv: semper.sil.ast.symbols.logical.quantification.LogicalVariable) =
+    new semper.sil.ast.programs.symbols.ProgramVariable(lv.name, lv.dataType)(lv.sourceLocation, Nil)
 }

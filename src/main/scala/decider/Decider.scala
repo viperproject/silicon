@@ -4,7 +4,7 @@ package decider
 
 import scala.io.Source
 import com.weiglewilczek.slf4s.Logging
-import silAST.programs.symbols.{ProgramVariable => SILProgramVariable}
+import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
 import interfaces.{VerificationResult, Warning}
 import interfaces.decider.{Decider, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, FieldChunk,

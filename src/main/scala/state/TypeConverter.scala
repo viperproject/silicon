@@ -1,8 +1,8 @@
 package ch.ethz.inf.pm.silicon
 package state
 
-import silAST.types.{DataType => SILDataType}
-import silAST.domains.{Domain => SILDomain}
+import semper.sil.ast.types.{DataType => SILDataType}
+import semper.sil.ast.domains.{Domain => SILDomain}
 
 import terms.{Sort, sorts}
 
@@ -15,17 +15,17 @@ trait TypeConverter {
 
 class DefaultTypeConverter extends TypeConverter {
   val manuallyHandledDomains = Set(
-      silAST.types.booleanType.domain,
-      silAST.types.integerType.domain,
-      silAST.types.permissionType.domain,
-      silAST.types.referenceType.domain
+      semper.sil.ast.types.booleanType.domain,
+      semper.sil.ast.types.integerType.domain,
+      semper.sil.ast.types.permissionType.domain,
+      semper.sil.ast.types.referenceType.domain
   )
   
 	def toSort(typ: SILDataType) = typ match {
-    case silAST.types.booleanType => sorts.Bool
-    case silAST.types.integerType => sorts.Int
-    case silAST.types.permissionType => sorts.Perms
-    case silAST.types.referenceType => sorts.Ref
-    case silAST.types.NonReferenceDataType(domain) => sorts.UserSort(domain.fullName)
+    case semper.sil.ast.types.booleanType => sorts.Bool
+    case semper.sil.ast.types.integerType => sorts.Int
+    case semper.sil.ast.types.permissionType => sorts.Perms
+    case semper.sil.ast.types.referenceType => sorts.Ref
+    case semper.sil.ast.types.NonReferenceDataType(domain) => sorts.UserSort(domain.fullName)
 	}
 }

@@ -3,9 +3,9 @@ package ch.ethz.inf.pm.silicon.decider
 import java.io.{PrintWriter, BufferedWriter, FileWriter, File,
 		InputStreamReader, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable.{HashMap, Stack}
-import silAST.domains.{Domain => SILDomain}
+import semper.sil.ast.domains.{Domain => SILDomain}
 
-// import silAST.programs.symbols.{Function => SILFunction}
+// import semper.sil.ast.programs.symbols.{Function => SILFunction}
 
 import ch.ethz.inf.pm.silicon
 import silicon.interfaces.decider.{Prover, Result, Sat, Unsat, Unknown, 

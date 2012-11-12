@@ -1,8 +1,8 @@
 package ch.ethz.inf.pm.silicon
 package reporting
 
-import silAST.{ASTNode => SILASTNode}
-import silAST.source.{
+import semper.sil.ast.{ASTNode => SILASTNode}
+import semper.sil.ast.source.{
     SourceLocation => SILSourceLocation,
     noLocation => SILNoLocation}
 import interfaces.reporting.{Categorie, Reason, Message}
