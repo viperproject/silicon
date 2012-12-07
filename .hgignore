@@ -3,3 +3,5 @@ project/project/**
 project/target/**
 target/**
 .cache
+.idea/
+.idea_modules/

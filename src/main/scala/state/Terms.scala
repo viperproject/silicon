@@ -86,21 +86,12 @@ sealed trait Term {
 	 */
 	def ≡(t: Term): Eq = Eq(this, t)
 	def ≠(t: Term): Term = Not(Eq(this, t))
-	
-	// def convert(from: Sort, to: Sort): Term = (from, to) match {
-		// // case (sor, BoolSort) => IntToBool(this)
-		// // case (BoolSort, IntSort) => BoolToInt(this)
-		// case (s1, s2) if s1 == s2 => this
-    // case (s1, s2) => SortWrapper(this, )
-		// // case (s1, s2) =>
-			// // sys.error("Unexpected sort conversion %s -> %s.".format(from, to))
-	// }
-	
-	// def convert(to: Sort): Term = convert(this.sort, to)
-  
-	def convert(to: Sort): Term =
-    if (to == this.sort) this
-    else SortWrapper(this, to)
+
+  def convert(to: Sort): Term = this match {
+    case _ if to == this.sort => this
+    case sw: SortWrapper if sw.t.sort == to => sw.t
+    case _ => SortWrapper(this, to)
+  }
 
   def sort: Sort
 	
