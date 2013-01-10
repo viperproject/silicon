@@ -15,6 +15,8 @@
   <component name="FacetManager">
     <facet type="scala" name="Scala">
       <configuration>
+        <option name="compilerLibraryLevel" value="Project" />
+        <option name="compilerLibraryName" value="org.scala-lang:scala-compiler:2.9.1" />
         <option name="fsc" value="true" />
         <option name="languageLevel" value="Scala 2.9" />
       </configuration>
@@ -75,7 +77,9 @@
           <root url="jar://$IVY_HOME$/cache/com.github.scopt/scopt_2.9.1/jars/scopt_2.9.1-2.0.1.jar!/" />
         </CLASSES>
         <JAVADOC />
-        <SOURCES />
+        <SOURCES>
+          <root url="jar://$IVY_HOME$/cache/com.github.scopt/scopt_2.9.1/srcs/scopt_2.9.1-2.0.1-sources.jar!/" />
+        </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="library" name="org.scala-lang:scala-library:2.9.1" level="project" />
