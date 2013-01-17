@@ -1,4 +1,6 @@
 
+package ch.ethz.inf.pm.silicon
+
 import ch.ethz.inf.pm.silicon.{Silicon, Config}
 import semper.sil.ast.programs.Program
 import semper.sil.verifier._
