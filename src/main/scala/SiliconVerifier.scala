@@ -7,6 +7,7 @@ import semper.sil.verifier._
 import semper.sil.verifier.Error
 import java.nio.file.{Files, Paths, Path}
 import java.io.FileNotFoundException
+import semper.sil.ast.source.RealSourceLocation
 
 /** A class for Silicon that implements the `Verifier` trait.
   */
@@ -28,7 +29,10 @@ class SiliconVerifier(options: Seq[String] = Nil) extends Verifier(options) {
       Error(result.map({
         case ch.ethz.inf.pm.silicon.interfaces.Failure(m) =>
           val line = m.loc.toString.substring(0, m.loc.toString.indexOf("."))
-          VerificationError(m.code.toString, line.toInt)
+          new VerificationError(m.code.toString, null) {
+            def readableMessage(): String = m.format
+            override def location = RealSourceLocation(line.toInt, 0)
+          }
       }))
     }
   }
