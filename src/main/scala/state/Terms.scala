@@ -3,7 +3,7 @@ package terms
 
 //import scala.util.parsing.input.{Position, NoPosition}
 import semper.sil.ast.{ASTNode => SILASTNode}
-import semper.sil.ast.source.{SourceLocation => SILSourceLocation, noLocation => SILNoLocation}
+import semper.sil.ast.source.{SourceLocation => SILSourceLocation, NoLocation => SILNoLocation}
 // import semper.sil.ast.programs.symbols.{Function => SILFunction}
 // import semper.sil.ast.domains.{DomainFunction => SILDomainFunction}
 

@@ -4,7 +4,7 @@ package reporting
 import semper.sil.ast.{ASTNode => SILASTNode}
 import semper.sil.ast.source.{
     SourceLocation => SILSourceLocation,
-    noLocation => SILNoLocation}
+    NoLocation => SILNoLocation}
 import interfaces.reporting.{Categorie, Reason, Message}
 
 sealed abstract class AbstractMessage extends Message {

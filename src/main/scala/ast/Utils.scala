@@ -24,7 +24,7 @@ package object utils {
     }
     
     def BigAnd(ef: SILExpressionFactory)(it: Iterable[SILExpression], f: SILExpression => SILExpression = e => e) =
-      mapReduceLeft(it, f, createSILAnd(ef), SILTrue()(semper.sil.ast.source.noLocation))
+      mapReduceLeft(it, f, createSILAnd(ef), SILTrue()(semper.sil.ast.source.NoLocation))
 
     // def BigOr(it: Iterable[SILExpression], f: SILExpression => SILExpression = e => e) =
       // mapReduceLeft(it, f, Or.apply, True())

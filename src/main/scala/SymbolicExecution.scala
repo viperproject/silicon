@@ -2,7 +2,7 @@ package ch.ethz.inf.pm.silicon
 
 import com.weiglewilczek.slf4s.Logging
 
-import semper.sil.ast.source.{/* SourceLocation => SILSourceLocation, */ noLocation => SILNoLocation}
+import semper.sil.ast.source.{/* SourceLocation => SILSourceLocation, */ NoLocation => SILNoLocation}
 
 // import scala.util.parsing.input.NoPosition
 import interfaces.{VerificationResult, Success, Warning, Failure}
