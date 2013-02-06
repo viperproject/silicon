@@ -1,65 +1,97 @@
-package ch.ethz.inf.pm
+package semper
 package silicon
 package interfaces
 
-import ch.ethz.inf.pm.silicon
-import state.{Store, Heap, State}
-import reporting.{Message}
-import silicon.state.terms.{Term, PermissionTerm, Sort}
+import sil.verifier.{VerificationError, PartialVerificationError}
+import state.{Store, Heap, State, Chunk}
+import reporting.{Context, TraceView}
+import silicon.state.terms.{Sort, Term, PermissionsTerm}
 
 /*
- * Symbolic execution components
+ * Symbolic execution primitives
  */
 
-trait Evaluator[V, E, T, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def evales(σ: S, es: Seq[E], m: Message,
-						Q: (List[Term]) => VerificationResult): VerificationResult
-            
-	def evalts(σ: S, es: Seq[T], m: Message,
-						Q: (List[Term]) => VerificationResult): VerificationResult
+trait Evaluator[P <: PermissionsTerm[P],
+                ST <: Store[ST],
+                H <: Heap[H],
+								S <: State[ST, H, S],
+                C <: Context[C, ST, H, S],
+                TV <: TraceView[TV, ST, H, S]] {
 
-	def evale(σ: S, e: E, m: Message,
-					 Q: Term => VerificationResult): VerificationResult
-           
-	def evalt(σ: S, e: T, m: Message, Q: (Term) => VerificationResult): VerificationResult
+	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
+					 (Q: (List[Term], C) => VerificationResult)
+           : VerificationResult
 
-	def evalp(σ: S, e: T, m: Message, Q: PermissionTerm => VerificationResult)
+	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+					(Q: (Term, C) => VerificationResult)
+          : VerificationResult
+			
+	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+					 (Q: (P, C) => VerificationResult)
            : VerificationResult
 }
 
-trait Producer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
+trait Producer[P <: PermissionsTerm[P],
+               ST <: Store[ST],
+               H <: Heap[H],
+							 S <: State[ST, H, S],
+               C <: Context[C, ST, H, S],
+               TV <: TraceView[TV, ST, H, S]] {
+
 	def produce(σ: S,
               sf: Sort => Term,
-              p: PermissionTerm,
-              φ: A,
-              m: Message,
-							Q: S => VerificationResult)
+              p: P,
+              φ: ast.Expression,
+              pve: PartialVerificationError,
+              c: C,
+              tv: TV)
+						 (Q: (S, C) => VerificationResult)
              : VerificationResult
+
+  def produces(σ: S,
+               sf: Sort => Term,
+               p: P,
+               φs: Seq[ast.Expression],
+               pvef: ast.Expression => PartialVerificationError,
+               c: C,
+               tv: TV)
+              (Q: (S, C) => VerificationResult)
+              : VerificationResult
 }
 
-trait Consumer[V, A, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def consume(σ: S,
-              p: PermissionTerm,
-              φ: A,
-              m: Message,
-							Q: (S, Term) => VerificationResult)
+trait Consumer[P <: PermissionsTerm[P],
+               CH <: Chunk,
+               ST <: Store[ST],
+               H <: Heap[H],
+							 S <: State[ST, H, S],
+               C <: Context[C, ST, H, S],
+               TV <: TraceView[TV, ST, H, S]] {
+
+	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+						 (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult
+
+  def consumes(σ: S,
+               p: P,
+               φ: Seq[ast.Expression],
+               pvef: ast.Expression => PartialVerificationError,
+               c: C,
+               tv: TV)
+              (Q: (S, List[Term], List[CH], C) => VerificationResult)
+              : VerificationResult
 }
 
-trait Executor[V, X, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
+trait Executor[X,
+               ST <: Store[ST],
+               H <: Heap[H],
+               S <: State[ST, H, S],
+               C <: Context[C, ST, H, S],
+               TV <: TraceView[TV, ST, H, S]] {
+
   def exec(σ: S,
            x: X,
-           m: Message)
-          (Q: S => VerificationResult)
+           c: C,
+           tv: TV)
+          (Q: (S, C) => VerificationResult)
           : VerificationResult
-}
-
-trait MapSupport[V, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]] {
-	def getRevision(h: H, id: String): Int
-	
-	def update(σ: S,
-             id: String,
-             where: Term,
-						 Q: S => VerificationResult)
-            : VerificationResult
 }

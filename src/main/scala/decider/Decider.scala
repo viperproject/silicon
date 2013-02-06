@@ -1,149 +1,358 @@
-package ch.ethz.inf.pm
+package semper
 package silicon
 package decider
 
 import scala.io.Source
 import com.weiglewilczek.slf4s.Logging
-import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
-import interfaces.{VerificationResult, Warning}
-import interfaces.decider.{Decider, Unsat}
-import interfaces.state.{Store, Heap, PathConditions, State, FieldChunk,
-		PathConditionsFactory, Chunk, PredicateChunk, AccessRestrictedChunk}
-import state.terms
-import state.terms.{Sort, Term, Eq, Or, True, PermissionTerm, ZeroPerms, FullPerms}
-import reporting.WarningMessages.{SmokeDetected}
-import reporting.ErrorMessages.{FractionMightBeNegative,
-		FractionMightBeGT100}
+import sil.verifier.reasons.{NegativeFraction}
+import interfaces.{VerificationResult}
+import interfaces.decider.{Decider, Unsat, Prover}
+import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
+    PermissionChunk}
+import interfaces.reporting.Context
+import state.{TypeConverter, terms}
+import state.terms.{Sort, Term, Eq, Or, True, PermissionsTuple, FullPerms,
+    ZeroPerms, ReadPerms, StarPerms, PredicateRdPerms, MonitorRdPerms, PermMinus, PermPlus}
+import reporting.Bookkeeper
+//import reporting.ErrorMessages.{FractionMightBeNegative, FractionMightBeGT100}
+import silicon.utils.notNothing._
 
-class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
-										 PC <: PathConditions[PC],
-                     S <: State[SILProgramVariable, ST, H, S]]
-		(	private val pathConditionsFactory: PathConditionsFactory[PC],
-			private val config: Config)
-		extends Decider[SILProgramVariable, ST, H, PC, S]
-    with Logging {
+class DefaultDecider[ST <: Store[ST],
+                     H <: Heap[H],
+                     PC <: PathConditions[PC],
+                     S <: State[ST, H, S],
+                     C <: Context[C, ST, H, S]]
+		extends Decider[PermissionsTuple, ST, H, PC, S, C]
+		   with Logging {
 
-	// private type P = FractionalPermission
+//	var lockSupport: LockSupport[PermissionsTuple, ST, H, PC, S, C] = null
+	
+	private var z3: Z3ProverStdIO = null
 
-	// var lockSupport: LockSupport[ST, H, S] = null
+  private var pathConditionsFactory: PathConditionsFactory[PC] = null
+  private var config: Config = null
+  private var bookkeeper: Bookkeeper = null
+	private var pathConditions: PC = null.asInstanceOf[PC]
+	private var typeConverter: TypeConverter = null
+//	private var performSmokeChecks: Boolean = false
+  private var isInitialised = false
 
-	val prover = new Z3ProverStdIO(config.z3exe, config.z3log)
-	// val prover = new Z3ProverAPI("logfile_api.smt2")
-	def π = pathConditions.values
+  @inline
+  def prover: Prover = z3
 
-	private val pathConditions = pathConditionsFactory.Π()
-	private val typeConverter = new state.DefaultTypeConverter()
-	private var performSmokeChecks = config.performSmokeChecks
+  @inline
+  def π = pathConditions.values
 
-	prover.logComment("-" * 60)
-	prover.logComment("Preamble")
-	prover.logComment("-" * 60)
-	pushPreamble()
+  def init(pathConditionsFactory: PathConditionsFactory[PC],
+           config: Config,
+           bookkeeper: Bookkeeper) {
 
-	def enableSmokeChecks(enable: Boolean) = performSmokeChecks = enable
+    this.pathConditionsFactory = pathConditionsFactory
+//    this.lockSupport = lockSupport
+    this.config = config
+    this.bookkeeper = bookkeeper
 
-	def checkSmoke = prover.check() == Unsat
+    this.isInitialised = true
+  }
 
+  def start() {
+    Predef.assert(isInitialised, "DefaultDecider must be initialised via init() first.")
+
+    z3 = new Z3ProverStdIO(config.z3Exe, config.z3LogFile, bookkeeper)
+    pathConditions = pathConditionsFactory.Π()
+    typeConverter = new silicon.state.DefaultTypeConverter()
+//    performSmokeChecks = config.performSmokeChecks
+
+    prover.logComment("-" * 60)
+    prover.logComment("Preamble")
+    prover.logComment("-" * 60)
+    pushPreamble()
+  }
+
+//	def enableSmokeChecks(enable: Boolean) {
+//    performSmokeChecks = enable
+//  }
+//
+//	def checkSmoke = prover.check() == Unsat
+
+  val paLog =
+    new java.io.PrintWriter(
+      new java.io.BufferedWriter(new java.io.FileWriter(new java.io.File("perm-asserts.txt"))),
+      true)
+
+  val proverAssertionTimingsLog =
+    new java.io.PrintWriter(
+      new java.io.BufferedWriter(new java.io.FileWriter(new java.io.File("z3timings.txt"))),
+      true)
+	
 	// private def pushPreamble() {
 		// prover.loadPreamble("/preamble.smt2")
 		// prover.push()
 	// }
-  
+	
 	private def pushPreamble() {
-    val preambleSource = config.preamble match {
-      case None =>
-        val preambleFile = "preamble.smt2"
-        // println("preambleFile = " + preambleFile)
-        val preambleStream = classOf[Silicon].getClassLoader.getResourceAsStream(preambleFile)
-        // println("preambleStream = " + preambleStream)
-        Predef.assert(preambleStream != null, "Could not load resource " + preambleFile)
-        Source.fromInputStream(preambleStream)
+//		val in = getClass.getResourceAsStream("/preamble.smt2")
+//
+//		var lines =
+//			Source.fromInputStream(in).getLines().toList.filterNot(s =>
+//					s.trim == "" || s.trim.startsWith(";"))
+//
+//		/* Multi-line assertions are concatenated into a single string and
+//		 * send to the prover, because prover.write(str) expects Z3 to reply
+//		 * to 'str' with success/error. But Z3 will only reply anything if 'str'
+//		 * has been a complete assertion.
+//		 */
+//		while (lines.nonEmpty) {
+//			val part = lines.head :: lines.tail.takeWhile(l =>
+//						l.startsWith("\t") || l.startsWith("  "))
+//
+//			lines = lines.drop(part.size)
+//			prover.write(part.mkString("\n"))
+//		}
 
-      case Some(path) =>
-        Source.fromFile(path)
+    prover.logComment("\n; /preamble.smt2")
+    pushAssertions(readPreamble("/preamble.smt2"))
+//    prover.logComment("\n; /sequences.smt2")
+//    pushSortParametricAssertions("/sequences.smt2", terms.sorts.Int)
+//    prover.logComment("\n; /sequences_Int.smt2")
+//    pushAssertions(readPreamble("/sequences_Int.smt2"))
+
+    prover.logComment("\n; /sequences_old.smt2 [Int]")
+    pushSortParametricAssertions("/sequences_old.smt2", terms.sorts.Int)
+    prover.logComment("\n; /sequences_old_Int.smt2")
+    pushAssertions(readPreamble("/sequences_old_Int.smt2"))
+
+    prover.logComment("\n; /sequences_old.smt2 [Bool]")
+    pushSortParametricAssertions("/sequences_old.smt2", terms.sorts.Bool)
+
+    prover.logComment("\n; /sequences_old.smt2 [$Ref]")
+    pushSortParametricAssertions("/sequences_old.smt2", terms.sorts.Ref)
+
+		pushScope()
+	}
+
+  private def readPreamble(resource: String): List[String] = {
+    val in = getClass.getResourceAsStream(resource)
+
+    var lines =
+      Source.fromInputStream(in).getLines().toList.filterNot(s =>
+        s.trim == "" || s.trim.startsWith(";"))
+
+    var assertions = List[String]()
+
+    /* Multi-line assertions are concatenated into a single string and
+      * send to the prover, because prover.write(str) expects Z3 to reply
+      * to 'str' with success/error. But Z3 will only reply anything if 'str'
+      * is a complete assertion.
+      */
+    while (lines.nonEmpty) {
+      val part = (
+        lines.head
+          :: lines.tail.takeWhile(l => l.startsWith("\t") || l.startsWith("  ")))
+
+      lines = lines.drop(part.size)
+      assertions = part.mkString("\n") :: assertions
     }
 
-		var lines =
-			preambleSource.getLines.toList.filterNot(s =>
-					s.trim == "" || s.trim.startsWith(";"))
+    assertions.reverse
+  }
 
-		/* Multi-line assertions are concatenated into a single string and
-		 * send to the prover, because prover.write(str) expects Z3 to reply
-		 * to 'str' with success/error. But Z3 will only reply anything if 'str'
-		 * has been a complete assertion.
-		 */
-		while (lines.nonEmpty) {
-			val part = lines.head :: lines.tail.takeWhile(l =>
-						l.startsWith("\t") || l.startsWith("  "))
+  private def pushAssertions(lines: List[String]) {
+    lines.foreach(z3.write)
+  }
 
-			lines = lines.drop(part.size)
-			prover.write(part.mkString("\n"))
-		}
+  private def pushSortParametricAssertions(resource: String, s: Sort) {
+    val lines = readPreamble(resource)
 
-		prover.push()
+    pushAssertions(lines.map(_.replace("$S$", z3.termConverter.convert(s))))
+
+//    val in = getClass.getResourceAsStream(resource)
+//
+//    var lines =
+//      Source.fromInputStream(in).getLines().toList.filterNot(s =>
+//        s.trim == "" || s.trim.startsWith(";"))
+//
+//    /* Multi-line assertions are concatenated into a single string and
+//      * send to the prover, because prover.write(str) expects Z3 to reply
+//      * to 'str' with success/error. But Z3 will only reply anything if 'str'
+//      * is a complete assertion.
+//      */
+//    while (lines.nonEmpty) {
+//      val part = (
+//           lines.head
+//        :: lines.tail.takeWhile(l => l.startsWith("\t") || l.startsWith("  ")))
+//
+//      lines = lines.drop(part.size)
+//      prover.write(part.mkString("\n").replace("%S%", prover.convert(s)))
+//    }
+  }
+
+  def stop() {
+    prover.stop()
+  }
+
+  def pushScope() {
+    pathConditions.pushScope()
+    z3.push()
+  }
+
+  def popScope() {
+    z3.pop()
+    pathConditions.popScope()
+  }
+
+  def inScope[R](block: => R): R = {
+    pushScope()
+    val r: R = block
+    popScope()
+
+    r
+  }
+
+	def assert(t: Term) = assert(t, null)
+
+	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
+		val asserted = isKnownToBeTrue(t)
+
+		asserted || π.exists(_ == t) || proverAssert(t, logSink)
 	}
 
-	def assert(t: Term) = {
-    // println("\n[Decider/assert]")
-    // println("  t = " + t)
-		val asserted =
-			if (t.isInstanceOf[Eq]) {
-				/* Simple check to see if 't0 == t0' is to be asserted. */
-        /* TODO: Equip Eq with an extractor object that simplifies to True() */
-				val tEq = t.asInstanceOf[Eq]
-				tEq.t0 == tEq.t1
-			} else
-				false
+  /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+  private def isKnownToBeTrue(t: Term) = t match {
+    case True() => true
+    case eq: Eq => eq.p0 == eq.p1
+    case _ if (π contains t) => true
+    case _ => false
+  }
 
-		asserted || π.exists(_ == t) || prover.assert(t)
-	}
+  private def proverAssert(t: Term, logSink: java.io.PrintWriter = null) = {
+    if (logSink != null)
+      logSink.println(t)
+
+    val startTime = System.currentTimeMillis()
+    val result = prover.assert(t)
+    val endTime = System.currentTimeMillis()
+    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
+
+    result
+  }
+
+  /* ATTENTION: Caching the values of permission expression assertions is only
+   * sound as long as the value does not change over time, i.e., by adding new
+   * assumptions. This is not at all guaranteed for arbitrary assertions, but
+   * for permission expressions it should be fine since - I think - they are fully
+   * determined up front, that is, we never learn anything new about permission
+   * variables such as methodRd etc, or permissions expressions in general.
+   *
+   * HOWEVER: We must make sure that the cache is reset after each branch
+   * or method! I'll deactivate the cache for now, it has not been benchmarked
+   * anyway.
+   */
+//  private val permAssertCache = scala.collection.mutable.Map[Term, Boolean]()
+
+  def permAssert(t: Term) = {
+//    if (permAssertCache.contains(t)) {
+//      permAssertCache(t)
+//    } else {
+      val r = assert(t, paLog)
+      // permAssertCache.update(t, r)
+      r
+//    }
+  }
 
   /* Is perm as permissive as other?
    * As in "Is what we hold at least as permissive as what is required?".
    */
-	def isAsPermissive(perm: PermissionTerm, other: PermissionTerm) =
-    perm == other || assert(Or(Eq(perm, other), other < perm))
+  def isAsPermissive(perm: PermissionsTuple, other: PermissionsTuple) = (
+       perm == other
+    || (   perm.combined == FullPerms()
+        && other.isPotentiallyWrite == silicon.state.terms.PotentiallyWriteStatus.False)
+    || permAssert(Or(perm === other, other < perm)))
 
-	def assertReadAccess(perm: PermissionTerm) =
-    assert(ZeroPerms() < perm)
+	def assertReadAccess(perm: PermissionsTuple) = {
+    prover.logComment("[assertReadAccess]")
+    prover.logComment("perm.combined = " + perm.combined)
+    perm.combined match {
+      case _: ReadPerms
+           | _: StarPerms => true
+      case _ =>
+        prover.logComment("*** " + (ZeroPerms() < perm.combined) + " ***")
+        permAssert(ZeroPerms() < perm.combined)
+    }
+  }
 
-	def assertNoAccess(perm: PermissionTerm) =
-    assert(Or(Eq(perm, ZeroPerms()), perm < ZeroPerms()))
+	def assertNoAccess(perm: PermissionsTuple) = perm.combined match {
+    case _: ZeroPerms => true
 
-	def assertWriteAccess(perm: PermissionTerm) =
-    assert(Or(Eq(perm, FullPerms()), FullPerms() < perm))
+    /* ATTENTION: This is only sound if both plus operands and the left minus
+     *            operand are positive!
+     * */
+    case _: PermPlus
+        | PermMinus(_, _: StarPerms) => false
 
-	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean =
-		getChunk(h, rcvr, id) match {
-			case Some(c: AccessRestrictedChunk[_]) => assertReadAccess(c.perm)
-			case None => false
-		}
+    case _ => permAssert(Or(perm === ZeroPerms(), perm.combined < ZeroPerms()))
+  }
 
-	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean =
-		getChunk(h, rcvr, id) match {
-			case Some(c: AccessRestrictedChunk[_]) => assertWriteAccess(c.perm)
-			case None => false
-		}
+	def assertWriteAccess(perm: PermissionsTuple) = perm.combined match {
+    case _: FullPerms => true
 
-	def isNonNegativeFraction(perm: PermissionTerm) =
-    isAsPermissive(perm, ZeroPerms())
+    case _: ReadPerms
+        | _: StarPerms => false
 
-	/* TODO: Extract isGT100(perm) and implement isValidFraction based on
-	 *       isGT100 and isNonNegativeFraction.
-	 */
-	def isValidFraction(perm: PermissionTerm) =
+    case _ => permAssert(Or(perm === FullPerms(), FullPerms() < perm.combined))
+  }
+
+	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean = (
+		getChunk[PermissionChunk](h, rcvr, id)
+      .map(c => assertReadAccess(c.perm))
+      .getOrElse(false))
+
+	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean = (
+    getChunk[PermissionChunk](h, rcvr, id)
+      .map(c => assertWriteAccess(c.perm))
+      .getOrElse(false))
+
+	def isNonNegativeFraction(perm: PermissionsTuple) = perm.combined match {
+    case  _: ReadPerms
+        | _: MonitorRdPerms
+        | _: PredicateRdPerms
+        | _: FullPerms
+        | _: StarPerms => true
+
+    case _ => isAsPermissive(perm, PermissionsTuple(ZeroPerms()))
+  }
+
+  /* TODO: Currently deactivated since Chalice also doesn't seem to check (anymore)
+  *         if permissions are at most hundred.
+  */
+  def assertAtMostWriteAccess(p: PermissionsTuple): Boolean = true
+//  def assertAtMostWriteAccess(p: PermissionsTerm): Boolean = p match {
+//    case  _: ReadPerms
+//        | _: StarPerms
+//        | _: FullPerms => true
+//    case _ => assert(Or(TermEq(p, FullPerms()), p < FullPerms()))
+//  }
+
+	def isValidFraction(perm: PermissionsTuple, permSrc: ast.Expression) =
     if (!isNonNegativeFraction(perm))
-      Some(FractionMightBeNegative)
-    else if (!assert(Or(Eq(perm, FullPerms()), perm < FullPerms())))
-      Some(FractionMightBeGT100)
+      Some(NegativeFraction(permSrc))
+//    else if (!assertAtMostWriteAccess(perm))
+//    else if (!assert(Or(TermEq(perm, FullPerms()), perm < FullPerms())))
+//      Some(FractionMightBeGT100)
     else
       None
 
-	private def prover_assume(term: Term) = prover.assume(term)
+//	private def prover_assume(term: Term) {
+//    prover.assume(term)
+//  }
 
-	def assume(term: Term, Q: => VerificationResult) =
-		assume(Set(term), Q)
+  def assume(t: Term, c: C) {
+    assume(Set(t), c)
+  }
 
+//	def assume(term: Term, c: C)(Q: C => VerificationResult) =
+//		assume(Set(term), c)(Q)
+	
 	/* TODO: CRITICAL!
 	 * pathConditions are used as if they are guaranteed to be mutable, e.g.
 	 *   pathConditions.pushScope()
@@ -151,102 +360,87 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 	 *   pathConditions = pathConditions.pushScope()
 	 * but the interface does NOT guarantee mutability!
 	 */
+	
+	def assume(_terms: Set[Term], c: C) /*(Q: C => VerificationResult) = */ {
+    val terms = _terms filterNot isKnownToBeTrue
+//		var terms: Set[Term] = _terms
+//		terms = terms.filterNot(_ == True)    /* Remove True() */
+//		terms = terms.filterNot(π contains _) /* Remove known assumptions */
 
-	def assume(_terms: Set[Term], Q: => VerificationResult) = {
-		var terms: Set[Term] = _terms
-		terms = terms.filterNot(_ == True)    /* Remove True() */
-		terms = terms.filterNot(π contains _) /* Remove known assumptions */
+		if (!terms.isEmpty) {
+//      pushScope()
 
-		/* Handling an empty set of terms in a distinct case avoids pushing and
-		 * popping unnecessary Z3 scopes. This probably does not gain performance,
-		 * but avoids cluttering the log file and thus facilitates debugging.
-		 */
-		if (terms.isEmpty)
-			Q
-		else {
-			pathConditions.pushScope() /* Open a new Syxc-managed path condition scope */
-			prover.push() /* Open new prover scope */
+//      if (performSmokeChecks)
+//        sys.error("Not yet implemented: smoke checks.")
+//      else
+        assumeWithoutSmokeChecks(terms, c)
 
-			val smokeWarning =
-				if (performSmokeChecks)
-					assumeWithSmokeChecks(terms)
-				else
-					assumeWithoutSmokeChecks(terms)
-
-			val r =
-				smokeWarning match {
-					case None => Q
-					case Some(w) => w
-				}
-
-			prover.pop()
-			pathConditions.popScope()
-
-			r
+//      popScope()
 		}
 	}
+	
+	private def assumeWithoutSmokeChecks(terms: Set[Term], c: C) = {
+//    val terms = _terms filterNot isRedundantAssumption
 
-	private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
 		terms foreach pathConditions.push
 			/* Add terms to Syxc-managed path conditions */
-		terms foreach prover_assume
+		terms foreach prover.assume // prover_assume
 			/* Add terms to the prover's assumptions */
 		None
 	}
+	
+//	private def assumeWithSmokeChecks(_terms: Set[Term], c: C) = {
+//		var r: Option[VerificationResult] = None
+//    val terms = _terms.filterNot(isTrivialTerm)
+//		val it = terms.iterator
+//
+//		while (r == None && it.hasNext) {
+//			val t = it.next()
+//
+//			pathConditions.push(t)
+//			prover_assume(t)
+//
+//			if (checkSmoke) {
+//				val warning = Warning(SmokeDetected withDetails(t) at t.srcPos, c)
+//				logger.error("\n" + warning.message.format)
+//				logger.error("srcNode = " + t.srcNode)
+//				logger.error("srcPos = " + t.srcPos + "\n")
+//				// logger.error("π = " + π)
+//				r = Some(warning)
+//			}
+//		}
+//
+//		r
+//	}
 
-	private def assumeWithSmokeChecks(terms: Set[Term]) = {
-		var r: Option[VerificationResult] = None
-		val it = terms.iterator
-		var assumed: Set[Term] = Set()
+//	def emitFunctionDeclaration(f: ast.Function) {
+//    prover.declare(f)
+//  }
+//
+//  def emit(str: String)
 
-		while (r == None && it.hasNext) {
-			val t = it.next()
+  def fresh(s: Sort) = prover_fresh("$t", s)
+  def fresh(id: String, s: Sort) = prover_fresh(id, s)
+  def fresh(v: ast.Variable) = prover_fresh(v.name, typeConverter.toSort(v.dataType))
 
-			pathConditions.push(t)
-			prover_assume(t)
+  private def prover_fresh(id: String, s: Sort) = {
+    bookkeeper.freshSymbols += 1
+    prover.fresh(id, s)
+  }
 
-			if (checkSmoke) {
-				val warning = Warning(SmokeDetected withDetails(t) at t.srcPos)
-				logger.error("\n" + warning.message.format)
-				logger.error("srcNode = " + t.srcNode)
-				logger.error("srcPos = " + t.srcPos + "\n")
-				// logger.error("π = " + π)
-				r = Some(warning)
-			}
-		}
+//  class WithIsA[A](o: A) {
+//    def isA[B: Manifest] = manifest[B].erasure.isInstance(o)
+//  }
+//
+//  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
 
-		r
-	}
+	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, rcvr: Term, id: String): Option[CH] =
+//    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)
+  		getChunk(
+        h.values collect {case c if manifest[CH].runtimeClass.isInstance(c) && c.id == id =>
+                            c.asInstanceOf[CH]},
+        rcvr)
 
-
-  def fresh(s: Sort) = prover.fresh("$t", s)
-  def fresh(id: String, s: Sort) = prover.fresh(id, s)
-//  def fresh(v: ast.Variable) = prover_fresh(v.id, typeConverter.toSort(v.t))
-
-//	def fresh(id: String) = prover.fresh(id, terms.sorts.Snap)
-
-	def fresh(v: SILProgramVariable) = prover.fresh(v.name, typeConverter.toSort(v.dataType))
-
-	def getChunk(h: H, rcvr: Term, id: String) =
-		getChunk(h, h.values filter (c => c.id == id), rcvr)
-
-	/* TODO:
-	 *  - Use PermissionFactory instead of Full/Eps
-	 *  - Use ChunkFactory instead of DefaultPredicateChunk/DefaultFieldChunk
-	 */
-
-	def getFieldChunk(h: H, rcvr: Term, id: String) = {
-		val fields = h.values collect {case c: FieldChunk if c.id == id => c}
-
-		getChunk(h, fields, rcvr)
-	}
-
-	def getPredicateChunk(h: H, rcvr: Term, id: String) = {
-		val predicates =
-			h.values collect {case c: PredicateChunk if c.id == id => c}
-
-		getChunk(h, predicates, rcvr)
-	}
 
 	/* The difference between caching and not caching runs in terms of the number
 	 * of prover assertions seems to be marginal and probably is not worth
@@ -254,12 +448,12 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 	 *  - chalice/iterator 1144 vs 1147
 	 *  - chalice/iterator2 88 vs 75
 	 *  - syxc/linked_list 314 vs 314
-	 *  - chalice/producer-consumer 116 vs 114 (interesting!)
+	 *  - chalice/producer-consumer 116 vs 114
 	 *  - chalice/dining-philosophers 151 vs 151
 	 */
-
+	
 	/* ATTENTION:
-	 *
+	 * 
 	 * Caching does currently not work in all cases!
 	 * Problems occur when executing if-statements, specifically when
 	 * executing the else-branch after backtracking from the if-branch.
@@ -267,44 +461,47 @@ class DefaultDecider[ST <: Store[SILProgramVariable, ST], H <: Heap[H],
 	 * The problem is as follows:
 	 *  - let cache c after if-branch be such that c(t') == t, because
 	 *    while executing the if-branch t == t' in π and t.x -> tx in h
-	 *  - while executing the if-branch t == t' is NOT in π and t'.x -> tx is in h
+	 *  - while executing the else-branch t == t' is NOT in π and t'.x -> tx is in h
 	 *    if c has not been reset, finding t'.x in h will fail since c(t') == t
 	 *    but t.x is not in h
 	 *
 	 * Solution: Cache entries must also be pushed/popped
 	 */
-
+	
 	// private var cache: Map[Term, Term] = Map()
-
+	
 	/* Caching version */
 	// private def getChunk[C <: Chunk](h: H, chunks: Iterable[C], rcvr: Term) = {
 		// val result = findChunk(h, chunks, cache.getOrElse(rcvr, rcvr))
 		// if (result.isDefined) cache = cache.updated(rcvr, result.get.rcvr)
 		// result
 	// }
-
+	
 	/* Non-caching version */
-	private def getChunk[C <: Chunk](h: H, chunks: Iterable[C], rcvr: Term) =
-		findChunk(h, chunks, rcvr)
+	private def getChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term): Option[CH] =
+		findChunk(chunks, rcvr)
 
-	private def findChunk[C <: Chunk](h: H, chunks: Iterable[C], rcvr: Term) = (
+	private def findChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term) = (
 					 findChunkLiterally(chunks, rcvr)
-		orElse findChunkWithProver(h, chunks, rcvr))
-
-	private def findChunkLiterally[C <: Chunk](chunks: Iterable[C], rcvr: Term) =
+		orElse findChunkWithProver(chunks, rcvr))
+	
+	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term) =
 		chunks find (c => c.rcvr == rcvr)
 
-	private def findChunkWithProver[C <: Chunk](h: H, chunks: Iterable[C],
-																							rcvr: Term): Option[C] = {
+  val fcwpLog =
+    new java.io.PrintWriter(
+      new java.io.BufferedWriter(new java.io.FileWriter(new java.io.File("findChunkWithProver.txt"))),
+      true)
 
+	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term): Option[CH] = {
+    fcwpLog.println(rcvr)
 		// prover.logComment("Chunk lookup ...")
 		// prover.enableLoggingComments(false)
-    // println("\n[Decider/findChunkWithProver]")
-    // println("  rcvr = " + rcvr)
-    // println("  chunks = " + chunks.toList)
-		val chunk = chunks find (c => assert(c.rcvr ≡ rcvr))
+		val chunk = chunks find (c => assert(c.rcvr === rcvr))
 		// prover.enableLoggingComments(true)
 
 		chunk
 	}
+
+  def getStatistics = prover.getStatistics
 }

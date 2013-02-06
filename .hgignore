@@ -1,6 +1,18 @@
 syntax: glob
-project/project/**
-project/target/**
-target/**
+.idea
+.idea_modules
+project/project
+project/target
+target
+testoutput.tmp
+logfile.smt2
+tools/checkTestOutput.jar
+tools/z3_tidy.jar
+perm-asserts.txt
+findChunkWithProver.txt
+z3timings.txt
+.settings/
 .cache
-bin/**
+.scala_dependencies
+.history
+stats/

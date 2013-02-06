@@ -1,277 +1,230 @@
-package ch.ethz.inf.pm.silicon
+package semper
+package silicon
 
 import com.weiglewilczek.slf4s.Logging
-
-import semper.sil.ast.expressions.{Expression => SILExpression}
-// import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
-import semper.sil.ast.expressions.terms.{Term => SILTerm}
-
-import interfaces.{Consumer, Evaluator, MapSupport, VerificationResult, Failure, 
-		Success}
-import interfaces.state.{Store, Heap, StateFormatter,
-		PathConditions, State, StateFactory, /* PermissionFactory, */ PersistentChunk}
-import interfaces.reporting.{Message, Reason}
+import sil.verifier.PartialVerificationError
+import sil.verifier.reasons.{NegativeFraction, ReceiverNull, AssertionFalse}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory}
+import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
+import interfaces.reporting.TraceView
 import interfaces.decider.Decider
+import state.{TypeConverter, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
 import state.terms._
-// import state.terms.dsl._
-import state.{/* CounterChunk, */ DefaultPredicateChunk, TypeConverter}
-import reporting.ErrorMessages.{FractionMightBeNegative}
-import reporting.Reasons.{ExpressionMightEvaluateToFalse, ReceiverMightBeNull,
-		InsufficientPermissions, InsufficientLockchange, MethodLeavesDebt}
-import reporting.{/* Consuming, ImplBranching, IfBranching, */ Bookkeeper}
-import reporting.utils._
-// import state.terms.utils.{¬, BigAnd}
+import reporting.{DefaultContext, Consuming, ImplBranching, Bookkeeper}
 
-trait DefaultConsumer[V, ST <: Store[V, ST],
-											H <: Heap[H], PC <: PathConditions[PC],
-											S <: State[V, ST, H, S]]
-		extends Consumer[V, SILExpression, ST, H, S]
-		{ this:      Logging
-            with Evaluator[V, SILExpression, SILTerm, ST, H, S]
-            with Brancher =>
+trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
+											PC <: PathConditions[PC], S <: State[ST, H, S],
+											TV <: TraceView[TV, ST, H, S]]
+		extends Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+		{ this: Logging with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
+									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
-	protected val decider: Decider[V, ST, H, PC, S]
-  import decider.{fresh, assume}
-	
-	// protected val permissionFactory: PermissionFactory[P]
-	// import permissionFactory._
-	
-	protected val typeConverter: TypeConverter
-	import typeConverter.toSort
-	
-	// protected val mapSupport: MapSupport[ST, H, S]
-	// import mapSupport.update
+  private type C = DefaultContext[ST, H, S]
 
-	protected val chunkFinder: ChunkFinder[H]
-	import chunkFinder.{withFieldChunk, withPredicateChunk}
+	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
+	import decider.assume
 	
-	// protected val lockSupport: LockSupport[ST, H, S]
-	// protected val creditSupport: CreditSupport[ST, H, S]
-	protected val stateFormatter: StateFormatter[V, ST, H, S, String]
+  protected val stateFactory: StateFactory[ST, H, S]
 
+  protected val stateUtils: StateUtils[ST, H, PC, S, C]
+  import stateUtils.{freshPermVar}
+
+  protected val typeConverter: TypeConverter
+  import typeConverter.toSort
+	
+	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
+	import chunkFinder.withChunk
+
+	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
-	
-	def consume(σ: S, p: PermissionTerm, φ: SILExpression, m: Message,
-			Q: (S, Term) => VerificationResult): VerificationResult =
 
-		consume2(σ, σ.h, p, φ, m, (h1, t) => {
-			// logger.debug("\nconsume2'ed " + φ)
-			// logger.debug("resulting S1 = " + π1)
-			Q(σ \ h1, t)})
-			
-	protected def consume(σ: S, h: H, p: PermissionTerm, φ: SILExpression, m: Message,
-			Q: (H, Term) => VerificationResult): VerificationResult =
+  /*	
+   * ATTENTION: The DirectChunks passed to the continuation correspond to the
+   * chunks as they existed when the consume took place. More specifically,
+   * the amount of permissions that come with these chunks is NOT the amount
+   * that has been consumed, but the amount that was found in the heap.
+   */
+	def consume(σ: S, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+             (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
+             : VerificationResult =
 
-		consume2(σ, h, p, φ, m, Q)
+    consume2(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
+      Q(σ \ h1, t, dcs, c1))
+
+  /**
+   *
+   * @param σ
+   * @param p
+   * @param φs
+   * @param pvef
+   * @param c
+   * @param tv
+   * @param Q
+   * @return
+   */
+  def consumes(σ: S,
+               p: PermissionsTuple,
+               φs: Seq[ast.Expression],
+               pvef: ast.Expression => PartialVerificationError,
+               c: C,
+               tv: TV)
+              (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
+              : VerificationResult =
+
+    consumes2(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
+
+  private def consumes2(σ: S, h: H, p: PermissionsTuple, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
+                       (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
+                       : VerificationResult =
+
+    if (φs.isEmpty)
+      Q(σ, ts.reverse, dcs.reverse, c)
+    else
+      consume(σ, h, p, φs.head, pvef(φs.head), c, tv)((h1, t, dcs1, c1) =>
+        consumes2(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
+
+	protected def consume(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                       : VerificationResult =
+
+		consume2(σ, h, p, φ, pve, c, tv)(Q)
+  
+  protected def consume2(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                        : VerificationResult = {
+      
+    val tv1 = tv.stepInto(c, Consuming[ST, H, S](σ, h, p, φ))
+       
+    internalConsume(σ, h, p, φ, pve, c, tv1)((h1, s1, dcs, c1) => {
+      tv1.currentStep.σPost = σ \ h1
+      Q(h1, s1, dcs, c1)
+    })
+  }
 			
-	protected def consume2(σ: S, h: H, p: PermissionTerm, φ: SILExpression, m: Message,
-			Q: (H, Term) => VerificationResult): VerificationResult = {
+	private def internalConsume(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                        : VerificationResult = {
 
 		logger.debug("\nCONSUME " + φ.toString)
-    logger.debug("  " + φ.getClass.getName)
 		logger.debug(stateFormatter.format(σ))
 		logger.debug("h = " + stateFormatter.format(h))
-		
+
 		val consumed = φ match {
-			// case _ =>
-				// logger.debug("consuming " + φ)
-				// Success()
-		
+
 			/* And <: BooleanExpr */
-			case semper.sil.ast.expressions.BinaryExpression(_: semper.sil.ast.symbols.logical.And, a0, a1) =>
-				consume(σ, h, p, a0, m, (h1, s1) =>
-					consume(σ, h1, p, a1, m, (h2, s2) =>
-						Q(h2, Combine(s1, s2))))
+      case ast.BinaryOp(_: ast.And, a1, a2) =>
+				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
+					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
+						Q(h2, Combine(s1.convert(sorts.Snap), s2.convert(sorts.Snap)), dcs1 ::: dcs2, c2)))
 
 			/* Implies <: BooleanExpr */
-			case semper.sil.ast.expressions.BinaryExpression(_: semper.sil.ast.symbols.logical.Implication, e0, a1) /* if !φ.isPure */ =>
-				evale(σ, e0, m, t0 =>
-					branch(t0,
-            consume(σ, h, p, a1, m, Q),
-						Q(h, Unit)))
+      case ast.BinaryOp(_: ast.Implies, e0, a0) /* if !φ.isPure */ =>
+				eval(σ, e0, pve, c, tv)((t0, c1) =>
+					branch(t0, c, tv, ImplBranching[ST, H, S](e0, t0),
+						(c2: C, tv1: TV) => consume(σ, h, p, a0, pve, c2, tv1)(Q),
+						(c2: C, tv1: TV) => Q(h, Unit, Nil, c2)))
 
-			// /* IfThenElse <: Expression */
-			// case ast.IfThenElse(e0, a1, a2) =>
-				// eval(σ, e0, m, c, (t0, c1) =>
-					// branch(t0, c,
-						// (c2: C) => consume(σ, h, p, a1, m, c2 + IfBranching(true, e0, t0), Q),
-						// (c2: C) => consume(σ, h, p, a2, m, c2 + IfBranching(false, e0, t0), Q)))
+      /* Access to fields or predicates */
+      case ast.Access(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          if (decider.assert(tRcvr !== Null()))
+            evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+              if (decider.isNonNegativeFraction(tPerm))
+                consumePermissions(σ, h, p * tPerm, memloc, tRcvr, pve, c2, tv)((h1, ch, c3, results) =>
+                  ch match {
+                    case fc: DirectFieldChunk =>
+                      val snap = fc.value.convert(sorts.Snap)
+                      Q(h1, snap, fc :: Nil, c3)
 
-			/* assert acc(e.f) */
-      case semper.sil.ast.expressions.FieldPermissionExpression(
-              semper.sil.ast.expressions.terms.FieldLocation(rcvr, field),
-              perm) =>
+                    case pc: DirectPredicateChunk =>
+                      val h2 =
+                        if (results.consumedCompletely)
+                          pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
+                        else
+                          h1
+                      Q(h2, pc.snap, pc :: Nil, c3)})
+              else
+                Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(perm), c2, tv))
+          else
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
-				evalt(σ, rcvr, m, tRcvr =>
-					if (decider.assert(tRcvr ≠ Null()))
-						evalp(σ, perm, m, tPerm => {
-							// if (decider.isNonNegativeFraction(tPerm)) {
-								val loss = tPerm * p
-								withFieldChunk(h, tRcvr, field.name, loss, rcvr.toString, m at φ, fc => {
-									val snap = fc.value.convert(sorts.Snap)
-                  if (decider.assertNoAccess(fc.perm - loss)) {
-                    val σ1 = σ \ (h - fc)
-                    // if (id == "mu")
-                      // update(σ1, lockSupport.Mu, tRcvr, c2, (σ2, c3) =>
-                        // Q(σ2.h, snap, c3))
-                    // else
-                      Q(σ1.h, snap)}
-                  else
-                    Q(h - fc + (fc - loss), snap)})})
-							// else
-								// Failure(FractionMightBeNegative at φ withDetails (rcvr, field.name)))
-					else
-						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
-
-			/* assert acc(e.P) */
-      case e @ semper.sil.ast.expressions.PredicatePermissionExpression(
-                  semper.sil.ast.expressions.terms.PredicateLocation(rcvr, predicate),
-                  perm) =>
-
-				val err = m at φ
-        evalt(σ, rcvr, m, tRcvr =>
-          if (decider.assert(tRcvr ≠ Null()))
-            evalp(σ, perm, m, tPerm => {
-//							if (decider.isNonNegativeFraction(pt)) {
-								val loss = tPerm * p
-								withPredicateChunk(h, tRcvr, predicate.name, loss, rcvr.toString, err, pc =>
-									if (decider.assertNoAccess(pc.perm - loss))
-										Q(h - pc, pc.snap)
-									else
-										Q(h - pc + (pc - loss), pc.snap))})
-//							else
-//								Failure(FractionMightBeNegative at φ withDetails (e0, id), c2))
-					else
-						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, predicate.name)))
-            
-      case qe @ semper.sil.ast.expressions.QuantifierExpression(
-                    semper.sil.ast.symbols.logical.quantification.Exists(),
-                    qvar,
-                    semper.sil.ast.expressions.BinaryExpression(
-                        _: semper.sil.ast.symbols.logical.And,
-                        rdStarConstraints,
-                        pe @ semper.sil.ast.expressions.FieldPermissionExpression(
-                          semper.sil.ast.expressions.terms.FieldLocation(rcvr, field),
-                          _)))
+      case qe @ ast.Quantified(
+                  ast.Exists(),
+                  qvar,
+                  ast.BinaryOp(
+                    _: ast.And,
+                    rdStarConstraints,
+                    pe @ ast.FieldAccessPredicate(ast.FieldLocation(rcvr, field), _)))
            if toSort(qvar.dataType) == sorts.Perms =>
 
-				evalt(σ, rcvr, m, tRcvr =>
-					if (decider.assert(tRcvr ≠ Null()))
-            withFieldChunk(h, tRcvr, field.name, rcvr.toString, m at φ, fc => {
-              val witness = ast.utils.lv2pv(qvar).asInstanceOf[V]
-              val tWitness = state.terms.Perms(decider.prover.fresh(qvar.name, sorts.Perms))
+        eval(σ, rcvr, pve, c, tv)((tRcvr, c1) =>
+          if (decider.assert(tRcvr !== Null()))
+            withChunk[DirectFieldChunk](h, tRcvr, field.name, rcvr, pve, c1, tv)(fc => {
+              val witness = qvar
+              val (tWitness, _) = freshPermVar(witness.name)
               val σ1 = σ \+ (witness, tWitness)
-              evale(σ1, rdStarConstraints, m, tRdStarConstraints => {
-                val tConstraints = state.terms.And(tRdStarConstraints, fc.perm > tWitness)
-                assume(tConstraints,
-                  Q(h - fc + (fc - tWitness), fc.value.convert(sorts.Snap)))})})
-					else
-						Failure(m at rcvr dueTo ReceiverMightBeNull(rcvr.toString, field.name)))
+              eval(σ1, rdStarConstraints, pve, c1, tv)((tRdStarConstraints, c2) => {
+                val pWitness = PermissionsTuple(StarPerms(tWitness))
+                val tConstraints = And(tRdStarConstraints, fc.perm > pWitness)
+                assume(tConstraints, c2)
+                Q(h - fc + (fc - pWitness), fc.value.convert(sorts.Snap), fc :: Nil, c2)})})
+          else
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(rcvr), c1, tv))
 
-			// case ast.LockChangeExpr(ast.LockChange(es)) =>
-				// assert(σ, h, φ, m, InsufficientLockchange, c, Q)
-			
-			// /* TODO: Extract together with Producer's case since they only differ
-			 // *       in the operation (Minus here, Plus there).
-			 // */
-			// case ast.Credits(e0, e1) =>
-				// /* Attention: Does not check if credits are greater than zero. */
-				// eval(σ, e0, m, c, (tCh, c1) =>
-					// if (decider.assert(tCh ≠ Null()))
-						// eval(σ, e1, m, c1, (tN, c2) =>
-							// update(σ \ h, creditSupport.Credits, tCh, c2, (σ1, c3) => {
-								// val tc =
-									// TermEq(
-										// creditSupport.Credits(σ1.h, tCh),
-										// Minus(
-											// creditSupport.Credits(σ.h, tCh),
-											// tN))
-								// assume(tc, c3, (c4: C) =>
-									// Q(σ1.h, Unit, c4))}))
-					// else
-						// Failure(m at e0 dueTo ReceiverMightBeNull("credit(" + e0 + ")"), c1))
-						
-			// case ast.DebtFreeExpr() =>
-				// assert(σ, h, φ, m, MethodLeavesDebt, c, Q)
-					
-			// case (_: ast.MaxLockAtMost) | (_: ast.MaxLockLess) =>
-				// assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, c, Q)
-
-			/* Any regular, pure expressions.
+			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
 			 * not in the partially consumed heap (h).
 			 */
-			case _ =>
-				// assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
-      evale(σ, φ, m, t =>
-        if (decider.assert(t))
-          assume(t,
-            Q(h, Unit))
-        else {
-          // println("\n[consume/_]")
-          // println("  φ = " + φ)
-          // println("  φ.sourceLocation = " + φ.sourceLocation)
-          // println("  φ.sourceLocation = " + φ.sourceLocation.getClass.getName)
-          // println("  m.text = " + m.text)
-          Failure(m at φ dueTo ExpressionMightEvaluateToFalse)})
+      case _ =>
+        // assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
+        eval(σ, φ, pve, c, tv)((t, c) =>
+          if (decider.assert(t)) {
+            assume(t, c)
+            Q(h, Unit, Nil, c)
+          } else
+            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
 		}
 
 		consumed
 	}
 
-	// private def assert(σ: S, h: H, e: ast.Expression, m: Message, r: Reason, c: C,
-										 // Q: (H, Term, C) => VerificationResult): VerificationResult =
+  private def consumePermissions(σ: S,
+                                 h: H,
+                                 pLoss: PermissionsTuple,
+                                 memloc: ast.MemoryLocation,
+                                 tRcvr: Term,
+                                 pve: PartialVerificationError,
+                                 c: C,
+                                 tv: TV)
+                                (Q:     (H, DirectChunk, C, PermissionsConsumptionResult)
+                                     => VerificationResult)
+                                :VerificationResult = {
 
-		// eval(σ \ updateCreditsRevision(σ.h, h), e, m, c, (t, c1) =>
-			// if (decider.assert(t))
-				// assume(t, c1, (c2: C) =>
-					// Q(h, Unit, c2))
-			// else
-				// Failure(m at e dueTo r, c1))
+    val ast.MemoryLocation(eRcvr, id) = memloc
 
-	// private def updateCreditsRevision(hDest: H, hSrc: H): H = {
-		// /* Consider the following preconditions:
-		 // *
-		 // *		class Test
-		 // *			method muTest(x: Foo)
-		 // *				requires acc(x.mu)
-		 // *				requires waitlevel << x.mu
-		 // *
-		 // *			method creditTest(ch: AChannel)
-		 // *				requires credit(ch, 1)
-		 // *				requires waitlevel << ch.mu
-		 // *
-		 // * There are multiple pitfalls here when consuming callee's precondition:
-		 // *
-		 // * 1. Assume that waitlevel << x.mu holds at call-site of muTest.
-		 // *    acc(x.mu) is consumed completely, with the result that the path
-		 // *    condition mu-term mu(tx) is updated, i.e. the mu-function is updated
-		 // *    for tx, and the mu-revision counter chunk is increased. The heap
-		 // *    change is reflected in h, not in σ.h.
-		 // *    If waitlevel << x.mu would now be asserted in h it would fail since
-		 // *    mu(tx) has been havoced. Hence, the expression must be asserted in
-		 // *    the unchanged σ.h.
-		 // *    We could summarise this as "consuming acc(x.mu) has an effect on the
-		 // *    result state h but not on the evaluation state σ.h".
-		 // *
-		 // * 2. Assume that waitlevel << ch.mu at call-site and that the current
-		 // *    thread has zero credits for ch.
-		 // *    When credit(ch, 1) is consumed the caller has -1 credits for ch.
-		 // *    Semantically, this includes ch.mu in waitlevel and thus invalidates
-		 // *    the previously holding waitlevel << ch.mu.
-		 // *    Operationally, credit(ch, -1) results in an update to the
-		 // *    credits-function credits(tch) and increases the corresponding revision 
-		 // *    counter chunk, which is again reflected in h.
-		 // *    If waitlevel << ch.mu is now asserted (consumed) in σ.h it will
-		 // *    incorrectly hold, hence it must be asserted in h.
-		 // *    We could summarise this as "consuming credit(ch, 1) has an effect on
-		 // *    the result state h and also on the evaluation state σ.h".
-		 // */
-		
-		// val gcs = hSrc.values.filter(_.id == "$Credits").toList
-		// Predef.assert(gcs.length <= 1, "Expected to find at most one chunk with id $Credits.")
+    if (consumeExactRead(pLoss.combined, c)) {
+      withChunk[DirectChunk](h, tRcvr, id, pLoss, eRcvr, pve, c, tv)(ch => {
+        if (decider.assertNoAccess(ch.perm - pLoss)) {
+          Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
+        else
+          Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
+    } else {
+      withChunk[DirectChunk](h, tRcvr, id, eRcvr, pve, c, tv)(ch => {
+        assume(pLoss < ch.perm, c)
+        Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
+    }
+  }
 
-		// gcs.foldLeft(hDest){case (h, pc) => h + pc}
-	// }
+  private def consumeExactRead(fp: FractionalPermissions, c: C): Boolean = fp match {
+    case _: ReadPerms if !c.consumeExactReads => false
+    case _: StarPerms => false
+    case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
+    case IntPermTimes(_, t1) => consumeExactRead(t1, c)
+    case _ => true
+  }
 }
+
+private case class PermissionsConsumptionResult(consumedCompletely: Boolean)

@@ -1,4 +1,6 @@
-package ch.ethz.inf.pm.silicon.state.commonnodes
+package semper
+package silicon
+package ast.commonnodes
 
 /* TODO: Implement an NAryOp[E] with a getSub: List[E]. This would make it
  *       easy to implement general resolvers/getVars/getFuncs/term2smt2
@@ -38,6 +40,8 @@ trait StructuralEqualityBinOp[E] extends BinaryOp[E] {
 
 			case _ => false
 		})
+
+  override def hashCode(): Int = p0.hashCode() * p1.hashCode()
 }
 
 /* Booleans */

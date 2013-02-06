@@ -1,42 +1,48 @@
-package ch.ethz.inf.pm
+package semper
 package silicon
-package interfaces
-package decider
+package interfaces.decider
 
-import silicon.state.terms.{Sort, Term, PermissionTerm, Var}
-import state.{Store, Heap, PathConditions, State, Chunk, FieldChunk, PredicateChunk}
-import reporting.{Message}
+import sil.verifier.ErrorReason
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk}
+import interfaces.VerificationResult
+import interfaces.reporting.{Context}
+import state.terms.{Term, Var, PermissionsTerm, Sort}
+import utils.notNothing._
 
-trait Decider[V, ST <: Store[V, ST], H <: Heap[H],
-							PC <: PathConditions[PC], S <: State[V, ST, H, S]] {
+trait Decider[P <: PermissionsTerm[P], ST <: Store[ST], H <: Heap[H],
+						PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S]] {
 
 	def prover: Prover
 	def π: Set[Term]
 
-	def enableSmokeChecks(enable: Boolean)
-	def checkSmoke: Boolean
+//	def enableSmokeChecks(enable: Boolean)
+//	def checkSmoke: Boolean
 
-	def assert(φ: Term): Boolean
-	def assume(term: Term, Q: => VerificationResult): VerificationResult
-	
-	def assume(term: Set[Term], Q: => VerificationResult)
-						: VerificationResult
+  def assert(φ: Term): Boolean
+  def pushScope()
+  def popScope()
+  def inScope[R](block: => R): R
+	def assume(φ: Term, c: C)
+	def assume(φ: Set[Term], c: C)
 
-	def getChunk(h: H, rcvr: Term, id: String): Option[Chunk]
-	def getFieldChunk(h: H, rcvr: Term, id: String): Option[FieldChunk]
-	def getPredicateChunk(h: H, rcvr: Term, id: String): Option[PredicateChunk]
+	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, rcvr: Term, id: String): Option[CH]
 
-	def assertNoAccess(p: PermissionTerm): Boolean
-	def assertReadAccess(p: PermissionTerm): Boolean
+	def assertNoAccess(p: P): Boolean
+	def assertReadAccess(p: P): Boolean
 	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean
-	def assertWriteAccess(p: PermissionTerm): Boolean
+	def assertWriteAccess(p: P): Boolean
 	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean
 
-	def isValidFraction(p: PermissionTerm): Option[Message]
-	def isNonNegativeFraction(p: PermissionTerm): Boolean
-	def isAsPermissive(perm: PermissionTerm, other: PermissionTerm): Boolean
+	def isValidFraction(p: P, src: ast.Expression): Option[ErrorReason]
+	def isNonNegativeFraction(p: P): Boolean
+	def isAsPermissive(perm: P, other: P): Boolean
 
   def fresh(s: Sort): Var
   def fresh(id: String, s: Sort): Var
-  def fresh(v: V): Var
+	def fresh(v: ast.Variable): Var
+
+  def start()
+  def stop()
+
+  def getStatistics: Map[String, String]
 }

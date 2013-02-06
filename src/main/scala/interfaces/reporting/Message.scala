@@ -1,7 +1,6 @@
-package ch.ethz.inf.pm.silicon.interfaces.reporting
-
-// import scala.util.parsing.input.Position
-import semper.sil.ast.source.{SourceLocation => SILSourceLocation}
+package semper
+package silicon
+package interfaces.reporting
 
 trait Categorie {
 	def name: String
@@ -18,12 +17,12 @@ trait Message {
 	def code: Int
 	def text: String
 	
-	def loc: SILSourceLocation
+	def loc: ast.SourceLocation
 	def reason: Option[Reason]
 	def details: Seq[Any]
 	
 	/* Builder-style setters */
-	def at(loc: SILSourceLocation): Message
+	def at(loc: ast.SourceLocation): Message
 	def withDetails(details: Any*): Message	
 	def dueTo(reason: Reason): Message
 	

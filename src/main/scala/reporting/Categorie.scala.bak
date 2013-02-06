@@ -1,7 +1,8 @@
-package ch.ethz.inf.pm.silicon.reporting
+package semper
+package silicon
+package reporting
 
-import ch.ethz.inf.pm.silicon
-import silicon.interfaces.reporting.Categorie
+import interfaces.reporting.Categorie
 
 case class DefaultCategorie(val name: String) extends Categorie
 

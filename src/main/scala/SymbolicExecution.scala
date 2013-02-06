@@ -1,173 +1,273 @@
-package ch.ethz.inf.pm.silicon
+package semper
+package silicon
 
 import com.weiglewilczek.slf4s.Logging
-
-import semper.sil.ast.source.{/* SourceLocation => SILSourceLocation, */ NoLocation => SILNoLocation}
-
-// import scala.util.parsing.input.NoPosition
-import interfaces.{VerificationResult, Success, Warning, Failure}
+import sil.verifier.PartialVerificationError
+import sil.verifier.reasons.{InsufficientPermissions}
+import interfaces.{VerificationResult, Success, Failure, Unreachable}
 import interfaces.decider.Decider
-import interfaces.reporting.{Message}
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk,
-		FieldChunk, PredicateChunk, AccessRestrictedChunk, StateFormatter}
-import state.terms.{Term, PermissionTerm}
+import interfaces.reporting.{Message, Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
+    TwinBranch, LocalTwinBranch, Step}
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, PermissionChunk}
+import state.terms._
 import state.terms.utils.{BigAnd, ¬}
 import reporting.Bookkeeper
-import reporting.Reasons.InsufficientPermissions
-// import ast.Expression
+//import reporting.Reasons.InsufficientPermissions
+import ast.Expression
+import utils.notNothing._
 
 /* TODO: Move interfaces into interfaces package */
 
 trait HasLocalState {
-	def pushLocalState() = ()
-	def popLocalState() = ()
+	def pushLocalState() {}
+	def popLocalState() {}
 }
 
-trait Brancher {
-	def branch(ts: Term, fTrue: => VerificationResult,
-						fFalse: => VerificationResult): VerificationResult
+trait Brancher[ST <: Store[ST],
+               H <: Heap[H],
+               S <: State[ST, H, S],
+               C <: Context[C, ST, H, S],
+               TV <: TraceView[TV, ST, H, S]] {
+
+  def branchLocally(ts: Term,
+                    c: C,
+                    tv: TV,
+                    stepFactory:    (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S])
+                                 => LocalTwinBranchingStep[ST, H, S],
+                    fTrue: (C, TV) => VerificationResult,
+                    fFalse: (C, TV) => VerificationResult)
+                   : VerificationResult
+            
+	def branch(ts: Term,
+             c: C,
+             tv: TV,
+             stepFactory:    (Boolean, TwinBranch[ST, H, S], Step[ST, H, S])
+                          => TwinBranchingStep[ST, H, S],
+             fTrue: (C, TV) => VerificationResult,
+						 fFalse: (C, TV) => VerificationResult)
+            : VerificationResult
 						
-	def branch(ts: List[Term], fTrue: => VerificationResult,
-						fFalse: => VerificationResult): VerificationResult
+	def branch(ts: List[Term],
+             c: C,
+             tv: TV,
+             stepFactory:    (Boolean, TwinBranch[ST, H, S], Step[ST, H, S])
+                          => TwinBranchingStep[ST, H, S],
+             fTrue: (C, TV) => VerificationResult,
+						 fFalse: (C, TV) => VerificationResult)
+            : VerificationResult
 }
 
-trait DefaultBrancher[V, ST <: Store[V, ST], H <: Heap[H],
-                      PC <: PathConditions[PC], S <: State[V, ST, H, S]]
-		extends Brancher with HasLocalState {
+trait DefaultBrancher[ST <: Store[ST],
+                      H <: Heap[H],
+							        PC <: PathConditions[PC],
+                      S <: State[ST, H, S],
+							        C <: Context[C, ST, H, S],
+                      TV <: TraceView[TV, ST, H, S]]
+		extends Brancher[ST, H, S, C, TV] with HasLocalState {
 
-	val decider: Decider[V, ST, H, PC, S]
+	val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
 	import decider.assume
 	
 	val bookkeeper: Bookkeeper
+  
+  def branchLocally(t: Term,
+                    c: C,
+                    tv: TV,
+                    stepFactory:    (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S])
+                                 => LocalTwinBranchingStep[ST, H, S],
+                    fTrue: (C, TV) => VerificationResult,
+                    fFalse: (C, TV) => VerificationResult)
+                   : VerificationResult = {
+
+    val (cTrue, cFalse, tvTrue, tvFalse) = tv.splitUpLocally(c, stepFactory)
+
+    branch(t :: Nil, cTrue, cFalse, tvTrue, tvFalse, fTrue, fFalse)
+	}
 	
-	def branch(t: Term, fTrue: => VerificationResult,
-						fFalse: => VerificationResult) =
-						
-		branch(t :: Nil, fTrue, fFalse)
+	def branch(t: Term,
+             c: C,
+             tv: TV,
+             stepFactory:    (Boolean, TwinBranch[ST, H, S], Step[ST, H, S])
+                          => TwinBranchingStep[ST, H, S],
+             fTrue: (C, TV) => VerificationResult,
+						 fFalse: (C, TV) => VerificationResult)
+            : VerificationResult =
+
+    branch(t :: Nil, c, tv, stepFactory, fTrue, fFalse)
 	
-	def branch(ts: List[Term], fTrue: => VerificationResult,
-						fFalse: => VerificationResult) = {
+  def branch(ts: List[Term],
+             c: C,
+             tv: TV,
+             stepFactory:    (Boolean, TwinBranch[ST, H, S], Step[ST, H, S])
+                          => TwinBranchingStep[ST, H, S],
+             fTrue: (C, TV) => VerificationResult,
+             fFalse: (C, TV) => VerificationResult)
+            : VerificationResult = {
+
+    val (cTrue, cFalse, tvTrue, tvFalse) = tv.splitUp(c, stepFactory)
+
+    branch(ts, cTrue, cFalse, tvTrue, tvFalse, fTrue, fFalse)  
+  }
+	
+	private def branch(ts: List[Term],
+                     cTrue: C,
+                     cFalse: C,
+                     tvTrue: TV,
+                     tvFalse: TV,
+                     fTrue: (C, TV) => VerificationResult,
+						         fFalse: (C, TV) => VerificationResult)
+                    : VerificationResult = {
 
 		val guardsTrue = BigAnd(ts)
 		val guardsFalse = BigAnd(ts, t => ¬(t))
-									 
+
 		val exploreTrueBranch = !decider.assert(guardsFalse)
-		val exploreFalseBranch = !decider.assert(guardsTrue)
-		
+    val exploreFalseBranch = !decider.assert(guardsTrue)
+
 		val additionalPaths =
 			if (exploreTrueBranch && exploreFalseBranch) 1
 			else 0
 
-		// msgbus.send(IncrementBranchCounter(additionalPaths))
 		bookkeeper.branches += additionalPaths
 			
+		
 		((if (exploreTrueBranch) {
-			// msgbus.send(PreBranching(TrueBranch)) // e.g. push caches
-			// preBranchingHook()
 			pushLocalState()
-			val result = assume(guardsTrue, fTrue)
-			// msgbus.send(PostBranching(TrueBranch)) // e.g. pop caches
-			// postBranchingHook()
-			popLocalState()
+      val result =
+        decider.inScope {
+          assume(guardsTrue, cTrue)
+          fTrue(cTrue, tvTrue)
+        }
+      popLocalState()
 			result
-		} else Success())
+		} else Unreachable[C, ST, H, S](cTrue))
 			&&
 		(if (exploreFalseBranch) {
-			// msgbus.send(PreBranching(FalseBranch)) // e.g. push caches
-			// preBranchingHook()
 			pushLocalState()
-			val result = assume(guardsFalse, fFalse)
-			// msgbus.send(PostBranching(FalseBranch)) // e.g. pop caches
-			// postBranchingHook()
-			popLocalState()
+      val result =
+        decider.inScope {
+          assume(guardsFalse, cFalse)
+          fFalse(cFalse, tvFalse)
+        }
+      popLocalState()
 			result
-		} else Success()))
+		} else Unreachable[C, ST, H, S](cFalse)))
 	}
 }
 
-trait ChunkFinder[H <: Heap[H]] {
-	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
-								Q: CH => VerificationResult): VerificationResult
-	
-	/* withChunk is sufficient, i.e. withFieldChunk and withPredicateChunk are
-	 * redundant, because we can narrow down the required type chunk with the type
-	 * parameter of withChunk.
-	 */
+trait ChunkFinder[ST <: Store[ST],
+                  H <: Heap[H],
+                  S <: State[ST, H, S],
+                  C <: Context[C, ST, H, S],
+                  TV <: TraceView[TV, ST, H, S]] {
 
-	def withFieldChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
-										 Q: FieldChunk => VerificationResult): VerificationResult
-								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
-										     Q: PredicateChunk => VerificationResult): VerificationResult
-											 
-	def withFieldChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
-                     m: Message, Q: FieldChunk => VerificationResult): VerificationResult
-								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
-	                       m: Message, Q: PredicateChunk => VerificationResult)
-											  : VerificationResult
+	def withChunk[CH <: Chunk: NotNothing: Manifest]
+               (h: H,
+                rcvr: Term,
+                id: String,
+                rcvrSrc: ast.ASTNode,
+                pve: PartialVerificationError,
+                c: C,
+                tv: TV)
+							 (Q: CH => VerificationResult)
+               : VerificationResult
+
+  def withChunk[CH <: PermissionChunk: NotNothing: Manifest]
+               (h: H,
+                rcvr: Term,
+                id: String,
+                p: PermissionsTuple,
+                rcvrSrc: ast.ASTNode,
+                ve: PartialVerificationError,
+                c: C,
+                tv: TV)
+               (Q: CH => VerificationResult)
+               : VerificationResult
 }
 
-class DefaultChunkFinder[V, ST <: Store[V, ST],
-												 H <: Heap[H], PC <: PathConditions[PC],
-												 S <: State[V, ST, H, S]]
-		(val decider: Decider[V, ST, H, PC, S],
-		 val stateFormatter: StateFormatter[V, ST, H, S, String])
-		extends ChunkFinder[H] with Logging {
+class DefaultChunkFinder[ST <: Store[ST],
+                         H <: Heap[H],
+                         PC <: PathConditions[PC],
+                         S <: State[ST, H, S],
+                         C <: Context[C, ST, H, S],
+                         TV <: TraceView[TV, ST, H, S]]
+                        (val decider: Decider[PermissionsTuple, ST, H, PC, S, C],
+                         val stateFormatter: StateFormatter[ST, H, S, String])
+		extends ChunkFinder[ST, H, S, C, TV] with Logging {
 
-	def withChunk[CH <: Chunk](h: H, rcvr: Term, id: String, rcvrStr: String,
-														 m: Message, Q: CH => VerificationResult)
-														: VerificationResult = {
+	def withChunk[CH <: Chunk: NotNothing: Manifest]
+               (h: H,
+                rcvr: Term,
+                id: String,
+                rcvrSrc: ast.ASTNode,
+                pve: PartialVerificationError,
+                c: C, 
+                tv: TV)
+							 (Q: CH => VerificationResult)
+               : VerificationResult = {
 
-		decider.getChunk(h, rcvr, id) match {
-			case Some(c: CH) => Q(c)
+		decider.getChunk[CH](h, rcvr, id) match {
+			case Some(c) /* if manifest[CH].erasure.isInstance(c) */ =>
+        Q(c)
+
 			case None =>
-				// val pos = if (m.loc != SILNoLocation) m.loc else e.sourceLocation
-				// val pos = SILNoLocation
-				val pos = if (m.loc != SILNoLocation) m.loc else rcvr.srcPos
+//				val loc = if (m.loc != ast.NoLocation) m.loc else rcvrSrc.sourceLocation
 
-				if (decider.checkSmoke)	{
-					logger.debug("%s: Detected inconsistent state looking up a chunk for %s.%s.".format(pos, rcvrStr, id))
-					logger.debug("π = " + stateFormatter.format(decider.π))
-
-					// val warning = Warning(SmokeDetectedAtChunkLookup at pos withDetails(e, id), c)
-					// warning
-					Success()
-				} else
-					Failure(m at pos dueTo InsufficientPermissions(rcvrStr, id))
+//				if (decider.checkSmoke)	{
+//					logger.debug("%s: Detected inconsistent state looking up a chunk for %s.%s.".format(loc, e, id))
+//					logger.debug("π = " + stateFormatter.format(decider.π))
+//
+//					// val warning = Warning(SmokeDetectedAtChunkLookup at pos withDetails(e, id), c)
+//					// warning
+//					Success[C, ST, H, S](c)
+//				} else
+//					Failure[C, ST, H, S, TV](m at loc dueTo InsufficientPermissions(rcvrSrc.toString, id), c, tv)
+          /* TODO: We need the location node, not only the receiver. */
+					Failure[C, ST, H, S, TV](pve dueTo InsufficientPermissions(rcvrSrc), c, tv)
 		}
 	}
-	
-	def withFieldChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
-										 Q: FieldChunk => VerificationResult): VerificationResult =
-										 
-		withChunk(h, rcvr, id, rcvrStr, m, Q)
-		
-	def withPredicateChunk(h: H, rcvr: Term, id: String, rcvrStr: String, m: Message,
-											   Q: PredicateChunk => VerificationResult)
-											  : VerificationResult =
-										 
-		withChunk(h, rcvr, id, rcvrStr, m, Q)
-		
-	def withFieldChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
-                     m: Message, Q: FieldChunk => VerificationResult) =
 
-		withPermissiveChunk(h, rcvr, id, p, rcvrStr, m, Q)
-								
-	def withPredicateChunk(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String,
-	                       m: Message, Q: PredicateChunk => VerificationResult) =
-		
-		withPermissiveChunk(h, rcvr, id, p, rcvrStr, m, Q)
-		
-	private def withPermissiveChunk[ARC <: AccessRestrictedChunk[ARC]]
-			(h: H, rcvr: Term, id: String, p: PermissionTerm, rcvrStr: String, m: Message,
-			 Q: ARC => VerificationResult)
-			: VerificationResult =
+	def withChunk[CH <: PermissionChunk: NotNothing: Manifest]
+                (h: H,
+                rcvr: Term,
+                id: String,
+                p: PermissionsTuple,
+                rcvrSrc: ast.ASTNode,
+                pve: PartialVerificationError,
+                c: C, 
+                tv: TV)
+               (Q: CH => VerificationResult)
+               : VerificationResult =
 
-		withChunk(h, rcvr, id, rcvrStr, m, (chunk: ARC) => {
-			val pc = chunk.asInstanceOf[ARC]
-			if (decider.isAsPermissive(pc.perm, p))
-				Q(pc)
+		withChunk[CH](h, rcvr, id, rcvrSrc, pve, c, tv)(chunk => {
+			if (decider.isAsPermissive(chunk.perm, p))
+				Q(chunk)
 			else
-				Failure(m dueTo InsufficientPermissions(rcvrStr, id))})
+				Failure[C, ST, H, S, TV](pve dueTo InsufficientPermissions(rcvrSrc), c, tv)})
+}
+
+class StateUtils[ST <: Store[ST],
+                 H <: Heap[H],
+                 PC <: PathConditions[PC],
+                 S <: State[ST, H, S],
+                 C <: Context[C, ST, H, S]]
+                (val decider: Decider[PermissionsTuple, ST, H, PC, S, C]) {
+
+  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerms())
+                  : (Var, Term) = {
+
+    val permVar = decider.fresh(id, sorts.Perms)
+    val permVarConstraints = IsValidPerms(permVar, upperBound)
+
+    (permVar, permVarConstraints)
+  }
+
+  def freshReadVar(id: String = "$rd", upperBound: FractionalPermissions = FullPerms())
+                  : (Var, Term) = {
+
+    val permVar = decider.fresh(id, sorts.Perms)
+    val permVarConstraints = IsReadPerms(permVar, upperBound)
+
+    (permVar, permVarConstraints)
+  }
 }

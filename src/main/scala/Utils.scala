@@ -1,31 +1,29 @@
-package ch.ethz.inf.pm.silicon.utils
+package semper
+package silicon
+package utils
 
-import scala.util.parsing.input.Positional
 import com.weiglewilczek.slf4s.Logger
-import ch.ethz.inf.pm.silicon
-import silicon.reporting.{WarningMessages, ErrorMessages}
-// import silicon.ASTConversionException
+//import reporting.{WarningMessages, ErrorMessages}
 
-/*
 object exceptions {
 	def formatMessage(msg: Any): String = msg match {
 		case prod: Product => prod.productPrefix
 		case other => other.toString
 	}
 	
-	def warnSupport(logger: Logger, loc: Positional, msg: String) =
-		logger.debug(
-			WarningMessages.NotSupported.withDetails(msg).at(loc.pos).format)
+//	def warnSupport(logger: Logger, loc: ast.SourceLocation, msg: String) =
+//		logger.debug(
+//			WarningMessages.NotSupported.withDetails(msg).at(loc).format)
 
-	def abortUnsupported(loc: Positional, details: String = "") = {
-		val err = (ErrorMessages.NotSupported
-								at loc.pos
-								withDetails (formatMessage(loc)) + details)
-
-		throw new ASTConversionException(err.code, err.format)
+	def abortUnsupported(node: ast.ASTNode, details: String = "") = {
+    ???
+//		val err = (
+//      ErrorMessages.NotSupported at(node.sourceLocation)
+//                                 withDetails(formatMessage(node) + details))
+//
+//    sys.error(err.format)
 	}
 }
-*/
 
 object collections {
 	def mapReduceLeft[E](it: Iterable[E], f: E => E,
@@ -35,4 +33,16 @@ object collections {
 			unit
 		else
 			it.map(f).reduceLeft((t1, t2) => op(t1, t2))
+}
+
+/* http://www.tikalk.com/java/blog/avoiding-nothing */
+object notNothing {
+  sealed trait NotNothing[-T]
+
+  object NotNothing {
+    implicit object notNothing extends NotNothing[Any]
+
+    implicit object `\n The error is because the type parameter was resolved to Nothing`
+        extends NotNothing[Nothing]
+  }
 }

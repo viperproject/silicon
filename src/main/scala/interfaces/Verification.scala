@@ -1,9 +1,11 @@
-package ch.ethz.inf.pm.silicon.interfaces
+package semper
+package silicon
+package interfaces
 
-// import scala.util.parsing.input.Positional
-import ch.ethz.inf.pm.silicon
-import reporting.{Message, Reason}
-// import silicon.ast.{Member, TopLevelDecl}
+import sil.verifier.VerificationError
+import reporting.{/*Message,*/ Context}
+import reporting.{Context, History, TraceView}
+import state.{Store, Heap, State}
 
 /*
  * Results
@@ -58,26 +60,70 @@ abstract class NonFatalResult extends VerificationResult {
 	}
 }
 
-trait ResultWithMessage extends VerificationResult {
-	def message: Message
+trait ContextAwareResult[C <: Context[C, ST, H, S],
+                         ST <: Store[ST],
+                         H <: Heap[H],
+                         S <: State[ST, H, S]]
+      extends VerificationResult {
+
+	def message: VerificationError
+	def context: C
 }
 
-case class Success() extends NonFatalResult
+case class Success[C <: Context[C, ST, H, S],
+                   ST <: Store[ST],
+                   H <: Heap[H],
+                   S <: State[ST, H, S]]
+                  (context: C)
+		extends NonFatalResult
+       with ContextAwareResult[C, ST, H, S] {
+  
+  context.currentBranch.addResult(this)
 
-case class Warning(val message: Message)
-		extends NonFatalResult with ResultWithMessage
+	val message = null /* TODO: Make an Option[Message] */
+}
 
-case class Failure(val message: Message)
-		extends FatalResult with ResultWithMessage
+case class Unreachable[C <: Context[C, ST, H, S],
+                       ST <: Store[ST],
+                       H <: Heap[H],
+                       S <: State[ST, H, S]]
+                      (context: C)
+    extends NonFatalResult
+       with ContextAwareResult[C, ST, H, S] {
 
-// /*
- // * Verification
- // */
-	
-// trait MemberVerifier {
-	// def verify(mem: Member): VerificationResult
-// }
+  context.currentBranch.addResult(this)
 
-// trait ProgrammeVerifier {
-	// def verify(prog: List[TopLevelDecl]): List[VerificationResult]
-// }
+  val message = null /* TODO: Make an Option[Message] */
+}
+
+//case class Warning[C <: Context[C, ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], TV <: TraceView[TV, ST, H, S]](val message: Message, val context: C, tv: TV)
+//		extends NonFatalResult with ContextAwareResult[C, ST, H, S] {
+//
+//  tv.addResult(context.currentBranch, this)
+//}
+
+case class Failure[C <: Context[C, ST, H, S],
+                   ST <: Store[ST],
+                   H <: Heap[H],
+                   S <: State[ST, H, S],
+                   TV <: TraceView[TV, ST, H, S]]
+                  (val message: VerificationError,
+                   val context: C,
+                   tv: TV)
+		extends FatalResult
+       with ContextAwareResult[C, ST, H, S] {
+  
+  tv.addResult(context.currentBranch, this)
+}
+
+///*
+// * Verification
+// */
+//
+//trait MemberVerifier[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
+//	def verify(mem: Member): (VerificationResult, History[ST, H, S])
+//}
+//
+//trait ProgrammeVerifier {
+//	def verify(program: ast.Program): List[VerificationResult]
+//}

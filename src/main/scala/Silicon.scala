@@ -1,82 +1,124 @@
-package ch.ethz.inf.pm.silicon
+package semper
+package silicon
 
-import java.util.Calendar
-import java.text.SimpleDateFormat
-import java.util.concurrent.TimeUnit
+import scopt.immutable.OptionParser
 import com.weiglewilczek.slf4s.Logging
-
-import semper.sil.ast.programs.{Program => SILProgram}
-import semper.sil.ast.programs.symbols.{ProgramVariable => SILProgramVariable}
-//import semper.sil.ast.expressions.{Expression => SILExpression}
-//import semper.sil.ast.expressions.terms.{Term => SILTerm}
-
-import interfaces.{ResultWithMessage, VerificationResult, Failure, Warning, Success, /* MemberVerifier,  */
-		/* Producer, Consumer, Executor, Evaluator, ProgrammeVerifier, */ MapSupport}
-import state.{/* FractionalPermission, */ MapBackedStore, DefaultHeapMerger,
-		MapBackedHeap, MutableSetBackedPathConditions, DefaultState,
-		DefaultStateFactory, /* DefaultPermissionFactory, */ DefaultPathConditionsFactory,
-		DefaultTypeConverter}
-import reporting.{/* DefaultContext, Branching, */ Bookkeeper}
+import java.text.SimpleDateFormat
+import java.io.File
+import sil.verifier.{
+    Verifier => SILVerifier,
+    VerificationResult => SILVerificationResult,
+    VerificationError => SILVerificationError,
+    Success => SILSuccess,
+    Error => SILError}
+import interfaces.{VerificationResult, ContextAwareResult, Failure, Success, Unreachable}
+import state.terms.{FullPerms, PermissionsTuple}
+import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
+    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultTypeConverter}
 import decider.DefaultDecider
+import reporting.{DefaultContext, Bookkeeper}
+import interfaces.reporting.{TraceView, TraceViewFactory}
+import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 
-class Silicon(val config: Config) extends Logging {
-  // private type P = FractionalPermission
-	private type V = SILProgramVariable
-	private type ST = MapBackedStore[V]
-	private type H = MapBackedHeap
-	private type PC = MutableSetBackedPathConditions
-	private type S = DefaultState[V, ST, H]	
-	// private type C = DefaultContext
+trait SiliconConstants {
+  val name = "Silicon"
+  val version = "0.1-Snapshot"
+  val dependencyVersions = Seq(("Z3", "4.x"))
+}
 
-	private var startTime: Long = 0
+object Silicon extends SiliconConstants
 
-	setLogLevel(config.logLevel)
-	
-	def execute(program: SILProgram): List[VerificationResult] = {
-		val now = (new SimpleDateFormat("yyyy-MM-dd hh:mm:ss z")).format(Calendar.getInstance().getTime)
-		
-		startTime = System.currentTimeMillis()
-		
-		logger.info("Silicon started on " + now)
-//		logger.info("Working on Program:")
-//		logger.info(program.toString)
-    
-    runVerifier(program)
+class Silicon(options: Seq[String] = Nil)
+      extends SILVerifier(options)
+      with SiliconConstants
+      with Logging {
+
+  val config = CommandLineArgumentParser.parse(options)
+
+  private type P = PermissionsTuple
+  private type ST = MapBackedStore
+  private type H = SetBackedHeap
+  private type PC = MutableSetBackedPathConditions
+  private type S = DefaultState[ST, H]
+  private type C = DefaultContext[ST, H, S]
+
+  private var startTime: Long = 0
+  private var shutDownHooks: Set[() => Unit] = _
+
+  setLogLevel(config.logLevel)
+
+  /** Verifies a given SIL program and returns a sequence of ''verification errors''.
+    *
+    * @param program The program to be verified.
+    * @return The verification result.
+    */
+	def verify(program: ast.Program): SILVerificationResult = {
+    startTime = System.currentTimeMillis()
+    shutDownHooks = Set()
+
+    val formattedStartTime = (new SimpleDateFormat("yyyy-MM-dd hh:mm:ss z")).format(startTime)
+
+		logger.info("%s started %s".format(name, formattedStartTime))
+
+    var result: sil.verifier.VerificationResult = null
+
+    try {
+      result = convertFailures(runVerifier(program))
+    } finally {
+      shutDownHooks.foreach(_())
+    }
+
+    assert(result != null, "The result of the verification run wasn't stored appropriately.")
+    result
 	}
-	
-	def runVerifier(program: SILProgram): List[VerificationResult] = {
-		val stateFormatter = new DefaultStateFormatter[V, ST, H, S]()
-		val pathConditionFactory = new DefaultPathConditionsFactory()
-		// val permissionFactory = new DefaultPermissionFactory()
-		val typeConverter = new DefaultTypeConverter()
-		val bookkeeper = new Bookkeeper()
-		
-		val decider =
-			new DefaultDecider[ST, H, PC, S](pathConditionFactory, config)
-		
-		val stateFactory = new DefaultStateFactory[V](decider.π _)
-		// val mapSupport = null // new DefaultMapSupport[ST, H, PC, S, C](decider)
-		// val lockSupport = null // new LockSupport[ST, H, S, C](mapSupport)
-		// val creditSupport = null // new CreditSupport[ST, H, S, C](mapSupport)
-		
-		val chunkFinder =
-			new DefaultChunkFinder[V, ST, H, PC, S](decider, stateFormatter)
-		
-    // val dlb = state.terms.Perms(state.terms.PermPlus(state.terms.FullPerms(),
-                                                  // state.terms.EpsPerms()))
-    val dlb = state.terms.FullPerms()
 
-		val heapMerger =
-			new DefaultHeapMerger[V, ST, H, PC, S](
-						decider, dlb, bookkeeper, stateFormatter)
-		
-		bookkeeper.branches = 1
-		// decider.lockSupport = lockSupport
-		
-		val verifier =
-			new DefaultVerifier(config, decider, /* permissionFactory, */ stateFactory, 
-													typeConverter, /* mapSupport, lockSupport, creditSupport, */
-													chunkFinder, stateFormatter, heapMerger, bookkeeper)
+  /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
+    * to verify elements of a SIL AST such as procedures or functions.
+    *
+    * @param verifierFactory
+    * @param traceviewFactory
+    * @tparam V
+    * @tparam TV
+    * @return A fully set up verifier, ready to be used.
+    */
+  private  def createVerifier[V <: AbstractVerifier[ST, H, PC, S, TV],
+                              TV <: TraceView[TV, ST, H, S]]
+                             (verifierFactory: VerifierFactory[V, TV, ST, H, PC, S],
+                              traceviewFactory: TraceViewFactory[TV, ST, H, S])
+                             : V = {
+
+	  val decider = new DefaultDecider[ST, H, PC, S, C]()
+    shutDownHooks = shutDownHooks + (() => decider.stop())
+
+    val stateFormatter = new DefaultStateFormatter[ST, H, S]()
+    val pathConditionFactory = new DefaultPathConditionsFactory()
+    val typeConverter = new DefaultTypeConverter()
+    val bookkeeper = new Bookkeeper()
+    val stateFactory = new DefaultStateFactory(decider.π _)
+    val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
+    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
+
+    val dlb = PermissionsTuple(FullPerms())
+
+    val heapMerger =
+			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+
+    bookkeeper.branches = 1
+
+    decider.init(pathConditionFactory, config, bookkeeper)
+    decider.start()
+
+    verifierFactory.create(config, decider, stateFactory,
+                           typeConverter,
+                           chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
+                           traceviewFactory)
+	}
+
+	private def runVerifier(program: ast.Program): List[Failure[C, ST, H, S, _]] = {
+	  val verifierFactory = new DefaultVerifierFactory[ST, H, PC, S, BranchingOnlyTraceView[ST, H, S]]
+	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()
+    
+	  val verifier = createVerifier(verifierFactory, traceviewFactory)
 
 		/* TODO:
 		 *  - Since there doesn't seem to be a need for Success to carry a message,
@@ -86,280 +128,195 @@ class Silicon(val config: Config) extends Logging {
 		 */
 													
 		var results: List[VerificationResult] = verifier.verify(program)
-		results = results.flatMap(r => r :: r.allPrevious).filterNot(_ == Success())
-		
-		// /* Removes results that have the same textual representation of their
-		 // * error message.
-		 // * 
-		 // * TODO: This is not only ugly but also should not be necessary. It seems 
-		 // * 		   that malformed predicates are currently reported multiple times,
-		 // *       once for each fold/unfold and once when they are checked for 
-		 // *       well-formedness.
-		 // */
-		// results = (
-			// results.reverse
-						 // .foldLeft((Set[String](), List[VerificationResult]())){
-								// case ((ss, rs), r: ResultWithMessage) =>
-									// // if (r.message == null) (ss, r :: rs)
-									// if (ss.contains(r.message.format)) (ss, rs)
-									// else (ss + r.message.format, r :: rs)
-								// case ((ss, rs), r) => (ss, r :: rs)}
-						 // ._2)
 
-		// /* Sort according to position (if given) */
-		// results = results.sortWith{
-			// case (r1: ResultWithMessage, ResultWithMessage) =>
-				// // if (r1.message == null) true
-				// if (r2.message == null) false
-				// else r1.message.loc < r2.message.loc
-			// case (_, r2: ResultWithMessage) => true
-			// case (r1: ResultWithMessage, _) => false}
+    verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - startTime
 
-		val prover = decider.prover.asInstanceOf[ch.ethz.inf.pm.silicon.decider.Z3ProverStdIO]
-		// val prover = decider.prover.asInstanceOf[ch.ethz.pm.syxc.decider.Z3ProverAPI]
+		results = results.flatMap(r => r :: r.allPrevious)
 		
-		if (config.showStatistics) {
-			logger.info("")
-			logger.info("Assumptions: " + prover.assumptionCounter)
-			logger.info("Assertions: " + prover.assertionCounter)
-			logger.info("Branches: " + bookkeeper.branches)
-			logger.info("Heap merger iterations: " + bookkeeper.heapMergeIterations)
-			logger.info("Object distinctness computations: " + bookkeeper.objectDistinctnessComputations)
-			logger.info("Function applications: " + bookkeeper.functionApplications)
-			logger.info("Function body evaluations: " + bookkeeper.functionBodyEvaluations)
-			logger.info("")
+    /* Removes results that have the same textual representation of their
+     * error message.
+     * 
+     * TODO: This is not only ugly, and also should not be necessary. It seems
+     *       that malformed predicates are currently reported multiple times,
+     *       once for each fold/unfold and once when they are checked for 
+     *       well-formedness.
+     */
+    results = results.reverse
+           .foldLeft((Set[String](), List[VerificationResult]())){
+              case ((ss, rs), r: ContextAwareResult[C, ST, H, S]) =>
+                if (r.message == null) (ss, r :: rs)
+                else if (ss.contains(r.message.readableMessage)) (ss, rs)
+                else (ss + r.message.readableMessage, r :: rs)
+              case ((ss, rs), r) => (ss, r :: rs)}
+           ._2
+
+    var failures = results.collect{case f: Failure[C, ST, H, S, _] => f}
+
+		if (config.showStatistics.nonEmpty) {
+      val proverStats = verifier.decider.getStatistics
+
+      verifier.bookkeeper.proverStatistics = proverStats
+      verifier.bookkeeper.errors = failures.length
+
+      config.showStatistics match {
+        case None =>
+
+        case Some(("stdio", "")) =>
+          logger.info("")
+          logger.info(verifier.bookkeeper.toString)
+          logger.info("")
+
+        case Some(("file", path)) =>
+          silicon.common.io.toFile(verifier.bookkeeper.toJson, new File(path))
+
+        case _ => ???
+      }
 		}
-		
-		var failures = results.collect{case f: Failure => f}
+
 		logResults(results)
-		
+
 		logger.info("\nVerification finished in %s with %s error(s)".format(
-				formatElapsed(System.currentTimeMillis() - startTime),
-				failures.size))
-		
-		// failures.isEmpty
-		results
-    
-    // Nil
+        silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
+				failures.length))
+
+    failures
 	}
-	
+
+  private def convertFailures(failures: Seq[Failure[C, ST, H, S, _]]): SILVerificationResult = {
+    failures match {
+      case Seq() => SILSuccess
+
+      case _ => SILError(failures map (_.message))
+    }
+  }
+
 	private def logResults(rs: List[VerificationResult]) {
 		rs foreach {
-			case f: Failure => logContextAwareMessage(f, s => logger.error(s))
-			case w: Warning => logContextAwareMessage(w, s => logger.warn(s))
-			case s: Success => // skip
+			case f: Failure[C, ST, H, S, _] => logContextAwareMessage(f, s => logger.info(s))
+			case s: Success[C, ST, H, S] => // skip
+      case s: Unreachable[C, ST, H, S] => // skip
 		}
 	}
-	
-	private def logContextAwareMessage(r: ResultWithMessage,
-																		 log: String => Unit) {
 
-		log("\n" + r.message.format)
+	private def logContextAwareMessage(r: ContextAwareResult[C, ST, H, S], log: String => Unit) {
+		log("\n" + r.message.readableMessage(true))
 
-		// if (config.showBranches && r.context.branchings.nonEmpty) {
-			// logger.error("    Branches taken:")
-			// r.context.branchings.reverse foreach (b =>
-				// logger.error("      " + b.format))
-			// logger.error("")
-		// }
+		if (config.showBranches && r.context.branchings.nonEmpty) {
+			logger.error("    Branches taken:")
+
+			r.context.branchings.reverse foreach (b =>
+				logger.error("      " + b.format))
+
+      logger.error("")
+			r.context.currentBranch.print("")
+		}
 	}
-	
-	private def formatElapsed(millis: Long) = {
-		val MINUTE = TimeUnit.MINUTES.toMillis(1)
-		val HOUR = TimeUnit.HOURS.toMillis(1)
-		
-		if (millis < MINUTE)
-			"%1$02.2fs".format(millis.toFloat / 1000)
-		else if (millis < HOUR)
-			"%1$TMm:%1$TSs".format(millis)
-		else
-			"%dh:%2$TMm:%2$TSs".format(millis / HOUR, millis % HOUR)
-	}
-	
+
 	private def setLogLevel(level: String) {
-		val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
+    val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
 		log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
 	}
 }
 
-object Silicon {
-	// def main(args: Array[String]) {
-		// val config = Config()
-		// val parser = initCLIParser(config)
-
-		// // args.foreach(println)
-		
-		// if (parser.parse(args)) {
-			// config.includeMembers = wildcardToRegex(config.includeMembers)
-			// config.excludeMembers = wildcardToRegex(config.excludeMembers)
-
-			// readOptionsFromInputFile(config, parser)
-
-			// val exitCode = (new Syxc(config)).run(config.inputFile)
-		// }
-	// }
-
-	def main(program: SILProgram): List[VerificationResult] = {
-		val config = new Config()
-		val silicon = new Silicon(config)
-
-		silicon.execute(program)
-	}
-	
-	// private def initCLIParser(config: Config) =
-		// new OptionParser("Syxc") {
-			// arg("<file>", "The Chalice file to verify", config.inputFile = _)
-			// opt(
-				// "firstError",
-				// "Execute only until the first error is found",
-				// config.stopOnFirstError = true)
-			// opt(
-				// "branches",
-				// "In case of errors show the branches taken during the execution",
-				// config.showBranches = true)
-			// opt(
-				// "stats",
-				// "Show some statistics about the symbolic execution",
-				// config.showStatistics = true)
-			// opt(
-				// "smoke",
-				// "Try to assert false after each new assumption",
-				// config.performSmokeChecks = true)
-			// opt(
-				// "disableDeadlockChecks",
-				// (  "Disables deadlock checks by interpreting every releated assertion\n"
-				 // + "\tas 'true'"),
-				// config.disableDeadlockChecks = true)
-			// opt(
-				// None,
-				// "include",
-				// "<pattern>",
-				// (  "Include members in verification (default: '*')\n"
-				 // + "\tWildcard characters '?', '*'\n"
-				 // + "\tExamples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'"),
-				// (s: String) => config.includeMembers = s)
-			// opt(
-				// None,
-				// "exclude",
-				// "<pattern>",
-				// (  "Exclude members from verification (default: '')\n"
-				 // + "\tIs applied after the include pattern"),
-				// (s: String) => config.excludeMembers = s)
-			// opt(
-				// "disableSubsumption",
-				// "Don't add assumptions gained while verifying an assert statement",
-				// config.disableSubsumption = true)
-			// booleanOpt(
-				// "selfFramingProductions",
-				// (  "Produce each new assertions in an empty heap and later on merge the\n" 
-				 // + "\tresulting heap with the existing one. (default: %s)\n".format(config.selfFramingProductions)
-				 // + "\tResults in incompletenesses."),
-				// (v: Boolean) => config.selfFramingProductions = v)
-			// opt(
-				// None,
-				// "unrollFunctions",
-				// "<n>",
-				// "Unroll function definitions at most n times (default: 1)",
-				// (n: String) => config.unrollFunctions = n.toInt)
-			// booleanOpt(
-				// "cacheSnapshots",
-				// (  "Reduce number of fresh snapshot symbols when producing assertions\n"
-				 // + "\t(default: true)"),
-				// (v: Boolean) => config.cacheSnapshots = v)
-			// booleanOpt(
-				// "cacheFunctionApplications",
-				// (  "Cache evaluated function bodies and/or postconditions (default: true)\n"
-				 // + "\tResults in incompletenesses."),
-				// (v: Boolean) => config.cacheFunctionApplications = v)
-			// booleanOpt(
-				// "branchOverPureConditionals",
-				// (  "Branch over pure conditionals, e.g. i > 0 ==> r !+= null\n"
-				 // + "\t(default: false)"),
-				// (v: Boolean) => config.branchOverPureConditionals = v)
-			// booleanOpt(
-				// "strictConjunctionEvaluation",
-				// (  "Perform strict evaluation of conjunctions. If so, evaluating e.g.\n"
-				 // + "\t\ti > 0 && f(i)\n"
-				 // + "\twill fail if f's precondition requires i > 0.\n"
-				 // + "\t(default: false)"),
-				// (v: Boolean) => config.strictConjunctionEvaluation = v)				
-			// opt(
-				// None,
-				// "logLevel",
-				// "<level>",
-				// "One of the log levels DEBUG, INFO, WARN, ERROR",
-				// (s: String) => config.logLevel = s)
-			// opt(
-				// None,
-				// "z3exe",
-				// "<path\\to\\z3_executable>",
-				// "Z3 executable (default: %s)".format(config.z3exe),
-				// (s: String) => config.z3exe = s)
-			// opt(
-				// None,
-				// "z3log",
-				// "<path\\to\\z3_logfile>",
-				// "Log file containing the interaction with Z3 (default: %s)".format(config.z3log),
-				// (s: String) => config.z3log = s)
-		// }
-		
-	// /* TODO: Options specified in the input file currently overwrite cli options
-	 // *       Giving cli options precedence over those from the input file is
-	 // *       IMHO desirable.
-	 // */
-	// private def readOptionsFromInputFile(config: Config, parser: OptionParser) {
-		// var fixedArgs: Seq[String] = Nil
-		
-		// val SyxcParameters = """(?i)\s*//\s*syxc-parameters\s*(.+)""".r
-		// val NoSingleLineComment = """\s*[^(?://)]+""".r
-		
-		// /* Read lines until a) additional options have been found or b) current line
-		 // * is not a single-line comment.
-		 // */
-		// breakable {
-			// for (line <- io.Source.fromFile(config.inputFile).getLines())
-				// line match {
-					// case SyxcParameters(argsLine) =>
-						// logger.info("Additional options taken from input file: " + argsLine)
-						// fixedArgs = argsLine.split(' ')
-						// break
-						
-					// case NoSingleLineComment() => break
-					// case _ => // Skip line
-				// }
-		// }
-		
-		// if (fixedArgs.nonEmpty) {
-			// val inputFile = config.inputFile
-			// parser.parse(fixedArgs :+ "")
-				// /* Additional argument is fake input file, parser will fail otherwise */
-			// config.inputFile = inputFile
-				// /* Restore actual input file since config.inputFile is now "" */
-		// }
-	// }
-	
-	// private def wildcardToRegex(str: String) =
-		// str.replace(".", "\\.").replace("?", ".?").replace("*", ".*?")		
-}
-
 case class Config(
-	// var inputFile: String = null,
-	var showBranches: Boolean = false,
-	var stopOnFirstError: Boolean = false,
-	var showStatistics: Boolean = false,
-	var performSmokeChecks: Boolean = false,
-	// var disableDeadlockChecks: Boolean = false,
-	var disableSubsumption: Boolean = false,
-	var selfFramingProductions: Boolean = false,
-	var includeMembers: String = "*",
-	var excludeMembers: String = "",
-	var unrollFunctions: Int = 1,
-	var cacheFunctionApplications: Boolean = true,
-	var cacheSnapshots: Boolean = true,
-	var branchOverPureConditionals: Boolean = false,
-	var strictConjunctionEvaluation: Boolean = false,
-	// var logLevel: String = "INFO",
-	var logLevel: String = "INFO",
-  var preamble: Option[String] = None,
-	var z3exe: String = "z3.exe",
-	var z3log: String = "logfile.smt2")
+	showBranches: Boolean = false,
+	stopOnFirstError: Boolean = false,
+	showStatistics: Option[Tuple2[String, String]] = None,
+	performSmokeChecks: Boolean = false,
+	disableSubsumption: Boolean = false,
+	includeMembers: String = "*",
+	excludeMembers: String = "",
+	unrollFunctions: Int = 1,
+	cacheFunctionApplications: Boolean = true,
+	cacheSnapshots: Boolean = true,
+	branchOverPureConditionals: Boolean = false,
+	strictConjunctionEvaluation: Boolean = false,
+	logLevel: String = "INFO",
+	z3Exe: String = "z3.exe",
+	z3LogFile: String = "logfile.smt2")
+
+object CommandLineArgumentParser {
+  private val DefaultConfig = Config()
+
+  lazy val parser = new OptionParser[Config](Silicon.name) {
+    val options = Seq(
+      flag("firstError",
+           "Execute only until the first error is found")
+          {(config: Config) => config.copy(stopOnFirstError = true)},
+      flag("branches",
+           "In case of errors show the branches taken during the execution")
+          {(config: Config) => config.copy(showBranches = true)},
+      opt("showStatistics",
+          (   "Show some statistics about the verification. Options are\n"
+           + "\t\tstdio\n"
+           + "\t\tfile=<path\\to\\statistics.json>"))
+         {(s: String, c: Config) => {
+            var parts = s.split('=').toList
+
+            assert(0 < parts.length && parts.length < 3,
+                   "Invalid argument to --showStatistics: " + s)
+
+            if (parts.length == 1) parts = parts :+ ""
+            c.copy(showStatistics = Some((parts(0), parts(1))))
+         }},
+      opt(None,
+          "include",
+          "<pattern>",
+          (  "Include members in verification (default: '%s')\n".format(DefaultConfig.includeMembers)
+           + "\tWildcard characters are '?' and '*'\n"
+           + "\tExamples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'"))
+         {(s: String, config: Config) => config.copy(includeMembers = wildcardToRegex(s))},
+      opt(None,
+          "exclude",
+          "<pattern>",
+          (  "Exclude members from verification (default: '%s')\n".format(DefaultConfig.excludeMembers)
+           + "\tIs applied after the include pattern"))
+         {(s: String, config: Config) => config.copy(excludeMembers = wildcardToRegex(s))},
+      flag("disableSubsumption",
+           "Don't add assumptions gained while verifying an assert statement")
+          {(config: Config) => config.copy(disableSubsumption = true)},
+      intOpt(None,
+             "unrollFunctions",
+             "<n>",
+             "Unroll function definitions at most n times (default:%s)".format(DefaultConfig.unrollFunctions))
+            {(n: Int, config: Config) => config.copy(unrollFunctions = n)},
+      flag("cacheSnapshots",
+           "Reduce number of fresh snapshot symbols when producing assertions\n")
+          {(config: Config) => config.copy(cacheSnapshots = true)},
+      flag("cacheFunctionApplications",
+           (  "Cache evaluated function bodies and/or postconditions\n"
+            + "\tResults in incompletenesses."))
+          {(config: Config) => config.copy(cacheFunctionApplications = true)},
+      flag("branchOverPureConditionals",
+           "Branch over pure conditionals, e.g. i > 0 ==> r !+= null")
+          {(config: Config) => config.copy(branchOverPureConditionals = true)},
+      flag("strictConjunctionEvaluation",
+           (  "Perform strict evaluation of conjunctions. If so, evaluating e.g.\n"
+            + "\t\ti > 0 && f(i)\n"
+            + "\twill fail if f's precondition requires i > 0.\n"))
+          {(config: Config) => config.copy(strictConjunctionEvaluation = true)},
+      opt(None,
+          "logLevel",
+          "<level>",
+          (  "One of the log levels TRACE, DEBUG, INFO, WARN, ERROR\n"
+           + "(default: %s)".format(DefaultConfig.logLevel)))
+         {(s: String, config: Config) => config.copy(logLevel = s)},
+      opt(None,
+          "z3Exe",
+          "<path\\to\\z3_executable>",
+          "Z3 executable (default: %s)".format(DefaultConfig.z3Exe))
+         {(s: String, config: Config) => config.copy(z3Exe = s)},
+      opt(None,
+          "z3LogFile",
+          "<path\\to\\z3_logfile>",
+          "Log file containing the interaction with Z3 (default: %s)".format(DefaultConfig.z3LogFile))
+         {(s: String, config: Config) => config.copy(z3LogFile = s)}
+    )
+  }
+
+  def parse(args: Seq[String], config: Config = DefaultConfig) =
+    parser.parse(args, config).getOrElse(sys.error("Illegal arguments: %s".format(args)))
+
+  private def wildcardToRegex(str: String) =
+    str.replace(".", "\\.").replace("?", ".?").replace("*", ".*?")
+}

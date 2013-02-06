@@ -1,43 +1,33 @@
-package ch.ethz.inf.pm.silicon.state
+package semper
+package silicon
+package state
 
-import ch.ethz.inf.pm.silicon
-import silicon.interfaces.state.{Store, Heap, PathConditions, State, Chunk, 
-		StoreFactory, HeapFactory, PathConditionsFactory, StateFactory
-		/* PermissionFactory */ }
-import silicon.interfaces.state.factoryUtils.Ø
-// import silicon.ast.{Variable, Type, IntClass}
-import silicon.state.terms.Term
+import interfaces.state.{Chunk, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory}
+import interfaces.state.factoryUtils.Ø
+import state.terms.Term
 
-trait DefaultStoreFactory[V] extends StoreFactory[V, MapBackedStore[V]] {
+trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
 	def Γ() = new MapBackedStore()
-	def Γ(pair: (V, Term)) = new MapBackedStore(pair)
-	def Γ(pairs: Iterable[(V, Term)]) = new MapBackedStore(pairs.toMap)
-	def Γ(store: Map[V, Term]) = MapBackedStore(store)
+	def Γ(pair: (ast.Variable, Term)) = new MapBackedStore(pair)
+	def Γ(pairs: Iterable[(ast.Variable, Term)]) = new MapBackedStore(pairs.toMap)
+	def Γ(store: Map[ast.Variable, Term]) = MapBackedStore(store)
 }
 
-trait DefaultHeapFactory extends HeapFactory[MapBackedHeap] {
-	def H() = new MapBackedHeap()
-	def H(h: MapBackedHeap) = new MapBackedHeap(h)
-	def H(chunks: Iterable[Chunk]) = new MapBackedHeap(chunks)
+trait DefaultHeapFactory extends HeapFactory[SetBackedHeap] {
+	def H() = new SetBackedHeap()
+	def H(h: SetBackedHeap) = new SetBackedHeap(h)
+	def H(chunks: Iterable[Chunk]) = new SetBackedHeap(chunks)
 }
 
-class DefaultStateFactory[V]
+class DefaultStateFactory
 		(private val π: () => Set[Term])
-		extends StateFactory[V, MapBackedStore[V], MapBackedHeap,
-												 DefaultState[V, MapBackedStore[V], MapBackedHeap]]
-		with DefaultStoreFactory[V]
+		extends StateFactory[MapBackedStore, SetBackedHeap, DefaultState[MapBackedStore, SetBackedHeap]]
+		with DefaultStoreFactory
 		with DefaultHeapFactory {
 
 	def Σ() = Σ(Ø, Ø, Ø)
-
-	def Σ(γ: MapBackedStore[V], h: MapBackedHeap, g: MapBackedHeap) =
-		DefaultState(γ, h, g, π)
+	def Σ(γ: MapBackedStore, h: SetBackedHeap, g: SetBackedHeap) = DefaultState(γ, h, g, π)
 }
-
-// class DefaultPermissionFactory extends PermissionFactory[FractionalPermission] {
-	// def Full = FullPerm
-	// def Eps = EpsPerm
-// }
 
 class DefaultPathConditionsFactory
 		extends PathConditionsFactory[MutableSetBackedPathConditions] {

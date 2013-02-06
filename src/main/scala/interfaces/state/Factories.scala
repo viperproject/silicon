@@ -1,21 +1,21 @@
-package ch.ethz.inf.pm.silicon.interfaces.state
+package semper
+package silicon
+package interfaces.state
 
-import ch.ethz.inf.pm.silicon
 import silicon.state.terms.{Term}
-// import silicon.ast.Variable
 
 object factoryUtils {
 	trait Ø
 	object Ø extends Ø
 }
 
-trait StoreFactory[V, ST <: Store[V, ST]] {
+trait StoreFactory[ST <: Store[ST]] {
 	implicit def ØToEmptyStore(ø: factoryUtils.Ø) = Γ()
 
 	def Γ(): ST
-	def Γ(store: Map[V, Term]): ST
-	def Γ(pair: (V, Term)): ST
-	def Γ(pairs: Iterable[(V, Term)]): ST
+	def Γ(store: Map[ast.Variable, Term]): ST
+	def Γ(pair: (ast.Variable, Term)): ST
+	def Γ(pairs: Iterable[(ast.Variable, Term)]): ST
 }
 
 trait PathConditionsFactory[PC <: PathConditions[PC]] {
@@ -34,16 +34,11 @@ trait HeapFactory[H <: Heap[H]] {
 	def H(chunks: Iterable[Chunk]): H
 }
 
-trait StateFactory[V, ST <: Store[V, ST], H <: Heap[H], S <: State[V, ST, H, S]]
-		extends StoreFactory[V, ST] with HeapFactory[H] {
+trait StateFactory[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+		extends StoreFactory[ST] with HeapFactory[H] {
 
 	implicit def ØToEmptyState(ø: factoryUtils.Ø) = Σ()
 
 	def Σ(): S
 	def Σ(γ: ST, h: H, g: H): S
 }
-
-// trait PermissionFactory[P <: Permission[P]] {
-	// def Full: P
-	// def Eps: P
-// }

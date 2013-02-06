@@ -1,11 +1,10 @@
-package ch.ethz.inf.pm
+package semper
 package silicon
-package interfaces
-package decider
+package interfaces.decider
 
-import silicon.state.terms.{Term, Sort}
+import state.terms.{Term, Sort}
 
-trait TermConverter[S] {
-	def convert(term: Term): S
+trait TermConverter[T, S] {
+	def convert(term: Term): T
 	def convert(sort: Sort): S
 }

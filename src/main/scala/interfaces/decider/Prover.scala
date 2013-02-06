@@ -1,9 +1,8 @@
-package ch.ethz.inf.pm
+package semper
 package silicon
-package interfaces
-package decider
+package interfaces.decider
 
-import silicon.state.terms.{Sort, Term, Var}
+import state.terms.{Sort, Term, Var}
 
 sealed abstract class Result
 object Sat extends Result
@@ -11,17 +10,16 @@ object Unsat extends Result
 object Unknown extends Result
 
 trait Prover {
-  def termConverter: TermConverter[String] /* TODO: Generalise to S instead of String */
-  def push(n: Int = 1)
-  def pop(n: Int = 1)
-	def	push(label: String)
-	def	pop(label: String)
+  def termConverter: TermConverter[String, String]
   def assume(term: Term)
   def assert(goal: Term): Boolean
 	def check(): Result
 	def enableLoggingComments(enabled: Boolean)
 	def logComment(str: String)
-  def fresh(id: String, sort: Sort): Var
+	def fresh(id: String, sort: Sort): Var
   def declareSort(sort: Sort)
   def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort)
+//  def emit(str: String)
+  def stop()
+  def getStatistics: Map[String, String]
 }

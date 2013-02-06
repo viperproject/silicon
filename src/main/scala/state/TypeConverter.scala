@@ -1,31 +1,29 @@
-package ch.ethz.inf.pm.silicon
+package semper
+package silicon
 package state
-
-import semper.sil.ast.types.{DataType => SILDataType}
-import semper.sil.ast.domains.{Domain => SILDomain}
 
 import terms.{Sort, sorts}
 
 /* TODO: Move to interfaces package */
 trait TypeConverter {
-  def manuallyHandledDomains: Set[SILDomain]
-  
-	def toSort(typ: SILDataType): Sort
+  def manuallyHandledDomains: Set[ast.Domain]
+
+  def toSort(typ: ast.DataType): Sort
 }
 
 class DefaultTypeConverter extends TypeConverter {
   val manuallyHandledDomains = Set(
-      semper.sil.ast.types.booleanType.domain,
-      semper.sil.ast.types.integerType.domain,
-      semper.sil.ast.types.permissionType.domain,
-      semper.sil.ast.types.referenceType.domain
+    ast.types.Bool.domain,
+    ast.types.Int.domain,
+    ast.types.Perms.domain,
+    ast.types.Ref.domain
   )
-  
-	def toSort(typ: SILDataType) = typ match {
-    case semper.sil.ast.types.booleanType => sorts.Bool
-    case semper.sil.ast.types.integerType => sorts.Int
-    case semper.sil.ast.types.permissionType => sorts.Perms
-    case semper.sil.ast.types.referenceType => sorts.Ref
-    case semper.sil.ast.types.NonReferenceDataType(domain) => sorts.UserSort(domain.fullName)
-	}
+
+  def toSort(typ: ast.DataType) = typ match {
+    case ast.types.Bool => sorts.Bool
+    case ast.types.Int => sorts.Int
+    case ast.types.Perms => sorts.Perms
+    case ast.types.Ref => sorts.Ref
+    case ast.types.NonRef(domain) => sorts.UserSort(domain.fullName)
+  }
 }
