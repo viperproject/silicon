@@ -37,6 +37,7 @@ object SiliconBuild extends Build {
 //              :+ dependencies.sil
               /* :+ dependencies.scalaz :+ dependencies.scalatest */))
   ).dependsOn(dependencies.sil, common)
+   .aggregate(common)
 
   lazy val common = Project(
     id = "common",
