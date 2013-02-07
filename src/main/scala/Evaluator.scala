@@ -551,14 +551,11 @@ trait DefaultEvaluator[
             else
               Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(ePerm), c1, tv))}
         else
-          utils.exceptions.abortUnsupported(e,
-                                            " [eval] Recursion that does not go through a " +
-                                            "function, e.g., a predicate such as " +
-                                            "P {... && next != null ==> unfolding next.P in e} " +
-                                            "is currently not supported in Syxc. It should be " +
-                                            "possible to wrap 'unfolding next.P in e' in a " +
-                                            "function, which is then invoked from the predicate " +
-                                            "body")
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+                    "P {... && next != null ==> unfolding next.P in e} is currently not " +
+                    "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+                    "in a function, which is then invoked from the predicate body.\n" +
+                    "Offending node: " + e)
 		}
 	}
 

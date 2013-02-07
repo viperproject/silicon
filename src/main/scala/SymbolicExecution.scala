@@ -4,16 +4,14 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{InsufficientPermissions}
-import interfaces.{VerificationResult, Success, Failure, Unreachable}
+import interfaces.{VerificationResult, Failure, Unreachable}
 import interfaces.decider.Decider
-import interfaces.reporting.{Message, Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
+import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
     TwinBranch, LocalTwinBranch, Step}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, PermissionChunk}
 import state.terms._
 import state.terms.utils.{BigAnd, ¬}
 import reporting.Bookkeeper
-//import reporting.Reasons.InsufficientPermissions
-import ast.Expression
 import utils.notNothing._
 
 /* TODO: Move interfaces into interfaces package */

@@ -231,7 +231,7 @@ case class Config(
 	cacheSnapshots: Boolean = true,
 	branchOverPureConditionals: Boolean = false,
 	strictConjunctionEvaluation: Boolean = false,
-	logLevel: String = "INFO",
+	logLevel: String = "OFF",
 	z3Exe: String = "z3.exe",
 	z3LogFile: String = "logfile.smt2")
 
@@ -298,7 +298,7 @@ object CommandLineArgumentParser {
       opt(None,
           "logLevel",
           "<level>",
-          (  "One of the log levels TRACE, DEBUG, INFO, WARN, ERROR\n"
+          (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF\n"
            + "(default: %s)".format(DefaultConfig.logLevel)))
          {(s: String, config: Config) => config.copy(logLevel = s)},
       opt(None,

@@ -52,30 +52,3 @@ case class NestedPredicateChunk(rcvr: Term,
 
   override def toString = "%s.%s[%s]".format(rcvr, id, snap)
 }
-
-
-//case class TokenChunk[H <: Heap[H]](rcvr: Term, token: Token[H]) extends Chunk {
-//	/* TODO: Move into companion object, so that it can be referenced
-//	 *       statically, i.e. as DefaultTokenChunk.id.
-//	 */
-//	val id = "$env"
-//
-//	override def toString = "%s.%s -> %s".format(rcvr, id, token)
-//}
-
-
-//case class HoldsChunk(val rcvr: Term, mode: Term) extends Chunk {
-//  terms.utils.assertSort(mode, "mode", terms.sorts.LockMode)
-//
-//  val id = "holds"
-//
-//  override lazy val toString = "%s.%s -> %s".format(rcvr, id, mode)
-//}
-//
-//case class CreditsChunk(val rcvr: Term, credits: Term) extends Chunk {
-//  terms.utils.assertSort(credits, "credits", terms.sorts.Int)
-//
-//  val id = "$credits"
-//
-//  override lazy val toString = "%s.%s -> %s".format(rcvr, id, credits)
-//}

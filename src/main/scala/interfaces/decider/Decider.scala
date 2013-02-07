@@ -4,7 +4,6 @@ package interfaces.decider
 
 import sil.verifier.ErrorReason
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk}
-import interfaces.VerificationResult
 import interfaces.reporting.{Context}
 import state.terms.{Term, Var, PermissionsTerm, Sort}
 import utils.notNothing._

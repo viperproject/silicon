@@ -10,11 +10,8 @@ abstract class ContextFactory[C <: Context[C, ST, H, S],
                               H <: Heap[H],
                               S <: State[ST, H, S]] {
 
-    def create(currentBranch: Branch[ST, H, S],
-//               thisVar: ast.Variable,
-               currentRdPerms: FractionalPermissions)
-              : C
+  def create(currentBranch: Branch[ST, H, S], currentRdPerms: FractionalPermissions) : C
 }
 
 trait Context[C <: Context[C, ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-  extends BranchKeeper[C, ST, H, S]
+    extends BranchKeeper[C, ST, H, S]

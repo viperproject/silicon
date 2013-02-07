@@ -2,33 +2,8 @@ package semper
 package silicon
 package utils
 
-import com.weiglewilczek.slf4s.Logger
-//import reporting.{WarningMessages, ErrorMessages}
-
-object exceptions {
-	def formatMessage(msg: Any): String = msg match {
-		case prod: Product => prod.productPrefix
-		case other => other.toString
-	}
-	
-//	def warnSupport(logger: Logger, loc: ast.SourceLocation, msg: String) =
-//		logger.debug(
-//			WarningMessages.NotSupported.withDetails(msg).at(loc).format)
-
-	def abortUnsupported(node: ast.ASTNode, details: String = "") = {
-    ???
-//		val err = (
-//      ErrorMessages.NotSupported at(node.sourceLocation)
-//                                 withDetails(formatMessage(node) + details))
-//
-//    sys.error(err.format)
-	}
-}
-
 object collections {
-	def mapReduceLeft[E](it: Iterable[E], f: E => E,
-			op: (E, E) => E, unit: E): E =
-
+	def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
 		if (it.isEmpty)
 			unit
 		else

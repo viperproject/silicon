@@ -9,35 +9,31 @@ import state.terms.{Term, PermissionsTuple, FractionalPermissions, PotentiallyWr
 class DefaultContextFactory[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     extends ContextFactory[DefaultContext[ST, H, S], ST, H, S] {
 
-  def create(currentBranch: Branch[ST, H, S], /*thisVar: ast.Variable,*/ currentRdPerms: FractionalPermissions) =
-    new DefaultContext[ST, H, S](currentBranch, currentRdPerms/*, thisClass, thisVar*/)
+  def create(currentBranch: Branch[ST, H, S], currentRdPerms: FractionalPermissions) =
+    new DefaultContext[ST, H, S](currentBranch, currentRdPerms)
 }
 
 
 
 /* TODO: Use MultiSet[Member] instead of List[Member] */
 case class DefaultContext
-	[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-	(currentBranch: Branch[ST, H, S],
-	currentRdPerms: FractionalPermissions,
-    /* TODO: Use NonPotWriteFracPerms instead of FractionalPermissions.
-     *        Change signature of StateUtils.freshPerms accordingly.
-     */
-//	thisVar: ast.Variable,
-  visited: List[String] = Nil,
-    /* TODO: SIL should have a Member class, with Function/Predicate/Method <: Member */
-	consumeExactReads: Boolean = true,
-	produceImmutableLocations: Boolean = false,
-	produceFrozenLocations: Boolean = false)
-	extends Context[DefaultContext[ST, H, S], ST, H, S]
-{
+    [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+    (currentBranch: Branch[ST, H, S],
+     currentRdPerms: FractionalPermissions,
+      /* TODO: Use NonPotWriteFracPerms instead of FractionalPermissions.
+       *        Change signature of StateUtils.freshPerms accordingly.
+       */
+     visited: List[String] = Nil,
+       /* TODO: SIL should have a Member class, with Function/Predicate/Method <: Member */
+     consumeExactReads: Boolean = true,
+     produceImmutableLocations: Boolean = false,
+     produceFrozenLocations: Boolean = false)
+    extends Context[DefaultContext[ST, H, S], ST, H, S] {
 
   assertValidCurrentRdPerms(currentRdPerms)
-  
-//  def this(currentBranch: Branch[ST, H, S], currentRdPerms: FractionalPermissions/*, thisVar: ast.Variable*/) =
-//    this(currentBranch, currentRdPerms/*, thisVar*/)
 
-  def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] = copy(currentBranch = currentBranch)
+  def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] =
+    copy(currentBranch = currentBranch)
 
   def incCycleCounter(m: String) = copy(visited = m :: visited)
   
@@ -70,7 +66,6 @@ case class DefaultContext
       copy(produceImmutableLocations = immutable, produceFrozenLocations = frozen)
 
 	lazy val branchings: List[BranchingStep[ST, H, S]] = currentBranch.branchings
-//	lazy val operations = currentBranch.trace
 
   private def assertValidCurrentRdPerms(currentRdPerms: FractionalPermissions) {
     assert(currentRdPerms.isPotentiallyWrite == PotentiallyWriteStatus.False,

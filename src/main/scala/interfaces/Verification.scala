@@ -3,8 +3,8 @@ package silicon
 package interfaces
 
 import sil.verifier.VerificationError
-import reporting.{/*Message,*/ Context}
-import reporting.{Context, History, TraceView}
+import reporting.Context
+import reporting.{Context, TraceView}
 import state.{Store, Heap, State}
 
 /*
@@ -96,12 +96,6 @@ case class Unreachable[C <: Context[C, ST, H, S],
   val message = null /* TODO: Make an Option[Message] */
 }
 
-//case class Warning[C <: Context[C, ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], TV <: TraceView[TV, ST, H, S]](val message: Message, val context: C, tv: TV)
-//		extends NonFatalResult with ContextAwareResult[C, ST, H, S] {
-//
-//  tv.addResult(context.currentBranch, this)
-//}
-
 case class Failure[C <: Context[C, ST, H, S],
                    ST <: Store[ST],
                    H <: Heap[H],
@@ -115,15 +109,3 @@ case class Failure[C <: Context[C, ST, H, S],
   
   tv.addResult(context.currentBranch, this)
 }
-
-///*
-// * Verification
-// */
-//
-//trait MemberVerifier[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
-//	def verify(mem: Member): (VerificationResult, History[ST, H, S])
-//}
-//
-//trait ProgrammeVerifier {
-//	def verify(program: ast.Program): List[VerificationResult]
-//}
