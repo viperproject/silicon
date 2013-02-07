@@ -24,14 +24,16 @@ trait SiliconConstants {
   val name = "Silicon"
   val version = "0.1-Snapshot"
   val dependencyVersions = Seq(("Z3", "4.x"))
+
+  private[silicon] val ENV_Z3_EXE = "Z3PATH"
 }
 
 object Silicon extends SiliconConstants
 
 class Silicon(options: Seq[String] = Nil)
       extends SILVerifier(options)
-      with SiliconConstants
-      with Logging {
+         with SiliconConstants
+         with Logging {
 
   val config = CommandLineArgumentParser.parse(options)
 
@@ -232,7 +234,7 @@ case class Config(
 	branchOverPureConditionals: Boolean = false,
 	strictConjunctionEvaluation: Boolean = false,
 	logLevel: String = "OFF",
-	z3Exe: String = "z3.exe",
+	z3Exe: Option[String] = None,
 	z3LogFile: String = "logfile.smt2")
 
 object CommandLineArgumentParser {
@@ -304,8 +306,9 @@ object CommandLineArgumentParser {
       opt(None,
           "z3Exe",
           "<path\\to\\z3_executable>",
-          "Z3 executable (default: %s)".format(DefaultConfig.z3Exe))
-         {(s: String, config: Config) => config.copy(z3Exe = s)},
+          (  "Z3 executable (default: %s). The environment variable %s can also\n"
+           + " be used to specify the path of the executable.").format(DefaultConfig.z3Exe, Silicon.ENV_Z3_EXE))
+         {(s: String, config: Config) => config.copy(z3Exe = Some(s))},
       opt(None,
           "z3LogFile",
           "<path\\to\\z3_logfile>",

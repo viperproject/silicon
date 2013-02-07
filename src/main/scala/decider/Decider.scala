@@ -3,6 +3,7 @@ package silicon
 package decider
 
 import scala.io.Source
+import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.reasons.{NegativeFraction}
 import interfaces.{VerificationResult}
@@ -58,7 +59,9 @@ class DefaultDecider[ST <: Store[ST],
   def start() {
     Predef.assert(isInitialised, "DefaultDecider must be initialised via init() first.")
 
-    z3 = new Z3ProverStdIO(config.z3Exe, config.z3LogFile, bookkeeper)
+
+
+    z3 = new Z3ProverStdIO(z3Exe, config.z3LogFile, bookkeeper)
     pathConditions = pathConditionsFactory.Π()
     typeConverter = new silicon.state.DefaultTypeConverter()
 //    performSmokeChecks = config.performSmokeChecks
@@ -68,6 +71,9 @@ class DefaultDecider[ST <: Store[ST],
     prover.logComment("-" * 60)
     pushPreamble()
   }
+
+  private def z3Exe: String =
+    config.z3Exe.getOrElse(envOrNone(Silicon.ENV_Z3_EXE).map(_ + "\\z3.exe").getOrElse("z3.exe"))
 
 //	def enableSmokeChecks(enable: Boolean) {
 //    performSmokeChecks = enable
@@ -188,7 +194,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   def stop() {
-    prover.stop()
+    if (prover != null) prover.stop()
   }
 
   def pushScope() {

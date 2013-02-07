@@ -19,7 +19,6 @@ trait Prover {
 	def fresh(id: String, sort: Sort): Var
   def declareSort(sort: Sort)
   def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort)
-//  def emit(str: String)
   def stop()
   def getStatistics: Map[String, String]
 }
