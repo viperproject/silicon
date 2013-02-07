@@ -16,3 +16,4 @@ z3timings.txt
 .scala_dependencies
 .history
 stats/
+bin/**
