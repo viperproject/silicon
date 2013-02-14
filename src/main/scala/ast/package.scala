@@ -48,6 +48,8 @@ package object ast {
   val Implies = sil.ast.symbols.logical.Implication
   type Iff = sil.ast.symbols.logical.Equivalence
   val Iff = sil.ast.symbols.logical.Equivalence
+  type Ite = semper.sil.ast.expressions.terms.IfThenElseExpression
+  val Ite = semper.sil.ast.expressions.terms.IfThenElseExpression
   type Equals = sil.ast.expressions.EqualityExpression
   val Equals = sil.ast.expressions.EqualityExpression
   type Old = sil.ast.expressions.OldExpression

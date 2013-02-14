@@ -4,8 +4,10 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.errors.{InvocationFailed}
+import sil.verifier.errors.InvocationFailed
 import sil.verifier.reasons.{ReceiverNull, NegativeFraction}
+import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
+    ImplBranching, IfBranching, LocalImplBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
@@ -14,9 +16,6 @@ import interfaces.reporting.{TraceView}
 import state.{TypeConverter, DirectChunk}
 import state.terms._
 import state.terms.implicits._
-import state.terms.PermissionsTuple
-import reporting.{DefaultContext, Evaluating, ImplBranching, LocalImplBranching, LocalAndBranching,
-    Bookkeeper}
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -251,6 +250,62 @@ trait DefaultEvaluator[
             }
 
           case ast.Iff() => evalBinOp(σ, e0, e1, Iff, pve, c, tv)(Q)
+        }
+
+      case ast.Ite(e0, e1, e2) if config.branchOverPureConditionals =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          branch(t0, c1, tv, IfBranching[ST, H, S](e0, t0),
+            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
+            (c2: C, tv1: TV) => eval(σ, e2, pve, c2, tv1)(Q)))
+
+      case ite @ ast.Ite(e0, e1, e2) =>
+        val πPre: Set[Term] = decider.π
+        var πIf: Option[Set[Term]] = None
+        var πThen: Option[Set[Term]] = None
+        var πElse: Option[Set[Term]] = None
+        var tActualIf: Option[Term] = None
+        var tActualThen: Option[Term] = None
+        var tActualElse: Option[Term] = None
+
+        decider.pushScope()
+
+        val r =
+          eval(σ, e0, pve, c, tv)((t0, c1) => {
+            πIf = Some(decider.π -- πPre)
+            tActualIf = Some(t0)
+
+            branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
+              (c2: C, tv1: TV) => {
+                eval(σ, e1, pve, c2, tv1)((t1, c3) => {
+                  πThen = Some(decider.π -- (πPre ++ πIf.get + t0))
+                  tActualThen = Some(t1)
+                  Success[C, ST, H, S](c3)})},
+
+              (c2: C, tv1: TV) => {
+                eval(σ, e2, pve, c2, tv1)((t2, c3) => {
+                  πElse = Some(decider.π -- (πPre ++ πIf.get + Not(t0)))
+                  tActualElse = Some(t2)
+                  Success[C, ST, H, S](c3)})})})
+
+        decider.popScope()
+
+        r && {
+          /* Conjunct all auxilliary terms (sort: bool). */
+          val tIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
+          val tThen: Term = state.terms.utils.BigAnd(πThen.getOrElse(Set(True())))
+          val tElse: Term = state.terms.utils.BigAnd(πElse.getOrElse(Set(True())))
+
+          /* Ite with auxilliary terms */
+          val tIte = Ite(tActualIf.getOrElse(False()), tThen, tElse)
+
+          /* Ite with the actual results of the evaluation */
+          val tActualIte =
+            Ite(tActualIf.getOrElse(False()),
+              tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.dataType))),
+              tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.dataType))))
+
+          assume(Set(tIf, tIte), c)
+          Q(tActualIte, c)
         }
 
       case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
