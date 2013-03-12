@@ -113,7 +113,7 @@ trait DefaultProducer[
 
 		val produced = φ match {
       /* And <: BooleanExpr */
-      case ast.BinaryOp(_: ast.And, a0, a1) /* if !φ.isPure */ =>
+      case ast.And(a0, a1) /* if !φ.isPure */ =>
         val s0 = fresh(sorts.Snap)
         val s1 = fresh(sorts.Snap)
         val tSnapEq = SnapEq(sf(sorts.Snap), Combine(s0, s1))
@@ -127,42 +127,43 @@ trait DefaultProducer[
           Q(h2, c2)))
 
 			/* Implies <: BooleanExpr */
-      case ast.BinaryOp(_: ast.Implies, e0, a0) /* if !φ.isPure */ =>
+      case ast.Implies(e0, a0) /* if !φ.isPure */ =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>
 					branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
 						(c2: C, tv1: TV) => produce2(σ, sf, p, a0, pve, c2, tv1)(Q),
 						(c2: C, tv1: TV) => Q(σ.h, c2)))
 
-      case ast.Access(fa @ ast.FieldLocation(eRcvr, field), gain) =>
-        producePermissions[DirectFieldChunk](σ, sf, p, fa, gain, DirectFieldChunk, toSort(field.dataType), pve, c, tv)((h, ch, c1) =>
+      case ast.FieldAccessPredicate(ast.FieldLocation(eRcvr, field), gain) =>
+//        producePermissions[DirectFieldChunk](σ, sf, p, fa, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
+        producePermissions[DirectFieldChunk](σ, sf, p, eRcvr, field.name, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
           Q(h, c1))
 
-      case ast.Access(pa @ ast.PredicateLocation(eRcvr, field), gain) =>
+      case ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, pred), gain) =>
         val dpc =
           (rcvr: Term, id: String, snap: Term, p: PermissionsTuple) =>
             DirectPredicateChunk(rcvr, id, snap, p)
 
-        producePermissions[DirectPredicateChunk](σ, sf, p, pa, gain, dpc, sorts.Snap, pve, c, tv)((h, _, c1) =>
+        producePermissions[DirectPredicateChunk](σ, sf, p, eRcvr, pred.name, gain, dpc, sorts.Snap, pve, c, tv)((h, _, c1) =>
           Q(h, c1))
 
-      case qe @ ast.Quantified(
-                  ast.Exists(),
-                  qvar,
-                  ast.BinaryOp(
-                    _: ast.And,
-                    rdStarConstraints,
-                    pe @ ast.FieldAccessPredicate(
-                            ast.FieldLocation(eRcvr, field),
-                            _)))
-            if toSort(qvar.dataType) == sorts.Perms =>
-
-        val witness = qvar
-        val (tWitness, _) = freshPermVar(witness.name)
-        val σ1 = σ \+ (witness, tWitness)
-        eval(σ1, rdStarConstraints, pve, c, tv)((tRdStarConstraints, c1) => {
-          assume(tRdStarConstraints, c1)
-          produce2(σ1, sf, p, pe, pve, c1, tv)((h1, c2) =>
-            Q(h1, c2))})
+//      case qe @ ast.Quantified(
+//                  ast.Exists(),
+//                  qvar,
+//                  ast.BinaryOp(
+//                    _: ast.And,
+//                    rdStarConstraints,
+//                    pe @ ast.FieldAccessPredicate(
+//                            ast.FieldLocation(eRcvr, field),
+//                            _)))
+//            if toSort(qvar.dataType) == sorts.Perms =>
+//
+//        val witness = qvar
+//        val (tWitness, _) = freshPermVar(witness.name)
+//        val σ1 = σ \+ (witness, tWitness)
+//        eval(σ1, rdStarConstraints, pve, c, tv)((tRdStarConstraints, c1) => {
+//          assume(tRdStarConstraints, c1)
+//          produce2(σ1, sf, p, pe, pve, c1, tv)((h1, c2) =>
+//            Q(h1, c2))})
 
 			/* Any regular expressions, i.e. boolean and arithmetic. */
 			case _ =>
@@ -181,7 +182,9 @@ trait DefaultProducer[
                                 (σ: S,
                                  sf: Sort => Term,
                                  p: PermissionsTuple,
-                                 memloc: ast.MemoryLocation,
+//                                 memloc: ast.MemoryLocation,
+                                 eRcvr: ast.Expression,
+                                 id: String,
                                  gain: ast.Expression,
                                  chConstructor: (Term, String, Term, PermissionsTuple) => CH,
                                  sort: Sort,
@@ -191,7 +194,7 @@ trait DefaultProducer[
                                 (Q: (H, CH, C) => VerificationResult)
                                 : VerificationResult = {
 
-    val ast.MemoryLocation(eRcvr, id) = memloc
+//    val ast.MemoryLocation(eRcvr, id) = memloc
 
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
       assume(tRcvr !== Null(), c1)

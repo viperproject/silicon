@@ -81,35 +81,35 @@
 
 ; --- Permissions ---
 
-(define-sort $Perms () Real)
-; (declare-const $Perms.Write $Perms)
-(define-const $Perms.Write $Perms 1.0)
-; (declare-const $Perms.Zero $Perms)
-(define-const $Perms.Zero $Perms 0.0)
-(declare-const $Perms.iRd $Perms) ; ???
-(declare-const $Perms.pRd $Perms) ; Predicate read
-(declare-const $Perms.mRd $Perms) ; Monitor read
-(declare-const $Perms.cRd $Perms) ; Channel read
+(define-sort $Perm () Real)
+; (declare-const $Perm.Write $Perm)
+(define-const $Perm.Write $Perm 1.0)
+; (declare-const $Perm.Zero $Perm)
+(define-const $Perm.No $Perm 0.0)
+(declare-const $Perm.iRd $Perm) ; ???
+(declare-const $Perm.pRd $Perm) ; Predicate read
+(declare-const $Perm.mRd $Perm) ; Monitor read
+(declare-const $Perm.cRd $Perm) ; Channel read
 
-(define-fun $Perms.isValid ((p $Perms) (ub $Perms)) Bool
-  (and (< $Perms.Zero p)
+(define-fun $Perm.isValid ((p $Perm) (ub $Perm)) Bool
+  (and (< $Perm.No p)
        (< p ub)))
        
-(define-fun $Perms.isRead ((p $Perms) (ub $Perms)) Bool
-  (and ($Perms.isValid p ub)
-       (< (* 1000.0 p) $Perms.Write)))
+(define-fun $Perm.isRead ((p $Perm) (ub $Perm)) Bool
+  (and ($Perm.isValid p ub)
+       (< (* 1000.0 p) $Perm.Write)))
 
-; (assert (= $Perms.Zero 0.0))
-; (assert (= $Perms.Write 1.0))
-(assert ($Perms.isRead $Perms.iRd $Perms.Write))
+; (assert (= $Perm.No 0.0))
+; (assert (= $Perm.Write 1.0))
+(assert ($Perm.isRead $Perm.iRd $Perm.Write))
 
-(assert ($Perms.isRead $Perms.mRd $Perms.Write))
+(assert ($Perm.isRead $Perm.mRd $Perm.Write))
 (assert
   (and
-    (= $Perms.mRd $Perms.pRd )
-    (= $Perms.pRd $Perms.cRd )))
-; (assert ($Perms.isRead $Perms.pRd $Perms.Write))
-; (assert ($Perms.isRead $Perms.cRd $Perms.Write))
+    (= $Perm.mRd $Perm.pRd )
+    (= $Perm.pRd $Perm.cRd )))
+; (assert ($Perm.isRead $Perm.pRd $Perm.Write))
+; (assert ($Perm.isRead $Perm.cRd $Perm.Write))
 
 ; --- Credits ---
 	

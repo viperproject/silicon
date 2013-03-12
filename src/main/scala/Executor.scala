@@ -25,7 +25,7 @@ trait DefaultExecutor[ST <: Store[ST],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
-		extends Executor[ast.ControlFlowGraph, ST, H, S, DefaultContext[ST, H, S], TV]
+		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV]
 		{ this: Logging with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
 									 with Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 									 with Producer[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
@@ -51,11 +51,11 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 
-  def exec(σ: S, cfg: ast.ControlFlowGraph, c: C, tv: TV)
-          (Q: (S, C) => VerificationResult)
-          : VerificationResult =
-
-    exec(σ, cfg.startNode, c, tv)(Q)
+//  def exec(σ: S, cfg: ast.ControlFlowGraph, c: C, tv: TV)
+//          (Q: (S, C) => VerificationResult)
+//          : VerificationResult =
+//
+//    exec(σ, cfg.startNode, c, tv)(Q)
 
   /* Continues the execution by following the given edge. The target block
    * is only executed if the edge condition does not contradict with the
@@ -65,12 +65,16 @@ trait DefaultExecutor[ST <: Store[ST],
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
 
-    logger.debug("\n[follow] " + edge)
+//    logger.debug("\n[follow] " + edge)
 
-    eval(σ, edge.condition, Internal(edge.condition), c, tv)((tCond, c1) =>
+    val guard = edge match {
+      case ce: sil.ast.ConditionalEdge => ce.cond
+      case ue: sil.ast.UnconditionalEdge => ast.True()() }
+
+    eval(σ, guard, Internal(guard), c, tv)((tCond, c1) =>
       /* TODO: Use FollowEdge instead of IfBranching */
-      branch(tCond, c1, tv, IfBranching[ST, H, S](edge.condition, tCond),
-        (c2: C, tv1: TV) => exec(σ, edge.target, c2, tv1)(Q),
+      branch(tCond, c1, tv, IfBranching[ST, H, S](guard, tCond),
+        (c2: C, tv1: TV) => exec(σ, edge.dest, c2, tv1)(Q),
         (c2: C, tv1: TV) => Q(σ, c2)))
   }
 
@@ -79,7 +83,7 @@ trait DefaultExecutor[ST <: Store[ST],
    * That is, each edge in the list is followed using the initially
    * given state σ.
    */
-  private def follow(σ: S, edges: Set[ast.CFGEdge], c: C, tv: TV)
+  private def follow(σ: S, edges: Seq[ast.CFGEdge], c: C, tv: TV)
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
 
@@ -98,54 +102,55 @@ trait DefaultExecutor[ST <: Store[ST],
    *
    *   - Otherwise, the block's leaving edges (successors) are followed.
    */
-  private def leave(σ: S, block: ast.Block, c: C, tv: TV)
+  private def leave(σ: S, block: ast.CFGBlock, c: C, tv: TV)
                    (Q: (S, C) => VerificationResult)
                    : VerificationResult =
 
-    if (block == block.cfg.endNode) {
-      assert(block.successors.isEmpty, "The end node of a CFG is expected to have no successors.")
-      Q(σ, c)
-    } else
-      follow(σ, block.successors, c, tv)((_, c1) => Success[C, ST, H, S](c1))
+//    if (block == block.cfg.endNode) {
+//      assert(block.successors.isEmpty, "The end node of a CFG is expected to have no successors.")
+//      Q(σ, c)
+//    } else
+      follow(σ, block.succs, c, tv)((_, c1) => Success[C, ST, H, S](c1))
 
-  private def exec(σ: S, block: ast.Block, c: C, tv: TV)
+  def exec(σ: S, block: ast.CFGBlock, c: C, tv: TV)
                   (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
 
-    logger.debug("\n[exec] " + block.label)
+//    logger.debug("\n[exec] " + block.label)
 
     block match {
-      case bb: semper.sil.ast.methods.implementations.BasicBlock =>
-        exec(σ, bb.statements, c, tv)((σ1, c1) =>
-          leave(σ1, bb, c1, tv)(Q))
+//      case bb: semper.sil.ast.methods.implementations.BasicBlock =>
+      case nb @ sil.ast.NormalBlock(stmt, _) =>
+        exec(σ, stmt, c, tv)((σ1, c1) =>
+          leave(σ1, nb, c1, tv)(Q))
 
-      case lb: semper.sil.ast.methods.implementations.LoopBlock =>
-        val BigAnd = ast.utils.collections.BigAnd(lb.implementation.factory) _
-        val inv = lb.invariant
-        val invAndGuard = BigAnd(inv :: lb.condition :: Nil, Predef.identity)
-        val notGuard =
-          lb.implementation.factory.makeUnaryExpression(
-            semper.sil.ast.symbols.logical.Not()(lb.condition.sourceLocation),
-            lb.condition,
-            lb.condition.sourceLocation,
-            Nil)
-        val invAndNotGuard = BigAnd(inv :: notGuard :: Nil, Predef.identity)
+      case lb: sil.ast.LoopBlock =>
+        val inv = ast.utils.BigAnd(lb.invs)
+        val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
+        val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
+//          lb.implementation.factory.makeUnaryExpression(
+//            semper.sil.ast.symbols.logical.Not()(lb.cond.sourceLocation),
+//            lb.condition,
+//            lb.condition.sourceLocation,
+//            Nil)
+        val invAndNotGuard = ast.And(inv, notGuard)(inv.pos, inv.info)
 
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val γBody = Γ(lb.writtenVariables.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
+        val wvs: Seq[ast.Variable] = Nil // lb.writtenVariables
+        val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val (rdVarBody, rdVarBodyConstraints) = freshReadVar("$LoopRd")
-        val cBody = c.setCurrentRdPerms(ReadPerms(rdVarBody))
+        val cBody = c.setCurrentRdPerms(ReadPerm(rdVarBody))
         val σBody = Ø \ (γ = γBody)
 
         (inScope {
           /* Verify loop body (including well-formedness check) */
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
           assume(rdVarBodyConstraints, cBody)
-          produce(σBody, fresh,  FullPerms(), invAndGuard, AssertionMalformed(inv), c0, tv0)((σ1, c1) =>
+          produce(σBody, fresh,  FullPerm(), invAndGuard, AssertionMalformed(inv), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
-              consume(σ2,  FullPerms(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
+              consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
                 Success[C, ST, H, S](c3))))}
             &&
           inScope {
@@ -153,14 +158,17 @@ trait DefaultExecutor[ST <: Store[ST],
             val tv0 = tv.stepInto(c, Description[ST, H, S]("Loop Invariant Establishment"))
             val (rdVar, rdVarConstraints) = freshReadVar("$LoopRd", c.currentRdPerms)
             val c0 = (c.setConsumeExactReads(false)
-              .setCurrentRdPerms(ReadPerms(rdVar)))
+                       .setCurrentRdPerms(ReadPerm(rdVar)))
             assume(rdVarConstraints, c0)
-            consume(σ,  FullPerms(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
+            consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
-              produce(σ2, fresh,  FullPerms(), invAndNotGuard, AssertionMalformed(inv), c1, tv0)((σ3, c2) => {
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, AssertionMalformed(inv), c1, tv0)((σ3, c2) => {
                 val c3 = (c2.setConsumeExactReads(true)
-                  .setCurrentRdPerms(c.currentRdPerms))
+                            .setCurrentRdPerms(c.currentRdPerms))
                 leave(σ3 \ (g = σ.g), lb, c3, tv)(Q)})})})
+
+      case _: sil.ast.ConditionalBlock => ??? /* TODO: Implement */
+      case _: sil.ast.TerminalBlock => ??? /* TODO: Implement */
     }
   }
 
@@ -200,65 +208,65 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, UnsafeCode(stmt), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ast.FieldWrite(rcvr, field, rhs) =>
+      case ast.FieldWrite(ast.FieldLocation(eRcvr, field), rhs) =>
         val pve = UnsafeCode(stmt)
-        val tRcvr = σ.γ(rcvr)
-        if (decider.assert(tRcvr !== Null()))
-          eval(σ, rhs, pve, c, tv)((tRhs, c1) =>
-            withChunk[DirectFieldChunk](σ.h, tRcvr, field.name, FullPerms(), rcvr, pve, c1, tv)(fc =>
-              Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c1)))
-        else
-          Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(rcvr), c, tv)
+        val id = field.name
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          if (decider.assert(tRcvr !== Null()))
+            eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
+              withChunk[DirectFieldChunk](σ.h, tRcvr, id, FullPerm(), eRcvr, pve, c2, tv)(fc =>
+                Q(σ \- fc \+ DirectFieldChunk(tRcvr, id, tRhs, fc.perm), c2)))
+          else
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
       case ast.Inhale(a) =>
-        produce(σ, fresh, FullPerms(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
+        produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
           Q(σ1, c1))
 
-      case ast.Exhale(a, _) =>
+      case ast.Exhale(a) =>
         val pve = AssertionViolated(stmt)
-        consume(σ, FullPerms(), a, pve, c, tv)((σ1, _, _, c1) =>
+        consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
           Q(σ1, c1))
 
-      case call @ ast.Call(lhs, meth, args) =>
-        val BigAnd = ast.utils.collections.BigAnd(meth.expressionFactory) _
+      case call @ ast.Call(meth, eRcvr, eArgs, lhs) =>
         val pve = InvocationFailed(call)
 
-        evals(σ, args.args, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
+        evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
           val (rdVar, rdVarConstraints) = freshReadVar("$CallRd", c1.currentRdPerms)
           val c2 = (c1.setConsumeExactReads(false)
-                      .setCurrentRdPerms(ReadPerms(rdVar)))
-          val insγ = Γ(meth.signature.parameters.variables.zip(tArgs))
-          val pre = BigAnd(meth.signature.precondition, Predef.identity)
+                      .setCurrentRdPerms(ReadPerm(rdVar)))
+          val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
+          val pre = ast.utils.BigAnd(meth.pres)
           assume(rdVarConstraints, c2)
-          consume(σ \ insγ, FullPerms(), pre, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Precondition")))((σ1, _, _, c3) => {
-            val outsγ = Γ(meth.signature.results.map(v => (v, fresh(v))).toMap)
+          consume(σ \ insγ, FullPerm(), pre, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Precondition")))((σ1, _, _, c3) => {
+            val outs = meth.formalReturns.map(_.localVar)
+            val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            val post = BigAnd(meth.signature.postcondition, Predef.identity)
-            produce(σ2, fresh, FullPerms(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
-              val lhsγ = Γ(lhs.zip(meth.signature.results)
+            val post = ast.utils.BigAnd(meth.posts)
+            produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
+              val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               val c5 = (c4.setConsumeExactReads(true)
                           .setCurrentRdPerms(c2.currentRdPerms))
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c5)})})})
 
-      case ast.New(v, dt) =>
-        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
-        Q(σ \+ (v, fresh(v)), c)
+//      case ast.New(v, dt) =>
+//        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
+//        Q(σ \+ (v, fresh(v)), c)
 
-      case fold @ ast.Fold(semper.sil.ast.expressions.terms.PredicateLocation(eRcvr, predicate), ePerm) =>
+      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm)) =>
         val pve = FoldFailed(fold)
         eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               decider.isValidFraction(tPerm, ePerm) match {
                 case None =>
-                  val insγ = Γ((predicate.factory.thisVar -> tRcvr))
-                  val c2a = c2.setCurrentRdPerms(PredicateRdPerms())
-                  consume(σ \ insγ, tPerm, predicate.expression, pve, c2a, tv.stepInto(c2a, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
+                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
+                  val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
+                  consume(σ \ insγ, tPerm, predicate.body, pve, c2a, tv.stepInto(c2a, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
                     val ncs = dcs.map{_ match {
                       case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                      case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
-                    }}
+                      case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
                     /* Producing Access is unfortunately not an option here
                     * since the following would fail due to productions
                     * starting in an empty heap:
@@ -301,16 +309,21 @@ trait DefaultExecutor[ST <: Store[ST],
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               decider.isValidFraction(tPerm, ePerm) match {
                 case None =>
-                  val insγ = Γ((pred.factory.thisVar -> tRcvr))
-                  consume(σ, FullPerms(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
-                    val c4 = c3.setCurrentRdPerms(PredicateRdPerms())
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, pred.expression, pve, c4, tv.stepInto(c4, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c5) => {
+                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
+                  consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
+                    val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, pred.body, pve, c4, tv.stepInto(c4, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c5) => {
                       val c5 = c4.setCurrentRdPerms(c3.currentRdPerms)
                       Q(σ2 \ σ.γ, c5)})})
                 case Some(reason) =>
                   Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)})
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+
+      case _: sil.ast.FreshReadPerm => ??? /* TODO: Implement */
+
+      /* These cases should not occur when working with the CFG-representation of the program. */
+      case _: sil.ast.Goto | _: sil.ast.If | _: sil.ast.Label | _: sil.ast.Seqn | _: sil.ast.While => ???
 		}
 
 		executed

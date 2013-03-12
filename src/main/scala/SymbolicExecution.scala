@@ -159,7 +159,7 @@ trait ChunkFinder[ST <: Store[ST],
                   C <: Context[C, ST, H, S],
                   TV <: TraceView[TV, ST, H, S]] {
 
-	def withChunk[CH <: Chunk: NotNothing: Manifest]
+	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
                 rcvr: Term,
                 id: String,
@@ -170,7 +170,7 @@ trait ChunkFinder[ST <: Store[ST],
 							 (Q: CH => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: PermissionChunk: NotNothing: Manifest]
+  def withChunk[CH <: PermissionChunk : NotNothing : Manifest]
                (h: H,
                 rcvr: Term,
                 id: String,
@@ -225,7 +225,7 @@ class DefaultChunkFinder[ST <: Store[ST],
 		}
 	}
 
-	def withChunk[CH <: PermissionChunk: NotNothing: Manifest]
+	def withChunk[CH <: PermissionChunk : NotNothing : Manifest]
                 (h: H,
                 rcvr: Term,
                 id: String,
@@ -251,20 +251,20 @@ class StateUtils[ST <: Store[ST],
                  C <: Context[C, ST, H, S]]
                 (val decider: Decider[PermissionsTuple, ST, H, PC, S, C]) {
 
-  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerms())
+  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerm())
                   : (Var, Term) = {
 
-    val permVar = decider.fresh(id, sorts.Perms)
-    val permVarConstraints = IsValidPerms(permVar, upperBound)
+    val permVar = decider.fresh(id, sorts.Perm)
+    val permVarConstraints = IsValidPerm(permVar, upperBound)
 
     (permVar, permVarConstraints)
   }
 
-  def freshReadVar(id: String = "$rd", upperBound: FractionalPermissions = FullPerms())
+  def freshReadVar(id: String = "$rd", upperBound: FractionalPermissions = FullPerm())
                   : (Var, Term) = {
 
-    val permVar = decider.fresh(id, sorts.Perms)
-    val permVarConstraints = IsReadPerms(permVar, upperBound)
+    val permVar = decider.fresh(id, sorts.Perm)
+    val permVarConstraints = IsReadPerm(permVar, upperBound)
 
     (permVar, permVarConstraints)
   }

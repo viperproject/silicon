@@ -12,8 +12,8 @@ import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFacto
     PermissionChunk}
 import interfaces.reporting.Context
 import state.{TypeConverter, terms}
-import state.terms.{Sort, Term, Eq, Or, True, PermissionsTuple, FullPerms,
-    ZeroPerms, ReadPerms, StarPerms, PredicateRdPerms, MonitorRdPerms, PermMinus, PermPlus}
+import state.terms.{Sort, Term, Eq, Or, True, PermissionsTuple, FullPerm,
+    NoPerm, ReadPerm, StarPerm, PredicateRdPerm, MonitorRdPerm, PermMinus, PermPlus}
 import reporting.Bookkeeper
 //import reporting.ErrorMessages.{FractionMightBeNegative, FractionMightBeGT100}
 import silicon.utils.notNothing._
@@ -271,7 +271,7 @@ class DefaultDecider[ST <: Store[ST],
    */
   def isAsPermissive(perm: PermissionsTuple, other: PermissionsTuple) = (
        perm == other
-    || (   perm.combined == FullPerms()
+    || (   perm.combined == FullPerm()
         && other.isPotentiallyWrite == silicon.state.terms.PotentiallyWriteStatus.False)
     || permAssert(Or(perm === other, other < perm)))
 
@@ -279,33 +279,33 @@ class DefaultDecider[ST <: Store[ST],
     prover.logComment("[assertReadAccess]")
     prover.logComment("perm.combined = " + perm.combined)
     perm.combined match {
-      case _: ReadPerms
-           | _: StarPerms => true
+      case   _: ReadPerm
+           | _: StarPerm => true
       case _ =>
-        prover.logComment("*** " + (ZeroPerms() < perm.combined) + " ***")
-        permAssert(ZeroPerms() < perm.combined)
+        prover.logComment("*** " + (NoPerm() < perm.combined) + " ***")
+        permAssert(NoPerm() < perm.combined)
     }
   }
 
 	def assertNoAccess(perm: PermissionsTuple) = perm.combined match {
-    case _: ZeroPerms => true
+    case _: NoPerm => true
 
     /* ATTENTION: This is only sound if both plus operands and the left minus
      *            operand are positive!
      * */
     case _: PermPlus
-        | PermMinus(_, _: StarPerms) => false
+        | PermMinus(_, _: StarPerm) => false
 
-    case _ => permAssert(Or(perm === ZeroPerms(), perm.combined < ZeroPerms()))
+    case _ => permAssert(Or(perm === NoPerm(), perm.combined < NoPerm()))
   }
 
 	def assertWriteAccess(perm: PermissionsTuple) = perm.combined match {
-    case _: FullPerms => true
+    case _: FullPerm => true
 
-    case _: ReadPerms
-        | _: StarPerms => false
+    case _: ReadPerm
+        | _: StarPerm => false
 
-    case _ => permAssert(Or(perm === FullPerms(), FullPerms() < perm.combined))
+    case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm.combined))
   }
 
 	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean = (
@@ -319,13 +319,13 @@ class DefaultDecider[ST <: Store[ST],
       .getOrElse(false))
 
 	def isNonNegativeFraction(perm: PermissionsTuple) = perm.combined match {
-    case  _: ReadPerms
-        | _: MonitorRdPerms
-        | _: PredicateRdPerms
-        | _: FullPerms
-        | _: StarPerms => true
+    case  _: ReadPerm
+        | _: MonitorRdPerm
+        | _: PredicateRdPerm
+        | _: FullPerm
+        | _: StarPerm => true
 
-    case _ => isAsPermissive(perm, PermissionsTuple(ZeroPerms()))
+    case _ => isAsPermissive(perm, PermissionsTuple(NoPerm()))
   }
 
   /* TODO: Currently deactivated since Chalice also doesn't seem to check (anymore)
@@ -427,7 +427,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def fresh(s: Sort) = prover_fresh("$t", s)
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
-  def fresh(v: ast.Variable) = prover_fresh(v.name, typeConverter.toSort(v.dataType))
+  def fresh(v: ast.Variable) = prover_fresh(v.name, typeConverter.toSort(v.typ))
 
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1

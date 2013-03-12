@@ -63,12 +63,12 @@ trait DefaultEvaluator[
 			     (Q: (PermissionsTuple, C) => VerificationResult)
            : VerificationResult = {
 
-    assert(p.dataType == ast.types.Perms,
+    assert(p.typ == ast.types.Perm,
            "DefaultEvaluator.evalp expects permission-typed expressions.")
 
     eval(σ, p, pve, c, tv)((tp, c1) => tp match {
       case fp: FractionalPermissions => Q(fp, c1)
-      case _ => Q(TermPerms(tp), c1)})
+      case _ => Q(TermPerm(tp), c1)})
   }
 			
 	private def evals2(σ: S,
@@ -92,7 +92,7 @@ trait DefaultEvaluator[
           : VerificationResult = {
 
 		eval2(σ, e, pve, c, tv)((t, c1) => {
-			t.setSrcNode(e)
+//			t.setSrcNode(e)
 			Q(t, c1)})
   }
 
@@ -134,10 +134,10 @@ trait DefaultEvaluator[
 
       case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval.intValue), c)
 
-      case _: ast.FullPermission => Q(FullPerms(), c)
-      case _: ast.NoPermission => Q(ZeroPerms(), c)
+      case _: ast.FullPerm => Q(FullPerm(), c)
+      case _: ast.NoPerm => Q(NoPerm(), c)
 
-      case ast.VariableExpression(v) => Q(σ.γ(v), c)
+      case v: ast.Variable => Q(σ.γ(v), c)
 
       case fr: ast.FieldRead =>
         evalFieldRead(σ, fr, pve, c, tv)((fc, c1) =>
@@ -145,23 +145,23 @@ trait DefaultEvaluator[
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
-      case ast.UnaryOp(ast.Not(), e0) =>
+      case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
           Q(Not(t0), c1))
 
-      case ast.BinaryOp(op, e0, e1) =>
-        op match {
+//      case ast.BinaryOp(op, e0, e1) =>
+//        op match {
           /* Strict evaluation of AND */
-          case ast.And() if config.strictConjunctionEvaluation =>
+          case ast.And(e0, e1) if config.strictConjunctionEvaluation =>
             evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
 
           /* Short-circuiting evaluation of AND */
-          case ast.And() =>
+          case ast.And(e0, e1) =>
             var πPre: Set[Term] = Set()
             var πAux: Set[Term] = Set()
 
-            var t0: Term = True().setSrcNode(e0)
-            var t1: Term = True().setSrcNode(e1)
+            var t0: Term = True() //.setSrcNode(e0)
+            var t1: Term = True() //.setSrcNode(e1)
 
             eval(σ, e0, pve, c, tv)((_t0, c1) => {
               t0 = _t0
@@ -189,15 +189,15 @@ trait DefaultEvaluator[
                 Q(And(t0, t1), c1)}})
 
           /* TODO: Implement a short-circuiting evaluation of OR. */
-          case ast.Or() => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
+          case ast.Or(e0, e1) => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
 
-          case ast.Implies() if config.branchOverPureConditionals =>
+          case ast.Implies(e0, e1) if config.branchOverPureConditionals =>
             eval(σ, e0, pve, c, tv)((t0, c1) =>
               branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
                 (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
                 (c2: C, tv1: TV) => Q(True(), c2)))
 
-          case impl @ ast.Implies() =>
+          case impl @ ast.Implies(e0, e1) =>
             /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
              *   fails if e0 establishes a precondition of e1
              * - Hence we have to assume e0 when evaluating e1, but revoke that
@@ -249,8 +249,8 @@ trait DefaultEvaluator[
               Q(tImplies, c)
             }
 
-          case ast.Iff() => evalBinOp(σ, e0, e1, Iff, pve, c, tv)(Q)
-        }
+//          case ast.Iff() => evalBinOp(σ, e0, e1, Iff, pve, c, tv)(Q)
+//        }
 
       case ast.Ite(e0, e1, e2) if config.branchOverPureConditionals =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -301,8 +301,8 @@ trait DefaultEvaluator[
           /* Ite with the actual results of the evaluation */
           val tActualIte =
             Ite(tActualIf.getOrElse(False()),
-              tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.dataType))),
-              tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.dataType))))
+              tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.typ))),
+              tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.typ))))
 
           assume(Set(tIf, tIte), c)
           Q(tActualIte, c)
@@ -310,108 +310,84 @@ trait DefaultEvaluator[
 
       case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
 
-      case ast.DomainFunctionApplication(f, es) =>
-        f match {
-          /* Booleans */
+      /* References */
 
-          case semper.sil.ast.types.booleanTrue => Q(True(), c)
-          case semper.sil.ast.types.booleanFalse => Q(False(), c)
+      case ast.NullLiteral => Q(Null(), c)
 
-          case semper.sil.ast.types.booleanNegation =>
-            eval(σ, es(0), pve, c, tv)((t0, c1) =>
-              Q(Not(t0), c1))
+      /* Integers */
 
-          case semper.sil.ast.types.booleanConjunction =>
-            evalBinOp(σ, es(0), es(1), And, pve, c, tv)(Q)
+      case ast.IntPlus(e0, e1) =>
+        evalBinOp(σ, e0, e1, Plus, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.booleanDisjunction =>
-            evalBinOp(σ, es(0), es(1), Or, pve, c, tv)(Q)
+      case ast.IntMinus(e0, e1) =>
+        evalBinOp(σ, e0, e1, Minus, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.booleanImplication =>
-            evalBinOp(σ, es(0), es(1), Implies, pve, c, tv)(Q)
+      case ast.IntTimes(e0, e1) =>
+        evalBinOp(σ, e0, e1, Times, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.booleanEquivalence =>
-            evalBinOp(σ, es(0), es(1), Iff, pve, c, tv)(Q)
+      case ast.IntDiv(e0, e1) =>
+        evalBinOp(σ, e0, e1, Div, pve, c, tv)(Q)
 
-          /* References */
+      case ast.IntMod(e0, e1) =>
+        evalBinOp(σ, e0, e1, Mod, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.nullFunction => Q(Null(), c)
+      case ast.IntLE(e0, e1) =>
+        evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.referenceEquality =>
-            evalBinOp(σ, es(0), es(1), TermEq, pve, c, tv)(Q)
+      case ast.IntLT(e0, e1) =>
+        evalBinOp(σ, e0, e1, Less, pve, c, tv)(Q)
 
-          /* Integers */
+      case ast.IntGE(e0, e1) =>
+        evalBinOp(σ, e0, e1, AtLeast, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerAddition =>
-            evalBinOp(σ, es(0), es(1), Plus, pve, c, tv)(Q)
+      case ast.IntGT(e0, e1) =>
+        evalBinOp(σ, e0, e1, Greater, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerSubtraction =>
-            evalBinOp(σ, es(0), es(1), Minus, pve, c, tv)(Q)
+      /* Permissions */
 
-          case semper.sil.ast.types.integerMultiplication =>
-            evalBinOp(σ, es(0), es(1), Times, pve, c, tv)(Q)
+      case ast.ConcPerm(n, d) =>
+        Q(ConcPerm(n, d), c)
 
-          case semper.sil.ast.types.integerDivision =>
-            evalBinOp(σ, es(0), es(1), Div, pve, c, tv)(Q)
+      case ast.PermPlus(e0, e1) =>
+        evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerModulo =>
-            evalBinOp(σ, es(0), es(1), Mod, pve, c, tv)(Q)
+      case ast.PermMinus(e0, e1) =>
+        evalPermOp(σ, e0, e1, (t0, t1) => t0 - t1, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerEQ =>
-            evalBinOp(σ, es(0), es(1), TermEq, pve, c, tv)(Q)
+      case ast.PermTimes(e0, e1) =>
+        evalPermOp(σ, e0, e1, (t0, t1) => t0 * t1, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerNE =>
-            val neq = (t1: Term, t2: Term) => t1 !== t2
-            evalBinOp(σ, es(0), es(1), neq, pve, c, tv)(Q)
+      case ast.PermIntTimes(e0, e1) =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          evalp(σ, e1, pve, c1, tv)((t1, c2) =>
+            Q(IntPermTimes(t0, t1.combined), c2)))
 
-          case semper.sil.ast.types.integerLE =>
-            evalBinOp(σ, es(0), es(1), AtMost, pve, c, tv)(Q)
+      case ast.PermLE(e0, e1) =>
+        evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerLT =>
-            evalBinOp(σ, es(0), es(1), Less, pve, c, tv)(Q)
+      case ast.PermLT(e0, e1) =>
+        evalBinOp(σ, e0, e1, Less, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerGE =>
-            evalBinOp(σ, es(0), es(1), AtLeast, pve, c, tv)(Q)
+      case ast.PermGE(e0, e1) =>
+        evalBinOp(σ, e0, e1, AtLeast, pve, c, tv)(Q)
 
-          case semper.sil.ast.types.integerGT =>
-            evalBinOp(σ, es(0), es(1), Greater, pve, c, tv)(Q)
+      case ast.PermGT(e0, e1) =>
+        evalBinOp(σ, e0, e1, Greater, pve, c, tv)(Q)
 
-          /* Permissions */
+      /* Others */
 
-          case semper.sil.ast.types.percentagePermission => es(0) match {
-            case ilt: semper.sil.ast.expressions.terms.IntegerLiteralExpression =>
-              Q(PercPerms(ilt.value.toInt), c)
+      /* Domains not handled directly */
+      case ast.DomainFuncApp(func, eArgs) =>
+        evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
+          Q(DomainFApp(func.name, tArgs, toSort(func.typ)), c1))
 
-            case _ =>
-              sys.error("Expected percentagePermission %s to wrap an IntegerLiteralTerm, but " +
-                "found %s (%s)".format(f, es(0), es(0).getClass.getName))}
+      case quant: ast.Quantified =>
+        val body = quant.exp
+        val qvar = quant.variable.localVar
 
-          case semper.sil.ast.types.permissionAddition =>
-            evalPermOp(σ, es(0), es(1), (t0, t1) => t0 + t1, pve, c, tv)(Q)
-
-          case semper.sil.ast.types.permissionSubtraction =>
-            evalPermOp(σ, es(0), es(1), (t0, t1) => t0 - t1, pve, c, tv)(Q)
-
-          case semper.sil.ast.types.permissionMultiplication =>
-            evalPermOp(σ, es(0), es(1), (t0, t1) => t0 * t1, pve, c, tv)(Q)
-
-          case semper.sil.ast.types.permissionIntegerMultiplication =>
-            eval(σ, es(0), pve, c, tv)((t0, c1) =>
-              evalp(σ, es(1), pve, c1, tv)((t1, c2) =>
-                Q(IntPermTimes(t0, t1.combined), c2)))
-
-
-          /* Domains not handled directly */
-
-          case _ =>
-            evals(σ, es, pve, c, tv)((ts, c1) =>
-              Q(DomainFApp(f.fullName, ts, toSort(f.signature.resultType)), c1))
-        }
-
-      case ast.Quantified(quant, qvar, body) =>
         val tQuantOp = quant match {
-          case ast.Forall() => Forall
-          case ast.Exists() => Exists
+          case _: ast.Forall => Forall
+          case _: ast.Exists => Exists
         }
 
         /* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
@@ -448,7 +424,7 @@ trait DefaultEvaluator[
 
         decider.pushScope()
 
-        val tPv = fresh(qvar)
+        val tPv = fresh(qvar.name, toSort(qvar.typ))
 
         val r =
           eval(σ \+ (qvar, tPv), body, pve, c, tv)((tBody, c1) => {
@@ -479,43 +455,44 @@ trait DefaultEvaluator[
           assume(tQuantAux, c)
           Q(tQuant, c)}
 
-      case ast.DomainPredicateExpression(predicate, args) =>
-        predicate match {
-          /* PermissionTerm */
+//      case ast.DomainPredicateExpression(predicate, args) =>
+//        predicate match {
+//          /* PermissionTerm */
+//
+//          case ast.PermissionEq =>
+//            evalBinOp(σ, args(0), args(1), TermEq, pve, c, tv)(Q)
+//
+//          case ast.PermissionNeq =>
+//            val neq = (t1: Term, t2: Term) => t1 !== t2
+//            evalBinOp(σ, args(0), args(1), neq, pve, c, tv)(Q)
+//
+//          case ast.PermissionAtMost =>
+//            evalBinOp(σ, args(0), args(1), AtMost, pve, c, tv)(Q)
+//
+//          case ast.PermissionLess =>
+//            evalBinOp(σ, args(0), args(1), Less, pve, c, tv)(Q)
+//
+//          case ast.PermissionAtLeast =>
+//            evalBinOp(σ, args(0), args(1), AtLeast, pve, c, tv)(Q)
+//
+//          case ast.PermissionGreater =>
+//            evalBinOp(σ, args(0), args(1), Greater, pve, c, tv)(Q)
+//
+//          /* Booleans */
+//
+//          case ast.BooleanEvaluate =>
+//            eval(σ, args(0), pve, c, tv)(Q)
+//
+//          /* Domains not directly handled */
+//
+//          case dp: ast.DomainPredicate =>
+//            evals(σ, args, pve, c, tv)((tArgs, c1) =>
+//              Q(DomainFApp(dp.fullName, tArgs, sorts.Bool), c1))
+//        }
 
-          case ast.PermissionEq =>
-            evalBinOp(σ, args(0), args(1), TermEq, pve, c, tv)(Q)
-
-          case ast.PermissionNeq =>
-            val neq = (t1: Term, t2: Term) => t1 !== t2
-            evalBinOp(σ, args(0), args(1), neq, pve, c, tv)(Q)
-
-          case ast.PermissionAtMost =>
-            evalBinOp(σ, args(0), args(1), AtMost, pve, c, tv)(Q)
-
-          case ast.PermissionLess =>
-            evalBinOp(σ, args(0), args(1), Less, pve, c, tv)(Q)
-
-          case ast.PermissionAtLeast =>
-            evalBinOp(σ, args(0), args(1), AtLeast, pve, c, tv)(Q)
-
-          case ast.PermissionGreater =>
-            evalBinOp(σ, args(0), args(1), Greater, pve, c, tv)(Q)
-
-          /* Booleans */
-
-          case ast.BooleanEvaluate =>
-            eval(σ, args(0), pve, c, tv)(Q)
-
-          /* Domains not directly handled */
-
-          case dp: ast.DomainPredicate =>
-            evals(σ, args, pve, c, tv)((tArgs, c1) =>
-              Q(DomainFApp(dp.fullName, tArgs, sorts.Bool), c1))
-        }
-
-      case fapp @ ast.FunctionApplication(eRcvr, func, eArgs) =>
-        val BigAnd = ast.utils.collections.BigAnd(func.factory) _
+      case fapp @ ast.FuncApp(func, eRcvr, eArgs) =>
+//        val BigAnd = ast.utils.collections.BigAnd(func.factory) _
+//        val err = (_: ast.Expression) => InvocationFailed(fapp)
         val err = InvocationFailed(fapp)
         val id = func.name
         /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
@@ -527,16 +504,16 @@ trait DefaultEvaluator[
           evals2(σ, eArgs, Nil, pve, c1, tv)((tArgs, c2) => {
             if (decider.assert(tRcvr !== Null())) {
               bookkeeper.functionApplications += 1
-              val insγ = Γ(   (func.factory.thisVar -> tRcvr)
-                           +: func.signature.parameters.variables.zip(tArgs))
+              val insγ = Γ(   (ast.ThisLiteral()() -> tRcvr)
+                           +: func.formalArgs.map(_.localVar).zip(tArgs))
               val σ2 = σ \ insγ
-              val pre = BigAnd(func.signature.precondition, Predef.identity)
+              val pre = ast.utils.BigAnd(func.pres)
               val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
               val c2a = (c2.setConsumeExactReads(false)
-                           .setCurrentRdPerms(ReadPerms(rdVar)))
+                           .setCurrentRdPerms(ReadPerm(rdVar)))
               assume(rdVarConstraints, c2a)
-              consume(σ2, FullPerms(), pre, err, c2a, tv)((_, s, _, c3) => {
-                val tFA = FApp(func, s.convert(sorts.Snap), tRcvr, tArgs, toSort(func.resultType))
+              consume(σ2, FullPerm(), pre, err, c2a, tv)((_, s, _, c3) => {
+                val tFA = FApp(func, s.convert(sorts.Snap), tRcvr, tArgs, toSort(func.typ))
                 if (fappCache.contains(tFA)) {
                   logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
                   val piFB = fappCache(tFA)
@@ -550,10 +527,10 @@ trait DefaultEvaluator[
                   if (c3.cycles(id) < config.unrollFunctions) {
                     val c3a = c3.incCycleCounter(id)
                     val πPre = decider.π
-                    val post = BigAnd(func.signature.postcondition, Predef.identity)
+                    val post = ast.utils.BigAnd(func.posts)
                     if (true) {
                       bookkeeper.functionBodyEvaluations += 1
-                      eval(σ3, func.body, pve, c3a, tv)((tFB, c4) =>
+                      eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
                         eval(σ3, post, pve, c4, tv)((tPost, c5) => {
                           val c5a = c5.decCycleCounter(id)
                           val tFAEqFB = tFA === tFB
@@ -582,7 +559,7 @@ trait DefaultEvaluator[
               acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm),
               eIn) =>
 
-        val body = predicate.expression
+        val body = predicate.body
         val id = predicate.name
           /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
            *       in order to avoid that different predicates with the same name trigger a cycle
@@ -594,8 +571,8 @@ trait DefaultEvaluator[
             if (decider.isNonNegativeFraction(tPerm))
               eval(σ, eRcvr, pve, c1, tv)((tRcvr, c2) =>
                 if (decider.assert(tRcvr !== Null()))
-                  consume(σ, FullPerms(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-                    val insΓ = Γ((predicate.factory.thisVar -> tRcvr))
+                  consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                    val insΓ = Γ((ast.ThisLiteral()() -> tRcvr))
                     /* Unfolding only effects the current heap */
                     produce(σ1 \ insΓ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(id)
@@ -649,8 +626,8 @@ trait DefaultEvaluator[
                            (Q: (FieldChunk, C) => VerificationResult)
                            : VerificationResult = {
 
-    val eRcvr = fr.location.receiver
-    val id = fr.location.field.name
+    val eRcvr = fr.rcv
+    val id = fr.field.name
 
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
       if (decider.assert(tRcvr !== Null())) {

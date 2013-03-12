@@ -17,7 +17,7 @@ object SiliconBuild extends Build {
           // crossPaths := false,
           // testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
           // javacOptions in Compile ++= Seq("-target", "6", "-source", "6")
-          scalacOptions in Compile ++= Seq("-deprecation" /*, "-unchecked", "-feature"*/),
+          scalacOptions in Compile ++= Seq("-deprecation", "-unchecked", "-feature"),
           resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"))
 
   /* Projects */

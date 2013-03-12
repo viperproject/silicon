@@ -113,20 +113,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		val consumed = φ match {
 
 			/* And <: BooleanExpr */
-      case ast.BinaryOp(_: ast.And, a1, a2) =>
+      case ast.And(a1, a2) =>
 				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
 					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
 						Q(h2, Combine(s1.convert(sorts.Snap), s2.convert(sorts.Snap)), dcs1 ::: dcs2, c2)))
 
 			/* Implies <: BooleanExpr */
-      case ast.BinaryOp(_: ast.Implies, e0, a0) /* if !φ.isPure */ =>
+      case ast.Implies(e0, a0) /* if !φ.isPure */ =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>
 					branch(t0, c, tv, ImplBranching[ST, H, S](e0, t0),
 						(c2: C, tv1: TV) => consume(σ, h, p, a0, pve, c2, tv1)(Q),
 						(c2: C, tv1: TV) => Q(h, Unit, Nil, c2)))
 
       /* Access to fields or predicates */
-      case ast.Access(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
+      case ast.AccessPredicate(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
@@ -149,28 +149,28 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
-      case qe @ ast.Quantified(
-                  ast.Exists(),
-                  qvar,
-                  ast.BinaryOp(
-                    _: ast.And,
-                    rdStarConstraints,
-                    pe @ ast.FieldAccessPredicate(ast.FieldLocation(rcvr, field), _)))
-           if toSort(qvar.dataType) == sorts.Perms =>
-
-        eval(σ, rcvr, pve, c, tv)((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
-            withChunk[DirectFieldChunk](h, tRcvr, field.name, rcvr, pve, c1, tv)(fc => {
-              val witness = qvar
-              val (tWitness, _) = freshPermVar(witness.name)
-              val σ1 = σ \+ (witness, tWitness)
-              eval(σ1, rdStarConstraints, pve, c1, tv)((tRdStarConstraints, c2) => {
-                val pWitness = PermissionsTuple(StarPerms(tWitness))
-                val tConstraints = And(tRdStarConstraints, fc.perm > pWitness)
-                assume(tConstraints, c2)
-                Q(h - fc + (fc - pWitness), fc.value.convert(sorts.Snap), fc :: Nil, c2)})})
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(rcvr), c1, tv))
+//      case qe @ ast.Quantified(
+//                  ast.Exists(),
+//                  qvar,
+//                  ast.BinaryOp(
+//                    _: ast.And,
+//                    rdStarConstraints,
+//                    pe @ ast.FieldAccessPredicate(ast.FieldLocation(rcvr, field), _)))
+//           if toSort(qvar.dataType) == sorts.Perms =>
+//
+//        eval(σ, rcvr, pve, c, tv)((tRcvr, c1) =>
+//          if (decider.assert(tRcvr !== Null()))
+//            withChunk[DirectFieldChunk](h, tRcvr, field.name, rcvr, pve, c1, tv)(fc => {
+//              val witness = qvar
+//              val (tWitness, _) = freshPermVar(witness.name)
+//              val σ1 = σ \+ (witness, tWitness)
+//              eval(σ1, rdStarConstraints, pve, c1, tv)((tRdStarConstraints, c2) => {
+//                val pWitness = PermissionsTuple(StarPerms(tWitness))
+//                val tConstraints = And(tRdStarConstraints, fc.perm > pWitness)
+//                assume(tConstraints, c2)
+//                Q(h - fc + (fc - pWitness), fc.value.convert(sorts.Snap), fc :: Nil, c2)})})
+//          else
+//            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(rcvr), c1, tv))
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
@@ -201,7 +201,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                      => VerificationResult)
                                 :VerificationResult = {
 
-    val ast.MemoryLocation(eRcvr, id) = memloc
+    val eRcvr = memloc.rcv
+    val id = memloc.loc.name
 
     if (consumeExactRead(pLoss.combined, c)) {
       withChunk[DirectChunk](h, tRcvr, id, pLoss, eRcvr, pve, c, tv)(ch => {
@@ -217,8 +218,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   }
 
   private def consumeExactRead(fp: FractionalPermissions, c: C): Boolean = fp match {
-    case _: ReadPerms if !c.consumeExactReads => false
-    case _: StarPerms => false
+    case _: ReadPerm if !c.consumeExactReads => false
+    case _: StarPerm => false
     case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)

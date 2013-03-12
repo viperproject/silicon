@@ -85,23 +85,23 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
     case pt: PermissionsTuple => convert(pt.combined)
 
-    case FullPerms() => "$Perms.Write"
-    case ZeroPerms() => "$Perms.Zero"
-    case StarPerms(v) => convert(v)
-    case ReadPerms(v) => convert(v)
-    case TermPerms(t) => convert2real(t)
-    case PercPerms(n) => (n / 100.0).toString
+    case FullPerm() => "$Perm.Write"
+    case NoPerm() => "$Perm.No"
+    case StarPerm(v) => convert(v)
+    case ReadPerm(v) => convert(v)
+    case TermPerm(t) => convert2real(t)
+    case ConcPerm(n, d) => (n.toDouble / d.toDouble).toString
 
-    case InternalRdPerms() => "$Perms.iRd"
-    case MonitorRdPerms() => "$Perms.mRd"
-    case PredicateRdPerms() => "$Perms.pRd"
-    case ChannelRdPerms() => "$Perms.cRd"
+    case InternalRdPerm() => "$Perm.iRd"
+    case MonitorRdPerm() => "$Perm.mRd"
+    case PredicateRdPerm() => "$Perm.pRd"
+    case ChannelRdPerm() => "$Perm.cRd"
 
-    case IsValidPerms(v, ub) =>
-      "($Perms.isValid %s %s)".format(convert(v), convert(ub))
+    case IsValidPerm(v, ub) =>
+      "($Perm.isValid %s %s)".format(convert(v), convert(ub))
 
-    case IsReadPerms(v, ub) =>
-      "($Perms.isRead %s %s)".format(convert(v), convert(ub))
+    case IsReadPerm(v, ub) =>
+      "($Perm.isRead %s %s)".format(convert(v), convert(ub))
 
     case PermLess(t0, t1) =>
       "(< %s %s)".format(convert(t0), convert(t1))
@@ -269,7 +269,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
   def convert(sort: Sort) = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
-    case sorts.Perms => "$Perms"
+    case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
     case sorts.UserSort(id) => sanitiseIdentifier(id)

@@ -2,6 +2,7 @@ package semper
 package silicon
 package interfaces.state
 
+import scala.language.implicitConversions
 import silicon.state.terms.{Term}
 
 object factoryUtils {

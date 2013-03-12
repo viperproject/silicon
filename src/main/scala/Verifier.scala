@@ -29,7 +29,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		   with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
 		   with Producer[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
 		   with Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-		   with Executor[ast.ControlFlowGraph, ST, H, S, DefaultContext[ST, H, S], TV] {
+		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV] {
 
 	/*protected*/ val config: Config
 
@@ -48,44 +48,45 @@ trait AbstractElementVerifier[ST <: Store[ST],
   def contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 	
-	def verify(impl: ast.Implementation/*, history: History[ST, H, S]*/): VerificationResult = {
-    logger.debug("\n\n" + "-" * 10 + " IMPLEMENTATION " + impl.method.name + "-" * 10 + "\n")
-    decider.prover.logComment("%s %s %s".format("-" * 10, impl.method.name, "-" * 10))
+	def verify(method: ast.Method/*, history: History[ST, H, S]*/): VerificationResult = {
+    logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
+    decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-    val ins = impl.method.signature.parameters.variables
-    val outs = impl.method.signature.results.variables
+    val ins = method.formalArgs.map(_.localVar)
+    val outs = method.formalReturns.map(_.localVar)
 
     val (rdVar, rdVarConstraints) = freshReadVar("$MethRd")
 
     val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree, terms.ReadPerms(rdVar))
+    val c = contextFactory.create(history.tree, terms.ReadPerm(rdVar))
 
     val tv = traceviewFactory.create(history)
     
     val γ = Γ(   ins.map(v => (v, fresh(v)))
               ++ outs.map(v => (v, fresh(v)))
-              ++ impl.locals.map(v => (v, fresh(v))))
+              ++ method.locals.map(_.localVar).map(v => (v, fresh(v))))
 
     val σ = Σ(γ, Ø, Ø)
 
-    val pres = impl.method.signature.precondition.args
-    val posts = impl.method.signature.postcondition.args
+    val pres = method.pres
+    val posts = method.posts
+    val body = method.body.toCfg
 
 		/* Combined the well-formedness check and the execution of the body, which are two separate
 		 * rules in Smans' paper.
 		 */
     inScope {
 		  assume(rdVarConstraints, c)
-			produces(σ, fresh, terms.FullPerms(), pres, AssertionMalformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
+			produces(σ, fresh, terms.FullPerm(), pres, AssertionMalformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
-         produces(σ2, fresh, terms.FullPerms(), posts, AssertionMalformed, c2a, tv0)((_, c3) =>
+         produces(σ2, fresh, terms.FullPerm(), posts, AssertionMalformed, c2a, tv0)((_, c3) =>
            Success[DefaultContext[ST, H, S], ST, H, S](c3))}
 					&&
         inScope {
-          exec(σ1 \ (g = σ1.h), impl.body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
-            consumes(σ2, terms.FullPerms(), posts, PostconditionViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
+          exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
+            consumes(σ2, terms.FullPerm(), posts, PostconditionViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
                 Success[DefaultContext[ST, H, S], ST, H, S](c4)))})})}
 	}
 }
@@ -153,8 +154,7 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(prog.domains)
     emitFunctionDeclarations(prog.functions)
 
-    var it: Iterator[ast.Implementation] =
-      prog.methods.flatMap(_.implementations).iterator
+    var it: Iterator[ast.Method] = prog.methods.iterator
 
     /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
@@ -171,32 +171,32 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results = it map verify toList
+      results = it.map(verify _).toList
     }
 
     results
   }
 
-  def verify(impl: ast.Implementation): VerificationResult = ev.verify(impl)
+  def verify(method: ast.Method): VerificationResult = ev.verify(method)
 
-  private def emitFunctionDeclarations(fs: scala.collection.Set[ast.Function]) {
+  private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
-      var args: List[terms.Sort] = f.signature.parameters.map(p => typeConverter.toSort(p.dataType)).toList
+      var args: List[terms.Sort] = f.formalArgs.map(a => typeConverter.toSort(a.typ)).toList
       args = terms.sorts.Snap :: terms.sorts.Ref :: args
-      decider.prover.declareSymbol(f.name, args, typeConverter.toSort(f.signature.result.dataType))
+      decider.prover.declareSymbol(f.name, args, typeConverter.toSort(f.typ))
     })
   }
 
-  private def emitSortWrappers(domains: scala.collection.Set[ast.Domain]) {
+  private def emitSortWrappers(domains: Seq[ast.Domain]) {
     val snapSortId = decider.prover.termConverter.convert(terms.sorts.Snap)
-    val additionalDomains = domains -- typeConverter.manuallyHandledDomains
+    val additionalDomains = domains.diff(typeConverter.manuallyHandledDomains)
 
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional sort wrappers")
     decider.prover.logComment("")
 
     additionalDomains.foreach(d => {
-      val domainSort = typeConverter.toSort(d.getType)
+      val domainSort = typeConverter.toSort(ast.types.DomainType(d, Map.empty))
       val domainSortId = decider.prover.termConverter.convert(domainSort)
       val toSnapId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
       val fromSnapId = "$SortWrappers.%sTo%s".format(snapSortId, domainSortId)
@@ -209,8 +209,8 @@ trait AbstractVerifier[ST <: Store[ST],
     })
   }
 
-  private def emitDomainDeclarations(domains: scala.collection.Set[ast.Domain]) {
-    val additionalDomains = domains -- typeConverter.manuallyHandledDomains
+  private def emitDomainDeclarations(domains: Seq[ast.Domain]) {
+    val additionalDomains = domains.diff(typeConverter.manuallyHandledDomains)
 
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional domains")
@@ -218,8 +218,8 @@ trait AbstractVerifier[ST <: Store[ST],
 
     /* Declare domains. */
     additionalDomains.foreach(d => {
-      decider.prover.logComment("Declaring domain " + d.fullName)
-      decider.prover.declareSort(typeConverter.toSort(d.getType))
+      decider.prover.logComment("Declaring domain " + d.name)
+      decider.prover.declareSort(typeConverter.toSort(ast.types.DomainType(d, Map.empty)))
     })
 
     /* Declare functions and predicates of each domain.
@@ -227,17 +227,17 @@ trait AbstractVerifier[ST <: Store[ST],
      * all domains have been declared first.
      */
     additionalDomains.foreach(d => {
-      decider.prover.logComment("Functions of " + d.fullName)
+      decider.prover.logComment("Functions of " + d.name)
       d.functions.foreach(f =>
-        decider.prover.declareSymbol(f.fullName,
-          f.signature.parameterTypes.map(typeConverter.toSort),
-          typeConverter.toSort(f.signature.resultType)))
+        decider.prover.declareSymbol(f.name,
+          f.formalArgs.map(a => typeConverter.toSort(a.typ)),
+          typeConverter.toSort(f.typ)))
 
-      decider.prover.logComment("Predicates of " + d.fullName)
-      d.predicates.foreach(p =>
-        decider.prover.declareSymbol(p.fullName,
-          p.signature.parameterTypes.map(typeConverter.toSort),
-          terms.sorts.Bool))
+//      decider.prover.logComment("Predicates of " + d.name)
+//      d.predicates.foreach(p =>
+//        decider.prover.declareSymbol(p.name,
+//          p.formalArgs.map(typeConverter.toSort),
+//          terms.sorts.Bool))
     })
 
     /* Axiomatise each domain.
@@ -251,13 +251,13 @@ trait AbstractVerifier[ST <: Store[ST],
      *         - we don't care about traceviews
      */
     additionalDomains.foreach(d => {
-      decider.prover.logComment("Axiomatising domain " + d.fullName)
+      decider.prover.logComment("Axiomatising domain " + d.name)
       decider.prover.logComment("Axioms (eval)")
 
       val (rdVar, _) = ev.stateUtils.freshReadVar("$MethRd")
       val history = new DefaultHistory[ST, H, S]()
       val tv = ev.traceviewFactory.create(history)
-      val c = ev.contextFactory.create(history.tree, terms.ReadPerms(rdVar))
+      val c = ev.contextFactory.create(history.tree, terms.ReadPerm(rdVar))
 
       val axioms =
         decider.inScope {
@@ -267,7 +267,7 @@ trait AbstractVerifier[ST <: Store[ST],
             val σ = Σ(Ø, Ø, Ø)
             val pve = AssertionMalformed(a)
             var t: Term = null
-            ev.eval(σ, a.expression, pve, c, tv)((_t, c1) => {
+            ev.eval(σ, a.exp, pve, c, tv)((_t, c1) => {
               t = _t
               Success[DefaultContext[ST, H, S], ST, H, S](c1)
             })

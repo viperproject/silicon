@@ -7,12 +7,13 @@ import java.text.SimpleDateFormat
 import java.io.File
 import sil.verifier.{
     Verifier => SILVerifier,
+    DefaultDependency => SILDependency,
     VerificationResult => SILVerificationResult,
     VerificationError => SILVerificationError,
     Success => SILSuccess,
-    Error => SILError}
+    Failure => SILError}
 import interfaces.{VerificationResult, ContextAwareResult, Failure, Success, Unreachable}
-import state.terms.{FullPerms, PermissionsTuple}
+import state.terms.{FullPerm, PermissionsTuple}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultTypeConverter}
 import decider.DefaultDecider
@@ -23,19 +24,18 @@ import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 trait SiliconConstants {
   val name = "Silicon"
   val version = "0.1-Snapshot"
-  val dependencyVersions = Seq(("Z3", "4.x"))
+  val copyright = "(c) 2013 pm.inf.ethz.ch"
+  val dependencies = Seq(SILDependency("Z3", "4.x", "http://z3.codeplex.com/"))
 
   private[silicon] val ENV_Z3_EXE = "Z3PATH"
 }
 
 object Silicon extends SiliconConstants
 
-class Silicon(options: Seq[String] = Nil)
-      extends SILVerifier(options)
+class Silicon(private var options: Seq[String] = Nil, val debugInfo: Seq[(String, Any)])
+      extends SILVerifier
          with SiliconConstants
          with Logging {
-
-  val config = CommandLineArgumentParser.parse(options)
 
   private type P = PermissionsTuple
   private type ST = MapBackedStore
@@ -47,7 +47,19 @@ class Silicon(options: Seq[String] = Nil)
   private var startTime: Long = 0
   private var shutDownHooks: Set[() => Unit] = _
 
-  setLogLevel(config.logLevel)
+  var config: Config = _
+
+  commandLineArgs(options)
+
+  def commandLineArgs(options: Seq[String]) {
+    this.options = options
+    config = CommandLineArgumentParser.parse(options)
+    optionsChanged()
+  }
+
+  private def optionsChanged() {
+    setLogLevel(config.logLevel)
+  }
 
   /** Verifies a given SIL program and returns a sequence of ''verification errors''.
     *
@@ -100,7 +112,7 @@ class Silicon(options: Seq[String] = Nil)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
 
-    val dlb = PermissionsTuple(FullPerms())
+    val dlb = PermissionsTuple(FullPerm())
 
     val heapMerger =
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
@@ -145,14 +157,16 @@ class Silicon(options: Seq[String] = Nil)
      */
     results = results.reverse
            .foldLeft((Set[String](), List[VerificationResult]())){
-              case ((ss, rs), r: ContextAwareResult[C, ST, H, S]) =>
+              case ((ss, rs), r: ContextAwareResult[_, _, _, _]) =>
                 if (r.message == null) (ss, r :: rs)
                 else if (ss.contains(r.message.readableMessage)) (ss, rs)
                 else (ss + r.message.readableMessage, r :: rs)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
 
-    var failures = results.collect{case f: Failure[C, ST, H, S, _] => f}
+    val failures = results.collect{
+      case f: Failure[C@unchecked, ST @unchecked, H @unchecked, S @unchecked, _] => f
+    }
 
 		if (config.showStatistics.nonEmpty) {
       val proverStats = verifier.decider.getStatistics
@@ -193,11 +207,8 @@ class Silicon(options: Seq[String] = Nil)
   }
 
 	private def logResults(rs: List[VerificationResult]) {
-		rs foreach {
-			case f: Failure[C, ST, H, S, _] => logContextAwareMessage(f, s => logger.info(s))
-			case s: Success[C, ST, H, S] => // skip
-      case s: Unreachable[C, ST, H, S] => // skip
-		}
+    rs.collect{case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f}
+      .foreach(f => logContextAwareMessage(f, s => logger.info(s)))
 	}
 
 	private def logContextAwareMessage(r: ContextAwareResult[C, ST, H, S], log: String => Unit) {
