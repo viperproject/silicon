@@ -32,7 +32,7 @@ trait SiliconConstants {
 
 object Silicon extends SiliconConstants
 
-class Silicon(private var options: Seq[String] = Nil, val debugInfo: Seq[(String, Any)])
+class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq[(String, Any)] = Nil)
       extends SILVerifier
          with SiliconConstants
          with Logging {
@@ -47,7 +47,7 @@ class Silicon(private var options: Seq[String] = Nil, val debugInfo: Seq[(String
   private var startTime: Long = 0
   private var shutDownHooks: Set[() => Unit] = _
 
-  var config: Config = _
+  private var config: Config = _
 
   commandLineArgs(options)
 
@@ -56,6 +56,8 @@ class Silicon(private var options: Seq[String] = Nil, val debugInfo: Seq[(String
     config = CommandLineArgumentParser.parse(options)
     optionsChanged()
   }
+
+  def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
 
   private def optionsChanged() {
     setLogLevel(config.logLevel)
@@ -131,7 +133,7 @@ class Silicon(private var options: Seq[String] = Nil, val debugInfo: Seq[(String
 	private def runVerifier(program: ast.Program): List[Failure[C, ST, H, S, _]] = {
 	  val verifierFactory = new DefaultVerifierFactory[ST, H, PC, S, BranchingOnlyTraceView[ST, H, S]]
 	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()
-    
+
 	  val verifier = createVerifier(verifierFactory, traceviewFactory)
 
 		/* TODO:
@@ -140,19 +142,19 @@ class Silicon(private var options: Seq[String] = Nil, val debugInfo: Seq[(String
 		 *    more.
 		 *  - Remove Successes from the results before continuing
 		 */
-													
+
 		var results: List[VerificationResult] = verifier.verify(program)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - startTime
 
 		results = results.flatMap(r => r :: r.allPrevious)
-		
+
     /* Removes results that have the same textual representation of their
      * error message.
-     * 
+     *
      * TODO: This is not only ugly, and also should not be necessary. It seems
      *       that malformed predicates are currently reported multiple times,
-     *       once for each fold/unfold and once when they are checked for 
+     *       once for each fold/unfold and once when they are checked for
      *       well-formedness.
      */
     results = results.reverse

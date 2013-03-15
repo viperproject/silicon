@@ -8,7 +8,7 @@ object SiliconBuild extends Build {
   lazy val baseSettings = (
        Defaults.defaultSettings
     ++ Seq(
-          organization := "ch.ethz.inf.pm",
+          organization := "semper",
           version := "0.1-SNAPSHOT",
           // publishArtifact in packageDoc := false,
           scalaVersion := "2.10.0",

@@ -35,7 +35,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
 	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
 	import decider.{fresh, assume, inScope}
-							
+
 	protected val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
 
@@ -124,6 +124,10 @@ trait DefaultExecutor[ST <: Store[ST],
         exec(σ, stmt, c, tv)((σ1, c1) =>
           leave(σ1, nb, c1, tv)(Q))
 
+      case tb @ sil.ast.TerminalBlock(stmt) =>
+        exec(σ, stmt, c, tv)((σ1, c1) =>
+          leave(σ1, tb, c1, tv)(Q))
+
       case lb: sil.ast.LoopBlock =>
         val inv = ast.utils.BigAnd(lb.invs)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
@@ -168,7 +172,6 @@ trait DefaultExecutor[ST <: Store[ST],
                 leave(σ3 \ (g = σ.g), lb, c3, tv)(Q)})})})
 
       case _: sil.ast.ConditionalBlock => ??? /* TODO: Implement */
-      case _: sil.ast.TerminalBlock => ??? /* TODO: Implement */
     }
   }
 
@@ -204,6 +207,9 @@ trait DefaultExecutor[ST <: Store[ST],
 		decider.prover.logComment(stmt.toString)
 
 		val executed = stmt match {
+      case sil.ast.Seqn(stmts) =>
+        exec(σ, stmts, c, tv)(Q)
+
       case ast.Assignment(v, rhs) =>
         eval(σ, rhs, UnsafeCode(stmt), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
@@ -323,7 +329,12 @@ trait DefaultExecutor[ST <: Store[ST],
       case _: sil.ast.FreshReadPerm => ??? /* TODO: Implement */
 
       /* These cases should not occur when working with the CFG-representation of the program. */
-      case _: sil.ast.Goto | _: sil.ast.If | _: sil.ast.Label | _: sil.ast.Seqn | _: sil.ast.While => ???
+      case   _: sil.ast.Goto
+           | _: sil.ast.If
+           | _: sil.ast.Label
+           | _: sil.ast.Seqn
+           | _: sil.ast.While
+           | _: sil.ast.NewStmt => sys.error("Not yet implemented (%s): %s".format(stmt.getClass.getName, stmt))
 		}
 
 		executed

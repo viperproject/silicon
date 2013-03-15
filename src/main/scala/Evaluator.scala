@@ -32,13 +32,13 @@ trait DefaultEvaluator[
 
 	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
 	import decider.{fresh, assume}
-										
+
 	protected val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
-	
+
 	protected val typeConverter: TypeConverter
 	import typeConverter.toSort
-	
+
 	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
@@ -48,10 +48,10 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
-	
+
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
-	
+
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
 			     (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
@@ -70,7 +70,7 @@ trait DefaultEvaluator[
       case fp: FractionalPermissions => Q(fp, c1)
       case _ => Q(TermPerm(tp), c1)})
   }
-			
+
 	private def evals2(σ: S,
                      es: Seq[ast.Expression],
                      ts: List[Term],
@@ -86,7 +86,7 @@ trait DefaultEvaluator[
 			eval(σ, es.head, pve, c, tv)((t, c1) =>
 				evals2(σ, es.tail, t :: ts, pve, c1, tv)(Q))
 	}
-	
+
 	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
@@ -107,7 +107,7 @@ trait DefaultEvaluator[
       Q(t, c1)
     })
   }
-  
+
 	/* Attention: Only use eval(σ, e, m, c Q) inside of internalEval, because
 	 *   - eval adds an "Evaluating" operation to the context
 	 *   - eval sets the source node of the resulting term
@@ -115,7 +115,7 @@ trait DefaultEvaluator[
 	private def internalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
-	
+
 		/* For debugging only */
 		e match {
 //			case _: ast.Literal =>
@@ -126,8 +126,7 @@ trait DefaultEvaluator[
 				logger.debug("\nEVALUATING " + e)
 				logger.debug(stateFormatter.format(σ))
 		}
-		
-	
+
 		e match {
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)
@@ -312,7 +311,7 @@ trait DefaultEvaluator[
 
       /* References */
 
-      case ast.NullLiteral => Q(Null(), c)
+      case ast.NullLiteral() => Q(Null(), c)
 
       /* Integers */
 
@@ -641,7 +640,7 @@ trait DefaultEvaluator[
 		fappCacheFrames = fappCacheFrames.push(fappCache)
 		super.pushLocalState()
 	}
-	
+
 	override def popLocalState() {
 		fappCache = fappCacheFrames.top
 		fappCacheFrames = fappCacheFrames.pop
