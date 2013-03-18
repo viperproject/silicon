@@ -2,14 +2,14 @@ package semper
 package silicon
 package reporting
 
-/* TODO: Move output formatting (of Syxc' and Z3's statistics)
- *       to its own class.
- */
+/* TODO: Move output formatting (of Syxc' and Z3's statistics) to its own class. */
 
 /* TODO: Improve creation of output strings:
- *          (- Not having to list the fields in two string templates)
- *          - Not having to add a newly added field to the template
+ *         (- Not having to list the fields in two string templates)
+ *         - Not having to add a newly added field to the template
  */
+
+import java.text.SimpleDateFormat
 
 class Bookkeeper {
 	var branches: Long = 0
@@ -20,8 +20,11 @@ class Bookkeeper {
 	var assumptionCounter: Long = 0
 	var assertionCounter: Long = 0
 	var freshSymbols: Long = 0
+  var startTime: Long = 0
   var elapsedMillis: Long = 0
   var errors: Long = 0
+
+  def formattedStartTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(startTime)
 
   var proverStatistics = Map[String, String]()
 
@@ -32,6 +35,7 @@ class Bookkeeper {
   private def formatOutput(output: String) = {
     var args = List[Any](
       errors,
+      formattedStartTime,
       elapsedMillis,
       branches,
       heapMergeIterations,
@@ -53,6 +57,7 @@ class Bookkeeper {
 
     ("""
       |Syxc errors: %s
+      |Syxc start time: %s
       |Syxc time: %s
       |Syxc branches: %s
       |Syxc heap merger iterations: %d
@@ -72,6 +77,7 @@ class Bookkeeper {
     ("""
       |{
       |  "syxc_errors": %d,
+      |  "syxc_start_time": %d,
       |  "syxc_time": %d,
       |  "syxc_branches": %d,
       |  "syxc_heapMergeIterations": %d,

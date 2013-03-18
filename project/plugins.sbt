@@ -1,1 +1,1 @@
-addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
+addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")addSbtPlugin("de.oakgrove" % "sbt-hgid" % "latest.integration")addSbtPlugin("de.oakgrove" % "sbt-brand" % "latest.integration")

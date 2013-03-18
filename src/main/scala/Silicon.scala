@@ -22,8 +22,9 @@ import interfaces.reporting.{TraceView, TraceViewFactory}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 
 trait SiliconConstants {
-  val name = "Silicon"
-  val version = "0.1-Snapshot"
+  val name = brandingData.sbtProjectName
+  val version = brandingData.sbtProjectVersion
+  val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hg.version} ${brandingData.hg.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
   val dependencies = Seq(SILDependency("Z3", "4.x", "http://z3.codeplex.com/"))
 
@@ -44,16 +45,16 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]
 
-  private var startTime: Long = 0
+//  private var startTime: Long = 0
   private var shutDownHooks: Set[() => Unit] = _
-
   private var config: Config = _
+  private var started = false
 
   commandLineArgs(options)
 
   def commandLineArgs(options: Seq[String]) {
     this.options = options
-    config = CommandLineArgumentParser.parse(options)
+    config = configuration.parse(options)
     optionsChanged()
   }
 
@@ -69,12 +70,17 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     * @return The verification result.
     */
 	def verify(program: ast.Program): SILVerificationResult = {
-    startTime = System.currentTimeMillis()
+    /* TODO: Make it possible to run Silicon as a verification loop. Things to consider:
+     *         - Z3 and its context
+     *         - Config.tempDirectory
+     *         - probably lots more
+     */
+    assert(!started, "Silicon.verify can currently only be invoked once.")
+
+    started = true
     shutDownHooks = Set()
 
-    val formattedStartTime = (new SimpleDateFormat("yyyy-MM-dd hh:mm:ss z")).format(startTime)
-
-		logger.info("%s started %s".format(name, formattedStartTime))
+		logger.info("%s started %s".format(name, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())))
 
     var result: sil.verifier.VerificationResult = null
 
@@ -120,6 +126,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
 
     bookkeeper.branches = 1
+    bookkeeper.startTime = System.currentTimeMillis()
 
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start()
@@ -145,7 +152,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
 
 		var results: List[VerificationResult] = verifier.verify(program)
 
-    verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - startTime
+    verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
 		results = results.flatMap(r => r :: r.allPrevious)
 
@@ -233,24 +240,47 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
 	}
 }
 
-case class Config(
-	showBranches: Boolean = false,
-	stopOnFirstError: Boolean = false,
-	showStatistics: Option[Tuple2[String, String]] = None,
-	performSmokeChecks: Boolean = false,
-	disableSubsumption: Boolean = false,
-	includeMembers: String = "*",
-	excludeMembers: String = "",
-	unrollFunctions: Int = 1,
-	cacheFunctionApplications: Boolean = true,
-	cacheSnapshots: Boolean = true,
-	branchOverPureConditionals: Boolean = false,
-	strictConjunctionEvaluation: Boolean = false,
-	logLevel: String = "OFF",
-	z3Exe: Option[String] = None,
-	z3LogFile: String = "logfile.smt2")
+/** TODO: Move configuration-related code into a dedicated file. */
 
-object CommandLineArgumentParser {
+case class Config(
+    showBranches: Boolean = false,
+    stopOnFirstError: Boolean = false,
+    showStatistics: Option[Tuple2[String, String]] = None,
+    performSmokeChecks: Boolean = false,
+    disableSubsumption: Boolean = false,
+    includeMembers: String = "*",
+    excludeMembers: String = "",
+    unrollFunctions: Int = 1,
+    cacheFunctionApplications: Boolean = true,
+    cacheSnapshots: Boolean = true,
+    branchOverPureConditionals: Boolean = false,
+    strictConjunctionEvaluation: Boolean = false,
+    logLevel: String = "OFF",
+    tempDirectory: ConfigValue[String] = DefaultValue("./tmp"),
+    z3Exe: Option[String] = None,
+    z3LogFile: ConfigValue[String] = DefaultValue("logfile.smt2")) {
+
+  lazy val effectiveZ3LogFile = z3LogFile.orElse(new File(effectiveTempDirectory, _).getPath)
+
+  lazy val effectiveTempDirectory = {
+    val timestamp = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(System.currentTimeMillis())
+    tempDirectory.orElse(_ + "_" + timestamp)
+  }
+}
+
+sealed abstract class ConfigValue[T] {
+  def value: T
+
+  def orElse(f: T => T) = this match {
+    case UserValue(v) => v
+    case DefaultValue(v) => f(v)
+  }
+}
+
+case class DefaultValue[T](value: T) extends ConfigValue[T]
+case class UserValue[T](value: T) extends ConfigValue[T]
+
+object configuration {
   private val DefaultConfig = Config()
 
   lazy val parser = new OptionParser[Config](Silicon.name) {
@@ -317,6 +347,11 @@ object CommandLineArgumentParser {
            + "(default: %s)".format(DefaultConfig.logLevel)))
          {(s: String, config: Config) => config.copy(logLevel = s)},
       opt(None,
+        "tempDirectory",
+        "<path>",
+        "Path to which all temporary data will be written (default: tmp_<timestamp>)")
+      {(s: String, config: Config) => config.copy(tempDirectory = UserValue(s))},
+      opt(None,
           "z3Exe",
           "<path\\to\\z3_executable>",
           (  "Z3 executable (default: %s). The environment variable %s can also\n"
@@ -325,8 +360,8 @@ object CommandLineArgumentParser {
       opt(None,
           "z3LogFile",
           "<path\\to\\z3_logfile>",
-          "Log file containing the interaction with Z3 (default: %s)".format(DefaultConfig.z3LogFile))
-         {(s: String, config: Config) => config.copy(z3LogFile = s)}
+          "Log file containing the interaction with Z3 (default: <tempDirectory>/%s)".format(DefaultConfig.z3LogFile))
+         {(s: String, config: Config) => config.copy(z3LogFile = UserValue(s))}
     )
   }
 

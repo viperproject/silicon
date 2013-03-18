@@ -6,8 +6,7 @@ import scala.io.Source
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.reasons.{NegativeFraction}
-import interfaces.{VerificationResult}
-import interfaces.decider.{Decider, Unsat, Prover}
+import interfaces.decider.{Decider, Prover}
 import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
     PermissionChunk}
 import interfaces.reporting.Context
@@ -15,7 +14,6 @@ import state.{TypeConverter, terms}
 import state.terms.{Sort, Term, Eq, Or, True, PermissionsTuple, FullPerm,
     NoPerm, ReadPerm, StarPerm, PredicateRdPerm, MonitorRdPerm, PermMinus, PermPlus}
 import reporting.Bookkeeper
-//import reporting.ErrorMessages.{FractionMightBeNegative, FractionMightBeGT100}
 import silicon.utils.notNothing._
 
 class DefaultDecider[ST <: Store[ST],
@@ -26,8 +24,6 @@ class DefaultDecider[ST <: Store[ST],
 		extends Decider[PermissionsTuple, ST, H, PC, S, C]
 		   with Logging {
 
-//	var lockSupport: LockSupport[PermissionsTuple, ST, H, PC, S, C] = null
-	
 	private var z3: Z3ProverStdIO = null
 
   private var pathConditionsFactory: PathConditionsFactory[PC] = null
@@ -49,7 +45,6 @@ class DefaultDecider[ST <: Store[ST],
            bookkeeper: Bookkeeper) {
 
     this.pathConditionsFactory = pathConditionsFactory
-//    this.lockSupport = lockSupport
     this.config = config
     this.bookkeeper = bookkeeper
 
@@ -59,16 +54,11 @@ class DefaultDecider[ST <: Store[ST],
   def start() {
     Predef.assert(isInitialised, "DefaultDecider must be initialised via init() first.")
 
-
-
-    z3 = new Z3ProverStdIO(z3Exe, config.z3LogFile, bookkeeper)
+    z3 = new Z3ProverStdIO(z3Exe, config.effectiveZ3LogFile, bookkeeper)
     pathConditions = pathConditionsFactory.Π()
     typeConverter = new silicon.state.DefaultTypeConverter()
 //    performSmokeChecks = config.performSmokeChecks
 
-    prover.logComment("-" * 60)
-    prover.logComment("Preamble")
-    prover.logComment("-" * 60)
     pushPreamble()
   }
 
@@ -81,40 +71,24 @@ class DefaultDecider[ST <: Store[ST],
 //
 //	def checkSmoke = prover.check() == Unsat
 
-  val paLog =
-    new java.io.PrintWriter(
-      new java.io.BufferedWriter(new java.io.FileWriter(new java.io.File("perm-asserts.txt"))),
-      true)
+  lazy val paLog =
+    common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "perm-asserts.txt"))
 
-  val proverAssertionTimingsLog =
-    new java.io.PrintWriter(
-      new java.io.BufferedWriter(new java.io.FileWriter(new java.io.File("z3timings.txt"))),
-      true)
-	
+  lazy val proverAssertionTimingsLog =
+    common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "z3timings.txt"))
+
 	// private def pushPreamble() {
 		// prover.loadPreamble("/preamble.smt2")
 		// prover.push()
 	// }
-	
+
 	private def pushPreamble() {
-//		val in = getClass.getResourceAsStream("/preamble.smt2")
-//
-//		var lines =
-//			Source.fromInputStream(in).getLines().toList.filterNot(s =>
-//					s.trim == "" || s.trim.startsWith(";"))
-//
-//		/* Multi-line assertions are concatenated into a single string and
-//		 * send to the prover, because prover.write(str) expects Z3 to reply
-//		 * to 'str' with success/error. But Z3 will only reply anything if 'str'
-//		 * has been a complete assertion.
-//		 */
-//		while (lines.nonEmpty) {
-//			val part = lines.head :: lines.tail.takeWhile(l =>
-//						l.startsWith("\t") || l.startsWith("  "))
-//
-//			lines = lines.drop(part.size)
-//			prover.write(part.mkString("\n"))
-//		}
+    prover.logComment("Started: " + bookkeeper.formattedStartTime)
+    prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
+
+    prover.logComment("-" * 60)
+    prover.logComment("Preamble")
+    prover.logComment("-" * 60)
 
     prover.logComment("\n; /preamble.smt2")
     pushAssertions(readPreamble("/preamble.smt2"))
@@ -358,7 +332,7 @@ class DefaultDecider[ST <: Store[ST],
 
 //	def assume(term: Term, c: C)(Q: C => VerificationResult) =
 //		assume(Set(term), c)(Q)
-	
+
 	/* TODO: CRITICAL!
 	 * pathConditions are used as if they are guaranteed to be mutable, e.g.
 	 *   pathConditions.pushScope()
@@ -366,7 +340,7 @@ class DefaultDecider[ST <: Store[ST],
 	 *   pathConditions = pathConditions.pushScope()
 	 * but the interface does NOT guarantee mutability!
 	 */
-	
+
 	def assume(_terms: Set[Term], c: C) /*(Q: C => VerificationResult) = */ {
     val terms = _terms filterNot isKnownToBeTrue
 //		var terms: Set[Term] = _terms
@@ -384,7 +358,7 @@ class DefaultDecider[ST <: Store[ST],
 //      popScope()
 		}
 	}
-	
+
 	private def assumeWithoutSmokeChecks(terms: Set[Term], c: C) = {
 //    val terms = _terms filterNot isRedundantAssumption
 
@@ -394,7 +368,7 @@ class DefaultDecider[ST <: Store[ST],
 			/* Add terms to the prover's assumptions */
 		None
 	}
-	
+
 //	private def assumeWithSmokeChecks(_terms: Set[Term], c: C) = {
 //		var r: Option[VerificationResult] = None
 //    val terms = _terms.filterNot(isTrivialTerm)
@@ -457,9 +431,9 @@ class DefaultDecider[ST <: Store[ST],
 	 *  - chalice/producer-consumer 116 vs 114
 	 *  - chalice/dining-philosophers 151 vs 151
 	 */
-	
+
 	/* ATTENTION:
-	 * 
+	 *
 	 * Caching does currently not work in all cases!
 	 * Problems occur when executing if-statements, specifically when
 	 * executing the else-branch after backtracking from the if-branch.
@@ -473,16 +447,16 @@ class DefaultDecider[ST <: Store[ST],
 	 *
 	 * Solution: Cache entries must also be pushed/popped
 	 */
-	
+
 	// private var cache: Map[Term, Term] = Map()
-	
+
 	/* Caching version */
 	// private def getChunk[C <: Chunk](h: H, chunks: Iterable[C], rcvr: Term) = {
 		// val result = findChunk(h, chunks, cache.getOrElse(rcvr, rcvr))
 		// if (result.isDefined) cache = cache.updated(rcvr, result.get.rcvr)
 		// result
 	// }
-	
+
 	/* Non-caching version */
 	private def getChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term): Option[CH] =
 		findChunk(chunks, rcvr)
@@ -490,14 +464,12 @@ class DefaultDecider[ST <: Store[ST],
 	private def findChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term) = (
 					 findChunkLiterally(chunks, rcvr)
 		orElse findChunkWithProver(chunks, rcvr))
-	
+
 	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term) =
 		chunks find (c => c.rcvr == rcvr)
 
-  val fcwpLog =
-    new java.io.PrintWriter(
-      new java.io.BufferedWriter(new java.io.FileWriter(new java.io.File("findChunkWithProver.txt"))),
-      true)
+  lazy val fcwpLog =
+    common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "findChunkWithProver.txt"))
 
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term): Option[CH] = {
     fcwpLog.println(rcvr)

@@ -1,18 +1,38 @@
 import sbt._
 import Keys._
+import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
+import de.oakgrove.SbtHgId.hgIdData
 
 object SiliconBuild extends Build {
-  
+
   /* Base settings */
 	
   lazy val baseSettings = (
        Defaults.defaultSettings
+	  ++ brandSettings
     ++ Seq(
           organization := "semper",
           version := "0.1-SNAPSHOT",
           scalaVersion := "2.10.0",
           scalacOptions in Compile ++= Seq("-deprecation", "-unchecked", "-feature"),
-          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"))
+          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
+					BrandKeys.dataPackage := "semper.silicon",
+					BrandKeys.dataObject := "brandingData",
+					BrandKeys.data += Val("buildDate", new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new java.util.Date)),
+					BrandKeys.data <+= scalaVersion(Val("scalaVersion", _)),
+					BrandKeys.data <+= sbtBinaryVersion(Val("sbtBinaryVersion", _)),
+					BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
+					BrandKeys.data <+= name(Val("sbtProjectName", _)),
+					BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
+					BrandKeys.data += {
+						val hg = hgIdData()
+						BrandObject("hg", """
+							val version = "%s"
+							val id = "%s"
+							val branch = "%s"
+							val tags = "%s"
+							""".format(hg.version, hg.id, hg.branch, hg.tags))},
+					sourceGenerators in Compile <+= BrandKeys.generateDataFile))
 
   /* Projects */
   
@@ -26,8 +46,7 @@ object SiliconBuild extends Build {
               name := "Silicon",
               traceLevel := 10,
               maxErrors := 6,
-              libraryDependencies ++= externalDep
-              ))
+              libraryDependencies ++= externalDep))
     ).dependsOn(common)
     for (dep <- internalDep) {
       p = p.dependsOn(dep)

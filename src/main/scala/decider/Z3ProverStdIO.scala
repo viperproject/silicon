@@ -5,31 +5,26 @@ package decider
 import java.io.{PrintWriter, BufferedWriter, FileWriter, File,
 		InputStreamReader, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable.{HashMap, Stack}
-import interfaces.decider.{Prover, Sat, Unsat, Unknown, TermConverter}
+import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
-import state.terms.utils.BigAnd
 import reporting.Bookkeeper
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) extends Prover {
   val termConverter = new TermToSMTLib2Converter()
 	import termConverter._
-	
+
 	private val typeConverter = new state.DefaultTypeConverter()
 
 	private var scopeCounter = 0
 	private var scopeLabels = new HashMap[String, Stack[Int]]()
 
 	private var isLoggingCommentsEnabled: Boolean = true
-	
+
   private val logfile =
-		if (logpath != null)
-			new PrintWriter(
-					new BufferedWriter(new FileWriter(new File(logpath))),
-					true)
-		else
-			null
-			
+		if (logpath != null) common.io.PrintWriter(new File(logpath))
+		else null
+
   private val z3 = {
 		val builder = new ProcessBuilder(z3path, "/smt2", "/in")
 		builder.redirectErrorStream(true)
@@ -40,13 +35,13 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 				process.destroy()
 			}
 		})
-		
+
     process
   }
-	
+
   private val input =
 		new BufferedReader(new InputStreamReader(z3.getInputStream()))
-	
+
   private val output =
 		new PrintWriter(
 			new BufferedWriter(new OutputStreamWriter(z3.getOutputStream())), true)
@@ -56,70 +51,70 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
       z3.destroy()
     }
   }
-	
+
 	def	push(label: String) {
 		val stack =
 			scopeLabels.getOrElse(
 				label,
 				{val s = new Stack[Int](); scopeLabels(label) = s; s})
-				
+
 		stack.push(scopeCounter)
 		push()
 	}
-	
+
 	def	pop(label: String) {
 		val stack = scopeLabels(label)
 		val n = scopeCounter - stack.head
 		stack.pop()
 		pop(n)
 	}
-	
+
 	def push(n: Int = 1) {
 		scopeCounter += n
 		val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + scopeCounter
     writeLine(cmd)
 		readSuccess
 	}
-	
+
   def pop(n: Int = 1) {
 		val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + scopeCounter
 		scopeCounter -= n
     writeLine(cmd)
 		readSuccess
   }
-	
+
 	def write(content: String) {
     writeLine(content)
 		readSuccess
 	}
 
   def assume(term: Term) = assume(convert(term))
-	
+
   def assume(term: String) {
 		bookkeeper.assumptionCounter += 1
 
 		writeLine("(assert " + term + ")")
 		readSuccess
   }
-     
+
   def assert(goal: Term) = assert(convert(goal))
-	
+
   def assert(goal: String) = {
     bookkeeper.assertionCounter += 1
-		
+
 		push()
 		writeLine("(assert (not " + goal + "))")
-		readSuccess		
+		readSuccess
 		writeLine("(check-sat)")
 		val r = readUnsat
 		pop()
-		
+
 		r
   }
-	
+
 	def check() = {
 		writeLine("(check-sat)")
-		
+
 		readLine match {
 			case "sat" => Sat
 			case "unsat" => Unsat
@@ -160,7 +155,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   }
 
 	def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
-	
+
 	def logComment(str: String) = if (isLoggingCommentsEnabled) log("; " + str)
 
 	private def freshId(prefix: String) = prefix + "@" + counter.next()
@@ -175,7 +170,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
     v
   }
-	
+
 //	def declare(f: ast.Function) {
 //		val str = "(declare-fun %s ($Snap $Ref %s) %s)".format(
 //					f.fullName,
@@ -218,55 +213,55 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   }
 
 	/* TODO: Handle multi-line output, e.g. multiple error messages. */
-	
+
 	private def readSuccess {
 		val answer = readLine()
-		
+
 		if (answer != "success") {
       throw new Exception("Unexpected prover output: Expected 'success', but found '%s'".format(answer))
     }
 	}
-	
+
 	private def readUnsat: Boolean = readLine() match {
 		case "unsat" => true
 		case "sat" => false
 		case "unknown" => false
     case result => throw new Exception("Unexpected prover output: " + result)
 	}
-	
+
 //	private def readSatOrUnknown: Boolean = readLine() match {
 //		case "sat" => true
 //		case "unknown" => true
 //		case "unsat" => false
 //    case result => throw new Exception("Unexpected prover output:" + result);
 //	}
-  
+
   private def readLine(): String = {
 		var repeat = true
 		var result = ""
-		
+
 		while (repeat) {
 			// println("Reading ...")
 			result = input.readLine();
 			// println("... " + result)
 			if (result.toLowerCase != "success") logComment(result)
-			
+
 			// repeat = result.startsWith("(error \"WARNING") /* Z3 2.x format */
 			repeat = result.startsWith("WARNING") // || result.startsWith /* Z3 3.x format */
 		}
-		
+
     result
   }
 
 	private def log(str: String) {
 		if (logfile != null) logfile.println(str);
 	}
-  
+
   private def writeLine(out: String) = {
     log(out);
     output.println(out);
   }
-	
+
 	private object counter {
 		private var value = 0
 
