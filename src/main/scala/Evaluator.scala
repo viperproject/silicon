@@ -4,7 +4,7 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.errors.InvocationFailed
+import sil.verifier.errors.FunctionApplicationFailed
 import sil.verifier.reasons.{ReceiverNull, NegativeFraction}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
@@ -492,7 +492,7 @@ trait DefaultEvaluator[
       case fapp @ ast.FuncApp(func, eRcvr, eArgs) =>
 //        val BigAnd = ast.utils.collections.BigAnd(func.factory) _
 //        val err = (_: ast.Expression) => InvocationFailed(fapp)
-        val err = InvocationFailed(fapp)
+        val err = FunctionApplicationFailed(fapp)
         val id = func.name
         /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
          *       in order to avoid that different predicates with the same name trigger a cycle

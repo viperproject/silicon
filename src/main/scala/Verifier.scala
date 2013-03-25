@@ -23,7 +23,7 @@ import reporting.ScopeChangingDescription
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
-														 S <: State[ST, H, S], 
+														 S <: State[ST, H, S],
 														 TV <: TraceView[TV, ST, H, S]]
 		extends Logging
 		   with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
@@ -47,7 +47,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   def contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
-	
+
 	def verify(method: ast.Method/*, history: History[ST, H, S]*/): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
@@ -61,7 +61,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val c = contextFactory.create(history.tree, terms.ReadPerm(rdVar))
 
     val tv = traceviewFactory.create(history)
-    
+
     val γ = Γ(   ins.map(v => (v, fresh(v)))
               ++ outs.map(v => (v, fresh(v)))
               ++ method.locals.map(_.localVar).map(v => (v, fresh(v))))
@@ -71,6 +71,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val pres = method.pres
     val posts = method.posts
     val body = method.body.toCfg
+
+    val postViolated = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, method)
 
 		/* Combined the well-formedness check and the execution of the body, which are two separate
 		 * rules in Smans' paper.
@@ -86,7 +88,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 					&&
         inScope {
           exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
-            consumes(σ2, terms.FullPerm(), posts, PostconditionViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
+            consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
                 Success[DefaultContext[ST, H, S], ST, H, S](c4)))})})}
 	}
 }
@@ -141,14 +143,14 @@ trait AbstractVerifier[ST <: Store[ST],
                        S <: State[ST, H, S],
                        TV <: TraceView[TV, ST, H, S]]
       extends Logging {
-  
+
   def decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]]
   def config: Config
   def bookkeeper: Bookkeeper
-    
+
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
   import ev.typeConverter
-  
+
   def verify(prog: ast.Program): List[VerificationResult] = {
     emitDomainDeclarations(prog.domains)
     emitSortWrappers(prog.domains)
@@ -317,11 +319,11 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 			val bookkeeper: Bookkeeper,
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
 		extends AbstractVerifier[ST, H, PC, S, TV]
-			with Logging 
+			with Logging
 {
-  
+
   val contextFactory = new DefaultContextFactory[ST, H, S]
-  
+
 	val ev = new DefaultElementVerifier(config, decider,
 																		 stateFactory, typeConverter, chunkFinder,
 																		 stateFormatter, heapMerger, stateUtils, bookkeeper,

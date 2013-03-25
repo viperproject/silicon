@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, AssertionMalformed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, UnsafeCode, AssertionViolated, InvocationFailed, FoldFailed,
+    LoopInvariantNotEstablished, UnsafeCode, ExhaleFailed, MethodCallFailed, FoldFailed,
     UnfoldFailed}
 import sil.verifier.reasons.{ReceiverNull}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
@@ -229,13 +229,13 @@ trait DefaultExecutor[ST <: Store[ST],
         produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
           Q(σ1, c1))
 
-      case ast.Exhale(a) =>
-        val pve = AssertionViolated(stmt)
+      case exhale @ ast.Exhale(a) =>
+        val pve = ExhaleFailed(exhale)
         consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
           Q(σ1, c1))
 
       case call @ ast.Call(meth, eRcvr, eArgs, lhs) =>
-        val pve = InvocationFailed(call)
+        val pve = MethodCallFailed(call)
 
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
           val (rdVar, rdVarConstraints) = freshReadVar("$CallRd", c1.currentRdPerms)
