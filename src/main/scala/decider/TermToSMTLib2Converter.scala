@@ -13,8 +13,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case Ite(t0, t1, t2) =>
       "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
 
-    case FApp(f, s, t0, tArgs, _) =>
-      "(" + sanitiseIdentifier(f.name) + (s +: t0 +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
+    case FApp(f, s, tArgs, _) =>
+      "(" + sanitiseIdentifier(f.name) + (s +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
 
     case Quantification(quant, qvar, body) =>
       var strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))

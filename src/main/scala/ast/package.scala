@@ -54,8 +54,8 @@ package object ast {
 
   type NullLiteral = sil.ast.NullLit
   val NullLiteral = sil.ast.NullLit
-  type ThisLiteral = sil.ast.ThisLit
-  val ThisLiteral = sil.ast.ThisLit
+//  type ThisLiteral = sil.ast.ThisLit
+//  val ThisLiteral = sil.ast.ThisLit
 
   type IntPlus = sil.ast.Add
   val IntPlus = sil.ast.Add

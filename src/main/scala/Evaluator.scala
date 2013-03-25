@@ -489,7 +489,7 @@ trait DefaultEvaluator[
 //              Q(DomainFApp(dp.fullName, tArgs, sorts.Bool), c1))
 //        }
 
-      case fapp @ ast.FuncApp(func, eRcvr, eArgs) =>
+      case fapp @ ast.FuncApp(func, eArgs) =>
 //        val BigAnd = ast.utils.collections.BigAnd(func.factory) _
 //        val err = (_: ast.Expression) => InvocationFailed(fapp)
         val err = FunctionApplicationFailed(fapp)
@@ -499,12 +499,13 @@ trait DefaultEvaluator[
          *       detection.
          */
 
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          evals2(σ, eArgs, Nil, pve, c1, tv)((tArgs, c2) => {
-            if (decider.assert(tRcvr !== Null())) {
+//        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
+//            if (decider.assert(tRcvr !== Null())) {
               bookkeeper.functionApplications += 1
-              val insγ = Γ(   (ast.ThisLiteral()() -> tRcvr)
-                           +: func.formalArgs.map(_.localVar).zip(tArgs))
+//              val insγ = Γ(   (ast.ThisLiteral()() -> tRcvr)
+//                           +: func.formalArgs.map(_.localVar).zip(tArgs))
+              val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
               val σ2 = σ \ insγ
               val pre = ast.utils.BigAnd(func.pres)
               val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
@@ -512,7 +513,8 @@ trait DefaultEvaluator[
                            .setCurrentRdPerms(ReadPerm(rdVar)))
               assume(rdVarConstraints, c2a)
               consume(σ2, FullPerm(), pre, err, c2a, tv)((_, s, _, c3) => {
-                val tFA = FApp(func, s.convert(sorts.Snap), tRcvr, tArgs, toSort(func.typ))
+//                val tFA = FApp(func, s.convert(sorts.Snap), tRcvr, tArgs, toSort(func.typ))
+                val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
                 if (fappCache.contains(tFA)) {
                   logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
                   val piFB = fappCache(tFA)
@@ -550,9 +552,9 @@ trait DefaultEvaluator[
                                        .setCurrentRdPerms(c2.currentRdPerms))
                           Q(tFA, c5)})}
                   } else
-                    Q(tFA, c3)}})
-            } else
-              Failure[C, ST, H, S, TV](err dueTo ReceiverNull(eRcvr), c2, tv)}))
+                    Q(tFA, c3)}})})
+//            } else
+//              Failure[C, ST, H, S, TV](err dueTo ReceiverNull(eRcvr), c2, tv)}))
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm),
@@ -569,16 +571,17 @@ trait DefaultEvaluator[
           evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
             if (decider.isNonNegativeFraction(tPerm))
               eval(σ, eRcvr, pve, c1, tv)((tRcvr, c2) =>
-                if (decider.assert(tRcvr !== Null()))
+//                if (decider.assert(tRcvr !== Null()))
                   consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-                    val insΓ = Γ((ast.ThisLiteral()() -> tRcvr))
+//                    val insΓ = Γ((ast.ThisLiteral()() -> tRcvr))
+                    val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))
                     /* Unfolding only effects the current heap */
                     produce(σ1 \ insΓ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(id)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                      eval(σ3, eIn, pve, c4a, tv)(Q)})})
-                else
-                  Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c2, tv))
+                      eval(σ3, eIn, pve, c4a, tv)(Q)})}))
+//                else
+//                  Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c2, tv))
             else
               Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(ePerm), c1, tv))}
         else

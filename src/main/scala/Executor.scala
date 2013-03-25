@@ -234,7 +234,7 @@ trait DefaultExecutor[ST <: Store[ST],
         consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
           Q(σ1, c1))
 
-      case call @ ast.Call(meth, eRcvr, eArgs, lhs) =>
+      case call @ ast.Call(meth, eArgs, lhs) =>
         val pve = MethodCallFailed(call)
 
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
@@ -263,11 +263,12 @@ trait DefaultExecutor[ST <: Store[ST],
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm)) =>
         val pve = FoldFailed(fold)
         eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
+//          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               decider.isValidFraction(tPerm, ePerm) match {
                 case None =>
-                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
+//                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
+                  val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
                   val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
                   consume(σ \ insγ, tPerm, predicate.body, pve, c2a, tv.stepInto(c2a, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
                     val ncs = dcs.map{_ match {
@@ -302,29 +303,30 @@ trait DefaultExecutor[ST <: Store[ST],
                                 + H(ncs))
                     Q(σ \ h1, c3a)})
                 case Some(reason) =>
-                  Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)})
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+                  Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)}))
+//          else
+//            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
       case unfold @ ast.Unfold(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, pred), ePerm)) =>
+              acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm)) =>
 
         val pve = UnfoldFailed(unfold)
         eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
+//          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               decider.isValidFraction(tPerm, ePerm) match {
                 case None =>
-                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
+//                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
+                  val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
                   consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
                     val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, pred.body, pve, c4, tv.stepInto(c4, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c5) => {
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c4, tv.stepInto(c4, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c5) => {
                       val c5 = c4.setCurrentRdPerms(c3.currentRdPerms)
                       Q(σ2 \ σ.γ, c5)})})
                 case Some(reason) =>
-                  Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)})
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+                  Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)}))
+//          else
+//            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
       case _: sil.ast.FreshReadPerm => ??? /* TODO: Implement */
 

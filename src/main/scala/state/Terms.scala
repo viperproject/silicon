@@ -65,7 +65,7 @@ sealed trait Term {
   }
 
 	def sort: Sort
-	
+
 //	var srcNode: Option[ast.ASTNode] = None
 //	var srcPos: ast.SourcePosition = ast.NoPosition
 //
@@ -93,14 +93,15 @@ case class Var(id: String, override val sort: Sort) extends Term
 
 case class FApp(val f: ast.Function,
                 val s: Term,
-                val t0: Term,
+//                val t0: Term,
                 val tArgs: Seq[Term],
                 val sort: Sort)
     extends Term {
 
   utils.assertSort(s, "snapshot", sorts.Snap)
 
-  override val toString = "FApp(%s, %s, %s, %s)".format(f.name, s, t0, tArgs.mkString(", "))
+//  override val toString = "FApp(%s, %s, %s, %s)".format(f.name, s, t0, tArgs.mkString(", "))
+  override val toString = "FApp(%s, %s, %s)".format(f.name, s, tArgs.mkString(", "))
 }
 
 //case class Token[H <: Heap[H]](m: ast.Implementation, h: H, rdVar: Var, t0: Term, tArgs: List[Term])
@@ -128,8 +129,8 @@ case object Unit extends SnapshotTerm with Literal {
 
 case class IntLiteral(n: Int) extends ArithmeticTerm with Literal {
 	def +(m: Int) = IntLiteral(n + m)
-	def -(m: Int) = IntLiteral(n - m)	
-	def *(m: Int) = IntLiteral(n * m)	
+	def -(m: Int) = IntLiteral(n - m)
+	def *(m: Int) = IntLiteral(n * m)
 	def /(m: Int) = Div(this, IntLiteral(m))
 	override val toString = n.toString
 }
@@ -362,7 +363,7 @@ case class Quantification(q: Quantifier, qvar: Var, tBody: Term) extends Boolean
 //
 //case class DebtFreeExpr(n: Int) extends BooleanTerm
 //	{ override val toString = "debtfree(%s)".format(n) }
-	
+
 /* Arithmetic expression terms */
 
 sealed abstract class ArithmeticTerm extends Term {
@@ -374,36 +375,36 @@ class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
 
 object Plus extends Function2[Term, Term, Term] {
 	val Zero = IntLiteral(0)
-	
+
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => t0
 		case (Zero, t1) => t1
 		case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 + n1)
 		case _ => new Plus(e0, e1)
 	}
-		
+
 	def unapply(t: Plus) = Some((t.p0, t.p1))
 }
 
 class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
 		with commonnodes.Minus[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object Minus extends Function2[Term, Term, Term] {
 	val Zero = IntLiteral(0)
-	
+
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => t0
 		case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 - n1)
 		case (t0, t1) if t0 == t1 => Zero
 		case _ => new Minus(e0, e1)
 	}
-		
+
 	def unapply(t: Minus) = Some((t.p0, t.p1))
 }
 
 class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
 		with commonnodes.Times[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object Times extends Function2[Term, Term, Term] {
 	val Zero = IntLiteral(0)
 	val One = IntLiteral(1)
@@ -416,7 +417,7 @@ object Times extends Function2[Term, Term, Term] {
 		case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 * n1)
 		case _ => new Times(e0, e1)
 	}
-		
+
 	def unapply(t: Times) = Some((t.p0, t.p1))
 }
 
@@ -426,18 +427,18 @@ case class Div(p0: Term, p1: Term) extends ArithmeticTerm
 case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
 		with commonnodes.Mod[Term]
 
-/* Boolean expression terms */		
+/* Boolean expression terms */
 
 sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 
 class Not(val p: Term) extends BooleanTerm with commonnodes.Not[Term] {
 	override val op = "¬"
-	
+
 	override val toString = p match {
 		case eq: Eq => eq.p0.toString + "≠" + eq.p1.toString
 		case _ => super.toString
 	}
-	
+
 	override def equals(other: Any) =
 		this.eq(other.asInstanceOf[AnyRef]) || (other match {
 			case Not(_p) => p == _p
@@ -452,7 +453,7 @@ object Not {
 		case False() => True()
 		case _ => new Not(e0)
 	}
-	
+
 	def unapply(e: Not) = Some((e.p))
 }
 
@@ -473,13 +474,13 @@ object Or extends Function2[Term, Term, Term] {
 		case (e0, e1) if e0 == e1 => e0
 		case _ => new Or(e0, e1)
 	}
-	
+
 	def unapply(e: Or) = Some((e.p0, e.p1))
 }
 
 class And(val p0: Term, val p1: Term) extends BooleanTerm
 		with commonnodes.And[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object And extends Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (True(), e1) => e1
@@ -488,13 +489,13 @@ object And extends Function2[Term, Term, Term] {
 		case (e0, e1) if e0 == e1 => e0
 		case _ => new And(e0, e1)
 	}
-	
+
 	def unapply(e: And) = Some((e.p0, e.p1))
 }
-		
+
 class Implies(val p0: Term, val p1: Term) extends BooleanTerm
 		with commonnodes.Implies[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object Implies extends Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term): Term = (e0, e1) match {
 		case (True(), e1) => e1
@@ -504,13 +505,13 @@ object Implies extends Function2[Term, Term, Term] {
 		case (e0, e1) if e0 == e1 => True()
 		case _ => new Implies(e0, e1)
 	}
-	
+
 	def unapply(e: Implies) = Some((e.p0, e.p1))
 }
 
 class Iff(val p0: Term, val p1: Term) extends BooleanTerm
 		with commonnodes.Iff[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object Iff extends Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (True(), e1) => e1
@@ -528,13 +529,13 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
 	override val toString = "Ite(%s, %s, %s)".format(t0, t1, t2)
-	
+
 	override def equals(other: Any) =
 		this.eq(other.asInstanceOf[AnyRef]) || (other match {
 			case Ite(_t0, _t1, _t2) => t0 == _t0 && t1 == _t1 && t2 == _t2
 			case _ => false
 		})
-    
+
   override val sort = t1.sort
 }
 
@@ -544,8 +545,8 @@ object Ite extends Function3[Term, Term, Term, Term] {
 		case False() => e2
 		case _ => new Ite(e0, e1, e2)
 	}
-	
-	def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))	
+
+	def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))
 }
 
 /* Comparison expression terms */
@@ -565,40 +566,40 @@ case class TermEq(p0: Term, p1: Term) extends Eq
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
 		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object Less extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 < n1) True() else False()
 		case (t0, t1) if t0 == t1 => False()
 		case _ => new Less(e0, e1)
 	}
-	
+
 	def unapply(e: Less) = Some((e.p0, e.p1))
 }
-		
+
 class AtMost(val p0: Term, val p1: Term) extends ComparisonTerm
 		with commonnodes.AtMost[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object AtMost extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 <= n1) True() else False()
 		case (t0, t1) if t0 == t1 => True()
 		case _ => new AtMost(e0, e1)
 	}
-	
+
 	def unapply(e: AtMost) = Some((e.p0, e.p1))
 }
 
 class Greater(val p0: Term, val p1: Term) extends ComparisonTerm
 		with commonnodes.Greater[Term] with commonnodes.StructuralEqualityBinOp[Term]
-		
+
 object Greater extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 > n1) True() else False()
 		case (t0, t1) if t0 == t1 => False()
 		case _ => new Greater(e0, e1)
 	}
-	
+
 	def unapply(e: Greater) = Some((e.p0, e.p1))
 }
 
@@ -766,7 +767,7 @@ object PermTimes extends ((FractionalPermissions, FractionalPermissions) => Frac
 //    case (PercPerm(n), PercPerm(m)) => PercPerm(n * m)
     case (_, _) => new PermTimes(t0, t1)
   }
-  
+
   def unapply(pt: PermTimes) = Some((pt.p0, pt.p1))
 }
 
@@ -802,7 +803,7 @@ object PermPlus extends ((FractionalPermissions, FractionalPermissions) => Fract
     case (ConcPerm(n1, d1), ConcPerm(n2, d2)) => ConcPerm(n1 * d2 + n2 * d1, d1 * d2)
     case (_, _) => new PermPlus(t0, t1)
   }
-  
+
   def unapply(pp: PermPlus) = Some((pp.p0, pp.p1))
 }
 
@@ -821,7 +822,7 @@ object PermMinus extends ((FractionalPermissions, FractionalPermissions) => Frac
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
     case (_, _) => new PermMinus(t0, t1)
   }
-  
+
   def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
 }
 
@@ -838,7 +839,7 @@ object PermLess extends ((FractionalPermissions, FractionalPermissions) => Boole
     case (t0, t1) if t0 == t1 => False()
     case (_, _) => new PermLess(t0, t1)
   }
-  
+
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
