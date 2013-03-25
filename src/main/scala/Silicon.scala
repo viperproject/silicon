@@ -310,13 +310,13 @@ object configuration {
           (  "Include members in verification (default: '%s')\n".format(DefaultConfig.includeMembers)
            + "\tWildcard characters are '?' and '*'\n"
            + "\tExamples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'"))
-         {(s: String, config: Config) => config.copy(includeMembers = wildcardToRegex(s))},
+         {(s: String, config: Config) => config.copy(includeMembers = silicon.common.wildcardToRegex(s))},
       opt(None,
           "exclude",
           "<pattern>",
           (  "Exclude members from verification (default: '%s')\n".format(DefaultConfig.excludeMembers)
            + "\tIs applied after the include pattern"))
-         {(s: String, config: Config) => config.copy(excludeMembers = wildcardToRegex(s))},
+         {(s: String, config: Config) => config.copy(excludeMembers = silicon.common.wildcardToRegex(s))},
       flag("disableSubsumption",
            "Don't add assumptions gained while verifying an assert statement")
           {(config: Config) => config.copy(disableSubsumption = true)},
@@ -367,7 +367,4 @@ object configuration {
 
   def parse(args: Seq[String], config: Config = DefaultConfig) =
     parser.parse(args, config).getOrElse(sys.error("Illegal arguments: %s".format(args)))
-
-  private def wildcardToRegex(str: String) =
-    str.replace(".", "\\.").replace("?", ".?").replace("*", ".*?")
 }
