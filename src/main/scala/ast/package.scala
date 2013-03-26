@@ -30,6 +30,8 @@ package object ast {
 
   type Equals = sil.ast.EqCmp
   val Equals = sil.ast.EqCmp
+  type Unequals = sil.ast.NeCmp
+  val Unequals = sil.ast.NeCmp
 
   type True = sil.ast.TrueLit
   val True = sil.ast.TrueLit
@@ -54,8 +56,8 @@ package object ast {
 
   type NullLiteral = sil.ast.NullLit
   val NullLiteral = sil.ast.NullLit
-//  type ThisLiteral = sil.ast.ThisLit
-//  val ThisLiteral = sil.ast.ThisLit
+  type ResultLiteral = sil.ast.Result
+  val ResultLiteral = sil.ast.Result
 
   type IntPlus = sil.ast.Add
   val IntPlus = sil.ast.Add
@@ -80,6 +82,8 @@ package object ast {
   val FullPerm = sil.ast.FullPerm
   type NoPerm = sil.ast.NoPerm
   val NoPerm = sil.ast.NoPerm
+  type ReadPerm = sil.ast.ReadPerm
+  val ReadPerm = sil.ast.ReadPerm
   type EpsPerm = sil.ast.EpsilonPerm
   val EpsPerm = sil.ast.EpsilonPerm
   type ConcPerm = sil.ast.ConcretePerm
@@ -176,6 +180,8 @@ package object ast {
   val Inhale = sil.ast.Inhale
   type Exhale = sil.ast.Exhale
   val Exhale = sil.ast.Exhale
+  type Assert = sil.ast.Assert
+  val Assert = sil.ast.Assert
   type Call = sil.ast.MethodCall
   val Call = sil.ast.MethodCall
 //  type New = sil.ast.methods.implementations.NewStatement

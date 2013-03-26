@@ -14,10 +14,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
       "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
 
     case FApp(f, s, tArgs, _) =>
-      "(" + sanitiseIdentifier(f.name) + (s +: tArgs).map(convert(_)).mkString(" ", " ", "") + ")"
+      "(%s %s %s)".format(sanitiseIdentifier(f.name), convert(s), tArgs map convert mkString(" "))
 
     case Quantification(quant, qvar, body) =>
-      var strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))
+      val strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))
       val strBody = convert(body)
 
       "(%s (%s) %s)".format(convert(quant), strVar, strBody)
@@ -25,7 +25,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     /* Booleans */
 
     case Not(f) => "(not " + convert(f) + ")"
-
 
     /* TODO: Extract common conversion behaviour of binary expressions. */
 
@@ -42,10 +41,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
     /* Equalities */
-
-//    case SeqEq(t0, t1) =>
-//      "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
-//    //      "(= " + convert(t0) + " " + convert(t1) + ")"
 
     case TermEq(t0, t1) =>
       "(= " + convert(t0) + " " + convert(t1) + ")"
@@ -136,117 +131,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
       if (ts.isEmpty) sid
       else "(%s %s)".format(sid, argsStr)
 
-//    /* Sequences */
-//
-//    case RangeSeq(t0, t1) =>
-//      "($Seq.rng " + convert(t0) + " " + convert(t1) + ")"
-//
-//    //		case SeqElem(t0) => "(insert " + convert(t0) + " (as nil " + convert(term.sort) + "))"
-//    case SeqElem(t0) => "($Seq.elem " + convert(t0) + ")"
-//
-//    case SeqCon(t0, t1) =>
-//      "($Seq.con " + convert(t0) + " " + convert(t1) + ")"
-//
-//    case SeqLen(t0) => "($Seq.len " + convert(t0) + ")"
-//
-//    case SeqAt(t0, t1) =>
-//      "($Seq.at " + convert(t0) + " " + convert(t1) + ")"
-//
-//    // case SeqSeg(t0, t1, t2) =>
-//    // "($Seq.seg " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
-//
-//    case SeqTake(t0, t1) =>
-//      "($Seq.take " + convert(t0) + " " + convert(t1) + ")"
-//
-//    case SeqDrop(t0, t1) =>
-//      "($Seq.drop " + convert(t0) + " " + convert(t1) + ")"
-//
-//    case SeqIn(t0, t1) =>
-//      "($Seq.in " + convert(t0) + " " + convert(t1) + ")"
-//
-//    /* Monitors, Locks */
-//
-//    case LockLess(t0, t1) =>
-//      "($Locks.less " + convert(t0) + " " + convert(t1) + ")"
-//
-//    //		case MaxLockLess(t0, hn, mn, cn) =>
-//    //			"($Locks.maxlock.less %s %s %s %s)".format(convert(t0), hn, mn, cn)
-//    case MaxLockLess(others, _, mu) =>
-//      if (others.nonEmpty) (
-//        others.map{m => "($Locks.less %s %s)".format(convert(m), convert(mu))}
-//          .mkString("(and ", " ", ")"))
-//      else
-//        literalToString(True())
-//
-//    case MaxLockAtMost(others, _, mu) =>
-//      if (others.nonEmpty)
-//        others.map{m =>
-//          val mStr = convert(m)
-//          val muStr = convert(mu)
-//          "(or ($Locks.less %1$s %2$s) (= %1$s %2$s))".format(mStr, muStr)
-//        }.mkString("(and ", " ", ")")
-//      else
-//        literalToString(True())
-//
-//    //		case MaxLockAtMost(t0, hn, mn, cn) =>
-//    //			"($Locks.maxlock.atMost %s %s %s %s)".format(convert(t0), hn, mn, cn)
-//
-//    //		case Holds(t, n, lm) =>
-//    //			"(= ($Locks.holds %s %s) %s)".format(convert(t), n, lockModeToString(lm))
-//    //    case Holds(rcvr, mu) =>
-//    //      "($Locks.holds %s %s)".format(convert(rcvr), convert(mu))
-//
-//    case InitialHolds(rcvr) =>
-//      "($Locks.initialHolds %s)".format(convert(rcvr))
-//
-//    case InitialMu(rcvr) =>
-//      "($Locks.initialMu %s)".format(convert(rcvr))
-//
-//    //		case LockChange(which, n1, n2) =>
-//    //			val r = Var("r", sorts.Ref)
-//    //			val slhs = convert(BigAnd(which, t => r !== t))
-//    //
-//    //			("(forall ((r $Ref))" +
-//    //					"(implies " +
-//    //						"%s " +
-//    //						"(= ($Locks.holds r %s) ($Locks.holds r %s))))"
-//    //			).format(slhs, n1, n2)
-//    //
-//    //		case Mu(t0, mn, t1) =>
-//    //			"(= ($Locks.mu %s %s) %s)".format(convert(t0), mn, convert(t1))
-//
-//    /* Credits */
-//
-//    case Credits(t0, cn) =>
-//      "($Credits.credits %s %s)".format(convert(t0), cn)
-//
-//    case DebtFreeExpr(cn) =>
-//      ("(forall ((r $Ref))" +
-//        "(>= ($Credits.credits r %s) 0)" +
-//        ")").format(cn)
-//    //    case DebtFreeExpr(cn) =>
-//    //      ("(forall ((r $Ref))" +
-//    //        "(>= ($Credits.credits r %s) 0)" +
-//    //        ":pat {($Credits.credits r %s)}" +
-//    //        ")").format(cn, cn)
-
-    /* Immutability */
-
-//    case Immutable(t, id) => "($Immutability.immutable %s %s)".format(convert(t), math.abs(id.hashCode))
-//    case Frozen(t, id) => "($Immutability.frozen %s %s)".format(convert(t), math.abs(id.hashCode))
-
-    /* Auxiliary terms */
-
-//    case UpdateMap(id, t, n) => "true"
-//    //			val fctUpdate = id match {
-//    //				case LockSupport.Holds => "$Locks.holds.updated"
-//    //				case LockSupport.Mu => "$Locks.mu.updated"
-//    //				case CreditSupport.Credits => "$Credits.credits.updated"
-//    //				case _ => sys.error("Unknown map id found.") // id
-//    //			}
-//    //
-//    //			"(%s %s %s)".format(fctUpdate, convert(t), n)
-
     case TypeOf(t: Term, typeName: String) =>
       "(= ($Type.typeOf %s) %s)".format(convert(t), typeName)
 
@@ -259,9 +143,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case Combine(t0, t1) =>
       "($Snap.combine " + convert(t0) + " " + convert(t1) + ")"
 
-//    case SortWrapper(t, sort) =>
-//      "($sorts.%sTo%s %s)".format(sortToWrapperName(t.sort), sortToWrapperName(sort), convert(t))
-    /* These sorts are converted to Z3-sort Int anyway */
     case SortWrapper(t, sort) =>
       "($SortWrappers.%sTo%s %s)".format(convert(t.sort), convert(sort), convert(t))
   }
@@ -274,11 +155,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case sorts.Ref => "$Ref"
     case sorts.UserSort(id) => sanitiseIdentifier(id)
   }
-
-//  private def sortToWrapperName(sort: Sort) = sort match {
-//    //    case sorts.Seq(s) => "List<" + convert(s) + ">"
-//    case _ => convert(sort)
-//  }
 
   private def convert(q: Quantifier) = q match {
     case Forall => "forall"

@@ -91,16 +91,9 @@ sealed trait Term {
 case class Var(id: String, override val sort: Sort) extends Term
 	{ override val toString = id }
 
-case class FApp(val f: ast.Function,
-                val s: Term,
-//                val t0: Term,
-                val tArgs: Seq[Term],
-                val sort: Sort)
-    extends Term {
-
+case class FApp(f: ast.Function, s: Term, tArgs: Seq[Term], sort: Sort) extends Term {
   utils.assertSort(s, "snapshot", sorts.Snap)
 
-//  override val toString = "FApp(%s, %s, %s, %s)".format(f.name, s, t0, tArgs.mkString(", "))
   override val toString = "FApp(%s, %s, %s)".format(f.name, s, tArgs.mkString(", "))
 }
 

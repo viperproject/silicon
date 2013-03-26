@@ -184,20 +184,19 @@ trait AbstractVerifier[ST <: Store[ST],
   private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
       var args: List[terms.Sort] = f.formalArgs.map(a => typeConverter.toSort(a.typ)).toList
-      args = terms.sorts.Snap :: terms.sorts.Ref :: args
+      args = terms.sorts.Snap :: args /* Snapshot, and all declared parameters */
       decider.prover.declareSymbol(f.name, args, typeConverter.toSort(f.typ))
     })
   }
 
   private def emitSortWrappers(domains: Seq[ast.Domain]) {
     val snapSortId = decider.prover.termConverter.convert(terms.sorts.Snap)
-    val additionalDomains = domains.diff(typeConverter.manuallyHandledDomains)
 
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional sort wrappers")
     decider.prover.logComment("")
 
-    additionalDomains.foreach(d => {
+    domains.foreach(d => {
       val domainSort = typeConverter.toSort(ast.types.DomainType(d, Map.empty))
       val domainSortId = decider.prover.termConverter.convert(domainSort)
       val toSnapId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
@@ -212,14 +211,12 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitDomainDeclarations(domains: Seq[ast.Domain]) {
-    val additionalDomains = domains.diff(typeConverter.manuallyHandledDomains)
-
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional domains")
     decider.prover.logComment("")
 
     /* Declare domains. */
-    additionalDomains.foreach(d => {
+    domains.foreach(d => {
       decider.prover.logComment("Declaring domain " + d.name)
       decider.prover.declareSort(typeConverter.toSort(ast.types.DomainType(d, Map.empty)))
     })
@@ -228,18 +225,12 @@ trait AbstractVerifier[ST <: Store[ST],
      * Since these can reference arbitrary other domains, make sure that
      * all domains have been declared first.
      */
-    additionalDomains.foreach(d => {
+    domains.foreach(d => {
       decider.prover.logComment("Functions of " + d.name)
       d.functions.foreach(f =>
         decider.prover.declareSymbol(f.name,
           f.formalArgs.map(a => typeConverter.toSort(a.typ)),
           typeConverter.toSort(f.typ)))
-
-//      decider.prover.logComment("Predicates of " + d.name)
-//      d.predicates.foreach(p =>
-//        decider.prover.declareSymbol(p.name,
-//          p.formalArgs.map(typeConverter.toSort),
-//          terms.sorts.Bool))
     })
 
     /* Axiomatise each domain.
@@ -252,7 +243,7 @@ trait AbstractVerifier[ST <: Store[ST],
      *         - we don't care about read permissions
      *         - we don't care about traceviews
      */
-    additionalDomains.foreach(d => {
+    domains.foreach(d => {
       decider.prover.logComment("Axiomatising domain " + d.name)
       decider.prover.logComment("Axioms (eval)")
 

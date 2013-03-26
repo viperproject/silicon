@@ -12,7 +12,7 @@ import silicon.state.terms.Term
 /*
  * State components
  */
- 
+
 trait Store[S <: Store[S]] {
 	def empty: S
 	def values: Map[ast.Variable, Term]
@@ -45,27 +45,6 @@ trait PathConditions[S <: PathConditions[S]] {
  * State
  */
 
-//trait HasStore[ST <: Store[ST], S <: HasStore[ST, S]] {
-//	def γ: ST
-//	def \(γ: ST): S
-//	def \+(γ: ST): S
-//	def \+(v: ast.Variable, t: Term): S
-//}
-//
-//trait HasHeaps[H <: Heap[H], S <: HasHeaps[H, S]] {
-//	def h: H
-//	def g: H
-//	def \(h: H): S
-//	def \(h: H, g: H): S
-//	def \+(c: Chunk): S
-//	def \+(h: H): S
-//	def \-(c: Chunk): S
-//}
-
-//trait HasPathConditions {
-//	def π: Set[Term]
-//}
-
 trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
   def γ: ST
   def \(γ: ST): S
@@ -81,10 +60,6 @@ trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
   def \-(c: Chunk): S
 
   def π: Set[Term]
-//		extends HasStore[ST, S]
-//		with HasHeaps[H, S]
-//		with HasPathConditions {
-	
 	def \(γ: ST = γ, h: H = h, g: H = g): S
 }
 
@@ -96,8 +71,5 @@ trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
 }
 
 trait HeapMerger[H <: Heap[H]] {
-//  def merge(h: H, c: Chunk): H
-//	def merge(h1: H, h2: H): H
-//  def compress(h: H): (H, Set[Term])
 	def merge(h1: H, h2: H): (H, Set[Term])
 }

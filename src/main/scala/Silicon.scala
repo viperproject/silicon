@@ -27,8 +27,7 @@ trait SiliconConstants {
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hg.version} ${brandingData.hg.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
   val dependencies = Seq(SILDependency("Z3", "4.x", "http://z3.codeplex.com/"))
-
-  private[silicon] val ENV_Z3_EXE = "Z3PATH"
+  val z3ExeEnvironmentVariable = "Z3PATH"
 }
 
 object Silicon extends SiliconConstants
@@ -174,7 +173,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
            ._2
 
     val failures = results.collect{
-      case f: Failure[C@unchecked, ST @unchecked, H @unchecked, S @unchecked, _] => f
+      case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f
     }
 
 		if (config.showStatistics.nonEmpty) {
@@ -354,8 +353,8 @@ object configuration {
       opt(None,
           "z3Exe",
           "<path\\to\\z3_executable>",
-          (  "Z3 executable (default: %s). The environment variable %s can also\n"
-           + " be used to specify the path of the executable.").format(DefaultConfig.z3Exe, Silicon.ENV_Z3_EXE))
+          (  "Z3 executable. The environment variable %s can also\n"
+           + " be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable))
          {(s: String, config: Config) => config.copy(z3Exe = Some(s))},
       opt(None,
           "z3LogFile",

@@ -4,8 +4,8 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, AssertionMalformed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, UnsafeCode, ExhaleFailed, MethodCallFailed, FoldFailed,
-    UnfoldFailed}
-import sil.verifier.reasons.{ReceiverNull}
+    UnfoldFailed, AssertFailed}
+import sil.verifier.reasons.{ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -40,7 +40,9 @@ trait DefaultExecutor[ST <: Store[ST],
 	import stateFactory._
 
 	protected val typeConverter: TypeConverter
-	protected val heapMerger: HeapMerger[H]
+
+  protected val heapMerger: HeapMerger[H]
+  import heapMerger.merge
 
 	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
 	import chunkFinder.withChunk
@@ -233,6 +235,34 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = ExhaleFailed(exhale)
         consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
           Q(σ1, c1))
+
+      case assert @ ast.Assert(a) =>
+        val pve = AssertFailed(assert)
+
+        a match {
+          /* "assert true" triggers a heap compression. */
+          case _: ast.True =>
+            val (mh, mts) = merge(Ø, σ.h)
+            assume(mts, c)
+            Q(σ \ mh, c)
+
+          /* "assert false" triggers a smoke check. If successful, we backtrack. */
+          case _: ast.False =>
+            if (decider.checkSmoke)
+              Success[C, ST, H, S](c)
+            else
+              Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(a), c, tv)
+
+          case _ =>
+            if (config.disableSubsumption) {
+              val r =
+                consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
+                  Success[C, ST, H, S](c1))
+              r && Q(σ,c)
+            } else
+              consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
+                Q(σ, c1))
+        }
 
       case call @ ast.Call(meth, eArgs, lhs) =>
         val pve = MethodCallFailed(call)

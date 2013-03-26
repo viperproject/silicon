@@ -15,7 +15,7 @@ trait Decider[P <: PermissionsTerm[P], ST <: Store[ST], H <: Heap[H],
 	def π: Set[Term]
 
 //	def enableSmokeChecks(enable: Boolean)
-//	def checkSmoke: Boolean
+	def checkSmoke: Boolean
 
   def assert(φ: Term): Boolean
   def pushScope()

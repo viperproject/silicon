@@ -91,9 +91,8 @@ trait DefaultEvaluator[
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-		eval2(σ, e, pve, c, tv)((t, c1) => {
-//			t.setSrcNode(e)
-			Q(t, c1)})
+		eval2(σ, e, pve, c, tv)((t, c1) =>
+			Q(t, c1))
   }
 
   protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
@@ -131,10 +130,19 @@ trait DefaultEvaluator[
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)
 
+      case ast.NullLiteral() => Q(Null(), c)
       case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval.intValue), c)
+
+      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
+      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(TermEq(p0, p1)), pve, c, tv)(Q)
 
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
+
+      case _: ast.ReadPerm =>
+        val (tVar, tConstraints) = stateUtils.freshReadVar()
+        assume(tConstraints, c)
+        Q(tVar, c)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -142,114 +150,109 @@ trait DefaultEvaluator[
         evalFieldRead(σ, fr, pve, c, tv)((fc, c1) =>
           Q(fc.value, c1))
 
-      case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
-
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
           Q(Not(t0), c1))
 
-//      case ast.BinaryOp(op, e0, e1) =>
-//        op match {
-          /* Strict evaluation of AND */
-          case ast.And(e0, e1) if config.strictConjunctionEvaluation =>
-            evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
+      case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
-          /* Short-circuiting evaluation of AND */
-          case ast.And(e0, e1) =>
-            var πPre: Set[Term] = Set()
-            var πAux: Set[Term] = Set()
+      /* Strict evaluation of AND */
+      case ast.And(e0, e1) if config.strictConjunctionEvaluation =>
+        evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
 
-            var t0: Term = True() //.setSrcNode(e0)
-            var t1: Term = True() //.setSrcNode(e1)
+      /* Short-circuiting evaluation of AND */
+      case ast.And(e0, e1) =>
+        var πPre: Set[Term] = Set()
+        var πAux: Set[Term] = Set()
 
-            eval(σ, e0, pve, c, tv)((_t0, c1) => {
-              t0 = _t0
-              πPre = decider.π
+        var t0: Term = True() //.setSrcNode(e0)
+        var t1: Term = True() //.setSrcNode(e1)
 
-              decider.pushScope()
-              /* TODO: Add a branch-function that only takes a true-continuation.
-              *       Give it a more appropriate name, one that expresses
-              *       that it is more a continue-if-no-contradiction thing.
-              */
-              val r =
-                branchLocally(t0, c1, tv, LocalAndBranching(e0, t0),
-                  (c2: C, tv1: TV) =>
-                    eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
-                      t1 = _t1
-                      πAux = decider.π -- (πPre + t0)
-                      Success[C, ST, H, S](c3)}),
-                  (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
+        eval(σ, e0, pve, c, tv)((_t0, c1) => {
+          t0 = _t0
+          πPre = decider.π
 
-              decider.popScope()
+          decider.pushScope()
+          /* TODO: Add a branch-function that only takes a true-continuation.
+          *       Give it a more appropriate name, one that expresses
+          *       that it is more a continue-if-no-contradiction thing.
+          */
+          val r =
+            branchLocally(t0, c1, tv, LocalAndBranching(e0, t0),
+              (c2: C, tv1: TV) =>
+                eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
+                  t1 = _t1
+                  πAux = decider.π -- (πPre + t0)
+                  Success[C, ST, H, S](c3)}),
+              (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
 
-              r && {
-                val tAux = state.terms.utils.BigAnd(πAux)
-                assume(tAux, c1)
-                Q(And(t0, t1), c1)}})
+          decider.popScope()
 
-          /* TODO: Implement a short-circuiting evaluation of OR. */
-          case ast.Or(e0, e1) => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
+          r && {
+            val tAux = state.terms.utils.BigAnd(πAux)
+            assume(tAux, c1)
+            Q(And(t0, t1), c1)}})
 
-          case ast.Implies(e0, e1) if config.branchOverPureConditionals =>
-            eval(σ, e0, pve, c, tv)((t0, c1) =>
-              branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
-                (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
-                (c2: C, tv1: TV) => Q(True(), c2)))
+      /* TODO: Implement a short-circuiting evaluation of OR. */
+      case ast.Or(e0, e1) => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
 
-          case impl @ ast.Implies(e0, e1) =>
-            /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
-             *   fails if e0 establishes a precondition of e1
-             * - Hence we have to assume e0 when evaluating e1, but revoke that
-             *   assumption afterwards
-             * - We also have to keep track of all path conditions that result from
-             *   the evaluation of e0 and e1
-             */
-            val πPre: Set[Term] = decider.π
-              /* Initial set of path conditions */
-            var πIf: Set[Term] = Set()
-              /* Path conditions assumed while evaluating the antecedent */
-            var πThen: Set[Term] = Set()
-              /* Path conditions assumed while evaluating the consequent */
+      case ast.Implies(e0, e1) if config.branchOverPureConditionals =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
+            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
+            (c2: C, tv1: TV) => Q(True(), c2)))
 
-            var tEvaluatedIf: Term = False()
-              /* The term the antecedent actually evaluates too. */
-            var tEvaluatedThen: Term = True()
-              /* The term the consequent actually evaluates too. */
+      case impl @ ast.Implies(e0, e1) =>
+        /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
+         *   fails if e0 establishes a precondition of e1
+         * - Hence we have to assume e0 when evaluating e1, but revoke that
+         *   assumption afterwards
+         * - We also have to keep track of all path conditions that result from
+         *   the evaluation of e0 and e1
+         */
+        val πPre: Set[Term] = decider.π
+          /* Initial set of path conditions */
+        var πIf: Set[Term] = Set()
+          /* Path conditions assumed while evaluating the antecedent */
+        var πThen: Set[Term] = Set()
+          /* Path conditions assumed while evaluating the consequent */
 
-            decider.pushScope()
-            val r =
-              eval(σ, e0, pve, c, tv)((t0, c1) => {
-                πIf = decider.π -- πPre
-                tEvaluatedIf = t0
+        var tEvaluatedIf: Term = False()
+          /* The term the antecedent actually evaluates too. */
+        var tEvaluatedThen: Term = True()
+          /* The term the consequent actually evaluates too. */
 
-                branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
-                  (c2: C, tv1: TV) =>
-                    eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                      πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
-                      tEvaluatedThen = t1
-                      Success[C, ST, H, S](c3)}),
-                  (c2: C, _) => Success[C, ST, H, S](c2))})
+        decider.pushScope()
+        val r =
+          eval(σ, e0, pve, c, tv)((t0, c1) => {
+            πIf = decider.π -- πPre
+            tEvaluatedIf = t0
 
-            decider.popScope()
+            branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
+              (c2: C, tv1: TV) =>
+                eval(σ, e1, pve, c2, tv1)((t1, c3) => {
+                  πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
+                  tEvaluatedThen = t1
+                  Success[C, ST, H, S](c3)}),
+              (c2: C, _) => Success[C, ST, H, S](c2))})
 
-            r && {
-              /* The additional path conditions gained while evaluating the
-               * antecedent can be assumed in any case.
-               * If the antecedent holds, then the additional path conditions
-               * related to the consequent can also be assumed.
-               */
+        decider.popScope()
 
-              val tAuxIf = state.terms.utils.BigAnd(πIf)
-              val tAuxThen = state.terms.utils.BigAnd(πThen)
-              val tAuxImplies = Implies(tEvaluatedIf, tAuxThen)
-              val tImplies = Implies(tEvaluatedIf, tEvaluatedThen)
+        r && {
+          /* The additional path conditions gained while evaluating the
+           * antecedent can be assumed in any case.
+           * If the antecedent holds, then the additional path conditions
+           * related to the consequent can also be assumed.
+           */
 
-              assume(Set(tAuxIf, tAuxImplies), c)
-              Q(tImplies, c)
-            }
+          val tAuxIf = state.terms.utils.BigAnd(πIf)
+          val tAuxThen = state.terms.utils.BigAnd(πThen)
+          val tAuxImplies = Implies(tEvaluatedIf, tAuxThen)
+          val tImplies = Implies(tEvaluatedIf, tEvaluatedThen)
 
-//          case ast.Iff() => evalBinOp(σ, e0, e1, Iff, pve, c, tv)(Q)
-//        }
+          assume(Set(tAuxIf, tAuxImplies), c)
+          Q(tImplies, c)
+        }
 
       case ast.Ite(e0, e1, e2) if config.branchOverPureConditionals =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -306,12 +309,6 @@ trait DefaultEvaluator[
           assume(Set(tIf, tIte), c)
           Q(tActualIte, c)
         }
-
-      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
-
-      /* References */
-
-      case ast.NullLiteral() => Q(Null(), c)
 
       /* Integers */
 
@@ -454,134 +451,89 @@ trait DefaultEvaluator[
           assume(tQuantAux, c)
           Q(tQuant, c)}
 
-//      case ast.DomainPredicateExpression(predicate, args) =>
-//        predicate match {
-//          /* PermissionTerm */
-//
-//          case ast.PermissionEq =>
-//            evalBinOp(σ, args(0), args(1), TermEq, pve, c, tv)(Q)
-//
-//          case ast.PermissionNeq =>
-//            val neq = (t1: Term, t2: Term) => t1 !== t2
-//            evalBinOp(σ, args(0), args(1), neq, pve, c, tv)(Q)
-//
-//          case ast.PermissionAtMost =>
-//            evalBinOp(σ, args(0), args(1), AtMost, pve, c, tv)(Q)
-//
-//          case ast.PermissionLess =>
-//            evalBinOp(σ, args(0), args(1), Less, pve, c, tv)(Q)
-//
-//          case ast.PermissionAtLeast =>
-//            evalBinOp(σ, args(0), args(1), AtLeast, pve, c, tv)(Q)
-//
-//          case ast.PermissionGreater =>
-//            evalBinOp(σ, args(0), args(1), Greater, pve, c, tv)(Q)
-//
-//          /* Booleans */
-//
-//          case ast.BooleanEvaluate =>
-//            eval(σ, args(0), pve, c, tv)(Q)
-//
-//          /* Domains not directly handled */
-//
-//          case dp: ast.DomainPredicate =>
-//            evals(σ, args, pve, c, tv)((tArgs, c1) =>
-//              Q(DomainFApp(dp.fullName, tArgs, sorts.Bool), c1))
-//        }
-
       case fapp @ ast.FuncApp(func, eArgs) =>
-//        val BigAnd = ast.utils.collections.BigAnd(func.factory) _
-//        val err = (_: ast.Expression) => InvocationFailed(fapp)
         val err = FunctionApplicationFailed(fapp)
-        val id = func.name
+
         /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
          *       in order to avoid that different predicates with the same name trigger a cycle
          *       detection.
          */
+        val id = func.name
 
-//        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
-//            if (decider.assert(tRcvr !== Null())) {
-              bookkeeper.functionApplications += 1
-//              val insγ = Γ(   (ast.ThisLiteral()() -> tRcvr)
-//                           +: func.formalArgs.map(_.localVar).zip(tArgs))
-              val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
-              val σ2 = σ \ insγ
-              val pre = ast.utils.BigAnd(func.pres)
-              val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
-              val c2a = (c2.setConsumeExactReads(false)
-                           .setCurrentRdPerms(ReadPerm(rdVar)))
-              assume(rdVarConstraints, c2a)
-              consume(σ2, FullPerm(), pre, err, c2a, tv)((_, s, _, c3) => {
-//                val tFA = FApp(func, s.convert(sorts.Snap), tRcvr, tArgs, toSort(func.typ))
-                val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
-                if (fappCache.contains(tFA)) {
-                  logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
-                  val piFB = fappCache(tFA)
-                  assume(piFB, c3)
-                  val c3a = (c3.setConsumeExactReads(true)
-                               .setCurrentRdPerms(c2.currentRdPerms))
-                  Q(tFA, c3a)
+        evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
+          bookkeeper.functionApplications += 1
+          val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
+          val σ2 = σ \ insγ
+          val pre = ast.utils.BigAnd(func.pres)
+          val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
+          val c2a = (c2.setConsumeExactReads(false)
+                       .setCurrentRdPerms(ReadPerm(rdVar)))
+          assume(rdVarConstraints, c2a)
+          consume(σ2, FullPerm(), pre, err, c2a, tv)((_, s, _, c3) => {
+            val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
+            if (fappCache.contains(tFA)) {
+              logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
+              val piFB = fappCache(tFA)
+              assume(piFB, c3)
+              val c3a = (c3.setConsumeExactReads(true)
+                           .setCurrentRdPerms(c2.currentRdPerms))
+              Q(tFA, c3a)
+            } else {
+              val σ3 = σ2 \+ (func.result, tFA)
+              /* Break recursive cycles */
+              if (c3.cycles(id) < config.unrollFunctions) {
+                val c3a = c3.incCycleCounter(id)
+                val πPre = decider.π
+                val post = ast.utils.BigAnd(func.posts)
+                if (true) {
+                  bookkeeper.functionBodyEvaluations += 1
+                  eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
+                    eval(σ3, post, pve, c4, tv)((tPost, c5) => {
+                      val c5a = c5.decCycleCounter(id)
+                      val tFAEqFB = tFA === tFB
+                      if (config.cacheFunctionApplications)
+                        fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
+                      assume(Set(tFAEqFB, tPost), c5a)
+                      val c6 = (c5a.setConsumeExactReads(true)
+                                   .setCurrentRdPerms(c2.currentRdPerms))
+                      Q(tFA, c6)}))
                 } else {
-                  val σ3 = σ2 // \+ (Result, tFA)
-                  /* Break recursive cycles */
-                  if (c3.cycles(id) < config.unrollFunctions) {
-                    val c3a = c3.incCycleCounter(id)
-                    val πPre = decider.π
-                    val post = ast.utils.BigAnd(func.posts)
-                    if (true) {
-                      bookkeeper.functionBodyEvaluations += 1
-                      eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
-                        eval(σ3, post, pve, c4, tv)((tPost, c5) => {
-                          val c5a = c5.decCycleCounter(id)
-                          val tFAEqFB = tFA === tFB
-                          if (config.cacheFunctionApplications)
-                            fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                          assume(Set(tFAEqFB, tPost), c5a)
-                          val c6 = (c5a.setConsumeExactReads(true)
-                                       .setCurrentRdPerms(c2.currentRdPerms))
-                          Q(tFA, c6)}))
-                    } else {
-                      /* Function body is invisible, use postcondition instead */
-                        eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
-                          val c4a = c4.decCycleCounter(id)
-                          if (config.cacheFunctionApplications)
-                            fappCache += (tFA -> (decider.π -- πPre + tPost))
-                          assume(tPost, c4a)
-                          val c5 = (c4a.setConsumeExactReads(true)
-                                       .setCurrentRdPerms(c2.currentRdPerms))
-                          Q(tFA, c5)})}
-                  } else
-                    Q(tFA, c3)}})})
-//            } else
-//              Failure[C, ST, H, S, TV](err dueTo ReceiverNull(eRcvr), c2, tv)}))
+                  /* Function body is invisible, use postcondition instead */
+                    eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
+                      val c4a = c4.decCycleCounter(id)
+                      if (config.cacheFunctionApplications)
+                        fappCache += (tFA -> (decider.π -- πPre + tPost))
+                      assume(tPost, c4a)
+                      val c5 = (c4a.setConsumeExactReads(true)
+                                   .setCurrentRdPerms(c2.currentRdPerms))
+                      Q(tFA, c5)})}
+              } else
+                Q(tFA, c3)}})})
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm),
               eIn) =>
 
         val body = predicate.body
+
+        /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
+         *       in order to avoid that different predicates with the same name trigger a cycle
+         *       detection.
+         */
         val id = predicate.name
-          /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
-           *       in order to avoid that different predicates with the same name trigger a cycle
-           *       detection.
-           */
+
         if (c.cycles(predicate.name) < 2 * config.unrollFunctions) {
           val c0a = c.incCycleCounter(id)
           evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
             if (decider.isNonNegativeFraction(tPerm))
               eval(σ, eRcvr, pve, c1, tv)((tRcvr, c2) =>
-//                if (decider.assert(tRcvr !== Null()))
-                  consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-//                    val insΓ = Γ((ast.ThisLiteral()() -> tRcvr))
-                    val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))
-                    /* Unfolding only effects the current heap */
-                    produce(σ1 \ insΓ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
-                      val c4a = c4.decCycleCounter(id)
-                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                      eval(σ3, eIn, pve, c4a, tv)(Q)})}))
-//                else
-//                  Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c2, tv))
+                consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                  val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))
+                  /* Unfolding only effects the current heap */
+                  produce(σ1 \ insΓ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
+                    val c4a = c4.decCycleCounter(id)
+                    val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                    eval(σ3, eIn, pve, c4a, tv)(Q)})}))
             else
               Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(ePerm), c1, tv))}
         else
