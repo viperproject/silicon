@@ -373,7 +373,7 @@ trait DefaultEvaluator[
       /* Others */
 
       /* Domains not handled directly */
-      case ast.DomainFuncApp(func, eArgs) =>
+      case ast.DomainFuncApp(func, eArgs, _) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           Q(DomainFApp(func.name, tArgs, toSort(func.typ)), c1))
 

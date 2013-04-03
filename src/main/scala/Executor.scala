@@ -227,6 +227,9 @@ trait DefaultExecutor[ST <: Store[ST],
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
+      case ast.New(v) =>
+        Q(σ \+ (v, fresh(v)), c)
+
       case ast.Inhale(a) =>
         produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
           Q(σ1, c1))
@@ -365,8 +368,7 @@ trait DefaultExecutor[ST <: Store[ST],
            | _: sil.ast.If
            | _: sil.ast.Label
            | _: sil.ast.Seqn
-           | _: sil.ast.While
-           | _: sil.ast.NewStmt => sys.error("Not yet implemented (%s): %s".format(stmt.getClass.getName, stmt))
+           | _: sil.ast.While => sys.error("Not yet implemented (%s): %s".format(stmt.getClass.getName, stmt))
 		}
 
 		executed

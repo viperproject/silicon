@@ -190,6 +190,8 @@ package object ast {
   val Fold = sil.ast.Fold
   type Unfold = sil.ast.Unfold
   val Unfold = sil.ast.Unfold
+  type New = sil.ast.NewStmt
+  val New = sil.ast.NewStmt
 
   type Type = sil.ast.Type
 
@@ -207,6 +209,8 @@ package object ast {
     val Bool = semper.sil.ast.Bool
     val Int = semper.sil.ast.Int
     val Ref = semper.sil.ast.Ref
+    type Seq = semper.sil.ast.SeqType
+    val Seq = semper.sil.ast.SeqType
 //    type NonRef = semper.sil.ast.types.NonReferenceDataType
 //    val NonRef = semper.sil.ast.types.NonReferenceDataType
   }
