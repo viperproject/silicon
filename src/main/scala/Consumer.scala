@@ -10,7 +10,7 @@ import interfaces.reporting.TraceView
 import interfaces.decider.Decider
 import state.{TypeConverter, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
 import state.terms._
-import reporting.{DefaultContext, Consuming, ImplBranching, Bookkeeper}
+import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -23,7 +23,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
 	import decider.assume
-	
+
   protected val stateFactory: StateFactory[ST, H, S]
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
@@ -31,7 +31,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   protected val typeConverter: TypeConverter
   import typeConverter.toSort
-	
+
 	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
@@ -39,7 +39,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
 
-  /*	
+  /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
    * chunks as they existed when the consume took place. More specifically,
    * the amount of permissions that come with these chunks is NOT the amount
@@ -89,19 +89,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        : VerificationResult =
 
 		consume2(σ, h, p, φ, pve, c, tv)(Q)
-  
+
   protected def consume2(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
-      
+
     val tv1 = tv.stepInto(c, Consuming[ST, H, S](σ, h, p, φ))
-       
+
     internalConsume(σ, h, p, φ, pve, c, tv1)((h1, s1, dcs, c1) => {
       tv1.currentStep.σPost = σ \ h1
       Q(h1, s1, dcs, c1)
     })
   }
-			
+
 	private def internalConsume(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
@@ -111,19 +111,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		logger.debug("h = " + stateFormatter.format(h))
 
 		val consumed = φ match {
-
-			/* And <: BooleanExpr */
-      case ast.And(a1, a2) =>
+      case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
 					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
 						Q(h2, Combine(s1.convert(sorts.Snap), s2.convert(sorts.Snap)), dcs1 ::: dcs2, c2)))
 
-			/* Implies <: BooleanExpr */
-      case ast.Implies(e0, a0) /* if !φ.isPure */ =>
+      case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>
 					branch(t0, c, tv, ImplBranching[ST, H, S](e0, t0),
 						(c2: C, tv1: TV) => consume(σ, h, p, a0, pve, c2, tv1)(Q),
 						(c2: C, tv1: TV) => Q(h, Unit, Nil, c2)))
+
+      case ast.Ite(e0, a1, a2) if !φ.isPure =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          branch(t0, c, tv, IfBranching[ST, H, S](e0, t0),
+            (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
+            (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
       /* Access to fields or predicates */
       case ast.AccessPredicate(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
