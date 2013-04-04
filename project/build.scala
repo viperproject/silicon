@@ -14,7 +14,12 @@ object SiliconBuild extends Build {
           organization := "semper",
           version := "0.1-SNAPSHOT",
           scalaVersion := "2.10.0",
-          scalacOptions in Compile ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfatal-warnings"),
+          scalacOptions in Compile ++= Seq(
+            "-deprecation",
+            "-unchecked",
+            "-feature",
+            "-Dscalac.patmat.analysisBudget=off",
+            "-Xfatal-warnings"),
           resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
 					BrandKeys.dataPackage := "semper.silicon",
 					BrandKeys.dataObject := "brandingData",
