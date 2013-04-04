@@ -115,21 +115,12 @@ trait DefaultExecutor[ST <: Store[ST],
       follow(σ, block.succs, c, tv)((_, c1) => Success[C, ST, H, S](c1))
 
   def exec(σ: S, block: ast.CFGBlock, c: C, tv: TV)
-                  (Q: (S, C) => VerificationResult)
-                  : VerificationResult = {
+          (Q: (S, C) => VerificationResult)
+          : VerificationResult = {
 
 //    logger.debug("\n[exec] " + block.label)
 
     block match {
-//      case bb: semper.sil.ast.methods.implementations.BasicBlock =>
-      case nb @ sil.ast.NormalBlock(stmt, _) =>
-        exec(σ, stmt, c, tv)((σ1, c1) =>
-          leave(σ1, nb, c1, tv)(Q))
-
-      case tb @ sil.ast.TerminalBlock(stmt) =>
-        exec(σ, stmt, c, tv)((σ1, c1) =>
-          leave(σ1, tb, c1, tv)(Q))
-
       case lb: sil.ast.LoopBlock =>
         val inv = ast.utils.BigAnd(lb.invs)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
@@ -173,7 +164,17 @@ trait DefaultExecutor[ST <: Store[ST],
                             .setCurrentRdPerms(c.currentRdPerms))
                 leave(σ3 \ (g = σ.g), lb, c3, tv)(Q)})})})
 
-      case _: sil.ast.ConditionalBlock => ??? /* TODO: Implement */
+      case block @ sil.ast.StatementBlock(stmt, _) =>
+        exec(σ, stmt, c, tv)((σ1, c1) =>
+          leave(σ1, block, c1, tv)(Q))
+
+//      case nb @ sil.ast.NormalBlock(stmt, _) =>
+//        exec(σ, stmt, c, tv)((σ1, c1) =>
+//          leave(σ1, nb, c1, tv)(Q))
+//
+//      case tb @ sil.ast.TerminalBlock(stmt) =>
+//        exec(σ, stmt, c, tv)((σ1, c1) =>
+//          leave(σ1, tb, c1, tv)(Q))
     }
   }
 
