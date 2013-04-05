@@ -26,7 +26,7 @@ trait SiliconConstants {
   val version = brandingData.sbtProjectVersion
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hg.version} ${brandingData.hg.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
-  val dependencies = Seq(SILDependency("Z3", "4.x", "http://z3.codeplex.com/"))
+  val dependencies = Seq(SILDependency("Z3", "4.3.2", "http://z3.codeplex.com/"))
   val z3ExeEnvironmentVariable = "Z3PATH"
 }
 

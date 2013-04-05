@@ -26,7 +26,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		else null
 
   private val z3 = {
-		val builder = new ProcessBuilder(z3path, "/smt2", "/in")
+    val builder = new ProcessBuilder(z3path, "-smt2", "-in")
 		builder.redirectErrorStream(true)
 		val process = builder.start()
 

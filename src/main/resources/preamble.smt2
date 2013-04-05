@@ -4,35 +4,37 @@
 ;            one tab or two spaces. All other lines must not start with tabs
 ;            or more than one space.
 
+; Currently, print-success MUST come first, because it guarantees that every query to Z3, including
+; setting options, is answered by a success (or error) reply from Z3. Silicon currently relies on
+; these replies when it interacts with Z3 via stdio.
 (set-option :print-success true) ; Boogie: false
-; (set-option :print-warning false) ; Boogie: default
-(set-option :global-decls true) ; Boogie: default
 
-(set-option :AUTO_CONFIG false)
-(set-option :MODEL_HIDE_UNUSED_PARTITIONS false)
-(set-option :MODEL_V2 true)
-(set-option :ASYNC_COMMANDS false)
-(set-option :PHASE_SELECTION 0)
-(set-option :RESTART_STRATEGY 0)
-(set-option :RESTART_FACTOR |1.5|)
-(set-option :ARITH_RANDOM_INITIAL_VALUE true)
-(set-option :CASE_SPLIT 3)
-(set-option :DELAY_UNITS true)
-(set-option :DELAY_UNITS_THRESHOLD 16)
-(set-option :NNF_SK_HACK true)
-(set-option :MBQI false)
-(set-option :QI_EAGER_THRESHOLD 100)
-(set-option :QI_COST |"(+ weight generation)"|)
+(set-option :global-decls true) ; Boogie: default
+(set-option :AUTO_CONFIG false) ; Usually a good idea
+
+; Don't try to find models. Z3 would otherwise try to find models for uninterpreted (limited)
+; functions that come from the program.
+(set-option :SMT.MBQI false)
+
+; [Malte] The remaining options were taken from the Boogie preamble when I compared Syxc and
+; VCG-Chalice for the VSTTE12 paper. I have no clue what these options do and how important
+; they are.
+(set-option :MODEL.V2 true) ; TODO
+(set-option :SMT.PHASE_SELECTION 0) ; TODO
+(set-option :SMT.RESTART_STRATEGY 0)
+(set-option :SMT.RESTART_FACTOR |1.5|)
+(set-option :SMT.ARITH.RANDOM_INITIAL_VALUE true)
+(set-option :SMT.CASE_SPLIT 3)
+(set-option :SMT.DELAY_UNITS true)
+(set-option :SMT.DELAY_UNITS_THRESHOLD 16)
+(set-option :NNF.SK_HACK true)
+(set-option :SMT.QI.EAGER_THRESHOLD 100)
+(set-option :SMT.QI.COST |"(+ weight generation)"|)
 (set-option :TYPE_CHECK true)
-(set-option :BV_REFLECT true)
+(set-option :SMT.BV.REFLECT true)
+
 ; (set-option :QI_PROFILE true)
 ; (set-option :DEFAULT_QID true)
-
-; (set-info :smt-lib-version 2.0)
-; (set-info :category "industrial")
-
-; (set-option :SOFT_TIMEOUT 5000)
-; (set-option :soft-timeout 5000)
 
 ; --- Snapshots ---
 

@@ -126,7 +126,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   private def pushAssertions(lines: List[String]) {
-    lines.foreach(z3.write)
+    lines foreach z3.write
   }
 
   def stop() {
