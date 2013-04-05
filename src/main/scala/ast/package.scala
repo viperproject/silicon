@@ -82,12 +82,12 @@ package object ast {
   val FullPerm = sil.ast.FullPerm
   type NoPerm = sil.ast.NoPerm
   val NoPerm = sil.ast.NoPerm
-  type ReadPerm = sil.ast.ReadPerm
-  val ReadPerm = sil.ast.ReadPerm
-  type EpsPerm = sil.ast.EpsilonPerm
-  val EpsPerm = sil.ast.EpsilonPerm
-  type ConcPerm = sil.ast.ConcretePerm
-  val ConcPerm = sil.ast.ConcretePerm
+//  type ReadPerm = sil.ast.ReadPerm
+//  val ReadPerm = sil.ast.ReadPerm
+  type EpsilonPerm = sil.ast.EpsilonPerm
+  val EpsilonPerm = sil.ast.EpsilonPerm
+  type ConcretePerm = sil.ast.ConcretePerm
+  val ConcretePerm = sil.ast.ConcretePerm
   type PermPlus = sil.ast.PermAdd
   val PermPlus = sil.ast.PermAdd
   type PermMinus = sil.ast.PermSub
@@ -192,6 +192,8 @@ package object ast {
   val Unfold = sil.ast.Unfold
   type New = sil.ast.NewStmt
   val New = sil.ast.NewStmt
+  type ConstrainFreshARP = sil.ast.FreshReadPerm
+  val ConstrainFreshARP = sil.ast.FreshReadPerm
 
   type Type = sil.ast.Type
 

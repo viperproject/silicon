@@ -48,7 +48,7 @@ trait DefaultExecutor[ST <: Store[ST],
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshReadVar
+  import stateUtils.freshARP
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
@@ -121,6 +121,10 @@ trait DefaultExecutor[ST <: Store[ST],
 //    logger.debug("\n[exec] " + block.label)
 
     block match {
+      case block @ sil.ast.StatementBlock(stmt, _) =>
+        exec(σ, stmt, c, tv)((σ1, c1) =>
+          leave(σ1, block, c1, tv)(Q))
+
       case lb: sil.ast.LoopBlock =>
         val inv = ast.utils.BigAnd(lb.invs)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
@@ -135,16 +139,16 @@ trait DefaultExecutor[ST <: Store[ST],
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val wvs: Seq[ast.Variable] = Nil // lb.writtenVariables
+        val wvs: Seq[ast.Variable] = Nil // lb.writtenVariables /* TODO: Do we have writtenVariables in Sil? */
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
-        val (rdVarBody, rdVarBodyConstraints) = freshReadVar("$LoopRd")
-        val cBody = c.setCurrentRdPerms(ReadPerm(rdVarBody))
+//        val (rdVarBody, rdVarBodyConstraints) = freshReadVar("$LoopRd")
+//        val cBody = c.setCurrentRdPerms(ReadPerm(rdVarBody))
         val σBody = Ø \ (γ = γBody)
 
         (inScope {
           /* Verify loop body (including well-formedness check) */
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
-          assume(rdVarBodyConstraints, cBody)
+//          assume(rdVarBodyConstraints, cBody)
           produce(σBody, fresh,  FullPerm(), invAndGuard, AssertionMalformed(inv), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
               consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
@@ -153,20 +157,28 @@ trait DefaultExecutor[ST <: Store[ST],
           inScope {
             /* Verify call-site */
             val tv0 = tv.stepInto(c, Description[ST, H, S]("Loop Invariant Establishment"))
-            val (rdVar, rdVarConstraints) = freshReadVar("$LoopRd", c.currentRdPerms)
-            val c0 = (c.setConsumeExactReads(false)
-                       .setCurrentRdPerms(ReadPerm(rdVar)))
-            assume(rdVarConstraints, c0)
+//            val (rdVar, rdVarConstraints) = freshReadVar("$LoopRd", c.currentRdPerms)
+//            val c0 = (c.setConsumeExactReads(false)
+//                       .setCurrentRdPerms(ReadPerm(rdVar)))
+//            assume(rdVarConstraints, c0)
+            val c0 = c
             consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
               produce(σ2, fresh,  FullPerm(), invAndNotGuard, AssertionMalformed(inv), c1, tv0)((σ3, c2) => {
-                val c3 = (c2.setConsumeExactReads(true)
-                            .setCurrentRdPerms(c.currentRdPerms))
+//                val c3 = (c2.setConsumeExactReads(true)
+//                            .setCurrentRdPerms(c.currentRdPerms))
+                val c3 = c2
                 leave(σ3 \ (g = σ.g), lb, c3, tv)(Q)})})})
 
-      case block @ sil.ast.StatementBlock(stmt, _) =>
-        exec(σ, stmt, c, tv)((σ1, c1) =>
-          leave(σ1, block, c1, tv)(Q))
+        case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
+          val (arps, arpConstraints) =
+            vars.map(v => (v, freshARP()))
+                .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
+                .unzip
+          val γ1 = Γ(σ.γ.values ++ arps)
+          assume(arpConstraints.toSet, c)
+          exec(σ \ γ1, body, c, tv)((σ1, c1) =>
+            leave(σ1, frp, c1.setConstrainable(arps map (_._2), false), tv)(Q))
 
 //      case nb @ sil.ast.NormalBlock(stmt, _) =>
 //        exec(σ, stmt, c, tv)((σ1, c1) =>
@@ -270,15 +282,14 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case call @ ast.Call(meth, eArgs, lhs) =>
         val pve = MethodCallFailed(call)
-
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
-          val (rdVar, rdVarConstraints) = freshReadVar("$CallRd", c1.currentRdPerms)
-          val c2 = (c1.setConsumeExactReads(false)
-                      .setCurrentRdPerms(ReadPerm(rdVar)))
+//          val (rdVar, rdVarConstraints) = freshReadVar("$CallRd", c1.currentRdPerms)
+//          val c2 = (c1.setConsumeExactReads(false)
+//                      .setCurrentRdPerms(ReadPerm(rdVar)))
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = ast.utils.BigAnd(meth.pres)
-          assume(rdVarConstraints, c2)
-          consume(σ \ insγ, FullPerm(), pre, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Precondition")))((σ1, _, _, c3) => {
+//          assume(rdVarConstraints, c2)
+          consume(σ \ insγ, FullPerm(), pre, pve, c1, tv.stepInto(c1, ScopeChangingDescription[ST, H, S]("Consume Precondition")))((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
@@ -286,9 +297,9 @@ trait DefaultExecutor[ST <: Store[ST],
             produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
-              val c5 = (c4.setConsumeExactReads(true)
-                          .setCurrentRdPerms(c2.currentRdPerms))
-              Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c5)})})})
+//              val c5 = (c4.setConsumeExactReads(true)
+//                          .setCurrentRdPerms(c2.currentRdPerms))
+              Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
 
 //      case ast.New(v, dt) =>
 //        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
@@ -303,8 +314,8 @@ trait DefaultExecutor[ST <: Store[ST],
                 case None =>
 //                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
                   val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
-                  val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
-                  consume(σ \ insγ, tPerm, predicate.body, pve, c2a, tv.stepInto(c2a, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
+//                  val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
+                  consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
                     val ncs = dcs.map{_ match {
                       case fc: DirectFieldChunk => new NestedFieldChunk(fc)
                       case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
@@ -331,11 +342,11 @@ trait DefaultExecutor[ST <: Store[ST],
                     val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, tRcvr, predicate.name) match {
                       case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
                       case None => (σ1.h, True(), tPerm)}
-                    val c3a = c3.setCurrentRdPerms(c2.currentRdPerms)
-                    assume(t, c3a)
+//                    val c3a = c3.setCurrentRdPerms(c2.currentRdPerms)
+                    assume(t, c3)
                     val h1 = (h + DirectPredicateChunk(tRcvr, predicate.name, snap, tPerm1, ncs)
                                 + H(ncs))
-                    Q(σ \ h1, c3a)})
+                    Q(σ \ h1, c3)})
                 case Some(reason) =>
                   Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)}))
 //          else
@@ -353,10 +364,10 @@ trait DefaultExecutor[ST <: Store[ST],
 //                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
                   val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
                   consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
-                    val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c4, tv.stepInto(c4, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c5) => {
-                      val c5 = c4.setCurrentRdPerms(c3.currentRdPerms)
-                      Q(σ2 \ σ.γ, c5)})})
+//                    val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
+//                      val c5 = c4.setCurrentRdPerms(c3.currentRdPerms)
+                      Q(σ2 \ σ.γ, c4)})})
                 case Some(reason) =>
                   Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)}))
 //          else

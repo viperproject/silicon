@@ -35,7 +35,7 @@ trait Brancher[ST <: Store[ST],
                     fTrue: (C, TV) => VerificationResult,
                     fFalse: (C, TV) => VerificationResult)
                    : VerificationResult
-            
+
 	def branch(ts: Term,
              c: C,
              tv: TV,
@@ -44,7 +44,7 @@ trait Brancher[ST <: Store[ST],
              fTrue: (C, TV) => VerificationResult,
 						 fFalse: (C, TV) => VerificationResult)
             : VerificationResult
-						
+
 	def branch(ts: List[Term],
              c: C,
              tv: TV,
@@ -54,6 +54,18 @@ trait Brancher[ST <: Store[ST],
 						 fFalse: (C, TV) => VerificationResult)
             : VerificationResult
 }
+
+//trait ARPSupporter[ST <: Store[ST],
+//                   H <: Heap[H],
+//                   S <: State[ST, H, S],
+//                   C <: Context[C, ST, H, S] {
+//
+//  def con(id: String, upperBound: FractionalPermissions, c: C)
+//}
+
+/*
+ * Implementations
+ */
 
 trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
@@ -65,9 +77,9 @@ trait DefaultBrancher[ST <: Store[ST],
 
 	val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
 	import decider.assume
-	
+
 	val bookkeeper: Bookkeeper
-  
+
   def branchLocally(t: Term,
                     c: C,
                     tv: TV,
@@ -81,7 +93,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
     branch(t :: Nil, cTrue, cFalse, tvTrue, tvFalse, fTrue, fFalse)
 	}
-	
+
 	def branch(t: Term,
              c: C,
              tv: TV,
@@ -92,7 +104,7 @@ trait DefaultBrancher[ST <: Store[ST],
             : VerificationResult =
 
     branch(t :: Nil, c, tv, stepFactory, fTrue, fFalse)
-	
+
   def branch(ts: List[Term],
              c: C,
              tv: TV,
@@ -104,9 +116,9 @@ trait DefaultBrancher[ST <: Store[ST],
 
     val (cTrue, cFalse, tvTrue, tvFalse) = tv.splitUp(c, stepFactory)
 
-    branch(ts, cTrue, cFalse, tvTrue, tvFalse, fTrue, fFalse)  
+    branch(ts, cTrue, cFalse, tvTrue, tvFalse, fTrue, fFalse)
   }
-	
+
 	private def branch(ts: List[Term],
                      cTrue: C,
                      cFalse: C,
@@ -127,8 +139,8 @@ trait DefaultBrancher[ST <: Store[ST],
 			else 0
 
 		bookkeeper.branches += additionalPaths
-			
-		
+
+
 		((if (exploreTrueBranch) {
 			pushLocalState()
       val result =
@@ -199,7 +211,7 @@ class DefaultChunkFinder[ST <: Store[ST],
                 id: String,
                 rcvrSrc: ast.ASTNode,
                 pve: PartialVerificationError,
-                c: C, 
+                c: C,
                 tv: TV)
 							 (Q: CH => VerificationResult)
                : VerificationResult = {
@@ -232,7 +244,7 @@ class DefaultChunkFinder[ST <: Store[ST],
                 p: PermissionsTuple,
                 rcvrSrc: ast.ASTNode,
                 pve: PartialVerificationError,
-                c: C, 
+                c: C,
                 tv: TV)
                (Q: CH => VerificationResult)
                : VerificationResult =
@@ -251,17 +263,17 @@ class StateUtils[ST <: Store[ST],
                  C <: Context[C, ST, H, S]]
                 (val decider: Decider[PermissionsTuple, ST, H, PC, S, C]) {
 
-  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerm())
-                  : (Var, Term) = {
+//  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerm())
+//                  : (Var, Term) = {
+//
+//    val permVar = decider.fresh(id, sorts.Perm)
+//    val permVarConstraints = IsValidPerm(permVar, upperBound)
+//
+//    (permVar, permVarConstraints)
+//  }
 
-    val permVar = decider.fresh(id, sorts.Perm)
-    val permVarConstraints = IsValidPerm(permVar, upperBound)
-
-    (permVar, permVarConstraints)
-  }
-
-  def freshReadVar(id: String = "$rd", upperBound: FractionalPermissions = FullPerm())
-                  : (Var, Term) = {
+  def freshARP(id: String = "$k", upperBound: FractionalPermissions = FullPerm())
+              : (Var, Term) = {
 
     val permVar = decider.fresh(id, sorts.Perm)
     val permVarConstraints = IsReadPerm(permVar, upperBound)

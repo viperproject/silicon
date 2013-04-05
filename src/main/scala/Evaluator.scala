@@ -43,7 +43,7 @@ trait DefaultEvaluator[
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshReadVar
+  import stateUtils.freshARP
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
@@ -139,10 +139,10 @@ trait DefaultEvaluator[
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
 
-      case _: ast.ReadPerm =>
-        val (tVar, tConstraints) = stateUtils.freshReadVar()
-        assume(tConstraints, c)
-        Q(tVar, c)
+//      case _: ast.ReadPerm =>
+//        val (tVar, tConstraints) = stateUtils.freshReadVar()
+//        assume(tConstraints, c)
+//        Q(tVar, c)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -341,8 +341,8 @@ trait DefaultEvaluator[
 
       /* Permissions */
 
-      case ast.ConcPerm(n, d) =>
-        Q(ConcPerm(n, d), c)
+      case ast.ConcretePerm(n, d) =>
+        Q(ConcretePerm(n, d), c)
 
       case ast.PermPlus(e0, e1) =>
         evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c, tv)(Q)
@@ -465,19 +465,19 @@ trait DefaultEvaluator[
           val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
-          val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
-          val c2a = (c2.setConsumeExactReads(false)
-                       .setCurrentRdPerms(ReadPerm(rdVar)))
-          assume(rdVarConstraints, c2a)
-          consume(σ2, FullPerm(), pre, err, c2a, tv)((_, s, _, c3) => {
+//          val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
+//          val c2a = (c2.setConsumeExactReads(false)
+//                       .setCurrentRdPerms(ReadPerm(rdVar)))
+//          assume(rdVarConstraints, c2a)
+          consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
             val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
               assume(piFB, c3)
-              val c3a = (c3.setConsumeExactReads(true)
-                           .setCurrentRdPerms(c2.currentRdPerms))
-              Q(tFA, c3a)
+//              val c3a = (c3.setConsumeExactReads(true)
+//                           .setCurrentRdPerms(c2.currentRdPerms))
+              Q(tFA, c3)
             } else {
               val σ3 = σ2 \+ (func.result, tFA)
               /* Break recursive cycles */
@@ -494,9 +494,9 @@ trait DefaultEvaluator[
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                       assume(Set(tFAEqFB, tPost), c5a)
-                      val c6 = (c5a.setConsumeExactReads(true)
-                                   .setCurrentRdPerms(c2.currentRdPerms))
-                      Q(tFA, c6)}))
+//                      val c6 = (c5a.setConsumeExactReads(true)
+//                                   .setCurrentRdPerms(c2.currentRdPerms))
+                      Q(tFA, c5a)}))
                 } else {
                   /* Function body is invisible, use postcondition instead */
                     eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
@@ -504,9 +504,9 @@ trait DefaultEvaluator[
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tPost))
                       assume(tPost, c4a)
-                      val c5 = (c4a.setConsumeExactReads(true)
-                                   .setCurrentRdPerms(c2.currentRdPerms))
-                      Q(tFA, c5)})}
+//                      val c5 = (c4a.setConsumeExactReads(true)
+//                                   .setCurrentRdPerms(c2.currentRdPerms))
+                      Q(tFA, c4a)})}
               } else
                 Q(tFA, c3)}})})
 

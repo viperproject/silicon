@@ -722,14 +722,15 @@ sealed trait FractionalPermissionsExpression extends FractionalPermissions  {
 }
 
 case class FullPerm() extends PotentiallyWriteFractionalPermissions { override val toString = "W" }
-case class ConcPerm(n: BigInt, d: BigInt) extends PotentiallyWriteFractionalPermissions { override val toString = s"$n/$d" }
+case class ConcretePerm(n: BigInt, d: BigInt) extends PotentiallyWriteFractionalPermissions { override val toString = s"$n/$d" }
 
 case class NoPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "Z" }
-case class ReadPerm(v: Var) extends NonPotentiallyWriteFractionalPermissions { override val toString = v.toString }
-case class InternalRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "iRd" }
-case class MonitorRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "mRd" }
-case class PredicateRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "pRd" }
-case class ChannelRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "cRd" }
+//case class ReadPerm(v: Var) extends NonPotentiallyWriteFractionalPermissions { override val toString = v.toString }
+//case class InternalRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "iRd" }
+//case class MonitorRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "mRd" }
+//case class PredicateRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "pRd" }
+//case class ChannelRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "cRd" }
+case class AbstractReadPerm(constrainable: Boolean)
 case class StarPerm(v: Var) extends NonPotentiallyWriteFractionalPermissions { override val toString = v.toString }
 
 case class TermPerm(val t: Term) extends NonPotentiallyWriteFractionalPermissions {
@@ -793,7 +794,7 @@ object PermPlus extends ((FractionalPermissions, FractionalPermissions) => Fract
     case (NoPerm(), _) => t1
     case (_, NoPerm()) => t0
 //    case (PercPerm(n), PercPerm(m)) => if (n == -m) NoPerm() else PercPerm(n + m)
-    case (ConcPerm(n1, d1), ConcPerm(n2, d2)) => ConcPerm(n1 * d2 + n2 * d1, d1 * d2)
+    case (ConcretePerm(n1, d1), ConcretePerm(n2, d2)) => ConcretePerm(n1 * d2 + n2 * d1, d1 * d2)
     case (_, _) => new PermPlus(t0, t1)
   }
 
@@ -810,7 +811,7 @@ object PermMinus extends ((FractionalPermissions, FractionalPermissions) => Frac
     case (_, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
 //    case (PercPerm(n), PercPerm(m)) => if (n == m) NoPerm() else PercPerm(n - m)
-    case (ConcPerm(n1, d1), ConcPerm(n2, d2)) => ConcPerm(n1 * d2 - n2 * d1, d1 * d2)
+    case (ConcretePerm(n1, d1), ConcretePerm(n2, d2)) => ConcretePerm(n1 * d2 - n2 * d1, d1 * d2)
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
     case (_, _) => new PermMinus(t0, t1)
