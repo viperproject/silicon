@@ -5,14 +5,18 @@ package decider
 import scala.io.Source
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
+import semper.silicon.Config
+import semper.silicon.state.terms.FullPerm
+import semper.silicon.state.terms.NoPerm
+import semper.silicon.state.terms.StarPerm
+import semper.silicon.state.terms.True
 import sil.verifier.reasons.{NegativeFraction}
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
     PermissionChunk}
 import interfaces.reporting.Context
 import state.{TypeConverter}
-import state.terms.{Sort, Term, Eq, Or, True, PermissionsTuple, FullPerm,
-    NoPerm, ReadPerm, StarPerm, PredicateRdPerm, MonitorRdPerm, PermMinus, PermPlus}
+import semper.silicon.state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 
@@ -208,13 +212,13 @@ class DefaultDecider[ST <: Store[ST],
     || permAssert(Or(perm === other, other < perm)))
 
 	def assertReadAccess(perm: PermissionsTuple) = {
-    prover.logComment("[assertReadAccess]")
-    prover.logComment("perm.combined = " + perm.combined)
-    perm.combined match {
-      case   _: ReadPerm
-           | _: StarPerm => true
+//    prover.logComment("[assertReadAccess]")
+//    prover.logComment("perm.combined = " + perm.combined)
+    perm match {
+      case PermissionsTuple(_: ConcretePerm, _) => true
+      case PermissionsTuple(_: FullPerm, _) => true
       case _ =>
-        prover.logComment("*** " + (NoPerm() < perm.combined) + " ***")
+//        prover.logComment("*** " + (NoPerm() < perm.combined) + " ***")
         permAssert(NoPerm() < perm.combined)
     }
   }
@@ -231,12 +235,9 @@ class DefaultDecider[ST <: Store[ST],
     case _ => permAssert(Or(perm === NoPerm(), perm.combined < NoPerm()))
   }
 
-	def assertWriteAccess(perm: PermissionsTuple) = perm.combined match {
-    case _: FullPerm => true
-
-    case _: ReadPerm
-        | _: StarPerm => false
-
+	def assertWriteAccess(perm: PermissionsTuple) = perm match {
+    case PermissionsTuple(_: FullPerm, _: NoPerm) => true
+    case PermissionsTuple(_: NoPerm, _) => false
     case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm.combined))
   }
 
@@ -251,10 +252,7 @@ class DefaultDecider[ST <: Store[ST],
       .getOrElse(false))
 
 	def isNonNegativeFraction(perm: PermissionsTuple) = perm.combined match {
-    case  _: ReadPerm
-        | _: MonitorRdPerm
-        | _: PredicateRdPerm
-        | _: FullPerm
+    case  _: FullPerm
         | _: StarPerm => true
 
     case _ => isAsPermissive(perm, PermissionsTuple(NoPerm()))

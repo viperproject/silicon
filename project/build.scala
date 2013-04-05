@@ -13,7 +13,7 @@ object SiliconBuild extends Build {
     ++ Seq(
           organization := "semper",
           version := "0.1-SNAPSHOT",
-          scalaVersion := "2.10.0",
+          scalaVersion := "2.10.1",
           scalacOptions in Compile ++= Seq(
             "-deprecation",
             "-unchecked",

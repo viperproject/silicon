@@ -39,8 +39,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
 
-  /*protected*/ val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]]
-  import stateUtils.freshReadVar
+//  /*protected*/ val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]]
+//  import stateUtils.freshReadVar
 
   /*protected*/ val typeConverter: TypeConverter
   import typeConverter.toSort
@@ -55,10 +55,10 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val ins = method.formalArgs.map(_.localVar)
     val outs = method.formalReturns.map(_.localVar)
 
-    val (rdVar, rdVarConstraints) = freshReadVar("$MethRd")
+//    val (rdVar, rdVarConstraints) = freshReadVar("$MethRd")
 
     val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree, terms.ReadPerm(rdVar))
+    val c = contextFactory.create(history.tree)
 
     val tv = traceviewFactory.create(history)
 
@@ -78,7 +78,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		 * rules in Smans' paper.
 		 */
     inScope {
-		  assume(rdVarConstraints, c)
+//		  assume(rdVarConstraints, c)
 			produces(σ, fresh, terms.FullPerm(), pres, AssertionMalformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
@@ -247,10 +247,10 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.logComment("Axiomatising domain " + d.name)
       decider.prover.logComment("Axioms (eval)")
 
-      val (rdVar, _) = ev.stateUtils.freshReadVar("$MethRd")
+//      val (rdVar, _) = ev.stateUtils.freshReadVar("$MethRd")
       val history = new DefaultHistory[ST, H, S]()
       val tv = ev.traceviewFactory.create(history)
-      val c = ev.contextFactory.create(history.tree, terms.ReadPerm(rdVar))
+      val c = ev.contextFactory.create(history.tree /*, terms.ReadPerm(rdVar)*/)
 
       val axioms =
         decider.inScope {

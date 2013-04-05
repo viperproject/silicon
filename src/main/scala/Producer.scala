@@ -40,7 +40,7 @@ trait DefaultProducer[
 	import typeConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshPermVar
+  import stateUtils.freshARP
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper

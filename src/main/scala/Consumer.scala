@@ -27,7 +27,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val stateFactory: StateFactory[ST, H, S]
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.{freshPermVar}
+  import stateUtils.freshARP
 
   protected val typeConverter: TypeConverter
   import typeConverter.toSort
@@ -221,13 +221,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   }
 
   private def consumeExactRead(fp: FractionalPermissions, c: C): Boolean = fp match {
-    case _: ReadPerm if !c.consumeExactReads => false
+//    case _: ReadPerm if !c.consumeExactReads => false
+    case TermPerm(v: Var) => !c.constrainableARPs.contains(v)
+    case TermPerm(t) => sys.error(s"[consumeExactRead] Found unexpected case $fp")
     case _: StarPerm => false
     case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
     case IntPermTimes(_, t1) => consumeExactRead(t1, c)
-    case _ => true
+//    case _ => true
   }
 }
 
