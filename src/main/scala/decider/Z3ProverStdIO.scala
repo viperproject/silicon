@@ -2,19 +2,16 @@ package semper
 package silicon
 package decider
 
-import java.io.{PrintWriter, BufferedWriter, FileWriter, File,
-		InputStreamReader, BufferedReader, OutputStreamWriter}
+import java.io.{PrintWriter, BufferedWriter, File, InputStreamReader, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable.{HashMap, Stack}
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
-import reporting.Bookkeeper
+import reporting.{Bookkeeper, Z3InteractionFailed}
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) extends Prover {
   val termConverter = new TermToSMTLib2Converter()
 	import termConverter._
-
-	private val typeConverter = new state.DefaultTypeConverter()
 
 	private var scopeCounter = 0
 	private var scopeLabels = new HashMap[String, Stack[Int]]()
@@ -25,10 +22,12 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		if (logpath != null) common.io.PrintWriter(new File(logpath))
 		else null
 
+  /* TODO: Get Z3's version and log a warning if the version doesn't match the expected version. */
   private val z3 = {
     val builder = new ProcessBuilder(z3path, "-smt2", "-in")
 		builder.redirectErrorStream(true)
-		val process = builder.start()
+
+    val process = builder.start()
 
 		Runtime.getRuntime().addShutdownHook(new Thread {
 			override def run() {
@@ -122,7 +121,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		}
 	}
 
-  def getStatistics: Map[String, String]= {
+  def getStatistics(): Map[String, String]= {
     var repeat = true
     var line = ""
     var stats = scala.collection.immutable.SortedMap[String, String]()
@@ -132,25 +131,20 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
     do {
       line = input.readLine()
-//      println("line = " + line)
       logComment(line)
 
       /* Check that the first line starts with "(:". */
       if (line.isEmpty && !line.startsWith("(:"))
-        sys.error("Unexpected output of Z3.")
+        throw new Z3InteractionFailed(s"Unexpected output of Z3 while reading statistics: $line")
 
       line match {
         case entryPattern(entryName, entryNumber) =>
-//          println("entryName = " + entryName)
-//          println("entryNumber = " + entryNumber)
           stats = stats + (entryName -> entryNumber)
         case _ =>
       }
 
       repeat = !line.endsWith(")")
     } while (repeat)
-
-//    println("stats = " + stats)
     stats
   }
 
@@ -171,26 +165,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     v
   }
 
-//	def declare(f: ast.Function) {
-//		val str = "(declare-fun %s ($Snap $Ref %s) %s)".format(
-//					f.fullName,
-//					(f.ins.map(v => convert(typeConverter.toSort(v.t))).mkString(" ")),
-//					convert(typeConverter.toSort(f.out)))
-//
-//		write(str)
-//	}
-
-//  def emit(str: String) = write(str)
-
   def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort) {
-    // def declare(f: SILFunction) {
-    // val str = "(declare-fun %s (Int Int %s) %s)".format(
-    // f.name,
-    // (f.ins.map(v => convert(typeConverter.toSort(v.t))).mkString(" ")),
-    // convert(typeConverter.toSort(f.out)))
-    // println("[Prover] declaring symbol " + id)
-    // val str = "; declareSymbol %s: %s -> %s ".format(id, argSorts.mkString(" -> "), sort)
-
     val str = "(declare-fun %s (%s) %s)".format(sanitiseIdentifier(id),
       argSorts.map(convert).mkString(" "),
       convert(sort))
@@ -214,40 +189,31 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
 	/* TODO: Handle multi-line output, e.g. multiple error messages. */
 
-	private def readSuccess {
+	private def readSuccess() {
 		val answer = readLine()
 
-		if (answer != "success") {
-      throw new Exception("Unexpected prover output: Expected 'success', but found '%s'".format(answer))
-    }
+		if (answer != "success")
+      throw new Z3InteractionFailed(s"Unexpected output of Z3. Expected 'success' but found: $answer")
 	}
 
-	private def readUnsat: Boolean = readLine() match {
+	private def readUnsat(): Boolean = readLine() match {
 		case "unsat" => true
 		case "sat" => false
 		case "unknown" => false
-    case result => throw new Exception("Unexpected prover output: " + result)
-	}
 
-//	private def readSatOrUnknown: Boolean = readLine() match {
-//		case "sat" => true
-//		case "unknown" => true
-//		case "unsat" => false
-//    case result => throw new Exception("Unexpected prover output:" + result);
-//	}
+    case result =>
+      throw new Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
+	}
 
   private def readLine(): String = {
 		var repeat = true
 		var result = ""
 
 		while (repeat) {
-			// println("Reading ...")
 			result = input.readLine();
-			// println("... " + result)
 			if (result.toLowerCase != "success") logComment(result)
 
-			// repeat = result.startsWith("(error \"WARNING") /* Z3 2.x format */
-			repeat = result.startsWith("WARNING") // || result.startsWith /* Z3 3.x format */
+			repeat = result.startsWith("WARNING")
 		}
 
     result

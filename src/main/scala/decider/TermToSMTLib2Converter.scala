@@ -85,7 +85,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case StarPerm(v) => convert(v)
 //    case ReadPerm(v) => convert(v)
     case TermPerm(t) => convert2real(t)
-    case ConcretePerm(n, d) => (n.toDouble / d.toDouble).toString
+//    case ConcretePerm(n, d) => (n.toDouble / d.toDouble).toString
 
 //    case InternalRdPerm() => "$Perm.iRd"
 //    case MonitorRdPerm() => "$Perm.mRd"

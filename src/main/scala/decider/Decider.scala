@@ -5,18 +5,14 @@ package decider
 import scala.io.Source
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import semper.silicon.Config
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.StarPerm
-import semper.silicon.state.terms.True
+import sil.verifier.DependencyNotFoundError
 import sil.verifier.reasons.{NegativeFraction}
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
-    PermissionChunk}
+PermissionChunk}
 import interfaces.reporting.Context
 import state.{TypeConverter}
-import semper.silicon.state.terms._
+import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 
@@ -36,7 +32,17 @@ class DefaultDecider[ST <: Store[ST],
 	private var pathConditions: PC = null.asInstanceOf[PC]
 	private var typeConverter: TypeConverter = null
 //	private var performSmokeChecks: Boolean = false
-  private var isInitialised = false
+
+  private sealed trait State
+
+  private object State {
+    case object Created extends State
+    case object Initialised extends State
+    case object Started extends State
+    case object Erroneous extends State
+  }
+
+  private var state: State = State.Created
 
   @inline
   def prover: Prover = z3
@@ -52,18 +58,36 @@ class DefaultDecider[ST <: Store[ST],
     this.config = config
     this.bookkeeper = bookkeeper
 
-    this.isInitialised = true
+    this.state = State.Initialised
   }
 
-  def start() {
-    Predef.assert(isInitialised, "DefaultDecider must be initialised via init() first.")
+  /* TODO: Create an areDepsFulfilled method that checks if Z3 exists and if it is the expected version. */
 
-    z3 = new Z3ProverStdIO(z3Exe, config.effectiveZ3LogFile, bookkeeper)
+  def start(): Option[DependencyNotFoundError] = {
+    state match {
+      case State.Initialised => /* OK */
+      case State.Created => sys.error("DefaultDecider hasn't been initialised yet, call init() first.")
+      case State.Started => sys.error("DefaultDecider has already been started.")
+      case State.Erroneous => sys.error("DefaultDecider is in an erroneous state and cannot be started.")
+    }
+
+    state = State.Started
+
+    try {
+      z3 = new Z3ProverStdIO(z3Exe, config.effectiveZ3LogFile, bookkeeper)
+    } catch {
+      case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
+        state = State.Erroneous
+        return Some(DependencyNotFoundError("Z3 could not be started. " + e.getMessage))
+    }
+
     pathConditions = pathConditionsFactory.Π()
     typeConverter = new silicon.state.DefaultTypeConverter()
 //    performSmokeChecks = config.performSmokeChecks
 
     pushPreamble()
+
+    return None
   }
 
   private def z3Exe: String =
@@ -215,7 +239,7 @@ class DefaultDecider[ST <: Store[ST],
 //    prover.logComment("[assertReadAccess]")
 //    prover.logComment("perm.combined = " + perm.combined)
     perm match {
-      case PermissionsTuple(_: ConcretePerm, _) => true
+//      case PermissionsTuple(_: ConcretePerm, _) => true
       case PermissionsTuple(_: FullPerm, _) => true
       case _ =>
 //        prover.logComment("*** " + (NoPerm() < perm.combined) + " ***")

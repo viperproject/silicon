@@ -7,26 +7,34 @@ import java.text.SimpleDateFormat
 import java.io.File
 import sil.verifier.{
     Verifier => SILVerifier,
-    DefaultDependency => SILDependency,
     VerificationResult => SILVerificationResult,
     VerificationError => SILVerificationError,
     Success => SILSuccess,
     Failure => SILError}
+import sil.verifier.{DefaultDependency, DependencyNotFoundError}
 import interfaces.{VerificationResult, ContextAwareResult, Failure, Success, Unreachable}
 import state.terms.{FullPerm, PermissionsTuple}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultTypeConverter}
 import decider.DefaultDecider
-import reporting.{DefaultContext, Bookkeeper}
+import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import interfaces.reporting.{TraceView, TraceViewFactory}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
+
+/* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
+ *       For example, the way in which DependencyNotFoundErrors are handled.
+ */
+
+/* TODO: Can the internal error reporting (Failure, Success) be simplified? Keep in mind that Silicon should
+ *       continue if a pure assertion didn't hold.
+ */
 
 trait SiliconConstants {
   val name = brandingData.sbtProjectName
   val version = brandingData.sbtProjectVersion
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hg.version} ${brandingData.hg.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
-  val dependencies = Seq(SILDependency("Z3", "4.3.2", "http://z3.codeplex.com/"))
+  val dependencies = Seq(DefaultDependency("Z3", "4.3.2", "http://z3.codeplex.com/"))
   val z3ExeEnvironmentVariable = "Z3PATH"
 }
 
@@ -44,7 +52,6 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]
 
-//  private var startTime: Long = 0
   private var shutDownHooks: Set[() => Unit] = _
   private var config: Config = _
   private var started = false
@@ -84,7 +91,10 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     var result: sil.verifier.VerificationResult = null
 
     try {
-      result = convertFailures(runVerifier(program))
+      val failures = runVerifier(program)
+      result = convertFailures(failures)
+    } catch {
+      case DependencyNotFoundException(err) => result = SILError(err :: Nil)
     } finally {
       shutDownHooks.foreach(_())
     }
@@ -128,7 +138,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     bookkeeper.startTime = System.currentTimeMillis()
 
     decider.init(pathConditionFactory, config, bookkeeper)
-    decider.start()
+    decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
     verifierFactory.create(config, decider, stateFactory,
                            typeConverter,
@@ -209,7 +219,6 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
   private def convertFailures(failures: Seq[Failure[C, ST, H, S, _]]): SILVerificationResult = {
     failures match {
       case Seq() => SILSuccess
-
       case _ => SILError(failures map (_.message))
     }
   }

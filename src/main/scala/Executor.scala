@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, AssertionMalformed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, UnsafeCode, ExhaleFailed, MethodCallFailed, FoldFailed,
+    LoopInvariantNotEstablished, UnsafeCode, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import sil.verifier.reasons.{ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
@@ -281,7 +281,12 @@ trait DefaultExecutor[ST <: Store[ST],
         }
 
       case call @ ast.Call(meth, eArgs, lhs) =>
-        val pve = MethodCallFailed(call)
+        val pve = PreconditionInCallFalse(call)
+          /* TODO: Used to be MethodCallFailed. Is also passed on to producing the postcondition, during which
+           *       it is passed on to calls to eval, but it could also be thrown by produce itself (probably
+           *       only while checking well-formedness).
+           */
+
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
 //          val (rdVar, rdVarConstraints) = freshReadVar("$CallRd", c1.currentRdPerms)
 //          val c2 = (c1.setConsumeExactReads(false)

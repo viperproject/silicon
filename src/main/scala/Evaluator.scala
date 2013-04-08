@@ -4,7 +4,7 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.errors.FunctionApplicationFailed
+import sil.verifier.errors.PreconditionInAppFalse
 import sil.verifier.reasons.{ReceiverNull, NegativeFraction}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
@@ -341,8 +341,8 @@ trait DefaultEvaluator[
 
       /* Permissions */
 
-      case ast.ConcretePerm(n, d) =>
-        Q(ConcretePerm(n, d), c)
+//      case ast.ConcretePerm(n, d) =>
+//        Q(ConcretePerm(n, d), c)
 
       case ast.PermPlus(e0, e1) =>
         evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c, tv)(Q)
@@ -353,7 +353,7 @@ trait DefaultEvaluator[
       case ast.PermTimes(e0, e1) =>
         evalPermOp(σ, e0, e1, (t0, t1) => t0 * t1, pve, c, tv)(Q)
 
-      case ast.PermIntTimes(e0, e1) =>
+      case ast.IntPermTimes(e0, e1) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
           evalp(σ, e1, pve, c1, tv)((t1, c2) =>
             Q(IntPermTimes(t0, t1.combined), c2)))
@@ -452,7 +452,7 @@ trait DefaultEvaluator[
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
-        val err = FunctionApplicationFailed(fapp)
+        val err = PreconditionInAppFalse(fapp)
 
         /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
          *       in order to avoid that different predicates with the same name trigger a cycle

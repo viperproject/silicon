@@ -2,7 +2,7 @@ package semper
 package silicon
 package interfaces.decider
 
-import sil.verifier.ErrorReason
+import sil.verifier.{DependencyNotFoundError, ErrorReason}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk}
 import interfaces.reporting.{Context}
 import state.terms.{Term, Var, PermissionsTerm, Sort}
@@ -40,7 +40,7 @@ trait Decider[P <: PermissionsTerm[P], ST <: Store[ST], H <: Heap[H],
   def fresh(id: String, s: Sort): Var
 	def fresh(v: ast.Variable): Var
 
-  def start()
+  def start(): Option[DependencyNotFoundError]
   def stop()
 
   def getStatistics: Map[String, String]
