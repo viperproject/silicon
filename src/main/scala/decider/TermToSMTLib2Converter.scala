@@ -78,14 +78,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
     /* Permissions */
 
-    case pt: PermissionsTuple => convert(pt.combined)
+//    case pt: PermissionsTuple => convert(pt.combined)
 
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
-    case StarPerm(v) => convert(v)
+    case WildcardPerm(v) => convert(v)
 //    case ReadPerm(v) => convert(v)
     case TermPerm(t) => convert2real(t)
-//    case ConcretePerm(n, d) => (n.toDouble / d.toDouble).toString
+    case FractionPerm(n, d) => "(/ %s %s)".format(convert2real(n), convert2real(d))
 
 //    case InternalRdPerm() => "$Perm.iRd"
 //    case MonitorRdPerm() => "$Perm.mRd"

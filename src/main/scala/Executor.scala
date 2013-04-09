@@ -26,14 +26,15 @@ trait DefaultExecutor[ST <: Store[ST],
                       S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
 		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV]
-		{ this: Logging with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
-									 with Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-									 with Producer[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+									 with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+									 with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
 									 with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
+  private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
+	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.{fresh, assume, inScope}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -44,7 +45,7 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val heapMerger: HeapMerger[H]
   import heapMerger.merge
 
-	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
+	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
@@ -235,7 +236,7 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
-              withChunk[DirectFieldChunk](σ.h, tRcvr, id, FullPerm(), eRcvr, pve, c2, tv)(fc =>
+              withChunk[DirectChunk](σ.h, tRcvr, id, FullPerm(), eRcvr, pve, c2, tv)(fc =>
                 Q(σ \- fc \+ DirectFieldChunk(tRcvr, id, tRhs, fc.perm), c2)))
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))

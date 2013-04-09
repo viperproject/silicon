@@ -4,7 +4,7 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{NegativeFraction, ReceiverNull, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, Chunk}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
@@ -15,13 +15,14 @@ import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkee
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
-		extends Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-		{ this: Logging with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
+		extends Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
 									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
+  private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
+	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
@@ -32,7 +33,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val typeConverter: TypeConverter
   import typeConverter.toSort
 
-	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
+	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
@@ -45,7 +46,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-	def consume(σ: S, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult =
 
@@ -64,7 +65,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * @return
    */
   def consumes(σ: S,
-               p: PermissionsTuple,
+               p: P,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C,
@@ -74,7 +75,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     consumes2(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
 
-  private def consumes2(σ: S, h: H, p: PermissionsTuple, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
+  private def consumes2(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
                        (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
 
@@ -84,13 +85,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       consume(σ, h, p, φs.head, pvef(φs.head), c, tv)((h1, t, dcs1, c1) =>
         consumes2(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
 
-	protected def consume(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
 
 		consume2(σ, h, p, φ, pve, c, tv)(Q)
 
-  protected def consume2(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+  protected def consume2(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
 
@@ -102,7 +103,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     })
   }
 
-	private def internalConsume(σ: S, h: H, p: PermissionsTuple, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	private def internalConsume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
 
@@ -194,7 +195,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   private def consumePermissions(σ: S,
                                  h: H,
-                                 pLoss: PermissionsTuple,
+                                 pLoss: P,
                                  memloc: ast.MemoryLocation,
                                  tRcvr: Term,
                                  pve: PartialVerificationError,
@@ -207,7 +208,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     val eRcvr = memloc.rcv
     val id = memloc.loc.name
 
-    if (consumeExactRead(pLoss.combined, c)) {
+    if (consumeExactRead(pLoss, c)) {
       withChunk[DirectChunk](h, tRcvr, id, pLoss, eRcvr, pve, c, tv)(ch => {
         if (decider.assertNoAccess(ch.perm - pLoss)) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
@@ -220,11 +221,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
   }
 
-  private def consumeExactRead(fp: FractionalPermissions, c: C): Boolean = fp match {
+  private def consumeExactRead(fp: P, c: C): Boolean = fp match {
 //    case _: ReadPerm if !c.consumeExactReads => false
     case TermPerm(v: Var) => !c.constrainableARPs.contains(v)
     case TermPerm(t) => sys.error(s"[consumeExactRead] Found unexpected case $fp")
-    case _: StarPerm => false
+    case _: WildcardPerm => false
     case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)

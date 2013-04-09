@@ -11,6 +11,7 @@ import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBra
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, PermissionChunk}
 import state.terms._
 import state.terms.utils.{BigAnd, ¬}
+import state.DirectChunk
 import reporting.Bookkeeper
 import utils.notNothing._
 
@@ -75,7 +76,7 @@ trait DefaultBrancher[ST <: Store[ST],
                       TV <: TraceView[TV, ST, H, S]]
 		extends Brancher[ST, H, S, C, TV] with HasLocalState {
 
-	val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
+	val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
 	import decider.assume
 
 	val bookkeeper: Bookkeeper
@@ -165,7 +166,8 @@ trait DefaultBrancher[ST <: Store[ST],
 	}
 }
 
-trait ChunkFinder[ST <: Store[ST],
+trait ChunkFinder[P <: FractionalPermissions[P],
+                  ST <: Store[ST],
                   H <: Heap[H],
                   S <: State[ST, H, S],
                   C <: Context[C, ST, H, S],
@@ -182,11 +184,14 @@ trait ChunkFinder[ST <: Store[ST],
 							 (Q: CH => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: PermissionChunk : NotNothing : Manifest]
+  /* TODO: Should be CH <: PermissionChunk[P, CH], but I couldn't get the compiler to accept the implementation
+   *       provided by DefaultChunkFinder.withChunk.
+   */
+  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
                 rcvr: Term,
                 id: String,
-                p: PermissionsTuple,
+                p: P,
                 rcvrSrc: ast.ASTNode,
                 ve: PartialVerificationError,
                 c: C,
@@ -201,11 +206,11 @@ class DefaultChunkFinder[ST <: Store[ST],
                          S <: State[ST, H, S],
                          C <: Context[C, ST, H, S],
                          TV <: TraceView[TV, ST, H, S]]
-                        (val decider: Decider[PermissionsTuple, ST, H, PC, S, C],
+                        (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
                          val stateFormatter: StateFormatter[ST, H, S, String])
-		extends ChunkFinder[ST, H, S, C, TV] with Logging {
+		extends ChunkFinder[DefaultFractionalPermissions, ST, H, S, C, TV] with Logging {
 
-	def withChunk[CH <: Chunk: NotNothing: Manifest]
+	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
                 rcvr: Term,
                 id: String,
@@ -237,11 +242,11 @@ class DefaultChunkFinder[ST <: Store[ST],
 		}
 	}
 
-	def withChunk[CH <: PermissionChunk : NotNothing : Manifest]
-                (h: H,
+	def withChunk[CH <: DirectChunk : NotNothing : Manifest]
+               (h: H,
                 rcvr: Term,
                 id: String,
-                p: PermissionsTuple,
+                p: DefaultFractionalPermissions,
                 rcvrSrc: ast.ASTNode,
                 pve: PartialVerificationError,
                 c: C,
@@ -261,7 +266,7 @@ class StateUtils[ST <: Store[ST],
                  PC <: PathConditions[PC],
                  S <: State[ST, H, S],
                  C <: Context[C, ST, H, S]]
-                (val decider: Decider[PermissionsTuple, ST, H, PC, S, C]) {
+                (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
 
 //  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerm())
 //                  : (Var, Term) = {
@@ -272,7 +277,7 @@ class StateUtils[ST <: Store[ST],
 //    (permVar, permVarConstraints)
 //  }
 
-  def freshARP(id: String = "$k", upperBound: FractionalPermissions = FullPerm())
+  def freshARP(id: String = "$k", upperBound: DefaultFractionalPermissions = FullPerm())
               : (Var, Term) = {
 
     val permVar = decider.fresh(id, sorts.Perm)

@@ -86,8 +86,8 @@ package object ast {
 //  val ReadPerm = sil.ast.ReadPerm
   type EpsilonPerm = sil.ast.EpsilonPerm
   val EpsilonPerm = sil.ast.EpsilonPerm
-//  type ConcretePerm = sil.ast.ConcretePerm
-//  val ConcretePerm = sil.ast.ConcretePerm
+  type FractionalPerm = sil.ast.FractionalPerm
+  val FractionalPerm = sil.ast.FractionalPerm
   type PermPlus = sil.ast.PermAdd
   val PermPlus = sil.ast.PermAdd
   type PermMinus = sil.ast.PermSub

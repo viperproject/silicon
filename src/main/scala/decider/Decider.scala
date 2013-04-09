@@ -11,7 +11,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
 PermissionChunk}
 import interfaces.reporting.Context
-import state.{TypeConverter}
+import semper.silicon.state.{DirectChunk, TypeConverter}
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
@@ -21,8 +21,10 @@ class DefaultDecider[ST <: Store[ST],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S],
                      C <: Context[C, ST, H, S]]
-		extends Decider[PermissionsTuple, ST, H, PC, S, C]
+		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
 		   with Logging {
+
+  private type P = DefaultFractionalPermissions
 
 	private var z3: Z3ProverStdIO = null
 
@@ -80,6 +82,12 @@ class DefaultDecider[ST <: Store[ST],
         state = State.Erroneous
         return Some(DependencyNotFoundError("Z3 could not be started. " + e.getMessage))
     }
+
+    val z3Version = z3.z3Version()
+    logger.info(s"Using Z3 $z3Version located at $z3Exe")
+
+    if (z3Version != Silicon.expectedZ3Version)
+      logger.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")
 
     pathConditions = pathConditionsFactory.Π()
     typeConverter = new silicon.state.DefaultTypeConverter()
@@ -229,71 +237,59 @@ class DefaultDecider[ST <: Store[ST],
   /* Is perm as permissive as other?
    * As in "Is what we hold at least as permissive as what is required?".
    */
-  def isAsPermissive(perm: PermissionsTuple, other: PermissionsTuple) = (
+  def isAsPermissive(perm: P, other: P) = (
        perm == other
-    || (   perm.combined == FullPerm()
-        && other.isPotentiallyWrite == silicon.state.terms.PotentiallyWriteStatus.False)
     || permAssert(Or(perm === other, other < perm)))
 
-	def assertReadAccess(perm: PermissionsTuple) = {
+	def assertReadAccess(perm: P) = {
 //    prover.logComment("[assertReadAccess]")
 //    prover.logComment("perm.combined = " + perm.combined)
     perm match {
 //      case PermissionsTuple(_: ConcretePerm, _) => true
-      case PermissionsTuple(_: FullPerm, _) => true
+      case FullPerm() => true
+      case NoPerm() => false
       case _ =>
 //        prover.logComment("*** " + (NoPerm() < perm.combined) + " ***")
-        permAssert(NoPerm() < perm.combined)
+        permAssert(NoPerm() < perm)
     }
   }
 
-	def assertNoAccess(perm: PermissionsTuple) = perm.combined match {
+	def assertNoAccess(perm: P) = perm match {
     case _: NoPerm => true
 
     /* ATTENTION: This is only sound if both plus operands and the left minus
      *            operand are positive!
      * */
-    case _: PermPlus
-        | PermMinus(_, _: StarPerm) => false
+    case  _: PermPlus
+        | PermMinus(_, _: WildcardPerm) => false
 
-    case _ => permAssert(Or(perm === NoPerm(), perm.combined < NoPerm()))
+    case _ => permAssert(Or(perm === NoPerm(), perm < NoPerm()))
   }
 
-	def assertWriteAccess(perm: PermissionsTuple) = perm match {
-    case PermissionsTuple(_: FullPerm, _: NoPerm) => true
-    case PermissionsTuple(_: NoPerm, _) => false
-    case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm.combined))
+	def assertWriteAccess(perm: P) = perm match {
+    case _: FullPerm => true
+    case _: NoPerm => false
+    case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm))
   }
 
 	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean = (
-		getChunk[PermissionChunk](h, rcvr, id)
+		getChunk[DirectChunk](h, rcvr, id)
       .map(c => assertReadAccess(c.perm))
       .getOrElse(false))
 
 	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean = (
-    getChunk[PermissionChunk](h, rcvr, id)
+    getChunk[DirectChunk](h, rcvr, id)
       .map(c => assertWriteAccess(c.perm))
       .getOrElse(false))
 
-	def isNonNegativeFraction(perm: PermissionsTuple) = perm.combined match {
+	def isNonNegativeFraction(perm: P) = perm match {
     case  _: FullPerm
-        | _: StarPerm => true
+        | _: WildcardPerm => true
 
-    case _ => isAsPermissive(perm, PermissionsTuple(NoPerm()))
+    case _ => isAsPermissive(perm, NoPerm())
   }
 
-  /* TODO: Currently deactivated since Chalice also doesn't seem to check (anymore)
-  *         if permissions are at most hundred.
-  */
-  def assertAtMostWriteAccess(p: PermissionsTuple): Boolean = true
-//  def assertAtMostWriteAccess(p: PermissionsTerm): Boolean = p match {
-//    case  _: ReadPerms
-//        | _: StarPerms
-//        | _: FullPerms => true
-//    case _ => assert(Or(TermEq(p, FullPerms()), p < FullPerms()))
-//  }
-
-	def isValidFraction(perm: PermissionsTuple, permSrc: ast.Expression) =
+	def isValidFraction(perm: P, permSrc: ast.Expression) =
     if (!isNonNegativeFraction(perm))
       Some(NegativeFraction(permSrc))
 //    else if (!assertAtMostWriteAccess(perm))

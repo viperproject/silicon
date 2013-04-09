@@ -8,7 +8,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, Chunk,
 import interfaces.reporting.Context
 import interfaces.decider.Decider
 import ast.Variable
-import terms.{Term, PermissionsTuple}
+import terms.{Term, DefaultFractionalPermissions}
 import reporting.Bookkeeper
 
 /*
@@ -90,24 +90,24 @@ class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPa
 		set.add(t)
 		this
 	}
-	
+
 	def pop() = {
 		set.remove(stack.pop())
 		this
 	}
-	
-	def pushScope() = {		
+
+	def pushScope() = {
 		stack.push(scopeMarker)
 		this
 	}
-	
+
 	def popScope() = {
 		var t: Term = null;
-		
+
 		while ({t = stack.pop(); t != null}) {
 			set.remove(t)
 		}
-		
+
 		this
 	}
 }
@@ -126,15 +126,15 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
 	def \(γ: ST) = this.copy(γ = γ)
 	def \+(γ: ST) = this.copy(γ = this.γ + γ)
 	def \+(v: Variable, t: Term) = this.copy(γ = this.γ + (v, t))
-	
-	def \(h: H) = this.copy(h = h)	
+
+	def \(h: H) = this.copy(h = h)
 	def \(h: H, g: H) = this.copy(h = h, g = g)
 	def \+(c: Chunk) = this.copy(h = this.h + c)
 	def \+(h: H) = this.copy(h = this.h + h)
 	def \-(c: Chunk) = this.copy(h = this.h - c)
-	
+
 	def \(γ: ST = γ, h: H = h, g: H = g) = this.copy(γ, h, g)
-	
+
 	def π = getPathConditions()
 }
 
@@ -145,8 +145,8 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
 class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 												PC <: PathConditions[PC], S <: State[ST, H, S],
 												C <: Context[C, ST, H, S]]
-		(val decider: Decider[PermissionsTuple, ST, H, PC, S, C],
-		 val distinctnessLowerBound: PermissionsTuple,
+		(val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
+		 val distinctnessLowerBound: DefaultFractionalPermissions,
 		 val bookkeeper: Bookkeeper,
 		 val stateFormatter: StateFormatter[ST, H, S, String],
      val stateFactory: StateFactory[ST, H, S])
@@ -164,12 +164,12 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 	def merge(h1in: H, h2in: H): (H, Set[Term]) = {
 		var fcs: List[DirectFieldChunk] = Nil
 		var rfcs: List[DirectFieldChunk] = Nil
-		
+
 		var tSnaps = Set[Term]()
 		var rts = Set[Term]()
 
-    val (h1PermissionChunks, h1Others) = h1in.values.partition(_.isInstanceOf[PermissionChunk])
-    val (h2PermissionChunks, h2Others) = h2in.values.partition(_.isInstanceOf[PermissionChunk])
+    val (h1PermissionChunks, h1Others) = h1in.values.partition(_.isInstanceOf[DirectChunk])
+    val (h2PermissionChunks, h2Others) = h2in.values.partition(_.isInstanceOf[DirectChunk])
 
 		var rh: H = null.asInstanceOf[H]
 		var h1 = H(h1PermissionChunks) // h1in
@@ -185,7 +185,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 		 *    The result would finally be merged with the complete heap.
 		 *    Not sure if that turns out to be sufficient, though.
 		 */
-		
+
 		decider.pushScope()
 		do {
 			val result = singleMerge(h1, h2)
@@ -201,9 +201,9 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 			h2 = rh
 		} while(rts.nonEmpty)
 		decider.popScope()
-		
+
 		val tDists = deriveObjectDistinctness(rh, fcs)
-				
+
 		(rh + H(h1Others) + H(h2Others), tSnaps ++ tDists)
 	}
 
@@ -216,7 +216,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 			 * pi: additional path conditions
 			 */
 			val initial = (h1, List[DirectFieldChunk](), Set[Term]())
-			
+
 			h2.values.foldLeft(initial) { case ((ah, afcs, ats), c2) =>
 				/* ah: accumulating heap
 				 * afcs: accumulating new/modified field chunks
@@ -229,7 +229,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 						val t1 = if (c1.value == c2.value) terms.True()
 										 else c1.value === c2.value
 						(ah - c1 + c3, c3 :: afcs, ats + t1)
-						
+
 					case (Some(c1: DirectPredicateChunk), c2: DirectPredicateChunk) =>
 						val c3 = c1 + c2.perm
 						val tSnap = if (c1.snap == c2.snap) terms.True()
@@ -246,7 +246,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 
 		(rh, fcs, tSnaps)
 	}
-	
+
 	private def deriveObjectDistinctness(h: H, fcs: List[DirectFieldChunk]): List[Term] = {
 		bookkeeper.objectDistinctnessComputations += 1
 
@@ -256,7 +256,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 		 *       then t1 != t2
 		 * We only consider the changeset fcs and compare each chunk in it to
 		 * all chunks in h having the same field id.
-		 */		
+		 */
 		val fields = h.values collect {case c: DirectFieldChunk => c}
 		val gs = fields groupBy(_.id)
 

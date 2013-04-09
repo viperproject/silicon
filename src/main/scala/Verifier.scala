@@ -8,7 +8,7 @@ import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
     HeapMerger}
 import state.{terms, TypeConverter, DirectChunk}
-import state.terms.{Term, PermissionsTuple/*, TypeOf*/}
+import state.terms.{Term, DefaultFractionalPermissions/*, TypeOf*/}
 import state.terms.implicits._
 import interfaces.state.factoryUtils.Ø
 //import ast.utils.collections.SetAnd
@@ -26,14 +26,14 @@ trait AbstractElementVerifier[ST <: Store[ST],
 														 S <: State[ST, H, S],
 														 TV <: TraceView[TV, ST, H, S]]
 		extends Logging
-		   with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
-		   with Producer[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
-		   with Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV] {
 
 	/*protected*/ val config: Config
 
-  /*protected*/ val decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]]
+  /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
 	import decider.{fresh, assume, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
@@ -99,10 +99,10 @@ class DefaultElementVerifier[ST <: Store[ST],
                              S <: State[ST, H, S],
                              TV <: TraceView[TV, ST, H, S]]
 		(	val config: Config,
-		  val decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]],
+		  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
 			val stateFactory: StateFactory[ST, H, S],
 			val typeConverter: TypeConverter,
-			val chunkFinder: ChunkFinder[ST, H, S, DefaultContext[ST, H, S], TV],
+			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
@@ -126,10 +126,10 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
                       S <: State[ST, H, S]] {
 
   def create(config: Config,
-      decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]],
+      decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
       stateFactory: StateFactory[ST, H, S],
       typeConverter: TypeConverter,
-      chunkFinder: ChunkFinder[ST, H, S, DefaultContext[ST, H, S], TV],
+      chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
       stateFormatter: StateFormatter[ST, H, S, String],
       heapMerger: HeapMerger[H],
       stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
@@ -144,7 +144,7 @@ trait AbstractVerifier[ST <: Store[ST],
                        TV <: TraceView[TV, ST, H, S]]
       extends Logging {
 
-  def decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]]
+  def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
   def config: Config
   def bookkeeper: Bookkeeper
 
@@ -280,10 +280,10 @@ class DefaultVerifierFactory[ST <: Store[ST], H <: Heap[H], PC <: PathConditions
 {
 
   def create(config: Config,
-      decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]],
+      decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
       stateFactory: StateFactory[ST, H, S],
       typeConverter: TypeConverter,
-      chunkFinder: ChunkFinder[ST, H, S, DefaultContext[ST, H, S], TV],
+      chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
       stateFormatter: StateFormatter[ST, H, S, String],
       heapMerger: HeapMerger[H],
       stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
@@ -300,10 +300,10 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 											S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
 		(	val config: Config,
-			val decider: Decider[PermissionsTuple, ST, H, PC, S, DefaultContext[ST, H, S]],
+			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
 			val stateFactory: StateFactory[ST, H, S],
 			val typeConverter: TypeConverter,
-			val chunkFinder: ChunkFinder[ST, H, S, DefaultContext[ST, H, S], TV],
+			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],

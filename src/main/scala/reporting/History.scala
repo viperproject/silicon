@@ -5,7 +5,7 @@ package reporting
 import interfaces.state.{Heap, PathConditions, Store, State}
 import interfaces.{VerificationResult,FatalResult,NonFatalResult, Success, Failure}
 import interfaces.reporting._
-import state.terms.{Term, PermissionsTuple, FractionalPermissions, PotentiallyWriteStatus}
+import state.terms.{Term, DefaultFractionalPermissions}
 import state.terms.utils.¬
 
 /** Default implementation of History */
@@ -14,14 +14,14 @@ class DefaultHistory
 	()
 	extends History[ST, H, S]
 {
-  
+
   val tree: RootBranch[ST, H, S] = new DefaultRootBranch[ST, H, S]()
   val trace: RootStep[ST, H, S] = new DefaultRootStep[ST, H, S](tree)
-    
+
   var results: List[VerificationResult] = Nil
-  
+
   def status = tree.status
-  
+
   def print = tree.print("")
 }
 
@@ -34,53 +34,53 @@ abstract class AbstractTraceView
 {
   /** Concrete implementations should provide a way to copy the trace view and replacing the current step */
   def copy(currentStep: Step[ST, H, S]) : TV
-  
+
   def stepInto[BK](bk: BranchKeeper[BK, ST, H, S], stepFactory: (Step[ST, H, S], Branch[ST, H, S]) => SubStep[ST, H, S]) : TV = {
     val step = stepFactory(currentStep, bk.currentBranch)
     currentStep.addChild(step)
-    
+
     copy(currentStep = step)
   }
-  
+
   override def splitUp[BK](bk: BranchKeeper[BK, ST, H, S], stepFactory: (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S]) = {
     val (bTrue,bFalse) = bk.currentBranch.splitUp(stepFactory(_, _, currentStep))
-    
+
     currentStep.addChild(bTrue.branchingStep)
     currentStep.addChild(bFalse.branchingStep)
-    
+
     val tvTrue = copy(currentStep = bTrue.branchingStep)
     val tvFalse = copy(currentStep = bFalse.branchingStep)
-    
+
     (bk.replaceCurrentBranch(currentBranch = bTrue), bk.replaceCurrentBranch(currentBranch = bFalse), tvTrue, tvFalse)
   }
-  
+
   override def splitUpLocally[BK](bk: BranchKeeper[BK, ST, H, S], stepFactory: (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S]) = {
     val (bTrue,bFalse) = bk.currentBranch.splitUpLocally(stepFactory(_, _, currentStep))
-    
+
     currentStep.addChild(bTrue.branchingStep)
     currentStep.addChild(bFalse.branchingStep)
-    
+
     val tvTrue = copy(currentStep = bTrue.branchingStep)
     val tvFalse = copy(currentStep = bFalse.branchingStep)
-        
+
     (bk.replaceCurrentBranch(currentBranch = bTrue), bk.replaceCurrentBranch(currentBranch = bFalse), tvTrue, tvFalse)
   }
-  
+
   override def splitOffLocally[BK](bk: BranchKeeper[BK, ST, H, S], stepFactory: (LocalSingleBranch[ST, H, S], Step[ST, H, S]) => LocalSingleBranchingStep[ST, H, S]) = {
     val b = bk.currentBranch.splitOffLocally(stepFactory(_, currentStep))
-    
+
     currentStep.addChild(b.branchingStep)
     val tv = copy(currentStep = b.branchingStep)
-        
+
     (bk.replaceCurrentBranch(currentBranch = b), tv)
   }
-  
-  
+
+
   def addResult (currentBranch: Branch[ST, H, S], r: VerificationResult) = {
     currentStep.addResult(r)
     currentBranch.addResult(r)
   }
-  
+
 }
 
 
@@ -109,7 +109,7 @@ case class BranchingOnlyTraceView
   extends AbstractTraceView[BranchingOnlyTraceView[ST, H, S], ST, H, S](currentStep)
 {
   override def stepInto[BK](bk: BranchKeeper[BK, ST, H, S], stepFactory: (Step[ST, H, S], Branch[ST, H, S]) => SubStep[ST, H, S]) = this
-  
+
   def copy(currentStep: Step[ST, H, S]) = BranchingOnlyTraceView(currentStep)
 }
 
@@ -125,20 +125,20 @@ class BranchingOnlyTraceViewFactory
 /** Base implementation of Branch */
 abstract class AbstractBranch
     [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-    extends Branch[ST, H, S] 
+    extends Branch[ST, H, S]
 {
 
   def isLeaf = subBranches match { case None => true case _ => false }
-    
+
   private var subBranches: Option[(TwinBranch[ST, H, S],TwinBranch[ST, H, S])] = None
   var localBranches: List[LocalBranching] = Nil
-  
+
   def trueBranch = subBranches.getOrElse((null,null))._1
   def falseBranch = subBranches.getOrElse((null,null))._2
-    
+
   var result: List[VerificationResult] = Nil
   def addResult (r: VerificationResult) = result = r :: result
-  
+
   /** Merges status information of the this branch and, if any, its local branches and child branches */
   def status : VerificationStatus = (
     VerificationStatus(result)
@@ -150,51 +150,51 @@ abstract class AbstractBranch
       case Some((bTrue,bFalse)) => bTrue.status & bFalse.status
     })
   )
-  
+
   def splitUp(stepFactory: (Boolean, TwinBranch[ST, H, S]) => TwinBranchingStep[ST, H, S]) = {
     var bTrue: TwinBranch[ST,H,S] = null
     var bFalse: TwinBranch[ST,H,S] = null
-    
+
     bTrue = new DefaultBranch(this, bFalse, (tb: TwinBranch[ST, H, S]) => stepFactory(true, tb))
     bFalse = new DefaultBranch(this, bTrue, (tb: TwinBranch[ST, H, S]) => stepFactory(false, tb))
-    
+
     subBranches = Some((bTrue,bFalse))
-    
+
     (bTrue, bFalse)
   }
-  
+
   def splitUpLocally(stepFactory: (Boolean, LocalTwinBranch[ST, H, S]) => LocalTwinBranchingStep[ST, H, S]) = {
     var bTrue: LocalTwinBranch[ST,H,S] = null
     var bFalse: LocalTwinBranch[ST,H,S] = null
-    
+
     bTrue = new DefaultLocalBranch(this, bFalse, (tb: LocalTwinBranch[ST, H, S]) => stepFactory(true, tb))
     bFalse = new DefaultLocalBranch(this, bTrue, (tb: LocalTwinBranch[ST, H, S]) => stepFactory(false, tb))
-    
+
     localBranches = LocalTwinBranching(bTrue, bFalse) :: localBranches
-    
+
     (bTrue, bFalse)
   }
-  
+
   def splitOffLocally(stepFactory: LocalSingleBranch[ST, H, S] => LocalSingleBranchingStep[ST, H, S]) = {
     val branch = new DefaultLocalSingleBranch(this, stepFactory)
-    
+
     localBranches = LocalSingleBranching(branch) :: localBranches
-    
+
     branch
   }
-  
+
   def branchings: List[BranchingStep[ST, H, S]]
 
   def print(indent: String) = {
     println(indent + this)
     //println(indent + "-" + _result)
     println(indent + "s=" + status)
-    
+
     localBranches foreach (_ match {
       case LocalTwinBranching(tB, fB) => tB.print(indent + "--"); fB.print(indent + "--")
       case LocalSingleBranching(b) => b.print(indent + "--")
     })
-    
+
     subBranches match {
       case None =>
       case Some((t,f)) => t.print(indent + "  "); f.print(indent + "  ")
@@ -210,11 +210,11 @@ class DefaultRootBranch
 {
   def ancestorsAndSelf = this :: Nil
   def rootBranch = this
-  
+
   def branchings = Nil
 }
 
-/** Default implementation of Branch for twin branches 
+/** Default implementation of Branch for twin branches
   * @param parent This branch's parent branch
   * @param twin0 This branch's twin branch
   * @param stepFactory A function that instantiates this branch's branching step, given the reference to this branch
@@ -226,10 +226,10 @@ class DefaultBranch
 {
   val branchingStep = stepFactory(this)
   lazy val twin = twin0
-  
+
   def ancestorsAndSelf = this :: parent.ancestorsAndSelf
   def rootBranch = parent.rootBranch
-  
+
   def branchings = branchingStep :: parent.branchings
 }
 
@@ -245,10 +245,10 @@ class DefaultLocalBranch
 {
   val branchingStep = stepFactory(this)
   lazy val twin = twin0
-  
+
   def ancestorsAndSelf = this :: Nil
   def rootBranch = this
-  
+
   def branchings = branchingStep :: Nil
 }
 
@@ -262,10 +262,10 @@ class DefaultLocalSingleBranch
   extends AbstractBranch[ST, H, S] with LocalSingleBranch[ST, H, S]
 {
   val branchingStep = stepFactory(this)
-  
+
   def ancestorsAndSelf = this :: Nil
   def rootBranch = this
-  
+
   def branchings = Nil
 }
 
@@ -296,16 +296,16 @@ trait DefaultStep
   [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   extends Step[ST, H, S]
 {
-  
+
   var sub: List[SubStep[ST, H, S]] = Nil
   def children = sub.reverse
 
   def isLeaf = sub.isEmpty
-  
+
   var _results: List[VerificationResult] = Nil
-  
+
   def addResult (r: VerificationResult) = _results = r :: _results
-  
+
   def results = _results.filter{
     case f:Failure[_,_,_,_,_] => true
 //    case w: Warning[_,_,_,_,_] => true
@@ -317,7 +317,7 @@ trait DefaultStep
   def addChild(s: SubStep[ST, H, S]) = {
     sub = s :: sub
   }
-  
+
   override def print(indent: String) = {
     println(indent + format)
     children.foreach(s => s.print(indent + "  "))
@@ -333,42 +333,42 @@ trait DefaultSubStep
 }
 
 
-/** Base implementation of the basic symbolic execution steps 
-  * Providing means to set the post-state after creation 
+/** Base implementation of the basic symbolic execution steps
+  * Providing means to set the post-state after creation
   */
 trait SymbExStep
   [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   extends DefaultStep[ST, H, S] with DefaultSubStep[ST, H, S]
-{  
+{
   var _σPost = null.asInstanceOf[S]
   var _pcPost = Set.empty[Term]
-  
+
   def σPost = _σPost
   def pcPost = _pcPost
-  
+
   def σPost_= (σ: S) = {
     _σPost = σ
     _pcPost = σ.π
   }
-  
+
 }
 
-/** Base implementation of descriptive steps (= not basic symbolic execution steps) 
-  * Providing data (state, node) computed from the step's children 
+/** Base implementation of descriptive steps (= not basic symbolic execution steps)
+  * Providing data (state, node) computed from the step's children
   */
 trait DescriptiveStep
   [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   extends DefaultStep[ST, H, S]
 {
-  
+
   def σPre = if (sub.isEmpty) null.asInstanceOf[S] else sub.last.σPre
   def pcPre = if (sub.isEmpty) null else sub.last.pcPre
-  
+
   def σPost = if (sub.isEmpty) null.asInstanceOf[S] else sub.head.σPost
   def pcPost = if (sub.isEmpty) null else sub.head.pcPost
-  
+
   def σPost_= (σ: S) = ()
-  
+
   def node = if (sub.isEmpty) null else sub.head.node
 }
 
@@ -380,7 +380,7 @@ case class DefaultRootStep
   extends DescriptiveStep[ST, H, S] with RootStep[ST, H, S]
 {
   def ancestors = Nil
-  
+
   override def format = "/"
 }
 
@@ -404,13 +404,13 @@ case class Evaluating
 /** Factory object for Producing steps */
 object Producing {
   /** @return A factory function that instantiates a Producing step, given its parent and branch */
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](σPre: S, p: PermissionsTuple, node: ast.Expression) =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](σPre: S, p: DefaultFractionalPermissions, node: ast.Expression) =
     (parent: Step[ST, H, S], branch: Branch[ST, H, S]) => new Producing(σPre, σPre.π, p, node, parent, branch)
 }
 
 case class Producing
     [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-    (σPre: S, pcPre: Set[Term], p: PermissionsTuple, node: ast.Expression, parent: Step[ST, H, S], branch: Branch[ST, H, S])
+    (σPre: S, pcPre: Set[Term], p: DefaultFractionalPermissions, node: ast.Expression, parent: Step[ST, H, S], branch: Branch[ST, H, S])
     extends SymbExStep[ST, H, S]
 {
   lazy val format = "Produce %s".format(node)
@@ -420,13 +420,13 @@ case class Producing
 /** Factory object for Consuming steps */
 object Consuming {
   /** @return A factory function that instantiates a Consuming step, given its parent and branch */
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](σPre: S, h: H, p: PermissionsTuple, node: ast.Expression) =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](σPre: S, h: H, p: DefaultFractionalPermissions, node: ast.Expression) =
     (parent: Step[ST, H, S], branch: Branch[ST, H, S]) => new Consuming(σPre, σPre.π, h, p, node, parent, branch)
 }
-    
+
 case class Consuming
     [ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-    (σPre: S, pcPre: Set[Term], h: H, p: PermissionsTuple, node: ast.Expression, parent: Step[ST, H, S], branch: Branch[ST, H, S])
+    (σPre: S, pcPre: Set[Term], h: H, p: DefaultFractionalPermissions, node: ast.Expression, parent: Step[ST, H, S], branch: Branch[ST, H, S])
     extends SymbExStep[ST, H, S]
 {
   lazy val format = "Consume %s".format(node)
@@ -469,7 +469,7 @@ case class ImplBranching
   (b: Boolean, branch: B, n: ast.ASTNode, t: Term, parent: Step[ST, H, S])
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
-  lazy val format = 
+  lazy val format =
     "%s antecedent at %s (%s)".format(b.toString.capitalize, n.pos, if (b) t else ¬(t))
 }
 

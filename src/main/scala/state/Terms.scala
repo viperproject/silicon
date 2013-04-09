@@ -613,147 +613,72 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ Function2[
  * Permissions
  */
 
-//sealed trait PermissionsTerm extends Term
+//sealed trait PermissionsTerm[P <: PermissionsTerm[P]] extends Term {
+//  override val sort = sorts.Perm
+//
+//  def +(other: P): P
+//  def -(other: P): P
+//  def *(other: P): P
+//  def <(other: P): BooleanTerm
+//  def >(other: P): BooleanTerm
+//}
 
-sealed trait PotentiallyWriteStatus
-
-object PotentiallyWriteStatus {
-  case object True extends PotentiallyWriteStatus
-  case object False extends PotentiallyWriteStatus
-  case object Unknown extends PotentiallyWriteStatus
-}
-
-sealed trait PermissionsTerm[P <: PermissionsTerm[P]] extends Term {
-  override val sort = sorts.Perm
-
+sealed trait FractionalPermissions[P <: FractionalPermissions[P]] extends Term {
   def +(other: P): P
   def -(other: P): P
   def *(other: P): P
   def <(other: P): BooleanTerm
   def >(other: P): BooleanTerm
-
-  def isPotentiallyWrite: PotentiallyWriteStatus
 }
 
-class PermissionsTuple(val w: FractionalPermissions, val r: FractionalPermissions)
-    extends PermissionsTerm[PermissionsTuple] {
+sealed abstract class DefaultFractionalPermissions extends FractionalPermissions[DefaultFractionalPermissions] {
+  val sort = sorts.Perm
 
-  val combined = w + r
-  override val isPotentiallyWrite = w.isPotentiallyWrite
-
-  def +(other: PermissionsTuple) = PermissionsTuple(this.w + other.w, this.r + other.r)
-  def -(other: PermissionsTuple) = PermissionsTuple(this.w - other.w, this.r - other.r)
-
-  def *(other: PermissionsTuple) =
-      PermissionsTuple(this.w * other.w,
-                      (this.w * other.r) + (this.r * other.w) + (this.r * other.r))
-
-  def <(other: PermissionsTuple) = this.combined < other.combined
-  def >(other: PermissionsTuple) = this.combined > other.combined
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case pt: PermissionsTuple if pt.getClass.eq(this.getClass) => w == pt.w && r == pt.r
-      case _ => false
-    })
-
-  override def hashCode(): Int = w.hashCode() * r.hashCode()
-
-  override val toString = "(%s, %s)".format(w, r)
+  def +(other: DefaultFractionalPermissions) = PermPlus(this, other)
+  def -(other: DefaultFractionalPermissions) = PermMinus(this, other)
+  def *(other: DefaultFractionalPermissions) = PermTimes(this, other)
+  def <(other: DefaultFractionalPermissions) = PermLess(this, other)
+  def >(other: DefaultFractionalPermissions) = PermLess(other, this)
 }
 
-object PermissionsTuple extends ((FractionalPermissions, FractionalPermissions) => PermissionsTuple) {
-  def apply(w: FractionalPermissions, r: FractionalPermissions): PermissionsTuple =
-    new PermissionsTuple(w, r)
-
-  def apply(fp: FractionalPermissions): PermissionsTuple = fp match {
-    case _: PotentiallyWriteFractionalPermissions => PermissionsTuple(fp, NoPerm())
-    case _: NonPotentiallyWriteFractionalPermissions => PermissionsTuple(NoPerm(), fp)
-
-    case PermPlus(fp1, fp2) => PermissionsTuple(fp1) + PermissionsTuple(fp2)
-    case PermMinus(fp1, fp2) => PermissionsTuple(fp1) - PermissionsTuple(fp2)
-    case PermTimes(fp1, fp2) => PermissionsTuple(fp1) * PermissionsTuple(fp2)
-
-    case IntPermTimes(t1, fp1) =>
-      val pt = PermissionsTuple(fp1)
-      new PermissionsTuple(IntPermTimes(t1, pt.w), IntPermTimes(t1, pt.r))
-
-    case _ =>
-      sys.error("Not yet implemented for %s (%s)".format(fp, fp.getClass.getSimpleName))
-  }
-
-//  def apply(fp: FractionalPermissions): PermissionsTuple = fp.isPotentiallyWrite match {
-//    case PotentiallyWriteStatus.True => PermissionsTuple(fp, NoPerm())
-//    case PotentiallyWriteStatus.False => PermissionsTuple(NoPerm(), fp)
+//sealed trait NonPotentiallyWriteFractionalPermissions extends FractionalPermissions {
+//  val isPotentiallyWrite = PotentiallyWriteStatus.False
+//}
 //
-//    case PotentiallyWriteStatus.Unknown =>
-//      sys.error("Not yet implemented for %s (%s)".format(fp, fp.getClass.getSimpleName))
-//  }
-
-//  def apply(fp: FractionalPermissions): PermissionsTuple = fp match {
-//    case _: AtomicPotentiallyWritePermissionsTerm => PermissionsTuple(fp, NoPerm())
-//    case _: AtomicReadPermissionsTerm => PermissionsTuple(NoPerm(), fp)
+//sealed trait PotentiallyWriteFractionalPermissions extends FractionalPermissions  {
+//  val isPotentiallyWrite = PotentiallyWriteStatus.True
+//}
 //
-//    case _: CompoundPermissionsTerm =>
-//      sys.error("Not yet implemented for %s (%s)".format(fp, fp.getClass.getSimpleName))
-//  }
+//sealed trait FractionalPermissionsExpression extends FractionalPermissions  {
+//  val isPotentiallyWrite: PotentiallyWriteStatus = PotentiallyWriteStatus.Unknown
+//}
 
-  def unapply(pt: PermissionsTuple) = Some((pt.w, pt.r))
+case class NoPerm() extends DefaultFractionalPermissions { override val toString = "Z" }
+case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
+case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/d" }
+case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
+
+case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
+  utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
+
+  override val toString = "(Perm) %s".format(t)
 }
 
-sealed trait FractionalPermissions extends PermissionsTerm[FractionalPermissions] {
-  def +(other: FractionalPermissions) = PermPlus(this, other)
-  def -(other: FractionalPermissions) = PermMinus(this, other)
-  def *(other: FractionalPermissions) = PermTimes(this, other)
-  def <(other: FractionalPermissions) = PermLess(this, other)
-  def >(other: FractionalPermissions) = PermLess(other, this)
-}
-
-sealed trait NonPotentiallyWriteFractionalPermissions extends FractionalPermissions {
-  val isPotentiallyWrite = PotentiallyWriteStatus.False
-}
-
-sealed trait PotentiallyWriteFractionalPermissions extends FractionalPermissions  {
-  val isPotentiallyWrite = PotentiallyWriteStatus.True
-}
-
-sealed trait FractionalPermissionsExpression extends FractionalPermissions  {
-  val isPotentiallyWrite: PotentiallyWriteStatus = PotentiallyWriteStatus.Unknown
-}
-
-case class FullPerm() extends PotentiallyWriteFractionalPermissions { override val toString = "W" }
-//case class ConcretePerm(n: BigInt, d: BigInt) extends PotentiallyWriteFractionalPermissions { override val toString = s"$n/$d" }
-
-case class NoPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "Z" }
-//case class ReadPerm(v: Var) extends NonPotentiallyWriteFractionalPermissions { override val toString = v.toString }
-//case class InternalRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "iRd" }
-//case class MonitorRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "mRd" }
-//case class PredicateRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "pRd" }
-//case class ChannelRdPerm() extends NonPotentiallyWriteFractionalPermissions { override val toString = "cRd" }
-case class AbstractReadPerm(constrainable: Boolean)
-case class StarPerm(v: Var) extends NonPotentiallyWriteFractionalPermissions { override val toString = v.toString }
-
-case class TermPerm(val t: Term) extends NonPotentiallyWriteFractionalPermissions {
-  utils.assertSort(t, "term", sorts.Perm)
-
-  override val toString = "Perm(%s)".format(t)
-}
-
-case class IsValidPerm(v: Var, ub: FractionalPermissions) extends BooleanTerm {
+case class IsValidPerm(v: Var, ub: DefaultFractionalPermissions) extends BooleanTerm {
   override val toString = "PVar(%s, %s)".format(v.toString, ub)
 }
 
-case class IsReadPerm(v: Var, ub: FractionalPermissions) extends BooleanTerm {
+case class IsReadPerm(v: Var, ub: DefaultFractionalPermissions) extends BooleanTerm {
   override val toString = "RdVar(%s, %s)".format(v.toString, ub)
 }
 
-/* case */ class PermTimes(val p0: FractionalPermissions, val p1: FractionalPermissions)
-    extends FractionalPermissionsExpression
-    with commonnodes.Times[FractionalPermissions]
-    with commonnodes.StructuralEqualityBinOp[FractionalPermissions]
+class PermTimes(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
+    extends DefaultFractionalPermissions
+       with commonnodes.Times[DefaultFractionalPermissions]
+       with commonnodes.StructuralEqualityBinOp[DefaultFractionalPermissions]
 
-object PermTimes extends ((FractionalPermissions, FractionalPermissions) => FractionalPermissions) {
-  def apply(t0: FractionalPermissions, t1: FractionalPermissions) = (t0, t1) match {
+object PermTimes extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (FullPerm(), t) => t
     case (t, FullPerm()) => t
     case (NoPerm(), _) => NoPerm()
@@ -765,16 +690,14 @@ object PermTimes extends ((FractionalPermissions, FractionalPermissions) => Frac
   def unapply(pt: PermTimes) = Some((pt.p0, pt.p1))
 }
 
-class IntPermTimes(val p0: Term, val p1: FractionalPermissions)
-    extends FractionalPermissionsExpression
-    with commonnodes.Times[Term]
-    with commonnodes.StructuralEqualityBinOp[Term] {
-
-  override val isPotentiallyWrite = p1.isPotentiallyWrite
+class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
+    extends DefaultFractionalPermissions
+       with commonnodes.Times[Term]
+       with commonnodes.StructuralEqualityBinOp[Term] {
 }
 
-object IntPermTimes extends ((Term, FractionalPermissions) => FractionalPermissions) {
-  def apply(t0: Term, t1: FractionalPermissions) = (t0, t1) match {
+object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (IntLiteral(1), t) => t
     case (_, NoPerm()) => NoPerm()
     //    case (PercPerm(n), PercPerm(m)) => PercPerm(n * m)
@@ -784,13 +707,13 @@ object IntPermTimes extends ((Term, FractionalPermissions) => FractionalPermissi
   def unapply(pt: IntPermTimes) = Some((pt.p0, pt.p1))
 }
 
-/* case */ class PermPlus(val p0: FractionalPermissions, val p1: FractionalPermissions)
-    extends FractionalPermissionsExpression
-    with commonnodes.Plus[FractionalPermissions]
-    with commonnodes.StructuralEqualityBinOp[FractionalPermissions]
+class PermPlus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
+    extends DefaultFractionalPermissions
+       with commonnodes.Plus[DefaultFractionalPermissions]
+       with commonnodes.StructuralEqualityBinOp[DefaultFractionalPermissions]
 
-object PermPlus extends ((FractionalPermissions, FractionalPermissions) => FractionalPermissions) {
-  def apply(t0: FractionalPermissions, t1: FractionalPermissions) = (t0, t1) match {
+object PermPlus extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (NoPerm(), _) => t1
     case (_, NoPerm()) => t0
 //    case (PercPerm(n), PercPerm(m)) => if (n == -m) NoPerm() else PercPerm(n + m)
@@ -801,13 +724,13 @@ object PermPlus extends ((FractionalPermissions, FractionalPermissions) => Fract
   def unapply(pp: PermPlus) = Some((pp.p0, pp.p1))
 }
 
-/* case */ class PermMinus(val p0: FractionalPermissions, val p1: FractionalPermissions)
-    extends FractionalPermissionsExpression
-    with commonnodes.Minus[FractionalPermissions]
-    with commonnodes.StructuralEqualityBinOp[FractionalPermissions]
+class PermMinus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
+    extends DefaultFractionalPermissions
+       with commonnodes.Minus[DefaultFractionalPermissions]
+       with commonnodes.StructuralEqualityBinOp[DefaultFractionalPermissions]
 
-object PermMinus extends ((FractionalPermissions, FractionalPermissions) => FractionalPermissions) {
-  def apply(t0: FractionalPermissions, t1: FractionalPermissions) = (t0, t1) match {
+object PermMinus extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (_, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
 //    case (PercPerm(n), PercPerm(m)) => if (n == m) NoPerm() else PercPerm(n - m)
@@ -820,29 +743,22 @@ object PermMinus extends ((FractionalPermissions, FractionalPermissions) => Frac
   def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
 }
 
-/* case */ class PermLess(val p0: FractionalPermissions, val p1: FractionalPermissions)
+class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
     extends BooleanTerm
-    with commonnodes.Less[FractionalPermissions]
-    with commonnodes.StructuralEqualityBinOp[FractionalPermissions] {
+       with commonnodes.Less[DefaultFractionalPermissions]
+       with commonnodes.StructuralEqualityBinOp[DefaultFractionalPermissions] {
 
   override val toString = "%s < %s".format(p0, p1)
 }
 
-object PermLess extends ((FractionalPermissions, FractionalPermissions) => BooleanTerm) {
-  def apply(t0: FractionalPermissions, t1: FractionalPermissions) = (t0, t1) match {
+object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => BooleanTerm) {
+  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (t0, t1) if t0 == t1 => False()
     case (_, _) => new PermLess(t0, t1)
   }
 
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
-
-///* Immutability */
-//
-//sealed trait ImmutabilityTerm extends BooleanTerm
-//
-//case class Immutable(t: Term, id: String) extends ImmutabilityTerm
-//case class Frozen(t: Term, id: String) extends ImmutabilityTerm
 
 /* Domains */
 
@@ -881,9 +797,6 @@ case class SortWrapper(t: Term, to: Sort) extends Term {
 }
 
 /* Auxiliary terms */
-
-//case class UpdateMap(id: String, t: Term, n: Int) extends BooleanTerm
-//	{ override val toString = "%s[%s,%s]".format(id, t, n) }
 
 case class TypeOf(t: Term, typeName: String) extends BooleanTerm {
   utils.assertSort(t, "term", sorts.Ref)
@@ -936,9 +849,5 @@ object implicits {
   import scala.language.implicitConversions
 
   implicit def intToTerm(i: Int): IntLiteral = IntLiteral(i)
-
   implicit def boolToTerm(b: Boolean): BooleanLiteral = if (b) True() else False()
-
-  implicit def fractionalPermissionsToPermissionsTuple(fp: FractionalPermissions): PermissionsTuple =
-    PermissionsTuple(fp)
 }

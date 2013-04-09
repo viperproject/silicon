@@ -20,14 +20,15 @@ trait DefaultProducer[
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
-		extends Producer[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState
-		{ this: Logging with Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
-                    with Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+		extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
+  private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
+	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.{fresh, assume}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -51,7 +52,7 @@ trait DefaultProducer[
 
 	def produce(σ: S,
               sf: Sort => Term,
-              p: PermissionsTuple,
+              p: P,
               φ: ast.Expression,
               pve: PartialVerificationError,
               c: C,
@@ -66,7 +67,7 @@ trait DefaultProducer[
 
   def produces(σ: S,
                sf: Sort => Term,
-               p: PermissionsTuple,
+               p: P,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C,
@@ -82,7 +83,7 @@ trait DefaultProducer[
 
   private def produce2(σ: S,
                        sf: Sort => Term,
-                       p: PermissionsTuple,
+                       p: P,
                        φ: ast.Expression,
                        pve: PartialVerificationError,
                        c: C,
@@ -100,7 +101,7 @@ trait DefaultProducer[
 
 	private def internalProduce(σ: S,
                               sf: Sort => Term,
-                              p: PermissionsTuple,
+                              p: P,
                               φ: ast.Expression,
                               pve: PartialVerificationError,
                               c: C,
@@ -139,15 +140,15 @@ trait DefaultProducer[
 
       case ast.FieldAccessPredicate(ast.FieldLocation(eRcvr, field), gain) =>
 //        producePermissions[DirectFieldChunk](σ, sf, p, fa, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
-        producePermissions[DirectFieldChunk](σ, sf, p, eRcvr, field.name, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
+        producePermissions(σ, sf, p, eRcvr, field.name, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
           Q(h, c1))
 
       case ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, pred), gain) =>
         val dpc =
-          (rcvr: Term, id: String, snap: Term, p: PermissionsTuple) =>
+          (rcvr: Term, id: String, snap: Term, p: P) =>
             DirectPredicateChunk(rcvr, id, snap, p)
 
-        producePermissions[DirectPredicateChunk](σ, sf, p, eRcvr, pred.name, gain, dpc, sorts.Snap, pve, c, tv)((h, _, c1) =>
+        producePermissions(σ, sf, p, eRcvr, pred.name, gain, dpc, sorts.Snap, pve, c, tv)((h, _, c1) =>
           Q(h, c1))
 
 //      case qe @ ast.Quantified(
@@ -179,23 +180,20 @@ trait DefaultProducer[
 		produced
 	}
 
-  /* TODO: Replace parameters sf and sort by s: Sort and apply sf(sort) prior
-   *       to calling the method.
-   */
-  private def producePermissions[CH <: PermissionChunk]
-                                (σ: S,
+  /* TODO: Replace parameters sf and sort by s: Sort and apply sf(sort) prior to calling the method. */
+  private def producePermissions(σ: S,
                                  sf: Sort => Term,
-                                 p: PermissionsTuple,
+                                 p: P,
 //                                 memloc: ast.MemoryLocation,
                                  eRcvr: ast.Expression,
                                  id: String,
                                  gain: ast.Expression,
-                                 chConstructor: (Term, String, Term, PermissionsTuple) => CH,
+                                 chConstructor: (Term, String, Term, P) => DirectChunk,
                                  sort: Sort,
                                  pve: PartialVerificationError,
                                  c: C,
                                  tv: TV)
-                                (Q: (H, CH, C) => VerificationResult)
+                                (Q: (H, DirectChunk, C) => VerificationResult)
                                 : VerificationResult = {
 
 //    val ast.MemoryLocation(eRcvr, id) = memloc
@@ -206,7 +204,7 @@ trait DefaultProducer[
         decider.isValidFraction(pGain, gain) match {
           case None =>
             val s = sf(sort)
-            val (pNettoGain: PermissionsTuple, tFr: Set[Term]) =
+            val (pNettoGain: P, tFr: Set[Term]) =
                 (pGain * p, Set[Term](True()))
             val ch = chConstructor(tRcvr, id, s, pNettoGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))

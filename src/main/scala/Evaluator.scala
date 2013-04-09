@@ -23,14 +23,15 @@ trait DefaultEvaluator[
                        PC <: PathConditions[PC],
 											 S <: State[ST, H, S],
 											 TV <: TraceView[TV, ST, H, S]]
-		extends Evaluator[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState
-		{ this: Logging with Consumer[PermissionsTuple, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-										with Producer[PermissionsTuple, ST, H, S, DefaultContext[ST, H, S], TV]
+		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState
+		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
 										with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
+  private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[PermissionsTuple, ST, H, PC, S, C]
+	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.{fresh, assume}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -39,7 +40,7 @@ trait DefaultEvaluator[
 	protected val typeConverter: TypeConverter
 	import typeConverter.toSort
 
-	protected val chunkFinder: ChunkFinder[ST, H, S, C, TV]
+	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
@@ -60,14 +61,14 @@ trait DefaultEvaluator[
 			Q(ts, c1))
 
 	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
-			     (Q: (PermissionsTuple, C) => VerificationResult)
+			     (Q: (P, C) => VerificationResult)
            : VerificationResult = {
 
-    assert(p.typ == ast.types.Perm,
-           "DefaultEvaluator.evalp expects permission-typed expressions.")
+//    assert(p.typ == ast.types.Perm || p.typ == ast.types.Int,
+//           s"DefaultEvaluator.evalp expects expressions of types Perm/Int, but found ${p.typ}.")
 
     eval(σ, p, pve, c, tv)((tp, c1) => tp match {
-      case fp: FractionalPermissions => Q(fp, c1)
+      case fp: DefaultFractionalPermissions => Q(fp, c1)
       case _ => Q(TermPerm(tp), c1)})
   }
 
@@ -138,6 +139,12 @@ trait DefaultEvaluator[
 
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
+
+      case ast.FractionalPerm(e0, e1) =>
+        evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c, tv)(Q)
+//        evalp(σ, e0, pve, c, tv)((p0, c1) =>
+//          evalp(σ, e1, pve, c1, tv)((p1, c2) =>
+//            Q(FractionPerm())
 
 //      case _: ast.ReadPerm =>
 //        val (tVar, tConstraints) = stateUtils.freshReadVar()
@@ -356,7 +363,7 @@ trait DefaultEvaluator[
       case ast.IntPermTimes(e0, e1) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
           evalp(σ, e1, pve, c1, tv)((t1, c2) =>
-            Q(IntPermTimes(t0, t1.combined), c2)))
+            Q(IntPermTimes(t0, t1), c2)))
 
       case ast.PermLE(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
@@ -564,11 +571,11 @@ trait DefaultEvaluator[
   private def evalPermOp(σ: S,
                          e0: ast.Expression,
                          e1: ast.Expression,
-                         permOp: (PermissionsTuple, PermissionsTuple) => PermissionsTuple,
+                         permOp: (P, P) => P,
                          pve: PartialVerificationError,
                          c: C,
                          tv: TV)
-                        (Q: (PermissionsTuple, C) => VerificationResult)
+                        (Q: (P, C) => VerificationResult)
                         : VerificationResult = {
 
     evalp(σ, e0, pve, c, tv)((t0, c1) =>

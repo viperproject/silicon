@@ -2,17 +2,17 @@ package semper
 package silicon
 package interfaces.state
 
-import state.terms.{Term, PermissionsTuple}
+import state.terms.{Term, FractionalPermissions}
 
 trait Chunk {
 	def rcvr: Term
 	def id: String
 }
- 
-trait PermissionChunk extends Chunk {
-  val perm: PermissionsTuple
-  def +(perm: PermissionsTuple): PermissionChunk
-  def -(perm: PermissionsTuple): PermissionChunk
+
+trait PermissionChunk[P <: FractionalPermissions[P], CH <: PermissionChunk[P, CH]] extends Chunk {
+  val perm: P
+  def +(perm: P): CH
+  def -(perm: P): CH
 }
 
 trait FieldChunk extends Chunk {

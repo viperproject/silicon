@@ -5,13 +5,13 @@ package interfaces
 import sil.verifier.{VerificationError, PartialVerificationError}
 import state.{Store, Heap, State, Chunk}
 import reporting.{Context, TraceView}
-import silicon.state.terms.{Sort, Term, PermissionsTerm}
+import silicon.state.terms.{Sort, Term, FractionalPermissions}
 
 /*
  * Symbolic execution primitives
  */
 
-trait Evaluator[P <: PermissionsTerm[P],
+trait Evaluator[P <: FractionalPermissions[P],
                 ST <: Store[ST],
                 H <: Heap[H],
 								S <: State[ST, H, S],
@@ -25,13 +25,13 @@ trait Evaluator[P <: PermissionsTerm[P],
 	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 					(Q: (Term, C) => VerificationResult)
           : VerificationResult
-			
+
 	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 					 (Q: (P, C) => VerificationResult)
            : VerificationResult
 }
 
-trait Producer[P <: PermissionsTerm[P],
+trait Producer[P <: FractionalPermissions[P],
                ST <: Store[ST],
                H <: Heap[H],
 							 S <: State[ST, H, S],
@@ -59,7 +59,7 @@ trait Producer[P <: PermissionsTerm[P],
               : VerificationResult
 }
 
-trait Consumer[P <: PermissionsTerm[P],
+trait Consumer[P <: FractionalPermissions[P],
                CH <: Chunk,
                ST <: Store[ST],
                H <: Heap[H],

@@ -13,7 +13,7 @@ import sil.verifier.{
     Failure => SILError}
 import sil.verifier.{DefaultDependency, DependencyNotFoundError}
 import interfaces.{VerificationResult, ContextAwareResult, Failure, Success, Unreachable}
-import state.terms.{FullPerm, PermissionsTuple}
+import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultTypeConverter}
 import decider.DefaultDecider
@@ -34,8 +34,9 @@ trait SiliconConstants {
   val version = brandingData.sbtProjectVersion
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hg.version} ${brandingData.hg.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
-  val dependencies = Seq(DefaultDependency("Z3", "4.3.2", "http://z3.codeplex.com/"))
   val z3ExeEnvironmentVariable = "Z3PATH"
+  val expectedZ3Version = "4.3.2"
+  val dependencies = Seq(DefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
 
 object Silicon extends SiliconConstants
@@ -45,7 +46,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
          with SiliconConstants
          with Logging {
 
-  private type P = PermissionsTuple
+  private type P = DefaultFractionalPermissions
   private type ST = MapBackedStore
   private type H = SetBackedHeap
   private type PC = MutableSetBackedPathConditions
@@ -129,7 +130,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
 
-    val dlb = PermissionsTuple(FullPerm())
+    val dlb = FullPerm()
 
     val heapMerger =
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
@@ -263,7 +264,7 @@ case class Config(
     cacheSnapshots: Boolean = true,
     branchOverPureConditionals: Boolean = false,
     strictConjunctionEvaluation: Boolean = false,
-    logLevel: String = "OFF",
+    logLevel: String = "INFO",
     tempDirectory: ConfigValue[String] = DefaultValue("./tmp"),
     z3Exe: Option[String] = None,
     z3LogFile: ConfigValue[String] = DefaultValue("logfile.smt2")) {

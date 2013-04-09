@@ -45,6 +45,21 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		new PrintWriter(
 			new BufferedWriter(new OutputStreamWriter(z3.getOutputStream())), true)
 
+  def z3Version() = {
+    val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
+    var line = ""
+
+    writeLine("(get-info :version)")
+
+    line = input.readLine()
+    logComment(line)
+
+    line match {
+      case versionPattern(v) => v
+      case _ => throw new Z3InteractionFailed(s"Unexpected output of Z3 while getting version: $line")
+    }
+  }
+
   def stop() {
     this.synchronized {
       z3.destroy()
