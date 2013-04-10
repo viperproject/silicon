@@ -230,7 +230,7 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, UnsafeCode(stmt), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ast.FieldWrite(ast.FieldLocation(eRcvr, field), rhs) =>
+      case ast.FieldWrite(fl @ ast.FieldLocation(eRcvr, field), rhs) =>
         val pve = UnsafeCode(stmt)
         val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
@@ -239,7 +239,7 @@ trait DefaultExecutor[ST <: Store[ST],
               withChunk[DirectChunk](σ.h, tRcvr, id, FullPerm(), eRcvr, pve, c2, tv)(fc =>
                 Q(σ \- fc \+ DirectFieldChunk(tRcvr, id, tRhs, fc.perm), c2)))
           else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
 
       case ast.New(v) =>
         Q(σ \+ (v, fresh(v)), c)

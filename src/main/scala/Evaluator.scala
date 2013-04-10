@@ -595,7 +595,7 @@ trait DefaultEvaluator[
         withChunk[FieldChunk](σ.h, tRcvr, id, eRcvr, pve, c1, tv)(fc =>
           Q(fc, c1))
       } else
-        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fr), c1, tv))
   }
 
 	override def pushLocalState() {

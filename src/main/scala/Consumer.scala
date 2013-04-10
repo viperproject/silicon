@@ -151,7 +151,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               else
                 Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(perm), c2, tv))
           else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv))
 
 //      case qe @ ast.Quantified(
 //                  ast.Exists(),
@@ -230,7 +230,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
     case IntPermTimes(_, t1) => consumeExactRead(t1, c)
-//    case _ => true
+    case _ => true
   }
 }
 
