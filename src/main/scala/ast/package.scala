@@ -194,6 +194,8 @@ package object ast {
   val New = sil.ast.NewStmt
   type ConstrainFreshARP = sil.ast.FreshReadPerm
   val ConstrainFreshARP = sil.ast.FreshReadPerm
+  type While = sil.ast.While
+  val While = sil.ast.While
 
   type Type = sil.ast.Type
 

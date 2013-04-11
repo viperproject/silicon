@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{NegativeFraction, ReceiverNull, AssertionFalse}
+import sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, Chunk}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
@@ -149,7 +149,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           h1
                       Q(h2, pc.snap, pc :: Nil, c3)})
               else
-                Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(perm), c2, tv))
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv))
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv))
 
@@ -209,13 +209,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     val id = memloc.loc.name
 
     if (consumeExactRead(pLoss, c)) {
-      withChunk[DirectChunk](h, tRcvr, id, pLoss, eRcvr, pve, c, tv)(ch => {
+      withChunk[DirectChunk](h, tRcvr, id, pLoss, memloc, pve, c, tv)(ch => {
         if (decider.assertNoAccess(ch.perm - pLoss)) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      withChunk[DirectChunk](h, tRcvr, id, eRcvr, pve, c, tv)(ch => {
+      withChunk[DirectChunk](h, tRcvr, id, memloc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm, c)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }

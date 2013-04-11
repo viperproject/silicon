@@ -236,7 +236,7 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
-              withChunk[DirectChunk](σ.h, tRcvr, id, FullPerm(), eRcvr, pve, c2, tv)(fc =>
+              withChunk[DirectChunk](σ.h, tRcvr, id, FullPerm(), fl, pve, c2, tv)(fc =>
                 Q(σ \- fc \+ DirectFieldChunk(tRcvr, id, tRhs, fc.perm), c2)))
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))

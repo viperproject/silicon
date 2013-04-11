@@ -6,7 +6,7 @@ import scala.io.Source
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.DependencyNotFoundError
-import sil.verifier.reasons.{NegativeFraction}
+import sil.verifier.reasons.{NonPositivePermission}
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
 PermissionChunk}
@@ -291,7 +291,7 @@ class DefaultDecider[ST <: Store[ST],
 
 	def isValidFraction(perm: P, permSrc: ast.Expression) =
     if (!isNonNegativeFraction(perm))
-      Some(NegativeFraction(permSrc))
+      Some(NonPositivePermission(permSrc))
 //    else if (!assertAtMostWriteAccess(perm))
 //    else if (!assert(Or(TermEq(perm, FullPerms()), perm < FullPerms())))
 //      Some(FractionMightBeGT100)

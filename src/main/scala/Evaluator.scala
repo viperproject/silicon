@@ -5,7 +5,7 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
-import sil.verifier.reasons.{ReceiverNull, NegativeFraction}
+import sil.verifier.reasons.{ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
@@ -542,7 +542,7 @@ trait DefaultEvaluator[
                     val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                     eval(σ3, eIn, pve, c4a, tv)(Q)})}))
             else
-              Failure[C, ST, H, S, TV](pve dueTo NegativeFraction(ePerm), c1, tv))}
+              Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv))}
         else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
                     "P {... && next != null ==> unfolding next.P in e} is currently not " +
@@ -592,7 +592,7 @@ trait DefaultEvaluator[
 
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
       if (decider.assert(tRcvr !== Null())) {
-        withChunk[FieldChunk](σ.h, tRcvr, id, eRcvr, pve, c1, tv)(fc =>
+        withChunk[FieldChunk](σ.h, tRcvr, id, fr, pve, c1, tv)(fc =>
           Q(fc, c1))
       } else
         Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fr), c1, tv))

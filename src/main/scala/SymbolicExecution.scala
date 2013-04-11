@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{InsufficientPermissions}
+import sil.verifier.reasons.{InsufficientPermission}
 import interfaces.{VerificationResult, Failure, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
@@ -177,7 +177,7 @@ trait ChunkFinder[P <: FractionalPermissions[P],
                (h: H,
                 rcvr: Term,
                 id: String,
-                rcvrSrc: ast.ASTNode,
+                memloc: ast.MemoryLocation,
                 pve: PartialVerificationError,
                 c: C,
                 tv: TV)
@@ -192,7 +192,7 @@ trait ChunkFinder[P <: FractionalPermissions[P],
                 rcvr: Term,
                 id: String,
                 p: P,
-                rcvrSrc: ast.ASTNode,
+                memloc: ast.MemoryLocation,
                 ve: PartialVerificationError,
                 c: C,
                 tv: TV)
@@ -214,7 +214,7 @@ class DefaultChunkFinder[ST <: Store[ST],
                (h: H,
                 rcvr: Term,
                 id: String,
-                rcvrSrc: ast.ASTNode,
+                memloc: ast.MemoryLocation,
                 pve: PartialVerificationError,
                 c: C,
                 tv: TV)
@@ -238,7 +238,7 @@ class DefaultChunkFinder[ST <: Store[ST],
 //				} else
 //					Failure[C, ST, H, S, TV](m at loc dueTo InsufficientPermissions(rcvrSrc.toString, id), c, tv)
           /* TODO: We need the location node, not only the receiver. */
-					Failure[C, ST, H, S, TV](pve dueTo InsufficientPermissions(rcvrSrc), c, tv)
+					Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(memloc), c, tv)
 		}
 	}
 
@@ -247,18 +247,18 @@ class DefaultChunkFinder[ST <: Store[ST],
                 rcvr: Term,
                 id: String,
                 p: DefaultFractionalPermissions,
-                rcvrSrc: ast.ASTNode,
+                memloc: ast.MemoryLocation,
                 pve: PartialVerificationError,
                 c: C,
                 tv: TV)
                (Q: CH => VerificationResult)
                : VerificationResult =
 
-		withChunk[CH](h, rcvr, id, rcvrSrc, pve, c, tv)(chunk => {
+		withChunk[CH](h, rcvr, id, memloc, pve, c, tv)(chunk => {
 			if (decider.isAsPermissive(chunk.perm, p))
 				Q(chunk)
 			else
-				Failure[C, ST, H, S, TV](pve dueTo InsufficientPermissions(rcvrSrc), c, tv)})
+				Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(memloc), c, tv)})
 }
 
 class StateUtils[ST <: Store[ST],
