@@ -2,8 +2,8 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, AssertionMalformed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, UnsafeCode, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
+import sil.verifier.errors.{Internal, NotSelfFraming, LoopInvariantNotPreserved,
+    LoopInvariantNotEstablished, CallFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import sil.verifier.reasons.{ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
@@ -150,7 +150,7 @@ trait DefaultExecutor[ST <: Store[ST],
           /* Verify loop body (including well-formedness check) */
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
 //          assume(rdVarBodyConstraints, cBody)
-          produce(σBody, fresh,  FullPerm(), invAndGuard, AssertionMalformed(inv), c0, tv0)((σ1, c1) =>
+          produce(σBody, fresh,  FullPerm(), invAndGuard, NotSelfFraming(inv), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
               consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
                 Success[C, ST, H, S](c3))))}
@@ -165,7 +165,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val c0 = c
             consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, AssertionMalformed(inv), c1, tv0)((σ3, c2) => {
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, NotSelfFraming(inv), c1, tv0)((σ3, c2) => {
 //                val c3 = (c2.setConsumeExactReads(true)
 //                            .setCurrentRdPerms(c.currentRdPerms))
                 val c3 = c2
@@ -226,12 +226,12 @@ trait DefaultExecutor[ST <: Store[ST],
       case sil.ast.Seqn(stmts) =>
         exec(σ, stmts, c, tv)(Q)
 
-      case ast.Assignment(v, rhs) =>
-        eval(σ, rhs, UnsafeCode(stmt), c, tv)((tRhs, c1) =>
+      case ass @ ast.Assignment(v, rhs) =>
+        eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ast.FieldWrite(fl @ ast.FieldLocation(eRcvr, field), rhs) =>
-        val pve = UnsafeCode(stmt)
+      case ass @ ast.FieldWrite(fl @ ast.FieldLocation(eRcvr, field), rhs) =>
+        val pve = AssignmentFailed(ass)
         val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))

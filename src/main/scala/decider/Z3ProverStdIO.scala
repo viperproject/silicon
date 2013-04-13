@@ -4,12 +4,13 @@ package decider
 
 import java.io.{PrintWriter, BufferedWriter, File, InputStreamReader, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable.{HashMap, Stack}
+import com.weiglewilczek.slf4s.Logging
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
 import reporting.{Bookkeeper, Z3InteractionFailed}
 
 /* TODO: Pass a logger, don't open an own file to log to. */
-class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) extends Prover {
+class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) extends Prover with Logging {
   val termConverter = new TermToSMTLib2Converter()
 	import termConverter._
 
@@ -24,6 +25,8 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
   /* TODO: Get Z3's version and log a warning if the version doesn't match the expected version. */
   private val z3 = {
+    logger.info(s"Starting Z3 at $z3path")
+
     val builder = new ProcessBuilder(z3path, "-smt2", "-in")
 		builder.redirectErrorStream(true)
 

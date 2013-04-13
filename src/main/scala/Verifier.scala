@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{AssertionMalformed, PostconditionViolated}
+import sil.verifier.errors.{NotSelfFraming, PostconditionViolated, Internal}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -79,11 +79,11 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		 */
     inScope {
 //		  assume(rdVarConstraints, c)
-			produces(σ, fresh, terms.FullPerm(), pres, AssertionMalformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
+			produces(σ, fresh, terms.FullPerm(), pres, NotSelfFraming, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
-         produces(σ2, fresh, terms.FullPerm(), posts, AssertionMalformed, c2a, tv0)((_, c3) =>
+         produces(σ2, fresh, terms.FullPerm(), posts, NotSelfFraming, c2a, tv0)((_, c3) =>
            Success[DefaultContext[ST, H, S], ST, H, S](c3))}
 					&&
         inScope {
@@ -258,7 +258,7 @@ trait AbstractVerifier[ST <: Store[ST],
             import ev.stateFactory._
 
             val σ = Σ(Ø, Ø, Ø)
-            val pve = AssertionMalformed(a)
+            val pve = Internal(a)
             var t: Term = null
             ev.eval(σ, a.exp, pve, c, tv)((_t, c1) => {
               t = _t
