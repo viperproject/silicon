@@ -208,6 +208,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     val eRcvr = memloc.rcv
     val id = memloc.loc.name
 
+    /* TODO: assert that pLoss > 0 */
+
     if (consumeExactRead(pLoss, c)) {
       withChunk[DirectChunk](h, tRcvr, id, pLoss, memloc, pve, c, tv)(ch => {
         if (decider.assertNoAccess(ch.perm - pLoss)) {

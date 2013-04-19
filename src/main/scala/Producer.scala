@@ -184,7 +184,6 @@ trait DefaultProducer[
   private def producePermissions(σ: S,
                                  sf: Sort => Term,
                                  p: P,
-//                                 memloc: ast.MemoryLocation,
                                  eRcvr: ast.Expression,
                                  id: String,
                                  gain: ast.Expression,
@@ -196,23 +195,17 @@ trait DefaultProducer[
                                 (Q: (H, DirectChunk, C) => VerificationResult)
                                 : VerificationResult = {
 
-//    val ast.MemoryLocation(eRcvr, id) = memloc
-
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
       assume(tRcvr !== Null(), c1)
-      evalp(σ, gain, pve, c1, tv)((pGain, c3) =>
-        decider.isValidFraction(pGain, gain) match {
-          case None =>
-            val s = sf(sort)
-            val (pNettoGain: P, tFr: Set[Term]) =
-                (pGain * p, Set[Term](True()))
-            val ch = chConstructor(tRcvr, id, s, pNettoGain)
-            val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            assume(mts ++ tFr, c3)
-            Q(mh, ch, c3)
+      evalp(σ, gain, pve, c1, tv)((pGain, c3) => {
+        val s = sf(sort)
+        val (pNettoGain: P, tFr: Set[Term]) = (pGain * p, Set[Term](True()))
+        val ch = chConstructor(tRcvr, id, s, pNettoGain)
 
-          case Some(reason) =>
-            Failure[C, ST, H, S, TV](pve dueTo reason, c3, tv)})})
+        assume(NoPerm() < pGain, c3)
+        val (mh, mts) = merge(σ.h, H(ch :: Nil))
+        assume(mts ++ tFr, c3)
+        Q(mh, ch, c3)})})
   }
 
 	override def pushLocalState() {
