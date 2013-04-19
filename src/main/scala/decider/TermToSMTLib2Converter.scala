@@ -18,7 +18,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
     case Quantification(quant, vars, body) =>
       val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
-//      val strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))
       val strBody = convert(body)
 
       "(%s (%s) %s)".format(convert(quant), strVars, strBody)

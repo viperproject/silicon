@@ -430,7 +430,6 @@ trait DefaultEvaluator[
 
         decider.pushScope()
 
-//        val tPv = fresh(qvar.name, toSort(qvar.typ))
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
 
