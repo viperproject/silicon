@@ -118,10 +118,8 @@ trait DefaultEvaluator[
 
 		/* For debugging only */
 		e match {
-//			case _: ast.Literal =>
-//			case _: Variable =>
-//			case _: VariableExpr =>
-//			case ThisExpr() =>
+			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: FullPerm | _: NoPerm
+          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm =>
 			case _ =>
 				logger.debug("\nEVALUATING " + e)
 				logger.debug(stateFormatter.format(σ))
@@ -142,6 +140,11 @@ trait DefaultEvaluator[
 
       case ast.FractionalPerm(e0, e1) =>
         evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c, tv)(Q)
+
+      case _: ast.WildcardPerm =>
+        val (tVar, tConstraints) = stateUtils.freshARP()
+        assume(tConstraints, c)
+        Q(WildcardPerm(tVar), c)
 //        evalp(σ, e0, pve, c, tv)((p0, c1) =>
 //          evalp(σ, e1, pve, c1, tv)((p1, c2) =>
 //            Q(FractionPerm())

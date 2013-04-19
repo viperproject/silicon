@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{NotSelfFraming, PostconditionViolated, Internal}
+import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -45,6 +45,9 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val typeConverter: TypeConverter
   import typeConverter.toSort
 
+  /* Must be set when a program verification is started! */
+  var program: ast.Program = null
+
   def contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 
@@ -79,11 +82,11 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		 */
     inScope {
 //		  assume(rdVarConstraints, c)
-			produces(σ, fresh, terms.FullPerm(), pres, NotSelfFraming, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
+			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
-         produces(σ2, fresh, terms.FullPerm(), posts, NotSelfFraming, c2a, tv0)((_, c3) =>
+         produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
            Success[DefaultContext[ST, H, S], ST, H, S](c3))}
 					&&
         inScope {
@@ -152,6 +155,8 @@ trait AbstractVerifier[ST <: Store[ST],
   import ev.typeConverter
 
   def verify(prog: ast.Program): List[VerificationResult] = {
+    ev.program = prog
+
     emitDomainDeclarations(prog.domains)
     emitSortWrappers(prog.domains)
     emitFunctionDeclarations(prog.functions)

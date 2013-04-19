@@ -168,7 +168,14 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
 	def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
 
-	def logComment(str: String) = if (isLoggingCommentsEnabled) log("; " + str)
+	def logComment(str: String) =
+    if (isLoggingCommentsEnabled) {
+      val sanitisedStr =
+        str.replaceAll("\r", "")
+           .replaceAll("\n", "\n; ")
+
+      log("; " + sanitisedStr)
+    }
 
 	private def freshId(prefix: String) = prefix + "@" + counter.next()
 

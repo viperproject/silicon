@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, NotSelfFraming, LoopInvariantNotPreserved,
+import sil.verifier.errors.{Internal, ContractNotWellformed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, CallFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import sil.verifier.reasons.{ReceiverNull, AssertionFalse}
@@ -41,6 +41,7 @@ trait DefaultExecutor[ST <: Store[ST],
 	import stateFactory._
 
 	protected val typeConverter: TypeConverter
+  import typeConverter.toSort
 
   protected val heapMerger: HeapMerger[H]
   import heapMerger.merge
@@ -53,6 +54,8 @@ trait DefaultExecutor[ST <: Store[ST],
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
+
+  var program: ast.Program
 
 //  def exec(σ: S, cfg: ast.ControlFlowGraph, c: C, tv: TV)
 //          (Q: (S, C) => VerificationResult)
@@ -109,11 +112,11 @@ trait DefaultExecutor[ST <: Store[ST],
                    (Q: (S, C) => VerificationResult)
                    : VerificationResult =
 
-//    if (block == block.cfg.endNode) {
-//      assert(block.successors.isEmpty, "The end node of a CFG is expected to have no successors.")
-//      Q(σ, c)
-//    } else
-      follow(σ, block.succs, c, tv)((_, c1) => Success[C, ST, H, S](c1))
+    block match {
+      case _: sil.ast.TerminalBlock => Q(σ, c)
+      case _ => follow(σ, block.succs, c, tv)((_, c1) => Success[C, ST, H, S](c1))
+        /* TODO: Shouldn't Q be executed after following a successor as well? */
+  }
 
   def exec(σ: S, block: ast.CFGBlock, c: C, tv: TV)
           (Q: (S, C) => VerificationResult)
@@ -150,7 +153,7 @@ trait DefaultExecutor[ST <: Store[ST],
           /* Verify loop body (including well-formedness check) */
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
 //          assume(rdVarBodyConstraints, cBody)
-          produce(σBody, fresh,  FullPerm(), invAndGuard, NotSelfFraming(inv), c0, tv0)((σ1, c1) =>
+          produce(σBody, fresh,  FullPerm(), invAndGuard, ContractNotWellformed(inv), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
               consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
                 Success[C, ST, H, S](c3))))}
@@ -165,7 +168,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val c0 = c
             consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, NotSelfFraming(inv), c1, tv0)((σ3, c2) => {
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, ContractNotWellformed(inv), c1, tv0)((σ3, c2) => {
 //                val c3 = (c2.setConsumeExactReads(true)
 //                            .setCurrentRdPerms(c.currentRdPerms))
                 val c3 = c2
@@ -242,7 +245,10 @@ trait DefaultExecutor[ST <: Store[ST],
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
 
       case ast.New(v) =>
-        Q(σ \+ (v, fresh(v)), c)
+        val t = fresh(v)
+        assume(t !== Null(), c)
+        val newh = H(program.fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
+        Q(σ \+ (v, t) \+ newh, c)
 
       case ast.Inhale(a) =>
         produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
@@ -379,13 +385,12 @@ trait DefaultExecutor[ST <: Store[ST],
 //          else
 //            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
-      case _: sil.ast.FreshReadPerm => ??? /* TODO: Implement */
-
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto
            | _: sil.ast.If
            | _: sil.ast.Label
            | _: sil.ast.Seqn
+           | _: sil.ast.FreshReadPerm
            | _: sil.ast.While => sys.error("Not yet implemented (%s): %s".format(stmt.getClass.getName, stmt))
 		}
 
