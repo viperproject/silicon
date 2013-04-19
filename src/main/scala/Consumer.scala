@@ -222,9 +222,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   }
 
   private def consumeExactRead(fp: P, c: C): Boolean = fp match {
-//    case _: ReadPerm if !c.consumeExactReads => false
     case TermPerm(v: Var) => !c.constrainableARPs.contains(v)
-    case _: TermPerm => false
+    case _: TermPerm => true
     case _: WildcardPerm => false
     case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
