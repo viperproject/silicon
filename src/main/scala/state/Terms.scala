@@ -164,7 +164,7 @@ sealed trait Quantifier
 object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
-case class Quantification(q: Quantifier, qvar: Var, tBody: Term) extends BooleanTerm
+case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term) extends BooleanTerm
 
 ///* Sequences */
 //

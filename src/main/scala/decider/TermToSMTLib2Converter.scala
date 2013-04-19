@@ -16,11 +16,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case FApp(f, s, tArgs, _) =>
       "(%s %s %s)".format(sanitiseIdentifier(f.name), convert(s), tArgs map convert mkString(" "))
 
-    case Quantification(quant, qvar, body) =>
-      val strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))
+    case Quantification(quant, vars, body) =>
+      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
+//      val strVar = "(%s %s)".format(qvar.id, convert(qvar.sort))
       val strBody = convert(body)
 
-      "(%s (%s) %s)".format(convert(quant), strVar, strBody)
+      "(%s (%s) %s)".format(convert(quant), strVars, strBody)
 
     /* Booleans */
 

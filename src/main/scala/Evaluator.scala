@@ -389,7 +389,7 @@ trait DefaultEvaluator[
 
       case quant: ast.Quantified =>
         val body = quant.exp
-        val qvar = quant.variable.localVar
+        val vars = quant.variables map (_.localVar)
 
         val tQuantOp = quant match {
           case _: ast.Forall => Forall
@@ -430,10 +430,12 @@ trait DefaultEvaluator[
 
         decider.pushScope()
 
-        val tPv = fresh(qvar.name, toSort(qvar.typ))
+//        val tPv = fresh(qvar.name, toSort(qvar.typ))
+        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(vars zip tVars)
 
         val r =
-          eval(σ \+ (qvar, tPv), body, pve, c, tv)((tBody, c1) => {
+          eval(σ \+ γVars, body, pve, c, tv)((tBody, c1) => {
             tActualBody = tBody
             πPost = decider.π
             /* We could call Q directly instead of returning Success, but in
@@ -455,8 +457,8 @@ trait DefaultEvaluator[
         r && {
           val πDelta = πPost -- πPre
           val tAux = state.terms.utils.BigAnd(πDelta)
-          val tQuantAux = Quantification(tQuantOp, tPv, tAux)
-          val tQuant = Quantification(tQuantOp, tPv, tActualBody)
+          val tQuantAux = Quantification(tQuantOp, tVars, tAux)
+          val tQuant = Quantification(tQuantOp, tVars, tActualBody)
 
           assume(tQuantAux, c)
           Q(tQuant, c)}
