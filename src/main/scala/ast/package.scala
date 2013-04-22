@@ -77,6 +77,7 @@ package object ast {
   val IntGT = sil.ast.GtCmp
   type IntGE = sil.ast.GeCmp
   val IntGE = sil.ast.GeCmp
+  val IntNeg = sil.ast.Neg
 
   type FullPerm = sil.ast.FullPerm
   val FullPerm = sil.ast.FullPerm

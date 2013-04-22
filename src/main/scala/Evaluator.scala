@@ -164,6 +164,10 @@ trait DefaultEvaluator[
         eval(σ, e0, pve, c, tv)((t0, c1) =>
           Q(Not(t0), c1))
 
+      case ast.IntNeg(e0) =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          Q(Minus(0, t0), c1))
+
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
