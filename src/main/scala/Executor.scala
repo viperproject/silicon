@@ -220,10 +220,15 @@ trait DefaultExecutor[ST <: Store[ST],
 			    (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
-		logger.debug("\nEXECUTE " + stmt.toString)
-		logger.debug(stateFormatter.format(σ))
-		decider.prover.logComment("")
-		decider.prover.logComment(stmt.toString)
+    /* For debugging-purposes only */
+    stmt match {
+      case _: sil.ast.Seqn =>
+      case _ =>
+        logger.debug("\nEXECUTE " + stmt.toString)
+        logger.debug(stateFormatter.format(σ))
+        decider.prover.logComment("")
+        decider.prover.logComment(stmt.toString)
+    }
 
 		val executed = stmt match {
       case sil.ast.Seqn(stmts) =>
