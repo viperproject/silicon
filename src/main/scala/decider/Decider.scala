@@ -381,7 +381,12 @@ class DefaultDecider[ST <: Store[ST],
 
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1
-    prover.fresh(id, s)
+
+    val v = prover.fresh(id, s)
+
+    if (s == sorts.Perm) assume(IsReadPerm(v, FullPerm()))
+
+    v
   }
 
 //  class WithIsA[A](o: A) {
