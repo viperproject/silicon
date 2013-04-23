@@ -130,7 +130,7 @@ trait DefaultEvaluator[
       case ast.False() => Q(False(), c)
 
       case ast.NullLiteral() => Q(Null(), c)
-      case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval.intValue), c)
+      case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval), c)
 
       case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
       case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(TermEq(p0, p1)), pve, c, tv)(Q)

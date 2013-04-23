@@ -120,7 +120,7 @@ case object Unit extends SnapshotTerm with Literal {
   override val toString = "_"
 }
 
-case class IntLiteral(n: Int) extends ArithmeticTerm with Literal {
+case class IntLiteral(n: BigInt) extends ArithmeticTerm with Literal {
 	def +(m: Int) = IntLiteral(n + m)
 	def -(m: Int) = IntLiteral(n - m)
 	def *(m: Int) = IntLiteral(n * m)
@@ -697,8 +697,10 @@ class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
 }
 
 object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  val One = IntLiteral(1)
+
   def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
-    case (IntLiteral(1), t) => t
+    case (One, t) => t
     case (_, NoPerm()) => NoPerm()
     //    case (PercPerm(n), PercPerm(m)) => PercPerm(n * m)
     case (_, _) => new IntPermTimes(t0, t1)
