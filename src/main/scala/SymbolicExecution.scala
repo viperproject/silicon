@@ -146,7 +146,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			pushLocalState()
       val result =
         decider.inScope {
-          assume(guardsTrue, cTrue)
+          assume(guardsTrue)
           fTrue(cTrue, tvTrue)
         }
       popLocalState()
@@ -157,7 +157,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			pushLocalState()
       val result =
         decider.inScope {
-          assume(guardsFalse, cFalse)
+          assume(guardsFalse)
           fFalse(cFalse, tvFalse)
         }
       popLocalState()

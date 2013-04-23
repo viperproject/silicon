@@ -62,7 +62,7 @@ trait DefaultProducer[
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
       val (mh, mts) = merge(Ø, h)
-      assume(mts, c1)
+      assume(mts)
       Q(σ \ mh, c1)})
 
   def produces(σ: S,
@@ -121,7 +121,7 @@ trait DefaultProducer[
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
 
-				assume(tSnapEq, c)
+				assume(tSnapEq)
         produce2(σ, sf0, p, a0, pve, c, tv)((h1, c1) =>
           produce2(σ \ h1, sf1, p, a1, pve, c1, tv)((h2, c2) =>
           Q(h2, c2)))
@@ -173,7 +173,7 @@ trait DefaultProducer[
 			/* Any regular expressions, i.e. boolean and arithmetic. */
 			case _ =>
 				eval(σ, φ, pve, c, tv)((t, c1) => {
-					assume(t, c1)
+					assume(t)
           Q(σ.h, c1)})
 		}
 
@@ -196,15 +196,15 @@ trait DefaultProducer[
                                 : VerificationResult = {
 
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
-      assume(tRcvr !== Null(), c1)
+      assume(tRcvr !== Null())
       evalp(σ, gain, pve, c1, tv)((pGain, c3) => {
         val s = sf(sort)
         val (pNettoGain: P, tFr: Set[Term]) = (pGain * p, Set[Term](True()))
         val ch = chConstructor(tRcvr, id, s, pNettoGain)
 
-        assume(NoPerm() < pGain, c3)
+        assume(NoPerm() < pGain)
         val (mh, mts) = merge(σ.h, H(ch :: Nil))
-        assume(mts ++ tFr, c3)
+        assume(mts ++ tFr)
         Q(mh, ch, c3)})})
   }
 

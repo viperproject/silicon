@@ -21,8 +21,8 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
   def pushScope()
   def popScope()
   def inScope[R](block: => R): R
-	def assume(φ: Term, c: C)
-	def assume(φ: Set[Term], c: C)
+	def assume(φ: Term)
+	def assume(φ: Set[Term])
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, rcvr: Term, id: String): Option[CH]
 

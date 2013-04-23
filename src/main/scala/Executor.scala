@@ -180,7 +180,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
                 .unzip
           val γ1 = Γ(σ.γ.values ++ arps)
-          assume(arpConstraints.toSet, c)
+          assume(arpConstraints.toSet)
           exec(σ \ γ1, body, c, tv)((σ1, c1) =>
             leave(σ1, frp, c1.setConstrainable(arps map (_._2), false), tv)(Q))
 
@@ -251,7 +251,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case ast.New(v) =>
         val t = fresh(v)
-        assume(t !== Null(), c)
+        assume(t !== Null())
         val newh = H(program.fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
         Q(σ \+ (v, t) \+ newh, c)
 
@@ -271,7 +271,7 @@ trait DefaultExecutor[ST <: Store[ST],
           /* "assert true" triggers a heap compression. */
           case _: ast.True =>
             val (mh, mts) = merge(Ø, σ.h)
-            assume(mts, c)
+            assume(mts)
             Q(σ \ mh, c)
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
@@ -360,7 +360,7 @@ trait DefaultExecutor[ST <: Store[ST],
                       case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
                       case None => (σ1.h, True(), tPerm)}
 //                    val c3a = c3.setCurrentRdPerms(c2.currentRdPerms)
-                    assume(t, c3)
+                    assume(t)
                     val h1 = (h + DirectPredicateChunk(tRcvr, predicate.name, snap, tPerm1, ncs)
                                 + H(ncs))
                     Q(σ \ h1, c3)})

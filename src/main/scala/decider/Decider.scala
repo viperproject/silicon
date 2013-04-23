@@ -302,8 +302,8 @@ class DefaultDecider[ST <: Store[ST],
 //    prover.assume(term)
 //  }
 
-  def assume(t: Term, c: C) {
-    assume(Set(t), c)
+  def assume(t: Term) {
+    assume(Set(t))
   }
 
 //	def assume(term: Term, c: C)(Q: C => VerificationResult) =
@@ -317,7 +317,7 @@ class DefaultDecider[ST <: Store[ST],
 	 * but the interface does NOT guarantee mutability!
 	 */
 
-	def assume(_terms: Set[Term], c: C) /*(Q: C => VerificationResult) = */ {
+	def assume(_terms: Set[Term]) {
     val terms = _terms filterNot isKnownToBeTrue
 //		var terms: Set[Term] = _terms
 //		terms = terms.filterNot(_ == True)    /* Remove True() */
@@ -329,13 +329,13 @@ class DefaultDecider[ST <: Store[ST],
 //      if (performSmokeChecks)
 //        sys.error("Not yet implemented: smoke checks.")
 //      else
-        assumeWithoutSmokeChecks(terms, c)
+        assumeWithoutSmokeChecks(terms)
 
 //      popScope()
 		}
 	}
 
-	private def assumeWithoutSmokeChecks(terms: Set[Term], c: C) = {
+	private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
 //    val terms = _terms filterNot isRedundantAssumption
 
 		terms foreach pathConditions.push

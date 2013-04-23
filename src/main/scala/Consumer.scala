@@ -184,7 +184,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         // assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
         eval(σ, φ, pve, c, tv)((t, c) =>
           if (decider.assert(t)) {
-            assume(t, c)
+            assume(t)
             Q(h, Unit, Nil, c)
           } else
             Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
@@ -218,7 +218,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
       withChunk[DirectChunk](h, tRcvr, id, memloc, pve, c, tv)(ch => {
-        assume(pLoss < ch.perm, c)
+        assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }
   }

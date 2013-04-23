@@ -143,7 +143,7 @@ trait DefaultEvaluator[
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = stateUtils.freshARP()
-        assume(tConstraints, c)
+        assume(tConstraints)
         Q(WildcardPerm(tVar), c)
 //        evalp(σ, e0, pve, c, tv)((p0, c1) =>
 //          evalp(σ, e1, pve, c1, tv)((p1, c2) =>
@@ -204,7 +204,7 @@ trait DefaultEvaluator[
 
           r && {
             val tAux = state.terms.utils.BigAnd(πAux)
-            assume(tAux, c1)
+            assume(tAux)
             Q(And(t0, t1), c1)}})
 
       /* TODO: Implement a short-circuiting evaluation of OR. */
@@ -264,7 +264,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, tAuxThen)
           val tImplies = Implies(tEvaluatedIf, tEvaluatedThen)
 
-          assume(Set(tAuxIf, tAuxImplies), c)
+          assume(Set(tAuxIf, tAuxImplies))
           Q(tImplies, c)
         }
 
@@ -320,7 +320,7 @@ trait DefaultEvaluator[
               tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.typ))),
               tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.typ))))
 
-          assume(Set(tIf, tIte), c)
+          assume(Set(tIf, tIte))
           Q(tActualIte, c)
         }
 
@@ -463,7 +463,7 @@ trait DefaultEvaluator[
           val tQuantAux = Quantification(tQuantOp, tVars, tAux)
           val tQuant = Quantification(tQuantOp, tVars, tActualBody)
 
-          assume(tQuantAux, c)
+          assume(tQuantAux)
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
@@ -489,7 +489,7 @@ trait DefaultEvaluator[
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
-              assume(piFB, c3)
+              assume(piFB)
 //              val c3a = (c3.setConsumeExactReads(true)
 //                           .setCurrentRdPerms(c2.currentRdPerms))
               Q(tFA, c3)
@@ -508,7 +508,7 @@ trait DefaultEvaluator[
                       val tFAEqFB = tFA === tFB
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                      assume(Set(tFAEqFB, tPost), c5a)
+                      assume(Set(tFAEqFB, tPost))
 //                      val c6 = (c5a.setConsumeExactReads(true)
 //                                   .setCurrentRdPerms(c2.currentRdPerms))
                       Q(tFA, c5a)}))
@@ -518,7 +518,7 @@ trait DefaultEvaluator[
                       val c4a = c4.decCycleCounter(id)
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tPost))
-                      assume(tPost, c4a)
+                      assume(tPost)
 //                      val c5 = (c4a.setConsumeExactReads(true)
 //                                   .setCurrentRdPerms(c2.currentRdPerms))
                       Q(tFA, c4a)})}
