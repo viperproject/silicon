@@ -540,7 +540,7 @@ trait DefaultEvaluator[
         if (c.cycles(predicate.name) < 2 * config.unrollFunctions) {
           val c0a = c.incCycleCounter(id)
           evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
-            if (decider.isNonNegativeFraction(tPerm))
+            if (decider.isPositive(tPerm))
               eval(σ, eRcvr, pve, c1, tv)((tRcvr, c2) =>
                 consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
                   val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))

@@ -5,7 +5,7 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, ContractNotWellformed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, CallFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import sil.verifier.reasons.{ReceiverNull, AssertionFalse}
+import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -327,45 +327,44 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
 //          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
-              decider.isValidFraction(tPerm, ePerm) match {
-                case None =>
+              if (decider.isPositive(tPerm)) {
 //                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
-                  val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
+                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
 //                  val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
-                  consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
-                    val ncs = dcs.map{_ match {
-                      case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                      case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
-                    /* Producing Access is unfortunately not an option here
-                    * since the following would fail due to productions
-                    * starting in an empty heap:
-                    *
-                    *   predicate V { acc(x) }
-                    *
-                    *   function f(a: int): int
-                    *	   requires rd(x)
-                    * 	 { x + a }
-                    *
-                    *   method test(a: int)
-                    *     requires ... ensures ...
-                    *   { fold acc(V, f(a)) }
-                    *
-                    * Fold would fail since acc(V, f(a)) is produced in an
-                    * empty and thus f(a) fails due to missing permissions to
-                    * read x.
-                    *
-                    * TODO: Use heap merge function here!
-                    */
-                    val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, tRcvr, predicate.name) match {
-                      case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
-                      case None => (σ1.h, True(), tPerm)}
+                consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
+                  val ncs = dcs.map{_ match {
+                    case fc: DirectFieldChunk => new NestedFieldChunk(fc)
+                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
+                  /* Producing Access is unfortunately not an option here
+                  * since the following would fail due to productions
+                  * starting in an empty heap:
+                  *
+                  *   predicate V { acc(x) }
+                  *
+                  *   function f(a: int): int
+                  *	   requires rd(x)
+                  * 	 { x + a }
+                  *
+                  *   method test(a: int)
+                  *     requires ... ensures ...
+                  *   { fold acc(V, f(a)) }
+                  *
+                  * Fold would fail since acc(V, f(a)) is produced in an
+                  * empty and thus f(a) fails due to missing permissions to
+                  * read x.
+                  *
+                  * TODO: Use heap merge function here!
+                  */
+                  val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, tRcvr, predicate.name) match {
+                    case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
+                    case None => (σ1.h, True(), tPerm)}
 //                    val c3a = c3.setCurrentRdPerms(c2.currentRdPerms)
-                    assume(t)
-                    val h1 = (h + DirectPredicateChunk(tRcvr, predicate.name, snap, tPerm1, ncs)
-                                + H(ncs))
-                    Q(σ \ h1, c3)})
-                case Some(reason) =>
-                  Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)}))
+                  assume(t)
+                  val h1 = (h + DirectPredicateChunk(tRcvr, predicate.name, snap, tPerm1, ncs)
+                              + H(ncs))
+                  Q(σ \ h1, c3)})}
+              else
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
 //          else
 //            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
@@ -376,17 +375,16 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
 //          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
-              decider.isValidFraction(tPerm, ePerm) match {
-                case None =>
+              if (decider.isPositive(tPerm)) {
 //                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
-                  val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
-                  consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
+                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
+                consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
 //                    val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
+                  produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
 //                      val c5 = c4.setCurrentRdPerms(c3.currentRdPerms)
-                      Q(σ2 \ σ.γ, c4)})})
-                case Some(reason) =>
-                  Failure[C, ST, H, S, TV](pve dueTo reason, c2, tv)}))
+                    Q(σ2 \ σ.γ, c4)})})}
+              else
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
 //          else
 //            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 

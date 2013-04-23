@@ -282,21 +282,21 @@ class DefaultDecider[ST <: Store[ST],
       .map(c => assertWriteAccess(c.perm))
       .getOrElse(false))
 
-	def isNonNegativeFraction(perm: P) = perm match {
+	def isPositive(perm: P) = perm match {
     case  _: FullPerm
         | _: WildcardPerm => true
 
-    case _ => isAsPermissive(perm, NoPerm())
+    case _ => permAssert(NoPerm() < perm)
   }
 
-	def isValidFraction(perm: P, permSrc: ast.Expression) =
-    if (!isNonNegativeFraction(perm))
-      Some(NonPositivePermission(permSrc))
-//    else if (!assertAtMostWriteAccess(perm))
-//    else if (!assert(Or(TermEq(perm, FullPerms()), perm < FullPerms())))
-//      Some(FractionMightBeGT100)
-    else
-      None
+//	def isValidFraction(perm: P, permSrc: ast.Expression) =
+//    if (!isNonNegativeFraction(perm))
+//      Some(NonPositivePermission(permSrc))
+////    else if (!assertAtMostWriteAccess(perm))
+////    else if (!assert(Or(TermEq(perm, FullPerms()), perm < FullPerms())))
+////      Some(FractionMightBeGT100)
+//    else
+//      None
 
 //	private def prover_assume(term: Term) {
 //    prover.assume(term)

@@ -134,7 +134,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-              if (decider.isNonNegativeFraction(tPerm))
+              if (decider.isPositive(tPerm))
                 consumePermissions(σ, h, p * tPerm, memloc, tRcvr, pve, c2, tv)((h1, ch, c3, results) =>
                   ch match {
                     case fc: DirectFieldChunk =>

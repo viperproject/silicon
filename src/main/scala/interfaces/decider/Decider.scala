@@ -32,8 +32,8 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assertWriteAccess(p: P): Boolean
 	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean
 
-	def isValidFraction(p: P, src: ast.Expression): Option[ErrorReason]
-	def isNonNegativeFraction(p: P): Boolean
+//	def isValidFraction(p: P, src: ast.Expression): Option[ErrorReason]
+	def isPositive(p: P): Boolean
 	def isAsPermissive(perm: P, other: P): Boolean
 
   def fresh(s: Sort): Var
