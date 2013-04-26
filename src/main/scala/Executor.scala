@@ -57,65 +57,48 @@ trait DefaultExecutor[ST <: Store[ST],
 
   var program: ast.Program
 
-//  def exec(σ: S, cfg: ast.ControlFlowGraph, c: C, tv: TV)
-//          (Q: (S, C) => VerificationResult)
-//          : VerificationResult =
-//
-//    exec(σ, cfg.startNode, c, tv)(Q)
-
-  /* Continues the execution by following the given edge. The target block
-   * is only executed if the edge condition does not contradict with the
-   * given state.
-   */
   private def follow(σ: S, edge: ast.CFGEdge, c: C, tv: TV)
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
 
-//    logger.debug("\n[follow] " + edge)
+    edge match {
+      case ce: sil.ast.ConditionalEdge =>
+        eval(σ, ce.cond, Internal(ce.cond), c, tv)((tCond, c1) =>
+        /* TODO: Use FollowEdge instead of IfBranching */
+          branch(tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
+            (c2: C, tv1: TV) => exec(σ, ce.dest, c2, tv1)(Q),
+            (c2: C, tv1: TV) => Success[C, ST, H, S](c2)))
 
-    val guard = edge match {
-      case ce: sil.ast.ConditionalEdge => ce.cond
-      case ue: sil.ast.UnconditionalEdge => ast.True()() }
-
-    eval(σ, guard, Internal(guard), c, tv)((tCond, c1) =>
-      /* TODO: Use FollowEdge instead of IfBranching */
-      branch(tCond, c1, tv, IfBranching[ST, H, S](guard, tCond),
-        (c2: C, tv1: TV) => exec(σ, edge.dest, c2, tv1)(Q),
-        (c2: C, tv1: TV) => Q(σ, c2)))
+      case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c, tv)(Q)
+    }
   }
 
-  /* Successively follows each edge in the given list. The state gained
-   * by following one node is NOT used when following the next node.
-   * That is, each edge in the list is followed using the initially
-   * given state σ.
-   */
-  private def follow(σ: S, edges: Seq[ast.CFGEdge], c: C, tv: TV)
-                    (Q: (S, C) => VerificationResult)
-                    : VerificationResult = {
+  private def follows(σ: S, edges: Seq[ast.CFGEdge], c: C, tv: TV)
+                     (Q: (S, C) => VerificationResult)
+                     : VerificationResult = {
 
-    if (edges.nonEmpty)
-      follow(σ, edges.head, c, tv)((_, c1) => /* Notice: The resulting state is discarded. */
-        follow(σ, edges.tail, c1, tv)(Q))
-    else
+    if (edges.isEmpty) {
       Q(σ, c)
+    } else
+      follows2(σ, edges, c, tv)(Q)
   }
 
-  /* Leaves the given block. A block can be left by two different ways,
-   * depending on its role in the enclosing CFG.
-   *
-   *   - If the block is the end node of the CFG, then Q is executed.
-   *     Q could, for example, check a postcondition or an invariant.
-   *
-   *   - Otherwise, the block's leaving edges (successors) are followed.
-   */
+  private def follows2(σ: S, edges: Seq[ast.CFGEdge], c: C, tv: TV)
+                      (Q: (S, C) => VerificationResult)
+                      : VerificationResult = {
+
+    if (edges.isEmpty) {
+      Success[C, ST, H, S](c)
+    } else {
+      follow(σ, edges.head, c, tv)(Q) && follows2(σ, edges.tail, c, tv)(Q)
+    }
+  }
+
   private def leave(σ: S, block: ast.CFGBlock, c: C, tv: TV)
                    (Q: (S, C) => VerificationResult)
-                   : VerificationResult =
+                   : VerificationResult = {
 
-    block match {
-      case _: sil.ast.TerminalBlock => Q(σ, c)
-      case _ => follow(σ, block.succs, c, tv)((_, c1) => Success[C, ST, H, S](c1))
-        /* TODO: Shouldn't Q be executed after following a successor as well? */
+    follows(σ, block.succs, c, tv)(Q)
   }
 
   def exec(σ: S, block: ast.CFGBlock, c: C, tv: TV)
@@ -133,11 +116,6 @@ trait DefaultExecutor[ST <: Store[ST],
         val inv = ast.utils.BigAnd(lb.invs)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
         val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
-//          lb.implementation.factory.makeUnaryExpression(
-//            semper.sil.ast.symbols.logical.Not()(lb.cond.sourceLocation),
-//            lb.condition,
-//            lb.condition.sourceLocation,
-//            Nil)
         val invAndNotGuard = ast.And(inv, notGuard)(inv.pos, inv.info)
 
         /* Havoc local variables that are assigned to in the loop body but
@@ -145,14 +123,11 @@ trait DefaultExecutor[ST <: Store[ST],
          */
         val wvs: Seq[ast.Variable] = Nil // lb.writtenVariables /* TODO: Do we have writtenVariables in Sil? */
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
-//        val (rdVarBody, rdVarBodyConstraints) = freshReadVar("$LoopRd")
-//        val cBody = c.setCurrentRdPerms(ReadPerm(rdVarBody))
         val σBody = Ø \ (γ = γBody)
 
         (inScope {
           /* Verify loop body (including well-formedness check) */
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
-//          assume(rdVarBodyConstraints, cBody)
           produce(σBody, fresh,  FullPerm(), invAndGuard, ContractNotWellformed(inv), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
               consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
@@ -161,18 +136,11 @@ trait DefaultExecutor[ST <: Store[ST],
           inScope {
             /* Verify call-site */
             val tv0 = tv.stepInto(c, Description[ST, H, S]("Loop Invariant Establishment"))
-//            val (rdVar, rdVarConstraints) = freshReadVar("$LoopRd", c.currentRdPerms)
-//            val c0 = (c.setConsumeExactReads(false)
-//                       .setCurrentRdPerms(ReadPerm(rdVar)))
-//            assume(rdVarConstraints, c0)
             val c0 = c
             consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, ContractNotWellformed(inv), c1, tv0)((σ3, c2) => {
-//                val c3 = (c2.setConsumeExactReads(true)
-//                            .setCurrentRdPerms(c.currentRdPerms))
-                val c3 = c2
-                leave(σ3 \ (g = σ.g), lb, c3, tv)(Q)})})})
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, ContractNotWellformed(inv), c1, tv0)((σ3, c2) =>
+                leave(σ2 \ (g = σ.g), lb, c2, tv)(Q))})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
           val (arps, arpConstraints) =
@@ -183,14 +151,6 @@ trait DefaultExecutor[ST <: Store[ST],
           assume(arpConstraints.toSet)
           exec(σ \ γ1, body, c, tv)((σ1, c1) =>
             leave(σ1, frp, c1.setConstrainable(arps map (_._2), false), tv)(Q))
-
-//      case nb @ sil.ast.NormalBlock(stmt, _) =>
-//        exec(σ, stmt, c, tv)((σ1, c1) =>
-//          leave(σ1, nb, c1, tv)(Q))
-//
-//      case tb @ sil.ast.TerminalBlock(stmt) =>
-//        exec(σ, stmt, c, tv)((σ1, c1) =>
-//          leave(σ1, tb, c1, tv)(Q))
     }
   }
 
