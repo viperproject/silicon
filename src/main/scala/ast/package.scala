@@ -9,13 +9,18 @@ package object ast {
 
   type Program = sil.ast.Program
 //  type Implementation = sil.ast.methods.implementations.Implementation
+  type Member = sil.ast.Member
   type Method = sil.ast.Method
 //  type Variable = sil.ast.programs.symbols.ProgramVariable
+  type Function = sil.ast.Function
+  type Predicate = sil.ast.Predicate
+  type Field = sil.ast.Field
+  type Domain = sil.ast.Domain
+  val Domain = sil.ast.Domain
   type Variable = sil.ast.AbstractLocalVar
   val Variable = sil.ast.AbstractLocalVar
   type Expression = sil.ast.Exp
-//  type AccessPredicate = sil.ast.PermExp
-  type Function = sil.ast.Function
+  //  type AccessPredicate = sil.ast.PermExp
 
 //  type VariableExpression = sil.ast.expressions.terms.VariableExpression
 //  val VariableExpression = transformers.VariableExpression
@@ -146,8 +151,6 @@ package object ast {
 
 //  type DomainPredicateExpression = sil.ast.expressions.DomainPredicateExpression
 //  val DomainPredicateExpression = sil.ast.expressions.DomainPredicateExpression
-  type Domain = sil.ast.Domain
-  val Domain = sil.ast.Domain
   type DomainFuncApp = sil.ast.DomainFuncApp
   val DomainFuncApp = sil.ast.DomainFuncApp
 

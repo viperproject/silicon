@@ -2,7 +2,9 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal}
+import sil.verifier.PartialVerificationError
+import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
+    PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -39,11 +41,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
 
-//  /*protected*/ val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]]
-//  import stateUtils.freshReadVar
-
+  /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val typeConverter: TypeConverter
-  import typeConverter.toSort
 
   /* Must be set when a program verification is started! */
   var program: ast.Program = null
@@ -51,14 +50,21 @@ trait AbstractElementVerifier[ST <: Store[ST],
   def contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 
+  def verify(member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = member match {
+    case m: ast.Method => verify(m)
+    case f: ast.Function => verify(f)
+    case p: ast.Predicate => verify(p)
+    case _: ast.Domain | _: ast.Field =>
+      val c = contextFactory.create(new DefaultHistory[ST, H, S]().tree)
+      Success[DefaultContext[ST, H, S], ST, H, S](c)
+  }
+
 	def verify(method: ast.Method/*, history: History[ST, H, S]*/): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
     val outs = method.formalReturns.map(_.localVar)
-
-//    val (rdVar, rdVarConstraints) = freshReadVar("$MethRd")
 
     val history = new DefaultHistory[ST, H, S]()
     val c = contextFactory.create(history.tree)
@@ -81,7 +87,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		 * rules in Smans' paper.
 		 */
     inScope {
-//		  assume(rdVarConstraints, c)
 			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
@@ -92,8 +97,64 @@ trait AbstractElementVerifier[ST <: Store[ST],
         inScope {
           exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-                Success[DefaultContext[ST, H, S], ST, H, S](c4)))})})}
+              Success[DefaultContext[ST, H, S], ST, H, S](c4)))})})}
 	}
+
+  def verify(function: ast.Function/*, h: History[ST, H, S]*/): VerificationResult = {
+    logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
+    decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
+
+    val ins = function.formalArgs.map(_.localVar)
+    val out = function.result
+
+    val history = new DefaultHistory[ST, H, S]()
+    val c = contextFactory.create(history.tree)
+    val tv = traceviewFactory.create(history)
+
+    val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
+    val σ = Σ(γ, Ø, Ø)
+
+    val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
+    val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
+    val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
+
+    /* TODO:
+     *  - Improve error message in case the ensures-clause is not well-defined
+     */
+
+    /* Produce includes well-formedness check */
+    inScope {
+      val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
+      (inScope {
+        produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
+          Success[DefaultContext[ST, H, S], ST, H, S](c2))}
+        &&
+        inScope {
+          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
+            eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
+              consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
+                Success[DefaultContext[ST, H, S], ST, H, S](c4))))})}
+  }
+
+  def verify(predicate: ast.Predicate/*, h: History[ST, H, S]*/): VerificationResult = {
+    logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
+    decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
+
+    val history = new DefaultHistory[ST, H, S]()
+    val c = contextFactory.create(history.tree)
+    val tv = traceviewFactory.create(history)
+
+    val vThis = predicate.formalArg.localVar
+    val tThis = fresh(vThis)
+
+    val γ = Γ(vThis -> tThis)
+    val σ = Σ(γ, Ø, Ø)
+
+    inScope {
+      assume(tThis !== terms.Null())
+      produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
+        Success[DefaultContext[ST, H, S], ST, H, S](c1))}
+  }
 }
 
 class DefaultElementVerifier[ST <: Store[ST],
@@ -161,15 +222,15 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(prog.domains)
     emitFunctionDeclarations(prog.functions)
 
-    var it: Iterator[ast.Method] = prog.methods.iterator
+    val members = prog.members.iterator
 
     /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
 
     if (config.stopOnFirstError) {
       /* Stops on first error */
-      while (it.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = verify(it.next) :: results
+      while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
+        results = ev.verify(members.next) :: results
       }
 
       results = results.reverse
@@ -178,13 +239,13 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results = it.map(verify _).toList
+      results = members.map(ev.verify _).toList
     }
 
     results
   }
 
-  def verify(method: ast.Method): VerificationResult = ev.verify(method)
+//  def verify(method: ast.Method): VerificationResult = ev.verify(method)
 
   private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
