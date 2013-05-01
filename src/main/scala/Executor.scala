@@ -148,9 +148,10 @@ trait DefaultExecutor[ST <: Store[ST],
                 .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
                 .unzip
           val γ1 = Γ(σ.γ.values ++ arps)
+          val c1 = c.setConstrainable(arps map (_._2), true)
           assume(arpConstraints.toSet)
-          exec(σ \ γ1, body, c, tv)((σ1, c1) =>
-            leave(σ1, frp, c1.setConstrainable(arps map (_._2), false), tv)(Q))
+          exec(σ \ γ1, body, c1, tv)((σ1, c2) =>
+            leave(σ1, frp, c2.setConstrainable(arps map (_._2), false), tv)(Q))
     }
   }
 
