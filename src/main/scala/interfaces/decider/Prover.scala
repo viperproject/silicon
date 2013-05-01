@@ -17,8 +17,9 @@ trait Prover {
 	def enableLoggingComments(enabled: Boolean)
 	def logComment(str: String)
 	def fresh(id: String, sort: Sort): Var
+  def sanitizeSymbol(symbol: String): String
   def declareSort(sort: Sort)
-  def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort)
+  def declareFunction(id: String, argSorts: Seq[Sort], sort: Sort)
   def stop()
   def getStatistics: Map[String, String]
 }

@@ -190,10 +190,17 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     v
   }
 
-  def declareSymbol(id: String, argSorts: Seq[Sort], sort: Sort) {
-    val str = "(declare-fun %s (%s) %s)".format(sanitiseIdentifier(id),
-      argSorts.map(convert).mkString(" "),
-      convert(sort))
+  def sanitizeSymbol(symbol: String) = sanitiseIdentifier(symbol)
+
+  /**
+   * Declares a Z3 function. Does not ensure that the symbol has not been declared already.
+   * @param symbol Sanitised name of the symbol to declare. See [[sanitizeSymbol]].
+   * @param argSorts Function argument sorts.
+   * @param sort Sort of the function's return value.
+   */
+  def declareFunction(symbol: String, argSorts: Seq[Sort], sort: Sort) {
+    val str = "(declare-fun %s (%s) %s)"
+              .format(symbol, argSorts.map(convert).mkString(" "), convert(sort))
 
     write(str)
   }

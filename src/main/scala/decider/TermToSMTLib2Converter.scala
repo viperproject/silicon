@@ -131,9 +131,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
       if (ts.isEmpty) sid
       else "(%s %s)".format(sid, argsStr)
 
-    case TypeOf(t: Term, typeName: String) =>
-      "(= ($Type.typeOf %s) %s)".format(convert(t), typeName)
-
     case SnapEq(t0, t1) =>
       "($Snap.snapEq " + convert(t0) + " " + convert(t1) + ")"
 
@@ -145,6 +142,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
     case SortWrapper(t, sort) =>
       "($SortWrappers.%sTo%s %s)".format(convert(t.sort), convert(sort), convert(t))
+
+    case TypeOf(t: Term, typeName: String) =>
+      "(= ($Type.typeOf %s) %s)".format(convert(t), typeName)
+
+    case Distinct(symbols) =>
+      "(distinct %s)".format(symbols.mkString(" "))
   }
 
   def convert(sort: Sort) = sort match {

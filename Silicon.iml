@@ -12,9 +12,10 @@
       <excludeFolder url="file://$MODULE_DIR$/project/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="1.7" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="SIL" />
+    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.1" level="project" />
   </component>
 </module>
 

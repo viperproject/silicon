@@ -7,8 +7,7 @@ import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Intern
     PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
-    HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
 import state.{terms, TypeConverter, DirectChunk}
 import state.terms.{Term, DefaultFractionalPermissions/*, TypeOf*/}
 import state.terms.implicits._
@@ -245,13 +244,12 @@ trait AbstractVerifier[ST <: Store[ST],
     results
   }
 
-//  def verify(method: ast.Method): VerificationResult = ev.verify(method)
-
+  /* TODO: Merge code with similar code in def emitDomainDeclarations below. */
   private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
       var args: List[terms.Sort] = f.formalArgs.map(a => typeConverter.toSort(a.typ)).toList
       args = terms.sorts.Snap :: args /* Snapshot, and all declared parameters */
-      decider.prover.declareSymbol(f.name, args, typeConverter.toSort(f.typ))
+      decider.prover.declareFunction(decider.prover.sanitizeSymbol(f.name), args, typeConverter.toSort(f.typ))
     })
   }
 
@@ -271,8 +269,8 @@ trait AbstractVerifier[ST <: Store[ST],
        *       TermConverter when converting SortWrapper(t, to) terms!!!
        */
 
-      decider.prover.declareSymbol(toSnapId, Seq(domainSort), terms.sorts.Snap)
-      decider.prover.declareSymbol(fromSnapId, Seq(terms.sorts.Snap), domainSort)
+      decider.prover.declareFunction(decider.prover.sanitizeSymbol(toSnapId), Seq(domainSort), terms.sorts.Snap)
+      decider.prover.declareFunction(decider.prover.sanitizeSymbol(fromSnapId), Seq(terms.sorts.Snap), domainSort)
     })
   }
 
@@ -294,7 +292,8 @@ trait AbstractVerifier[ST <: Store[ST],
     domains.foreach(d => {
       decider.prover.logComment("Functions of " + d.name)
       d.functions.foreach(f =>
-        decider.prover.declareSymbol(f.name,
+        decider.prover.declareFunction(
+          decider.prover.sanitizeSymbol(f.name),
           f.formalArgs.map(a => typeConverter.toSort(a.typ)),
           typeConverter.toSort(f.typ)))
     })
@@ -337,6 +336,16 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.logComment("Axioms")
       axioms.foreach(decider.prover.assume)
     })
+
+    decider.prover.logComment("")
+    decider.prover.logComment("Unique domain constants")
+    decider.prover.logComment("")
+
+    val uniqueFunctions = domains flatMap (_.functions) filter(_.unique)
+    assert(uniqueFunctions forall (_.formalArgs.length == 0),
+           s"Expected all unique domain functions to be nullary functions: $uniqueFunctions")
+
+    decider.prover.assume(terms.Distinct(uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))))
   }
 }
 

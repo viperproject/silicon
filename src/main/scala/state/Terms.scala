@@ -798,12 +798,17 @@ case class SortWrapper(t: Term, to: Sort) extends Term {
   override val sort = to
 }
 
-/* Auxiliary terms */
+/* Other terms */
 
 case class TypeOf(t: Term, typeName: String) extends BooleanTerm {
   utils.assertSort(t, "term", sorts.Ref)
 
   override val toString = "%s == %s".format(t, typeName)
+}
+
+/* TODO: Create terms.Function(symbol, argSorts, returnSort) and use it here. Have terms.Var <: terms.Function. */
+case class Distinct(symbols: Seq[String]) extends BooleanTerm {
+  override val toString = s"Distinct($symbols)"
 }
 
 /* Utility functions */
