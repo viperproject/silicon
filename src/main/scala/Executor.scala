@@ -113,6 +113,8 @@ trait DefaultExecutor[ST <: Store[ST],
           leave(σ1, block, c1, tv)(Q))
 
       case lb: sil.ast.LoopBlock =>
+        decider.prover.logComment(sil.ast.pretty.PrettyPrinter.pretty(lb.toAst))
+
         val inv = ast.utils.BigAnd(lb.invs)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
         val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
@@ -121,12 +123,13 @@ trait DefaultExecutor[ST <: Store[ST],
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val wvs: Seq[ast.Variable] = Nil // lb.writtenVariables /* TODO: Do we have writtenVariables in Sil? */
+        val wvs = lb.writtenVars
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Ø \ (γ = γBody)
 
         (inScope {
           /* Verify loop body (including well-formedness check) */
+          decider.prover.logComment("Verify loop body")
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
           produce(σBody, fresh,  FullPerm(), invAndGuard, ContractNotWellformed(inv), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
@@ -135,10 +138,12 @@ trait DefaultExecutor[ST <: Store[ST],
             &&
           inScope {
             /* Verify call-site */
+            decider.prover.logComment("Establish loop invariant")
             val tv0 = tv.stepInto(c, Description[ST, H, S]("Loop Invariant Establishment"))
             val c0 = c
             consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
+              decider.prover.logComment("Continue after loop")
               produce(σ2, fresh,  FullPerm(), invAndNotGuard, ContractNotWellformed(inv), c1, tv0)((σ3, c2) =>
                 leave(σ2 \ (g = σ.g), lb, c2, tv)(Q))})})
 
