@@ -15,7 +15,7 @@
     <orderEntry type="jdk" jdkName="1.7" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="SIL" />
-    <orderEntry type="library" name="SBT: org.scala-lang:scala-library:2.10.1" level="project" />
+    <orderEntry type="library" name="org.scala-lang_scala-library_2.10.0" level="project" />
   </component>
 </module>
 
