@@ -345,7 +345,9 @@ trait AbstractVerifier[ST <: Store[ST],
     assert(uniqueFunctions forall (_.formalArgs.length == 0),
            s"Expected all unique domain functions to be nullary functions: $uniqueFunctions")
 
-    decider.prover.assume(terms.Distinct(uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))))
+    val uniqueSymbols = uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))
+
+    if (uniqueSymbols.nonEmpty) decider.prover.assume(terms.Distinct(uniqueSymbols))
   }
 }
 
