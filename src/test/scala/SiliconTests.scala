@@ -1,14 +1,14 @@
 package semper.silicon
 
+import java.nio.file.Path
 import semper.sil.testing.DefaultSilSuite
 import semper.sil.verifier.Verifier
 import semper.sil.frontend.{Frontend, SilFrontend}
-import java.io.File
 
 class SiliconTests extends DefaultSilSuite {
-  override def testDirectories: Seq[String] = Vector("basic", "sequences")
+  override def testDirectories: Seq[String] = Vector(/*"basic", "all/removesoon", "all/sequences", */ /*"all"*/ "basic", "all/removesoon")
 
-  override def frontend(verifier: Verifier, files: Seq[File]): Frontend = {
+  override def frontend(verifier: Verifier, files: Seq[Path]): Frontend = {
 //    require(files.length == 1, "tests should consist of exactly one file")
 
     val fe = new SiliconFrontend()
