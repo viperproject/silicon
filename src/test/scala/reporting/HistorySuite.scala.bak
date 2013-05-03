@@ -1,40 +1,40 @@
-package semper.syxc
+package semper.silicon
 package reporting
 
 import org.scalatest.FlatSpec
 import interfaces.reporting._
-import state.{MapBackedStore, MapBackedHeap, DefaultState, DefaultStateFactory}
+import state.{MapBackedStore, SetBackedHeap, DefaultState, DefaultStateFactory}
 import state.terms.{Term, PermissionsTuple, FullPerms, False}
 import ast.{BlockStmt, True}
- 
+
 class HistorySuite extends FlatSpec {
-   
+
   type ST = MapBackedStore
-  type H = MapBackedHeap
+  type H = SetBackedHeap
   type S = DefaultState[ST, H]
   type TV = DefaultTraceView[ST, H, S]
-  
+
   case class BranchKeeperImpl(currentBranch: Branch[ST, H, S]) extends BranchKeeper[BranchKeeperImpl, ST, H, S] {
     def replaceCurrentBranch(currentBranch: Branch[ST, H, S]) = copy(currentBranch = currentBranch)
   }
-  
+
   val σf = new DefaultStateFactory(() => Set.empty)
-  
+
   trait Setup {
     val h = new DefaultHistory[ST, H, S]()
     val tvf = new DefaultTraceViewFactory[ST, H, S]()
     val tv = tvf.create(h)
     val bk = BranchKeeperImpl(h.tree)
   }
-  
+
   trait SimpleSetup extends Setup {
     val tv1 = tv.stepInto(bk, Executing[ST, H, S](σf.Σ(), BlockStmt(Nil)))
     val tv2 = tv1.stepInto(bk, Evaluating[ST, H, S](σf.Σ(), True()))
     val tv3 = tv2.stepInto(bk, Producing[ST, H, S](σf.Σ(), PermissionsTuple(FullPerms()), True()))
-    val tv4 = tv2.stepInto(bk, Consuming[ST, H, S](σf.Σ(), new MapBackedHeap(), PermissionsTuple(FullPerms()), True()))
+    val tv4 = tv2.stepInto(bk, Consuming[ST, H, S](σf.Σ(), new SetBackedHeap(), PermissionsTuple(FullPerms()), True()))
     val tv5 = tv4.stepInto(bk, Description("Produce Precondition"))
   }
-  
+
   "Steps" should "be nestable" in new SimpleSetup {
     assert(h.trace.children.head == tv1.currentStep)
     assert(h.trace.children.head.children.head === tv2.currentStep)
@@ -43,7 +43,7 @@ class HistorySuite extends FlatSpec {
     assert(tv2.currentStep.children(1).isInstanceOf[Consuming[ST, H, S]])
     assert(tv5.currentStep.format === "Produce Precondition")
   }
-  
+
   "A substep" should "have a parent" in new SimpleSetup {
     expectResult (tv4.currentStep) {
       tv5.currentStep.asInstanceOf[SubStep[ST, H, S]].parent
@@ -54,9 +54,9 @@ class HistorySuite extends FlatSpec {
       tv5.currentStep.asInstanceOf[SubStep[ST, H, S]].ancestors
     }
   }
-  
-  
-  
+
+
+
   trait BranchingSetup extends Setup {
     val tv1 = tv.stepInto(bk, Description("1"))
     val (bkT, bkF, tvT, tvF) = tv1.splitUp(bk, IfBranching(True(), False()))
@@ -67,8 +67,8 @@ class HistorySuite extends FlatSpec {
     val tvT3 = tv.stepInto(bkT, Description("3.t"))
     val tvF3 = tv.stepInto(bkF, Description("3.f"))
   }
-  
-  
+
+
   "Branching" should "preserve nesting" in new BranchingSetup {
     expectResult ("3.t") {
       tvT3.currentStep.format
@@ -88,16 +88,16 @@ class HistorySuite extends FlatSpec {
     expectResult ("1") {
       tv1.currentStep.format
     }
-    
+
     expectResult ("1.1.t") {
       tv1.currentStep.children.head.children.head.format
     }
   }
-  
+
   it should "create independant branches" in new BranchingSetup {
     assert(bkT != bkF)
   }
-  
+
   "Branching steps" should "be created" in new BranchingSetup {
     expectResult ("If-branch at <undefined position> (False)") {
       tvT.currentStep.format
@@ -105,7 +105,7 @@ class HistorySuite extends FlatSpec {
     expectResult (true) {
       tvT.currentStep.asInstanceOf[TwinBranchingStep[ST, H, S]].b
     }
-    
+
     expectResult ("Else-branch at <undefined position> (True)") {
       tvF.currentStep.format
     }
@@ -113,7 +113,7 @@ class HistorySuite extends FlatSpec {
       tvF.currentStep.asInstanceOf[TwinBranchingStep[ST, H, S]].b
     }
   }
-  
+
   it should "refer to their branches" in new BranchingSetup {
     expectResult (bkT.currentBranch) {
       tvT.currentStep.asInstanceOf[TwinBranchingStep[ST, H, S]].branch
@@ -122,7 +122,7 @@ class HistorySuite extends FlatSpec {
       tvF.currentStep.asInstanceOf[TwinBranchingStep[ST, H, S]].branch
     }
   }
-  
+
   "Branches" should "refer to their branching steps" in new BranchingSetup {
     expectResult (tvT.currentStep) {
       bkT.currentBranch.asInstanceOf[SubBranch[ST, H, S]].branchingStep
@@ -131,5 +131,5 @@ class HistorySuite extends FlatSpec {
       bkF.currentBranch.asInstanceOf[SubBranch[ST, H, S]].branchingStep
     }
   }
-  
+
 }
