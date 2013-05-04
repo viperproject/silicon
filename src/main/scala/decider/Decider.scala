@@ -124,6 +124,17 @@ class DefaultDecider[ST <: Store[ST],
     prover.logComment("\n; /preamble.smt2")
     pushAssertions(readPreamble("/preamble.smt2"))
 
+    prover.logComment("\n; /sequences_dafny.smt2 [Int]")
+    pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Int)
+    prover.logComment("\n; /sequences_dafny_Int.smt2")
+    pushAssertions(readPreamble("/sequences_dafny_Int.smt2"))
+
+    prover.logComment("\n; /sequences_dafny.smt2 [Bool]")
+    pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Bool)
+
+    prover.logComment("\n; /sequences_dafny.smt2 [$Ref]")
+    pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Ref)
+
     prover.logComment("-" * 60)
     prover.logComment("End static preamble")
     prover.logComment("-" * 60)
@@ -155,6 +166,11 @@ class DefaultDecider[ST <: Store[ST],
     }
 
     assertions.reverse
+  }
+
+  private def pushSortParametricAssertions(resource: String, s: Sort) {
+    val lines = readPreamble(resource)
+    pushAssertions(lines.map(_.replace("$S$", z3.termConverter.convert(s))))
   }
 
   private def pushAssertions(lines: List[String]) {
