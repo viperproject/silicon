@@ -126,8 +126,8 @@ class DefaultDecider[ST <: Store[ST],
 
     prover.logComment("\n; /sequences_dafny.smt2 [Int]")
     pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Int)
-    prover.logComment("\n; /sequences_dafny_Int.smt2")
-    pushAssertions(readPreamble("/sequences_dafny_Int.smt2"))
+    prover.logComment("\n; /sequences_dafny_int.smt2")
+    pushAssertions(readPreamble("/sequences_dafny_int.smt2"))
 
     prover.logComment("\n; /sequences_dafny.smt2 [Bool]")
     pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Bool)
