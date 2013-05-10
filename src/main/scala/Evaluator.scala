@@ -5,7 +5,7 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
-import sil.verifier.reasons.{ReceiverNull, NonPositivePermission}
+import semper.sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
@@ -139,20 +139,13 @@ trait DefaultEvaluator[
       case _: ast.NoPerm => Q(NoPerm(), c)
 
       case ast.FractionalPerm(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c, tv)(Q)
+        evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c, tv)((tFP, c1) =>
+          failIfDivByZero(tFP, e1, tFP.d, TermPerm(0), pve, c1, tv)(Q))
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = stateUtils.freshARP()
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
-//        evalp(σ, e0, pve, c, tv)((p0, c1) =>
-//          evalp(σ, e1, pve, c1, tv)((p1, c2) =>
-//            Q(FractionPerm())
-
-//      case _: ast.ReadPerm =>
-//        val (tVar, tConstraints) = stateUtils.freshReadVar()
-//        assume(tConstraints, c)
-//        Q(tVar, c)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -179,8 +172,8 @@ trait DefaultEvaluator[
         var πPre: Set[Term] = Set()
         var πAux: Set[Term] = Set()
 
-        var t0: Term = True() //.setSrcNode(e0)
-        var t1: Term = True() //.setSrcNode(e1)
+        var t0: Term = True()
+        var t1: Term = True()
 
         eval(σ, e0, pve, c, tv)((_t0, c1) => {
           t0 = _t0
@@ -336,10 +329,12 @@ trait DefaultEvaluator[
         evalBinOp(σ, e0, e1, Times, pve, c, tv)(Q)
 
       case ast.IntDiv(e0, e1) =>
-        evalBinOp(σ, e0, e1, Div, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Div, pve, c, tv)((tDiv, c1) =>
+          failIfDivByZero(tDiv, e1, tDiv.p1, 0, pve, c1, tv)(Q))
 
       case ast.IntMod(e0, e1) =>
-        evalBinOp(σ, e0, e1, Mod, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Mod, pve, c, tv)((tMod, c1) =>
+          failIfDivByZero(tMod, e1, tMod.p1, 0, pve, c1, tv)(Q))
 
       case ast.IntLE(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
@@ -354,9 +349,6 @@ trait DefaultEvaluator[
         evalBinOp(σ, e0, e1, Greater, pve, c, tv)(Q)
 
       /* Permissions */
-
-//      case ast.ConcretePerm(n, d) =>
-//        Q(ConcretePerm(n, d), c)
 
       case ast.PermPlus(e0, e1) =>
         evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c, tv)(Q)
@@ -480,18 +472,12 @@ trait DefaultEvaluator[
           val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
-//          val (rdVar, rdVarConstraints) = freshReadVar("$FAppRd", c2.currentRdPerms)
-//          val c2a = (c2.setConsumeExactReads(false)
-//                       .setCurrentRdPerms(ReadPerm(rdVar)))
-//          assume(rdVarConstraints, c2a)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
             val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
               assume(piFB)
-//              val c3a = (c3.setConsumeExactReads(true)
-//                           .setCurrentRdPerms(c2.currentRdPerms))
               Q(tFA, c3)
             } else {
               val σ3 = σ2 \+ (func.result, tFA)
@@ -509,8 +495,6 @@ trait DefaultEvaluator[
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                       assume(Set(tFAEqFB, tPost))
-//                      val c6 = (c5a.setConsumeExactReads(true)
-//                                   .setCurrentRdPerms(c2.currentRdPerms))
                       Q(tFA, c5a)}))
                 } else {
                   /* Function body is invisible, use postcondition instead */
@@ -519,8 +503,6 @@ trait DefaultEvaluator[
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tPost))
                       assume(tPost)
-//                      val c5 = (c4a.setConsumeExactReads(true)
-//                                   .setCurrentRdPerms(c2.currentRdPerms))
                       Q(tFA, c4a)})}
               } else
                 Q(tFA, c3)}})})
@@ -576,14 +558,31 @@ trait DefaultEvaluator[
 				Q(termOp(t0, t1), c2)))
   }
 
-  private def evalPermOp(σ: S,
+  private def failIfDivByZero(t: Term,
+                              eDivisor: ast.Expression,
+                              tDivisor: Term,
+                              tZero: Term,
+                              pve: PartialVerificationError,
+                              c: C,
+                              tv: TV)
+                             (Q: (Term, C) => VerificationResult)
+                             : VerificationResult = {
+
+    if (decider.assert(tDivisor !== tZero))
+      Q(t, c)
+    else
+      Failure[C, ST, H, S, TV](pve dueTo DivisionByZero(eDivisor), c, tv)
+  }
+
+  private def evalPermOp[PO <: P]
+                        (σ: S,
                          e0: ast.Expression,
                          e1: ast.Expression,
-                         permOp: (P, P) => P,
+                         permOp: (P, P) => PO,
                          pve: PartialVerificationError,
                          c: C,
                          tv: TV)
-                        (Q: (P, C) => VerificationResult)
+                        (Q: (PO, C) => VerificationResult)
                         : VerificationResult = {
 
     evalp(σ, e0, pve, c, tv)((t0, c1) =>
