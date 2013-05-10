@@ -183,9 +183,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
 
   def sanitiseIdentifier(str: String) = (
     str.replace('#', '_')
-      .replace("τ", "$tau")
-      .replace('[', '<')
-      .replace(']', '>')
-      .replace("::", ".")
-      .replace(',', '~'))
+       .replace("τ", "$tau")
+       .replace('[', '<')
+       .replace(']', '>')
+       .replace("::", ".")
+       .replace(',', '~'))
+       .replace(" ", "")
 }

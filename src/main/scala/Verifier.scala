@@ -2,6 +2,8 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import semper.sil.ast.DomainType
+import semper.sil.ast.utility.Nodes
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
@@ -217,8 +219,20 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(prog: ast.Program): List[VerificationResult] = {
     ev.program = prog
 
-    emitDomainDeclarations(prog.domains)
-    emitSortWrappers(prog.domains)
+//    println("\nAll domains:")
+//    prog.domains foreach (d => println(d.name))
+//
+//    val ds = Nodes.concreteDomainTypes(prog)
+//    println("\nDomain instances:")
+//    ds foreach (d => {
+//      println(d)
+//      println(d.isConcrete)
+//    })
+    val concreteDomainTypes = Nodes.concreteDomainTypes(prog)
+
+    emitDomainDeclarations(concreteDomainTypes)
+    emitSortWrappers(concreteDomainTypes)
+
     emitFunctionDeclarations(prog.functions)
 
     val members = prog.members.iterator
@@ -253,101 +267,102 @@ trait AbstractVerifier[ST <: Store[ST],
     })
   }
 
-  private def emitSortWrappers(domains: Seq[ast.Domain]) {
+  private def emitSortWrappers(concreteDomainInstances: Seq[DomainType]) {
     val snapSortId = decider.prover.termConverter.convert(terms.sorts.Snap)
 
-    decider.prover.logComment("")
-    decider.prover.logComment("Declaring additional sort wrappers")
-    decider.prover.logComment("")
-
-    domains.foreach(d => {
-      val domainSort = typeConverter.toSort(ast.types.DomainType(d, Map.empty))
-      val domainSortId = decider.prover.termConverter.convert(domainSort)
-      val toSnapId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
-      val fromSnapId = "$SortWrappers.%sTo%s".format(snapSortId, domainSortId)
-      /* TODO: Sort wrapper naming schema must be the same as used by the
-       *       TermConverter when converting SortWrapper(t, to) terms!!!
-       */
-
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(toSnapId), Seq(domainSort), terms.sorts.Snap)
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(fromSnapId), Seq(terms.sorts.Snap), domainSort)
-    })
+//    decider.prover.logComment("")
+//    decider.prover.logComment("Declaring additional sort wrappers")
+//    decider.prover.logComment("")
+//
+//    domains.foreach(d => {
+//      val domainSort = typeConverter.toSort(ast.types.DomainType(d, Map.empty))
+//      val domainSortId = decider.prover.termConverter.convert(domainSort)
+//      val toSnapId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
+//      val fromSnapId = "$SortWrappers.%sTo%s".format(snapSortId, domainSortId)
+//      /* TODO: Sort wrapper naming schema must be the same as used by the
+//       *       TermConverter when converting SortWrapper(t, to) terms!!!
+//       */
+//
+//      decider.prover.declareFunction(decider.prover.sanitizeSymbol(toSnapId), Seq(domainSort), terms.sorts.Snap)
+//      decider.prover.declareFunction(decider.prover.sanitizeSymbol(fromSnapId), Seq(terms.sorts.Snap), domainSort)
+//    })
   }
 
-  private def emitDomainDeclarations(domains: Seq[ast.Domain]) {
+  private def emitDomainDeclarations(concreteDomainTypes: Seq[DomainType]) {
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional domains")
     decider.prover.logComment("")
 
     /* Declare domains. */
-    domains.foreach(d => {
-      decider.prover.logComment("Declaring domain " + d.name)
-      decider.prover.declareSort(typeConverter.toSort(ast.types.DomainType(d, Map.empty)))
+    concreteDomainTypes.foreach(dt => {
+      decider.prover.logComment("Declaring domain " + dt)
+//      decider.prover.declareSort(typeConverter.toSort(ast.types.DomainType(d, Map.empty)))
+      decider.prover.declareSort(typeConverter.toSort(dt))
     })
 
-    /* Declare functions and predicates of each domain.
-     * Since these can reference arbitrary other domains, make sure that
-     * all domains have been declared first.
-     */
-    domains.foreach(d => {
-      decider.prover.logComment("Functions of " + d.name)
-      d.functions.foreach(f =>
-        decider.prover.declareFunction(
-          decider.prover.sanitizeSymbol(f.name),
-          f.formalArgs.map(a => typeConverter.toSort(a.typ)),
-          typeConverter.toSort(f.typ)))
-    })
-
-    /* Axiomatise each domain.
-     * Since the axioms can reference arbitrary domains, functions and
-     * predicates, make sure that all domains, functions and predicates have
-     * been declared first.
-     *
-     * TODO: Evaluating the domains is probably an overkill, because
-     *         - domain axioms are much simpler than regular SIL expressions
-     *         - we don't care about read permissions
-     *         - we don't care about traceviews
-     */
-    domains.foreach(d => {
-      decider.prover.logComment("Axiomatising domain " + d.name)
-      decider.prover.logComment("Axioms (eval)")
-
-//      val (rdVar, _) = ev.stateUtils.freshReadVar("$MethRd")
-      val history = new DefaultHistory[ST, H, S]()
-      val tv = ev.traceviewFactory.create(history)
-      val c = ev.contextFactory.create(history.tree /*, terms.ReadPerm(rdVar)*/)
-
-      val axioms =
-        decider.inScope {
-          d.axioms.map(a => {
-            import ev.stateFactory._
-
-            val σ = Σ(Ø, Ø, Ø)
-            val pve = Internal(a)
-            var t: Term = null
-            ev.eval(σ, a.exp, pve, c, tv)((_t, c1) => {
-              t = _t
-              Success[DefaultContext[ST, H, S], ST, H, S](c1)
-            })
-            t
-          })
-        }
-
-      decider.prover.logComment("Axioms")
-      axioms.foreach(decider.prover.assume)
-    })
-
-    decider.prover.logComment("")
-    decider.prover.logComment("Unique domain constants")
-    decider.prover.logComment("")
-
-    val uniqueFunctions = domains flatMap (_.functions) filter(_.unique)
-    assert(uniqueFunctions forall (_.formalArgs.length == 0),
-           s"Expected all unique domain functions to be nullary functions: $uniqueFunctions")
-
-    val uniqueSymbols = uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))
-
-    if (uniqueSymbols.nonEmpty) decider.prover.assume(terms.Distinct(uniqueSymbols))
+//    /* Declare functions and predicates of each domain.
+//     * Since these can reference arbitrary other domains, make sure that
+//     * all domains have been declared first.
+//     */
+//    domains.foreach(d => {
+//      decider.prover.logComment("Functions of " + d.name)
+//      d.functions.foreach(f =>
+//        decider.prover.declareFunction(
+//          decider.prover.sanitizeSymbol(f.name),
+//          f.formalArgs.map(a => typeConverter.toSort(a.typ)),
+//          typeConverter.toSort(f.typ)))
+//    })
+//
+//    /* Axiomatise each domain.
+//     * Since the axioms can reference arbitrary domains, functions and
+//     * predicates, make sure that all domains, functions and predicates have
+//     * been declared first.
+//     *
+//     * TODO: Evaluating the domains is probably an overkill, because
+//     *         - domain axioms are much simpler than regular SIL expressions
+//     *         - we don't care about read permissions
+//     *         - we don't care about traceviews
+//     */
+//    domains.foreach(d => {
+//      decider.prover.logComment("Axiomatising domain " + d.name)
+//      decider.prover.logComment("Axioms (eval)")
+//
+////      val (rdVar, _) = ev.stateUtils.freshReadVar("$MethRd")
+//      val history = new DefaultHistory[ST, H, S]()
+//      val tv = ev.traceviewFactory.create(history)
+//      val c = ev.contextFactory.create(history.tree /*, terms.ReadPerm(rdVar)*/)
+//
+//      val axioms =
+//        decider.inScope {
+//          d.axioms.map(a => {
+//            import ev.stateFactory._
+//
+//            val σ = Σ(Ø, Ø, Ø)
+//            val pve = Internal(a)
+//            var t: Term = null
+//            ev.eval(σ, a.exp, pve, c, tv)((_t, c1) => {
+//              t = _t
+//              Success[DefaultContext[ST, H, S], ST, H, S](c1)
+//            })
+//            t
+//          })
+//        }
+//
+//      decider.prover.logComment("Axioms")
+//      axioms.foreach(decider.prover.assume)
+//    })
+//
+//    decider.prover.logComment("")
+//    decider.prover.logComment("Unique domain constants")
+//    decider.prover.logComment("")
+//
+//    val uniqueFunctions = domains flatMap (_.functions) filter(_.unique)
+//    assert(uniqueFunctions forall (_.formalArgs.length == 0),
+//           s"Expected all unique domain functions to be nullary functions: $uniqueFunctions")
+//
+//    val uniqueSymbols = uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))
+//
+//    if (uniqueSymbols.nonEmpty) decider.prover.assume(terms.Distinct(uniqueSymbols))
   }
 }
 

@@ -19,7 +19,7 @@ class DefaultTypeConverter extends TypeConverter {
 
     case dt: ast.types.DomainType =>
       assert(dt.isConcrete)
-      sorts.UserSort(dt.domain.name)
+      sorts.UserSort(dt.toString)
 
     case sil.ast.Pred | _: sil.ast.TypeVar | _: ast.types.Seq => throw new MatchError(typ)
   }
