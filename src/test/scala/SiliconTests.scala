@@ -6,7 +6,13 @@ import semper.sil.verifier.Verifier
 import semper.sil.frontend.{Frontend, SilFrontend}
 
 class SiliconTests extends DefaultSilSuite {
-  override def testDirectories: Seq[String] = Vector(/*"basic", "all/removesoon", "all/sequences", */ /*"all"*/ "basic", "all/removesoon")
+  private val siliconTestDirectories: Seq[String] = Nil
+
+  private val silTestDirectories: Seq[String] = List(
+//    "all/basic"
+  )
+
+  override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
 
   override def frontend(verifier: Verifier, files: Seq[Path]): Frontend = {
 //    require(files.length == 1, "tests should consist of exactly one file")
