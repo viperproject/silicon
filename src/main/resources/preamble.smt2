@@ -19,17 +19,17 @@
 ; [Malte] The remaining options were taken from the Boogie preamble when I compared Syxc and
 ; VCG-Chalice for the VSTTE12 paper. I have no clue what these options do and how important
 ; they are.
-(set-option :MODEL.V2 true) ; TODO
-(set-option :SMT.PHASE_SELECTION 0) ; TODO
+(set-option :MODEL.V2 true)
+(set-option :SMT.PHASE_SELECTION 0)
 (set-option :SMT.RESTART_STRATEGY 0)
 (set-option :SMT.RESTART_FACTOR |1.5|)
 (set-option :SMT.ARITH.RANDOM_INITIAL_VALUE true)
-(set-option :SMT.CASE_SPLIT 3)
+; (set-option :SMT.CASE_SPLIT 3) ; Unsupported in Z3 4.3?
 (set-option :SMT.DELAY_UNITS true)
 (set-option :SMT.DELAY_UNITS_THRESHOLD 16)
 (set-option :NNF.SK_HACK true)
 (set-option :SMT.QI.EAGER_THRESHOLD 100)
-(set-option :SMT.QI.COST |"(+ weight generation)"|)
+; (set-option :SMT.QI.COST |"(+ weight generation)"|) ; Unsupported in Z3 4.3?
 (set-option :TYPE_CHECK true)
 (set-option :SMT.BV.REFLECT true)
 
