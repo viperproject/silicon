@@ -2,8 +2,9 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.sil.ast.{DomainAxiom, DomainType}
-import semper.sil.ast.utility.Nodes
+import semper.sil.ast.utility.Domains.{DomainAxiomInstance, DomainFunctionInstance, DomainMemberInstance}
+import semper.sil.ast.{DomainFunc, Domain, DomainAxiom, DomainType}
+import semper.sil.ast.utility.{Domains, Nodes}
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
@@ -214,19 +215,22 @@ trait AbstractVerifier[ST <: Store[ST],
   def bookkeeper: Bookkeeper
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
-  import ev.typeConverter.toSort
+  import ev.typeConverter
 
-  def verify(prog: ast.Program): List[VerificationResult] = {
-    ev.program = prog
+  def verify(program: ast.Program): List[VerificationResult] = {
+    ev.program = program
 
-    val concreteDomainTypes = Nodes.concreteDomainTypes(prog)
+    val concreteDomainTypes = Domains.collectConcreteDomainTypes(program)
+    val concreteDomainMemberInstances = Domains.collectConcreteDomainMemberInstances(program, concreteDomainTypes)
 
     emitDomainDeclarations(concreteDomainTypes)
+    emitDomainMembers(concreteDomainMemberInstances)
+
     emitSortWrappers(concreteDomainTypes)
 
-    emitFunctionDeclarations(prog.functions)
+    emitFunctionDeclarations(program.functions)
 
-    val members = prog.members.iterator
+    val members = program.members.iterator
 
     /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
@@ -249,16 +253,15 @@ trait AbstractVerifier[ST <: Store[ST],
     results
   }
 
-  /* TODO: Merge code with similar code in def emitDomainDeclarations below. */
   private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
-      var args: List[terms.Sort] = f.formalArgs.map(a => toSort(a.typ)).toList
+      var args: List[terms.Sort] = f.formalArgs.map(a => typeConverter.toSort(a.typ)).toList
       args = terms.sorts.Snap :: args /* Snapshot, and all declared parameters */
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(f.name), args, toSort(f.typ))
+      decider.prover.declareFunction(decider.prover.sanitizeSymbol(f.name), args, typeConverter.toSort(f.typ))
     })
   }
 
-  private def emitSortWrappers(concreteDomainTypes: Seq[DomainType]) {
+  private def emitSortWrappers(concreteDomainTypes: Set[DomainType]) {
     assert(concreteDomainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     val snapSortId = decider.prover.termConverter.convert(terms.sorts.Snap)
@@ -281,7 +284,7 @@ trait AbstractVerifier[ST <: Store[ST],
 //    })
   }
 
-  private def emitDomainDeclarations(concreteDomainTypes: Seq[DomainType]) {
+  private def emitDomainDeclarations(concreteDomainTypes: Set[DomainType]) {
     assert(concreteDomainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     decider.prover.logComment("")
@@ -291,53 +294,61 @@ trait AbstractVerifier[ST <: Store[ST],
     /* Declare domains. */
     concreteDomainTypes.foreach(dt => {
       decider.prover.logComment("Declaring domain " + dt)
-      decider.prover.declareSort(toSort(dt))
+      decider.prover.declareSort(typeConverter.toSort(dt))
     })
+  }
 
+  private def emitDomainMembers(members: Map[Domain, Set[DomainMemberInstance]]) {
     /* Declare functions and predicates of each domain.
      * Since these can reference arbitrary other domains, it is crucial that all domains have
      * already been declared.
      */
-    concreteDomainTypes.foreach(dt => {
-      decider.prover.logComment("Functions of " + dt)
+    members.foreach{case (domain, memberInstances) =>
+      val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
+      val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
 
-      dt.domain.functions.foreach(f =>
-        decider.prover.declareFunction(
-          decider.prover.sanitizeSymbol(f.name),
-          f.formalArgs.map(a => toSort(a.typ.substitute(dt.typVarsMap))),
-          toSort(f.typ.substitute(dt.typVarsMap))))
-    })
+      decider.prover.logComment("Functions of " + domain)
 
-    /* Axiomatise each domain.
-     * Since the axioms can reference arbitrary domains, functions and predicates, it is crucial
-     * that all these have already been declared.
-     */
-    concreteDomainTypes.foreach(dt => {
-      decider.prover.logComment("Axiomatising domain " + dt)
+      functionInstances.foreach(fi => {
+        val inSorts = fi.member.formalArgs map (a => typeConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
+        val outSort = typeConverter.toSort(fi.member.typ.substitute(fi.typeVarsMap))
+        val id = decider.prover.sanitizeSymbol(typeConverter.toIdentifierS(fi.member.name, inSorts :+ outSort))
 
-      dt.domain.axioms.foreach(ax => {
-        decider.prover.logComment("Axiom " + ax.name)
-
-        val tAx = translateDomainAxiom(ax, dt.typVarsMap)
-        decider.prover.assume(tAx)
+        decider.prover.declareFunction(id, inSorts, outSort)
       })
-    })
+    }
 
-//    decider.prover.logComment("")
-//    decider.prover.logComment("Unique domain constants")
-//    decider.prover.logComment("")
 //
-//    val uniqueFunctions = domains flatMap (_.functions) filter(_.unique)
-//    assert(uniqueFunctions forall (_.formalArgs.length == 0),
-//           s"Expected all unique domain functions to be nullary functions: $uniqueFunctions")
+//    /* Axiomatise each domain.
+//     * Since the axioms can reference arbitrary domains, functions and predicates, it is crucial
+//     * that all these have already been declared.
+//     */
+//    concreteDomainTypes.foreach(dt => {
+//      decider.prover.logComment("Axiomatising domain " + dt)
 //
-//    val uniqueSymbols = uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))
+//      dt.domain.axioms.foreach(ax => {
+//        decider.prover.logComment("Axiom " + ax.name)
 //
-//    if (uniqueSymbols.nonEmpty) decider.prover.assume(terms.Distinct(uniqueSymbols))
+//        val tAx = translateDomainAxiom(ax, dt.typVarsMap)
+//        decider.prover.assume(tAx)
+//      })
+//    })
+
+    //    decider.prover.logComment("")
+    //    decider.prover.logComment("Unique domain constants")
+    //    decider.prover.logComment("")
+    //
+    //    val uniqueFunctions = domains flatMap (_.functions) filter(_.unique)
+    //    assert(uniqueFunctions forall (_.formalArgs.length == 0),
+    //           s"Expected all unique domain functions to be nullary functions: $uniqueFunctions")
+    //
+    //    val uniqueSymbols = uniqueFunctions map (f => decider.prover.sanitizeSymbol(f.name))
+    //
+    //    if (uniqueSymbols.nonEmpty) decider.prover.assume(terms.Distinct(uniqueSymbols))
   }
 
   private def translateDomainAxiom(ax: DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term = {
-    translateExp((t: ast.Type) => toSort(t.substitute(typeVarMap)))(ax.exp)
+    translateExp((t: ast.Type) => typeConverter.toSort(t.substitute(typeVarMap)))(ax.exp)
   }
 
   private def translateExp(toSort: ast.Type => terms.Sort)(exp: ast.Expression): Term = {

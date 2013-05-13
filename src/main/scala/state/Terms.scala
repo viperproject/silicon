@@ -852,6 +852,7 @@ object utils {
 //      "Expected both operands to be of sort Seq(X), but found %s (%s) and %s (%s)"
 //        .format(t0, t0.sort, t1, t1.sort))
 //  }
+
 }
 
 object implicits {

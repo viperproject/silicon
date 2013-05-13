@@ -3,6 +3,7 @@ package silicon
 package decider
 
 import interfaces.decider.TermConverter
+import semper.sil.ast.utility.Domains.DomainFunctionInstance
 import state.terms._
 
 class TermToSMTLib2Converter extends TermConverter[String, String] {
