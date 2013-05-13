@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.sil.ast.DomainType
+import semper.sil.ast.{DomainAxiom, DomainType}
 import semper.sil.ast.utility.Nodes
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
@@ -214,20 +214,11 @@ trait AbstractVerifier[ST <: Store[ST],
   def bookkeeper: Bookkeeper
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
-  import ev.typeConverter
+  import ev.typeConverter.toSort
 
   def verify(prog: ast.Program): List[VerificationResult] = {
     ev.program = prog
 
-//    println("\nAll domains:")
-//    prog.domains foreach (d => println(d.name))
-//
-//    val ds = Nodes.concreteDomainTypes(prog)
-//    println("\nDomain instances:")
-//    ds foreach (d => {
-//      println(d)
-//      println(d.isConcrete)
-//    })
     val concreteDomainTypes = Nodes.concreteDomainTypes(prog)
 
     emitDomainDeclarations(concreteDomainTypes)
@@ -261,13 +252,15 @@ trait AbstractVerifier[ST <: Store[ST],
   /* TODO: Merge code with similar code in def emitDomainDeclarations below. */
   private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
-      var args: List[terms.Sort] = f.formalArgs.map(a => typeConverter.toSort(a.typ)).toList
+      var args: List[terms.Sort] = f.formalArgs.map(a => toSort(a.typ)).toList
       args = terms.sorts.Snap :: args /* Snapshot, and all declared parameters */
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(f.name), args, typeConverter.toSort(f.typ))
+      decider.prover.declareFunction(decider.prover.sanitizeSymbol(f.name), args, toSort(f.typ))
     })
   }
 
-  private def emitSortWrappers(concreteDomainInstances: Seq[DomainType]) {
+  private def emitSortWrappers(concreteDomainTypes: Seq[DomainType]) {
+    assert(concreteDomainTypes forall (_.isConcrete), "Expected only concrete domain types")
+
     val snapSortId = decider.prover.termConverter.convert(terms.sorts.Snap)
 
 //    decider.prover.logComment("")
@@ -289,6 +282,8 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitDomainDeclarations(concreteDomainTypes: Seq[DomainType]) {
+    assert(concreteDomainTypes forall (_.isConcrete), "Expected only concrete domain types")
+
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional domains")
     decider.prover.logComment("")
@@ -296,62 +291,38 @@ trait AbstractVerifier[ST <: Store[ST],
     /* Declare domains. */
     concreteDomainTypes.foreach(dt => {
       decider.prover.logComment("Declaring domain " + dt)
-//      decider.prover.declareSort(typeConverter.toSort(ast.types.DomainType(d, Map.empty)))
-      decider.prover.declareSort(typeConverter.toSort(dt))
+      decider.prover.declareSort(toSort(dt))
     })
 
-//    /* Declare functions and predicates of each domain.
-//     * Since these can reference arbitrary other domains, make sure that
-//     * all domains have been declared first.
-//     */
-//    domains.foreach(d => {
-//      decider.prover.logComment("Functions of " + d.name)
-//      d.functions.foreach(f =>
-//        decider.prover.declareFunction(
-//          decider.prover.sanitizeSymbol(f.name),
-//          f.formalArgs.map(a => typeConverter.toSort(a.typ)),
-//          typeConverter.toSort(f.typ)))
-//    })
-//
-//    /* Axiomatise each domain.
-//     * Since the axioms can reference arbitrary domains, functions and
-//     * predicates, make sure that all domains, functions and predicates have
-//     * been declared first.
-//     *
-//     * TODO: Evaluating the domains is probably an overkill, because
-//     *         - domain axioms are much simpler than regular SIL expressions
-//     *         - we don't care about read permissions
-//     *         - we don't care about traceviews
-//     */
-//    domains.foreach(d => {
-//      decider.prover.logComment("Axiomatising domain " + d.name)
-//      decider.prover.logComment("Axioms (eval)")
-//
-////      val (rdVar, _) = ev.stateUtils.freshReadVar("$MethRd")
-//      val history = new DefaultHistory[ST, H, S]()
-//      val tv = ev.traceviewFactory.create(history)
-//      val c = ev.contextFactory.create(history.tree /*, terms.ReadPerm(rdVar)*/)
-//
-//      val axioms =
-//        decider.inScope {
-//          d.axioms.map(a => {
-//            import ev.stateFactory._
-//
-//            val σ = Σ(Ø, Ø, Ø)
-//            val pve = Internal(a)
-//            var t: Term = null
-//            ev.eval(σ, a.exp, pve, c, tv)((_t, c1) => {
-//              t = _t
-//              Success[DefaultContext[ST, H, S], ST, H, S](c1)
-//            })
-//            t
-//          })
-//        }
-//
-//      decider.prover.logComment("Axioms")
-//      axioms.foreach(decider.prover.assume)
-//    })
-//
+    /* Declare functions and predicates of each domain.
+     * Since these can reference arbitrary other domains, it is crucial that all domains have
+     * already been declared.
+     */
+    concreteDomainTypes.foreach(dt => {
+      decider.prover.logComment("Functions of " + dt)
+
+      dt.domain.functions.foreach(f =>
+        decider.prover.declareFunction(
+          decider.prover.sanitizeSymbol(f.name),
+          f.formalArgs.map(a => toSort(a.typ.substitute(dt.typVarsMap))),
+          toSort(f.typ.substitute(dt.typVarsMap))))
+    })
+
+    /* Axiomatise each domain.
+     * Since the axioms can reference arbitrary domains, functions and predicates, it is crucial
+     * that all these have already been declared.
+     */
+    concreteDomainTypes.foreach(dt => {
+      decider.prover.logComment("Axiomatising domain " + dt)
+
+      dt.domain.axioms.foreach(ax => {
+        decider.prover.logComment("Axiom " + ax.name)
+
+        val tAx = translateDomainAxiom(ax, dt.typVarsMap)
+        decider.prover.assume(tAx)
+      })
+    })
+
 //    decider.prover.logComment("")
 //    decider.prover.logComment("Unique domain constants")
 //    decider.prover.logComment("")
@@ -364,10 +335,71 @@ trait AbstractVerifier[ST <: Store[ST],
 //
 //    if (uniqueSymbols.nonEmpty) decider.prover.assume(terms.Distinct(uniqueSymbols))
   }
+
+  private def translateDomainAxiom(ax: DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term = {
+    translateExp((t: ast.Type) => toSort(t.substitute(typeVarMap)))(ax.exp)
+  }
+
+  private def translateExp(toSort: ast.Type => terms.Sort)(exp: ast.Expression): Term = {
+    val f = translateExp(toSort) _
+
+    exp match {
+      case q @ ast.Quantified(qvars, body) =>
+        val quantifier = q match {
+          case _: ast.Forall => terms.Forall
+          case _: ast.Exists => terms.Exists
+        }
+        terms.Quantification(quantifier, qvars map (v => terms.Var(v.name, toSort(v.typ))), f(body))
+
+      case ast.True() => terms.True()
+      case ast.False() => terms.False()
+      case ast.Not(e0) => terms.Not(f(e0))
+      case ast.And(e0, e1) => terms.And(f(e0), f(e1))
+      case ast.Or(e0, e1) => terms.Or(f(e0), f(e1))
+      case ast.Implies(e0, e1) => terms.Implies(f(e0), f(e1))
+      case ast.Ite(e0, e1, e2) => terms.Ite(f(e0), f(e1), f(e2))
+
+      case ast.Equals(e0, e1) => terms.TermEq(f(e0), f(e1))
+      case ast.Unequals(e0, e1) => terms.Not(terms.TermEq(f(e0), f(e1)))
+
+      case ast.IntegerLiteral(n) => terms.IntLiteral(n)
+      case ast.IntPlus(e0, e1) => terms.Plus(f(e0), f(e1))
+      case ast.IntMinus(e0, e1) => terms.Minus(f(e0), f(e1))
+      case ast.IntTimes(e0, e1) => terms.Times(f(e0), f(e1))
+      case ast.IntDiv(e0, e1) => terms.Div(f(e0), f(e1))
+      case ast.IntMod(e0, e1) => terms.Mod(f(e0), f(e1))
+      case ast.IntNeg(e0) => terms.Minus(0, f(e0))
+
+      case ast.IntGE(e0, e1) => terms.AtLeast(f(e0), f(e1))
+      case ast.IntGT(e0, e1) => terms.Greater(f(e0), f(e1))
+      case ast.IntLE(e0, e1) => terms.AtMost(f(e0), f(e1))
+      case ast.IntLT(e0, e1) => terms.Less(f(e0), f(e1))
+
+      case ast.NullLiteral() => terms.Null()
+
+      case v: ast.Variable => terms.Var(v.name, toSort(v.typ))
+
+      case ast.DomainFuncApp(func, args, typeVarMap) =>
+        /* TODO: Is it safe to ignore the typeVarMap when translating the args? */
+        terms.DomainFApp(func.name, args map f, toSort(exp.typ))
+
+      case _: sil.ast.SeqExp => ???
+
+      case   _: ast.PermissionExpression | _: ast.FieldRead | _: ast.AccessPredicate | _: ast.Old
+           | _: ast.FractionalPerm | _: ast.PermGE | _: ast.PermGT | _: ast.PermLE | _: ast.PermLT | _: ast.IntPermTimes
+           | _: ast.PermPlus | _: ast.PermMinus | _: ast.PermTimes | _: ast.ResultLiteral | _: ast.Unfolding
+           | _: ast.InhaleExhaleExp | _: ast.PredicateLocation | _: ast.FuncApp =>
+        sys.error(s"Found unexpected expresion $exp")
+    }
+  }
 }
 
 
-class DefaultVerifierFactory[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], TV <: TraceView[TV, ST, H, S]]
+class DefaultVerifierFactory[ST <: Store[ST],
+                             H <: Heap[H],
+                             PC <: PathConditions[PC],
+                             S <: State[ST, H, S],
+                             TV <: TraceView[TV, ST, H, S]]
   extends VerifierFactory[DefaultVerifier[ST, H, PC, S, TV], TV, ST, H, PC, S]
 {
 
