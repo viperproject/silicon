@@ -303,11 +303,16 @@ trait AbstractVerifier[ST <: Store[ST],
      * Since these can reference arbitrary other domains, it is crucial that all domains have
      * already been declared.
      */
+    println("\n[emitDomainMembers]")
+    Domains.printIC(members)
+
     members.foreach{case (domain, memberInstances) =>
+      assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
+
       val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
       val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
 
-      decider.prover.logComment("Functions of " + domain)
+      decider.prover.logComment("Functions of " + Domains.toStringD(domain))
 
       functionInstances.foreach(fi => {
         val inSorts = fi.member.formalArgs map (a => typeConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
