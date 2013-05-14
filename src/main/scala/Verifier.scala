@@ -310,7 +310,6 @@ trait AbstractVerifier[ST <: Store[ST],
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
 
       val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
-      val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
 
       decider.prover.logComment("Functions of " + Domains.toStringD(domain))
 
@@ -320,6 +319,21 @@ trait AbstractVerifier[ST <: Store[ST],
         val id = decider.prover.sanitizeSymbol(typeConverter.toIdentifierS(fi.member.name, inSorts :+ outSort))
 
         decider.prover.declareFunction(id, inSorts, outSort)
+      })
+    }
+
+    members.foreach{case (domain, memberInstances) =>
+      assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
+
+      val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
+
+      decider.prover.logComment("Axioms of " + Domains.toStringD(domain))
+
+      axiomInstances.foreach(ai => {
+        decider.prover.logComment("Axiom " + ai.member.name + ai.typeVarsMap.mkString("[",",","]"))
+
+        val tAx = translateDomainAxiom(ai.member, ai.typeVarsMap)
+        decider.prover.assume(tAx)
       })
     }
 
@@ -397,7 +411,11 @@ trait AbstractVerifier[ST <: Store[ST],
 
       case ast.DomainFuncApp(func, args, typeVarMap) =>
         /* TODO: Is it safe to ignore the typeVarMap when translating the args? */
-        terms.DomainFApp(func.name, args map f, toSort(exp.typ))
+        val tArgs = args map f
+        val inSorts = tArgs map (_.sort)
+        val outSort = toSort(exp.typ)
+        val id = typeConverter.toIdentifierS(func.name, inSorts :+ outSort)
+        terms.DomainFApp(id, tArgs, outSort)
 
       case _: sil.ast.SeqExp => ???
 
