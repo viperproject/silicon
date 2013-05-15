@@ -807,7 +807,7 @@ case class TypeOf(t: Term, typeName: String) extends BooleanTerm {
 }
 
 /* TODO: Create terms.Function(symbol, argSorts, returnSort) and use it here. Have terms.Var <: terms.Function. */
-case class Distinct(symbols: Seq[String]) extends BooleanTerm {
+case class Distinct(symbols: Set[String]) extends BooleanTerm {
   assert(symbols.nonEmpty, "Distinct requires at least one symbol.")
 
   override val toString = s"Distinct($symbols)"
