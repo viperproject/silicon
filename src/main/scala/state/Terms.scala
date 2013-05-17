@@ -29,6 +29,10 @@ import silicon.utils.collections.mapReduceLeft
  *
  */
 
+/*
+ * Sorts
+ */
+
 sealed trait Sort /*{
   def sortParameters: Seq[Sort] = Nil
 }*/
@@ -39,22 +43,31 @@ object sorts {
   object Bool extends Sort { override val toString = "Bool" }
   object Ref extends Sort { override val toString = "Ref" }
   object Perm extends Sort { override val toString = "Perm" }
-//  object LockMode extends Sort { override val toString = "LockMode" }
-//  object Mu extends Sort { override val toString = "Mu" }
-//
 //  case class Seq(val elementsSort: Sort) extends Sort {
 //    override val sortParameters = elementsSort :: Nil
 //    override val toString = "Seq[%s]".format(elementsSort)
 //  }
-case class UserSort(id: String) extends Sort {
-  override val toString = id
-}
+  case class UserSort(id: String) extends Sort {
+    override val toString = id
+  }
 }
 
+/*
+ * Declarations
+ */
+
+sealed trait Decl
+
+case class SortDecl(sort: Sort) extends Decl
+case class FunctionDecl(symbol: String, argSorts: Seq[Sort], sort: Sort) extends Decl
+case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
+
+/*
+ * Terms
+ */
+
 sealed trait Term {
-	/* Attention! Do not use for non-term equalities, e.g. mu == waitlevel or
-	 * seq1 == seq2.
-	 */
+	/* Attention - only for standard equality! */
 	def ===(t: Term): TermEq = TermEq(this, t)
 	def !==(t: Term): Term = Not(TermEq(this, t))
 
@@ -65,26 +78,6 @@ sealed trait Term {
   }
 
 	def sort: Sort
-
-//	var srcNode: Option[ast.ASTNode] = None
-//	var srcPos: ast.SourcePosition = ast.NoPosition
-//
-//	def setSrcNode(node: ast.ASTNode) = {
-//		this.srcNode = Some(node)
-//
-//    node match {
-//      case p: sil.ast.Positioned => if (this.srcPos == ast.NoPosition) this.srcPos = node.pos
-//      case _ =>
-//    }
-//
-//  	this
-//	}
-//
-//	def setSrcLoc(pos: ast.SourcePosition) = {
-//		this.srcPos = pos
-//
-//		this
-//	}
 }
 
 /* TODO: Rename to Constant/Symbol/Id */
@@ -97,20 +90,7 @@ case class FApp(f: ast.Function, s: Term, tArgs: Seq[Term], sort: Sort) extends 
   override val toString = "FApp(%s, %s, %s)".format(f.name, s, tArgs.mkString(", "))
 }
 
-//case class Token[H <: Heap[H]](m: ast.Implementation, h: H, rdVar: Var, t0: Term, tArgs: List[Term])
-//    extends Term {
-//
-//  utils.assertSort(rdVar, "var", sorts.Perm)
-//
-//  val sort = sorts.Ref
-//
-//	override val toString =
-//		"Token(%s, %s, %s, %s)".format(h, rdVar, t0, tArgs.mkString(", "))
-//}
-
 sealed trait ReferenceTerm extends Term { val sort = sorts.Ref }
-
-//sealed trait MuTerm extends Term { val sort = sorts.Mu }
 
 /* Literals */
 
@@ -128,19 +108,9 @@ case class IntLiteral(n: BigInt) extends ArithmeticTerm with Literal {
 	override val toString = n.toString
 }
 
-// object Null extends Literal {	override val toString = "Null" }
 case class Null() extends ReferenceTerm with Literal {
   override val toString = "Null"
 }
-// object MaxLock extends Literal { override val toString = "MLock" }
-// object BottomLock extends Literal {	override val toString = "BLock" }
-//case class BottomLock() extends MuTerm with Literal {
-//  override val toString = "BLock"
-//}
-
-//case class InitialMu() extends MuTerm with Literal {
-//  override val toString = "IMu"
-//}
 
 sealed trait BooleanLiteral extends BooleanTerm with Literal {
   def value: Boolean
@@ -269,93 +239,6 @@ case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term) extends Bo
 //
 //	override val toString = "%s in %s".format(p1, p0)
 //}
-//
-///* Monitors, locks */
-//
-//case class LockLess(p0: Term, p1: Term) extends ComparisonTerm with BinaryOp[Term] {
-//  utils.assertSort(p0, "first operand", sorts.Mu)
-//  utils.assertSort(p1, "second operand", sorts.Mu)
-//
-//  override val op = "<<"
-//}
-
-// object MaxLock extends LockTerm { override val toString = "maxlock" }
-//case class MaxLock() extends MuTerm { override val toString = "maxlock" }
-
-//case class MaxLockLess(t: Term, hn: Int, mn: Int, cn: Int) extends ComparisonTerm {
-//  val op = "<<"
-//  override val toString = "maxlock(%s, %s, %s) %s %s".format(hn, mn, cn, op, t)
-//}
-//case class MaxLockLess(others: Iterable[Term], rcvr: Term, mu: Term) extends ComparisonTerm {
-//  others.foreach(o => utils.assertSort(o, "first operand", sorts.Mu))
-//  utils.assertSort(rcvr, "second operand", sorts.Ref)
-//  utils.assertSort(mu, "third operand", sorts.Mu)
-//
-//  val op = "<<"
-//  override lazy val toString = "%s %s %s (rcvr = %s)".format(others.mkString(","), op, mu, rcvr)
-//}
-//
-////case class MaxLockAtMost(t: Term, hn: Int, mn: Int, cn: Int) extends ComparisonTerm {
-////  val op = "=="
-////  override val toString = "maxlock(%s, %s, %s) %s %s".format(hn, mn, cn, op, t)
-////}
-//case class MaxLockAtMost(others: Iterable[Term], rcvr: Term, mu: Term) extends ComparisonTerm {
-//  others.foreach(o => utils.assertSort(o, "first operand", sorts.Mu))
-//  utils.assertSort(rcvr, "second operand", sorts.Ref)
-//  utils.assertSort(mu, "third operand", sorts.Mu)
-//
-//  val op = "=="
-//  override lazy val toString = "%s %s %s (rcvr = %s)".format(others.mkString(","), op, mu, rcvr)
-//}
-
-//sealed trait LockModeTerm extends Term { override def sort = sorts.LockMode }
-//
-//object LockMode {
-//	case class Read() extends LockModeTerm with Literal { override def toString = "R" }
-//  case class Write() extends LockModeTerm with Literal  { override def toString = "W" }
-//  case class None() extends LockModeTerm with Literal  { override def toString = "N" }
-//}
-
-//case class InitialHolds(rcvr: Term) extends LockModeTerm
-//  { override def toString = "holds0(%s)".format(rcvr) }
-//
-//case class InitialMu(rcvr: Term) extends MuTerm
-//  { override def toString = "mu0(%s)".format(rcvr) }
-
-//case class InitialCredits(rcvr: Term) extends Term {
-//  utils.assertSort(rcvr, "receiver", sorts.Ref)
-//
-//  override val sort = sorts.Int
-//  override def toString = "mu0(%s)".format(rcvr)
-//}
-
-//case class Holds(t: Term, n: Int, lm: LockModeTerm) extends BooleanTerm
-//	{ override val toString = "holds(%s, %s, %s)".format(t, n, lm) }
-
-//case class Holds(rcvr: Term, mode: Term) extends LockModeTerm {
-//  utils.assertSort(mode, "second operand", sorts.LockMode)
-//  override val toString = "holds(%s, %s)".format(rcvr, mode)
-//}
-
-//case class LockChange(which: List[Term], n1: Int, n2: Int) extends BooleanTerm {
-//  override val toString = "lockchange([%s], %s, %s)".format(which.mkString(", "), n1, n2)
-//}
-
-//case class Mu(p0: Term, n: Int, p1: Term) extends MuTerm with BinaryOp[Term] {
-//  utils.assertSort(p1, "argument p1 (mu-value)", sorts.Int)
-//
-//	override val toString = "mu(%s, %s, %s)".format(p0, n, p1)
-//}
-
-///* Credits */
-//
-//case class Credits(t: Term, n: Int) extends Term {
-//  val sort = sorts.Int
-//  override val toString = "credits(%s, %s)".format(t, n)
-//}
-//
-//case class DebtFreeExpr(n: Int) extends BooleanTerm
-//	{ override val toString = "debtfree(%s)".format(n) }
 
 /* Arithmetic expression terms */
 
@@ -799,12 +682,6 @@ case class SortWrapper(t: Term, to: Sort) extends Term {
 }
 
 /* Other terms */
-
-case class TypeOf(t: Term, typeName: String) extends BooleanTerm {
-  utils.assertSort(t, "term", sorts.Ref)
-
-  override val toString = "%s == %s".format(t, typeName)
-}
 
 /* TODO: Create terms.Function(symbol, argSorts, returnSort) and use it here. Have terms.Var <: terms.Function. */
 case class Distinct(symbols: Set[String]) extends BooleanTerm {

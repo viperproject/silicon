@@ -8,11 +8,10 @@ import java.io.File
 import sil.verifier.{
     Verifier => SILVerifier,
     VerificationResult => SILVerificationResult,
-    VerificationError => SILVerificationError,
     Success => SILSuccess,
     Failure => SILError}
-import sil.verifier.{DefaultDependency, DependencyNotFoundError}
-import interfaces.{VerificationResult, ContextAwareResult, Failure, Success, Unreachable}
+import sil.verifier.{DefaultDependency}
+import interfaces.{VerificationResult, ContextAwareResult, Failure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultTypeConverter}
@@ -125,6 +124,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     val stateFormatter = new DefaultStateFormatter[ST, H, S]()
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val typeConverter = new DefaultTypeConverter()
+    val domainTranslator = new DefaultDomainTranslator(typeConverter)
     val bookkeeper = new Bookkeeper()
     val stateFactory = new DefaultStateFactory(decider.π _)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
@@ -141,10 +141,10 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
-    verifierFactory.create(config, decider, stateFactory,
-                           typeConverter,
-                           chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
-                           traceviewFactory)
+    val domainEmitter = new DefaultDomainEmitter(domainTranslator, decider.prover, typeConverter)
+
+    verifierFactory.create(config, decider, stateFactory, typeConverter, domainEmitter, chunkFinder, stateFormatter,
+                           heapMerger, stateUtils, bookkeeper, traceviewFactory)
 	}
 
 	private def runVerifier(program: ast.Program): List[Failure[C, ST, H, S, _]] = {

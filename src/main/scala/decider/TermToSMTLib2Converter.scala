@@ -3,19 +3,39 @@ package silicon
 package decider
 
 import interfaces.decider.TermConverter
-import semper.sil.ast.utility.Domains.DomainFunctionInstance
 import state.terms._
 
-class TermToSMTLib2Converter extends TermConverter[String, String] {
+class TermToSMTLib2Converter extends TermConverter[String, String, String] {
+  def convert(sort: Sort) = sort match {
+    case sorts.Int => "Int"
+    case sorts.Bool => "Bool"
+    case sorts.Perm => "$Perm"
+    case sorts.Snap => "$Snap"
+    case sorts.Ref => "$Ref"
+    case sorts.UserSort(id) => sanitizeSymbol(id)
+  }
+
+  def convert(decl: Decl): String = decl match {
+    case SortDecl(sort: Sort) =>
+      "(declare-sort %s)".format(convert(sort))
+
+    case FunctionDecl(symbol, argSorts, sort) =>
+      "(declare-fun %s (%s) %s)".format(sanitizeSymbol(symbol), argSorts.map(convert).mkString(" "), convert(sort))
+
+    case SortWrapperDecl(from, to) =>
+      val symbol = sortWrapperSymbol(from, to)
+      convert(FunctionDecl(symbol, from :: Nil, to))
+  }
+
   def convert(term: Term): String = term match {
-    case Var(id: String, _) => sanitiseIdentifier(id)
+    case Var(id: String, _) => sanitizeSymbol(id)
     case lit: Literal => literalToString(lit)
 
     case Ite(t0, t1, t2) =>
       "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
 
     case FApp(f, s, tArgs, _) =>
-      "(%s %s %s)".format(sanitiseIdentifier(f.name), convert(s), tArgs map convert mkString(" "))
+      "(%s %s %s)".format(sanitizeSymbol(f.name), convert(s), tArgs map convert mkString(" "))
 
     case Quantification(quant, vars, body) =>
       val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
@@ -117,17 +137,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     /* Domains */
 
     case DomainFApp(id, ts, sort) =>
-      // println("\n[TermToSMTLib2Converter/DomainFApp]")
-      // println("  f = " + f)
-      // println("  f.domain = " + f.domain)
-      // println("  f.domain.freeTypeVariables = " + f.domain.freeTypeVariables)
-      // println("  f.domain.getType = " + f.domain.getType)
-      // println("  ts = " + ts)
-      // println("  sort = " + sort)
-
-      // val domainStr = convert(f.domain)
       val argsStr = ts.map(convert).mkString(" ")
-      val sid = sanitiseIdentifier(id)
+      val sid = sanitizeSymbol(id)
 
       if (ts.isEmpty) sid
       else "(%s %s)".format(sid, argsStr)
@@ -141,24 +152,21 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     case Combine(t0, t1) =>
       "($Snap.combine " + convert(t0) + " " + convert(t1) + ")"
 
-    case SortWrapper(t, sort) =>
-      "($SortWrappers.%sTo%s %s)".format(convert(t.sort), convert(sort), convert(t))
-
-    case TypeOf(t: Term, typeName: String) =>
-      "(= ($Type.typeOf %s) %s)".format(convert(t), typeName)
+    case SortWrapper(t, to) =>
+      "(%s %s)".format(sortWrapperSymbol(t.sort, to), convert(t))
 
     case Distinct(symbols) =>
       "(distinct %s)".format(symbols.mkString(" "))
   }
 
-  def convert(sort: Sort) = sort match {
-    case sorts.Int => "Int"
-    case sorts.Bool => "Bool"
-    case sorts.Perm => "$Perm"
-    case sorts.Snap => "$Snap"
-    case sorts.Ref => "$Ref"
-    case sorts.UserSort(id) => sanitiseIdentifier(id)
-  }
+  def sanitizeSymbol(str: String) = (
+    str.replace('#', '_')
+      .replace("τ", "$tau")
+      .replace('[', '<')
+      .replace(']', '>')
+      .replace("::", ".")
+      .replace(',', '~'))
+      .replace(" ", "")
 
   private def convert(q: Quantifier) = q match {
     case Forall => "forall"
@@ -182,12 +190,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String] {
     else
       convert(t)
 
-  def sanitiseIdentifier(str: String) = (
-    str.replace('#', '_')
-       .replace("τ", "$tau")
-       .replace('[', '<')
-       .replace(']', '>')
-       .replace("::", ".")
-       .replace(',', '~'))
-       .replace(" ", "")
+  private def sortWrapperSymbol(from: Sort, to: Sort) =
+    "$SortWrappers.%sTo%s".format(convert(from), convert(to))
 }

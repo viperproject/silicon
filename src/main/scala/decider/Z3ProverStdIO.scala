@@ -15,7 +15,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 	import termConverter._
 
 	private var scopeCounter = 0
-	private var scopeLabels = new HashMap[String, Stack[Int]]()
+	private val scopeLabels = new HashMap[String, Stack[Int]]()
 
 	private var isLoggingCommentsEnabled: Boolean = true
 
@@ -184,30 +184,16 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
    */
   def fresh(id: String, sort: Sort) = {
     val v = Var(freshId(id), sort)
-    val decl = "(declare-const %s %s)".format(sanitiseIdentifier(v.id), convert(v.sort))
+    val decl = "(declare-const %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
     write(decl)
 
     v
   }
 
-  def sanitizeSymbol(symbol: String) = sanitiseIdentifier(symbol)
+  def sanitizeSymbol(symbol: String) = termConverter.sanitizeSymbol(symbol)
 
-  /**
-   * Declares a Z3 function. Does not ensure that the symbol has not been declared already.
-   * @param symbol Sanitised name of the symbol to declare. See [[sanitizeSymbol]].
-   * @param argSorts Function argument sorts.
-   * @param sort Sort of the function's return value.
-   */
-  def declareFunction(symbol: String, argSorts: Seq[Sort], sort: Sort) {
-    val str = "(declare-fun %s (%s) %s)"
-              .format(symbol, argSorts.map(convert).mkString(" "), convert(sort))
-
-    write(str)
-  }
-
-  def declareSort(sort: Sort) {
-    val str = "(declare-sort %s)".format(convert(sort))
-
+  def declare(decl: Decl) {
+    val str = convert(decl)
     write(str)
   }
 
@@ -242,7 +228,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		var result = ""
 
 		while (repeat) {
-			result = input.readLine();
+			result = input.readLine()
 			if (result.toLowerCase != "success") logComment(result)
 
 			repeat = result.startsWith("WARNING")
@@ -256,8 +242,8 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 	}
 
   private def writeLine(out: String) = {
-    log(out);
-    output.println(out);
+    log(out)
+    output.println(out)
   }
 
 	private object counter {

@@ -3,7 +3,6 @@ package silicon
 
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
-import semper.sil.ast.utility.Domains
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
 import semper.sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
@@ -382,7 +381,6 @@ trait DefaultEvaluator[
       /* Domains not handled directly */
       case dfa @ ast.DomainFuncApp(func, eArgs, _) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) => {
-//          Q(DomainFApp(func.name, tArgs, toSort(dfa.typ)), c1))
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val id = typeConverter.toIdentifierS(func.name, inSorts :+ outSort)

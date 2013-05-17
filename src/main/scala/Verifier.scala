@@ -2,25 +2,17 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.sil.ast.utility.Domains.{DomainAxiomInstance, DomainFunctionInstance, DomainMemberInstance}
-import semper.sil.ast.{DomainFunc, Domain, DomainAxiom, DomainType}
-import semper.sil.ast.utility.{Domains, Nodes}
-import sil.verifier.PartialVerificationError
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
 import state.{terms, TypeConverter, DirectChunk}
-import state.terms.{Term, DefaultFractionalPermissions/*, TypeOf*/}
-import state.terms.implicits._
+import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import interfaces.state.factoryUtils.Ø
-//import ast.utils.collections.SetAnd
-//import reporting.ErrorMessages.{ExecutionFailed, PostconditionMightNotHold, SpecsMalformed}
-//import reporting.WarningMessages.{ExcludingUnit}
 import reporting.{DefaultContext, DefaultContextFactory, Bookkeeper}
 import reporting.{DefaultHistory, Description}
-import interfaces.reporting.{ContextFactory, History, TraceView}
+import interfaces.reporting.{ContextFactory, TraceView}
 import reporting.BranchingDescriptionStep
 import interfaces.reporting.TraceViewFactory
 import reporting.ScopeChangingDescription
@@ -192,15 +184,16 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
                       S <: State[ST, H, S]] {
 
   def create(config: Config,
-      decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
-      stateFactory: StateFactory[ST, H, S],
-      typeConverter: TypeConverter,
-      chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
-      stateFormatter: StateFormatter[ST, H, S, String],
-      heapMerger: HeapMerger[H],
-      stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
-      bookkeeper: Bookkeeper,
-      traceviewFactory: TraceViewFactory[TV, ST, H, S]): V
+             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
+             stateFactory: StateFactory[ST, H, S],
+             typeConverter: TypeConverter,
+             domainEmitter: DomainEmitter,
+             chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
+             stateFormatter: StateFormatter[ST, H, S, String],
+             heapMerger: HeapMerger[H],
+             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+             bookkeeper: Bookkeeper,
+             traceviewFactory: TraceViewFactory[TV, ST, H, S]): V
 }
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -210,9 +203,10 @@ trait AbstractVerifier[ST <: Store[ST],
                        TV <: TraceView[TV, ST, H, S]]
       extends Logging {
 
-  def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
-  def config: Config
-  def bookkeeper: Bookkeeper
+  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
+  /*protected*/ def config: Config
+  /*protected*/ def bookkeeper: Bookkeeper
+  /*protected*/ def domainEmitter: DomainEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
   import ev.typeConverter
@@ -220,13 +214,8 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     ev.program = program
 
-    val concreteDomainTypes = Domains.collectConcreteDomainTypes(program)
-    val concreteDomainMemberInstances = Domains.collectConcreteDomainMemberInstances(program, concreteDomainTypes)
-
-    emitDomainDeclarations(concreteDomainTypes)
-    emitDomainMembers(concreteDomainMemberInstances)
-
-    emitSortWrappers(concreteDomainTypes)
+    domainEmitter.emitDomains(program)
+    emitSortWrappers(domainEmitter.declaredSorts)
 
     emitFunctionDeclarations(program.functions)
 
@@ -255,216 +244,51 @@ trait AbstractVerifier[ST <: Store[ST],
 
   private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
     fs.foreach(f => {
-      var args: List[terms.Sort] = f.formalArgs.map(a => typeConverter.toSort(a.typ)).toList
-      args = terms.sorts.Snap :: args /* Snapshot, and all declared parameters */
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(f.name), args, typeConverter.toSort(f.typ))
+      val inSorts = sorts.Snap +: f.formalArgs.map(a => typeConverter.toSort(a.typ))
+        /* Snapshot, and all declared parameters */
+      val outSort = typeConverter.toSort(f.typ)
+      val symbol = f.name
+      decider.prover.declare(terms.FunctionDecl(symbol, inSorts, outSort))
     })
   }
 
-  private def emitSortWrappers(concreteDomainTypes: Set[DomainType]) {
-    assert(concreteDomainTypes forall (_.isConcrete), "Expected only concrete domain types")
-
-    val snapSortId = decider.prover.termConverter.convert(terms.sorts.Snap)
-
+  private def emitSortWrappers(ss: Set[Sort]) {
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional sort wrappers")
     decider.prover.logComment("")
 
-    concreteDomainTypes.foreach(dt => {
-      val domainSort = typeConverter.toSort(dt)
-      val domainSortId = decider.prover.termConverter.convert(domainSort)
-      val toSnapId = "$SortWrappers.%sTo%s".format(domainSortId, snapSortId)
-      val fromSnapId = "$SortWrappers.%sTo%s".format(snapSortId, domainSortId)
-      /* TODO: Sort wrapper naming schema must be the same as used by the
-       *       TermConverter when converting SortWrapper(t, to) terms!!!
-       */
+    ss.foreach(sort => {
+      val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
+      val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
 
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(toSnapId), Seq(domainSort), terms.sorts.Snap)
-      decider.prover.declareFunction(decider.prover.sanitizeSymbol(fromSnapId), Seq(terms.sorts.Snap), domainSort)
+      decider.prover.declare(toSnapWrapper)
+      decider.prover.declare(fromSnapWrapper)
     })
-  }
-
-  private def emitDomainDeclarations(concreteDomainTypes: Set[DomainType]) {
-    assert(concreteDomainTypes forall (_.isConcrete), "Expected only concrete domain types")
-
-    decider.prover.logComment("")
-    decider.prover.logComment("Declaring additional domains")
-    decider.prover.logComment("")
-
-    /* Declare domains. */
-    concreteDomainTypes.foreach(dt => {
-      decider.prover.logComment("Declaring domain " + dt)
-      decider.prover.declareSort(typeConverter.toSort(dt))
-    })
-  }
-
-  private def emitDomainMembers(members: Map[Domain, Set[DomainMemberInstance]]) {
-    /* Declare functions and predicates of each domain.
-     * Since these can reference arbitrary other domains, it is crucial that all domains have
-     * already been declared.
-     */
-//    println("\n[emitDomainMembers]")
-//    Domains.printIC(members)
-
-    /* Since domain member instances come with Sil types, but the corresponding prover declarations
-     * work with sorts, it could happen that two instances with different types result in the
-     * same function declaration because the types are mapped to the same sort(s).
-     *
-     * Another source of potential declaration duplication is, that the set of domain member
-     * instances can contain two function instances where the type variable mapping of one
-     * instance is a subset of the mapping of the other. For example:
-     *   function foo(a: A): Int    with (A -> Int)
-     *   function foo(a: A): Int    with (A -> Int, B -> Ref)
-     * This can happen if the declaring domain contains more type variables than are used by the
-     * function.
-     *
-     * TODO: Prevent such things from happening in the first place, i.e., while collecting all
-     *       instances.
-     * */
-    var emitted = Set[Any]()
-    var uniqueIds = Set[String]()
-
-    /* Functions must be declared first, because they can be mentioned in axioms. */
-
-    members.foreach{case (domain, memberInstances) =>
-      assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
-
-      val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
-
-      decider.prover.logComment("Functions of " + Domains.toStringD(domain))
-
-      functionInstances.foreach(fi => {
-//        decider.prover.logComment(fi.toString)
-        val inSorts = fi.member.formalArgs map (a => typeConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
-        val outSort = typeConverter.toSort(fi.member.typ.substitute(fi.typeVarsMap))
-        val id = decider.prover.sanitizeSymbol(typeConverter.toIdentifierS(fi.member.name, inSorts :+ outSort))
-
-        if (!(emitted contains id)) {
-          decider.prover.declareFunction(id, inSorts, outSort)
-
-          if (fi.member.unique) {
-            assert(fi.member.formalArgs.isEmpty,
-                   s"Expected unique domain functions to not take arguments, but found ${fi.member}")
-
-            uniqueIds += id
-          }
-
-          emitted += id
-        }
-      })
-    }
-
-    decider.prover.logComment("Unique domain constants")
-    if (uniqueIds.nonEmpty) decider.prover.assume(terms.Distinct(uniqueIds))
-
-    /* Declare axioms only after all types and functions have been declared. */
-
-    emitted = emitted.empty
-
-    members.foreach{case (domain, memberInstances) =>
-      assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
-
-      val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
-
-      decider.prover.logComment("Axioms of " + Domains.toStringD(domain))
-
-      axiomInstances.foreach(ai => {
-//        decider.prover.logComment("Axiom " + ai.member.name + ai.typeVarsMap.mkString("[",",","]"))
-        val tAx = translateDomainAxiom(ai.member, ai.typeVarsMap)
-
-        if (!(emitted contains tAx)) {
-          decider.prover.assume(tAx)
-          emitted += tAx
-        }
-      })
-    }
-  }
-
-  private def translateDomainAxiom(ax: DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term = {
-    translateExp((t: ast.Type) => typeConverter.toSort(t.substitute(typeVarMap)))(ax.exp)
-  }
-
-  private def translateExp(toSort: ast.Type => terms.Sort)(exp: ast.Expression): Term = {
-    val f = translateExp(toSort) _
-
-    exp match {
-      case q @ ast.Quantified(qvars, body) =>
-        val quantifier = q match {
-          case _: ast.Forall => terms.Forall
-          case _: ast.Exists => terms.Exists
-        }
-        terms.Quantification(quantifier, qvars map (v => terms.Var(v.name, toSort(v.typ))), f(body))
-
-      case ast.True() => terms.True()
-      case ast.False() => terms.False()
-      case ast.Not(e0) => terms.Not(f(e0))
-      case ast.And(e0, e1) => terms.And(f(e0), f(e1))
-      case ast.Or(e0, e1) => terms.Or(f(e0), f(e1))
-      case ast.Implies(e0, e1) => terms.Implies(f(e0), f(e1))
-      case ast.Ite(e0, e1, e2) => terms.Ite(f(e0), f(e1), f(e2))
-
-      case ast.Equals(e0, e1) => terms.TermEq(f(e0), f(e1))
-      case ast.Unequals(e0, e1) => terms.Not(terms.TermEq(f(e0), f(e1)))
-
-      case ast.IntegerLiteral(n) => terms.IntLiteral(n)
-      case ast.IntPlus(e0, e1) => terms.Plus(f(e0), f(e1))
-      case ast.IntMinus(e0, e1) => terms.Minus(f(e0), f(e1))
-      case ast.IntTimes(e0, e1) => terms.Times(f(e0), f(e1))
-      case ast.IntDiv(e0, e1) => terms.Div(f(e0), f(e1))
-      case ast.IntMod(e0, e1) => terms.Mod(f(e0), f(e1))
-      case ast.IntNeg(e0) => terms.Minus(0, f(e0))
-
-      case ast.IntGE(e0, e1) => terms.AtLeast(f(e0), f(e1))
-      case ast.IntGT(e0, e1) => terms.Greater(f(e0), f(e1))
-      case ast.IntLE(e0, e1) => terms.AtMost(f(e0), f(e1))
-      case ast.IntLT(e0, e1) => terms.Less(f(e0), f(e1))
-
-      case ast.NullLiteral() => terms.Null()
-
-      case v: ast.Variable => terms.Var(v.name, toSort(v.typ))
-
-      case ast.DomainFuncApp(func, args, typeVarMap) =>
-        /* TODO: Is it safe to ignore the typeVarMap when translating the args? */
-        val tArgs = args map f
-        val inSorts = tArgs map (_.sort)
-        val outSort = toSort(exp.typ)
-        val id = typeConverter.toIdentifierS(func.name, inSorts :+ outSort)
-        terms.DomainFApp(id, tArgs, outSort)
-
-      case _: sil.ast.SeqExp => ???
-
-      case   _: ast.PermissionExpression | _: ast.FieldRead | _: ast.AccessPredicate | _: ast.Old
-           | _: ast.FractionalPerm | _: ast.PermGE | _: ast.PermGT | _: ast.PermLE | _: ast.PermLT | _: ast.IntPermTimes
-           | _: ast.PermPlus | _: ast.PermMinus | _: ast.PermTimes | _: ast.ResultLiteral | _: ast.Unfolding
-           | _: ast.InhaleExhaleExp | _: ast.PredicateLocation | _: ast.FuncApp =>
-        sys.error(s"Found unexpected expresion $exp")
-    }
   }
 }
-
 
 class DefaultVerifierFactory[ST <: Store[ST],
                              H <: Heap[H],
                              PC <: PathConditions[PC],
                              S <: State[ST, H, S],
                              TV <: TraceView[TV, ST, H, S]]
-  extends VerifierFactory[DefaultVerifier[ST, H, PC, S, TV], TV, ST, H, PC, S]
-{
+    extends VerifierFactory[DefaultVerifier[ST, H, PC, S, TV], TV, ST, H, PC, S] {
 
   def create(config: Config,
-      decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
-      stateFactory: StateFactory[ST, H, S],
-      typeConverter: TypeConverter,
-      chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
-      stateFormatter: StateFormatter[ST, H, S, String],
-      heapMerger: HeapMerger[H],
-      stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
-      bookkeeper: Bookkeeper,
-      traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
+             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
+             stateFactory: StateFactory[ST, H, S],
+             typeConverter: TypeConverter,
+             domainEmitter: DomainEmitter,
+             chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
+             stateFormatter: StateFormatter[ST, H, S, String],
+             heapMerger: HeapMerger[H],
+             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+             bookkeeper: Bookkeeper,
+             traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
-        new DefaultVerifier[ST, H, PC, S, TV](config, decider,
-                       stateFactory, typeConverter, chunkFinder,
-                       stateFormatter, heapMerger, stateUtils, bookkeeper, traceviewFactory)
+    new DefaultVerifier[ST, H, PC, S, TV](
+                        config, decider, stateFactory, typeConverter, domainEmitter, chunkFinder, stateFormatter,
+                        heapMerger, stateUtils, bookkeeper, traceviewFactory)
 
 }
 
@@ -475,6 +299,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
 			val stateFactory: StateFactory[ST, H, S],
 			val typeConverter: TypeConverter,
+			val domainEmitter: DomainEmitter,
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
