@@ -13,7 +13,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.{/*Message,*/ TraceView}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.terms.implicits._
+//import state.terms.implicits._
 import state.{DirectFieldChunk,
     DirectPredicateChunk, TypeConverter, DirectChunk, NestedFieldChunk,
     NestedPredicateChunk}
@@ -218,6 +218,8 @@ trait DefaultExecutor[ST <: Store[ST],
       case ast.New(v) =>
         val t = fresh(v)
         assume(t !== Null())
+        val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ)
+        assume(state.terms.utils.BigAnd(refs map (_ !== t)))
         val newh = H(program.fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
         Q(σ \+ (v, t) \+ newh, c)
 

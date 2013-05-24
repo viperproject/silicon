@@ -33,9 +33,7 @@ import silicon.utils.collections.mapReduceLeft
  * Sorts
  */
 
-sealed trait Sort /*{
-  def sortParameters: Seq[Sort] = Nil
-}*/
+sealed trait Sort
 
 object sorts {
   object Snap extends Sort { override val toString = "Snap" }
@@ -683,11 +681,31 @@ case class SortWrapper(t: Term, to: Sort) extends Term {
 
 /* Other terms */
 
-/* TODO: Create terms.Function(symbol, argSorts, returnSort) and use it here. Have terms.Var <: terms.Function. */
-case class Distinct(symbols: Set[String]) extends BooleanTerm {
-  assert(symbols.nonEmpty, "Distinct requires at least one symbol.")
+class Distinct(val ts: Set[Term]) extends BooleanTerm {
+  assert(ts.nonEmpty, "Distinct requires at least term.")
 
-  override val toString = s"Distinct($symbols)"
+  override val toString = s"Distinct($ts)"
+
+  override val hashCode = ts.hashCode
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case d: Distinct if d.getClass.eq(this.getClass) =>
+        /* getClass identity is checked in order to prevent that different
+         * subtypes of Distinct are considered equal.
+         */
+        ts == d.ts
+
+      case _ => false
+    })
+}
+
+object Distinct {
+  def apply(ts: Set[Term]): Term =
+    if (ts.nonEmpty) new Distinct(ts)
+    else True()
+
+  def unapply(d: Distinct) = Some(d.ts)
 }
 
 /* Utility functions */

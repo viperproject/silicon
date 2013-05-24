@@ -111,7 +111,7 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
     }
 
     prover.logComment("Unique domain constants")
-    if (uniqueIds.nonEmpty) prover.assume(terms.Distinct(uniqueIds))
+    if (uniqueIds.nonEmpty) prover.assume(terms.Distinct(uniqueIds map (uid => terms.Var(uid, terms.sorts.Snap))))
 
     /* Declare axioms only after all types and functions have been declared. */
 
