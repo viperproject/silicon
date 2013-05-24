@@ -15,11 +15,9 @@ class SiliconTests extends DefaultSilSuite {
   override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
 
   override def frontend(verifier: Verifier, files: Seq[Path]): Frontend = {
-//    require(files.length == 1, "tests should consist of exactly one file")
-
     val fe = new SiliconFrontend()
+
     fe.init(verifier)
-    //    fe.reset(files.head)
     fe.reset(files)
     fe
   }
