@@ -1,4 +1,0 @@
-method test01() {
-  //:: ExpectedError(assert.failed:assertion.false)
-  assert 1 == 2
-}
