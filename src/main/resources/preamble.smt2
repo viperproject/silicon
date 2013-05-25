@@ -24,7 +24,7 @@
 (set-option :SMT.RESTART_STRATEGY 0)
 (set-option :SMT.RESTART_FACTOR |1.5|)
 (set-option :SMT.ARITH.RANDOM_INITIAL_VALUE true)
-; (set-option :SMT.CASE_SPLIT 3) ; Unsupported in Z3 4.3?
+; (set-option :SMT.CASE_SPLIT 3) ; Unsupported  in Z3 4.3?
 (set-option :SMT.DELAY_UNITS true)
 (set-option :SMT.DELAY_UNITS_THRESHOLD 16)
 (set-option :NNF.SK_HACK true)
@@ -60,27 +60,36 @@
 ; --- Permissions ---
 
 (define-sort $Perm () Real)
+
 (define-const $Perm.Write $Perm 1.0)
 (define-const $Perm.No $Perm 0.0)
-(declare-const $Perm.iRd $Perm) ; ???
-(declare-const $Perm.pRd $Perm) ; Predicate read
-(declare-const $Perm.mRd $Perm) ; Monitor read
-(declare-const $Perm.cRd $Perm) ; Channel read
+
+(declare-const $Perm.EpsUB $Perm)
+(declare-const $Perm.Eps $Perm)
+; (declare-const $Perm.iRd $Perm) ; ???
+; (declare-const $Perm.pRd $Perm) ; Predicate read
+; (declare-const $Perm.mRd $Perm) ; Monitor read
+; (declare-const $Perm.cRd $Perm) ; Channel read
+
+(assert (and
+  (< $Perm.No $Perm.EpsUB)
+  (< $Perm.No $Perm.Eps)
+  (< (* 1000.0 $Perm.Eps) $Perm.EpsUB)))
 
 (define-fun $Perm.isValid ((p $Perm) (ub $Perm)) Bool
-  (and (< $Perm.No p)
+  (and (< $Perm.EpsUB p)
        (< p ub)))
 
 (define-fun $Perm.isRead ((p $Perm) (ub $Perm)) Bool
   (and ($Perm.isValid p ub)
        (< (* 1000.0 p) $Perm.Write)))
 
-(assert ($Perm.isRead $Perm.iRd $Perm.Write))
-(assert ($Perm.isRead $Perm.mRd $Perm.Write))
-(assert
-  (and
-    (= $Perm.mRd $Perm.pRd )
-    (= $Perm.pRd $Perm.cRd )))
+; (assert ($Perm.isRead $Perm.iRd $Perm.Write))
+; (assert ($Perm.isRead $Perm.mRd $Perm.Write))
+; (assert
+  ; (and
+    ; (= $Perm.mRd $Perm.pRd )
+    ; (= $Perm.pRd $Perm.cRd )))
 
 ; --- Sort wrappers ---
 

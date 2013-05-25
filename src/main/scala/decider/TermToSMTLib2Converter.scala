@@ -66,7 +66,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case TermEq(t0, t1) =>
       "(= " + convert(t0) + " " + convert(t1) + ")"
 
-    /* Arithmetics */
+    /* Arithmetic */
 
     case Minus(t0, t1) =>
       "(- " + convert(t0) + " " + convert(t1) + ")"
@@ -104,6 +104,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
     case WildcardPerm(v) => convert(v)
+    case EpsilonPerm() => "$Perm.Eps"
 //    case ReadPerm(v) => convert(v)
     case TermPerm(t) => convert2real(t)
     case FractionPerm(n, d) => "(/ %s %s)".format(convert2real(n), convert2real(d))

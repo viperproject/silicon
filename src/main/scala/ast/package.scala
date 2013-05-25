@@ -117,8 +117,8 @@ package object ast {
   val Unfolding = sil.ast.Unfolding
   type IntegerLiteral = sil.ast.IntLit
   val IntegerLiteral = sil.ast.IntLit
-  type FieldRead = sil.ast.FieldAccess
-  val FieldRead = sil.ast.FieldAccess
+//  type FieldRead = sil.ast.FieldAccess
+//  val FieldRead = sil.ast.FieldAccess
   type FuncApp = sil.ast.FuncApp
   val FuncApp = sil.ast.FuncApp
 

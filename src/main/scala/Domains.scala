@@ -415,11 +415,12 @@ class DefaultDomainTranslator(typeConverter: TypeConverter) extends DomainTransl
 
       case _: sil.ast.SeqExp => ???
 
-      case   _: ast.PermissionExpression | _: ast.FieldRead | _: ast.AccessPredicate | _: ast.Old
-             | _: ast.FractionalPerm | _: ast.PermGE | _: ast.PermGT | _: ast.PermLE | _: ast.PermLT
-             | _: ast.IntPermTimes | _: ast.PermPlus | _: ast.PermMinus | _: ast.PermTimes
-             | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation
-             | _: ast.FuncApp =>
+      case   _: ast.PermissionExpression | _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old
+           | _: ast.FractionalPerm | _: ast.PermGE | _: ast.PermGT | _: ast.PermLE | _: ast.PermLT
+           | _: ast.IntPermTimes | _: ast.PermPlus | _: ast.PermMinus | _: ast.PermTimes
+           | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation
+           | _: ast.FuncApp =>
+
         sys.error(s"Found unexpected expresion $exp")
     }
   }

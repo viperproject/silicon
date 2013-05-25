@@ -5,17 +5,17 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
-import semper.sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory,
-    FieldChunk}
+import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.{TraceView}
 import state.{TypeConverter, DirectChunk}
 import state.terms._
 import state.terms.implicits._
+import utils.notNothing.NotNothing
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -135,6 +135,8 @@ trait DefaultEvaluator[
       case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
       case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(TermEq(p0, p1)), pve, c, tv)(Q)
 
+      case v: ast.Variable => Q(σ.γ(v), c)
+
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
 
@@ -147,10 +149,15 @@ trait DefaultEvaluator[
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
 
-      case v: ast.Variable => Q(σ.γ(v), c)
+      case _: ast.EpsilonPerm =>
+        Q(EpsilonPerm(), c)
 
-      case fr: ast.FieldRead =>
-        evalFieldRead(σ, fr, pve, c, tv)((fc, c1) =>
+      case ast.CurrentPerm(ml) =>
+        evalMemoryLocation[DirectChunk](σ, ml, pve, c, tv)((ch, c1) =>
+          Q(ch.perm, c1))
+
+      case fr: ast.FieldLocation =>
+        evalMemoryLocation[FieldChunk](σ, fr, pve, c, tv)((fc, c1) =>
           Q(fc.value, c1))
 
       case ast.Not(e0) =>
@@ -593,19 +600,20 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private def evalFieldRead(σ: S, fr: ast.FieldRead, pve: PartialVerificationError, c: C, tv: TV)
-                           (Q: (FieldChunk, C) => VerificationResult)
-                           : VerificationResult = {
+  private def evalMemoryLocation[CH <: Chunk : NotNothing : Manifest]
+                                (σ: S, ml: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+                                (Q: (CH, C) => VerificationResult)
+                                : VerificationResult = {
 
-    val eRcvr = fr.rcv
-    val id = fr.field.name
+    val eRcvr = ml.rcv
+    val id = ml.loc.name
 
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
       if (decider.assert(tRcvr !== Null())) {
-        withChunk[FieldChunk](σ.h, tRcvr, id, fr, pve, c1, tv)(fc =>
-          Q(fc, c1))
+        withChunk[CH](σ.h, tRcvr, id, ml, pve, c1, tv)(ch =>
+          Q(ch, c1))
       } else
-        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fr), c1, tv))
+        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(ml), c1, tv))
   }
 
 	override def pushLocalState() {
