@@ -264,7 +264,7 @@ case class Config(
     cacheSnapshots: Boolean = true,
     branchOverPureConditionals: Boolean = false,
     strictConjunctionEvaluation: Boolean = false,
-    logLevel: String = "INFO",
+    logLevel: String = "OFF",
     tempDirectory: ConfigValue[String] = DefaultValue("./tmp"),
     z3Exe: Option[String] = None,
     z3LogFile: ConfigValue[String] = DefaultValue("logfile.smt2")) {
