@@ -113,6 +113,9 @@ trait DefaultProducer[
 		logger.debug(stateFormatter.format(σ))
 
 		val produced = φ match {
+      case ast.InhaleExhaleExp(a0, _) =>
+        produce2(σ, sf, p, a0, pve, c, tv)(Q)
+
       case ast.And(a0, a1) if !φ.isPure =>
         val s0 = fresh(sorts.Snap)
         val s1 = fresh(sorts.Snap)

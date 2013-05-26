@@ -112,6 +112,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		logger.debug("h = " + stateFormatter.format(h))
 
 		val consumed = φ match {
+      case ast.InhaleExhaleExp(_, a1) =>
+        consume(σ, h, p, a1, pve, c, tv)(Q)
+
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
 					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
