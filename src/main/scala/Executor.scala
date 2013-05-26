@@ -218,10 +218,11 @@ trait DefaultExecutor[ST <: Store[ST],
       case ast.New(v) =>
         val t = fresh(v)
         assume(t !== Null())
-        val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ)
-        assume(state.terms.utils.BigAnd(refs map (_ !== t)))
         val newh = H(program.fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
-        Q(σ \+ (v, t) \+ newh, c)
+        val σ1 = σ \+ (v, t) \+ newh
+        val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - t
+        assume(state.terms.utils.BigAnd(refs map (_ !== t)))
+        Q(σ1, c)
 
       case ast.Inhale(a) =>
         produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
