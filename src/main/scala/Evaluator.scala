@@ -5,7 +5,7 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
-import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import sil.verifier.reasons.{InsufficientPermission, DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
@@ -153,12 +153,16 @@ trait DefaultEvaluator[
         Q(EpsilonPerm(), c)
 
       case ast.CurrentPerm(ml) =>
-        evalMemoryLocation[DirectChunk](σ, ml, pve, c, tv)((ch, c1) =>
-          Q(ch.perm, c1))
+        evalMemoryLocation[DirectChunk](σ, ml, pve, c, tv)((result, c1) => result match {
+          case Right(Some(ch)) => Q(ch.perm, c1)
+          case Right(None) => Q(NoPerm(), c1)
+          case Left(failure) => failure})
 
       case fr: ast.FieldLocation =>
-        evalMemoryLocation[FieldChunk](σ, fr, pve, c, tv)((fc, c1) =>
-          Q(fc.value, c1))
+        evalMemoryLocation[FieldChunk](σ, fr, pve, c, tv)((result, c1) => result match {
+          case Right(Some(fc)) => Q(fc.value, c1)
+          case Right(None) => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fr), c1, tv)
+          case Left(failure) => failure})
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -388,13 +392,10 @@ trait DefaultEvaluator[
       /* Domains not handled directly */
       case dfa @ ast.DomainFuncApp(func, eArgs, _) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) => {
-//          Q(DomainFApp(symbolConverter.toFunction(func, tArgs), tArgs), c1)})
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(func, inSorts :+ outSort)
-//          val id = symbolConverter.toIdentifierS(func.name, inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
-//          Q(DomainFApp(Function(id, inSorts, outSort), tArgs), c1)})
 
       case quant: ast.Quantified =>
         val body = quant.exp
@@ -605,19 +606,18 @@ trait DefaultEvaluator[
   }
 
   private def evalMemoryLocation[CH <: Chunk : NotNothing : Manifest]
-                                (σ: S, ml: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
-                                (Q: (CH, C) => VerificationResult)
+                                (σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+                                (Q: (Either[Failure[C, ST, H, S, TV], Option[CH]], C) => VerificationResult)
                                 : VerificationResult = {
 
-    val eRcvr = ml.rcv
-    val id = ml.loc.name
+    val eRcvr = memloc.rcv
+    val id = memloc.loc.name
 
     eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-      if (decider.assert(tRcvr !== Null())) {
-        withChunk[CH](σ.h, tRcvr, id, ml, pve, c1, tv)(ch =>
-          Q(ch, c1))
-      } else
-        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(ml), c1, tv))
+      if (decider.assert(tRcvr !== Null()))
+        Q(Right(decider.getChunk[CH](σ.h, tRcvr, id)), c1)
+      else
+        Q(Left(Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv)), c1))
   }
 
 	override def pushLocalState() {
