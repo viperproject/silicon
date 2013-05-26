@@ -11,7 +11,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
 PermissionChunk}
 import interfaces.reporting.Context
-import semper.silicon.state.{DirectChunk, TypeConverter}
+import semper.silicon.state.{DirectChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
@@ -32,7 +32,7 @@ class DefaultDecider[ST <: Store[ST],
   private var config: Config = null
   private var bookkeeper: Bookkeeper = null
 	private var pathConditions: PC = null.asInstanceOf[PC]
-	private var typeConverter: TypeConverter = null
+	private var symbolConverter: SymbolConvert = null
 //	private var performSmokeChecks: Boolean = false
 
   private sealed trait State
@@ -90,7 +90,7 @@ class DefaultDecider[ST <: Store[ST],
       logger.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")
 
     pathConditions = pathConditionsFactory.Π()
-    typeConverter = new silicon.state.DefaultTypeConverter()
+    symbolConverter = new silicon.state.DefaultSymbolConvert()
 //    performSmokeChecks = config.performSmokeChecks
 
     pushPreamble()
@@ -393,7 +393,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def fresh(s: Sort) = prover_fresh("$t", s)
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
-  def fresh(v: ast.Variable) = prover_fresh(v.name, typeConverter.toSort(v.typ))
+  def fresh(v: ast.Variable) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
 
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1

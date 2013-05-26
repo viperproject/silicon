@@ -11,7 +11,7 @@ import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{DirectFieldChunk, DirectPredicateChunk, TypeConverter, DirectChunk}
+import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
 
 trait DefaultProducer[
@@ -37,8 +37,8 @@ trait DefaultProducer[
 	protected val heapMerger: HeapMerger[H]
 	import heapMerger.merge
 
-	protected val typeConverter: TypeConverter
-	import typeConverter.toSort
+	protected val symbolConverter: SymbolConvert
+	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP

@@ -3,9 +3,8 @@ package silicon
 package state.terms
 
 import ast.commonnodes
-import ast.commonnodes.{BinaryOp}
-import interfaces.state.{Heap}
-import silicon.utils.collections.mapReduceLeft
+//import ast.commonnodes.{BinaryOp}
+//import interfaces.state.{Heap}
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -41,10 +40,32 @@ object sorts {
   object Bool extends Sort { override val toString = "Bool" }
   object Ref extends Sort { override val toString = "Ref" }
   object Perm extends Sort { override val toString = "Perm" }
+  object Unit extends Sort { override val toString = "()" }
 //  case class Seq(val elementsSort: Sort) extends Sort {
 //    override val sortParameters = elementsSort :: Nil
 //    override val toString = "Seq[%s]".format(elementsSort)
 //  }
+
+  case class Arrow(from: Sort, to: Sort) extends Sort {
+    private def decompose(a: Arrow, ss: Seq[Sort]): (Seq[Sort], Sort) = {
+      val ss1 =
+        if (a.from == sorts.Unit) ss
+        else ss :+ a.from
+
+      a.to match {
+        case a1: Arrow => decompose(a1, ss1)
+        case _ => (ss1, a.to)
+      }
+    }
+
+    private lazy val decomposedSorts = decompose(this, Nil)
+
+    lazy val inSorts = decomposedSorts._1
+    lazy val outSort = decomposedSorts._2
+
+    override val toString = s"$from -> $to"
+  }
+
   case class UserSort(id: String) extends Sort {
     override val toString = id
   }
@@ -57,11 +78,11 @@ object sorts {
 sealed trait Decl
 
 case class SortDecl(sort: Sort) extends Decl
-case class FunctionDecl(symbol: String, argSorts: Seq[Sort], sort: Sort) extends Decl
+case class FunctionDecl(function: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 
 /*
- * Terms
+ * Basic terms
  */
 
 sealed trait Term {
@@ -78,17 +99,41 @@ sealed trait Term {
 	def sort: Sort
 }
 
-/* TODO: Rename to Constant/Symbol/Id */
-case class Var(id: String, override val sort: Sort) extends Term
-	{ override val toString = id }
+/* Symbols */
 
-case class FApp(f: ast.Function, s: Term, tArgs: Seq[Term], sort: Sort) extends Term {
-  utils.assertSort(s, "snapshot", sorts.Snap)
-
-  override val toString = "FApp(%s, %s, %s)".format(f.name, s, tArgs.mkString(", "))
+sealed trait Symbol extends Term {
+  def id: String
 }
 
-sealed trait ReferenceTerm extends Term { val sort = sorts.Ref }
+case class Var(id: String, sort: Sort) extends Symbol {
+  override val toString = id
+}
+
+class Function(val id: String, val sort: sorts.Arrow) extends Symbol {
+  override val hashCode = silicon.utils.generateHashCode(id, sort)
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case f: Function => this.id == f.id && this.sort == f.sort
+      case _ => false
+    })
+
+  override val toString = s"$id: $sort"
+}
+
+object Function {
+  def apply(id: String, sort: sorts.Arrow) = new Function(id, sort)
+
+  def apply(id: String, argSorts: Seq[Sort], sort: Sort) = {
+    val symbolSort =
+      if (argSorts.isEmpty) sorts.Arrow(sorts.Unit, sort)
+      else ((argSorts :+ sort) reduceRight sorts.Arrow).asInstanceOf[sorts.Arrow]
+
+    new Function(id, symbolSort)
+  }
+
+  def unapply(f: Function) = Some((f.id, f.sort))
+}
 
 /* Literals */
 
@@ -106,7 +151,8 @@ case class IntLiteral(n: BigInt) extends ArithmeticTerm with Literal {
 	override val toString = n.toString
 }
 
-case class Null() extends ReferenceTerm with Literal {
+case class Null() extends Term with Literal {
+  val sort = sorts.Ref
   override val toString = "Null"
 }
 
@@ -313,6 +359,8 @@ class Not(val p: Term) extends BooleanTerm with commonnodes.Not[Term] {
 		case _ => super.toString
 	}
 
+  override val hashCode = p.hashCode
+
 	override def equals(other: Any) =
 		this.eq(other.asInstanceOf[AnyRef]) || (other match {
 			case Not(_p) => p == _p
@@ -403,6 +451,8 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
 	override val toString = "Ite(%s, %s, %s)".format(t0, t1, t2)
+
+  override val hashCode = silicon.utils.generateHashCode(t0, t1, t2)
 
 	override def equals(other: Any) =
 		this.eq(other.asInstanceOf[AnyRef]) || (other match {
@@ -575,8 +625,7 @@ object PermTimes extends ((DefaultFractionalPermissions, DefaultFractionalPermis
 class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
     extends DefaultFractionalPermissions
        with commonnodes.Times[Term]
-       with commonnodes.StructuralEqualityBinOp[Term] {
-}
+       with commonnodes.StructuralEqualityBinOp[Term]
 
 object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
   val One = IntLiteral(1)
@@ -644,10 +693,22 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
+/* Functions */
+
+//case class FApp(f: ast.Function, s: Term, tArgs: Seq[Term], sort: Sort) extends Term {
+case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Term {
+  utils.assertSort(snapshot, "snapshot", sorts.Snap)
+
+  val sort = function.sort.outSort
+  override val toString = function.id + tArgs.mkString("(", ", ", ")")
+}
+
 /* Domains */
 
-case class DomainFApp(val id: String, val tArgs: Seq[Term], val sort: Sort) extends Term {
-  override val toString = id + tArgs.mkString("(", ", ", ")")
+//case class DomainFApp(function: Function, snapshot: Term, tArgs: Seq[Term]/*, sort: Sort*/) extends Term {
+case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term {
+  val sort = function.sort.outSort
+  override val toString = function.id + tArgs.mkString("(", ", ", ")")
 }
 
 /* Snapshots */
@@ -715,10 +776,10 @@ object utils {
   def ¬(t: Term) = Not(t)
 
   def BigAnd(it: Iterable[Term], f: Term => Term = t => t) =
-    mapReduceLeft(it, f, And, True())
+    silicon.utils.mapReduceLeft(it, f, And, True())
 
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
-    mapReduceLeft(it, f, Or, True())
+    silicon.utils.mapReduceLeft(it, f, Or, True())
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def assertSort(t: Term, desc: String, s: Sort) {

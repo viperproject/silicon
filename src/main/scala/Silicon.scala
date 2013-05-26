@@ -14,7 +14,7 @@ import sil.verifier.{DefaultDependency}
 import interfaces.{VerificationResult, ContextAwareResult, Failure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
-    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultTypeConverter}
+    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.DefaultDecider
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import interfaces.reporting.{TraceView, TraceViewFactory}
@@ -123,8 +123,8 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S]()
     val pathConditionFactory = new DefaultPathConditionsFactory()
-    val typeConverter = new DefaultTypeConverter()
-    val domainTranslator = new DefaultDomainTranslator(typeConverter)
+    val symbolConverter = new DefaultSymbolConvert()
+    val domainTranslator = new DefaultDomainTranslator(symbolConverter)
     val bookkeeper = new Bookkeeper()
     val stateFactory = new DefaultStateFactory(decider.π _)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
@@ -141,9 +141,9 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
-    val domainEmitter = new DefaultDomainEmitter(domainTranslator, decider.prover, typeConverter)
+    val domainEmitter = new DefaultDomainEmitter(domainTranslator, decider.prover, symbolConverter)
 
-    verifierFactory.create(config, decider, stateFactory, typeConverter, domainEmitter, chunkFinder, stateFormatter,
+    verifierFactory.create(config, decider, stateFactory, symbolConverter, domainEmitter, chunkFinder, stateFormatter,
                            heapMerger, stateUtils, bookkeeper, traceviewFactory)
 	}
 

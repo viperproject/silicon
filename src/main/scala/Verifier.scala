@@ -7,7 +7,7 @@ import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Intern
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
-import state.{terms, TypeConverter, DirectChunk}
+import state.{terms, SymbolConvert, DirectChunk}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import interfaces.state.factoryUtils.Ø
 import reporting.{DefaultContext, DefaultContextFactory, Bookkeeper}
@@ -36,7 +36,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 	import stateFactory._
 
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
-  /*protected*/ val typeConverter: TypeConverter
+  /*protected*/ val symbolConverter: SymbolConvert
 
   /* Must be set when a program verification is started! */
   var program: ast.Program = null
@@ -46,7 +46,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   def verify(member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = member match {
     case m: ast.Method => verify(m)
-    case f: ast.Function => verify(f)
+    case f: ast.ProgramFunction => verify(f)
     case p: ast.Predicate => verify(p)
     case _: ast.Domain | _: ast.Field =>
       val c = contextFactory.create(new DefaultHistory[ST, H, S]().tree)
@@ -94,7 +94,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
               Success[DefaultContext[ST, H, S], ST, H, S](c4)))})})}
 	}
 
-  def verify(function: ast.Function/*, h: History[ST, H, S]*/): VerificationResult = {
+  def verify(function: ast.ProgramFunction/*, h: History[ST, H, S]*/): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
 
@@ -159,7 +159,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 		(	val config: Config,
 		  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
 			val stateFactory: StateFactory[ST, H, S],
-			val typeConverter: TypeConverter,
+			val symbolConverter: SymbolConvert,
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
@@ -186,7 +186,7 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
   def create(config: Config,
              decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
              stateFactory: StateFactory[ST, H, S],
-             typeConverter: TypeConverter,
+             symbolConverter: SymbolConvert,
              domainEmitter: DomainEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
@@ -209,7 +209,7 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def domainEmitter: DomainEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
-  import ev.typeConverter
+  import ev.symbolConverter
 
   def verify(program: ast.Program): List[VerificationResult] = {
     ev.program = program
@@ -217,7 +217,7 @@ trait AbstractVerifier[ST <: Store[ST],
     domainEmitter.emitDomains(program)
     emitSortWrappers(domainEmitter.declaredSorts)
 
-    emitFunctionDeclarations(program.functions)
+    emitProgramFunctionDeclarations(program.functions)
 
     val members = program.members.iterator
 
@@ -242,14 +242,9 @@ trait AbstractVerifier[ST <: Store[ST],
     results
   }
 
-  private def emitFunctionDeclarations(fs: Seq[ast.Function]) {
-    fs.foreach(f => {
-      val inSorts = sorts.Snap +: f.formalArgs.map(a => typeConverter.toSort(a.typ))
-        /* Snapshot, and all declared parameters */
-      val outSort = typeConverter.toSort(f.typ)
-      val symbol = f.name
-      decider.prover.declare(terms.FunctionDecl(symbol, inSorts, outSort))
-    })
+  private def emitProgramFunctionDeclarations(fs: Seq[ast.ProgramFunction]) {
+    fs foreach (f =>
+      decider.prover.declare(terms.FunctionDecl(symbolConverter.toFunction(f))))
   }
 
   private def emitSortWrappers(ss: Set[Sort]) {
@@ -277,7 +272,7 @@ class DefaultVerifierFactory[ST <: Store[ST],
   def create(config: Config,
              decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
              stateFactory: StateFactory[ST, H, S],
-             typeConverter: TypeConverter,
+             symbolConverter: SymbolConvert,
              domainEmitter: DomainEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
@@ -287,7 +282,7 @@ class DefaultVerifierFactory[ST <: Store[ST],
              traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
     new DefaultVerifier[ST, H, PC, S, TV](
-                        config, decider, stateFactory, typeConverter, domainEmitter, chunkFinder, stateFormatter,
+                        config, decider, stateFactory, symbolConverter, domainEmitter, chunkFinder, stateFormatter,
                         heapMerger, stateUtils, bookkeeper, traceviewFactory)
 
 }
@@ -298,7 +293,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 		(	val config: Config,
 			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
 			val stateFactory: StateFactory[ST, H, S],
-			val typeConverter: TypeConverter,
+			val symbolConverter: SymbolConvert,
 			val domainEmitter: DomainEmitter,
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
@@ -313,7 +308,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
 	val ev = new DefaultElementVerifier(config, decider,
-																		 stateFactory, typeConverter, chunkFinder,
+																		 stateFactory, symbolConverter, chunkFinder,
 																		 stateFormatter, heapMerger, stateUtils, bookkeeper,
                                      contextFactory, traceviewFactory)
 }

@@ -12,7 +12,7 @@ import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, S
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.{TraceView}
-import state.{TypeConverter, DirectChunk}
+import state.{SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import utils.notNothing.NotNothing
@@ -37,8 +37,8 @@ trait DefaultEvaluator[
 	protected val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
 
-	protected val typeConverter: TypeConverter
-	import typeConverter.toSort
+	protected val symbolConverter: SymbolConvert
+	import symbolConverter.toSort
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
@@ -388,10 +388,13 @@ trait DefaultEvaluator[
       /* Domains not handled directly */
       case dfa @ ast.DomainFuncApp(func, eArgs, _) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) => {
+//          Q(DomainFApp(symbolConverter.toFunction(func, tArgs), tArgs), c1)})
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
-          val id = typeConverter.toIdentifierS(func.name, inSorts :+ outSort)
-          Q(DomainFApp(id, tArgs, outSort), c1)})
+          val fi = symbolConverter.toFunction(func, inSorts :+ outSort)
+//          val id = symbolConverter.toIdentifierS(func.name, inSorts :+ outSort)
+          Q(DomainFApp(fi, tArgs), c1)})
+//          Q(DomainFApp(Function(id, inSorts, outSort), tArgs), c1)})
 
       case quant: ast.Quantified =>
         val body = quant.exp
@@ -483,7 +486,8 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
-            val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
+//            val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
+            val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)

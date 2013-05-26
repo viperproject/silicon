@@ -10,7 +10,9 @@ package object ast {
   type Program = sil.ast.Program
   type Member = sil.ast.Member
   type Method = sil.ast.Method
-  type Function = sil.ast.Function
+  type Function = sil.ast.FuncLike
+  type ProgramFunction = sil.ast.Function
+  type DomainFunction = sil.ast.DomainFunc
   type Predicate = sil.ast.Predicate
   type Field = sil.ast.Field
   type Domain = sil.ast.Domain

@@ -13,29 +13,31 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
     case sorts.UserSort(id) => sanitizeSymbol(id)
+    case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
+    case sorts.Unit => ""
   }
 
   def convert(decl: Decl): String = decl match {
     case SortDecl(sort: Sort) =>
       "(declare-sort %s)".format(convert(sort))
 
-    case FunctionDecl(symbol, argSorts, sort) =>
-      "(declare-fun %s (%s) %s)".format(sanitizeSymbol(symbol), argSorts.map(convert).mkString(" "), convert(sort))
+    case FunctionDecl(Function(id, sort)) =>
+      "(declare-fun %s (%s) %s)".format(sanitizeSymbol(id), sort.inSorts.map(convert).mkString(" "), convert(sort.outSort))
 
     case SortWrapperDecl(from, to) =>
       val symbol = sortWrapperSymbol(from, to)
-      convert(FunctionDecl(symbol, from :: Nil, to))
+      convert(FunctionDecl(Function(symbol, from :: Nil, to)))
   }
 
   def convert(term: Term): String = term match {
-    case Var(id: String, _) => sanitizeSymbol(id)
+    case s: Symbol => sanitizeSymbol(s.id)
     case lit: Literal => literalToString(lit)
 
     case Ite(t0, t1, t2) =>
       "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
 
-    case FApp(f, s, tArgs, _) =>
-      "(%s %s %s)".format(sanitizeSymbol(f.name), convert(s), tArgs map convert mkString(" "))
+    case FApp(f, s, tArgs) =>
+      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))
 
     case Quantification(quant, vars, body) =>
       val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
@@ -137,9 +139,9 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Domains */
 
-    case DomainFApp(id, ts, sort) =>
+    case DomainFApp(f, ts) =>
       val argsStr = ts.map(convert).mkString(" ")
-      val sid = sanitizeSymbol(id)
+      val sid = sanitizeSymbol(f.id)
 
       if (ts.isEmpty) sid
       else "(%s %s)".format(sid, argsStr)
@@ -157,7 +159,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(%s %s)".format(sortWrapperSymbol(t.sort, to), convert(t))
 
     case Distinct(symbols) =>
-      "(distinct %s)".format(symbols.mkString(" "))
+      "(distinct %s)".format(symbols map(convert) mkString(" "))
   }
 
   def sanitizeSymbol(str: String) = (

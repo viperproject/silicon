@@ -8,20 +8,20 @@ import interfaces.decider.Prover
 import state.terms
 import state.terms.Term
 import state.terms.implicits._
-import state.TypeConverter
+import state.SymbolConvert
 
 trait DomainEmitter {
   def reset()
   def declaredSorts: Set[terms.Sort]
-  def declaredSymbols: Set[String]
+  def declaredSymbols: Set[terms.Function]
   def emitDomains(program: Program)
 }
 
-class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Prover, typeConverter: TypeConverter)
+class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
     extends DomainEmitter {
 
   private var sorts = Set[terms.Sort]()
-  private var symbols = Set[String]()
+  private var symbols = Set[terms.Function]()
 
   def reset() {
     sorts = sorts.empty
@@ -50,7 +50,7 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
     domainTypes.foreach(domainType => {
       prover.logComment("Declaring domain " + domainType)
 
-      val domainSort = typeConverter.toSort(domainType)
+      val domainSort = symbolConverter.toSort(domainType)
       sorts += domainSort
 
       prover.declare(terms.SortDecl(domainSort))
@@ -77,9 +77,14 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
      * TODO: Prevent such things from happening in the first place, i.e., while collecting all
      *       instances.
      */
-    var uniqueIds = Set[String]()
 
     /* Functions must be declared first, because they can be mentioned in axioms. */
+
+    var uniqueFunctions: Set[terms.Term] = Set()
+      /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
+       * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
+       * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
+       */
 
     members.foreach{case (domain, memberInstances) =>
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
@@ -90,28 +95,31 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
 
       functionInstances.foreach(fi => {
         //        decider.prover.logComment(fi.toString)
-        val inSorts = fi.member.formalArgs map (a => typeConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
-        val outSort = typeConverter.toSort(fi.member.typ.substitute(fi.typeVarsMap))
-        val symbol = typeConverter.toIdentifierS(fi.member.name, inSorts :+ outSort)
+        val inSorts = fi.member.formalArgs map (a => symbolConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
+        val outSort = symbolConverter.toSort(fi.member.typ.substitute(fi.typeVarsMap))
+        val id = symbolConverter.toSortSpecificId(fi.member.name, inSorts :+ outSort)
+        val fct = terms.Function(id, inSorts, outSort)
 
-        if (!(symbols contains symbol)) {
-          val functionDecl = terms.FunctionDecl(symbol, inSorts, outSort)
+        if (!(symbols contains fct)) {
+          val functionDecl = terms.FunctionDecl(fct)
           prover.declare(functionDecl)
 
           if (fi.member.unique) {
             assert(fi.member.formalArgs.isEmpty,
               s"Expected unique domain functions to not take arguments, but found ${fi.member}")
 
-            uniqueIds += symbol
+            uniqueFunctions += fct
           }
 
-          symbols += symbol
+          symbols += fct
         }
       })
     }
 
-    prover.logComment("Unique domain constants")
-    if (uniqueIds.nonEmpty) prover.assume(terms.Distinct(uniqueIds map (uid => terms.Var(uid, terms.sorts.Snap))))
+    if (uniqueFunctions.nonEmpty) {
+      prover.logComment("Unique domain constants")
+      prover.assume(terms.Distinct(uniqueFunctions))
+    }
 
     /* Declare axioms only after all types and functions have been declared. */
 
@@ -354,9 +362,9 @@ trait DomainTranslator[R] {
   def translateAxiom(ax: DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): R
 }
 
-class DefaultDomainTranslator(typeConverter: TypeConverter) extends DomainTranslator[Term] {
+class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTranslator[Term] {
   def translateAxiom(ax: DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term =
-    translateExp((t: ast.Type) => typeConverter.toSort(t.substitute(typeVarMap)))(ax.exp)
+    translateExp((t: ast.Type) => symbolConverter.toSort(t.substitute(typeVarMap)))(ax.exp)
 
   /**
     *
@@ -410,18 +418,36 @@ class DefaultDomainTranslator(typeConverter: TypeConverter) extends DomainTransl
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(exp.typ)
-        val id = typeConverter.toIdentifierS(func.name, inSorts :+ outSort)
-        terms.DomainFApp(id, tArgs, outSort)
+        val id = symbolConverter.toSortSpecificId(func.name, inSorts :+ outSort)
+        val df = terms.Function(id, inSorts, outSort)
+        terms.DomainFApp(df, tArgs)
+
+      case _: ast.FullPerm => terms.FullPerm()
+      case _: ast.NoPerm => terms.NoPerm()
+      case ast.FractionalPerm(e0, e1) => terms.FractionPerm(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
+      case _: ast.EpsilonPerm => terms.EpsilonPerm()
+
+      case _: ast.WildcardPerm => ???
+      /* TODO: Would it be sufficient to define a perm-typed 0 < v < write in the preamble and use that here?
+       *       It in general doesn't seem to be very useful to use wildcards in domains, but who knows.
+       */
+
+      case ast.PermPlus(e0, e1) => terms.PermPlus(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
+      case ast.PermMinus(e0, e1) => terms.PermMinus(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
+      case ast.PermTimes(e0, e1) => terms.PermTimes(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
+      case ast.IntPermTimes(e0, e1) => terms.IntPermTimes(f(e0), terms.TermPerm(f(e1)))
+      case ast.PermLE(e0, e1) => terms.AtMost(f(e0), f(e1))
+      case ast.PermLT(e0, e1) => terms.Less(f(e0), f(e1))
+      case ast.PermGE(e0, e1) => terms.AtLeast(f(e0), f(e1))
+      case ast.PermGT(e0, e1) => terms.Greater(f(e0), f(e1))
 
       case _: sil.ast.SeqExp => ???
 
-      case   _: ast.PermissionExpression | _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old
-           | _: ast.FractionalPerm | _: ast.PermGE | _: ast.PermGT | _: ast.PermLE | _: ast.PermLT
-           | _: ast.IntPermTimes | _: ast.PermPlus | _: ast.PermMinus | _: ast.PermTimes
+      case   _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation
-           | _: ast.FuncApp =>
+           | _: ast.FuncApp | _: ast.CurrentPerm =>
 
-        sys.error(s"Found unexpected expresion $exp")
+        sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
     }
   }
 }

@@ -6,7 +6,7 @@ import sil.verifier.{DependencyNotFoundError, ErrorReason}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk}
 import interfaces.reporting.{Context}
 import state.terms.{Term, Var, FractionalPermissions, Sort}
-import utils.notNothing._
+import silicon.utils.notNothing._
 
 trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 						PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S]] {

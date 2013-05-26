@@ -13,7 +13,7 @@ import state.terms._
 import state.terms.utils.{BigAnd, ¬}
 import state.DirectChunk
 import reporting.Bookkeeper
-import utils.notNothing._
+import silicon.utils.notNothing._
 
 /* TODO: Move interfaces into interfaces package */
 

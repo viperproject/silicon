@@ -15,7 +15,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 //import state.terms.implicits._
 import state.{DirectFieldChunk,
-    DirectPredicateChunk, TypeConverter, DirectChunk, NestedFieldChunk,
+    DirectPredicateChunk, SymbolConvert, DirectChunk, NestedFieldChunk,
     NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
@@ -40,8 +40,8 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
 
-	protected val typeConverter: TypeConverter
-  import typeConverter.toSort
+	protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
   protected val heapMerger: HeapMerger[H]
   import heapMerger.merge

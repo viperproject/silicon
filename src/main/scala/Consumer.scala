@@ -8,7 +8,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Sta
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{TypeConverter, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
+import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 
@@ -30,8 +30,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
 
-  protected val typeConverter: TypeConverter
-  import typeConverter.toSort
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
