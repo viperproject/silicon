@@ -2,14 +2,9 @@ package semper
 package silicon
 package ast
 
-import silicon.utils.collections.mapReduceLeft
+import silicon.utils.mapReduceLeft
 
 package object utils {
-//  private def createSILAnd(ef: ast.ExpressionFactory)(e0: ast.Expression, e1: ast.Expression) = {
-//    val loc = e0.sourceLocation
-//    ef.makeBinaryExpression(ast.And()(loc), e0, e1, loc, Nil)
-//  }
-
   def BigAnd(it: Iterable[ast.Expression], f: ast.Expression => ast.Expression = e => e) =
     mapReduceLeft(it,
                   f,
