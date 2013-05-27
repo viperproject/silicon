@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, ContractNotWellformed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, CallFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
+    LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
@@ -13,7 +13,6 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.{/*Message,*/ TraceView}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-//import state.terms.implicits._
 import state.{DirectFieldChunk,
     DirectPredicateChunk, SymbolConvert, DirectChunk, NestedFieldChunk,
     NestedPredicateChunk}
@@ -115,7 +114,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case lb: sil.ast.LoopBlock =>
         decider.prover.logComment(sil.ast.pretty.PrettyPrinter.pretty(lb.toAst))
 
-        val inv = ast.utils.BigAnd(lb.invs)
+        val inv = ast.utils.BigAnd(lb.invs, Predef.identity, lb.pos)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
         val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
         val invAndNotGuard = ast.And(inv, notGuard)(inv.pos, inv.info)
@@ -131,7 +130,7 @@ trait DefaultExecutor[ST <: Store[ST],
           /* Verify loop body (including well-formedness check) */
           decider.prover.logComment("Verify loop body")
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
-          produce(σBody, fresh,  FullPerm(), invAndGuard, ContractNotWellformed(inv), c0, tv0)((σ1, c1) =>
+          produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(invAndGuard), c0, tv0)((σ1, c1) =>
             exec(σ1 \ (g = σ1.h), lb.body, c1, tv0)((σ2, c2) =>
               consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
                 Success[C, ST, H, S](c3))))}
@@ -144,8 +143,8 @@ trait DefaultExecutor[ST <: Store[ST],
             consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ (g = σ.h, γ = γBody)
               decider.prover.logComment("Continue after loop")
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, ContractNotWellformed(inv), c1, tv0)((σ3, c2) =>
-                leave(σ2 \ (g = σ.g), lb, c2, tv)(Q))})})
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(invAndNotGuard), c1, tv0)((σ3, c2) =>
+                leave(σ3 \ (g = σ.g), lb, c2, tv)(Q))})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
           val (arps, arpConstraints) =
