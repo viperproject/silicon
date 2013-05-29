@@ -102,15 +102,6 @@
 (assert (forall ((x $Snap))
 	(= x ($SortWrappers.IntTo$Snap($SortWrappers.$SnapToInt x)))))
 
-(declare-fun $SortWrappers.$SnapTo$Ref ($Snap) $Ref)
-(declare-fun $SortWrappers.$RefTo$Snap ($Ref) $Snap)
-
-(assert (forall ((x $Ref))
-	(= x ($SortWrappers.$SnapTo$Ref($SortWrappers.$RefTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($SortWrappers.$RefTo$Snap($SortWrappers.$SnapTo$Ref x)))))
-
 (declare-fun $SortWrappers.$SnapToBool ($Snap) Bool)
 (declare-fun $SortWrappers.BoolTo$Snap (Bool) $Snap)
 
@@ -120,21 +111,23 @@
 (assert (forall ((x $Snap))
 	(= x ($SortWrappers.BoolTo$Snap($SortWrappers.$SnapToBool x)))))
 
-; ; TODO: BoolToInt and BoolToRef are only needed when True is chosen as
-; ;        the result value of dead branches. Either prune such branches, i.e.,
-; ;        simplify an ite to a implication, or use a fresh term of the
-; ;        appropriate sort instead of True.
-; (declare-fun $SortWrappers.BoolToInt (Bool) Int)
-; (declare-fun $SortWrappers.IntToBool (Int) Bool)
+(declare-fun $SortWrappers.$SnapTo$Ref ($Snap) $Ref)
+(declare-fun $SortWrappers.$RefTo$Snap ($Ref) $Snap)
 
-; (assert (forall ((x Bool))
-	; (= x ($SortWrappers.IntToBool($SortWrappers.BoolToInt x)))))
+(assert (forall ((x $Ref))
+	(= x ($SortWrappers.$SnapTo$Ref($SortWrappers.$RefTo$Snap x)))))
 
-; (declare-fun $SortWrappers.BoolTo$Ref (Bool) $Ref)
-; (declare-fun $SortWrappers.$RefToBool ($Ref) Bool)
+(assert (forall ((x $Snap))
+	(= x ($SortWrappers.$RefTo$Snap($SortWrappers.$SnapTo$Ref x)))))
 
-; (assert (forall ((x Bool))
-	; (= x ($SortWrappers.$RefToBool($SortWrappers.BoolTo$Ref x)))))
+(declare-fun $SortWrappers.$SnapTo$Perm ($Snap) $Perm)
+(declare-fun $SortWrappers.$PermTo$Snap ($Perm) $Snap)
+
+(assert (forall ((x $Perm))
+	(= x ($SortWrappers.$SnapTo$Perm($SortWrappers.$PermTo$Snap x)))))
+
+(assert (forall ((x $Snap))
+	(= x ($SortWrappers.$PermTo$Snap($SortWrappers.$SnapTo$Perm x)))))
 
 ; --- End static preamble ---
 
