@@ -334,6 +334,8 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
     }
   }
 
+  /* For debugging purposes, please don't remove. */
+
   private def show(ic: Iterable[(Domain, Iterable[DomainMemberInstance])]) {
     ic foreach {case (domain, memberInstances) =>
       memberInstances foreach (mi => println("    " + mi))
