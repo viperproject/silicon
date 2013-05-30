@@ -2,6 +2,8 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import decider.Z3ProverStdIO
+import scala.io.Source
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
@@ -214,9 +216,10 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     ev.program = program
 
+    emitStaticPreamble()
+    emitSequenceSorts(program)
     domainEmitter.emitDomains(program)
     emitSortWrappers(domainEmitter.declaredSorts)
-
     emitProgramFunctionDeclarations(program.functions)
 
     val members = program.members.iterator
@@ -247,6 +250,30 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.declare(terms.FunctionDecl(symbolConverter.toFunction(f))))
   }
 
+  private def emitSequenceSorts(program: ast.Program) {
+    var sequenceTypes = Set[ast.types.Seq]()
+
+    program visit {
+      case t: sil.ast.Typed => t.typ match {
+        case s: ast.types.Seq => sequenceTypes += s
+        case _ => /* Ignore other types */
+      }
+    }
+
+    if (sequenceTypes contains ast.types.Seq(ast.types.Int)) {
+      decider.prover.logComment("\n; /sequences_dafny.smt2 [Int]")
+      pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Int)
+      decider.prover.logComment("\n; /sequences_dafny_int.smt2")
+      pushAssertions(readPreamble("/sequences_dafny_int.smt2"))
+    }
+
+    (sequenceTypes - (ast.types.Seq(ast.types.Int))) foreach {st =>
+      val sort = symbolConverter.toSort(st.elementType)
+      decider.prover.logComment(s"\n; /sequences_dafny.smt2 [$sort]")
+      pushSortParametricAssertions("/sequences_dafny.smt2", sort)
+    }
+  }
+
   private def emitSortWrappers(ss: Set[Sort]) {
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional sort wrappers")
@@ -259,6 +286,59 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.declare(toSnapWrapper)
       decider.prover.declare(fromSnapWrapper)
     })
+  }
+
+  private def emitStaticPreamble() {
+    decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
+    decider.prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
+
+    decider.prover.logComment("-" * 60)
+    decider.prover.logComment("Start static preamble")
+    decider.prover.logComment("-" * 60)
+
+    decider.prover.logComment("\n; /preamble.smt2")
+    pushAssertions(readPreamble("/preamble.smt2"))
+
+    decider.prover.logComment("-" * 60)
+    decider.prover.logComment("End static preamble")
+    decider.prover.logComment("-" * 60)
+
+    decider.pushScope()
+  }
+
+  private def readPreamble(resource: String): List[String] = {
+    val in = getClass.getResourceAsStream(resource)
+
+    var lines =
+      Source.fromInputStream(in).getLines().toList.filterNot(s =>
+        s.trim == "" || s.trim.startsWith(";"))
+
+    var assertions = List[String]()
+
+    /* Multi-line assertions are concatenated into a single string and
+      * send to the prover, because prover.write(str) expects Z3 to reply
+      * to 'str' with success/error. But Z3 will only reply anything if 'str'
+      * is a complete assertion.
+      */
+    while (lines.nonEmpty) {
+      val part = (
+        lines.head
+          :: lines.tail.takeWhile(l => l.startsWith("\t") || l.startsWith("  ")))
+
+      lines = lines.drop(part.size)
+      assertions = part.mkString("\n") :: assertions
+    }
+
+    assertions.reverse
+  }
+
+  private def pushSortParametricAssertions(resource: String, s: Sort) {
+    val lines = readPreamble(resource)
+    pushAssertions(lines.map(_.replace("$S$", decider.prover.termConverter.convert(s))))
+  }
+
+  private def pushAssertions(lines: List[String]) {
+    lines foreach decider.prover.asInstanceOf[Z3ProverStdIO].write
   }
 }
 

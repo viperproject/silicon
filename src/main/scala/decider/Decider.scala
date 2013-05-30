@@ -93,7 +93,7 @@ class DefaultDecider[ST <: Store[ST],
     symbolConverter = new silicon.state.DefaultSymbolConvert()
 //    performSmokeChecks = config.performSmokeChecks
 
-    pushPreamble()
+//    pushPreamble()
 
     return None
   }
@@ -112,70 +112,6 @@ class DefaultDecider[ST <: Store[ST],
 
   lazy val proverAssertionTimingsLog =
     common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "z3timings.txt"))
-
-	private def pushPreamble() {
-    prover.logComment("Started: " + bookkeeper.formattedStartTime)
-    prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
-
-    prover.logComment("-" * 60)
-    prover.logComment("Start static preamble")
-    prover.logComment("-" * 60)
-
-    prover.logComment("\n; /preamble.smt2")
-    pushAssertions(readPreamble("/preamble.smt2"))
-
-    prover.logComment("\n; /sequences_dafny.smt2 [Int]")
-    pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Int)
-    prover.logComment("\n; /sequences_dafny_int.smt2")
-    pushAssertions(readPreamble("/sequences_dafny_int.smt2"))
-
-    prover.logComment("\n; /sequences_dafny.smt2 [Bool]")
-    pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Bool)
-
-    prover.logComment("\n; /sequences_dafny.smt2 [$Ref]")
-    pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Ref)
-
-    prover.logComment("-" * 60)
-    prover.logComment("End static preamble")
-    prover.logComment("-" * 60)
-
-		pushScope()
-	}
-
-  private def readPreamble(resource: String): List[String] = {
-    val in = getClass.getResourceAsStream(resource)
-
-    var lines =
-      Source.fromInputStream(in).getLines().toList.filterNot(s =>
-        s.trim == "" || s.trim.startsWith(";"))
-
-    var assertions = List[String]()
-
-    /* Multi-line assertions are concatenated into a single string and
-      * send to the prover, because prover.write(str) expects Z3 to reply
-      * to 'str' with success/error. But Z3 will only reply anything if 'str'
-      * is a complete assertion.
-      */
-    while (lines.nonEmpty) {
-      val part = (
-        lines.head
-          :: lines.tail.takeWhile(l => l.startsWith("\t") || l.startsWith("  ")))
-
-      lines = lines.drop(part.size)
-      assertions = part.mkString("\n") :: assertions
-    }
-
-    assertions.reverse
-  }
-
-  private def pushSortParametricAssertions(resource: String, s: Sort) {
-    val lines = readPreamble(resource)
-    pushAssertions(lines.map(_.replace("$S$", z3.termConverter.convert(s))))
-  }
-
-  private def pushAssertions(lines: List[String]) {
-    lines foreach z3.write
-  }
 
   def stop() {
     if (prover != null) prover.stop()
