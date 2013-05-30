@@ -189,15 +189,15 @@
 //
 //		// /* Sequences */
 //
-//		// case RangeSeq(t0, t1) =>
+//		// case SeqRanged(t0, t1) =>
 //			// "($Seq.rng " + convert(t0) + " " + convert(t1) + ")"
 //
-//		// case SeqElem(t0) => "($Seq.elem " + convert(t0) + ")"
+//		// case SeqSingleton(t0) => "($Seq.elem " + convert(t0) + ")"
 //
 //		// case SeqCon(t0, t1) =>
 //			// "($Seq.con " + convert(t0) + " " + convert(t1) + ")"
 //
-//		// case SeqLen(t0) => "($Seq.len " + convert(t0) + ")"
+//		// case SeqLength(t0) => "($Seq.len " + convert(t0) + ")"
 //
 //		// case SeqAt(t0, t1) =>
 //			// "($Seq.at " + convert(t0) + " " + convert(t1) + ")"
@@ -282,7 +282,7 @@
 //		case True() => ctxt.mkTrue()
 //		case False() => ctxt.mkFalse()
 //		case Null() => ctxt.mkConst(ctxt.mkStringSymbol("$null"), ctxt.mkIntSort)
-//		case EmptySeq() =>
+//		case SeqNil() =>
 //			ctxt.mkConst(ctxt.mkStringSymbol("$Seq.nil"), ctxt.mkIntSort)
 //		case BottomLock() =>
 //			ctxt.mkConst(ctxt.mkStringSymbol("$Locks.bottom"), ctxt.mkIntSort)
