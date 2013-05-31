@@ -22,12 +22,14 @@ class DefaultSymbolConvert extends SymbolConvert {
     case ast.types.Int => sorts.Int
     case ast.types.Perm => sorts.Perm
     case ast.types.Ref => sorts.Ref
+    case ast.types.Seq(elementType) => sorts.Seq(toSort(elementType))
 
     case dt: ast.types.DomainType =>
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(dt.toString)
 
-    case sil.ast.Pred | _: sil.ast.TypeVar | _: ast.types.Seq => throw new MatchError(typ)
+    case sil.ast.Pred | _: sil.ast.TypeVar =>
+      sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 
   def toSortSpecificId(id: String, sorts: Seq[Sort]) =

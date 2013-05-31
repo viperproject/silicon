@@ -12,6 +12,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
+    case sorts.Seq(elementSort) => "$Seq<" + convert(elementSort) + ">"
     case sorts.UserSort(id) => sanitizeSymbol(id)
     case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
     case sorts.Unit => ""
@@ -63,8 +64,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Iff(t0, t1) =>
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
-    /* Equalities */
-
     case TermEq(t0, t1) =>
       "(= " + convert(t0) + " " + convert(t1) + ")"
 
@@ -101,20 +100,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Permissions */
 
-//    case pt: PermissionsTuple => convert(pt.combined)
-
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
     case WildcardPerm(v) => convert(v)
     case EpsilonPerm() => "$Perm.Eps"
-//    case ReadPerm(v) => convert(v)
     case TermPerm(t) => convert2real(t)
     case FractionPerm(n, d) => "(/ %s %s)".format(convert2real(n), convert2real(d))
-
-//    case InternalRdPerm() => "$Perm.iRd"
-//    case MonitorRdPerm() => "$Perm.mRd"
-//    case PredicateRdPerm() => "$Perm.pRd"
-//    case ChannelRdPerm() => "$Perm.cRd"
 
     case IsValidPerm(v, ub) =>
       "($Perm.isValid %s %s)".format(convert(v), convert(ub))
@@ -137,6 +128,33 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case IntPermTimes(t0, t1) =>
       "(* %s %s)".format(convert2real(t0), convert2real(t1))
 
+    /* Sequences */
+
+    case SeqEq(t0, t1) =>
+      "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
+
+    case SeqRanged(t0, t1) =>
+      "($Seq.rng " + convert(t0) + " " + convert(t1) + ")"
+
+    case SeqSingleton(t0) => "($Seq.elem " + convert(t0) + ")"
+
+    case SeqAppend(t0, t1) =>
+      "($Seq.con " + convert(t0) + " " + convert(t1) + ")"
+
+    case SeqLength(t0) => "($Seq.len " + convert(t0) + ")"
+
+    case SeqAt(t0, t1) =>
+      "($Seq.at " + convert(t0) + " " + convert(t1) + ")"
+
+    case SeqTake(t0, t1) =>
+      "($Seq.take " + convert(t0) + " " + convert(t1) + ")"
+
+    case SeqDrop(t0, t1) =>
+      "($Seq.drop " + convert(t0) + " " + convert(t1) + ")"
+
+    case SeqIn(t0, t1) =>
+      "($Seq.in " + convert(t0) + " " + convert(t1) + ")"
+
     /* Domains */
 
     case DomainFApp(f, ts) =>
@@ -145,6 +163,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
       if (ts.isEmpty) sid
       else "(%s %s)".format(sid, argsStr)
+
+    /* Other terms */
 
     case SnapEq(t0, t1) =>
       "($Snap.snapEq " + convert(t0) + " " + convert(t1) + ")"
@@ -185,6 +205,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case True() => "true"
     case False() => "false"
     case Null() => "$Ref.null"
+    case SeqNil(elementSort) => "$Seq.nil<" + convert(elementSort) + ">"
   }
 
   private def convert2real(t: Term): String =
