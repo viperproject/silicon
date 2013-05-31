@@ -6,7 +6,7 @@ import collection.mutable.{HashMap => MHashMap, MultiMap => MMultiMap, Set => MS
 import semper.sil.ast._
 import interfaces.decider.Prover
 import state.terms
-import state.terms.Term
+import semper.silicon.state.terms.{SeqSingleton, Term}
 import state.terms.implicits._
 import state.SymbolConvert
 
@@ -443,7 +443,20 @@ class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTran
       case ast.PermGE(e0, e1) => terms.AtLeast(f(e0), f(e1))
       case ast.PermGT(e0, e1) => terms.Greater(f(e0), f(e1))
 
-      case _: sil.ast.SeqExp => ???
+      case sil.ast.SeqAppend(e0, e1) => terms.SeqAppend(f(e0), f(e1))
+      case sil.ast.SeqContains(e0, e1) => terms.SeqIn(f(e1), f(e0))
+      case sil.ast.SeqDrop(e0, e1) => terms.SeqDrop(f(e0), f(e1))
+      case sil.ast.SeqIndex(e0, e1) => terms.SeqAt(f(e0), f(e1))
+      case sil.ast.SeqLength(e) => terms.SeqLength(f(e))
+      case sil.ast.SeqTake(e0, e1) => terms.SeqTake(f(e0), f(e1))
+      case sil.ast.EmptySeq(typ) => terms.SeqNil(toSort(typ))
+      case sil.ast.RangeSeq(e0, e1) => terms.SeqRanged(f(e0), f(e1))
+
+      case sil.ast.ExplicitSeq(es) =>
+        es.tail.foldLeft[terms.SeqTerm](terms.SeqSingleton(f(es.head)))((tSeq, e) =>
+            terms.SeqAppend(terms.SeqSingleton(f(e)), tSeq))
+
+      case _: sil.ast.SeqUpdate => ???
 
       case   _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation
