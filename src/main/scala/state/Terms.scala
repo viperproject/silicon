@@ -596,6 +596,11 @@ case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Te
 
 /* Sequences */
 
+/* TODO: Make arguments more specific, i.e., SeqTerm instead of Term. The problem is that terms.Var can be
+ *       used there, as well as terms.FApp, and probably other terms that are not SeqTerms but of sort Seq.
+ *       How to deal with those?
+ */
+
 sealed trait SeqTerm extends Term {
   val elementsSort: Sort
   val sort: sorts.Seq
@@ -637,28 +642,29 @@ case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ {
   override val toString = "[" + p + "]"
 }
 
-/*case*/ class SeqAppend(val p0: SeqTerm, val p1: SeqTerm)
+/*case*/ class SeqAppend(val p0: Term, val p1: Term)
       extends SeqTerm
-      with    commonnodes.StructuralEqualityBinaryOp[SeqTerm] {
+      with    commonnodes.StructuralEqualityBinaryOp[Term] {
 
 //  utils.assertSameSeqSorts(p0, p1)
 
-  val elementsSort = p0.elementsSort
+  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
   override val op = "++"
 }
 
-object SeqAppend {
+object SeqAppend extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-    val (seq0, seq1) = utils.asSameSeqSorts(t0, t1)
-    new SeqAppend(seq0, seq1)
+    utils.assertSameSeqSorts(t0, t1)
+//    val (seq0, seq1) = utils.asSameSeqSorts(t0, t1)
+    new SeqAppend(t0, t1)
   }
 
   def unapply(sa: SeqAppend) = Some((sa.p0, sa.p1))
 }
 
-/*case*/ class SeqDrop(val p0: SeqTerm, val p1: Term)
+/*case*/ class SeqDrop(val p0: Term, val p1: Term)
     extends SeqTerm
     with    commonnodes.StructuralEqualityBinaryOp[Term] {
 
@@ -666,40 +672,42 @@ object SeqAppend {
 //  utils.assertSort(p1, "second operand", sorts.Int)
   //  utils.assertSameSeqSorts(p0, p1)
 
-  val elementsSort = p0.elementsSort
+  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
   override val toString = p0 + "[" + p1 + ":]"
 }
 
-object SeqDrop {
+object SeqDrop extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-    val seq = utils.asSeqTerm(t0, "first operand")
+//    val seq = utils.asSeqTerm(t0, "first operand")
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", sorts.Int)
-    new SeqDrop(seq, t1)
+    new SeqDrop(t0, t1)
   }
 
   def unapply(sd: SeqDrop) = Some((sd.p0, sd.p1))
 }
 
-/*case*/ class SeqTake(val p0: SeqTerm, val p1: Term)
+/*case*/ class SeqTake(val p0: Term, val p1: Term)
     extends SeqTerm
     with    commonnodes.StructuralEqualityBinaryOp[Term] {
 
 //  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
 //  utils.assertSort(p1, "second operand", sorts.Int)
 
-  val elementsSort = p0.elementsSort
+  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
   override val toString = p0 + "[:" + p1 + "]"
 }
 
-object SeqTake {
+object SeqTake extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-    val seq = utils.asSeqTerm(t0, "first operand")
+//    val seq = utils.asSeqTerm(t0, "first operand")
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", sorts.Int)
-    new SeqTake(seq, t1)
+    new SeqTake(t0, t1)
   }
 
   def unapply(st: SeqTake) = Some((st.p0, st.p1))
@@ -714,46 +722,49 @@ object SeqTake {
 
 object SeqLength {
   def apply(t: Term) = {
-    val seq = utils.asSeqTerm(t, "first operand")
-    new SeqLength(seq)
+//    val seq = utils.asSeqTerm(t, "first operand")
+    utils.assertSort(t, "term", "Seq", _.isInstanceOf[sorts.Seq])
+    new SeqLength(t)
   }
 
   def unapply(sl: SeqLength) = Some((sl.p))
 }
 
-/*case*/ class SeqAt(val p0: SeqTerm, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
+/*case*/ class SeqAt(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
 //  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
 //  utils.assertSort(p1, "second operand", sorts.Int)
 
   //  val elementsSort = p0.sort.sortParameters.head
   //  val sort = sorts.Seq(elementsSort)
-  val sort = p0.sort.elementsSort
+  val sort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
 
   override val toString = p0 + "[" + p1 + "]"
 }
 
-object SeqAt {
+object SeqAt extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = {
-    val seq = utils.asSeqTerm(t0, "first operand")
+//    val seq = utils.asSeqTerm(t0, "first operand")
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", sorts.Int)
-    new SeqAt(seq, t1)
+    new SeqAt(t0, t1)
   }
 
   def unapply(sa: SeqAt) = Some((sa.p0, sa.p1))
 }
 
-/*case*/ class SeqIn(val p0: SeqTerm, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+/*case*/ class SeqIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
 //  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
 //  utils.assertSort(p1, "second operand", p0.sort.sortParameters.head)
 
   override val toString = "%s in %s".format(p1, p0)
 }
 
-object SeqIn {
+object SeqIn extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
-    val seq = utils.asSeqTerm(t0, "first operand")
-    utils.assertSort(t1, "second operand", seq.elementsSort)
-    new SeqIn(seq, t1)
+//    val seq = utils.asSeqTerm(t0, "first operand")
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
+    new SeqIn(t0, t1)
   }
 
   def unapply(si: SeqIn) = Some((si.p0, si.p1))
@@ -866,19 +877,19 @@ object utils {
         .format(t0, t0.sort, t1, t1.sort))
   }
 
-  def asSeqTerm(t: Term, desc: String): SeqTerm = t match {
-    case seq: SeqTerm => seq
-    case _ =>
-      sys.error("Expected %s %s to be a SeqTerm, but found %s.".format(desc, t, t.getClass.getSimpleName))
-  }
+//  def asSeqTerm(t: Term, desc: String): SeqTerm = t match {
+//    case seq: SeqTerm => seq
+//    case _ =>
+//      sys.error("Expected %s %s to be a SeqTerm, but found %s.".format(desc, t, t.getClass.getSimpleName))
+//  }
 
-  def asSameSeqSorts(t0: Term, t1: Term): (SeqTerm, SeqTerm) = (t0, t1) match {
-    case (seq0: SeqTerm, seq1: SeqTerm) if seq0.sort == seq1.sort =>
-      (seq0, seq1)
-    case _ =>
-      sys.error("Expected both operands to be of sort Seq(E), but found %s of sort %s (%s) and %s of sort %s (%s)"
-                .format(t0, t0.sort, t0.getClass.getSimpleName, t1, t1.sort, t1.getClass.getSimpleName))
-  }
+//  def asSameSeqSorts(t0: Term, t1: Term): (SeqTerm, SeqTerm) = (t0, t1) match {
+//    case (seq0: SeqTerm, seq1: SeqTerm) if seq0.sort == seq1.sort =>
+//      (seq0, seq1)
+//    case _ =>
+//      sys.error("Expected both operands to be of sort Seq(E), but found %s of sort %s (%s) and %s of sort %s (%s)"
+//                .format(t0, t0.sort, t0.getClass.getSimpleName, t1, t1.sort, t1.getClass.getSimpleName))
+//  }
 }
 
 object implicits {

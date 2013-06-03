@@ -16,6 +16,7 @@ import state.{SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import utils.notNothing.NotNothing
+import semper.sil.ast.SeqContains
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -554,6 +555,25 @@ trait DefaultEvaluator[
                     "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
                     "in a function, which is then invoked from the predicate body.\n" +
                     "Offending node: " + e)
+
+      case sil.ast.SeqContains(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c, tv)(Q)
+        /* Note the reversed order of the arguments! */
+
+      case sil.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c, tv)(Q)
+      case sil.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c, tv)(Q)
+      case sil.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c, tv)(Q)
+      case sil.ast.SeqIndex(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c, tv)(Q)
+      case sil.ast.SeqLength(e) => eval(σ, e, pve, c, tv)((t0, c1) => Q(SeqLength(t0), c1))
+      case sil.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
+      case sil.ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c, tv)(Q)
+
+      case sil.ast.ExplicitSeq(es) =>
+        evals2(σ, es.reverse, Nil, pve, c, tv)((tEs, c1) => {
+          val tSeq =
+            tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
+              SeqAppend(SeqSingleton(te), tSeq))
+          assume(SeqLength(tSeq) === IntLiteral(es.size))
+          Q(tSeq, c1)})
 		}
 	}
 

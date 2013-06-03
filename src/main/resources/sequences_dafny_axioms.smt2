@@ -1,48 +1,20 @@
-; --- Sequences	---
+; General sequence axioms
 
-(declare-sort $Seq<$S$>)
-
-
-
-(declare-fun $sorts.$SnapTo$Seq<$S$> ($Snap) $Seq<$S$>)
-(declare-fun $sorts.$Seq<$S$>To$Snap ($Seq<$S$>) $Snap)
-
-(assert (forall ((x $Seq<$S$>))
-	(= x ($sorts.$SnapTo$Seq<$S$>($sorts.$Seq<$S$>To$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($sorts.$Seq<$S$>To$Snap($sorts.$SnapTo$Seq<$S$> x)))))
-
-  
-
-(declare-fun $Seq.nil<$S$> () $Seq<$S$>)
-(declare-fun $Seq.len ($Seq<$S$>) Int)
-(declare-fun $Seq.elem ($S$) $Seq<$S$>)
-; function Seq#Build<T>(s: Seq T, index: int, val: T, newLength: int) returns (Seq T);
-(declare-fun $Seq.build ($Seq<$S$> Int $S$ Int) $Seq<$S$>)
-; function Seq#Append<T>(Seq T, Seq T) returns (Seq T);
-(declare-fun $Seq.con ($Seq<$S$> $Seq<$S$>) $Seq<$S$>)
-; function Seq#Index<T>(Seq T, int) returns (T);
-(declare-fun $Seq.at ($Seq<$S$> Int) $S$)
-; function Seq#Contains<T>(Seq T, T) returns (bool);
-(declare-fun $Seq.in ($Seq<$S$> $S$) Bool)
-; function Seq#Equal<T>(Seq T, Seq T) returns (bool);
-(declare-fun $Seq.eq ($Seq<$S$> $Seq<$S$>) Bool)
-; function Seq#SameUntil<T>(Seq T, Seq T, int) returns (bool);
-(declare-fun $Seq.sameUntil ($Seq<$S$> $Seq<$S$> Int) Bool)
-; function Seq#Take<T>(s: Seq T, howMany: int) returns (Seq T);
-(declare-fun $Seq.take ($Seq<$S$> Int) $Seq<$S$>)
-; function Seq#Drop<T>(s: Seq T, howMany: int) returns (Seq T);
-(declare-fun $Seq.drop ($Seq<$S$> Int) $Seq<$S$>)
-; function Seq#Range(min: int, max: int) returns (Seq int);
-; (declare-fun $Seq.rng (Int Int) Int)
+;; TODO: Remove and include in Verifier.emitSortWrapper
+;(declare-fun $sorts.$SnapTo$Seq<$S$> ($Snap) $Seq<$S$>)
+;(declare-fun $sorts.$Seq<$S$>To$Snap ($Seq<$S$>) $Snap)
+;
+;(assert (forall ((x $Seq<$S$>))
+;	(= x ($sorts.$SnapTo$Seq<$S$>($sorts.$Seq<$S$>To$Snap x)))))
+;
+;(assert (forall ((x $Snap))
+;	(= x ($sorts.$Seq<$S$>To$Snap($sorts.$SnapTo$Seq<$S$> x)))))
 
 ; axiom (forall<T> s: Seq T :: { Seq#Length(s) } 0 <= Seq#Length(s));
 (assert (forall ((xs $Seq<$S$>)) (!
 	(<= 0 ($Seq.len xs))
 	:pattern (($Seq.len xs))
 	)))
-
 
 ; axiom (forall<T> :: Seq#Length(Seq#Empty(): Seq T) == 0);
 (assert (= ($Seq.len $Seq.nil<$S$>) 0))
@@ -125,6 +97,10 @@
 	:pattern (($Seq.at ($Seq.build xs i x n) j))
 	)))
 
+(assert (forall ((x $S$)) (!
+	($Seq.in ($Seq.elem x) x)
+	:pattern (($Seq.in ($Seq.elem x) x))
+	)))
 
 ; axiom (forall<T> s: Seq T, x: T :: { Seq#Contains(s,x) }
   ; Seq#Contains(s,x) <==>

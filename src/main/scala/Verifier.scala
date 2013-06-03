@@ -216,10 +216,34 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     ev.program = program
 
+    val sequenceTypes = collectSequenceTypes(program)
+
+    domainEmitter.reset()
+    domainEmitter.analyze(program)
+
+    decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
+    decider.prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
+
+    decider.prover.logComment("-" * 60)
+    decider.prover.logComment("Preamble start")
+
     emitStaticPreamble()
-    emitSequenceSorts(program)
-    domainEmitter.emitDomains(program)
-    emitSortWrappers(domainEmitter.declaredSorts)
+
+    emitSequenceSorts(sequenceTypes)
+    domainEmitter.declareSorts()
+
+    emitSequenceDeclarations(sequenceTypes)
+    domainEmitter.declareSymbols()
+    domainEmitter.emitUniquenessAssumptions()
+
+    emitSequenceAxioms(sequenceTypes)
+    domainEmitter.emitAxioms()
+
+    emitSortWrappers(domainEmitter.sorts)
+
+    decider.prover.logComment("Preamble end")
+    decider.prover.logComment("-" * 60)
+
     emitProgramFunctionDeclarations(program.functions)
 
     val members = program.members.iterator
@@ -250,7 +274,7 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.declare(terms.FunctionDecl(symbolConverter.toFunction(f))))
   }
 
-  private def emitSequenceSorts(program: ast.Program) {
+  private def collectSequenceTypes(program: ast.Program): Set[ast.types.Seq] = {
     var sequenceTypes = Set[ast.types.Seq]()
 
     program visit {
@@ -260,18 +284,31 @@ trait AbstractVerifier[ST <: Store[ST],
       }
     }
 
-    if (sequenceTypes contains ast.types.Seq(ast.types.Int)) {
-      decider.prover.logComment("\n; /sequences_dafny.smt2 [Int]")
-      pushSortParametricAssertions("/sequences_dafny.smt2", sorts.Int)
-      decider.prover.logComment("\n; /sequences_dafny_int.smt2")
-      pushAssertions(readPreamble("/sequences_dafny_int.smt2"))
+    sequenceTypes
+  }
+
+  private def emitSequenceSorts(types: Set[ast.types.Seq]) {
+    types foreach (st => decider.prover.declare(terms.SortDecl(symbolConverter.toSort(st))))
+  }
+
+  private def emitSequenceDeclarations(types: Set[ast.types.Seq]) {
+    types foreach {st =>
+      val sort = symbolConverter.toSort(st.elementType)
+      pushSortParametricAssertions("/sequences_dafny_declarations.smt2", sort)
     }
 
-    (sequenceTypes - (ast.types.Seq(ast.types.Int))) foreach {st =>
+    if (types contains ast.types.Seq(ast.types.Int))
+      pushSortParametricAssertions("/sequences_dafny_declarations_int.smt2", sorts.Int)
+  }
+
+  private def emitSequenceAxioms(types: Set[ast.types.Seq]) {
+    types foreach {st =>
       val sort = symbolConverter.toSort(st.elementType)
-      decider.prover.logComment(s"\n; /sequences_dafny.smt2 [$sort]")
-      pushSortParametricAssertions("/sequences_dafny.smt2", sort)
+      pushSortParametricAssertions("/sequences_dafny_axioms.smt2", sort)
     }
+
+    if (types contains ast.types.Seq(ast.types.Int))
+      pushSortParametricAssertions("/sequences_dafny_axioms_int.smt2", sorts.Int)
   }
 
   private def emitSortWrappers(ss: Set[Sort]) {
@@ -289,19 +326,16 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitStaticPreamble() {
-    decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
-    decider.prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
-
-    decider.prover.logComment("-" * 60)
-    decider.prover.logComment("Start static preamble")
-    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("Start static preamble")
+//    decider.prover.logComment("-" * 60)
 
     decider.prover.logComment("\n; /preamble.smt2")
     pushAssertions(readPreamble("/preamble.smt2"))
 
-    decider.prover.logComment("-" * 60)
-    decider.prover.logComment("End static preamble")
-    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("End static preamble")
+//    decider.prover.logComment("-" * 60)
 
     decider.pushScope()
   }
@@ -332,9 +366,10 @@ trait AbstractVerifier[ST <: Store[ST],
     assertions.reverse
   }
 
-  private def pushSortParametricAssertions(resource: String, s: Sort) {
+  private def pushSortParametricAssertions(resource: String, sort: Sort) {
     val lines = readPreamble(resource)
-    pushAssertions(lines.map(_.replace("$S$", decider.prover.termConverter.convert(s))))
+    decider.prover.logComment(s"\n; $resource [$sort]")
+    pushAssertions(lines.map(_.replace("$S$", decider.prover.termConverter.convert(sort))))
   }
 
   private def pushAssertions(lines: List[String]) {

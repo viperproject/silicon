@@ -64,8 +64,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Iff(t0, t1) =>
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
-    case TermEq(t0, t1) =>
-      "(= " + convert(t0) + " " + convert(t1) + ")"
+    case TermEq(t0, t1) => t0.sort match {
+      case _: sorts.Seq => convert(SeqEq(t0, t1))
+      case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
+    }
 
     /* Arithmetic */
 

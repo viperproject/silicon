@@ -11,57 +11,78 @@ import state.terms.implicits._
 import state.SymbolConvert
 
 trait DomainEmitter {
+  def analyze(program: Program)
+  def sorts: Set[terms.Sort]
+  def symbols: Set[terms.Function]
+  def declareSorts()
+  def declareSymbols()
+  def emitAxioms()
+  def emitUniquenessAssumptions()
   def reset()
-  def declaredSorts: Set[terms.Sort]
-  def declaredSymbols: Set[terms.Function]
-  def emitDomains(program: Program)
 }
 
 class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
     extends DomainEmitter {
 
-  private var sorts = Set[terms.Sort]()
-  private var symbols = Set[terms.Function]()
+  /* TODO: Group emitted declarations and axioms by source domain. */
+
+  private var collectedSorts = Set[terms.Sort]()
+  private var collectedSymbols = Set[terms.Function]()
+  private var collectedAxioms = Set[terms.Term]()
+
+  private var uniqueSymbols = Set[terms.Term]()
+    /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
+     * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
+     * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
+     */
 
   def reset() {
-    sorts = sorts.empty
-    symbols = symbols.empty
+    collectedSorts = collectedSorts.empty
+    collectedSymbols = collectedSymbols.empty
+    collectedAxioms = collectedAxioms.empty
+    uniqueSymbols = uniqueSymbols.empty
   }
 
-  def declaredSorts = sorts
-  def declaredSymbols = symbols
+  def sorts = collectedSorts
+  def symbols = collectedSymbols
 
-  def emitDomains(program: Program) {
+  def analyze(program: Program) {
     val concreteDomainTypes = collectConcreteDomainTypes(program)
     val concreteDomainMemberInstances = collectConcreteDomainMemberInstances(program, concreteDomainTypes)
 
-    emitDomainDeclarations(concreteDomainTypes)
-    emitDomainMembers(concreteDomainMemberInstances)
+    collectDomainSorts(concreteDomainTypes)
+//    emitDomainDeclarations(concreteDomainTypes)
+
+    collectDomainMembers(concreteDomainMemberInstances)
   }
 
-  private def emitDomainDeclarations(domainTypes: Set[DomainType]) {
+  private def collectDomainSorts(domainTypes: Set[DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
-    prover.logComment("")
-    prover.logComment("Declaring additional domains")
-    prover.logComment("")
+//    prover.logComment("")
+//    prover.logComment("Declaring additional domains")
+//    prover.logComment("")
 
     /* Declare domains. */
     domainTypes.foreach(domainType => {
-      prover.logComment("Declaring domain " + domainType)
+//      prover.logComment("Declaring domain " + domainType)
 
       val domainSort = symbolConverter.toSort(domainType)
-      sorts += domainSort
+      collectedSorts += domainSort
 
-      prover.declare(terms.SortDecl(domainSort))
+//      prover.declare(terms.SortDecl(domainSort))
     })
+  }
+
+  def declareSorts() {
+    collectedSorts foreach (s => prover.declare(terms.SortDecl(s)))
   }
 
   /* Declare functions and predicates of each domain.
    * Since these can reference arbitrary other domains, it is crucial that all domains have
    * already been declared.
    */
-  private def emitDomainMembers(members: Map[Domain, Set[DomainMemberInstance]]) {
+  private def collectDomainMembers(members: Map[Domain, Set[DomainMemberInstance]]) {
     /* Since domain member instances come with Sil types, but the corresponding prover declarations
      * work with sorts, it can happen that two instances with different types result in the
      * same function declaration because the types are mapped to the same sort(s).
@@ -80,18 +101,18 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
 
     /* Functions must be declared first, because they can be mentioned in axioms. */
 
-    var uniqueFunctions: Set[terms.Term] = Set()
-      /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
-       * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
-       * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
-       */
+//    var uniqueFunctions: Set[terms.Term] = Set()
+//      /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
+//       * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
+//       * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
+//       */
 
     members.foreach{case (domain, memberInstances) =>
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
 
       val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
 
-      prover.logComment("Functions of " + DomainPrettyPrinter.show(domain))
+//      prover.logComment("Functions of " + DomainPrettyPrinter.show(domain))
 
       functionInstances.foreach(fi => {
         //        decider.prover.logComment(fi.toString)
@@ -100,48 +121,64 @@ class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Pro
         val id = symbolConverter.toSortSpecificId(fi.member.name, inSorts :+ outSort)
         val fct = terms.Function(id, inSorts, outSort)
 
-        if (!(symbols contains fct)) {
-          val functionDecl = terms.FunctionDecl(fct)
-          prover.declare(functionDecl)
+        if (!(collectedSymbols contains fct)) {
+//          val functionDecl = terms.FunctionDecl(fct)
+//          prover.declare(functionDecl)
 
           if (fi.member.unique) {
             assert(fi.member.formalArgs.isEmpty,
               s"Expected unique domain functions to not take arguments, but found ${fi.member}")
 
-            uniqueFunctions += fct
+            uniqueSymbols += fct
           }
 
-          symbols += fct
+          collectedSymbols += fct
         }
       })
     }
 
-    if (uniqueFunctions.nonEmpty) {
-      prover.logComment("Unique domain constants")
-      prover.assume(terms.Distinct(uniqueFunctions))
-    }
+//    if (uniqueFunctions.nonEmpty) {
+////      prover.logComment("Unique domain constants")
+//      prover.assume(terms.Distinct(uniqueFunctions))
+//    }
 
     /* Declare axioms only after all types and functions have been declared. */
 
-    var emittedAxioms = Set[Term]()
+//    var emittedAxioms = Set[Term]()
 
     members.foreach{case (domain, memberInstances) =>
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
 
       val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
 
-      prover.logComment("Axioms of " + DomainPrettyPrinter.show(domain))
+//      prover.logComment("Axioms of " + DomainPrettyPrinter.show(domain))
 
       axiomInstances.foreach(ai => {
         //        decider.prover.logComment("Axiom " + ai.member.name + ai.typeVarsMap.mkString("[",",","]"))
         val tAx = domainTranslator.translateAxiom(ai.member, ai.typeVarsMap)
 
-        if (!(emittedAxioms contains tAx)) {
-          prover.assume(tAx)
-          emittedAxioms += tAx
+        if (!(collectedAxioms contains tAx)) {
+//          prover.assume(tAx)
+//          emittedAxioms += tAx
+            collectedAxioms += tAx
         }
       })
     }
+  }
+
+  def declareSymbols() {
+    collectedSymbols foreach {function =>
+      val functionDecl = terms.FunctionDecl(function)
+      prover.declare(functionDecl)
+    }
+  }
+
+  def emitAxioms() {
+    collectedAxioms foreach prover.assume
+  }
+
+  def emitUniquenessAssumptions() {
+    prover.assume(terms.Distinct(uniqueSymbols))
   }
 
   private def domainMembers(domain: Domain): Map[DomainMember, Domain] =
@@ -374,7 +411,10 @@ class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTran
     * @param exp
     * @return
     *
-    * TODO: Shares a lot of code with DefaultEvaluator. Reuse!
+    * TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
+    *       reuse code because the code in DefaultEvaluator uses the state whereas this one here
+    *       doesn't. Of course, one could just evaluate the domains - which was done in before - but
+    *       that is less efficient. Consider again, nevertheless.
     */
   private def translateExp(toSort: ast.Type => terms.Sort)(exp: ast.Expression): Term = {
     val f = translateExp(toSort) _

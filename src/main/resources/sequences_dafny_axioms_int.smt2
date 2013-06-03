@@ -1,8 +1,4 @@
-;
-; These axioms are only applicable to (List Int).
-;
-
-(declare-fun $Seq.rng (Int Int) $Seq<Int>)
+; Axioms specific to integer sequences
 
 ; axiom (forall min: int, max: int :: { Seq#Length(Seq#Range(min, max)) } (min < max ==> Seq#Length(Seq#Range(min, max)) == max-min) && (max <= min ==> Seq#Length(Seq#Range(min, max)) == 0));
 (assert (forall ((i Int) (j Int)) (!
