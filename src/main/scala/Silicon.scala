@@ -12,12 +12,12 @@ import sil.verifier.{
     Failure => SILError}
 import sil.verifier.{DefaultDependency}
 import interfaces.{VerificationResult, ContextAwareResult, Failure}
+import interfaces.reporting.{TraceView, TraceViewFactory}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
-import decider.DefaultDecider
+import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
-import interfaces.reporting.{TraceView, TraceViewFactory}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -141,10 +141,13 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
+    val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
+    val sequenceEmitter = new DefaultSequenceEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainEmitter = new DefaultDomainEmitter(domainTranslator, decider.prover, symbolConverter)
 
-    verifierFactory.create(config, decider, stateFactory, symbolConverter, domainEmitter, chunkFinder, stateFormatter,
-                           heapMerger, stateUtils, bookkeeper, traceviewFactory)
+    verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequenceEmitter,
+                           domainEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
+                           traceviewFactory)
 	}
 
 	private def runVerifier(program: ast.Program): List[Failure[C, ST, H, S, _]] = {

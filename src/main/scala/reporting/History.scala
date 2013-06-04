@@ -453,20 +453,20 @@ case class Executing
 
 /** Factory object for global ImplBranching steps */
 object ImplBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: TwinBranch[ST, H, S], parent: Step[ST, H, S]) => new ImplBranching(b, branch, n, t, parent) with GlobalTwinBranchingStep[ST, H, S]
 }
 
 /** Factory object for local ImplBranching steps */
 object LocalImplBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: LocalTwinBranch[ST, H, S], parent: Step[ST, H, S]) => new ImplBranching(b, branch, n, t, parent) with LocalTwinBranchingStep[ST, H, S]
 }
 
 /** Branching step for implications */
 case class ImplBranching
   [B <: TwinBranch[ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-  (b: Boolean, branch: B, n: ast.ASTNode, t: Term, parent: Step[ST, H, S])
+  (b: Boolean, branch: B, n: ast.Node, t: Term, parent: Step[ST, H, S])
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =
@@ -476,19 +476,19 @@ case class ImplBranching
 
 /** Factory object for global IffBranching steps */
 object IffBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t1: Term, t2: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t1: Term, t2: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: TwinBranch[ST, H, S], parent: Step[ST, H, S]) => new IffBranching(b, branch, n, t1, t2, parent) with GlobalTwinBranchingStep[ST, H, S]
 }
 /** Factory object for local IffBranching steps */
 object LocalIffBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t1: Term, t2: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t1: Term, t2: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: LocalTwinBranch[ST, H, S], parent: Step[ST, H, S]) => new IffBranching(b, branch, n, t1, t2, parent) with LocalTwinBranchingStep[ST, H, S]
 }
 
 /** Branching step for equivalence */
 case class IffBranching
   [B <: TwinBranch[ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-  (b: Boolean, branch: B, n: ast.ASTNode, t1: Term, t2: Term, parent: Step[ST, H, S])
+  (b: Boolean, branch: B, n: ast.Node, t1: Term, t2: Term, parent: Step[ST, H, S])
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format = (
@@ -499,19 +499,19 @@ case class IffBranching
 
 /** Factory object for global IfBranching steps */
 object IfBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: TwinBranch[ST, H, S], parent: Step[ST, H, S]) => new IfBranching(b, branch, n, t, parent) with GlobalTwinBranchingStep[ST, H, S]
 }
 /** Factory object for local IfBranching steps */
 object LocalIfBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: LocalTwinBranch[ST, H, S], parent: Step[ST, H, S]) => new IfBranching(b, branch, n, t, parent) with LocalTwinBranchingStep[ST, H, S]
 }
 
 /** Branching step for if-then-else */
 case class IfBranching
   [B <: TwinBranch[ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-  (b: Boolean, branch: B, n: ast.ASTNode, t: Term, parent: Step[ST, H, S])
+  (b: Boolean, branch: B, n: ast.Node, t: Term, parent: Step[ST, H, S])
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =
@@ -521,12 +521,12 @@ case class IfBranching
 
 /** Factory object for global AndBranching steps */
 object AndBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, TwinBranch[ST, H, S], Step[ST, H, S]) => TwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: TwinBranch[ST, H, S], parent: Step[ST, H, S]) => new AndBranching(b, branch, n, t, parent) with GlobalTwinBranchingStep[ST, H, S]
 }
 /** Factory object for local AndBranching steps */
 object LocalAndBranching {
-  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.ASTNode, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
     (b: Boolean, branch: LocalTwinBranch[ST, H, S], parent: Step[ST, H, S]) => new AndBranching(b, branch, n, t, parent) with LocalTwinBranchingStep[ST, H, S]
 }
 
@@ -534,7 +534,7 @@ object LocalAndBranching {
 /** Branching step for And */
 case class AndBranching
   [B <: TwinBranch[ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-  (b: Boolean, branch: B, n: ast.ASTNode, t: Term, parent: Step[ST, H, S])
+  (b: Boolean, branch: B, n: ast.Node, t: Term, parent: Step[ST, H, S])
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =

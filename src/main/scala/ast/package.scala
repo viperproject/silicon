@@ -2,7 +2,7 @@ package semper
 package silicon
 
 package object ast {
-  type ASTNode = sil.ast.Node with sil.ast.Positioned
+  type Node = sil.ast.Node with sil.ast.Positioned
 
   type SourcePosition = sil.ast.Position
   val NoPosition = sil.ast.NoPosition
@@ -12,13 +12,11 @@ package object ast {
   type Method = sil.ast.Method
   type Function = sil.ast.FuncLike
   type ProgramFunction = sil.ast.Function
-  type DomainFunction = sil.ast.DomainFunc
   type Predicate = sil.ast.Predicate
   type Field = sil.ast.Field
-  type Domain = sil.ast.Domain
-  val Domain = sil.ast.Domain
   type Variable = sil.ast.AbstractLocalVar
   val Variable = sil.ast.AbstractLocalVar
+  type Typed = sil.ast.Typed
   type Expression = sil.ast.Exp
   type PermissionExpression = sil.ast.PermExp
 
@@ -134,12 +132,6 @@ package object ast {
   type Forall = sil.ast.Forall
   val Forall = sil.ast.Forall
 
-  type DomainFuncApp = sil.ast.DomainFuncApp
-  val DomainFuncApp = sil.ast.DomainFuncApp
-
-  type CFGBlock = sil.ast.Block
-  type CFGEdge = sil.ast.Edge
-
   type Statement = sil.ast.Stmt
   type Assignment = sil.ast.LocalVarAssign
   val Assignment = sil.ast.LocalVarAssign
@@ -163,6 +155,17 @@ package object ast {
   val ConstrainFreshARP = sil.ast.FreshReadPerm
   type While = sil.ast.While
   val While = sil.ast.While
+
+  type Domain = sil.ast.Domain
+  val Domain = sil.ast.Domain
+  type DomainMember = sil.ast.DomainMember
+  type DomainFunction = sil.ast.DomainFunc
+  type DomainAxiom = sil.ast.DomainAxiom
+  type DomainFuncApp = sil.ast.DomainFuncApp
+  val DomainFuncApp = sil.ast.DomainFuncApp
+
+  type CFGBlock = sil.ast.Block
+  type CFGEdge = sil.ast.Edge
 
   type Type = sil.ast.Type
   type TypeVar = sil.ast.TypeVar

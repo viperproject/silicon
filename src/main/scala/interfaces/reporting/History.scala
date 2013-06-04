@@ -196,7 +196,7 @@ trait Step
   def σPost_= (σ: S)
   
   /** The AST node associated with the step */
-  def node: ast.ASTNode
+  def node: ast.Node
   
   /** The branch in which the step was created */
   def branch: Branch[ST, H, S]

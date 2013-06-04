@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import decider.Z3ProverStdIO
+import semper.silicon.decider.{PreambleFileEmitter, Z3ProverStdIO}
 import scala.io.Source
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
@@ -189,6 +189,8 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
              stateFactory: StateFactory[ST, H, S],
              symbolConverter: SymbolConvert,
+             preambleEmitter: PreambleFileEmitter[_],
+             sequenceEmitter: SequenceEmitter,
              domainEmitter: DomainEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
@@ -208,6 +210,8 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
+  /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
+  /*protected*/ def sequenceEmitter: SequenceEmitter
   /*protected*/ def domainEmitter: DomainEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
@@ -216,7 +220,9 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     ev.program = program
 
-    val sequenceTypes = collectSequenceTypes(program)
+//    val sequenceTypes = collectSequenceTypes(program)
+    sequenceEmitter.reset()
+    sequenceEmitter.analyze(program)
 
     domainEmitter.reset()
     domainEmitter.analyze(program)
@@ -229,17 +235,18 @@ trait AbstractVerifier[ST <: Store[ST],
 
     emitStaticPreamble()
 
-    emitSequenceSorts(sequenceTypes)
+    sequenceEmitter.declareSorts()
     domainEmitter.declareSorts()
 
-    emitSequenceDeclarations(sequenceTypes)
+    sequenceEmitter.declareSymbols()
     domainEmitter.declareSymbols()
     domainEmitter.emitUniquenessAssumptions()
 
-    emitSequenceAxioms(sequenceTypes)
+    sequenceEmitter.emitAxioms()
     domainEmitter.emitAxioms()
 
     emitSortWrappers(domainEmitter.sorts)
+    emitSortWrappers(sequenceEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -274,43 +281,6 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.declare(terms.FunctionDecl(symbolConverter.toFunction(f))))
   }
 
-  private def collectSequenceTypes(program: ast.Program): Set[ast.types.Seq] = {
-    var sequenceTypes = Set[ast.types.Seq]()
-
-    program visit {
-      case t: sil.ast.Typed => t.typ match {
-        case s: ast.types.Seq => sequenceTypes += s
-        case _ => /* Ignore other types */
-      }
-    }
-
-    sequenceTypes
-  }
-
-  private def emitSequenceSorts(types: Set[ast.types.Seq]) {
-    types foreach (st => decider.prover.declare(terms.SortDecl(symbolConverter.toSort(st))))
-  }
-
-  private def emitSequenceDeclarations(types: Set[ast.types.Seq]) {
-    types foreach {st =>
-      val sort = symbolConverter.toSort(st.elementType)
-      pushSortParametricAssertions("/sequences_dafny_declarations.smt2", sort)
-    }
-
-    if (types contains ast.types.Seq(ast.types.Int))
-      pushSortParametricAssertions("/sequences_dafny_declarations_int.smt2", sorts.Int)
-  }
-
-  private def emitSequenceAxioms(types: Set[ast.types.Seq]) {
-    types foreach {st =>
-      val sort = symbolConverter.toSort(st.elementType)
-      pushSortParametricAssertions("/sequences_dafny_axioms.smt2", sort)
-    }
-
-    if (types contains ast.types.Seq(ast.types.Int))
-      pushSortParametricAssertions("/sequences_dafny_axioms_int.smt2", sorts.Int)
-  }
-
   private def emitSortWrappers(ss: Set[Sort]) {
     decider.prover.logComment("")
     decider.prover.logComment("Declaring additional sort wrappers")
@@ -326,54 +296,10 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitStaticPreamble() {
-//    decider.prover.logComment("-" * 60)
-//    decider.prover.logComment("Start static preamble")
-//    decider.prover.logComment("-" * 60)
-
     decider.prover.logComment("\n; /preamble.smt2")
-    pushAssertions(readPreamble("/preamble.smt2"))
-
-//    decider.prover.logComment("-" * 60)
-//    decider.prover.logComment("End static preamble")
-//    decider.prover.logComment("-" * 60)
+    preambleEmitter.emitPreamble("/preamble.smt2")
 
     decider.pushScope()
-  }
-
-  private def readPreamble(resource: String): List[String] = {
-    val in = getClass.getResourceAsStream(resource)
-
-    var lines =
-      Source.fromInputStream(in).getLines().toList.filterNot(s =>
-        s.trim == "" || s.trim.startsWith(";"))
-
-    var assertions = List[String]()
-
-    /* Multi-line assertions are concatenated into a single string and
-      * send to the prover, because prover.write(str) expects Z3 to reply
-      * to 'str' with success/error. But Z3 will only reply anything if 'str'
-      * is a complete assertion.
-      */
-    while (lines.nonEmpty) {
-      val part = (
-        lines.head
-          :: lines.tail.takeWhile(l => l.startsWith("\t") || l.startsWith("  ")))
-
-      lines = lines.drop(part.size)
-      assertions = part.mkString("\n") :: assertions
-    }
-
-    assertions.reverse
-  }
-
-  private def pushSortParametricAssertions(resource: String, sort: Sort) {
-    val lines = readPreamble(resource)
-    decider.prover.logComment(s"\n; $resource [$sort]")
-    pushAssertions(lines.map(_.replace("$S$", decider.prover.termConverter.convert(sort))))
-  }
-
-  private def pushAssertions(lines: List[String]) {
-    lines foreach decider.prover.asInstanceOf[Z3ProverStdIO].write
   }
 }
 
@@ -388,6 +314,8 @@ class DefaultVerifierFactory[ST <: Store[ST],
              decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
              stateFactory: StateFactory[ST, H, S],
              symbolConverter: SymbolConvert,
+             preambleEmitter: PreambleFileEmitter[_],
+             sequenceEmitter: SequenceEmitter,
              domainEmitter: DomainEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
@@ -397,8 +325,8 @@ class DefaultVerifierFactory[ST <: Store[ST],
              traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
     new DefaultVerifier[ST, H, PC, S, TV](
-                        config, decider, stateFactory, symbolConverter, domainEmitter, chunkFinder, stateFormatter,
-                        heapMerger, stateUtils, bookkeeper, traceviewFactory)
+                        config, decider, stateFactory, symbolConverter, preambleEmitter, sequenceEmitter, domainEmitter,
+                        chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper, traceviewFactory)
 
 }
 
@@ -409,6 +337,8 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
+      val preambleEmitter: PreambleFileEmitter[_],
+      val sequenceEmitter: SequenceEmitter,
 			val domainEmitter: DomainEmitter,
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
