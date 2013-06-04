@@ -54,7 +54,6 @@ class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[
   }
 
   def emitSortParametricAssertions(resource: String, sort: Sort) {
-    //    prover.logComment(s"\n; $resource [$sort]")
     emitPreamble(readSortParametricAssertions(resource, sort))
   }
 
