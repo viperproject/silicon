@@ -220,7 +220,32 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     ev.program = program
 
-//    val sequenceTypes = collectSequenceTypes(program)
+    emitPreamble(program)
+
+    val members = program.members.iterator
+
+    /* Verification can be parallelised by forking DefaultMemberVerifiers. */
+    var results: List[VerificationResult] = Nil
+
+    if (config.stopOnFirstError) {
+      /* Stops on first error */
+      while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
+        results = ev.verify(members.next) :: results
+      }
+
+      results = results.reverse
+    } else {
+      /* Verify members. Verification continues if errors are found, i.e.
+       * all members are verified regardless of previous errors.
+       * However, verification of a single member is aborted on first error.
+       */
+      results = members.map(ev.verify _).toList
+    }
+
+    results
+  }
+
+  private def emitPreamble(program: ast.Program) {
     sequenceEmitter.reset()
     sequenceEmitter.analyze(program)
 
@@ -252,28 +277,6 @@ trait AbstractVerifier[ST <: Store[ST],
     decider.prover.logComment("-" * 60)
 
     emitProgramFunctionDeclarations(program.functions)
-
-    val members = program.members.iterator
-
-    /* Verification can be parallelised by forking DefaultMemberVerifiers. */
-    var results: List[VerificationResult] = Nil
-
-    if (config.stopOnFirstError) {
-      /* Stops on first error */
-      while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = ev.verify(members.next) :: results
-      }
-
-      results = results.reverse
-    } else {
-      /* Verify members. Verification continues if errors are found, i.e.
-       * all members are verified regardless of previous errors.
-       * However, verification of a single member is aborted on first error.
-       */
-      results = members.map(ev.verify _).toList
-    }
-
-    results
   }
 
   private def emitProgramFunctionDeclarations(fs: Seq[ast.ProgramFunction]) {
