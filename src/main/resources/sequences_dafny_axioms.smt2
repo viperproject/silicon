@@ -340,3 +340,92 @@
 		(= ($Seq.drop ($Seq.con xs ys) ($Seq.len xs)) ys))
 	:pattern (($Seq.con xs ys))
 	)))
+
+;axiom (forall<T> s: Seq_ T, i: int, v: T :: { Seq#Length(Seq#Update(s,i,v)) }
+;  0 <= i && i < Seq#Length(s) ==> Seq#Length(Seq#Update(s,i,v)) == Seq#Length(s));
+(assert (forall ((xs $Seq<$S$>) (i Int) (x $S$)) (!
+  (implies
+    (and
+      (<= 0 i)
+      (< i ($Seq.len xs)))
+    (=
+      ($Seq.len ($Seq.update xs i x))
+      ($Seq.len xs)))
+  :pattern (($Seq.len ($Seq.update xs i x)))
+  )))
+
+;axiom (forall<T> s: Seq_ T, i: int, v: T, n: int :: { Seq#Index(Seq#Update(s,i,v),n) }
+;  0 <= n && n < Seq#Length(s) ==>
+;       (i == n ==> Seq#Index(Seq#Update(s,i,v),n) == v)
+;    && (i != n ==> Seq#Index(Seq#Update(s,i,v),n) == Seq#Index(s,n)));
+(assert (forall ((xs $Seq<$S$>) (i Int) (x $S$) (j Int)) (!
+  (implies
+    (and
+      (<= 0 j)
+      (< j ($Seq.len xs)))
+    (and
+      (implies
+        (= i j)
+        (= ($Seq.at ($Seq.update xs i x) j) x))
+      (implies
+        (not (= i j))
+        (= ($Seq.at ($Seq.update xs i x) j) ($Seq.at xs j)))))
+  :pattern (($Seq.at ($Seq.update xs i x) j))
+  )))
+
+; Commutativity of Take and Drop with Update.
+
+;axiom (forall<T> s: Seq_ T, i: int, v: T, n: int :: { Seq#Take(Seq#Update(s, i, v), n) }
+;  0 <= i && i < n && n <= Seq#Length(s) ==> Seq#Take(Seq#Update(s, i, v), n) == Seq#Update(Seq#Take(s, n), i, v));
+(assert (forall ((xs $Seq<$S$>) (i Int) (x $S$) (j Int)) (!
+  (implies
+    (and
+      (<= 0 i)
+      (< i j)
+      (<= j ($Seq.len xs)))
+    (=
+      ($Seq.take ($Seq.update xs i x) j)
+      ($Seq.update ($Seq.take xs j) i x)))
+  :pattern (($Seq.take ($Seq.update xs i x) j))
+  )))
+
+;axiom (forall<T> s: Seq_ T, i: int, v: T, n: int :: { Seq#Take(Seq#Update(s, i, v), n) }
+;  n <= i && i < Seq#Length(s) ==> Seq#Take(Seq#Update(s, i, v), n) == Seq#Take(s, n));
+(assert (forall ((xs $Seq<$S$>) (i Int) (x $S$) (j Int)) (!
+  (implies
+    (and
+      (<= j i)
+      (< i ($Seq.len xs)))
+    (=
+      ($Seq.take ($Seq.update xs i x) j)
+      ($Seq.take xs j)))
+  :pattern (($Seq.take ($Seq.update xs i x) j))
+  )))
+
+;axiom (forall<T> s: Seq_ T, i: int, v: T, n: int :: { Seq#Drop(Seq#Update(s, i, v), n) }
+;  0 <= n && n <= i && i < Seq#Length(s) ==> Seq#Drop(Seq#Update(s, i, v), n) == Seq#Update(Seq#Drop(s, n), i-n, v) );
+(assert (forall ((xs $Seq<$S$>) (i Int) (x $S$) (j Int)) (!
+  (implies
+    (and
+      (<= 0 j)
+      (<= j i)
+      (< i ($Seq.len xs)))
+    (=
+      ($Seq.drop ($Seq.update xs i x) j)
+      ($Seq.update ($Seq.drop xs j) (- i j) x)))
+  :pattern (($Seq.drop ($Seq.update xs i x) j))
+  )))
+
+;axiom (forall<T> s: Seq_ T, i: int, v: T, n: int :: { Seq#Drop(Seq#Update(s, i, v), n) }
+;  0 <= i && i < n && n < Seq#Length(s) ==> Seq#Drop(Seq#Update(s, i, v), n) == Seq#Drop(s, n));
+(assert (forall ((xs $Seq<$S$>) (i Int) (x $S$) (j Int)) (!
+  (implies
+    (and
+      (<= 0 i)
+      (<= i j)
+      (< j ($Seq.len xs)))
+    (=
+      ($Seq.drop ($Seq.update xs i x) j)
+      ($Seq.drop xs j)))
+  :pattern (($Seq.drop ($Seq.update xs i x) j))
+  )))

@@ -157,6 +157,9 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case SeqIn(t0, t1) =>
       "($Seq.in " + convert(t0) + " " + convert(t1) + ")"
 
+    case SeqUpdate(t0, t1, t2) =>
+      s"($$Seq.update ${convert(t0)} ${convert(t1)} ${convert(t2)})"
+
     /* Domains */
 
     case DomainFApp(f, ts) =>

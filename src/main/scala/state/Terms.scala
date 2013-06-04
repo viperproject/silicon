@@ -770,6 +770,33 @@ object SeqIn extends ((Term, Term) => BooleanTerm) {
   def unapply(si: SeqIn) = Some((si.p0, si.p1))
 }
 
+/*case*/ class SeqUpdate(val t0: Term, val t1: Term, val t2: Term) extends SeqTerm {
+  val sort = t0.sort.asInstanceOf[sorts.Seq]
+  val elementsSort = sort.elementsSort
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case su: SeqUpdate if su.getClass.eq(this.getClass) => t0 == su.t0 && t1 == su.t1 && t2 == su.t2
+      case _ => false
+    })
+
+  override def hashCode(): Int = silicon.utils.generateHashCode(t0, t1, t2)
+
+  override val toString = s"$t0[$t1] := $t2".format(t0, t1, t2)
+}
+
+object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
+  def apply(t0: Term, t1: Term, t2: Term) = {
+    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+    utils.assertSort(t1, "second operand", sorts.Int)
+    utils.assertSort(t2, "third operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
+
+    new SeqUpdate(t0, t1, t2)
+  }
+
+  def unapply(su: SeqUpdate) = Some((su.t0, su.t1, su.t2))
+}
+
 /* Domains */
 
 //case class DomainFApp(function: Function, snapshot: Term, tArgs: Seq[Term]/*, sort: Sort*/) extends Term {

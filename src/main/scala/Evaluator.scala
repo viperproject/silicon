@@ -567,6 +567,10 @@ trait DefaultEvaluator[
       case sil.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
       case sil.ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c, tv)(Q)
 
+      case sil.ast.SeqUpdate(e0, e1, e2) =>
+        evals2(σ, List(e0, e1, e2), Nil, pve, c, tv)((ts, c1) =>
+          Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
+
       case sil.ast.ExplicitSeq(es) =>
         evals2(σ, es.reverse, Nil, pve, c, tv)((tEs, c1) => {
           val tSeq =

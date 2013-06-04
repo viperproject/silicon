@@ -491,12 +491,11 @@ class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTran
       case sil.ast.SeqTake(e0, e1) => terms.SeqTake(f(e0), f(e1))
       case sil.ast.EmptySeq(typ) => terms.SeqNil(toSort(typ))
       case sil.ast.RangeSeq(e0, e1) => terms.SeqRanged(f(e0), f(e1))
+      case sil.ast.SeqUpdate(e0, e1, e2) => terms.SeqUpdate(f(e0), f(e1), f(e2))
 
       case sil.ast.ExplicitSeq(es) =>
         es.tail.foldLeft[terms.SeqTerm](terms.SeqSingleton(f(es.head)))((tSeq, e) =>
             terms.SeqAppend(terms.SeqSingleton(f(e)), tSeq))
-
-      case _: sil.ast.SeqUpdate => ???
 
       case   _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation

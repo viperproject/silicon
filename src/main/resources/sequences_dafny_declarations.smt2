@@ -21,3 +21,5 @@
 (declare-fun $Seq.drop ($Seq<$S$> Int) $Seq<$S$>)
 ; function Seq#Range(min: int, max: int) returns (Seq int);
 ; (declare-fun $Seq.rng (Int Int) Int)
+; function Seq#Update<T>(Seq_ T, int, T): Seq_ T;
+(declare-fun $Seq.update ($Seq<$S$> Int $S$) $Seq<$S$>)
