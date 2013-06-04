@@ -8,6 +8,8 @@ package object utils {
 		else
 			it.map(f).reduceLeft((t1, t2) => op(t1, t2))
 
+  /* Take from scala -print when working with case classes. */
+  @inline
   def generateHashCode(xs: Any*) = {
     var code = 0
 
