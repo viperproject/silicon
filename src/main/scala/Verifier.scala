@@ -350,13 +350,10 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 			val bookkeeper: Bookkeeper,
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
 		extends AbstractVerifier[ST, H, PC, S, TV]
-			with Logging
-{
+			 with Logging {
 
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
-	val ev = new DefaultElementVerifier(config, decider,
-																		 stateFactory, symbolConverter, chunkFinder,
-																		 stateFormatter, heapMerger, stateUtils, bookkeeper,
-                                     contextFactory, traceviewFactory)
+	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, chunkFinder, stateFormatter,
+                                      heapMerger, stateUtils, bookkeeper, contextFactory, traceviewFactory)
 }
