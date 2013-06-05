@@ -1,7 +1,7 @@
 import sbt._
 import Keys._
 import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
-import de.oakgrove.SbtHgId.hgIdData
+import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
 
 object SiliconBuild extends Build {
 
@@ -9,6 +9,7 @@ object SiliconBuild extends Build {
 
   lazy val baseSettings = (
        Defaults.defaultSettings
+	  ++ hgIdSettings
 	  ++ brandSettings
     ++ Seq(
           organization := "semper",
@@ -29,14 +30,13 @@ object SiliconBuild extends Build {
 					BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
 					BrandKeys.data <+= name(Val("sbtProjectName", _)),
 					BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
-					BrandKeys.data += {
-						val hg = hgIdData()
-						BrandObject("hg", """
+					BrandKeys.data <+= HgIdKeys.projectId { hgid =>
+						BrandObject("hgid", """
 							val version = "%s"
 							val id = "%s"
 							val branch = "%s"
 							val tags = "%s"
-							""".format(hg.version, hg.id, hg.branch, hg.tags))},
+							""".format(hgid.version, hgid.id, hgid.branch, hgid.tags))},
 					sourceGenerators in Compile <+= BrandKeys.generateDataFile))
 
   /* Projects */

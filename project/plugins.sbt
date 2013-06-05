@@ -1,1 +1,1 @@
-resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.4.0")addSbtPlugin("de.oakgrove" % "sbt-hgid" % "latest.integration")addSbtPlugin("de.oakgrove" % "sbt-brand" % "latest.integration")
+resolvers += "Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.4.0")addSbtPlugin("de.oakgrove" % "sbt-hgid" % "0.2")addSbtPlugin("de.oakgrove" % "sbt-brand" % "0.1")

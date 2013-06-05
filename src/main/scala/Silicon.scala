@@ -31,7 +31,7 @@ import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 trait SiliconConstants {
   val name = brandingData.sbtProjectName
   val version = brandingData.sbtProjectVersion
-  val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hg.version} ${brandingData.hg.branch} ${brandingData.buildDate}"
+  val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
   val z3ExeEnvironmentVariable = "Z3PATH"
   val expectedZ3Version = "4.3.2"
