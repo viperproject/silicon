@@ -1,6 +1,4 @@
-.. image:: docs/signet_1024x288.png
-   :width: 1024px
-   :height: 288px
+.. image:: https://bitbucket.org/semperproject/silicon/raw/tip/docs/logo_name.png
    :alt: Silicon logo
    :align: center
 
