@@ -49,25 +49,25 @@ class DefaultSequenceEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/sequences_dafny_declarations.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sequences_dafny_declarations.smt2", s.elementsSort)
+      prover.logComment(s"/sequences_declarations_dafny.smt2 [${s.elementsSort}]")
+      preambleFileEmitter.emitSortParametricAssertions("/sequences_declarations_dafny.smt2", s.elementsSort)
     }
 
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
-      prover.logComment(s"/sequences_dafny_declarations.smt2 [Int]")
-      preambleFileEmitter.emitSortParametricAssertions("/sequences_dafny_declarations_int.smt2", terms.sorts.Int)
+      prover.logComment("/sequences_int_declarations_dafny.smt2")
+      preambleFileEmitter.emitSortParametricAssertions("/sequences_int_declarations_dafny.smt2", terms.sorts.Int)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/sequences_dafny_axioms.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sequences_dafny_axioms.smt2", s.elementsSort)
+      prover.logComment(s"/sequences_axioms_dafny.smt2 [${s.elementsSort}]")
+      preambleFileEmitter.emitSortParametricAssertions("/sequences_axioms_dafny.smt2", s.elementsSort)
     }
 
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
-      prover.logComment(s"/sequences_dafny_axioms_int.smt2 [Int]")
-      preambleFileEmitter.emitSortParametricAssertions("/sequences_dafny_axioms_int.smt2", terms.sorts.Int)
+      prover.logComment("/sequences_int_axioms_dafny.smt2")
+      preambleFileEmitter.emitSortParametricAssertions("/sequences_int_axioms_dafny.smt2", terms.sorts.Int)
     }
   }
 }
