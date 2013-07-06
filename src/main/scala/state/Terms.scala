@@ -43,8 +43,15 @@ object sorts {
   object Unit extends Sort { override val toString = "()" }
 
   case class Seq(val elementsSort: Sort) extends Sort {
-//    override val sortParameters = elementsSort :: Nil
     override val toString = "Seq[%s]".format(elementsSort)
+  }
+
+  case class Set(val elementsSort: Sort) extends Sort {
+    override val toString = "Set[%s]".format(elementsSort)
+  }
+
+  case class Multiset(val elementsSort: Sort) extends Sort {
+    override val toString = "Multiset[%s]".format(elementsSort)
   }
 
   case class Arrow(from: Sort, to: Sort) extends Sort {

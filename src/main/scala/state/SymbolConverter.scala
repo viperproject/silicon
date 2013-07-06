@@ -22,7 +22,10 @@ class DefaultSymbolConvert extends SymbolConvert {
     case ast.types.Int => sorts.Int
     case ast.types.Perm => sorts.Perm
     case ast.types.Ref => sorts.Ref
+
     case ast.types.Seq(elementType) => sorts.Seq(toSort(elementType))
+    case ast.types.Set(elementType) => sorts.Set(toSort(elementType))
+    case ast.types.Multiset(elementType) => sorts.Multiset(toSort(elementType))
 
     case dt: ast.types.DomainType =>
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)

@@ -13,6 +13,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
     case sorts.Seq(elementSort) => "$Seq<" + convert(elementSort) + ">"
+    case sorts.Set(elementSort) => "$Set<" + convert(elementSort) + ">"
+    case sorts.Multiset(elementSort) => "$Multiset<" + convert(elementSort) + ">"
     case sorts.UserSort(id) => sanitizeSymbol(id)
     case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
     case sorts.Unit => ""

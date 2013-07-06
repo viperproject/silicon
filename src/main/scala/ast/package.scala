@@ -179,5 +179,9 @@ package object ast {
     val Ref = semper.sil.ast.Ref
     type Seq = semper.sil.ast.SeqType
     val Seq = semper.sil.ast.SeqType
+    type Set = semper.sil.ast.SetType
+    val Set = semper.sil.ast.SetType
+    type Multiset = semper.sil.ast.MultisetType
+    val Multiset = semper.sil.ast.MultisetType
   }
 }
