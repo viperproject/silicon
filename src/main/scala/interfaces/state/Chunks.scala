@@ -4,9 +4,15 @@ package interfaces.state
 
 import state.terms.{Term, FractionalPermissions}
 
+trait ChunkIdentifier {
+  def name: String
+  def args: List[Term]
+}
+
 trait Chunk {
-	def rcvr: Term
-	def id: String
+  def name: String
+  def args: List[Term]
+  def id: ChunkIdentifier
 }
 
 trait PermissionChunk[P <: FractionalPermissions[P], CH <: PermissionChunk[P, CH]] extends Chunk {

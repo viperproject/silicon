@@ -430,6 +430,9 @@ class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTran
         es.tail.foldLeft[terms.SeqTerm](terms.SeqSingleton(f(es.head)))((tSeq, e) =>
             terms.SeqAppend(terms.SeqSingleton(f(e)), tSeq))
 
+      case _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet =>
+        sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
+
       case   _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation
            | _: ast.FuncApp | _: ast.CurrentPerm =>

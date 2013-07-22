@@ -13,9 +13,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.{/*Message,*/ TraceView}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{DirectFieldChunk,
-    DirectPredicateChunk, SymbolConvert, DirectChunk, NestedFieldChunk,
-    NestedPredicateChunk}
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
 
@@ -208,9 +206,10 @@ trait DefaultExecutor[ST <: Store[ST],
         val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
-            eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
-              withChunk[DirectChunk](σ.h, tRcvr, id, FullPerm(), fl, pve, c2, tv)(fc =>
-                Q(σ \- fc \+ DirectFieldChunk(tRcvr, id, tRhs, fc.perm), c2)))
+            eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+              val id = FieldChunkIdentifier(tRcvr, field.name)
+              withChunk[DirectChunk](σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
+                Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
           else
             Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
 
@@ -290,14 +289,15 @@ trait DefaultExecutor[ST <: Store[ST],
 //        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
 //        Q(σ \+ (v, fresh(v)), c)
 
-      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm)) =>
+      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), ePerm)) =>
         val pve = FoldFailed(fold)
-        eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
+        evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
 //          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               if (decider.isPositive(tPerm)) {
 //                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
-                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
+//                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
+                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
 //                  val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
                   val ncs = dcs.map{_ match {
@@ -323,12 +323,13 @@ trait DefaultExecutor[ST <: Store[ST],
                   *
                   * TODO: Use heap merge function here!
                   */
-                  val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, tRcvr, predicate.name) match {
+                  val id = PredicateChunkIdentifier(predicate.name, tArgs)
+                  val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, id) match {
                     case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
                     case None => (σ1.h, True(), tPerm)}
 //                    val c3a = c3.setCurrentRdPerms(c2.currentRdPerms)
                   assume(t)
-                  val h1 = (h + DirectPredicateChunk(tRcvr, predicate.name, snap, tPerm1, ncs)
+                  val h1 = (h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs)
                               + H(ncs))
                   Q(σ \ h1, c3)})}
               else
@@ -336,16 +337,15 @@ trait DefaultExecutor[ST <: Store[ST],
 //          else
 //            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
-      case unfold @ ast.Unfold(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm)) =>
-
+      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), ePerm)) =>
         val pve = UnfoldFailed(unfold)
-        eval(σ, eRcvr, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tRcvr, c1) =>
+        evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
 //          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               if (decider.isPositive(tPerm)) {
 //                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
-                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
+//                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
+                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
 //                    val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
                   produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {

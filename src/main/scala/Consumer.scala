@@ -4,11 +4,11 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, Chunk}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
+import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 
@@ -132,13 +132,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
-      /* Access to fields or predicates */
-      case ast.AccessPredicate(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
+      /* Field access predicates */
+//      case ast.AccessPredicate(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
+      case ast.FieldAccessPredicate(loc @ ast.FieldLocation(eRcvr, field), perm) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-              if (decider.isPositive(tPerm))
-                consumePermissions(σ, h, p * tPerm, memloc, tRcvr, pve, c2, tv)((h1, ch, c3, results) =>
+              if (decider.isPositive(tPerm)) {
+                val id = FieldChunkIdentifier(tRcvr, field.name)
+                consumePermissions(σ, h, id, p * tPerm, loc, pve, c2, tv)((h1, ch, c3, results) =>
                   ch match {
                     case fc: DirectFieldChunk =>
                       val snap = fc.value.convert(sorts.Snap)
@@ -150,11 +152,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                         else
                           h1
-                      Q(h2, pc.snap, pc :: Nil, c3)})
+                      Q(h2, pc.snap, pc :: Nil, c3)})}
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv))
           else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv))
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(loc), c1, tv))
 
 //      case qe @ ast.Quantified(
 //                  ast.Exists(),
@@ -198,9 +200,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   private def consumePermissions(σ: S,
                                  h: H,
+                                 id: ChunkIdentifier,
                                  pLoss: P,
+                                 // tRcvr: Term,
                                  memloc: ast.MemoryLocation,
-                                 tRcvr: Term,
                                  pve: PartialVerificationError,
                                  c: C,
                                  tv: TV)
@@ -208,19 +211,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                      => VerificationResult)
                                 :VerificationResult = {
 
-    val eRcvr = memloc.rcv
-    val id = memloc.loc.name
+//    val eRcvr = memloc.rcv
+//    val id = memloc.loc.name
 
     /* TODO: assert that pLoss > 0 */
 
     if (consumeExactRead(pLoss, c)) {
-      withChunk[DirectChunk](h, tRcvr, id, pLoss, memloc, pve, c, tv)(ch => {
+      withChunk[DirectChunk](h, id, pLoss, memloc, pve, c, tv)(ch => {
         if (decider.assertNoAccess(ch.perm - pLoss)) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      withChunk[DirectChunk](h, tRcvr, id, memloc, pve, c, tv)(ch => {
+      withChunk[DirectChunk](h, id, memloc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }

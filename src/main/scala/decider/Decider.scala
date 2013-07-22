@@ -8,8 +8,7 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.DependencyNotFoundError
 import sil.verifier.reasons.{NonPositivePermission}
 import interfaces.decider.{Decider, Prover, Unsat}
-import interfaces.state.{Store, Heap, PathConditions, State, PathConditionsFactory, Chunk,
-PermissionChunk}
+import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory, Chunk, PermissionChunk}
 import interfaces.reporting.Context
 import semper.silicon.state.{DirectChunk, SymbolConvert}
 import state.terms._
@@ -224,14 +223,14 @@ class DefaultDecider[ST <: Store[ST],
     case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm))
   }
 
-	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean = (
-		getChunk[DirectChunk](h, rcvr, id)
-      .map(c => assertReadAccess(c.perm))
+	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean = (
+		getChunk[DirectChunk](h, id)
+      .map(ch => assertReadAccess(ch.perm))
       .getOrElse(false))
 
-	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean = (
-    getChunk[DirectChunk](h, rcvr, id)
-      .map(c => assertWriteAccess(c.perm))
+	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean = (
+    getChunk[DirectChunk](h, id)
+      .map(ch => assertWriteAccess(ch.perm))
       .getOrElse(false))
 
 	def isPositive(perm: P) = perm match {
@@ -347,12 +346,12 @@ class DefaultDecider[ST <: Store[ST],
 //
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, rcvr: Term, id: String): Option[CH] =
+	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
 //    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)
   		getChunk(
-        h.values collect {case c if manifest[CH].runtimeClass.isInstance(c) && c.id == id =>
-                            c.asInstanceOf[CH]},
-        rcvr)
+        h.values collect {case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name =>
+                            ch.asInstanceOf[CH]},
+        id)
 
 
 	/* The difference between caching and not caching runs in terms of the number
@@ -391,24 +390,25 @@ class DefaultDecider[ST <: Store[ST],
 	// }
 
 	/* Non-caching version */
-	private def getChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term): Option[CH] =
-		findChunk(chunks, rcvr)
+	private def getChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
+		findChunk(chunks, id)
 
-	private def findChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term) = (
-					 findChunkLiterally(chunks, rcvr)
-		orElse findChunkWithProver(chunks, rcvr))
+	private def findChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) = (
+					 findChunkLiterally(chunks, id)
+		orElse findChunkWithProver(chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term) =
-		chunks find (c => c.rcvr == rcvr)
+	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+		chunks find (ch => ch.args == id.args)
 
   lazy val fcwpLog =
     common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "findChunkWithProver.txt"))
 
-	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], rcvr: Term): Option[CH] = {
-    fcwpLog.println(rcvr)
+	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
+    fcwpLog.println(id)
 		// prover.logComment("Chunk lookup ...")
 		// prover.enableLoggingComments(false)
-		val chunk = chunks find (c => assert(c.rcvr === rcvr))
+    import silicon.state.terms.utils.BigAnd
+		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 		// prover.enableLoggingComments(true)
 
 		chunk

@@ -2,8 +2,8 @@ package semper
 package silicon
 package interfaces.decider
 
-import sil.verifier.{DependencyNotFoundError, ErrorReason}
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk}
+import sil.verifier.{DependencyNotFoundError}
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk, ChunkIdentifier}
 import interfaces.reporting.{Context}
 import state.terms.{Term, Var, FractionalPermissions, Sort}
 import silicon.utils.notNothing._
@@ -24,13 +24,13 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assume(φ: Term)
 	def assume(φ: Set[Term])
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, rcvr: Term, id: String): Option[CH]
+	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH]
 
 	def assertNoAccess(p: P): Boolean
 	def assertReadAccess(p: P): Boolean
-	def assertReadAccess(h: H, rcvr: Term, id: String): Boolean
+	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean
 	def assertWriteAccess(p: P): Boolean
-	def assertWriteAccess(h: H, rcvr: Term, id: String): Boolean
+	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean
 
 	def isPositive(p: P): Boolean
 	def isAsPermissive(perm: P, other: P): Boolean

@@ -11,7 +11,7 @@ package object utils {
                                          : Set[Term] = (
 
        σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
-    ++ σ.h.values.map(_.rcvr)
+    ++ σ.h.values.flatMap(_.args)
     ++ σ.h.values.collect{case fc: FieldChunk if fc.value.sort == terms.sorts.Ref => fc.value}
   ).toSet
 }

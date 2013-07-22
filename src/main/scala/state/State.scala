@@ -3,8 +3,7 @@ package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk,
-		StateFormatter, HeapMerger, PermissionChunk, StateFactory}
+import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapMerger, PermissionChunk, StateFactory}
 import interfaces.reporting.Context
 import interfaces.decider.Decider
 import ast.Variable
@@ -41,13 +40,13 @@ case class SetBackedHeap(private val chunks: Set[Chunk]) extends Heap[SetBackedH
 	val values = chunks /* Make sure that chunks is not modified! */
 	def empty = new SetBackedHeap()
 
-	def +(c: Chunk) = new SetBackedHeap(chunks + c)
+	def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
 	def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
 
-	def -(c: Chunk) = new SetBackedHeap(chunks - c)
+	def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
 
-  def -(rcvr: Term, id: String) =
-    new SetBackedHeap(chunks.filterNot(ch => ch.rcvr == rcvr && ch.id == id))
+  def -(id: ChunkIdentifier) =
+    new SetBackedHeap(chunks.filterNot(ch => ch.name == id.name && ch.args == id.args))
 }
 
 /* NOTE: The current map-based heap only works if (receiver, field)-pairs
@@ -223,7 +222,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 				 * ats: accumulating path conditions
 				 * c2: current chunk of the new heap h2
 				 */
-				(decider.getChunk[Chunk](ah, c2.rcvr, c2.id), c2) match {
+				(decider.getChunk[Chunk](ah, c2.id), c2) match {
 					case (Some(c1: DirectFieldChunk), c2: DirectFieldChunk) =>
 						val c3 = c1 + c2.perm
 						val t1 = if (c1.value == c2.value) terms.True()
@@ -237,7 +236,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 						(ah - c1 + c3, afcs, ats + tSnap)
 
 					case (Some(other), _) =>
-            sys.error("[DefaultHeapUtils.merge] Chunks with t = %s, id = %s and types c1 = %s, c2 = %s were not expected to appear in heaps h1 = %s, h2 = %s.".format(c2.rcvr, c2.id, other.getClass.getName, c2.getClass.getName, stateFormatter.format(h1), stateFormatter.format(h2)))
+            sys.error("[DefaultHeapUtils.merge] Chunks with id = %s and types c1 = %s, c2 = %s were not expected to appear in heaps h1 = %s, h2 = %s.".format(c2.id, other.getClass.getName, c2.getClass.getName, stateFormatter.format(h1), stateFormatter.format(h2)))
 
 					case (None, c2: DirectFieldChunk) => (ah + c2, c2 :: afcs, ats)
 					case (None, _) => (ah + c2, afcs, ats)

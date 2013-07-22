@@ -3,7 +3,7 @@ package silicon
 package interfaces
 
 import sil.verifier.{VerificationError, PartialVerificationError}
-import state.{Store, Heap, State, Chunk}
+import state.{ChunkIdentifier, Store, Heap, State, Chunk}
 import reporting.{Context, TraceView}
 import silicon.state.terms.{Sort, Term, FractionalPermissions}
 
@@ -29,6 +29,10 @@ trait Evaluator[P <: FractionalPermissions[P],
 	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 					 (Q: (P, C) => VerificationResult)
            : VerificationResult
+
+  def withChunkIdentifier(σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+                         (Q: (ChunkIdentifier, C) => VerificationResult)
+                         : VerificationResult
 }
 
 trait Producer[P <: FractionalPermissions[P],

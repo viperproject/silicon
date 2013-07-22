@@ -140,14 +140,15 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val c = contextFactory.create(history.tree)
     val tv = traceviewFactory.create(history)
 
-    val vThis = predicate.formalArg.localVar
-    val tThis = fresh(vThis)
+//    val vThis = predicate.formalArg.localVar
+//    val tThis = fresh(vThis)
 
-    val γ = Γ(vThis -> tThis)
-    val σ = Σ(γ, Ø, Ø)
+//    val γ = Γ(vThis -> tThis)
+//    val γ = Γ(vThis -> tThis)
+    val σ = Σ(Ø, Ø, Ø)
 
     inScope {
-      assume(tThis !== terms.Null())
+//      assume(tThis !== terms.Null())
       produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
         Success[DefaultContext[ST, H, S], ST, H, S](c1))}
   }

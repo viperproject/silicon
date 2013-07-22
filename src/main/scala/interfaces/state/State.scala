@@ -28,7 +28,7 @@ trait Heap[S <: Heap[S]] {
 	def +(chunk: Chunk): S
 	def +(other: S): S
 	def -(chunk: Chunk): S
-	def -(rcvr: Term, id: String): S
+	def -(id: ChunkIdentifier): S
 }
 
 trait PathConditions[S <: PathConditions[S]] {

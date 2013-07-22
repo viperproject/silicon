@@ -9,10 +9,11 @@ import sil.verifier.reasons.{InsufficientPermission, DivisionByZero, ReceiverNul
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
+import interfaces.state.{ChunkIdentifier, Chunk, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
+    FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.{TraceView}
-import state.{SymbolConvert, DirectChunk}
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import utils.notNothing.NotNothing
@@ -153,17 +154,21 @@ trait DefaultEvaluator[
       case _: ast.EpsilonPerm =>
         Q(EpsilonPerm(), c)
 
-      case ast.CurrentPerm(ml) =>
-        evalMemoryLocation[DirectChunk](σ, ml, pve, c, tv)((result, c1) => result match {
-          case Right(Some(ch)) => Q(ch.perm, c1)
-          case Right(None) => Q(NoPerm(), c1)
-          case Left(failure) => failure})
+      case ast.CurrentPerm(memloc) =>
+        withChunkIdentifier(σ, memloc, pve, c, tv)((id, c1) =>
+          decider.getChunk[DirectChunk](σ.h, id) match {
+            case Some(ch) => Q(ch.perm, c1)
+            case None => Q(NoPerm(), c1)
+          })
 
-      case fr: ast.FieldLocation =>
-        evalMemoryLocation[FieldChunk](σ, fr, pve, c, tv)((result, c1) => result match {
-          case Right(Some(fc)) => Q(fc.value, c1)
-          case Right(None) => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fr), c1, tv)
-          case Left(failure) => failure})
+      case fl: ast.FieldLocation =>
+        val eRcvr = fl.rcv
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          if (decider.assert(tRcvr !== Null()))
+            withChunk[FieldChunk](σ.h, FieldChunkIdentifier(tRcvr, fl.loc.name), fl, pve, c1, tv)(fc =>
+              Q(fc.value, c1))
+          else
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -524,7 +529,7 @@ trait DefaultEvaluator[
                 Q(tFA, c3)}})})
 
       case ast.Unfolding(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eRcvr, predicate), ePerm),
+              acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), ePerm),
               eIn) =>
 
         val body = predicate.body
@@ -539,11 +544,12 @@ trait DefaultEvaluator[
           val c0a = c.incCycleCounter(id)
           evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
             if (decider.isPositive(tPerm))
-              eval(σ, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
                 consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-                  val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))
+//                  val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))
+                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                   /* Unfolding only effects the current heap */
-                  produce(σ1 \ insΓ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
+                  produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
                     val c4a = c4.decCycleCounter(id)
                     val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                     eval(σ3, eIn, pve, c4a, tv)(Q)})}))
@@ -580,6 +586,20 @@ trait DefaultEvaluator[
           Q(tSeq, c1)})
 		}
 	}
+
+  def withChunkIdentifier(σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+                         (Q: (ChunkIdentifier, C) => VerificationResult)
+                         : VerificationResult =
+
+    memloc match {
+      case ast.FieldLocation(eRcvr, field) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          Q(FieldChunkIdentifier(tRcvr, field.name), c1))
+
+      case ast.PredicateLocation(eArgs, predicate) =>
+        evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
+          Q(PredicateChunkIdentifier(predicate.name, tArgs), c1))
+    }
 
 	private def evalBinOp[T <: Term]
                        (σ: S,
@@ -629,20 +649,20 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private def evalMemoryLocation[CH <: Chunk : NotNothing : Manifest]
-                                (σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
-                                (Q: (Either[Failure[C, ST, H, S, TV], Option[CH]], C) => VerificationResult)
-                                : VerificationResult = {
-
-    val eRcvr = memloc.rcv
-    val id = memloc.loc.name
-
-    eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-      if (decider.assert(tRcvr !== Null()))
-        Q(Right(decider.getChunk[CH](σ.h, tRcvr, id)), c1)
-      else
-        Q(Left(Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv)), c1))
-  }
+//  private def evalMemoryLocation[CH <: Chunk : NotNothing : Manifest]
+//                                (σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+//                                (Q: (Either[Failure[C, ST, H, S, TV], Option[CH]], C) => VerificationResult)
+//                                : VerificationResult = {
+//
+//    val eRcvr = memloc.rcv
+//    val id = memloc.loc.name
+//
+//    eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+//      if (decider.assert(tRcvr !== Null()))
+//        Q(Right(decider.getChunk[CH](σ.h, tRcvr, id)), c1)
+//      else
+//        Q(Left(Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv)), c1))
+//  }
 
 	override def pushLocalState() {
 		fappCacheFrames = fappCacheFrames.push(fappCache)

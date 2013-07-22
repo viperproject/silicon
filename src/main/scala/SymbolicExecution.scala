@@ -8,7 +8,7 @@ import interfaces.{VerificationResult, Failure, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
     TwinBranch, LocalTwinBranch, Step}
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, PermissionChunk}
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, PermissionChunk, ChunkIdentifier}
 import state.terms._
 import state.terms.utils.{BigAnd, ¬}
 import state.DirectChunk
@@ -175,8 +175,9 @@ trait ChunkFinder[P <: FractionalPermissions[P],
 
 	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
-                rcvr: Term,
-                id: String,
+//                rcvr: Term,
+//                id: String,
+                id: ChunkIdentifier,
                 memloc: ast.MemoryLocation,
                 pve: PartialVerificationError,
                 c: C,
@@ -189,8 +190,9 @@ trait ChunkFinder[P <: FractionalPermissions[P],
    */
   def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
-                rcvr: Term,
-                id: String,
+//                rcvr: Term,
+//                id: String,
+                id: ChunkIdentifier,
                 p: P,
                 memloc: ast.MemoryLocation,
                 ve: PartialVerificationError,
@@ -212,8 +214,9 @@ class DefaultChunkFinder[ST <: Store[ST],
 
 	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
-                rcvr: Term,
-                id: String,
+//                rcvr: Term,
+//                id: String,
+                id: ChunkIdentifier,
                 memloc: ast.MemoryLocation,
                 pve: PartialVerificationError,
                 c: C,
@@ -221,7 +224,7 @@ class DefaultChunkFinder[ST <: Store[ST],
 							 (Q: CH => VerificationResult)
                : VerificationResult = {
 
-		decider.getChunk[CH](h, rcvr, id) match {
+		decider.getChunk[CH](h, id) match {
 			case Some(c) /* if manifest[CH].erasure.isInstance(c) */ =>
         Q(c)
 
@@ -244,8 +247,9 @@ class DefaultChunkFinder[ST <: Store[ST],
 
 	def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
-                rcvr: Term,
-                id: String,
+//                rcvr: Term,
+//                id: String,
+                id: ChunkIdentifier,
                 p: DefaultFractionalPermissions,
                 memloc: ast.MemoryLocation,
                 pve: PartialVerificationError,
@@ -254,7 +258,7 @@ class DefaultChunkFinder[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult =
 
-		withChunk[CH](h, rcvr, id, memloc, pve, c, tv)(chunk => {
+		withChunk[CH](h, id, memloc, pve, c, tv)(chunk => {
 			if (decider.isAsPermissive(chunk.perm, p))
 				Q(chunk)
 			else
