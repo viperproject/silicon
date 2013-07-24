@@ -1,5 +1,6 @@
 package semper
 package silicon
+package theories
 
 import scala.language.postfixOps
 import collection.mutable.{HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}

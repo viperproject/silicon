@@ -1,5 +1,6 @@
 package semper
 package silicon
+package theories
 
 import interfaces.PreambleEmitter
 import interfaces.decider.Prover

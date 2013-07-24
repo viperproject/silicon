@@ -9,15 +9,13 @@ import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Intern
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
+import interfaces.state.factoryUtils.Ø
+import interfaces.reporting.{ContextFactory, TraceView, TraceViewFactory}
 import state.{terms, SymbolConvert, DirectChunk}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
-import interfaces.state.factoryUtils.Ø
+import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.{DefaultContext, DefaultContextFactory, Bookkeeper}
-import reporting.{DefaultHistory, Description}
-import interfaces.reporting.{ContextFactory, TraceView}
-import reporting.BranchingDescriptionStep
-import interfaces.reporting.TraceViewFactory
-import reporting.ScopeChangingDescription
+import reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription}
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
@@ -198,6 +196,7 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              preambleEmitter: PreambleFileEmitter[_],
              sequencesEmitter: SequencesEmitter,
              setsEmitter: SetsEmitter,
+             multisetsEmitter: MultisetsEmitter,
              domainsEmitter: DomainsEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
@@ -220,6 +219,7 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
   /*protected*/ def sequencesEmitter: SequencesEmitter
   /*protected*/ def setsEmitter: SetsEmitter
+  /*protected*/ def multisetsEmitter: MultisetsEmitter
   /*protected*/ def domainsEmitter: DomainsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
@@ -254,38 +254,45 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitPreamble(program: ast.Program) {
-    sequencesEmitter.reset()
-    sequencesEmitter.analyze(program)
-
-    setsEmitter.reset()
-    setsEmitter.analyze(program)
-
-    domainsEmitter.reset()
-    domainsEmitter.analyze(program)
-
     decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
     decider.prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
 
     decider.prover.logComment("-" * 60)
     decider.prover.logComment("Preamble start")
 
+    sequencesEmitter.reset()
+    sequencesEmitter.analyze(program)
+
+    setsEmitter.reset()
+    setsEmitter.analyze(program)
+
+    multisetsEmitter.reset()
+    multisetsEmitter.analyze(program)
+
+    domainsEmitter.reset()
+    domainsEmitter.analyze(program)
+
     emitStaticPreamble()
 
     sequencesEmitter.declareSorts()
     setsEmitter.declareSorts()
+    multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
 
     sequencesEmitter.declareSymbols()
     setsEmitter.declareSymbols()
+    multisetsEmitter.declareSymbols()
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
 
     sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
+    multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
     emitSortWrappers(sequencesEmitter.sorts)
     emitSortWrappers(setsEmitter.sorts)
+    emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
@@ -335,6 +342,7 @@ class DefaultVerifierFactory[ST <: Store[ST],
              preambleEmitter: PreambleFileEmitter[_],
              sequencesEmitter: SequencesEmitter,
              setsEmitter: SetsEmitter,
+             multisetsEmitter: MultisetsEmitter,
              domainsEmitter: DomainsEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
@@ -345,8 +353,8 @@ class DefaultVerifierFactory[ST <: Store[ST],
 
     new DefaultVerifier[ST, H, PC, S, TV](
                         config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
-                        domainsEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
-                        traceviewFactory)
+                        multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils,
+                        bookkeeper, traceviewFactory)
 
 }
 
@@ -360,6 +368,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
       val preambleEmitter: PreambleFileEmitter[_],
       val sequencesEmitter: SequencesEmitter,
       val setsEmitter: SetsEmitter,
+      val multisetsEmitter: MultisetsEmitter,
 			val domainsEmitter: DomainsEmitter,
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],

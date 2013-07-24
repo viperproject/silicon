@@ -1,7 +1,5 @@
 ; These declarations correspond to Dafny's set axiomatisation from 2013-06-27.
 
-; $Seq
-
 (declare-fun $Set.in ($S$ $Set<$S$>) Bool)
 
 ; function Set#Card<T>(Set T): int;

@@ -1,5 +1,6 @@
 package semper
 package silicon
+package theories
 
 import interfaces.PreambleEmitter
 import interfaces.decider.Prover
@@ -7,16 +8,16 @@ import decider.PreambleFileEmitter
 import state.SymbolConvert
 import state.terms
 
-trait SetsEmitter extends PreambleEmitter
+trait MultisetsEmitter extends PreambleEmitter
 
 /* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
 
-class DefaultSetsEmitter(prover: Prover,
-                         symbolConverter: SymbolConvert,
-                         preambleFileEmitter: PreambleFileEmitter[_])
-    extends SetsEmitter {
+class DefaultMultisetsEmitter(prover: Prover,
+                              symbolConverter: SymbolConvert,
+                              preambleFileEmitter: PreambleFileEmitter[_])
+    extends MultisetsEmitter {
 
-  private var collectedSorts = Set[terms.sorts.Set]()
+  private var collectedSorts = Set[terms.sorts.Multiset]()
 
   def sorts = collectedSorts.toSet[terms.Sort]
 
@@ -33,16 +34,16 @@ class DefaultSetsEmitter(prover: Prover,
   }
 
   def analyze(program: ast.Program) {
-    var setTypes = Set[ast.types.Set]()
+    var multisetTypes = Set[ast.types.Multiset]()
 
     program visit {
       case t: sil.ast.Typed => t.typ match {
-        case s: ast.types.Set => setTypes += s
+        case s: ast.types.Multiset => multisetTypes += s
         case _ => /* Ignore other types */
       }
     }
 
-    collectedSorts = setTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Set])
+    collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Multiset])
   }
 
   def declareSorts() {
@@ -51,15 +52,15 @@ class DefaultSetsEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/sets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sets_declarations_dafny.smt2", s.elementsSort)
+      prover.logComment(s"/multiset_declarations_dafny.smt2 [${s.elementsSort}]")
+      preambleFileEmitter.emitSortParametricAssertions("/multiset_declarations_dafny.smt2", s.elementsSort)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/sets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sets_axioms_dafny.smt2", s.elementsSort)
+      prover.logComment(s"/multiset_axioms_dafny.smt2 [${s.elementsSort}]")
+      preambleFileEmitter.emitSortParametricAssertions("/multiset_axioms_dafny.smt2", s.elementsSort)
     }
   }
 }

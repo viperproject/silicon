@@ -1,7 +1,6 @@
 ; These axioms correspond to Dafny's set axiomatisation from 2013-06-27.
 
 ; type Set T = [T]bool;
-; $Seq
 
 ; axiom (forall<T> s: Set T :: { Set#Card(s) } 0 <= Set#Card(s));
 (assert (forall ((xs $Set<$S$>)) (!
