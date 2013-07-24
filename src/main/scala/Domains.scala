@@ -10,12 +10,12 @@ import state.terms.Term
 import state.terms.implicits._
 import state.SymbolConvert
 
-trait DomainEmitter extends PreambleEmitter {
+trait DomainsEmitter extends PreambleEmitter {
   def emitUniquenessAssumptions()
 }
 
-class DefaultDomainEmitter(domainTranslator: DomainTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
-    extends DomainEmitter {
+class DefaultDomainsEmitter(domainTranslator: DomainTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
+    extends DomainsEmitter {
 
   /* TODO: Group emitted declarations and axioms by source domain. */
 
@@ -368,8 +368,8 @@ class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTran
       case ast.Implies(e0, e1) => terms.Implies(f(e0), f(e1))
       case ast.Ite(e0, e1, e2) => terms.Ite(f(e0), f(e1), f(e2))
 
-      case ast.Equals(e0, e1) => terms.TermEq(f(e0), f(e1))
-      case ast.Unequals(e0, e1) => terms.Not(terms.TermEq(f(e0), f(e1)))
+      case ast.Equals(e0, e1) => terms.Eq(f(e0), f(e1))
+      case ast.Unequals(e0, e1) => terms.Not(terms.Eq(f(e0), f(e1)))
 
       case ast.IntegerLiteral(n) => terms.IntLiteral(n)
       case ast.IntPlus(e0, e1) => terms.Plus(f(e0), f(e1))
@@ -433,8 +433,8 @@ class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTran
       case _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet =>
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
 
-      case   _: ast.MemoryLocation | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
-           | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateLocation
+      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
+           | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateAccess
            | _: ast.FuncApp | _: ast.CurrentPerm =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")

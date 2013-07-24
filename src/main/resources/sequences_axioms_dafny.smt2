@@ -1,15 +1,5 @@
 ; General sequence axioms
 
-;; TODO: Remove and include in Verifier.emitSortWrapper
-;(declare-fun $sorts.$SnapTo$Seq<$S$> ($Snap) $Seq<$S$>)
-;(declare-fun $sorts.$Seq<$S$>To$Snap ($Seq<$S$>) $Snap)
-;
-;(assert (forall ((x $Seq<$S$>))
-;	(= x ($sorts.$SnapTo$Seq<$S$>($sorts.$Seq<$S$>To$Snap x)))))
-;
-;(assert (forall ((x $Snap))
-;	(= x ($sorts.$Seq<$S$>To$Snap($sorts.$SnapTo$Seq<$S$> x)))))
-
 ; axiom (forall<T> s: Seq T :: { Seq#Length(s) } 0 <= Seq#Length(s));
 (assert (forall ((xs $Seq<$S$>)) (!
 	(<= 0 ($Seq.len xs))
@@ -42,7 +32,7 @@
 		(= ($Seq.len ($Seq.build xs i x n)) n))
 	:pattern (($Seq.len ($Seq.build xs i x n)))
 	)))
-	
+
 
 ; axiom (forall<T> s0: Seq T, s1: Seq T :: { Seq#Length(Seq#Append(s0,s1)) }
   ; Seq#Length(Seq#Append(s0,s1)) == Seq#Length(s0) + Seq#Length(s1));
@@ -77,7 +67,7 @@
 				($Seq.at ys (- i ($Seq.len xs))))))
 	:pattern (($Seq.at ($Seq.con xs ys) i))
 	)))
-	
+
 ; axiom (forall<T> s: Seq T, i: int, v: T, len: int, n: int :: { Seq#Index(Seq#Build(s,i,v,len),n) }
   ; 0 <= n && n < len ==>
     ; (i == n ==> Seq#Index(Seq#Build(s,i,v,len),n) == v) &&
@@ -117,7 +107,7 @@
 			)))
 	:pattern (($Seq.in xs x))
 	)))
-		
+
 ; axiom (forall x: ref ::
   ; { Seq#Contains(Seq#Empty(), x) }
   ; !Seq#Contains(Seq#Empty(), x));
@@ -125,7 +115,7 @@
 	(not ($Seq.in $Seq.nil<$S$> x))
 	:pattern (($Seq.in $Seq.nil<$S$> x))
 	)))
-	
+
 ; axiom (forall<T> s0: Seq T, s1: Seq T, x: T ::
   ; { Seq#Contains(Seq#Append(s0, s1), x) }
   ; Seq#Contains(Seq#Append(s0, s1), x) <==>
@@ -138,11 +128,11 @@
 			($Seq.in ys x)))
 	:pattern (($Seq.in ($Seq.con xs ys) x))
 	)))
-		
+
 ; axiom (forall<T> s: Seq T, i: int, v: T, len: int, x: T ::
   ; { Seq#Contains(Seq#Build(s, i, v, len), x) }
   ; Seq#Contains(Seq#Build(s, i, v, len), x) <==>
-    ; (0 <= i && i < len && x == v)  ||  
+    ; (0 <= i && i < len && x == v)  ||
     ; (exists j: int :: { Seq#Index(s,j) } 0 <= j && j < Seq#Length(s) && j < len && j!=i && Seq#Index(s,j) == x));
 (assert (forall ((xs $Seq<$S$>) (i Int) (x $S$) (n Int) (y $S$)) (!
 	(iff
@@ -163,7 +153,7 @@
 				))))
 	:pattern (($Seq.in ($Seq.build xs i x n) y))
 	)))
-		
+
 ; axiom (forall<T> s: Seq T, n: int, x: T ::
   ; { Seq#Contains(Seq#Take(s, n), x) }
   ; Seq#Contains(Seq#Take(s, n), x) <==>
@@ -182,7 +172,7 @@
 			)))
 	:pattern (($Seq.in ($Seq.take xs k) x))
 	)))
-			
+
 ; axiom (forall<T> s: Seq T, n: int, x: T ::
   ; { Seq#Contains(Seq#Drop(s, n), x) }
   ; Seq#Contains(Seq#Drop(s, n), x) <==>
@@ -223,7 +213,7 @@
 				))))
 	:pattern (($Seq.eq xs ys))
 	)))
-				
+
 ; axiom(forall<T> a: Seq T, b: Seq T :: { Seq#Equal(a,b) }  // extensionality axiom for sequences
   ; Seq#Equal(a,b) ==> a == b);
 (assert (forall ((xs $Seq<$S$>) (ys $Seq<$S$>)) (!
@@ -266,7 +256,7 @@
 			)))
 	:pattern (($Seq.sameUntil xs ys i))
 	)))
-				
+
 
 ; axiom (forall<T> s: Seq T, n: int :: { Seq#Length(Seq#Take(s,n)) }
   ; 0 <= n ==>
@@ -284,7 +274,7 @@
 				(= ($Seq.len ($Seq.take xs k)) ($Seq.len xs)))))
 	:pattern (($Seq.len ($Seq.take xs k)))
 	)))
-		
+
 ; axiom (forall<T> s: Seq T, n: int, j: int :: { Seq#Index(Seq#Take(s,n), j) } {:weight 25}
   ; 0 <= j && j < n && j < Seq#Length(s) ==>
     ; Seq#Index(Seq#Take(s,n), j) == Seq#Index(s, j));
@@ -315,7 +305,7 @@
 				(= ($Seq.len ($Seq.drop xs k)) 0))))
 	:pattern (($Seq.len ($Seq.drop xs k)))
 	)))
-		
+
 ; axiom (forall<T> s: Seq T, n: int, j: int :: { Seq#Index(Seq#Drop(s,n), j) } {:weight 25}
   ; 0 <= n && 0 <= j && j < Seq#Length(s)-n ==>
     ; Seq#Index(Seq#Drop(s,n), j) == Seq#Index(s, j+n));

@@ -142,11 +142,12 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
-    val sequenceEmitter = new DefaultSequenceEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val domainEmitter = new DefaultDomainEmitter(domainTranslator, decider.prover, symbolConverter)
+    val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
+    val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
+    val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
-    verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequenceEmitter,
-                           domainEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
+    verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
+                           setsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
                            traceviewFactory)
 	}
 

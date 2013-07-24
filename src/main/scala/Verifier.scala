@@ -100,12 +100,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
     logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
 
-    val ins = function.formalArgs.map(_.localVar)
-    val out = function.result
-
     val history = new DefaultHistory[ST, H, S]()
     val c = contextFactory.create(history.tree)
     val tv = traceviewFactory.create(history)
+
+    val ins = function.formalArgs.map(_.localVar)
+    val out = function.result
 
     val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
     val σ = Σ(γ, Ø, Ø)
@@ -140,12 +140,17 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val c = contextFactory.create(history.tree)
     val tv = traceviewFactory.create(history)
 
+    val ins = predicate.formalArgs.map(_.localVar)
+
+    val γ = Γ(ins.map(v => (v, fresh(v))))
+    val σ = Σ(γ, Ø, Ø)
+
 //    val vThis = predicate.formalArg.localVar
 //    val tThis = fresh(vThis)
 
 //    val γ = Γ(vThis -> tThis)
 //    val γ = Γ(vThis -> tThis)
-    val σ = Σ(Ø, Ø, Ø)
+//    val σ = Σ(Ø, Ø, Ø)
 
     inScope {
 //      assume(tThis !== terms.Null())
@@ -191,8 +196,9 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              stateFactory: StateFactory[ST, H, S],
              symbolConverter: SymbolConvert,
              preambleEmitter: PreambleFileEmitter[_],
-             sequenceEmitter: SequenceEmitter,
-             domainEmitter: DomainEmitter,
+             sequencesEmitter: SequencesEmitter,
+             setsEmitter: SetsEmitter,
+             domainsEmitter: DomainsEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
              heapMerger: HeapMerger[H],
@@ -212,8 +218,9 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
-  /*protected*/ def sequenceEmitter: SequenceEmitter
-  /*protected*/ def domainEmitter: DomainEmitter
+  /*protected*/ def sequencesEmitter: SequencesEmitter
+  /*protected*/ def setsEmitter: SetsEmitter
+  /*protected*/ def domainsEmitter: DomainsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
   import ev.symbolConverter
@@ -247,11 +254,14 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitPreamble(program: ast.Program) {
-    sequenceEmitter.reset()
-    sequenceEmitter.analyze(program)
+    sequencesEmitter.reset()
+    sequencesEmitter.analyze(program)
 
-    domainEmitter.reset()
-    domainEmitter.analyze(program)
+    setsEmitter.reset()
+    setsEmitter.analyze(program)
+
+    domainsEmitter.reset()
+    domainsEmitter.analyze(program)
 
     decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
     decider.prover.logComment("Silicon.buildVersion: " + Silicon.buildVersion)
@@ -261,18 +271,22 @@ trait AbstractVerifier[ST <: Store[ST],
 
     emitStaticPreamble()
 
-    sequenceEmitter.declareSorts()
-    domainEmitter.declareSorts()
+    sequencesEmitter.declareSorts()
+    setsEmitter.declareSorts()
+    domainsEmitter.declareSorts()
 
-    sequenceEmitter.declareSymbols()
-    domainEmitter.declareSymbols()
-    domainEmitter.emitUniquenessAssumptions()
+    sequencesEmitter.declareSymbols()
+    setsEmitter.declareSymbols()
+    domainsEmitter.declareSymbols()
+    domainsEmitter.emitUniquenessAssumptions()
 
-    sequenceEmitter.emitAxioms()
-    domainEmitter.emitAxioms()
+    sequencesEmitter.emitAxioms()
+    setsEmitter.emitAxioms()
+    domainsEmitter.emitAxioms()
 
-    emitSortWrappers(domainEmitter.sorts)
-    emitSortWrappers(sequenceEmitter.sorts)
+    emitSortWrappers(sequencesEmitter.sorts)
+    emitSortWrappers(setsEmitter.sorts)
+    emitSortWrappers(domainsEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -319,8 +333,9 @@ class DefaultVerifierFactory[ST <: Store[ST],
              stateFactory: StateFactory[ST, H, S],
              symbolConverter: SymbolConvert,
              preambleEmitter: PreambleFileEmitter[_],
-             sequenceEmitter: SequenceEmitter,
-             domainEmitter: DomainEmitter,
+             sequencesEmitter: SequencesEmitter,
+             setsEmitter: SetsEmitter,
+             domainsEmitter: DomainsEmitter,
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
              heapMerger: HeapMerger[H],
@@ -329,8 +344,9 @@ class DefaultVerifierFactory[ST <: Store[ST],
              traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
     new DefaultVerifier[ST, H, PC, S, TV](
-                        config, decider, stateFactory, symbolConverter, preambleEmitter, sequenceEmitter, domainEmitter,
-                        chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper, traceviewFactory)
+                        config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
+                        domainsEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils, bookkeeper,
+                        traceviewFactory)
 
 }
 
@@ -342,8 +358,9 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
       val preambleEmitter: PreambleFileEmitter[_],
-      val sequenceEmitter: SequenceEmitter,
-			val domainEmitter: DomainEmitter,
+      val sequencesEmitter: SequencesEmitter,
+      val setsEmitter: SetsEmitter,
+			val domainsEmitter: DomainsEmitter,
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],

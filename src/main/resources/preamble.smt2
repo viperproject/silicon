@@ -42,14 +42,14 @@
     $Snap $Snap.unit
     ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
-(declare-fun $Snap.snapEq ($Snap $Snap) Bool)
+(declare-fun $Snap.eq ($Snap $Snap) Bool)
 
 (assert (forall ((x $Snap) (y $Snap)) (!
 	(implies
-		($Snap.snapEq x y)
+		($Snap.eq x y)
 		(and (= x y)))
-	:qid |$Snap.snapEq|
-	:pattern (($Snap.snapEq x y))
+	:qid |$Snap.eq|
+	:pattern (($Snap.eq x y))
 	)))
 
 ; --- References ---

@@ -11,17 +11,24 @@ import state.{Store, Heap, State}
  * Results
  */
 
-/* TODO: Extract appropriate interfaces and then move the implementations 
+/* TODO: Extract appropriate interfaces and then move the implementations
  *       outside of the interfaces package.
  */
- 
+
+sealed trait Mode
+
+object modes {
+  case object Producing extends Mode
+  case object Consuming extends Mode
+}
+
 /* TODO: Make VerificationResult immutable */
 abstract class VerificationResult {
 	var previous: Option[NonFatalResult] = None
-	
+
 	def isFatal: Boolean
 	def &&(other: => VerificationResult): VerificationResult
-	
+
 	def allPrevious: List[VerificationResult] =
 		previous match {
 			case None => Nil
@@ -40,13 +47,13 @@ abstract class VerificationResult {
 
 abstract class FatalResult extends VerificationResult {
 	val isFatal = true
-	
+
 	def &&(other: => VerificationResult) = this
 }
 
 abstract class NonFatalResult extends VerificationResult {
 	val isFatal = false
-	
+
 	/* Attention: Parameter 'other' of '&&' is a function! That is, the following
 	 * statements
 	 *   println(other)
@@ -77,7 +84,7 @@ case class Success[C <: Context[C, ST, H, S],
                   (context: C)
 		extends NonFatalResult
        with ContextAwareResult[C, ST, H, S] {
-  
+
   context.currentBranch.addResult(this)
 
 	val message = null /* TODO: Make an Option[Message] */
@@ -106,6 +113,6 @@ case class Failure[C <: Context[C, ST, H, S],
                    tv: TV)
 		extends FatalResult
        with ContextAwareResult[C, ST, H, S] {
-  
+
   tv.addResult(context.currentBranch, this)
 }

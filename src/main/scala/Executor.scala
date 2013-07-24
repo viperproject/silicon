@@ -201,7 +201,7 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ass @ ast.FieldWrite(fl @ ast.FieldLocation(eRcvr, field), rhs) =>
+      case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
@@ -289,7 +289,7 @@ trait DefaultExecutor[ST <: Store[ST],
 //        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
 //        Q(σ \+ (v, fresh(v)), c)
 
-      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), ePerm)) =>
+      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
 //          if (decider.assert(tRcvr !== Null()))
@@ -337,7 +337,7 @@ trait DefaultExecutor[ST <: Store[ST],
 //          else
 //            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
-      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), ePerm)) =>
+      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
 //          if (decider.assert(tRcvr !== Null()))

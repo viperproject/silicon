@@ -2,13 +2,13 @@
 
 ; $Seq
 
-(declare-fun $Set.contains ($Set<$S$> $S$) Bool)
+(declare-fun $Set.in ($S$ $Set<$S$>) Bool)
 
 ; function Set#Card<T>(Set T): int;
 (declare-fun $Set.card ($Set<$S$>) Int)
 
 ; function Set#Empty<T>(): Set T;
-(declare-fun $Set.empty () $Set<$S$>)
+(declare-fun $Set.empty<$S$> () $Set<$S$>)
 
 ; function Set#Singleton<T>(T): Set T;
 (declare-fun $Set.singleton ($S$) $Set<$S$>)

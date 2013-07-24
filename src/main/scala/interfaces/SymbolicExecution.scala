@@ -30,7 +30,12 @@ trait Evaluator[P <: FractionalPermissions[P],
 					 (Q: (P, C) => VerificationResult)
            : VerificationResult
 
-  def withChunkIdentifier(σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+  def withChunkIdentifier(σ: S,
+                          locacc: ast.LocationAccess,
+                          assertRcvrNonNull: Boolean,
+                          pve: PartialVerificationError,
+                          c: C,
+                          tv: TV)
                          (Q: (ChunkIdentifier, C) => VerificationResult)
                          : VerificationResult
 }

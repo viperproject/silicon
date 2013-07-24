@@ -178,7 +178,7 @@ trait ChunkFinder[P <: FractionalPermissions[P],
 //                rcvr: Term,
 //                id: String,
                 id: ChunkIdentifier,
-                memloc: ast.MemoryLocation,
+                locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C,
                 tv: TV)
@@ -194,7 +194,7 @@ trait ChunkFinder[P <: FractionalPermissions[P],
 //                id: String,
                 id: ChunkIdentifier,
                 p: P,
-                memloc: ast.MemoryLocation,
+                locacc: ast.LocationAccess,
                 ve: PartialVerificationError,
                 c: C,
                 tv: TV)
@@ -217,7 +217,7 @@ class DefaultChunkFinder[ST <: Store[ST],
 //                rcvr: Term,
 //                id: String,
                 id: ChunkIdentifier,
-                memloc: ast.MemoryLocation,
+                locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C,
                 tv: TV)
@@ -241,7 +241,7 @@ class DefaultChunkFinder[ST <: Store[ST],
 //				} else
 //					Failure[C, ST, H, S, TV](m at loc dueTo InsufficientPermissions(rcvrSrc.toString, id), c, tv)
           /* TODO: We need the location node, not only the receiver. */
-					Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(memloc), c, tv)
+					Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
 		}
 	}
 
@@ -251,18 +251,18 @@ class DefaultChunkFinder[ST <: Store[ST],
 //                id: String,
                 id: ChunkIdentifier,
                 p: DefaultFractionalPermissions,
-                memloc: ast.MemoryLocation,
+                locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C,
                 tv: TV)
                (Q: CH => VerificationResult)
                : VerificationResult =
 
-		withChunk[CH](h, id, memloc, pve, c, tv)(chunk => {
+		withChunk[CH](h, id, locacc, pve, c, tv)(chunk => {
 			if (decider.isAsPermissive(chunk.perm, p))
 				Q(chunk)
 			else
-				Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(memloc), c, tv)})
+				Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)})
 }
 
 class StateUtils[ST <: Store[ST],

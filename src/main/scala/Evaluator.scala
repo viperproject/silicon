@@ -8,7 +8,7 @@ import sil.verifier.errors.PreconditionInAppFalse
 import sil.verifier.reasons.{InsufficientPermission, DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching}
-import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
+import interfaces.{modes, Mode, Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Chunk, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
 import interfaces.decider.Decider
@@ -46,7 +46,6 @@ trait DefaultEvaluator[
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
@@ -110,7 +109,7 @@ trait DefaultEvaluator[
     })
   }
 
-	/* Attention: Only use eval(σ, e, m, c Q) inside of internalEval, because
+	/* Attention: Only use eval(σ, e, m, c, tv)(Q) inside of internalEval, because
 	 *   - eval adds an "Evaluating" operation to the context
 	 *   - eval sets the source node of the resulting term
 	 */
@@ -134,8 +133,8 @@ trait DefaultEvaluator[
       case ast.NullLiteral() => Q(Null(), c)
       case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval), c)
 
-      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, TermEq, pve, c, tv)(Q)
-      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(TermEq(p0, p1)), pve, c, tv)(Q)
+      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, Eq, pve, c, tv)(Q)
+      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c, tv)(Q)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -154,21 +153,17 @@ trait DefaultEvaluator[
       case _: ast.EpsilonPerm =>
         Q(EpsilonPerm(), c)
 
-      case ast.CurrentPerm(memloc) =>
-        withChunkIdentifier(σ, memloc, pve, c, tv)((id, c1) =>
+      case ast.CurrentPerm(locacc) =>
+        withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
           decider.getChunk[DirectChunk](σ.h, id) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
 
-      case fl: ast.FieldLocation =>
-        val eRcvr = fl.rcv
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
-            withChunk[FieldChunk](σ.h, FieldChunkIdentifier(tRcvr, fl.loc.name), fl, pve, c1, tv)(fc =>
-              Q(fc.value, c1))
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
+      case fa: ast.FieldAccess =>
+        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
+          withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
+            Q(ch.value, c1)))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -493,7 +488,6 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
-//            val tFA = FApp(func, s.convert(sorts.Snap), tArgs, toSort(func.typ))
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
@@ -529,7 +523,7 @@ trait DefaultEvaluator[
                 Q(tFA, c3)}})})
 
       case ast.Unfolding(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), ePerm),
+              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
               eIn) =>
 
         val body = predicate.body
@@ -546,7 +540,6 @@ trait DefaultEvaluator[
             if (decider.isPositive(tPerm))
               evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
                 consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-//                  val insΓ = Γ((predicate.formalArg.localVar -> tRcvr))
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                   /* Unfolding only effects the current heap */
                   produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
@@ -561,6 +554,8 @@ trait DefaultEvaluator[
                     "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
                     "in a function, which is then invoked from the predicate body.\n" +
                     "Offending node: " + e)
+
+      /* Sequences */
 
       case sil.ast.SeqContains(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c, tv)(Q)
         /* Note the reversed order of the arguments! */
@@ -584,19 +579,83 @@ trait DefaultEvaluator[
               SeqAppend(SeqSingleton(te), tSeq))
           assume(SeqLength(tSeq) === IntLiteral(es.size))
           Q(tSeq, c1)})
+
+      /* Sets and multisets */
+
+      case sil.ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
+
+      case sil.ast.ExplicitSet(es) =>
+        evals2(σ, es, Nil, pve, c, tv)((tEs, c1) => {
+          val tSet =
+            tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
+              SetAdd(tSet, te))
+          Q(tSet, c1)})
+
+      case sil.ast.AnySetUnion(e0, e1) => e.typ match {
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetUnion, pve, c, tv)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetUnion, pve, c, tv)(Q)
+        case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
+                            .format(e, e.getClass.getName, e.typ))
+      }
+
+      case sil.ast.AnySetIntersection(e0, e1) => e.typ match {
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIntersection, pve, c, tv)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c, tv)(Q)
+        case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
+                            .format(e, e.getClass.getName, e.typ))
+      }
+
+      case sil.ast.AnySetSubset(e0, e1) => e.typ match {
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c, tv)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c, tv)(Q)
+        case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
+                            .format(e, e.getClass.getName, e.typ))
+      }
+
+      case sil.ast.AnySetMinus(e0, e1) => e.typ match {
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetDifference, pve, c, tv)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, SetDifference, pve, c, tv)(Q)
+        case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
+                            .format(e, e.getClass.getName, e.typ))
+      }
+
+      case sil.ast.AnySetContains(e0, e1) => e1.typ match {
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIn, pve, c, tv)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIn, pve, c, tv)(Q)
+        case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
+                            .format(e, e.getClass.getName, e.typ))
+      }
+
+      case sil.ast.AnySetCardinality(e0) => e0.typ match {
+        case _: ast.types.Set => eval(σ, e0, pve, c, tv)((t0, c1) => Q(SetCardinality(t0), c1))
+        case _: ast.types.Multiset => eval(σ, e0, pve, c, tv)((t0, c1) => Q(MultisetCardinality(t0), c1))
+        case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
+                            .format(e0, e0.getClass.getName, e0.typ))
+      }
 		}
 	}
 
-  def withChunkIdentifier(σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
+  def withChunkIdentifier(σ: S,
+                          locacc: ast.LocationAccess,
+                          assertRcvrNonNull: Boolean,
+                          pve: PartialVerificationError,
+                          c: C,
+                          tv: TV)
                          (Q: (ChunkIdentifier, C) => VerificationResult)
                          : VerificationResult =
 
-    memloc match {
-      case ast.FieldLocation(eRcvr, field) =>
+    locacc match {
+      case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          Q(FieldChunkIdentifier(tRcvr, field.name), c1))
+          if (assertRcvrNonNull)
+            if (decider.assert(tRcvr !== Null()))
+              Q(FieldChunkIdentifier(tRcvr, field.name), c1)
+            else
+              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)
+          else
+            Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
-      case ast.PredicateLocation(eArgs, predicate) =>
+      case ast.PredicateAccess(eArgs, predicate) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           Q(PredicateChunkIdentifier(predicate.name, tArgs), c1))
     }
@@ -648,21 +707,6 @@ trait DefaultEvaluator[
       evalp(σ, e1, pve, c1, tv)((t1, c2) =>
         Q(permOp(t0, t1), c2)))
   }
-
-//  private def evalMemoryLocation[CH <: Chunk : NotNothing : Manifest]
-//                                (σ: S, memloc: ast.MemoryLocation, pve: PartialVerificationError, c: C, tv: TV)
-//                                (Q: (Either[Failure[C, ST, H, S, TV], Option[CH]], C) => VerificationResult)
-//                                : VerificationResult = {
-//
-//    val eRcvr = memloc.rcv
-//    val id = memloc.loc.name
-//
-//    eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-//      if (decider.assert(tRcvr !== Null()))
-//        Q(Right(decider.getChunk[CH](σ.h, tRcvr, id)), c1)
-//      else
-//        Q(Left(Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(memloc), c1, tv)), c1))
-//  }
 
 	override def pushLocalState() {
 		fappCacheFrames = fappCacheFrames.push(fappCache)

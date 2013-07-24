@@ -257,9 +257,9 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 		 * all chunks in h having the same field id.
 		 */
 		val fields = h.values collect {case c: DirectFieldChunk => c}
-		val gs = fields groupBy(_.id)
+		val gs = fields groupBy(_.name)
 
-		val tDists = fcs flatMap(c1 => gs(c1.id) map (c2 =>
+		val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
 			if (  c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
             && !decider.isAsPermissive(distinctnessLowerBound, c1.perm + c2.perm))
 				c1.rcvr !== c2.rcvr

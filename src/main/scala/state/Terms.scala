@@ -96,9 +96,8 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
  */
 
 sealed trait Term {
-	/* Attention - only for standard equality! */
-	def ===(t: Term): TermEq = TermEq(this, t)
-	def !==(t: Term): Term = Not(TermEq(this, t))
+	def ===(t: Term): Term = Eq(this, t)
+	def !==(t: Term): Term = Not(Eq(this, t))
 
 	def convert(to: Sort): Term = this match {
     case _ if to == this.sort => this
@@ -375,16 +374,22 @@ object Ite extends Function3[Term, Term, Term, Term] {
 
 sealed trait ComparisonTerm extends BooleanTerm
 
-/* TODO: Make more specific by using a generic T <: Term, so that e.g. equality
- *       on sequences can range over SeqTerms.
- */
-sealed trait Eq extends ComparisonTerm with commonnodes.Eq[Term] {
-  assert(p0.sort == p1.sort,
-         ("Expected both operands to be of the same sort, but found %s (%s) " +
-          "and %s (%s).").format(p0.sort, p0, p1.sort, p1))
-}
+///* TODO: Make more specific by using a generic T <: Term, so that e.g. equality
+// *       on sequences can range over SeqTerms.
+// */
+//sealed trait Eq extends ComparisonTerm with commonnodes.Eq[Term] {
+//  assert(p0.sort == p1.sort,
+//         ("Expected both operands to be of the same sort, but found %s (%s) " +
+//          "and %s (%s).").format(p0.sort, p0, p1.sort, p1))
+//}
 
-case class TermEq(p0: Term, p1: Term) extends Eq
+//case class TermEq(p0: Term, p1: Term) extends Eq
+
+case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
+  assert(p0.sort == p1.sort,
+         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+         .format(p0.sort, p0, p1.sort, p1))
+}
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
 		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
@@ -613,11 +618,11 @@ sealed trait SeqTerm extends Term {
   val sort: sorts.Seq
 }
 
-case class SeqEq(p0: Term, p1: Term) extends /*SeqTerm with*/ Eq {
-  utils.assertSameSeqSorts(p0, p1)
-
-//  val elementsSort = p0.sort.sortParameters.head
-}
+//case class SeqEq(p0: Term, p1: Term) extends /*SeqTerm with*/ Eq {
+//  utils.assertSameSeqSorts(p0, p1)
+//
+////  val elementsSort = p0.sort.sortParameters.head
+//}
 
 case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
   utils.assertSort(p0, "first operand", sorts.Int)
@@ -636,7 +641,6 @@ case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] 
   override val toString = "[%s..%s]".format(p0, p1)
 }
 
-// object SeqNil extends SeqTerm with Literal
 case class SeqNil(elementsSort: Sort) extends SeqTerm with Literal {
   val sort = sorts.Seq(elementsSort)
   override val toString = "Nil"
@@ -804,6 +808,243 @@ object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
   def unapply(su: SeqUpdate) = Some((su.t0, su.t1, su.t2))
 }
 
+/* Sets */
+
+sealed trait SetTerm extends Term {
+  val elementsSort: Sort
+  val sort: sorts.Set
+}
+
+sealed trait BinarySetOp extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
+  val sort = sorts.Set(elementsSort)
+}
+
+//case class SetEq(p0: Term, p1: Term) extends Eq {
+//  utils.assertSameSetSorts(p0, p1)
+//}
+
+case class EmptySet(elementsSort: Sort) extends SetTerm with Literal {
+  val sort = sorts.Set(elementsSort)
+  override val toString = "Ø"
+}
+
+case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ {
+  val elementsSort = p.sort //.sortParameters.head
+  val sort = sorts.Set(elementsSort)
+
+  override val toString = "{" + p + "}"
+}
+
+/*case*/ class SetAdd(val p0: Term, val p1: Term)
+  extends SetTerm
+  with    commonnodes.StructuralEqualityBinaryOp[Term] {
+
+  //  utils.assertSameSeqSorts(p0, p1)
+
+  val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
+  val sort = sorts.Set(elementsSort)
+
+  override val op = "+"
+}
+
+object SetAdd extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSort(t0, "first operand", "Set", _.isInstanceOf[sorts.Set])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Set].elementsSort)
+
+    new SetAdd(t0, t1)
+  }
+
+  def unapply(sa: SetAdd) = Some((sa.p0, sa.p1))
+}
+
+//class SetUnion(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+class SetUnion(val p0: Term, val p1: Term) extends BinarySetOp {
+//  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
+//  val sort = sorts.Seq(elementsSort)
+
+  override val op = "∪"
+}
+
+object SetUnion extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameSetSorts(t0, t1)
+    new SetUnion(t0, t1)
+  }
+
+  def unapply(su: SetUnion) = Some((su.p0, su.p1))
+}
+
+//class SetIntersection(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+class SetIntersection(val p0: Term, val p1: Term) extends BinarySetOp {
+//  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
+//  val sort = sorts.Seq(elementsSort)
+
+  override val op = "∩"
+}
+
+object SetIntersection extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameSetSorts(t0, t1)
+    new SetIntersection(t0, t1)
+  }
+
+  def unapply(si: SetIntersection) = Some((si.p0, si.p1))
+}
+
+//class SetSubset(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
+  //  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
+  //  val sort = sorts.Seq(elementsSort)
+
+  override val op = "⊂"
+}
+
+object SetSubset extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameSetSorts(t0, t1)
+    new SetSubset(t0, t1)
+  }
+
+  def unapply(ss: SetSubset) = Some((ss.p0, ss.p1))
+}
+
+class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
+  override val op = "\\"
+}
+
+object SetDifference extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameSetSorts(t0, t1)
+    new SetDifference(t0, t1)
+  }
+
+  def unapply(sd: SetDifference) = Some((sd.p0, sd.p1))
+}
+
+class SetIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  override val op = "∈"
+}
+
+object SetIn extends ((Term, Term) => BooleanTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSort(t1, "second operand", "Set", _.isInstanceOf[sorts.Set])
+    utils.assertSort(t0, "first operand", t1.sort.asInstanceOf[sorts.Set].elementsSort)
+
+    new SetIn(t0, t1)
+  }
+
+  def unapply(si: SetIn) = Some((si.p0, si.p1))
+}
+
+class SetCardinality(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+  val sort = sorts.Int
+  override val toString = "|" + p + "|"
+}
+
+object SetCardinality {
+  def apply(t: Term) = {
+    utils.assertSort(t, "term", "Set", _.isInstanceOf[sorts.Set])
+    new SetCardinality(t)
+  }
+
+  def unapply(sc: SetCardinality) = Some((sc.p))
+}
+
+/* Multisets */
+
+sealed trait MultisetTerm extends Term {
+  val elementsSort: Sort
+  val sort: sorts.Multiset
+}
+
+sealed trait BinaryMultisetOp extends MultisetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
+  val sort = sorts.Multiset(elementsSort)
+}
+
+class MultisetUnion(val p0: Term, val p1: Term) extends BinaryMultisetOp {
+  override val op = "∪"
+}
+
+object MultisetUnion extends ((Term, Term) => MultisetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameMultisetSorts(t0, t1)
+    new MultisetUnion(t0, t1)
+  }
+
+  def unapply(mu: MultisetUnion) = Some((mu.p0, mu.p1))
+}
+
+class MultisetIntersection(val p0: Term, val p1: Term) extends BinaryMultisetOp {
+  override val op = "∩"
+}
+
+object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameMultisetSorts(t0, t1)
+    new MultisetIntersection(t0, t1)
+  }
+
+  def unapply(mi: MultisetIntersection) = Some((mi.p0, mi.p1))
+}
+
+class MultisetSubset(val p0: Term, val p1: Term) extends BinaryMultisetOp {
+  override val op = "⊂"
+}
+
+object MultisetSubset extends ((Term, Term) => MultisetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameMultisetSorts(t0, t1)
+    new MultisetSubset(t0, t1)
+  }
+
+  def unapply(ms: MultisetSubset) = Some((ms.p0, ms.p1))
+}
+
+class MultisetDifference(val p0: Term, val p1: Term) extends BinaryMultisetOp {
+  override val op = "\\"
+}
+
+object MultisetDifference extends ((Term, Term) => MultisetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameMultisetSorts(t0, t1)
+    new MultisetDifference(t0, t1)
+  }
+
+  def unapply(md: MultisetDifference) = Some((md.p0, md.p1))
+}
+
+class MultisetIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  override val op = "∈"
+}
+
+object MultisetIn extends ((Term, Term) => BooleanTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSort(t1, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
+    utils.assertSort(t0, "first operand", t1.sort.asInstanceOf[sorts.Multiset].elementsSort)
+
+    new MultisetIn(t0, t1)
+  }
+
+  def unapply(mi: MultisetIn) = Some((mi.p0, mi.p1))
+}
+
+class MultisetCardinality(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+  val sort = sorts.Int
+  override val toString = "|" + p + "|"
+}
+
+object MultisetCardinality {
+  def apply(t: Term) = {
+    utils.assertSort(t, "term", "Multiset", _.isInstanceOf[sorts.Multiset])
+    new MultisetCardinality(t)
+  }
+
+  def unapply(mc: MultisetCardinality) = Some((mc.p))
+}
+
 /* Domains */
 
 //case class DomainFApp(function: Function, snapshot: Term, tArgs: Seq[Term]/*, sort: Sort*/) extends Term {
@@ -816,10 +1057,10 @@ case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term {
 
 sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 
-case class SnapEq(p0: Term, p1: Term) extends Eq {
-  utils.assertSort(p0, "first operand", sorts.Snap)
-  utils.assertSort(p1, "second operand", sorts.Snap)
-}
+//case class SnapEq(p0: Term, p1: Term) extends Eq {
+//  utils.assertSort(p0, "first operand", sorts.Snap)
+//  utils.assertSort(p1, "second operand", sorts.Snap)
+//}
 
 case class Combine(t0: Term, t1: Term) extends SnapshotTerm {
   utils.assertSort(t0, "first operand", sorts.Snap)
@@ -911,19 +1152,27 @@ object utils {
         .format(t0, t0.sort, t1, t1.sort))
   }
 
-//  def asSeqTerm(t: Term, desc: String): SeqTerm = t match {
-//    case seq: SeqTerm => seq
-//    case _ =>
-//      sys.error("Expected %s %s to be a SeqTerm, but found %s.".format(desc, t, t.getClass.getSimpleName))
-//  }
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def assertSameSetSorts(t0: Term, t1: Term) {
+    assert(
+      (t0.sort, t1.sort) match {
+        case (sorts.Set(a), sorts.Set(b)) if a == b => true
+        case _ => false
+      },
+      "Expected both operands to be of sort Set(X), but found %s (%s) and %s (%s)"
+        .format(t0, t0.sort, t1, t1.sort))
+  }
 
-//  def asSameSeqSorts(t0: Term, t1: Term): (SeqTerm, SeqTerm) = (t0, t1) match {
-//    case (seq0: SeqTerm, seq1: SeqTerm) if seq0.sort == seq1.sort =>
-//      (seq0, seq1)
-//    case _ =>
-//      sys.error("Expected both operands to be of sort Seq(E), but found %s of sort %s (%s) and %s of sort %s (%s)"
-//                .format(t0, t0.sort, t0.getClass.getSimpleName, t1, t1.sort, t1.getClass.getSimpleName))
-//  }
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def assertSameMultisetSorts(t0: Term, t1: Term) {
+    assert(
+      (t0.sort, t1.sort) match {
+        case (sorts.Multiset(a), sorts.Multiset(b)) if a == b => true
+        case _ => false
+      },
+      "Expected both operands to be of sort Multiset(X), but found %s (%s) and %s (%s)"
+        .format(t0, t0.sort, t1, t1.sort))
+  }
 }
 
 object implicits {

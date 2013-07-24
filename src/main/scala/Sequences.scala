@@ -7,12 +7,12 @@ import decider.PreambleFileEmitter
 import state.SymbolConvert
 import state.terms
 
-trait SequenceEmitter extends PreambleEmitter
+trait SequencesEmitter extends PreambleEmitter
 
-class DefaultSequenceEmitter(prover: Prover,
+class DefaultSequencesEmitter(prover: Prover,
                              symbolConverter: SymbolConvert,
                              preambleFileEmitter: PreambleFileEmitter[_])
-    extends SequenceEmitter {
+    extends SequencesEmitter {
 
   private var collectedSorts = Set[terms.sorts.Seq]()
 

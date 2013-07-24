@@ -118,7 +118,7 @@ trait DefaultProducer[
       case ast.And(a0, a1) if !φ.isPure =>
         val s0 = fresh(sorts.Snap)
         val s1 = fresh(sorts.Snap)
-        val tSnapEq = SnapEq(sf(sorts.Snap), Combine(s0, s1))
+        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
@@ -140,7 +140,7 @@ trait DefaultProducer[
             (c2: C, tv1: TV) => produce2(σ, sf, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
-      case ast.FieldAccessPredicate(ast.FieldLocation(eRcvr, field), gain) =>
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
 //        producePermissions[DirectFieldChunk](σ, sf, p, fa, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
 //        producePermissions(σ, sf, p, eRcvr, field.name, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
 //          Q(h, c1))
@@ -156,7 +156,7 @@ trait DefaultProducer[
             assume(mts)
             Q(mh, c2)})})
 
-      case ast.PredicateAccessPredicate(ast.PredicateLocation(eArgs, predicate), gain) =>
+      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
 //        val dpc =
 //          (rcvr: Term, id: String, snap: Term, p: P) =>
 //            DirectPredicateChunk(rcvr, id, snap, p)

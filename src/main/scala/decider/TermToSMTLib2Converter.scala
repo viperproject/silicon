@@ -66,8 +66,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Iff(t0, t1) =>
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
-    case TermEq(t0, t1) => t0.sort match {
-      case _: sorts.Seq => convert(SeqEq(t0, t1))
+    case Eq(t0, t1) => t0.sort match {
+      case sorts.Snap => "($Snap.eq " + convert(t0) + " " + convert(t1) + ")"
+      case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
+      case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
       case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
     }
 
@@ -134,8 +136,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Sequences */
 
-    case SeqEq(t0, t1) =>
-      "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
+//    case SeqEq(t0, t1) =>
+//      "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
 
     case SeqRanged(t0, t1) =>
       "($Seq.rng " + convert(t0) + " " + convert(t1) + ")"
@@ -162,6 +164,27 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case SeqUpdate(t0, t1, t2) =>
       s"($$Seq.update ${convert(t0)} ${convert(t1)} ${convert(t2)})"
 
+    /* Sets */
+
+    case SingletonSet(t0) => "($Set.singleton " + convert(t0) + ")"
+    case SetAdd(t0, t1) => "($Set.add " + convert(t0) + " " + convert(t1) + ")"
+    case SetCardinality(t0) => "($Set.card " + convert(t0) + ")"
+    case SetDifference(t0, t1) => "($Set.difference " + convert(t0) + " " + convert(t1) + ")"
+    case SetIntersection(t0, t1) => "($Set.intersection " + convert(t0) + " " + convert(t1) + ")"
+    case SetUnion(t0, t1) => "($Set.union " + convert(t0) + " " + convert(t1) + ")"
+    case SetIn(t0, t1) => "($Set.in " + convert(t0) + " " + convert(t1) + ")"
+    case SetSubset(t0, t1) => "($Set.subset " + convert(t0) + " " + convert(t1) + ")"
+
+    /* Multisets */
+
+//    case SetAdd(t0, t1) => "($Set.add " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetCardinality(t0) => "($Multiset.card " + convert(t0) + ")"
+    case MultisetDifference(t0, t1) => "($Multiset.difference " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetIntersection(t0, t1) => "($Multiset.intersection " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetUnion(t0, t1) => "($Multiset.union " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetIn(t0, t1) => "($Multiset.in " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetSubset(t0, t1) => "($Multiset.subset " + convert(t0) + " " + convert(t1) + ")"
+
     /* Domains */
 
     case DomainFApp(f, ts) =>
@@ -173,8 +196,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Other terms */
 
-    case SnapEq(t0, t1) =>
-      "($Snap.snapEq " + convert(t0) + " " + convert(t1) + ")"
+//    case SnapEq(t0, t1) =>
+//      "($Snap.snapEq " + convert(t0) + " " + convert(t1) + ")"
 
     case First(t) => "($Snap.first " + convert(t) + ")"
     case Second(t) => "($Snap.second " + convert(t) + ")"
@@ -213,6 +236,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case False() => "false"
     case Null() => "$Ref.null"
     case SeqNil(elementSort) => "$Seq.nil<" + convert(elementSort) + ">"
+    case EmptySet(elementSort) => "$Set.empty<" + convert(elementSort) + ">"
   }
 
   private def convert2real(t: Term): String =

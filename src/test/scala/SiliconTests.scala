@@ -9,9 +9,11 @@ class SiliconTests extends DefaultSilSuite {
   private val siliconTestDirectories: Seq[String] = Nil
 
   private val silTestDirectories: Seq[String] = List(
-    "all/basic",
-    "all/sequences",
-    "all/issues/silicon"
+    "all"//,
+//    "all/basic",
+//    "all/chalice",
+//    "all/sequences",
+//    "all/issues/silicon"
   )
 
   override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories

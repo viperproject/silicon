@@ -53,17 +53,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     consume2(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
       Q(σ \ h1, t, dcs, c1))
 
-  /**
-   *
-   * @param σ
-   * @param p
-   * @param φs
-   * @param pvef
-   * @param c
-   * @param tv
-   * @param Q
-   * @return
-   */
   def consumes(σ: S,
                p: P,
                φs: Seq[ast.Expression],
@@ -133,30 +122,34 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
       /* Field access predicates */
-//      case ast.AccessPredicate(memloc @ ast.MemoryLocation(eRcvr, id), perm) =>
-      case ast.FieldAccessPredicate(loc @ ast.FieldLocation(eRcvr, field), perm) =>
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
-            evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-              if (decider.isPositive(tPerm)) {
-                val id = FieldChunkIdentifier(tRcvr, field.name)
-                consumePermissions(σ, h, id, p * tPerm, loc, pve, c2, tv)((h1, ch, c3, results) =>
-                  ch match {
-                    case fc: DirectFieldChunk =>
-                      val snap = fc.value.convert(sorts.Snap)
-                      Q(h1, snap, fc :: Nil, c3)
+      case ast.AccessPredicate(locacc, perm) =>
+//      case ast.FieldAccessPredicate(loc @ ast.FieldLocation(eRcvr, field), perm) =>
+        withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
+//          evals(σ, id.args, pve, c1, tv)((tArgs, c2) =>
+//            if (decider.assert(tRcvr !== Null()))
+              evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+                if (decider.isPositive(tPerm))
+//                  val id = FieldChunkIdentifier(tRcvr, field.name)
+                  consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
+                    ch match {
+                      case fc: DirectFieldChunk =>
+//                        if (decider.assert(id.args(0) !== Null())) {
+                          val snap = fc.value.convert(sorts.Snap)
+                          Q(h1, snap, fc :: Nil, c3) //}
+//                        else
+//                          Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c3, tv)
 
-                    case pc: DirectPredicateChunk =>
-                      val h2 =
-                        if (results.consumedCompletely)
-                          pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
-                        else
-                          h1
-                      Q(h2, pc.snap, pc :: Nil, c3)})}
-              else
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv))
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(loc), c1, tv))
+                      case pc: DirectPredicateChunk =>
+                        val h2 =
+                          if (results.consumedCompletely)
+                            pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
+                          else
+                            h1
+                        Q(h2, pc.snap, pc :: Nil, c3)})
+                else
+                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
+//            else
+//              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(loc), c1, tv))
 
 //      case qe @ ast.Quantified(
 //                  ast.Exists(),
@@ -203,7 +196,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                  id: ChunkIdentifier,
                                  pLoss: P,
                                  // tRcvr: Term,
-                                 memloc: ast.MemoryLocation,
+                                 locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C,
                                  tv: TV)
@@ -217,13 +210,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     /* TODO: assert that pLoss > 0 */
 
     if (consumeExactRead(pLoss, c)) {
-      withChunk[DirectChunk](h, id, pLoss, memloc, pve, c, tv)(ch => {
+      withChunk[DirectChunk](h, id, pLoss, locacc, pve, c, tv)(ch => {
         if (decider.assertNoAccess(ch.perm - pLoss)) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      withChunk[DirectChunk](h, id, memloc, pve, c, tv)(ch => {
+      withChunk[DirectChunk](h, id, locacc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }
