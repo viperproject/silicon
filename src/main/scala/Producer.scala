@@ -4,8 +4,8 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger, PermissionChunk}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
+import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
@@ -141,15 +141,11 @@ trait DefaultProducer[
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-//        producePermissions[DirectFieldChunk](σ, sf, p, fa, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
-//        producePermissions(σ, sf, p, eRcvr, field.name, gain, DirectFieldChunk, toSort(field.typ), pve, c, tv)((h, ch, c1) =>
-//          Q(h, c1))
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-//            val ch = chConstructor(tRcvr, id, s, pNettoGain)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
@@ -157,41 +153,15 @@ trait DefaultProducer[
             Q(mh, c2)})})
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
-//        val dpc =
-//          (rcvr: Term, id: String, snap: Term, p: P) =>
-//            DirectPredicateChunk(rcvr, id, snap, p)
-//        producePermissions(σ, sf, p, eRcvr, pred.name, gain, dpc, sorts.Snap, pve, c, tv)((h, _, c1) =>
-//          Q(h, c1))
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(sorts.Snap)
             val pNettoGain = pGain * p
-            //            val ch = chConstructor(tRcvr, id, s, pNettoGain)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
             Q(mh, c2)}))
-
-
-//      case qe @ ast.Quantified(
-//                  ast.Exists(),
-//                  qvar,
-//                  ast.BinaryOp(
-//                    _: ast.And,
-//                    rdStarConstraints,
-//                    pe @ ast.FieldAccessPredicate(
-//                            ast.FieldLocation(eRcvr, field),
-//                            _)))
-//            if toSort(qvar.dataType) == sorts.Perms =>
-//
-//        val witness = qvar
-//        val (tWitness, _) = freshPermVar(witness.name)
-//        val σ1 = σ \+ (witness, tWitness)
-//        eval(σ1, rdStarConstraints, pve, c, tv)((tRdStarConstraints, c1) => {
-//          assume(tRdStarConstraints, c1)
-//          produce2(σ1, sf, p, pe, pve, c1, tv)((h1, c2) =>
-//            Q(h1, c2))})
 
 			/* Any regular expressions, i.e. boolean and arithmetic. */
 			case _ =>
@@ -202,35 +172,6 @@ trait DefaultProducer[
 
 		produced
 	}
-
-//  /* TODO: Replace parameters sf and sort by s: Sort and apply sf(sort) prior to calling the method. */
-//  private def producePermissions(σ: S,
-//                                 sf: Sort => Term,
-//                                 p: P,
-////                                 eRcvr: ast.Expression,
-////                                 id: String,
-//                                 id: ChunkIdentifier,
-//                                 gain: ast.Expression,
-//                                 chConstructor: (Term, String, Term, P) => DirectChunk,
-//                                 sort: Sort,
-//                                 pve: PartialVerificationError,
-//                                 c: C,
-//                                 tv: TV)
-//                                (Q: (H, DirectChunk, C) => VerificationResult)
-//                                : VerificationResult = {
-//
-//    evals(σ, id.args, pve, c, tv)((tRcvr, c1) => {
-//      assume(tRcvr !== Null())
-//      evalp(σ, gain, pve, c1, tv)((pGain, c3) => {
-//        val s = sf(sort)
-//        val (pNettoGain: P, tFr: Set[Term]) = (pGain * p, Set[Term](True()))
-//        val ch = chConstructor(tRcvr, id, s, pNettoGain)
-//
-//        assume(NoPerm() < pGain)
-//        val (mh, mts) = merge(σ.h, H(ch :: Nil))
-//        assume(mts ++ tFr)
-//        Q(mh, ch, c3)})})
-//  }
 
 	override def pushLocalState() {
 		snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)
