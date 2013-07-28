@@ -476,12 +476,6 @@ trait DefaultEvaluator[
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
 
-        /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
-         *       in order to avoid that different predicates with the same name trigger a cycle
-         *       detection.
-         */
-        val id = func.name
-
         evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
           val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
@@ -497,15 +491,15 @@ trait DefaultEvaluator[
             } else {
               val σ3 = σ2 \+ (func.result, tFA)
               /* Break recursive cycles */
-              if (c3.cycles(id) < config.unrollFunctions) {
-                val c3a = c3.incCycleCounter(id)
+              if (c3.cycles(func) < config.unrollFunctions) {
+                val c3a = c3.incCycleCounter(func)
                 val πPre = decider.π
                 val post = ast.utils.BigAnd(func.posts)
                 if (true) {
                   bookkeeper.functionBodyEvaluations += 1
                   eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
                     eval(σ3, post, pve, c4, tv)((tPost, c5) => {
-                      val c5a = c5.decCycleCounter(id)
+                      val c5a = c5.decCycleCounter(func)
                       val tFAEqFB = tFA === tFB
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
@@ -514,7 +508,7 @@ trait DefaultEvaluator[
                 } else {
                   /* Function body is invisible, use postcondition instead */
                     eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
-                      val c4a = c4.decCycleCounter(id)
+                      val c4a = c4.decCycleCounter(func)
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tPost))
                       assume(tPost)
@@ -528,14 +522,8 @@ trait DefaultEvaluator[
 
         val body = predicate.body
 
-        /* TODO: We should use something like 'predicate.receiver.dataType + "." + predicate.name'
-         *       in order to avoid that different predicates with the same name trigger a cycle
-         *       detection.
-         */
-        val id = predicate.name
-
-        if (c.cycles(predicate.name) < 2 * config.unrollFunctions) {
-          val c0a = c.incCycleCounter(id)
+        if (c.cycles(predicate) < 2 * config.unrollFunctions) {
+          val c0a = c.incCycleCounter(predicate)
           evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
             if (decider.isPositive(tPerm))
               evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
@@ -543,7 +531,7 @@ trait DefaultEvaluator[
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                   /* Unfolding only effects the current heap */
                   produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
-                    val c4a = c4.decCycleCounter(id)
+                    val c4a = c4.decCycleCounter(predicate)
                     val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                     eval(σ3, eIn, pve, c4a, tv)(Q)})}))
             else
