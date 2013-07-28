@@ -27,9 +27,11 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV] {
 
+  private type C = DefaultContext[ST, H, S]
+
 	/*protected*/ val config: Config
 
-  /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
+  /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
 	import decider.{fresh, assume, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
@@ -41,29 +43,29 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /* Must be set when a program verification is started! */
   var program: ast.Program = null
 
-  def contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S]
+  def contextFactory: ContextFactory[C, ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 
-  def verify(member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = member match {
-    case m: ast.Method => verify(m)
-    case f: ast.ProgramFunction => verify(f)
-    case p: ast.Predicate => verify(p)
-    case _: ast.Domain | _: ast.Field =>
-      val c = contextFactory.create(new DefaultHistory[ST, H, S]().tree)
-      Success[DefaultContext[ST, H, S], ST, H, S](c)
+  def verify(member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
+    val history = new DefaultHistory[ST, H, S]()
+    val c = contextFactory.create(history.tree)
+    val tv = traceviewFactory.create(history)
+
+    member match {
+      case m: ast.Method => verify(m, c, tv)
+      case f: ast.ProgramFunction => verify(f, c, tv)
+      case p: ast.Predicate => verify(p, c, tv)
+      case _: ast.Domain | _: ast.Field =>
+        Success[C, ST, H, S](c)
+    }
   }
 
-	def verify(method: ast.Method/*, history: History[ST, H, S]*/): VerificationResult = {
+	def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
     val outs = method.formalReturns.map(_.localVar)
-
-    val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree)
-
-    val tv = traceviewFactory.create(history)
 
     val γ = Γ(   ins.map(v => (v, fresh(v)))
               ++ outs.map(v => (v, fresh(v)))
@@ -86,21 +88,17 @@ trait AbstractElementVerifier[ST <: Store[ST],
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
          produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
-           Success[DefaultContext[ST, H, S], ST, H, S](c3))}
+           Success[C, ST, H, S](c3))}
 					&&
         inScope {
           exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success[DefaultContext[ST, H, S], ST, H, S](c4)))})})}
+              Success[C, ST, H, S](c4)))})})}
 	}
 
-  def verify(function: ast.ProgramFunction/*, h: History[ST, H, S]*/): VerificationResult = {
+  def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
-
-    val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree)
-    val tv = traceviewFactory.create(history)
 
     val ins = function.formalArgs.map(_.localVar)
     val out = function.result
@@ -121,39 +119,27 @@ trait AbstractElementVerifier[ST <: Store[ST],
       val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
       (inScope {
         produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
-          Success[DefaultContext[ST, H, S], ST, H, S](c2))}
+          Success[C, ST, H, S](c2))}
         &&
         inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
             eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
               consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success[DefaultContext[ST, H, S], ST, H, S](c4))))})}
+                Success[C, ST, H, S](c4))))})}
   }
 
-  def verify(predicate: ast.Predicate/*, h: History[ST, H, S]*/): VerificationResult = {
+  def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
-
-    val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree)
-    val tv = traceviewFactory.create(history)
 
     val ins = predicate.formalArgs.map(_.localVar)
 
     val γ = Γ(ins.map(v => (v, fresh(v))))
     val σ = Σ(γ, Ø, Ø)
 
-//    val vThis = predicate.formalArg.localVar
-//    val tThis = fresh(vThis)
-
-//    val γ = Γ(vThis -> tThis)
-//    val γ = Γ(vThis -> tThis)
-//    val σ = Σ(Ø, Ø, Ø)
-
     inScope {
-//      assume(tThis !== terms.Null())
       produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
-        Success[DefaultContext[ST, H, S], ST, H, S](c1))}
+        Success[C, ST, H, S](c1))}
   }
 }
 
