@@ -264,7 +264,7 @@ case class Config(
     showStatistics: Option[Tuple2[String, String]] = None,
     performSmokeChecks: Boolean = false,
     disableSubsumption: Boolean = false,
-    includeMembers: String = "*",
+    includeMembers: String = ".*",
     excludeMembers: String = "",
     unrollFunctions: Int = 1,
     cacheFunctionApplications: Boolean = true,

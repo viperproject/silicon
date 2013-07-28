@@ -230,7 +230,7 @@ trait AbstractVerifier[ST <: Store[ST],
 
     emitPreamble(program)
 
-    val members = program.members.iterator
+    val members = program.members.filterNot(m => filter(m.name)).iterator
 
     /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
@@ -252,6 +252,10 @@ trait AbstractVerifier[ST <: Store[ST],
 
     results
   }
+
+  private def filter(str: String) = (
+       !str.matches(config.includeMembers)
+    || str.matches(config.excludeMembers))
 
   private def emitPreamble(program: ast.Program) {
     decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
