@@ -1,6 +1,7 @@
 package semper
 package silicon
 
+import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{InsufficientPermission}
@@ -54,6 +55,8 @@ trait Brancher[ST <: Store[ST],
              fTrue: (C, TV) => VerificationResult,
 						 fFalse: (C, TV) => VerificationResult)
             : VerificationResult
+
+  def guards: Iterable[Term]
 }
 
 //trait ARPSupporter[ST <: Store[ST],
@@ -80,6 +83,11 @@ trait DefaultBrancher[ST <: Store[ST],
 	import decider.assume
 
 	val bookkeeper: Bookkeeper
+
+
+  private var currentGuards: Stack[Term] = Stack()
+
+  def guards = this.currentGuards
 
   def branchLocally(t: Term,
                     c: C,
@@ -141,28 +149,41 @@ trait DefaultBrancher[ST <: Store[ST],
 
 		bookkeeper.branches += additionalPaths
 
-
 		((if (exploreTrueBranch) {
 			pushLocalState()
+      currentGuards = currentGuards.push(guardsTrue)
+
       val result =
         decider.inScope {
           assume(guardsTrue)
           fTrue(cTrue, tvTrue)
         }
+
+      currentGuards = currentGuards.pop
       popLocalState()
+
 			result
-		} else Unreachable[C, ST, H, S](cTrue))
+		} else {
+      Unreachable[C, ST, H, S](cTrue)
+    })
 			&&
 		(if (exploreFalseBranch) {
 			pushLocalState()
+      currentGuards = currentGuards.push(guardsFalse)
+
       val result =
         decider.inScope {
           assume(guardsFalse)
           fFalse(cFalse, tvFalse)
         }
+
+      currentGuards = currentGuards.pop
       popLocalState()
+
 			result
-		} else Unreachable[C, ST, H, S](cFalse)))
+		} else {
+      Unreachable[C, ST, H, S](cFalse)
+    }))
 	}
 }
 

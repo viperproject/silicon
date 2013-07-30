@@ -17,7 +17,7 @@ import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, Dir
 import state.terms._
 import state.terms.implicits._
 import utils.notNothing.NotNothing
-import semper.sil.ast.SeqContains
+import sil.ast.SeqContains
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -119,12 +119,19 @@ trait DefaultEvaluator[
 
 		/* For debugging only */
 		e match {
-			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: FullPerm | _: NoPerm
-          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm =>
+			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
+          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
+          | _: ast.WildcardPerm  =>
+
 			case _ =>
 				logger.debug("\nEVALUATING " + e)
 				logger.debug(stateFormatter.format(σ))
 		}
+
+    /* TODO: Issue 0039 has so far only been resolved for And, and even there only for the second conjunct.
+     *       The problem most likely still exists for Implies and Ite. Let's fix that when it actually
+     *       emerges :-)
+     */
 
 		e match {
       case ast.True() => Q(True(), c)
@@ -181,14 +188,16 @@ trait DefaultEvaluator[
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        var πPre: Set[Term] = Set()
-        var πAux: Set[Term] = Set()
+        case class LocalResult(tGuards: Iterable[Term], tActual: Term, tAux: Set[Term])
 
-        var t0: Term = True()
-        var t1: Term = True()
+        var πPre: Set[Term] = Set()
+        var t0: Option[Term] = None
+        var localResults: List[LocalResult] = Nil
 
         eval(σ, e0, pve, c, tv)((_t0, c1) => {
-          t0 = _t0
+          assert(t0.isEmpty || t0.get == _t0, s"Unexpected difference: $t0 vs ${_t0}")
+
+          t0 = Some(_t0)
           πPre = decider.π
 
           decider.pushScope()
@@ -197,20 +206,29 @@ trait DefaultEvaluator[
           *       that it is more a continue-if-no-contradiction thing.
           */
           val r =
-            branchLocally(t0, c1, tv, LocalAndBranching(e0, t0),
+            branchLocally(t0.get, c1, tv, LocalAndBranching(e0, t0.get),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
-                  t1 = _t1
-                  πAux = decider.π -- (πPre + t0)
+                  localResults ::= LocalResult(guards, _t1, decider.π -- (πPre + t0.get))
                   Success[C, ST, H, S](c3)}),
               (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
 
           decider.popScope()
 
           r && {
-            val tAux = state.terms.utils.BigAnd(πAux)
+            val (t1: Term, tAux: Set[Term]) =
+              localResults.map {lr =>
+                val guard: Term = state.terms.utils.BigAnd(lr.tGuards)
+                val tAct: Term = Implies(guard, lr.tActual)
+                val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.tAux))
+
+                (tAct, tAux)
+              }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, tAux)) =>
+                (And(tActAcc, tAct), tAuxAcc + tAux)
+              }
+
             assume(tAux)
-            Q(And(t0, t1), c1)}})
+            Q(And(t0.get, t1), c1)}})
 
       /* TODO: Implement a short-circuiting evaluation of OR. */
       case ast.Or(e0, e1) => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
