@@ -257,10 +257,10 @@ case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
 sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 
 class Not(val p: Term) extends BooleanTerm with commonnodes.StructuralEqualityUnaryOp[Term] {
-	override val op = "¬"
+	override val op = "!"
 
 	override val toString = p match {
-		case eq: Eq => eq.p0.toString + "≠" + eq.p1.toString
+		case eq: Eq => eq.p0.toString + " != " + eq.p1.toString
 		case _ => super.toString
 	}
 }
@@ -1065,6 +1065,8 @@ sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 case class Combine(t0: Term, t1: Term) extends SnapshotTerm {
   utils.assertSort(t0, "first operand", sorts.Snap)
   utils.assertSort(t1, "second operand", sorts.Snap)
+
+  override val toString = s"($t0, $t1)"
 }
 
 case class First(t: Term) extends SnapshotTerm {
@@ -1079,7 +1081,7 @@ case class SortWrapper(t: Term, to: Sort) extends Term {
   assert(!(t.sort == sorts.Ref && to == sorts.Int),
          "Unexpected sort wrapping from %s to %s".format(t.sort, to))
 
-  override val toString = "(%s) %s".format(to, t)
+  override val toString = s"$t"
   override val sort = to
 }
 
