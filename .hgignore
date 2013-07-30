@@ -4,16 +4,12 @@ syntax: glob
 project/project
 project/target
 target
-testoutput.tmp
-logfile.smt2
 tools/checkTestOutput.jar
 tools/z3_tidy.jar
-perm-asserts.txt
-findChunkWithProver.txt
-z3timings.txt
 .settings/
 .cache
 .scala_dependencies
 .history
 stats/
 bin/**
+tmp_*
