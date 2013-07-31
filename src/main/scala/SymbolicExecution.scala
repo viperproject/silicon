@@ -9,7 +9,7 @@ import interfaces.{VerificationResult, Failure, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
     TwinBranch, LocalTwinBranch, Step}
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, PermissionChunk, ChunkIdentifier}
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, ChunkIdentifier}
 import state.terms._
 import state.terms.utils.{BigAnd, ¬}
 import state.DirectChunk
@@ -58,14 +58,6 @@ trait Brancher[ST <: Store[ST],
 
   def guards: Seq[Term]
 }
-
-//trait ARPSupporter[ST <: Store[ST],
-//                   H <: Heap[H],
-//                   S <: State[ST, H, S],
-//                   C <: Context[C, ST, H, S] {
-//
-//  def con(id: String, upperBound: FractionalPermissions, c: C)
-//}
 
 /*
  * Implementations
@@ -196,8 +188,6 @@ trait ChunkFinder[P <: FractionalPermissions[P],
 
 	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
-//                rcvr: Term,
-//                id: String,
                 id: ChunkIdentifier,
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
@@ -211,8 +201,6 @@ trait ChunkFinder[P <: FractionalPermissions[P],
    */
   def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
-//                rcvr: Term,
-//                id: String,
                 id: ChunkIdentifier,
                 p: P,
                 locacc: ast.LocationAccess,
@@ -235,8 +223,6 @@ class DefaultChunkFinder[ST <: Store[ST],
 
 	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
-//                rcvr: Term,
-//                id: String,
                 id: ChunkIdentifier,
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
@@ -246,30 +232,17 @@ class DefaultChunkFinder[ST <: Store[ST],
                : VerificationResult = {
 
 		decider.getChunk[CH](h, id) match {
-			case Some(c) /* if manifest[CH].erasure.isInstance(c) */ =>
+			case Some(c) =>
         Q(c)
 
 			case None =>
-//				val loc = if (m.loc != ast.NoLocation) m.loc else rcvrSrc.sourceLocation
-
-//				if (decider.checkSmoke)	{
-//					logger.debug("%s: Detected inconsistent state looking up a chunk for %s.%s.".format(loc, e, id))
-//					logger.debug("π = " + stateFormatter.format(decider.π))
-//
-//					// val warning = Warning(SmokeDetectedAtChunkLookup at pos withDetails(e, id), c)
-//					// warning
-//					Success[C, ST, H, S](c)
-//				} else
-//					Failure[C, ST, H, S, TV](m at loc dueTo InsufficientPermissions(rcvrSrc.toString, id), c, tv)
-          /* TODO: We need the location node, not only the receiver. */
-					Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+        /* TODO: We need the location node, not only the receiver. */
+        Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
 		}
 	}
 
 	def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
-//                rcvr: Term,
-//                id: String,
                 id: ChunkIdentifier,
                 p: DefaultFractionalPermissions,
                 locacc: ast.LocationAccess,
@@ -292,15 +265,6 @@ class StateUtils[ST <: Store[ST],
                  S <: State[ST, H, S],
                  C <: Context[C, ST, H, S]]
                 (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
-
-//  def freshPermVar(id: String = "$p", upperBound: FractionalPermissions = FullPerm())
-//                  : (Var, Term) = {
-//
-//    val permVar = decider.fresh(id, sorts.Perm)
-//    val permVarConstraints = IsValidPerm(permVar, upperBound)
-//
-//    (permVar, permVarConstraints)
-//  }
 
   def freshARP(id: String = "$k", upperBound: DefaultFractionalPermissions = FullPerm())
               : (Var, Term) = {
