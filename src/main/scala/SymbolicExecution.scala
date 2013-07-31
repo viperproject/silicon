@@ -56,7 +56,7 @@ trait Brancher[ST <: Store[ST],
 						 fFalse: (C, TV) => VerificationResult)
             : VerificationResult
 
-  def guards: Iterable[Term]
+  def guards: Seq[Term]
 }
 
 //trait ARPSupporter[ST <: Store[ST],
