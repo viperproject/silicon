@@ -301,16 +301,16 @@ object configuration {
 
   lazy val parser = new OptionParser[Config](Silicon.name) {
     val options = Seq(
-      flag("firstError",
-           "Execute only until the first error is found")
-          {(config: Config) => config.copy(stopOnFirstError = true)},
-      flag("branches",
-           "In case of errors show the branches taken during the execution")
-          {(config: Config) => config.copy(showBranches = true)},
+      booleanOpt("firstError",
+                 "Execute only until the first error is found")
+                 {(b, config) => config.copy(stopOnFirstError = b)},
+      booleanOpt("branches",
+                 "In case of errors show the branches taken during the execution")
+                 {(b, config) => config.copy(showBranches = b)},
       opt("showStatistics",
-          (   "Show some statistics about the verification. Options are\n"
+             "Show some statistics about the verification. Options are\n"
            + "\t\tstdio\n"
-           + "\t\tfile=<path\\to\\statistics.json>"))
+           + "\t\tfile=<path\\to\\statistics.json>")
          {(s: String, c: Config) => {
             var parts = s.split('=').toList
 
@@ -323,44 +323,44 @@ object configuration {
       opt(None,
           "include",
           "<pattern>",
-          (  "Include members in verification (default: '%s')\n".format(DefaultConfig.includeMembers)
+             "Include members in verification (default: '%s')\n".format(DefaultConfig.includeMembers)
            + "\tWildcard characters are '?' and '*'\n"
-           + "\tExamples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'"))
+           + "\tExamples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'")
          {(s: String, config: Config) => config.copy(includeMembers = silicon.common.wildcardToRegex(s))},
       opt(None,
           "exclude",
           "<pattern>",
-          (  "Exclude members from verification (default: '%s')\n".format(DefaultConfig.excludeMembers)
-           + "\tIs applied after the include pattern"))
+             "Exclude members from verification (default: '%s')\n".format(DefaultConfig.excludeMembers)
+           + "\tIs applied after the include pattern")
          {(s: String, config: Config) => config.copy(excludeMembers = silicon.common.wildcardToRegex(s))},
-      flag("disableSubsumption",
-           "Don't add assumptions gained while verifying an assert statement")
-          {(config: Config) => config.copy(disableSubsumption = true)},
+      booleanOpt("disableSubsumption",
+                 "Don't add assumptions gained while verifying an assert statement")
+                 {(b, config) => config.copy(disableSubsumption = b)},
       intOpt(None,
              "unrollFunctions",
              "<n>",
              "Unroll function definitions at most n times (default:%s)".format(DefaultConfig.unrollFunctions))
             {(n: Int, config: Config) => config.copy(unrollFunctions = n)},
-      flag("cacheSnapshots",
-           "Reduce number of fresh snapshot symbols when producing assertions\n")
-          {(config: Config) => config.copy(cacheSnapshots = true)},
-      flag("cacheFunctionApplications",
-           (  "Cache evaluated function bodies and/or postconditions\n"
-            + "\tResults in incompletenesses."))
-          {(config: Config) => config.copy(cacheFunctionApplications = true)},
-      flag("branchOverPureConditionals",
-           "Branch over pure conditionals, e.g. i > 0 ==> r !+= null")
-          {(config: Config) => config.copy(branchOverPureConditionals = true)},
-      flag("strictConjunctionEvaluation",
-           (  "Perform strict evaluation of conjunctions. If so, evaluating e.g.\n"
-            + "\t\ti > 0 && f(i)\n"
-            + "\twill fail if f's precondition requires i > 0.\n"))
-          {(config: Config) => config.copy(strictConjunctionEvaluation = true)},
+      booleanOpt("cacheSnapshots",
+                 "Reduce number of fresh snapshot symbols when producing assertions\n")
+                 {(b, config) => config.copy(cacheSnapshots = b)},
+      booleanOpt("cacheFunctionApplications",
+                   "Cache evaluated function bodies and/or postconditions\n"
+                 + "\tResults in incompletenesses.")
+                 {(b, config) => config.copy(cacheFunctionApplications = b)},
+      booleanOpt("branchOverPureConditionals",
+                 "Branch over pure conditionals, e.g. i > 0 ==> r !+= null")
+                 {(b, config) => config.copy(branchOverPureConditionals = b)},
+      booleanOpt("strictConjunctionEvaluation",
+                   "Perform strict evaluation of conjunctions. If so, evaluating e.g.\n"
+                 + "\t\ti > 0 && f(i)\n"
+                 + "\twill fail if f's precondition requires i > 0.\n")
+                 {(b, config) => config.copy(strictConjunctionEvaluation = b)},
       opt(None,
           "logLevel",
           "<level>",
-          (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF\n"
-           + "(default: %s)".format(DefaultConfig.logLevel)))
+             "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF\n"
+           + "(default: %s)".format(DefaultConfig.logLevel))
          {(s: String, config: Config) => config.copy(logLevel = s)},
       opt(None,
         "tempDirectory",
