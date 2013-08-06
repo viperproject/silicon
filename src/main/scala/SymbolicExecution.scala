@@ -141,12 +141,15 @@ trait DefaultBrancher[ST <: Store[ST],
 
 		bookkeeper.branches += additionalPaths
 
+    val cnt = utils.counter.next()
+
 		((if (exploreTrueBranch) {
 			pushLocalState()
       currentGuards = currentGuards.push(guardsTrue)
 
       val result =
         decider.inScope {
+          decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
           assume(guardsTrue)
           fTrue(cTrue, tvTrue)
         }
@@ -156,6 +159,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
 			result
 		} else {
+      decider.prover.logComment(s"[dead then-branch $cnt] $guardsTrue")
       Unreachable[C, ST, H, S](cTrue)
     })
 			&&
@@ -165,6 +169,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
       val result =
         decider.inScope {
+          decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
           assume(guardsFalse)
           fFalse(cFalse, tvFalse)
         }
@@ -174,6 +179,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
 			result
 		} else {
+      decider.prover.logComment(s"[dead else-branch $cnt] $guardsFalse")
       Unreachable[C, ST, H, S](cFalse)
     }))
 	}

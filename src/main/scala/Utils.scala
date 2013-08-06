@@ -30,4 +30,13 @@ package object utils {
           extends NotNothing[Nothing]
     }
   }
+
+  object counter {
+    private var value = 0
+
+    def next() = {
+      value = value + 1
+      value
+    }
+  }
 }

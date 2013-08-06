@@ -121,11 +121,12 @@ trait DefaultEvaluator[
 		e match {
 			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
           | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
-          | _: ast.WildcardPerm  =>
+          | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
 			case _ =>
 				logger.debug("\nEVALUATING " + e)
 				logger.debug(stateFormatter.format(σ))
+        decider.prover.logComment(s"[eval] $e")
 		}
 
     /* TODO: Issue 0039 has so far only been resolved for And, and even there only for the second conjunct.
@@ -188,11 +189,9 @@ trait DefaultEvaluator[
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        case class LocalResult(tGuards: Iterable[Term], tActual: Term, tAux: Set[Term])
-
         var πPre: Set[Term] = Set()
         var t0: Option[Term] = None
-        var localResults: List[LocalResult] = Nil
+        var localResults: List[LocalEvaluationResult] = Nil
 
         eval(σ, e0, pve, c, tv)((_t0, c1) => {
           assert(t0.isEmpty || t0.get == _t0, s"Unexpected difference: $t0 vs ${_t0}")
@@ -209,23 +208,23 @@ trait DefaultEvaluator[
             branchLocally(t0.get, c1, tv, LocalAndBranching(e0, t0.get),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
-                  localResults ::= LocalResult(guards, _t1, decider.π -- (πPre + t0.get))
+                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get))
                   Success[C, ST, H, S](c3)}),
               (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
 
           decider.popScope()
 
           r && {
-            val (t1: Term, tAux: Set[Term]) =
-              localResults.map {lr =>
-                val guard: Term = state.terms.utils.BigAnd(lr.tGuards)
-                val tAct: Term = Implies(guard, lr.tActual)
-                val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.tAux))
-
-                (tAct, tAux)
-              }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, tAux)) =>
-                (And(tActAcc, tAct), tAuxAcc + tAux)
-              }
+            val (t1: Term, tAux: Set[Term]) = combine(localResults)
+//              localResults.map {lr =>
+//                val guard: Term = state.terms.utils.BigAnd(lr.tGuards)
+//                val tAct: Term = Implies(guard, lr.tActual)
+//                val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.tAux))
+//
+//                (tAct, tAux)
+//              }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, tAux)) =>
+//                (And(tActAcc, tAct), tAuxAcc + tAux)
+//              }
 
             assume(tAux)
             Q(And(t0.get, t1), c1)}})
@@ -247,29 +246,40 @@ trait DefaultEvaluator[
          * - We also have to keep track of all path conditions that result from
          *   the evaluation of e0 and e1
          */
+
         val πPre: Set[Term] = decider.π
           /* Initial set of path conditions */
+
         var πIf: Set[Term] = Set()
           /* Path conditions assumed while evaluating the antecedent */
-        var πThen: Set[Term] = Set()
-          /* Path conditions assumed while evaluating the consequent */
-
         var tEvaluatedIf: Term = False()
           /* The term the antecedent actually evaluates too. */
-        var tEvaluatedThen: Term = True()
-          /* The term the consequent actually evaluates too. */
+
+        var localResults: List[LocalEvaluationResult] = Nil
+
+//        var πThen: Set[Term] = Set()
+//        /* Path conditions assumed while evaluating the consequent */
+//
+//        var tEvaluatedThen: Term = True()
+//          /* The term the consequent actually evaluates too. */
 
         decider.pushScope()
         val r =
           eval(σ, e0, pve, c, tv)((t0, c1) => {
-            πIf = decider.π -- πPre
+            val πDiff = decider.π -- πPre
+
+            assert(tEvaluatedIf == False() || tEvaluatedIf == t0, s"Unexpected difference: $tEvaluatedIf vs $t0")
+            assert(πIf.isEmpty || πIf == πDiff, s"Unexpected difference: $πIf vs $πDiff")
+
+            πIf = πDiff
             tEvaluatedIf = t0
 
             branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
-                  tEvaluatedThen = t1
+                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf))
+//                  πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
+//                  tEvaluatedThen = t1
                   Success[C, ST, H, S](c3)}),
               (c2: C, _) => Success[C, ST, H, S](c2))})
 
@@ -282,14 +292,73 @@ trait DefaultEvaluator[
            * related to the consequent can also be assumed.
            */
 
+          val (tActualThen: Term, tAuxThen: Set[Term]) = combine(localResults)
           val tAuxIf = state.terms.utils.BigAnd(πIf)
-          val tAuxThen = state.terms.utils.BigAnd(πThen)
-          val tAuxImplies = Implies(tEvaluatedIf, tAuxThen)
-          val tImplies = Implies(tEvaluatedIf, tEvaluatedThen)
+
+//          val tAuxThen = state.terms.utils.BigAnd(πThen)
+
+          val tImplies = Implies(tEvaluatedIf, tActualThen)
+          val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
           Q(tImplies, c)
         }
+
+//      case impl @ ast.Implies(e0, e1) =>
+//        /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
+//         *   fails if e0 establishes a precondition of e1
+//         * - Hence we have to assume e0 when evaluating e1, but revoke that
+//         *   assumption afterwards
+//         * - We also have to keep track of all path conditions that result from
+//         *   the evaluation of e0 and e1
+//         */
+//        val πPre: Set[Term] = decider.π
+//        /* Initial set of path conditions */
+//        var πIf: Set[Term] = Set()
+//        /* Path conditions assumed while evaluating the antecedent */
+//        var πThen: Set[Term] = Set()
+//        /* Path conditions assumed while evaluating the consequent */
+//
+//        var tEvaluatedIf: Term = False()
+//        /* The term the antecedent actually evaluates too. */
+//        var tEvaluatedThen: Term = True()
+//        /* The term the consequent actually evaluates too. */
+//
+//        decider.pushScope()
+//        val r =
+//          eval(σ, e0, pve, c, tv)((t0, c1) => {
+//            assert(πIf.isEmpty && tEvaluatedIf == False())
+//
+//            πIf = decider.π -- πPre
+//            tEvaluatedIf = t0
+//
+//            branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
+//              (c2: C, tv1: TV) =>
+//                eval(σ, e1, pve, c2, tv1)((t1, c3) => {
+//                  assert(πThen.isEmpty && tEvaluatedThen == True())
+//
+//                  πThen = decider.π -- (πPre ++ πIf + tEvaluatedIf)
+//                  tEvaluatedThen = t1
+//                  Success[C, ST, H, S](c3)}),
+//              (c2: C, _) => Success[C, ST, H, S](c2))})
+//
+//        decider.popScope()
+//
+//        r && {
+//          /* The additional path conditions gained while evaluating the
+//           * antecedent can be assumed in any case.
+//           * If the antecedent holds, then the additional path conditions
+//           * related to the consequent can also be assumed.
+//           */
+//
+//          val tAuxIf = state.terms.utils.BigAnd(πIf)
+//          val tAuxThen = state.terms.utils.BigAnd(πThen)
+//          val tAuxImplies = Implies(tEvaluatedIf, tAuxThen)
+//          val tImplies = Implies(tEvaluatedIf, tEvaluatedThen)
+//
+//          assume(Set(tAuxIf, tAuxImplies))
+//          Q(tImplies, c)
+//        }
 
       case ast.Ite(e0, e1, e2) if config.branchOverPureConditionals =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -300,52 +369,135 @@ trait DefaultEvaluator[
       case ite @ ast.Ite(e0, e1, e2) =>
         val πPre: Set[Term] = decider.π
         var πIf: Option[Set[Term]] = None
-        var πThen: Option[Set[Term]] = None
-        var πElse: Option[Set[Term]] = None
         var tActualIf: Option[Term] = None
-        var tActualThen: Option[Term] = None
-        var tActualElse: Option[Term] = None
+
+//        var πThen: Option[Set[Term]] = None
+//        var πElse: Option[Set[Term]] = None
+//        var tActualThen: Option[Term] = None
+//        var tActualElse: Option[Term] = None
+        var localResultsThen: List[LocalEvaluationResult] = Nil
+        var localResultsElse: List[LocalEvaluationResult] = Nil
 
         decider.pushScope()
 
         val r =
           eval(σ, e0, pve, c, tv)((t0, c1) => {
-            πIf = Some(decider.π -- πPre)
+            val πDiff = decider.π -- πPre
+
+            assert(tActualIf.isEmpty || tActualIf.get == t0, s"Unexpected difference: $tActualIf vs $t0")
+            assert(πIf.isEmpty || πIf.get == πDiff, s"Unexpected difference: $πIf vs $πDiff")
+
+            πIf = Some(πDiff)
             tActualIf = Some(t0)
 
             branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) => {
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  πThen = Some(decider.π -- (πPre ++ πIf.get + t0))
-                  tActualThen = Some(t1)
+//                  πThen = Some(decider.π -- (πPre ++ πIf.get + t0))
+//                  tActualThen = Some(t1)
+                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0))
                   Success[C, ST, H, S](c3)})},
 
               (c2: C, tv1: TV) => {
                 eval(σ, e2, pve, c2, tv1)((t2, c3) => {
-                  πElse = Some(decider.π -- (πPre ++ πIf.get + Not(t0)))
-                  tActualElse = Some(t2)
+//                  πElse = Some(decider.π -- (πPre ++ πIf.get + Not(t0)))
+//                  tActualElse = Some(t2)
+                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)))
                   Success[C, ST, H, S](c3)})})})
 
         decider.popScope()
 
         r && {
-          /* Conjunct all auxilliary terms (sort: bool). */
-          val tIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
-          val tThen: Term = state.terms.utils.BigAnd(πThen.getOrElse(Set(True())))
-          val tElse: Term = state.terms.utils.BigAnd(πElse.getOrElse(Set(True())))
+          /* Conjunct all auxiliary terms (sort: bool). */
+          val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
-          /* Ite with auxilliary terms */
-          val tIte = Ite(tActualIf.getOrElse(False()), tThen, tElse)
+          val tActualThenVar = fresh("actualThen", toSort(e1.typ))
+          val tActualElseVar = fresh("actualElse", toSort(e2.typ))
+
+//          val tThen: Term = state.terms.utils.BigAnd(πThen.getOrElse(Set(True())))
+//          val tElse: Term = state.terms.utils.BigAnd(πElse.getOrElse(Set(True())))
+          /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
+           *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
+          val (tActualThen: Term, tAuxThen: Set[Term]) = combine(localResultsThen, tActualThenVar === _)
+          val (tActualElse: Term, tAuxElse: Set[Term]) = combine(localResultsElse, tActualElseVar === _)
+
+          /* Ite with auxiliary terms */
+//          val tIte = Ite(tActualIf.getOrElse(False()), tThen, tElse)
+          val tAuxIte = Ite(tActualIf.getOrElse(False()),
+                            state.terms.utils.BigAnd(tAuxThen),
+                            state.terms.utils.BigAnd(tAuxElse))
 
           /* Ite with the actual results of the evaluation */
+//          val tActualIte =
+//            Ite(tActualIf.getOrElse(False()),
+//              tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.typ))),
+//              tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.typ))))
           val tActualIte =
             Ite(tActualIf.getOrElse(False()),
-              tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.typ))),
-              tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.typ))))
+                if (localResultsThen.nonEmpty) tActualThenVar else fresh("$deadThen", toSort(e1.typ)),
+                if (localResultsElse.nonEmpty) tActualElseVar else fresh("$deadElse", toSort(e2.typ)))
 
-          assume(Set(tIf, tIte))
+          val actualTerms = And(tActualThen, tActualElse)
+
+          assume(Set(tAuxIf, tAuxIte, actualTerms))
           Q(tActualIte, c)
         }
+
+//      case ite @ ast.Ite(e0, e1, e2) =>
+//        val πPre: Set[Term] = decider.π
+//        var πIf: Option[Set[Term]] = None
+//        var πThen: Option[Set[Term]] = None
+//        var πElse: Option[Set[Term]] = None
+//        var tActualIf: Option[Term] = None
+//        var tActualThen: Option[Term] = None
+//        var tActualElse: Option[Term] = None
+//
+//        decider.pushScope()
+//
+//        val r =
+//          eval(σ, e0, pve, c, tv)((t0, c1) => {
+//            assert(πIf.isEmpty && tActualIf.isEmpty)
+//
+//            πIf = Some(decider.π -- πPre)
+//            tActualIf = Some(t0)
+//
+//            branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
+//              (c2: C, tv1: TV) => {
+//                eval(σ, e1, pve, c2, tv1)((t1, c3) => {
+//                  assert(πThen.isEmpty && tActualThen.isEmpty)
+//
+//                  πThen = Some(decider.π -- (πPre ++ πIf.get + t0))
+//                  tActualThen = Some(t1)
+//                  Success[C, ST, H, S](c3)})},
+//
+//              (c2: C, tv1: TV) => {
+//                eval(σ, e2, pve, c2, tv1)((t2, c3) => {
+//                  assert(πElse.isEmpty && tActualElse.isEmpty)
+//
+//                  πElse = Some(decider.π -- (πPre ++ πIf.get + Not(t0)))
+//                  tActualElse = Some(t2)
+//                  Success[C, ST, H, S](c3)})})})
+//
+//        decider.popScope()
+//
+//        r && {
+//          /* Conjunct all auxilliary terms (sort: bool). */
+//          val tIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
+//          val tThen: Term = state.terms.utils.BigAnd(πThen.getOrElse(Set(True())))
+//          val tElse: Term = state.terms.utils.BigAnd(πElse.getOrElse(Set(True())))
+//
+//          /* Ite with auxilliary terms */
+//          val tIte = Ite(tActualIf.getOrElse(False()), tThen, tElse)
+//
+//          /* Ite with the actual results of the evaluation */
+//          val tActualIte =
+//            Ite(tActualIf.getOrElse(False()),
+//              tActualThen.getOrElse(fresh("$deadBranch", toSort(e1.typ))),
+//              tActualElse.getOrElse(fresh("$deadBranch", toSort(e2.typ))))
+//
+//          assume(Set(tIf, tIte))
+//          Q(tActualIte, c)
+//        }
 
       /* Integers */
 
@@ -454,18 +606,25 @@ trait DefaultEvaluator[
          */
 
         val πPre: Set[Term] = decider.π
-        var πPost: Set[Term] = πPre
-        var tActualBody: Term = True()
+//        var πPost: Set[Term] = πPre
+//        var tActualBody: Term = True()
+        var localResults: List[LocalEvaluationResult] = Nil
 
         decider.pushScope()
+        decider.prover.logComment(s"BEGIN EVAL QUANT $quant")
 
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
 
         val r =
           eval(σ \+ γVars, body, pve, c, tv)((tBody, c1) => {
-            tActualBody = tBody
-            πPost = decider.π
+//            assert(πPost.isEmpty && tActualBody == True())
+
+//            tActualBody = tBody
+//            πPost = decider.π
+
+            localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
+
             /* We could call Q directly instead of returning Success, but in
              * that case the path conditions πDelta would also be outside of
              * the quantification. Since they are not needed outside of the
@@ -480,15 +639,22 @@ trait DefaultEvaluator[
              */
             Success[C, ST, H, S](c1)})
 
+        decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
 
         r && {
-          val πDelta = πPost -- πPre
-          val tAux = state.terms.utils.BigAnd(πDelta)
-          val tQuantAux = Quantification(tQuantOp, tVars, tAux)
-          val tQuant = Quantification(tQuantOp, tVars, tActualBody)
+          val (tActual: Term, tAux: Set[Term]) = combine(localResults)
 
+//          val πDelta = πPost -- πPre
+//          val tAux = state.terms.utils.BigAnd(πDelta)
+//          val tQuantAux = Quantification(tQuantOp, tVars, tAux)
+//          val tQuant = Quantification(tQuantOp, tVars, tActualBody)
+          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux))
+          val tQuant = Quantification(tQuantOp, tVars, tActual)
+
+          decider.prover.logComment("Quantifier auxiliary terms")
           assume(tQuantAux)
+          decider.prover.logComment(s"Quantifier actual term: $tQuant")
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
@@ -518,7 +684,7 @@ trait DefaultEvaluator[
                   eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
                     eval(σ3, post, pve, c4, tv)((tPost, c5) => {
                       val c5a = c5.decCycleCounter(func)
-                      val tFAEqFB = tFA === tFB
+                      val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
                       if (config.cacheFunctionApplications)
                         fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                       assume(Set(tFAEqFB, tPost))
@@ -531,8 +697,35 @@ trait DefaultEvaluator[
                         fappCache += (tFA -> (decider.π -- πPre + tPost))
                       assume(tPost)
                       Q(tFA, c4a)})}
-              } else
-                Q(tFA, c3)}})})
+              } else {
+                /* Unfolded the function often enough already. We still need to
+                 * evaluate the postcondition, though, because Z3 might
+                 * otherwise not know enough about the recursive call.
+                 * For example, that the length of a list is always positive.
+                 */
+                val post = ast.utils.BigAnd(func.posts)
+
+                /* TODO: Probably doesn't detect mutuall recursion. */
+                val badPostcondition =
+                  post existsDefined {
+                    case ast.FuncApp(someFunc, _) if func.name == someFunc.name =>
+                  }
+
+                if (badPostcondition)
+                  sys.error(  "Silicon cannot handle function postconditions that mention the function itself. "
+                            + "Try to replace the function application by 'result', if possible.")
+
+                val πPre = decider.π
+                val c3a = c3//.incCycleCounter(func)
+                eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
+//                  decider.prover.logComment(s"  c4.cycles = ${c4.cycles(func)}")
+                  val c4a = c4//.decCycleCounter(func)
+                  if (config.cacheFunctionApplications)
+                    fappCache += (tFA -> (decider.π -- πPre + tPost))
+                  assume(tPost)
+                  Q(tFA, c4a)})}}})})
+
+//                Q(tFA, c3)}})})
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
@@ -712,6 +905,26 @@ trait DefaultEvaluator[
     evalp(σ, e0, pve, c, tv)((t0, c1) =>
       evalp(σ, e1, pve, c1, tv)((t1, c2) =>
         Q(permOp(t0, t1), c2)))
+  }
+
+  private case class LocalEvaluationResult(πGuards: Seq[Term], actualResult: Term, auxiliaryTerms: Set[Term])
+
+  private def combine(localResults: Seq[LocalEvaluationResult],
+                      actualResultTransformer: Term => Term = Predef.identity)
+                     : (Term, Set[Term]) = {
+
+    val (t1: Term, tAux: Set[Term]) =
+      localResults.map {lr =>
+        val guard: Term = state.terms.utils.BigAnd(lr.πGuards)
+        val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
+        val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
+
+        (tAct, tAux)
+      }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, tAux)) =>
+        (And(tActAcc, tAct), tAuxAcc + tAux)
+      }
+
+    (t1, tAux)
   }
 
 	override def pushLocalState() {
