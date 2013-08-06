@@ -109,8 +109,8 @@ trait DefaultEvaluator[
 	 *   - eval sets the source node of the resulting term
 	 */
 	private def internalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
-                     (Q: (Term, C) => VerificationResult)
-                     : VerificationResult = {
+                          (Q: (Term, C) => VerificationResult)
+                          : VerificationResult = {
 
 		/* For debugging only */
 		e match {
@@ -129,7 +129,7 @@ trait DefaultEvaluator[
      *       emerges :-)
      */
 
-		e match {
+    val resultTerm = e match {
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)
 
@@ -217,11 +217,7 @@ trait DefaultEvaluator[
       /* TODO: Implement a short-circuiting evaluation of OR. */
       case ast.Or(e0, e1) => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
 
-      case ast.Implies(e0, e1) if !config.localEvaluations =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
-            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Q(True(), c2)))
+      case _: ast.Implies if !config.localEvaluations => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case impl @ ast.Implies(e0, e1) =>
         /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
@@ -279,11 +275,7 @@ trait DefaultEvaluator[
           Q(tImplies, c)
         }
 
-      case ast.Ite(e0, e1, e2) if !config.localEvaluations =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(t0, c1, tv, IfBranching[ST, H, S](e0, t0),
-            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
-            (c2: C, tv1: TV) => eval(σ, e2, pve, c2, tv1)(Q)))
+      case _: ast.Ite if !config.localEvaluations => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case ite @ ast.Ite(e0, e1, e2) =>
         val πPre: Set[Term] = decider.π
@@ -415,6 +407,8 @@ trait DefaultEvaluator[
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(func, inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
+
+      /* TODO: Implement a non-local evaluation of quantifiers. */
 
       case quant: ast.Quantified =>
         val body = quant.exp
@@ -554,32 +548,7 @@ trait DefaultEvaluator[
                   assume(tPost)
                   Q(tFA, c4)})}}})})
 
-      case ast.Unfolding(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
-              eIn) if !config.localEvaluations =>
-
-        val body = predicate.body
-
-        if (c.cycles(predicate) < 2 * config.unrollFunctions) {
-          val c0a = c.incCycleCounter(predicate)
-          evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
-            if (decider.isPositive(tPerm))
-              evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
-                consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  /* Unfolding only effects the current heap */
-                  produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
-                    val c4a = c4.decCycleCounter(predicate)
-                    val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                    eval(σ3, eIn, pve, c4a, tv)(Q)})}))
-            else
-              Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv))}
-        else
-          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
-            "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
-            "in a function, which is then invoked from the predicate body.\n" +
-            "Offending node: " + e)
+      case _: ast.Unfolding if !config.localEvaluations => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
@@ -706,7 +675,60 @@ trait DefaultEvaluator[
                             .format(e0, e0.getClass.getName, e0.typ))
       }
 		}
+
+    resultTerm
 	}
+
+  /* The non-local evaluations are only intended for benchmarking and
+   * debugging reasons, because they can result in incompletenesses.
+   */
+  private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+                          (Q: (Term, C) => VerificationResult)
+                          : VerificationResult = {
+
+    assert(!config.localEvaluations,
+      "Unexpected call to performNonLocalEvaluation since config.localEvaluations is true.")
+
+    e match {
+      case ast.Implies(e0, e1) =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
+            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
+            (c2: C, tv1: TV) => Q(True(), c2)))
+
+      case ast.Ite(e0, e1, e2) =>
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          branch(t0, c1, tv, IfBranching[ST, H, S](e0, t0),
+            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
+            (c2: C, tv1: TV) => eval(σ, e2, pve, c2, tv1)(Q)))
+
+      case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm), eIn) =>
+        val body = predicate.body
+
+        if (c.cycles(predicate) < 2 * config.unrollFunctions) {
+          val c0a = c.incCycleCounter(predicate)
+          evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
+            if (decider.isPositive(tPerm))
+              evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
+                consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                  /* Unfolding only effects the current heap */
+                  produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
+                    val c4a = c4.decCycleCounter(predicate)
+                    val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                    eval(σ3, eIn, pve, c4a, tv)(Q)})}))
+            else
+              Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv))}
+        else
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+            "P {... && next != null ==> unfolding next.P in e} is currently not " +
+            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + e)
+
+      case _ => sys.error(s"Cannot non-locally evaluate $e (${e.getClass.getName})")
+    }
+  }
 
   def withChunkIdentifier(σ: S,
                           locacc: ast.LocationAccess,
