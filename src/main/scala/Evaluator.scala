@@ -124,9 +124,9 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"[eval] $e")
 		}
 
-    /* TODO: Issue 0039 has so far only been resolved for And, and even there only for the second conjunct.
-     *       The problem most likely still exists for Implies and Ite. Let's fix that when it actually
-     *       emerges :-)
+    /* TODO: Since commit 0cf1f26, evaluating unfoldings is a local operation.
+     *       Do we still need to locally evaluate Implies and Ite?
+     *       Does it make a difference in terms of performance?
      */
 
     val resultTerm = e match {
