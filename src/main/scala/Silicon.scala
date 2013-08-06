@@ -269,7 +269,7 @@ case class Config(
     unrollFunctions: Int = 1,
     cacheFunctionApplications: Boolean = true,
     cacheSnapshots: Boolean = true,
-    branchOverPureConditionals: Boolean = false,
+    localEvaluations: Boolean = true,
     strictConjunctionEvaluation: Boolean = false,
     logLevel: String = "OFF",
     tempDirectory: ConfigValue[String] = DefaultValue("./tmp"),
@@ -348,9 +348,10 @@ object configuration {
                    "Cache evaluated function bodies and/or postconditions\n"
                  + "\tResults in incompletenesses.")
                  {(b, config) => config.copy(cacheFunctionApplications = b)},
-      booleanOpt("branchOverPureConditionals",
-                 "Branch over pure conditionals, e.g. i > 0 ==> r !+= null")
-                 {(b, config) => config.copy(branchOverPureConditionals = b)},
+      booleanOpt("localEvaluations",
+                   "Locally evaluate pure conditionals and unfoldings.\n"
+                 + "\tResults in incompletenesses (default:%s)".format(DefaultConfig.localEvaluations))
+                 {(b, config) => config.copy(localEvaluations = b)},
       booleanOpt("strictConjunctionEvaluation",
                    "Perform strict evaluation of conjunctions. If so, evaluating e.g.\n"
                  + "\t\ti > 0 && f(i)\n"
