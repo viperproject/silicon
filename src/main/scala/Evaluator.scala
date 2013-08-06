@@ -729,7 +729,7 @@ trait DefaultEvaluator[
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
-              eIn) =>
+              eIn) if config.branchOverPureConditionals =>
 
         val body = predicate.body
 
@@ -749,10 +749,61 @@ trait DefaultEvaluator[
               Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv))}
         else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
-                    "P {... && next != null ==> unfolding next.P in e} is currently not " +
-                    "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
-                    "in a function, which is then invoked from the predicate body.\n" +
-                    "Offending node: " + e)
+            "P {... && next != null ==> unfolding next.P in e} is currently not " +
+            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + e)
+
+      case ast.Unfolding(
+                acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
+                eIn) =>
+
+        /* Unfolding only has a temporary effect on the current heap because
+         * the resulting heap is not forwarded to the final continuation.
+         */
+
+        var πPre: Set[Term] = Set()
+        var tPerm: Option[Term] = None
+        var localResults: List[LocalEvaluationResult] = Nil
+
+        if (c.cycles(predicate) < 2 * config.unrollFunctions) {
+          val c0a = c.incCycleCounter(predicate)
+
+          val r =
+            evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
+              assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
+              tPerm = Some(_tPerm)
+              πPre = decider.π
+              if (decider.isPositive(_tPerm))
+                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
+                  consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                    produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
+                      val c4a = c4.decCycleCounter(predicate)
+                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                      //                      eval(σ3, eIn, pve, c4a, tv)(Q)})}))
+                      eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre)
+                        Success[C, ST, H, S](c3)
+                    })})}))
+              else
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
+
+          r && {
+            val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+
+            /* TODO: See comment about performance in case ast.Ite */
+            val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+//            val (tActual: Term, tAux: Set[Term]) = combine(localResults)
+            assume(tAuxIn + tActualIn)
+            Q(tActualInVar, c)
+          }
+        } else
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+            "P {... && next != null ==> unfolding next.P in e} is currently not " +
+            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + e)
 
       /* Sequences */
 
