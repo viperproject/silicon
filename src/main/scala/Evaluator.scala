@@ -124,9 +124,12 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"[eval] $e")
 		}
 
-    /* TODO: Since commit 0cf1f26, evaluating unfoldings is a local operation.
-     *       Do we still need to locally evaluate Implies and Ite?
-     *       Does it make a difference in terms of performance?
+    /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
+     * might be tempting to think that we don't need to locally evaluate
+     * Implies and Ite anymore. However, that is not true, because not all of
+     * them occur in the context of an unfolding. They can also occur in a
+     * pre/postcondition such as 'requires b1 ==> b2', in which case Silicon
+     * still shouldn't branch.
      */
 
     val resultTerm = e match {
