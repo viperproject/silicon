@@ -20,7 +20,7 @@ import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
-    DefaultDomainTranslator}
+    DefaultDomainsTranslator}
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -126,7 +126,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     val stateFormatter = new DefaultStateFormatter[ST, H, S]()
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
-    val domainTranslator = new DefaultDomainTranslator(symbolConverter)
+    val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val bookkeeper = new Bookkeeper()
     val stateFactory = new DefaultStateFactory(decider.π _)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)

@@ -15,7 +15,7 @@ trait DomainsEmitter extends PreambleEmitter {
   def emitUniquenessAssumptions()
 }
 
-class DefaultDomainsEmitter(domainTranslator: DomainTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
+class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
     extends DomainsEmitter {
 
   /* TODO: Group emitted declarations and axioms by source domain. */
@@ -331,11 +331,11 @@ object DomainPrettyPrinter {
     dt.domain.name + dt.domain.typVars.mkString("[",",","]") + " where " + dt.typVarsMap
 }
 
-trait DomainTranslator[R] {
+trait DomainsTranslator[R] {
   def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): R
 }
 
-class DefaultDomainTranslator(symbolConverter: SymbolConvert) extends DomainTranslator[Term] {
+class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTranslator[Term] {
   def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term =
     translateExp((t: ast.Type) => symbolConverter.toSort(t.substitute(typeVarMap)))(ax.exp)
 
