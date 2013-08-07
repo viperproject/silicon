@@ -336,8 +336,18 @@ trait DomainsTranslator[R] {
 }
 
 class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTranslator[Term] {
-  def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term =
-    translateExp((t: ast.Type) => symbolConverter.toSort(t.substitute(typeVarMap)))(ax.exp)
+  def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term = {
+    val toSort = (typ: ast.Type, localTypeVarMap: Map[ast.TypeVar, ast.Type]) => {
+      val concreteType = typ.substitute(localTypeVarMap).substitute(typeVarMap)
+
+      assert(concreteType.isConcrete,
+             s"Expected only concrete types, but found $concreteType (${concreteType.getClass.getName}})")
+
+      symbolConverter.toSort(concreteType)
+    }
+
+    translateExp(toSort)(ax.exp)
+  }
 
   /**
     *
@@ -347,10 +357,14 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
     *
     * TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
     *       reuse code because the code in DefaultEvaluator uses the state whereas this one here
-    *       doesn't. Of course, one could just evaluate the domains - which was done in before - but
-    *       that is less efficient. Consider again, nevertheless.
+    *       doesn't. Of course, one could just evaluate the domains using the DefaultEvaluator - which
+    *       was done before - but that is less efficient and creates lots of additional noise output
+    *       in the prover log.
     */
-  private def translateExp(toSort: ast.Type => terms.Sort)(exp: ast.Expression): Term = {
+  private def translateExp(toSort: (ast.Type, Map[ast.TypeVar, ast.Type])  => terms.Sort)
+                          (exp: ast.Expression)
+                          : Term = {
+
     val f = translateExp(toSort) _
 
     exp match {
@@ -359,7 +373,7 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
           case _: ast.Forall => terms.Forall
           case _: ast.Exists => terms.Exists
         }
-        terms.Quantification(quantifier, qvars map (v => terms.Var(v.name, toSort(v.typ))), f(body))
+        terms.Quantification(quantifier, qvars map (v => terms.Var(v.name, toSort(v.typ, Map()))), f(body))
 
       case ast.True() => terms.True()
       case ast.False() => terms.False()
@@ -387,13 +401,12 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
 
       case ast.NullLiteral() => terms.Null()
 
-      case v: ast.Variable => terms.Var(v.name, toSort(v.typ))
+      case v: ast.Variable => terms.Var(v.name, toSort(v.typ, Map()))
 
       case ast.DomainFuncApp(func, args, typeVarMap) =>
-        /* TODO: Is it safe to ignore the typeVarMap when translating the args? */
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
-        val outSort = toSort(exp.typ)
+        val outSort = toSort(exp.typ, typeVarMap)
         val id = symbolConverter.toSortSpecificId(func.name, inSorts :+ outSort)
         val df = terms.Function(id, inSorts, outSort)
         terms.DomainFApp(df, tArgs)
@@ -423,7 +436,7 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case sil.ast.SeqIndex(e0, e1) => terms.SeqAt(f(e0), f(e1))
       case sil.ast.SeqLength(e) => terms.SeqLength(f(e))
       case sil.ast.SeqTake(e0, e1) => terms.SeqTake(f(e0), f(e1))
-      case sil.ast.EmptySeq(typ) => terms.SeqNil(toSort(typ))
+      case sil.ast.EmptySeq(typ) => terms.SeqNil(toSort(typ, Map()))
       case sil.ast.RangeSeq(e0, e1) => terms.SeqRanged(f(e0), f(e1))
       case sil.ast.SeqUpdate(e0, e1, e2) => terms.SeqUpdate(f(e0), f(e1), f(e2))
 
