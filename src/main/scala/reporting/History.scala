@@ -530,11 +530,27 @@ object LocalAndBranching {
     (b: Boolean, branch: LocalTwinBranch[ST, H, S], parent: Step[ST, H, S]) => new AndBranching(b, branch, n, t, parent) with LocalTwinBranchingStep[ST, H, S]
 }
 
+/** Factory object for local OrBranching steps */
+object LocalOrBranching {
+  def apply[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](n: ast.Node, t: Term): (Boolean, LocalTwinBranch[ST, H, S], Step[ST, H, S]) => LocalTwinBranchingStep[ST, H, S] =
+    (b: Boolean, branch: LocalTwinBranch[ST, H, S], parent: Step[ST, H, S]) => new OrBranching(b, branch, n, t, parent) with LocalTwinBranchingStep[ST, H, S]
+}
+
 
 /** Branching step for And */
 case class AndBranching
   [B <: TwinBranch[ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   (b: Boolean, branch: B, n: ast.Node, t: Term, parent: Step[ST, H, S])
+  extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
+{
+  lazy val format =
+    "%s antecedent at %s (%s)".format(b.toString.capitalize, n.pos, if (b) t else ¬(t))
+}
+
+/** Branching step for And */
+case class OrBranching
+[B <: TwinBranch[ST, H, S], ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+(b: Boolean, branch: B, n: ast.Node, t: Term, parent: Step[ST, H, S])
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =

@@ -270,7 +270,7 @@ case class Config(
     cacheFunctionApplications: Boolean = true,
     cacheSnapshots: Boolean = true,
     localEvaluations: Boolean = true,
-    strictConjunctionEvaluation: Boolean = false,
+    shortCircuitingEvaluation: Boolean = true,
     logLevel: String = "OFF",
     tempDirectory: ConfigValue[String] = DefaultValue("./tmp"),
     z3Exe: Option[String] = None,
@@ -350,13 +350,14 @@ object configuration {
                  {(b, config) => config.copy(cacheFunctionApplications = b)},
       booleanOpt("localEvaluations",
                    "Locally evaluate pure conditionals and unfoldings.\n"
-                 + "\tResults in incompletenesses (default:%s)".format(DefaultConfig.localEvaluations))
+                 + "\tIs known to be unsound and incomplete,\n"
+                 + "\tIntended to be used for debugging only! (default:%s)".format(DefaultConfig.localEvaluations))
                  {(b, config) => config.copy(localEvaluations = b)},
-      booleanOpt("strictConjunctionEvaluation",
-                   "Perform strict evaluation of conjunctions. If so, evaluating e.g.\n"
-                 + "\t\ti > 0 && f(i)\n"
-                 + "\twill fail if f's precondition requires i > 0.\n")
-                 {(b, config) => config.copy(strictConjunctionEvaluation = b)},
+      booleanOpt("shortCircuitingEvaluation",
+                   "Perform short-circuiting evaluation of AND, OR. If not,\n"
+                 + "\tevaluating e.g., i > 0 && f(i), will fail if f's\n"
+                 + "\tprecondition requires i > 0 (default:%s)".format(DefaultConfig.shortCircuitingEvaluation))
+                 {(b, config) => config.copy(shortCircuitingEvaluation = b)},
       opt(None,
           "logLevel",
           "<level>",

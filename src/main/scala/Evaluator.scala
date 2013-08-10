@@ -7,7 +7,7 @@ import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
 import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
-    ImplBranching, IfBranching, LocalImplBranching}
+    ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
@@ -182,11 +182,16 @@ trait DefaultEvaluator[
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
-      case ast.And(e0, e1) if config.strictConjunctionEvaluation =>
+      case ast.And(e0, e1) if !config.shortCircuitingEvaluation =>
         evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
+        /* TODO: It should no longer be possible to accumulate local results, because
+         *       all branching constructs are locally evaluated themselves.
+         *       Hence, implement evaluation of AND similar to that of OR.
+         *       Try to reuse code!
+         */
         var πPre: Set[Term] = Set()
         var t0: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
@@ -217,8 +222,47 @@ trait DefaultEvaluator[
             assume(tAux)
             Q(And(t0.get, t1), c1)}})
 
-      /* TODO: Implement a short-circuiting evaluation of OR. */
-      case ast.Or(e0, e1) => evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
+      /* Strict evaluation of OR */
+      case ast.Or(e0, e1) if !config.shortCircuitingEvaluation =>
+        evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
+
+      /* Short-circuiting evaluation of OR */
+      case ast.Or(e0, e1) =>
+        /* Evaluating the disjuncts should never non-locally branch, because
+         *   1. OR may not contain any access predicates, and consequently no impure conditionals
+         *   2. OR may contain an unfolding, but it will be evaluated locally, thus any
+         *      potential branching should not be witnessed by the evaluation of OR.
+         * It should therefore not be necessary to accumulate local evaluation results, or to
+         * consider the brancher guards.
+         */
+        var πPre: Set[Term] = Set()
+        var t0: Option[Term] = None
+        var t1: Option[Term] = None
+        var πt1: Set[Term] = Set()
+
+        eval(σ, e0, pve, c, tv)((_t0, c1) => {
+          assert(t0.isEmpty, s"Unexpected branching occurred while locally evaluating $e0")
+          t0 = Some(_t0)
+          πPre = decider.π
+
+          decider.pushScope()
+          /* TODO: See comment to short-circuiting evaluation of AND */
+          val r =
+            branchLocally(Not(t0.get), c1, tv, LocalOrBranching(e0, Not(t0.get)),
+              (c2: C, tv1: TV) =>
+                eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
+                  assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
+                  t1 = Some(_t1)
+                  πt1 = decider.π -- πPre /* Note that Not(t0.get) is part of πt1 */
+                  Success[C, ST, H, S](c3)}),
+              (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
+          decider.popScope()
+
+          r && {
+            val tAux = state.terms.utils.BigAnd(πt1)
+            val tOr = Or(t0.get, t1.getOrElse(True()))
+            assume(tAux)
+            Q(tOr, c1)}})
 
       case _: ast.Implies if !config.localEvaluations => nonLocalEval(σ, e, pve, c, tv)(Q)
 
