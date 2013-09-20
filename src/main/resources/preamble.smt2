@@ -64,32 +64,13 @@
 (define-const $Perm.Write $Perm 1.0)
 (define-const $Perm.No $Perm 0.0)
 
-(declare-const $Perm.EpsUB $Perm)
-(declare-const $Perm.Eps $Perm)
-; (declare-const $Perm.iRd $Perm) ; ???
-; (declare-const $Perm.pRd $Perm) ; Predicate read
-; (declare-const $Perm.mRd $Perm) ; Monitor read
-; (declare-const $Perm.cRd $Perm) ; Channel read
-
-(assert (and
-  (< $Perm.No $Perm.EpsUB)
-  (< $Perm.No $Perm.Eps)
-  (< (* 1000.0 $Perm.Eps) $Perm.EpsUB)))
-
 (define-fun $Perm.isValid ((p $Perm) (ub $Perm)) Bool
-  (and (< $Perm.EpsUB p)
+  (and (< $Perm.No p)
        (< p ub)))
 
 (define-fun $Perm.isRead ((p $Perm) (ub $Perm)) Bool
   (and ($Perm.isValid p ub)
        (< (* 1000.0 p) $Perm.Write)))
-
-; (assert ($Perm.isRead $Perm.iRd $Perm.Write))
-; (assert ($Perm.isRead $Perm.mRd $Perm.Write))
-; (assert
-  ; (and
-    ; (= $Perm.mRd $Perm.pRd )
-    ; (= $Perm.pRd $Perm.cRd )))
 
 ; --- Sort wrappers ---
 
