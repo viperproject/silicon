@@ -113,11 +113,11 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case TermPerm(t) => convert2real(t)
     case FractionPerm(n, d) => "(/ %s %s)".format(convert2real(n), convert2real(d))
 
-    case IsValidPerm(v, ub) =>
-      "($Perm.isValid %s %s)".format(convert(v), convert(ub))
+    case IsValidPermVar(v) =>
+      "($Perm.isValidVar %s)".format(convert(v))
 
-    case IsReadPerm(v, ub) =>
-      "($Perm.isRead %s %s)".format(convert(v), convert(ub))
+    case IsReadPermVar(v, ub) =>
+      "($Perm.isReadVar %s %s)".format(convert(v), convert(ub))
 
     case PermLess(t0, t1) =>
       "(< %s %s)".format(convert(t0), convert(t1))

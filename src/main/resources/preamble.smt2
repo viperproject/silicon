@@ -64,12 +64,12 @@
 (define-const $Perm.Write $Perm 1.0)
 (define-const $Perm.No $Perm 0.0)
 
-(define-fun $Perm.isValid ((p $Perm) (ub $Perm)) Bool
-  (and (< $Perm.No p)
-       (< p ub)))
+(define-fun $Perm.isValidVar ((p $Perm)) Bool
+	(<= $Perm.No p))
 
-(define-fun $Perm.isRead ((p $Perm) (ub $Perm)) Bool
-  (and ($Perm.isValid p ub)
+(define-fun $Perm.isReadVar ((p $Perm) (ub $Perm)) Bool
+  (and ($Perm.isValidVar p)
+	     (not (= p $Perm.No))
        (< (* 1000.0 p) $Perm.Write)))
 
 ; --- Sort wrappers ---

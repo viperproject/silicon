@@ -276,7 +276,7 @@ class StateUtils[ST <: Store[ST],
               : (Var, Term) = {
 
     val permVar = decider.fresh(id, sorts.Perm)
-    val permVarConstraints = IsReadPerm(permVar, upperBound)
+    val permVarConstraints = IsReadPermVar(permVar, upperBound)
 
     (permVar, permVarConstraints)
   }
