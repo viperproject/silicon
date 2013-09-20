@@ -335,7 +335,7 @@ class DefaultDecider[ST <: Store[ST],
 
     val v = prover.fresh(id, s)
 
-    if (s == sorts.Perm) assume(IsReadPerm(v, FullPerm()))
+    if (s == sorts.Perm) assume(IsValidPerm(v, FullPerm()))
 
     v
   }
