@@ -500,11 +500,11 @@ case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
 }
 
 case class IsValidPerm(v: Var, ub: DefaultFractionalPermissions) extends BooleanTerm {
-  override val toString = "PVar(%s, %s)".format(v.toString, ub)
+  override val toString = "Perm(%s, %s)".format(v.toString, ub)
 }
 
 case class IsReadPerm(v: Var, ub: DefaultFractionalPermissions) extends BooleanTerm {
-  override val toString = "RdVar(%s, %s)".format(v.toString, ub)
+  override val toString = "RdPerm(%s, %s)".format(v.toString, ub)
 }
 
 class PermTimes(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
