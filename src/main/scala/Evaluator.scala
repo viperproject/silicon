@@ -247,13 +247,14 @@ trait DefaultEvaluator[
 
           decider.pushScope()
           /* TODO: See comment to short-circuiting evaluation of AND */
+          val t0Neg = Not(t0.get)
           val r =
-            branchLocally(Not(t0.get), c1, tv, LocalOrBranching(e0, Not(t0.get)),
+            branchLocally(t0Neg, c1, tv, LocalOrBranching(e0, t0Neg),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
                   assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
                   t1 = Some(_t1)
-                  πt1 = decider.π -- πPre /* Note that Not(t0.get) is part of πt1 */
+                  πt1 = decider.π -- (πPre + t0Neg) /* Removing t0Neg from πt1 is crucial! */
                   Success[C, ST, H, S](c3)}),
               (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
           decider.popScope()
