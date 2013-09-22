@@ -28,9 +28,19 @@ class SiliconTests extends DefaultSilSuite {
     fe
   }
 
-  def verifiers = List(
-    new Silicon(optionsFromScalaTestConfigMap(configMap),
-                Seq(("startedBy", "semper.silicon.SiliconTests"))))
+  def verifiers = List(createSiliconInstance())
+
+
+  private def createSiliconInstance() = {
+    val silicon = new Silicon(Seq(("startedBy", "semper.silicon.SiliconTests")))
+
+    val args = optionsFromScalaTestConfigMap(configMap) ++ Seq("dummy.sil")
+
+    silicon.parseCommandLine(args)
+    silicon.config.initialize {case _ =>}
+
+    silicon
+  }
 
   private def optionsFromScalaTestConfigMap(configMap: Map[String, Any]): Seq[String] =
     configMap.flatMap{case (k, v) => Seq("--" + k, v.toString)}.toSeq
@@ -44,4 +54,6 @@ private class SiliconFrontend extends SilFrontend {
      *   instance of Carbon, but it doesn't seem to be used in the context of a test suite.
      *   Probably, because the test suite creates its own instance (see SiliconTests.frontend).
      */
+
+  def configureVerifier(args: Seq[String]) = sys.error("Implementation missing")
 }

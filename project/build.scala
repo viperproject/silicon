@@ -49,7 +49,7 @@ object SiliconBuild extends Build {
            baseSettings
         ++ Seq(
               name := "Silicon",
-              traceLevel := 100,
+              traceLevel := 10,
               maxErrors := 6,
               libraryDependencies ++= externalDep))
     ).dependsOn(common)
