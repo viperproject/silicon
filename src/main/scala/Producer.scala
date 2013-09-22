@@ -147,7 +147,7 @@ trait DefaultProducer[
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            assume(NoPerm() < pGain)
+//            assume(NoPerm() < pGain) /* Commented to support inhaling conditional access predicates */
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
             Q(mh, c2)})})
@@ -158,7 +158,7 @@ trait DefaultProducer[
             val s = sf(sorts.Snap)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            assume(NoPerm() < pGain)
+//            assume(NoPerm() < pGain) /* Commented to support inhaling conditional access predicates */
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
             Q(mh, c2)}))

@@ -128,7 +128,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //          evals(σ, id.args, pve, c1, tv)((tArgs, c2) =>
 //            if (decider.assert(tRcvr !== Null()))
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-                if (decider.isPositive(tPerm))
+//                if (decider.isPositive(tPerm)) /* Commented for inhaling conditional access predicates */
 //                  val id = FieldChunkIdentifier(tRcvr, field.name)
                   consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                     ch match {
@@ -146,8 +146,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           else
                             h1
                         Q(h2, pc.snap, pc :: Nil, c3)})
-                else
-                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
+              ))
+//                else
+//                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
 //            else
 //              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(loc), c1, tv))
 
