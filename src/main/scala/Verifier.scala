@@ -221,7 +221,7 @@ trait AbstractVerifier[ST <: Store[ST],
     /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
 
-    if (config.stopOnFirstError) {
+    if (config.stopOnFirstError()) {
       /* Stops on first error */
       while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
         results = ev.verify(members.next) :: results
@@ -240,8 +240,8 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def filter(str: String) = (
-       !str.matches(config.includeMembers)
-    || str.matches(config.excludeMembers))
+       !str.matches(config.includeMembers())
+    || str.matches(config.excludeMembers()))
 
   private def emitPreamble(program: ast.Program) {
     decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)

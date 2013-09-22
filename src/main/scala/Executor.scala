@@ -249,7 +249,7 @@ trait DefaultExecutor[ST <: Store[ST],
               Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(a), c, tv)
 
           case _ =>
-            if (config.disableSubsumption) {
+            if (config.disableSubsumption()) {
               val r =
                 consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
                   Success[C, ST, H, S](c1))

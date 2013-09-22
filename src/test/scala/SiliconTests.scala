@@ -29,13 +29,11 @@ class SiliconTests extends DefaultSilSuite {
   }
 
   def verifiers = List(
-    new Silicon(configMap2SiliconOptions(configMap), Seq(("startedBy", "semper.silicon.SiliconTests"))))
+    new Silicon(optionsFromScalaTestConfigMap(configMap),
+                Seq(("startedBy", "semper.silicon.SiliconTests"))))
 
-  def configMap2SiliconOptions(configMap: Map[String, Any]): Seq[String] = {
-    val options = configMap.flatMap{case (k, v) => Seq("--" + k, v.toString)}.toSeq
-
-    options
-  }
+  private def optionsFromScalaTestConfigMap(configMap: Map[String, Any]): Seq[String] =
+    configMap.flatMap{case (k, v) => Seq("--" + k, v.toString)}.toSeq
 }
 
 private class SiliconFrontend extends SilFrontend {

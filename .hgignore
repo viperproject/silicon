@@ -13,3 +13,4 @@ tools/z3_tidy.jar
 stats/
 bin/**
 tmp_*
+tmp/

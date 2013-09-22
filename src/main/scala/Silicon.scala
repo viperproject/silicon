@@ -1,26 +1,29 @@
 package semper
 package silicon
 
-import scopt.immutable.OptionParser
-import com.weiglewilczek.slf4s.Logging
 import java.text.SimpleDateFormat
 import java.io.File
-import sil.verifier.{
-    Verifier => SILVerifier,
-    VerificationResult => SILVerificationResult,
-    Success => SILSuccess,
-    Failure => SILError}
-import sil.verifier.{DefaultDependency}
+import scala.language.postfixOps
+import com.weiglewilczek.slf4s.Logging
+import org.rogach.scallop.{ValueConverter, singleArgConverter}
+import semper.sil.verifier.{
+    Verifier => SilVerifier,
+    VerificationResult => SilVerificationResult,
+    Success => SilSuccess,
+    Failure => SilError,
+    DefaultDependency => SilDefaultDependency}
+import sil.frontend.SilFrontendConfig
 import interfaces.{VerificationResult, ContextAwareResult, Failure}
 import interfaces.reporting.{TraceView, TraceViewFactory}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
-    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
+DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
+
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -37,13 +40,13 @@ trait SiliconConstants {
   val copyright = "(c) 2013 pm.inf.ethz.ch"
   val z3ExeEnvironmentVariable = "Z3PATH"
   val expectedZ3Version = "4.3.2"
-  val dependencies = Seq(DefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
+  val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
 
 object Silicon extends SiliconConstants
 
-class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq[(String, Any)] = Nil)
-      extends SILVerifier
+class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
+      extends SilVerifier
          with SiliconConstants
          with Logging {
 
@@ -54,39 +57,45 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]
 
+//  private var options: Seq[String] = Nil
   private var shutDownHooks: Set[() => Unit] = _
-  private var config: Config = _
-  private var started = false
+  /*private*/ var config: Config = _
 
-  commandLineArgs(options)
+  private sealed trait LifetimeState
 
-  def commandLineArgs(options: Seq[String]) {
-    this.options = options
-    config = configuration.parse(options)
-    optionsChanged()
+  private object LifetimeState {
+    object Instantiated extends LifetimeState
+    object Configured extends LifetimeState
+    object Started extends LifetimeState
+  }
+
+  private var lifetimeState: LifetimeState = LifetimeState.Instantiated
+
+  def parseCommandLine(args: Seq[String]) {
+    assert(lifetimeState == LifetimeState.Instantiated, "Silicon may only be configured once.")
+    lifetimeState = LifetimeState.Configured
+
+    config = new Config(args)
   }
 
   def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
-
-  private def optionsChanged() {
-    setLogLevel(config.logLevel)
-  }
 
   /** Verifies a given SIL program and returns a sequence of ''verification errors''.
     *
     * @param program The program to be verified.
     * @return The verification result.
     */
-	def verify(program: ast.Program): SILVerificationResult = {
+	def verify(program: ast.Program): SilVerificationResult = {
     /* TODO: Make it possible to run Silicon as a verification loop. Things to consider:
      *         - Z3 and its context
      *         - Config.tempDirectory
      *         - probably lots more
      */
-    assert(!started, "Silicon.verify can currently only be invoked once.")
+    assert(lifetimeState == LifetimeState.Configured, "Silicon.verify may only be invoked once.")
+    lifetimeState = LifetimeState.Started
 
-    started = true
     shutDownHooks = Set()
+    setLogLevel(config.logLevel())
 
 		logger.info("%s started %s".format(name, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())))
 
@@ -96,7 +105,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
       val failures = runVerifier(program)
       result = convertFailures(failures)
     } catch {
-      case DependencyNotFoundException(err) => result = SILError(err :: Nil)
+      case DependencyNotFoundException(err) => result = SilError(err :: Nil)
     } finally {
       shutDownHooks.foreach(_())
     }
@@ -194,13 +203,13 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
       case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f
     }
 
-		if (config.showStatistics.nonEmpty) {
+		if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.getStatistics
 
       verifier.bookkeeper.proverStatistics = proverStats
       verifier.bookkeeper.errors = failures.length
 
-      config.showStatistics match {
+      config.showStatistics.get match {
         case None =>
 
         case Some(("stdio", "")) =>
@@ -224,10 +233,10 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
     failures
 	}
 
-  private def convertFailures(failures: Seq[Failure[C, ST, H, S, _]]): SILVerificationResult = {
+  private def convertFailures(failures: Seq[Failure[C, ST, H, S, _]]): SilVerificationResult = {
     failures match {
-      case Seq() => SILSuccess
-      case _ => SILError(failures map (_.message))
+      case Seq() => SilSuccess
+      case _ => SilError(failures map (_.message))
     }
   }
 
@@ -239,7 +248,7 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
 	private def logContextAwareMessage(r: ContextAwareResult[C, ST, H, S], log: String => Unit) {
 		log("\n" + r.message.readableMessage(true))
 
-		if (config.showBranches && r.context.branchings.nonEmpty) {
+		if (config.showBranches() && r.context.branchings.nonEmpty) {
 			logger.error("    Branches taken:")
 
 			r.context.branchings.reverse foreach (b =>
@@ -256,33 +265,8 @@ class Silicon(private var options: Seq[String] = Nil, private var debugInfo: Seq
 	}
 }
 
+
 /** TODO: Move configuration-related code into a dedicated file. */
-
-case class Config(
-    showBranches: Boolean = false,
-    stopOnFirstError: Boolean = false,
-    showStatistics: Option[Tuple2[String, String]] = None,
-    performSmokeChecks: Boolean = false,
-    disableSubsumption: Boolean = false,
-    includeMembers: String = ".*",
-    excludeMembers: String = "",
-    unrollFunctions: Int = 1,
-    cacheFunctionApplications: Boolean = true,
-    cacheSnapshots: Boolean = true,
-    localEvaluations: Boolean = true,
-    shortCircuitingEvaluation: Boolean = true,
-    logLevel: String = "OFF",
-    tempDirectory: ConfigValue[String] = DefaultValue("./tmp"),
-    z3Exe: Option[String] = None,
-    z3LogFile: ConfigValue[String] = DefaultValue("logfile.smt2")) {
-
-  lazy val effectiveZ3LogFile = z3LogFile.orElse(new File(effectiveTempDirectory, _).getPath)
-
-  lazy val effectiveTempDirectory = {
-    val timestamp = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(System.currentTimeMillis())
-    tempDirectory.orElse(_ + "_" + timestamp)
-  }
-}
 
 sealed abstract class ConfigValue[T] {
   def value: T
@@ -296,93 +280,147 @@ sealed abstract class ConfigValue[T] {
 case class DefaultValue[T](value: T) extends ConfigValue[T]
 case class UserValue[T](value: T) extends ConfigValue[T]
 
-object configuration {
-  private val DefaultConfig = Config()
+class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
+  val showBranches = opt[Boolean]("showBranches",
+    descr = "In case of errors show the branches taken during the execution",
+    default = Some(false),
+    noshort = true
+  )
 
-  lazy val parser = new OptionParser[Config](Silicon.name) {
-    val options = Seq(
-      booleanOpt("firstError",
-                 "Execute only until the first error is found")
-                 {(b, config) => config.copy(stopOnFirstError = b)},
-      booleanOpt("branches",
-                 "In case of errors show the branches taken during the execution")
-                 {(b, config) => config.copy(showBranches = b)},
-      opt("showStatistics",
-             "Show some statistics about the verification. Options are\n"
-           + "\t\tstdio\n"
-           + "\t\tfile=<path\\to\\statistics.json>")
-         {(s: String, c: Config) => {
-            var parts = s.split('=').toList
+  val stopOnFirstError = opt[Boolean]("stopOnFirstError",
+    descr = "Execute only until the first error is found",
+    default = Some(false),
+    noshort = true
+  )
 
-            assert(0 < parts.length && parts.length < 3,
-                   "Invalid argument to --showStatistics: " + s)
+  private val statisticsSinkConverter = new ValueConverter[(String, String)] {
+    val stdioRegex = """(stdio)"""r
+    val fileRegex = """(file)=(.*)"""r
 
-            if (parts.length == 1) parts = parts :+ ""
-            c.copy(showStatistics = Some((parts(0), parts(1))))
-         }},
-      opt(None,
-          "include",
-          "<pattern>",
-             "Include members in verification (default: '%s')\n".format(DefaultConfig.includeMembers)
-           + "\tWildcard characters are '?' and '*'\n"
-           + "\tExamples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'")
-         {(s: String, config: Config) => config.copy(includeMembers = silicon.common.wildcardToRegex(s))},
-      opt(None,
-          "exclude",
-          "<pattern>",
-             "Exclude members from verification (default: '%s')\n".format(DefaultConfig.excludeMembers)
-           + "\tIs applied after the include pattern")
-         {(s: String, config: Config) => config.copy(excludeMembers = silicon.common.wildcardToRegex(s))},
-      booleanOpt("disableSubsumption",
-                 "Don't add assumptions gained while verifying an assert statement")
-                 {(b, config) => config.copy(disableSubsumption = b)},
-      intOpt(None,
-             "unrollFunctions",
-             "<n>",
-             "Unroll function definitions at most n times (default:%s)".format(DefaultConfig.unrollFunctions))
-            {(n: Int, config: Config) => config.copy(unrollFunctions = n)},
-      booleanOpt("cacheSnapshots",
-                 "Reduce number of fresh snapshot symbols when producing assertions\n")
-                 {(b, config) => config.copy(cacheSnapshots = b)},
-      booleanOpt("cacheFunctionApplications",
-                   "Cache evaluated function bodies and/or postconditions\n"
-                 + "\tResults in incompletenesses.")
-                 {(b, config) => config.copy(cacheFunctionApplications = b)},
-      booleanOpt("localEvaluations",
-                   "Locally evaluate pure conditionals and unfoldings.\n"
-                 + "\tIs known to be unsound and incomplete,\n"
-                 + "\tIntended to be used for debugging only! (default:%s)".format(DefaultConfig.localEvaluations))
-                 {(b, config) => config.copy(localEvaluations = b)},
-      booleanOpt("shortCircuitingEvaluation",
-                   "Perform short-circuiting evaluation of AND, OR. If not,\n"
-                 + "\tevaluating e.g., i > 0 && f(i), will fail if f's\n"
-                 + "\tprecondition requires i > 0 (default:%s)".format(DefaultConfig.shortCircuitingEvaluation))
-                 {(b, config) => config.copy(shortCircuitingEvaluation = b)},
-      opt(None,
-          "logLevel",
-          "<level>",
-             "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF\n"
-           + "(default: %s)".format(DefaultConfig.logLevel))
-         {(s: String, config: Config) => config.copy(logLevel = s)},
-      opt(None,
-        "tempDirectory",
-        "<path>",
-        "Path to which all temporary data will be written (default: tmp_<timestamp>)")
-      {(s: String, config: Config) => config.copy(tempDirectory = UserValue(s))},
-      opt(None,
-          "z3Exe",
-          "<path\\to\\z3_executable>",
-          (  "Z3 executable. The environment variable %s can also\n"
-           + " be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable))
-         {(s: String, config: Config) => config.copy(z3Exe = Some(s))},
-      opt(None,
-          "z3LogFile",
-          "<path\\to\\z3_logfile>",
-          "Log file containing the interaction with Z3 (default: <tempDirectory>/%s)".format(DefaultConfig.z3LogFile))
-         {(s: String, config: Config) => config.copy(z3LogFile = UserValue(s))}
-    )
+    def parse(s: List[(String, List[String])]) = s match {
+      case (_, stdioRegex(stdioId) :: Nil) :: Nil => Right(Some(stdioId, ""))
+      case (_, fileRegex(fileId, fileName) :: Nil) :: Nil => Right(Some(fileId, fileName))
+      case Nil => Right(None)
+      case _ => Left("wrong statistics sink")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[(String, String)]
+    val argType = org.rogach.scallop.ArgType.LIST
   }
 
-  def parse(args: Seq[String], config: Config = DefaultConfig) =
-    parser.parse(args, config).getOrElse(sys.error("Illegal arguments: %s".format(args)))
+  val showStatistics = opt[(String, String)]("showStatistics",
+    descr = (  "Show some statistics about the verification. Options are "
+             + "'stdio' and 'file=<path\\to\\statistics.json>'"),
+    default = None,
+    noshort = true
+  )(statisticsSinkConverter)
+
+  val disableSubsumption = opt[Boolean]("disableSubsumption",
+    descr = "Don't add assumptions gained by verifying an assert statement",
+    default  = Some(false),
+    noshort = true
+  )
+
+  val includeMembers = opt[String]("includeMembers",
+    descr = (  "Include members in verification (default: '.*'). "
+             + "Wildcard characters are '?' and '*'. "
+             + "Examples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'."),
+    default = Some(".*"),
+    noshort = true
+  )(singleArgConverter[String](s => silicon.common.config.wildcardToRegex(s)))
+
+  val excludeMembers = opt[String]("excludeMembers",
+    descr = (  "Exclude members from verification (default: ''). "
+             + "Is applied after the include pattern."),
+    default = Some(""),
+    noshort = true
+  )
+
+  val unrollFunctions = opt[Int]("unrollFunctions",
+    descr = "Unroll function definitions at most n times (default: 1)",
+    default = Some(1),
+    noshort = true
+  )
+
+  val cacheFunctionApplications = opt[Boolean]("cacheFunctionApplications",
+    descr = (  "Cache evaluated function bodies and/or postconditions. "
+             + "Results in incompletenesses."),
+    default = Some(true),
+    noshort = true
+  )
+
+  val cacheSnapshots = opt[Boolean]("cacheSnapshots",
+    descr = "Reduce number of fresh snapshot symbols when producing assertions\n",
+    default = Some(true),
+    noshort = true
+  )
+
+  val localEvaluations = opt[Boolean]("localEvaluations",
+    descr = (  "Locally evaluate pure conditionals and unfoldings. "
+             + "Is known to be unsound and incomplete, "
+             + "intended for debugging only! (default: true)"),
+    default = Some(true),
+    noshort = true
+  )
+
+  val shortCircuitingEvaluation = opt[Boolean]("shortCircuitingEvaluation",
+    descr = (  "Perform short-circuiting evaluation of AND, OR. If not, "
+             + "evaluating e.g., i > 0 && f(i), will fail if f's "
+             + "precondition requires i > 0 (default: true)"),
+    default = Some(true),
+    noshort = true
+  )
+
+  val logLevel = opt[String]("logLevel",
+    descr = (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF "
+             + "(default: OFF)"),
+    default = Some("OFF"),
+    noshort = true
+  )
+
+  val tempDirectory = opt[ConfigValue[String]]("tempDirectory",
+    descr = "Path to which all temporary data will be written (default: tmp_<timestamp>)",
+    default = Some(DefaultValue("./tmp")),
+    noshort = true
+  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  val z3Exe = opt[String]("z3Exe",
+    descr = (  "Z3 executable. The environment variable %s can also "
+             + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
+    default = None,
+    noshort = true
+  )
+
+  val z3LogFile = opt[ConfigValue[String]]("z3LogFile",
+    descr = "Log file containing the interaction with Z3 (default: <tempDirectory>/logfile.smt2)",
+    default = Some(DefaultValue("logfile.smt2")),
+    noshort = true
+  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  lazy val effectiveZ3LogFile: String =
+    z3LogFile().orElse(new File(effectiveTempDirectory, _).getPath)
+
+  lazy val effectiveTempDirectory: String = {
+    val timestamp = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(System.currentTimeMillis())
+    tempDirectory().orElse(_ + "_" + timestamp)
+  }
+}
+
+
+object SiliconRunner extends App with sil.frontend.SilFrontend {
+  private var siliconInstance: Silicon = _
+
+  execute(args)
+
+  def createVerifier(fullCmd: String) = {
+    siliconInstance = new Silicon(Seq(("startedBy", "semper.silicon.SiliconRunner")))
+
+    siliconInstance
+  }
+
+  def configureVerifier(args: Seq[String]) = {
+    siliconInstance.parseCommandLine(args)
+
+    siliconInstance.config
+  }
 }

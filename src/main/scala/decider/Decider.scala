@@ -98,7 +98,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   private def z3Exe: String =
-    config.z3Exe.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable).getOrElse("z3.exe"))
+    config.z3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable).getOrElse("z3.exe"))
 
 //	def enableSmokeChecks(enable: Boolean) {
 //    performSmokeChecks = enable

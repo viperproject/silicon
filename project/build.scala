@@ -49,7 +49,7 @@ object SiliconBuild extends Build {
            baseSettings
         ++ Seq(
               name := "Silicon",
-              traceLevel := 10,
+              traceLevel := 100,
               maxErrors := 6,
               libraryDependencies ++= externalDep))
     ).dependsOn(common)
@@ -73,7 +73,7 @@ object SiliconBuild extends Build {
   def internalDep = if (isBuildServer) Nil else Seq(dependencies.silSrc % "compile->compile;test->test")
 
   def externalDep = {
-    dependencies.logging ++ Seq(dependencies.scopt) ++
+    dependencies.logging ++ Seq(dependencies.scallop) ++
     (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil)
   }
 
@@ -84,7 +84,8 @@ object SiliconBuild extends Build {
     lazy val slf4s = "com.weiglewilczek.slf4s" % "slf4s_2.9.1" % "1.0.7"
     lazy val slf4j = "org.slf4j" % "slf4j-log4j12" %	"1.6.4"
 
-    lazy val scopt = "com.github.scopt" % "scopt_2.10" % "2.1.0"
+//    lazy val scopt = "com.github.scopt" % "scopt_2.10" % "2.1.0"
+    lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
 
     lazy val sil = "semper" %% "sil" %  "0.1-SNAPSHOT"
     lazy val silSrc = RootProject(new java.io.File("../Sil"))
