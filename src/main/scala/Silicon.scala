@@ -38,7 +38,7 @@ trait SiliconConstants {
   val version = brandingData.sbtProjectVersion
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
   val copyright = "(c) 2013 pm.inf.ethz.ch"
-  val z3ExeEnvironmentVariable = "Z3PATH"
+  val z3ExeEnvironmentVariable = "Z3_EXE"
   val expectedZ3Version = "4.3.2"
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
@@ -57,9 +57,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]
 
-//  private var options: Seq[String] = Nil
   private var shutDownHooks: Set[() => Unit] = _
-  /*private*/ var config: Config = _
+
+  private var _config: Config = _
+  final def config = _config
 
   private sealed trait LifetimeState
 
@@ -75,7 +76,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon may only be configured once.")
     lifetimeState = LifetimeState.Configured
 
-    config = new Config(args)
+    _config = new Config(args)
   }
 
   def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
@@ -378,11 +379,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val tempDirectory = opt[ConfigValue[String]]("tempDirectory",
+  val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: tmp_<timestamp>)",
-    default = Some(DefaultValue("./tmp")),
+    default = Some("./tmp"),
     noshort = true
-  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+  )
 
   val z3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
@@ -398,12 +399,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
   lazy val effectiveZ3LogFile: String =
-    z3LogFile().orElse(new File(effectiveTempDirectory, _).getPath)
-
-  lazy val effectiveTempDirectory: String = {
-    val timestamp = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss").format(System.currentTimeMillis())
-    tempDirectory().orElse(_ + "_" + timestamp)
-  }
+    z3LogFile().orElse(new File(tempDirectory(), _).getPath)
 }
 
 
