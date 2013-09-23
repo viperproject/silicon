@@ -18,9 +18,8 @@ object SiliconBuild extends Build {
           scalacOptions in Compile ++= Seq(
             "-deprecation",
             "-unchecked",
-            "-feature",
-            "-Dscalac.patmat.analysisBudget=off",
-            "-Xfatal-warnings"),
+            "-feature"
+            /*"-Xfatal-warnings"*/),
           resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
 					BrandKeys.dataPackage := "semper.silicon",
 					BrandKeys.dataObject := "brandingData",
