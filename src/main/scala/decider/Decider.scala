@@ -97,8 +97,12 @@ class DefaultDecider[ST <: Store[ST],
     return None
   }
 
-  private def z3Exe: String =
-    config.z3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable).getOrElse("z3.exe"))
+  private lazy val z3Exe: String = {
+    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+
+    config.z3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
+                                        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+  }
 
 //	def enableSmokeChecks(enable: Boolean) {
 //    performSmokeChecks = enable
@@ -107,10 +111,10 @@ class DefaultDecider[ST <: Store[ST],
 	def checkSmoke = prover.check() == Unsat
 
   lazy val paLog =
-    common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "perm-asserts.txt"))
+    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
 
   lazy val proverAssertionTimingsLog =
-    common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "z3timings.txt"))
+    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
 
   def stop() {
     if (prover != null) prover.stop()
@@ -401,7 +405,7 @@ class DefaultDecider[ST <: Store[ST],
 		chunks find (ch => ch.args == id.args)
 
   lazy val fcwpLog =
-    common.io.PrintWriter(new java.io.File(config.effectiveTempDirectory, "findChunkWithProver.txt"))
+    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
     fcwpLog.println(id)
