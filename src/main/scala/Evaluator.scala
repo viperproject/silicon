@@ -157,7 +157,8 @@ trait DefaultEvaluator[
         Q(WildcardPerm(tVar), c)
 
       case _: ast.EpsilonPerm =>
-        Q(EpsilonPerm(), c)
+        sys.error(s"Found unexpected expression $e (${e.getClass.getName}})")
+//        Q(EpsilonPerm(), c)
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>

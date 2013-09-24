@@ -109,7 +109,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
     case WildcardPerm(v) => convert(v)
-    case EpsilonPerm() => "$Perm.Eps"
+//    case EpsilonPerm() => "$Perm.Eps"
     case TermPerm(t) => convert2real(t)
     case FractionPerm(n, d) => "(/ %s %s)".format(convert2real(n), convert2real(d))
 
