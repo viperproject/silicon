@@ -491,7 +491,7 @@ case class NoPerm() extends DefaultFractionalPermissions { override val toString
 case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
-case class EpsilonPerm() extends DefaultFractionalPermissions { override val toString = "ε" }
+//case class EpsilonPerm() extends DefaultFractionalPermissions { override val toString = "ε" }
 
 case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
