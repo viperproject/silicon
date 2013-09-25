@@ -20,23 +20,7 @@ object SiliconBuild extends Build {
             "-unchecked",
             "-feature"
             /*"-Xfatal-warnings"*/),
-          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
-					BrandKeys.dataPackage := "semper.silicon",
-					BrandKeys.dataObject := "brandingData",
-					BrandKeys.data += Val("buildDate", new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new java.util.Date)),
-					BrandKeys.data <+= scalaVersion(Val("scalaVersion", _)),
-					BrandKeys.data <+= sbtBinaryVersion(Val("sbtBinaryVersion", _)),
-					BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
-					BrandKeys.data <+= name(Val("sbtProjectName", _)),
-					BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
-					BrandKeys.data <+= HgIdKeys.projectId { hgid =>
-						BrandObject("hgid", """
-							val version = "%s"
-							val id = "%s"
-							val branch = "%s"
-							val tags = "%s"
-							""".format(hgid.version, hgid.id, hgid.branch, hgid.tags))},
-					sourceGenerators in Compile <+= BrandKeys.generateDataFile))
+          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"))
 
   /* Projects */
 
@@ -50,11 +34,48 @@ object SiliconBuild extends Build {
               name := "Silicon",
               traceLevel := 10,
               maxErrors := 6,
-              libraryDependencies ++= externalDep))
+              fork := true,
+                /* Fork Silicon when run and tested. Avoids problems with file
+                 * handlers on Windows 7 that remain open until Sbt is closed,
+                 * which makes it very annoying to work on test files.
+                 *
+                 * There have been reports about problems with forking. If you
+                 * experience strange problems, disable forking and try again.
+                 */
+              javaOptions in Test += "-Xss32M",
+                /* Options passed to JVMs forked by test-related Sbt command.
+                 * See http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
+                 * In contrast to what the documentation states, it seemed
+                 * that neither were the options passed to Sbt's JVM forwarded
+                 * to forked JVMs, not did "javaOptions in (Test,run)"
+                 * work for me (using Sbt 0.12.4).
+                 * You can inspect the settings in effect using via
+                 * "show javaOptions" on the Sbt console.
+                 */
+              libraryDependencies ++= externalDep,
+              BrandKeys.dataPackage := "semper.silicon",
+              BrandKeys.dataObject := "brandingData",
+              BrandKeys.data += Val("buildDate", new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new java.util.Date)),
+              BrandKeys.data <+= scalaVersion(Val("scalaVersion", _)),
+              BrandKeys.data <+= sbtBinaryVersion(Val("sbtBinaryVersion", _)),
+              BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
+              BrandKeys.data <+= name(Val("sbtProjectName", _)),
+              BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
+              BrandKeys.data <+= HgIdKeys.projectId { hgid =>
+                BrandObject("hgid",
+                            """val version = "%s"
+                               val id = "%s"
+                               val branch = "%s"
+                               val tags = "%s"
+                            """.format(hgid.version, hgid.id, hgid.branch, hgid.tags))
+              },
+              sourceGenerators in Compile <+= BrandKeys.generateDataFile))
     ).dependsOn(common)
+
     for (dep <- internalDep) {
       p = p.dependsOn(dep)
     }
+
     p.aggregate(common)
   }
 
@@ -83,7 +104,6 @@ object SiliconBuild extends Build {
     lazy val slf4s = "com.weiglewilczek.slf4s" % "slf4s_2.9.1" % "1.0.7"
     lazy val slf4j = "org.slf4j" % "slf4j-log4j12" %	"1.6.4"
 
-//    lazy val scopt = "com.github.scopt" % "scopt_2.10" % "2.1.0"
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
 
     lazy val sil = "semper" %% "sil" %  "0.1-SNAPSHOT"
