@@ -270,7 +270,6 @@ class DefaultChunkFinder[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult =
 		withChunk[CH](h, id, locacc, pve, c, tv)(chunk => {
-		          println("Aaaand. I'm here")
 			if (decider.isAsPermissive(chunk.perm, p))
 				Q(chunk)
 			else
