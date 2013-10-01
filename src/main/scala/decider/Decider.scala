@@ -11,6 +11,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory, Chunk, PermissionChunk}
 import interfaces.reporting.Context
 import semper.silicon.state.{DirectChunk, SymbolConvert}
+import semper.silicon.state.DirectChunk
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
@@ -141,6 +142,8 @@ class DefaultDecider[ST <: Store[ST],
 	def assert(t: Term) = assert(t, null)
 
 	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
+	  	//println("Asserting in decider.... " + t)
+	  
 		val asserted = isKnownToBeTrue(t)
 
 		asserted || π.exists(_ == t) || proverAssert(t, logSink)
@@ -165,6 +168,7 @@ class DefaultDecider[ST <: Store[ST],
 
     result
   }
+  
 
   /* ATTENTION: Caching the values of permission expression assertions is only
    * sound as long as the value does not change over time, i.e., by adding new
@@ -349,6 +353,21 @@ class DefaultDecider[ST <: Store[ST],
 //  }
 //
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
+  
+  	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
+	  // collect all chunks
+  	  import silicon.state.terms.utils.BigPermSum
+  	  
+  	  //println("looking up global permissions")
+  	  
+  	  val s:Seq[DefaultFractionalPermissions] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => permChunk.perm }
+  	  
+  	  val sum = BigPermSum (s, { x => x})
+  	  
+  	  println(sum)
+  	  
+  	  return isAsPermissive(sum,p)
+	}
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
 //    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)
@@ -401,16 +420,23 @@ class DefaultDecider[ST <: Store[ST],
 					 findChunkLiterally(chunks, id)
 		orElse findChunkWithProver(chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) = {
+	  	//println("attempting to find chunk " +id+ " literally")
 		chunks find (ch => ch.args == id.args)
+	}
 
   lazy val fcwpLog =
     common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
+    /**
+     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
+     */
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
     fcwpLog.println(id)
 		// prover.logComment("Chunk lookup ...")
 		// prover.enableLoggingComments(false)
+    //println("attempting to find chunk " +id+ " with prover")
+
     import silicon.state.terms.utils.BigAnd
 		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 		// prover.enableLoggingComments(true)

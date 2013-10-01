@@ -24,6 +24,8 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assume(φ: Term)
 	def assume(φ: Set[Term])
 
+	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean
+	
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH]
 
 	def assertNoAccess(p: P): Boolean
@@ -31,7 +33,7 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean
 	def assertWriteAccess(p: P): Boolean
 	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean
-
+	
 	def isPositive(p: P): Boolean
 	def isAsPermissive(perm: P, other: P): Boolean
 

@@ -227,6 +227,10 @@ class DefaultChunkFinder[ST <: Store[ST],
                          val stateFormatter: StateFormatter[ST, H, S, String])
 		extends ChunkFinder[DefaultFractionalPermissions, ST, H, S, C, TV] with Logging {
 
+	/**
+	 * Lets the decider lookup the chunk in the given heap
+	 * fails if there is none
+	 */
 	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
                 id: ChunkIdentifier,
@@ -236,7 +240,12 @@ class DefaultChunkFinder[ST <: Store[ST],
                 tv: TV)
 							 (Q: CH => VerificationResult)
                : VerificationResult = {
-
+	  
+	  	// are there globally enough permissions for field f?
+	  	val enoughGlobalPermissions = decider.hasEnoughPermissionsGlobally(h, id, NoPerm())
+	  	
+	  	if(!enoughGlobalPermissions)  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+	  	
 		decider.getChunk[CH](h, id) match {
 			case Some(c) =>
         Q(c)
@@ -247,6 +256,9 @@ class DefaultChunkFinder[ST <: Store[ST],
 		}
 	}
 
+	/**
+	 * Additionally checks if the chunk is permissive enough (e.g. for a write)
+	 */
 	def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
                 id: ChunkIdentifier,
@@ -257,8 +269,8 @@ class DefaultChunkFinder[ST <: Store[ST],
                 tv: TV)
                (Q: CH => VerificationResult)
                : VerificationResult =
-
 		withChunk[CH](h, id, locacc, pve, c, tv)(chunk => {
+		          println("Aaaand. I'm here")
 			if (decider.isAsPermissive(chunk.perm, p))
 				Q(chunk)
 			else
