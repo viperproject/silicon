@@ -48,33 +48,53 @@ class DeciderSpec extends FlatSpec {
     return decider
    } 
 
-  it should "say that we have globally enough permission in case 1" in {
+  it should "say that we have  enough permissions for exhaling 'acc(x.f,1)' in case h: x.f -> _ # 1" in {
     val decider = createDecider
 
     // tr.f -> tv # al
-    val heap = new SetBackedHeap() + DirectFieldChunk(Var("x", sorts.Ref), "f", Var("tx", sorts.Bool), FullPerm())
+    val x = decider.fresh(sorts.Ref)
+    
+    val heap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm())
     
     // h, id
-    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(Var("x", sorts.Ref), "f"), FullPerm()) === true)
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === true)
   }
   
-  it should "say that we have not enough permissions in case 2" in {
+  it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: x.f -> _ # 0" in {
         val decider = createDecider
 
+    val x = decider.fresh(sorts.Ref)
     // tr.f -> tv # al
-    val heap = new SetBackedHeap() + DirectFieldChunk(Var("x", sorts.Ref), "f", Var("tx", sorts.Bool), NoPerm())
+    val heap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, NoPerm())
     
     // h, id
-    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(Var("x", sorts.Ref), "f"), FullPerm()) === false)
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
   }
   
-   it should "say that we have globally enough permission in case 3" in {
+   it should "say that we have enough permissions for exhaling 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5" in {
     val decider = createDecider
 
+    val x,y,z = decider.fresh(sorts.Ref)
+    
     // tr.f -> tv # al
-    val heap = new SetBackedHeap() + DirectFieldChunk(Var("y", sorts.Ref), "f", Var("ty", sorts.Bool), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(Var("z", sorts.Ref), "f", Var("tz", sorts.Bool), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
+    val heap = new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
     
     // h, id
-    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(Var("x", sorts.Ref), "f"), FullPerm()) === true)
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === true)
+  }
+   
+   it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: y ≠ z" in {
+    val decider = createDecider
+
+    val x,y,z = decider.fresh(sorts.Ref)
+    
+    decider.assume(Or(Eq(x,y), Eq(x,z)))
+    decider.assume(Not(Eq(y,z)))
+    
+    // tr.f -> tv # al
+    val heap = new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
+    
+    // h, id
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
   }
 }

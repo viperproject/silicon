@@ -15,6 +15,8 @@ import semper.silicon.state.DirectChunk
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
+import silicon.state.terms.utils.BigAnd
+
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
@@ -354,19 +356,34 @@ class DefaultDecider[ST <: Store[ST],
 //
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
   
+  /**
+   * Does a global lookup on the heap h whether there _could_ be enough permissions (at least P)
+   * for chunk id.
+   * @return returns true if there could be enough permissions on the heap, false if there are definitely not enough permissions on the heap.
+   */
   	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
 	  // collect all chunks
   	  import silicon.state.terms.utils.BigPermSum
   	  
   	  //println("looking up global permissions")
   	  
-  	  val s:Seq[DefaultFractionalPermissions] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => permChunk.perm }
+  	  val s:Seq[Term] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
+  	    // construct the big And for the condition
+  	    val condition = BigAnd(permChunk.args zip id.args map (x => x._1 === x._2))
+  	    // construct the ITE
+  	    Ite(condition, permChunk.perm, NoPerm())
+  	  } }
   	  
-  	  val sum = BigPermSum (s, { x => x})
   	  
-  	  println(sum)
+  	  val goal = AtLeast(BigPermSum (s, { x => x}), p)
   	  
-  	  return isAsPermissive(sum,p)
+  	  val res = z3.couldHold(goal)
+  	  
+  	  res
+  	  
+  	  //println(sum)
+  	  
+  	  //return isAsPermissive(sum,p)
 	}
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
@@ -437,7 +454,6 @@ class DefaultDecider[ST <: Store[ST],
 		// prover.enableLoggingComments(false)
     //println("attempting to find chunk " +id+ " with prover")
 
-    import silicon.state.terms.utils.BigAnd
 		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 		// prover.enableLoggingComments(true)
 
