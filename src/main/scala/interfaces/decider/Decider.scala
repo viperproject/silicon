@@ -32,7 +32,7 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assertWriteAccess(p: P): Boolean
 	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean
 
-	def isPositive(p: P): Boolean
+	def isPositive(p: P, strict: Boolean = true): Boolean
 	def isAsPermissive(perm: P, other: P): Boolean
 
   def fresh(s: Sort): Var

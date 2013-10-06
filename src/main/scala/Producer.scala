@@ -4,6 +4,7 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
+import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
@@ -147,7 +148,7 @@ trait DefaultProducer[
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-//            assume(NoPerm() < pGain) /* Commented to support inhaling conditional access predicates */
+            if (!isConditional(gain)) assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
             Q(mh, c2)})})
@@ -158,7 +159,7 @@ trait DefaultProducer[
             val s = sf(sorts.Snap)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-//            assume(NoPerm() < pGain) /* Commented to support inhaling conditional access predicates */
+            if (!isConditional(gain)) assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
             Q(mh, c2)}))
