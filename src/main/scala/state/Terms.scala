@@ -1124,6 +1124,9 @@ object utils {
 
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, Or, True())
+    
+  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
+    silicon.utils.mapReduceLeft(it, f, Plus, NoPerm())
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def assertSort(t: Term, desc: String, s: Sort) {

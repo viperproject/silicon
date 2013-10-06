@@ -11,9 +11,12 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory, Chunk, PermissionChunk}
 import interfaces.reporting.Context
 import semper.silicon.state.{DirectChunk, SymbolConvert}
+import semper.silicon.state.DirectChunk
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
+import silicon.state.terms.utils.BigAnd
+
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
@@ -141,6 +144,8 @@ class DefaultDecider[ST <: Store[ST],
 	def assert(t: Term) = assert(t, null)
 
 	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
+	  	//println("Asserting in decider.... " + t)
+	  
 		val asserted = isKnownToBeTrue(t)
 
 		asserted || π.exists(_ == t) || proverAssert(t, logSink)
@@ -165,6 +170,7 @@ class DefaultDecider[ST <: Store[ST],
 
     result
   }
+  
 
   /* ATTENTION: Caching the values of permission expression assertions is only
    * sound as long as the value does not change over time, i.e., by adding new
@@ -351,6 +357,36 @@ class DefaultDecider[ST <: Store[ST],
 //  }
 //
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
+  
+  /**
+   * Does a global lookup on the heap h whether there _could_ be enough permissions (at least P)
+   * for chunk id.
+   * @return returns true if there could be enough permissions on the heap, false if there are definitely not enough permissions on the heap.
+   */
+  	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
+	  // collect all chunks
+  	  import silicon.state.terms.utils.BigPermSum
+  	  
+  	  //println("looking up global permissions")
+  	  
+  	  val s:Seq[Term] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
+  	    // construct the big And for the condition
+  	    val condition = BigAnd(permChunk.args zip id.args map (x => x._1 === x._2))
+  	    // construct the ITE
+  	    Ite(condition, permChunk.perm, NoPerm())
+  	  } }
+  	  
+  	  
+  	  val goal = AtLeast(BigPermSum (s, { x => x}), p)
+  	  
+  	  val res = z3.couldHold(goal)
+  	  
+  	  res
+  	  
+  	  //println(sum)
+  	  
+  	  //return isAsPermissive(sum,p)
+	}
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
 //    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)
@@ -403,17 +439,23 @@ class DefaultDecider[ST <: Store[ST],
 					 findChunkLiterally(chunks, id)
 		orElse findChunkWithProver(chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) = {
+	  	//println("attempting to find chunk " +id+ " literally")
 		chunks find (ch => ch.args == id.args)
+	}
 
   lazy val fcwpLog =
     common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
+    /**
+     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
+     */
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
     fcwpLog.println(id)
 		// prover.logComment("Chunk lookup ...")
 		// prover.enableLoggingComments(false)
-    import silicon.state.terms.utils.BigAnd
+    //println("attempting to find chunk " +id+ " with prover")
+
 		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 		// prover.enableLoggingComments(true)
 
