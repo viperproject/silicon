@@ -147,9 +147,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           else
                             h1
                         Q(h2, pc.snap, pc :: Nil, c3)})
-              ))
-//                else
-//                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
                 else
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
 //            else
