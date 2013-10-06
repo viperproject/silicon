@@ -2,10 +2,10 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, ContractNotWellformed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
+import sil.verifier.errors.{Internal, LoopInvariantNotPreserved, LoopInvariantNotEstablished,
+    WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -13,7 +13,8 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.{/*Message,*/ TraceView}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk,
+    SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
 
@@ -247,6 +248,14 @@ trait DefaultExecutor[ST <: Store[ST],
               Success[C, ST, H, S](c)
             else
               Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(a), c, tv)
+
+          case ast.AccessPredicate(locacc, perm) =>
+            withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
+              evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+                if (decider.hasEnoughPermissionsGlobally(σ.h, id, tPerm))
+                  Q(σ, c2)
+                else
+                  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)))
 
           case _ =>
             if (config.disableSubsumption()) {

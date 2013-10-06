@@ -14,7 +14,9 @@ method test05(x: Ref, y: Ref, z: Ref)
 	requires acc(x.f, write) && acc(y.f, write)
 	requires (z == x || z == y)
 {
+	assert acc(z.f, write)
 	exhale acc(z.f, write)
+
 	//:: ExpectedError(exhale.failed:insufficient.permission)
 	exhale acc(x.f, write) && acc(y.f, write)
 }
@@ -32,6 +34,7 @@ method test04(b: Bool, x: Ref, y: Ref)
 	requires acc(y.f, !b ? (1/5) : none)
 {
 	if (x == y) {
+		assert acc(x.f, (1/5))
 		exhale acc(x.f, (1/5))
 	}
 }
@@ -40,6 +43,7 @@ method test06(b: Bool, x: Ref, y: Ref)
 	requires acc(x.f, b ? (1/5) : none)
 	requires acc(y.f, !b ? (1/5) : none)
 {
+	assert (x == y) ==> acc(x.f, (1/5))
 	exhale (x == y) ==> acc(x.f, (1/5))
 }
 
@@ -47,6 +51,7 @@ method test02(x: Ref, y: Ref, z: Ref, a: Ref)
 	requires acc(x.f, (1/3)) && acc(y.f, (1/3)) && acc(z.f, (1/6))
 	requires (a == x && a == y) || (a == z)
 {
+	assert acc(a.f, (1/5))
 	exhale acc(a.f, (1/5))
 
 	assert acc(x.f, wildcard)
