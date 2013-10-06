@@ -122,23 +122,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
-      /* Field access predicates */
+      /* Field and predicate access predicates */
       case ast.AccessPredicate(locacc, perm) =>
-//      case ast.FieldAccessPredicate(loc @ ast.FieldLocation(eRcvr, field), perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
-//          evals(σ, id.args, pve, c1, tv)((tArgs, c2) =>
-//            if (decider.assert(tRcvr !== Null()))
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
                 if (decider.isPositive(tPerm, !isConditional(perm)))
-//                  val id = FieldChunkIdentifier(tRcvr, field.name)
                   consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                     ch match {
                       case fc: DirectFieldChunk =>
-//                        if (decider.assert(id.args(0) !== Null())) {
                           val snap = fc.value.convert(sorts.Snap)
-                          Q(h1, snap, fc :: Nil, c3) //}
-//                        else
-//                          Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c3, tv)
+                          Q(h1, snap, fc :: Nil, c3)
 
                       case pc: DirectPredicateChunk =>
                         val h2 =
@@ -149,31 +142,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                         Q(h2, pc.snap, pc :: Nil, c3)})
                 else
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
-//            else
-//              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(loc), c1, tv))
-
-//      case qe @ ast.Quantified(
-//                  ast.Exists(),
-//                  qvar,
-//                  ast.BinaryOp(
-//                    _: ast.And,
-//                    rdStarConstraints,
-//                    pe @ ast.FieldAccessPredicate(ast.FieldLocation(rcvr, field), _)))
-//           if toSort(qvar.dataType) == sorts.Perms =>
-//
-//        eval(σ, rcvr, pve, c, tv)((tRcvr, c1) =>
-//          if (decider.assert(tRcvr !== Null()))
-//            withChunk[DirectFieldChunk](h, tRcvr, field.name, rcvr, pve, c1, tv)(fc => {
-//              val witness = qvar
-//              val (tWitness, _) = freshPermVar(witness.name)
-//              val σ1 = σ \+ (witness, tWitness)
-//              eval(σ1, rdStarConstraints, pve, c1, tv)((tRdStarConstraints, c2) => {
-//                val pWitness = PermissionsTuple(StarPerms(tWitness))
-//                val tConstraints = And(tRdStarConstraints, fc.perm > pWitness)
-//                assume(tConstraints, c2)
-//                Q(h - fc + (fc - pWitness), fc.value.convert(sorts.Snap), fc :: Nil, c2)})})
-//          else
-//            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(rcvr), c1, tv))
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
@@ -204,9 +172,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                 (Q:     (H, DirectChunk, C, PermissionsConsumptionResult)
                                      => VerificationResult)
                                 :VerificationResult = {
-
-//    val eRcvr = memloc.rcv
-//    val id = memloc.loc.name
 
     /* TODO: assert that pLoss > 0 */
 
