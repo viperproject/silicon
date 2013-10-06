@@ -237,11 +237,13 @@ class DefaultDecider[ST <: Store[ST],
       .map(ch => assertWriteAccess(ch.perm))
       .getOrElse(false))
 
-	def isPositive(perm: P) = perm match {
+	def isPositive(perm: P, strict: Boolean = true) = perm match {
     case  _: FullPerm
         | _: WildcardPerm => true
 
-    case _ => permAssert(NoPerm() < perm)
+    case _ =>
+      if (strict) permAssert(NoPerm() < perm)
+      else isAsPermissive(perm, NoPerm())
   }
 
 //	def isValidFraction(perm: P, permSrc: ast.Expression) =

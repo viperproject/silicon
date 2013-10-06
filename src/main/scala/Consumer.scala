@@ -4,6 +4,7 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
@@ -128,7 +129,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //          evals(σ, id.args, pve, c1, tv)((tArgs, c2) =>
 //            if (decider.assert(tRcvr !== Null()))
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-                if (decider.isPositive(tPerm))
+                if (decider.isPositive(tPerm, !isConditional(perm)))
 //                  val id = FieldChunkIdentifier(tRcvr, field.name)
                   consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                     ch match {
