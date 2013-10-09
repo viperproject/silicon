@@ -15,7 +15,7 @@ import semper.silicon.state.DirectChunk
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
-import silicon.state.terms.utils.BigAnd
+import silicon.state.terms.utils.{BigAnd, BigPermSum}
 
 
 class DefaultDecider[ST <: Store[ST],
@@ -365,7 +365,6 @@ class DefaultDecider[ST <: Store[ST],
    */
   	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
 	  // collect all chunks
-  	  import silicon.state.terms.utils.BigPermSum
   	  
   	  //println("looking up global permissions")
   	  
@@ -379,10 +378,10 @@ class DefaultDecider[ST <: Store[ST],
   	  
   	  val goal = AtLeast(BigPermSum (s, { x => x}), p)
   	  
-  	  val res = z3.couldHold(goal)
+  	  val res = prover.assert(goal)
   	  
   	  res
-  	  
+  	 // true
   	  //println(sum)
   	  
   	  //return isAsPermissive(sum,p)
