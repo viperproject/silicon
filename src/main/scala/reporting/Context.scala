@@ -18,7 +18,8 @@ case class DefaultContext[ST <: Store[ST],
                           S <: State[ST, H, S]]
                          (currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
-                          constrainableARPs: Set[Var] = Set())
+                          constrainableARPs: Set[Var] = Set(),
+                          reserveHeap: Option[H] = None)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
 
   def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] =
@@ -42,6 +43,8 @@ case class DefaultContext[ST <: Store[ST],
 
     copy(constrainableARPs = newConstrainableARPs)
   }
+
+  def setReserveHeap(reserveHeap: Option[H]) = copy(reserveHeap = reserveHeap)
 
 	lazy val branchings: List[BranchingStep[ST, H, S]] = currentBranch.branchings
 }

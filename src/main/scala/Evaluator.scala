@@ -5,7 +5,7 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
-import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import sil.verifier.reasons.{InsufficientPermission, DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
@@ -168,9 +168,17 @@ trait DefaultEvaluator[
           })
 
       case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-          withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-            Q(ch.value, c1)))
+        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) => {
+          decider.getChunk[FieldChunk](σ.h, id) match {
+            case Some(ch) =>
+              Q(ch.value, c)
+            case None if c.reserveHeap.nonEmpty =>
+              decider.getChunk[FieldChunk](c.reserveHeap.get, id) match {
+                case Some(ch) => Q(ch.value, c)
+                case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)
+              }
+            case None =>
+              Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)}})
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>

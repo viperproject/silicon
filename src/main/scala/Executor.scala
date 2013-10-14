@@ -4,7 +4,7 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, ContractNotWellformed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed}
+    UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed}
 import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
@@ -355,6 +355,14 @@ trait DefaultExecutor[ST <: Store[ST],
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
 //          else
 //            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
+
+      case pckg @ ast.Package(wand) =>
+        val pve = PackageFailed(pckg)
+        produce(Ø \ σ.γ, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+          val c2 = c1.setReserveHeap(Some(σ.h))
+          consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c1, Description[ST, H, S]("Consume wand rhs")))((σ1, snap, chs, c3) => {
+            val c4 = c3.setReserveHeap(None)
+            Q(σ1, c4)})})
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto

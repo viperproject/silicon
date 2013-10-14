@@ -43,6 +43,8 @@ package object ast {
   val Implies = sil.ast.Implies
   type Ite = sil.ast.CondExp
   val Ite = sil.ast.CondExp
+  type MagicWand = sil.ast.MagicWand
+  val MagicWand = sil.ast.MagicWand
 
   type NullLiteral = sil.ast.NullLit
   val NullLiteral = sil.ast.NullLit
@@ -155,6 +157,10 @@ package object ast {
   val ConstrainFreshARP = sil.ast.FreshReadPerm
   type While = sil.ast.While
   val While = sil.ast.While
+  type Package = sil.ast.Package
+  val Package = sil.ast.Package
+  type Apply = sil.ast.Apply
+  val Apply = sil.ast.Apply
 
   type Domain = sil.ast.Domain
   val Domain = sil.ast.Domain

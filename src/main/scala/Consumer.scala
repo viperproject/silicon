@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse}
 import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
@@ -164,16 +164,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                  h: H,
                                  id: ChunkIdentifier,
                                  pLoss: P,
-                                 // tRcvr: Term,
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C,
                                  tv: TV)
-                                (Q:     (H, DirectChunk, C, PermissionsConsumptionResult)
-                                     => VerificationResult)
-                                :VerificationResult = {
+                                (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
+                                : VerificationResult = {
 
-    /* TODO: assert that pLoss > 0 */
+    // TODO: Integrate into regular (non-)exact consumption!
+    if (c.reserveHeap.nonEmpty)
+      return consumeIncludingReserveHeap(σ, h, id, pLoss, locacc, pve, c, tv)(Q)
 
     if (consumeExactRead(pLoss, c)) {
       withChunk[DirectChunk](h, id, pLoss, locacc, pve, c, tv)(ch => {
@@ -185,6 +185,57 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       withChunk[DirectChunk](h, id, locacc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
+    }
+  }
+
+  private def consumeIncludingReserveHeap(σ: S,
+                                          h: H,
+                                          id: ChunkIdentifier,
+                                          pLoss: P,
+                                          locacc: ast.LocationAccess,
+                                          pve: PartialVerificationError,
+                                          c: C,
+                                          tv: TV)
+                                         (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
+                                         : VerificationResult = {
+
+    val (h1, optCh1, pLoss1, c1) = consumeMaxPermissions(h, id, pLoss, c, tv)
+    if (decider.assertNoAccess(pLoss1)) {
+      Q(h1, optCh1.get, c1, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
+    } else {
+      val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(c1.reserveHeap.get, id, pLoss1, c1, tv)
+      if (decider.assertNoAccess(pLoss2)) {
+        val tVal = (optCh1, optCh2) match {
+          case (Some(fc1: DirectFieldChunk), Some(fc2: DirectFieldChunk)) => fc1.value === fc2.value
+          case (Some(pc1: DirectPredicateChunk), Some(pc2: DirectPredicateChunk)) => pc1.snap === pc2.snap
+          case _ => True()}
+        assume(tVal)
+        val c3 = c2.setReserveHeap(Some(h2))
+        Q(h1, optCh2.get, c3, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
+      } else {
+        Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
+      }
+    }
+  }
+
+  private def consumeMaxPermissions(h: H,
+                                    id: ChunkIdentifier,
+                                    pLoss: P,
+                                    c: C,
+                                    tv: TV)
+                                   : (H, Option[DirectChunk], P, C) = {
+
+    decider.getChunk[DirectChunk](h, id) match {
+      case result @ Some(ch) =>
+        val (pToConsume, pKeep) =
+          if (decider.isAsPermissive(ch.perm, pLoss)) (NoPerm(), ch.perm - pLoss)
+          else (pLoss - ch.perm, NoPerm())
+        val h1 =
+          if (decider.assertNoAccess(pKeep)) h - ch
+          else h - ch + (ch \ pKeep)
+        (h1, result, pToConsume, c)
+
+      case None => (h, None, pLoss, c)
     }
   }
 
