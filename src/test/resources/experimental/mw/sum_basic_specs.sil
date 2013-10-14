@@ -48,7 +48,7 @@ method loop1(y: Ref)
 
 		/* h: ..., tx.Node() --* ty.Node), tx.nxt -> txn, tx.val -> tv */
 
-		var oldx: Ref := x
+		var oldx: Ref := x /* Used to simulate oldit(x), see comment below */
 
 		s := (s + (x.val))
 		x := x.nxt
