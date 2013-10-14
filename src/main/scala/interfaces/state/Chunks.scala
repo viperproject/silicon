@@ -19,6 +19,7 @@ trait PermissionChunk[P <: FractionalPermissions[P], CH <: PermissionChunk[P, CH
   val perm: P
   def +(perm: P): CH
   def -(perm: P): CH
+  def \(perm: P): CH
 }
 
 trait FieldChunk extends Chunk {
