@@ -489,14 +489,14 @@ sealed abstract class DefaultFractionalPermissions extends FractionalPermissions
 
 case class NoPerm() extends DefaultFractionalPermissions { override val toString = "Z" }
 case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
-case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/d" }
+case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 //case class EpsilonPerm() extends DefaultFractionalPermissions { override val toString = "ε" }
 
 case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
-  override val toString = "(Perm) %s".format(t)
+  override val toString = t.toString
 }
 
 case class IsValidPermVar(v: Var) extends BooleanTerm {
