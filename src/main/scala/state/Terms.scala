@@ -563,7 +563,13 @@ object PermPlus extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
 class PermMinus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
     extends DefaultFractionalPermissions
        with commonnodes.Minus[DefaultFractionalPermissions]
-       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions]
+       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions] {
+
+  override val toString = p1 match {
+    case _: commonnodes.BinaryOp[_] => s"$p0 $op ($p1)"
+    case _ => s"$p0 $op $p1"
+  }
+}
 
 object PermMinus extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
   def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
