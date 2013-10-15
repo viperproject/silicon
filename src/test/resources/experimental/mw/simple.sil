@@ -18,11 +18,14 @@ method test01(x: Ref)
   package acc(x.f, 1/2) --* (acc(x.f, 1/2) && x.f == 0)
 }
 
-method test02(x: Ref)
+method test09(x: Ref)
   requires acc(x.f, write)
 {
   x.f := 0
   package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+  assert acc(x.f, 1/2)
+  //:: ExpectedError(assert.failed, insufficient.permissions)
+  assert acc(x.f, 2/3)
 }
 
 method test08(x: Ref)
