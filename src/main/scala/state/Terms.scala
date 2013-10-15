@@ -575,8 +575,7 @@ object PermMinus extends ((DefaultFractionalPermissions, DefaultFractionalPermis
   def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (_, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
-//    case (PercPerm(n), PercPerm(m)) => if (n == m) NoPerm() else PercPerm(n - m)
-//    case (ConcretePerm(n1, d1), ConcretePerm(n2, d2)) => ConcretePerm(n1 * d2 - n2 * d1, d1 * d2)
+    case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
     case (_, _) => new PermMinus(t0, t1)
