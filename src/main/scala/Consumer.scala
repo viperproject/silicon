@@ -200,17 +200,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                          : VerificationResult = {
 
     val (h1, optCh1, pLoss1, c1) = consumeMaxPermissions(h, id, pLoss, c, tv)
+
     if (decider.assertNoAccess(pLoss1)) {
       Q(h1, optCh1.get, c1, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
     } else {
       val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(c1.reserveHeap.get, id, pLoss1, c1, tv)
+
       if (decider.assertNoAccess(pLoss2)) {
         val tVal = (optCh1, optCh2) match {
           case (Some(fc1: DirectFieldChunk), Some(fc2: DirectFieldChunk)) => fc1.value === fc2.value
           case (Some(pc1: DirectPredicateChunk), Some(pc2: DirectPredicateChunk)) => pc1.snap === pc2.snap
           case _ => True()}
+
         assume(tVal)
+
         val c3 = c2.setReserveHeap(Some(h2))
+
         Q(h1, optCh2.get, c3, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
       } else {
         Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)

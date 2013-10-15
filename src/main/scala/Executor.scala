@@ -361,8 +361,9 @@ trait DefaultExecutor[ST <: Store[ST],
         produce(Ø \ σ.γ, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
           val c2 = c1.setReserveHeap(Some(σ.h))
           consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c1, Description[ST, H, S]("Consume wand rhs")))((σ1, snap, chs, c3) => {
+            val σ2 = σ1 \ c3.reserveHeap.get
             val c4 = c3.setReserveHeap(None)
-            Q(σ1, c4)})})
+            Q(σ2, c4)})})
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto
