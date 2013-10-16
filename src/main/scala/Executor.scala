@@ -360,10 +360,18 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = PackageFailed(pckg)
         produce(Ø \ σ.γ, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
           val c2 = c1.setReserveHeap(Some(σ.h))
-          consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c1, Description[ST, H, S]("Consume wand rhs")))((σ1, snap, chs, c3) => {
+          consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
             val σ2 = σ1 \ c3.reserveHeap.get
             val c4 = c3.setReserveHeap(None)
-            Q(σ2, c4)})})
+            produce(σ2, fresh, FullPerm(), wand, pve, c4, tv)(Q)})})
+
+      case apply @ ast.Apply(wand) =>
+        val pve = ApplyFailed(apply)
+        val ch = createMagicWandChunk(σ, wand) // TODO: Inefficient, is done again by consume
+        consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, _, c1) =>
+          consume(σ1, FullPerm(), wand.left, pve, c1, tv)((σ2, _, _, c2) =>
+            produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) =>
+              Q(σ3, c3))))
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto
