@@ -10,12 +10,13 @@ import sil.verifier.reasons.{NonPositivePermission}
 import interfaces.decider.{Decider, Prover, Unsat}
 import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory, Chunk, PermissionChunk}
 import interfaces.reporting.Context
-import semper.silicon.state.{DirectChunk, SymbolConvert}
-import semper.silicon.state.DirectChunk
+import semper.silicon.state.{DirectChunk, DirectFieldChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 import silicon.state.terms.utils.{BigAnd, BigPermSum}
+import scala.util.control.Breaks._
+
 
 
 class DefaultDecider[ST <: Store[ST],
@@ -386,6 +387,40 @@ class DefaultDecider[ST <: Store[ST],
   	  
   	  //return isAsPermissive(sum,p)
 	}
+
+  def exhalePermissions(h:H, exhaleH: H): Option[H] = {
+      var hq = h
+
+      exhaleH.values.foreach {
+        case exhaleCh: DirectFieldChunk => {
+          // get an empty instance
+          var hqExhaled = h.empty
+          var pLeft = exhaleCh.perm
+
+          breakable { h.values.foreach {
+            case ch: DirectFieldChunk if(exhaleCh.name == ch.name) =>  {
+              // leave early
+              if(permAssert(pLeft === NoPerm())) {
+                println("here")
+                break
+              }
+
+              val cond = BigAnd(exhaleCh.args zip ch.args map (x => x._1 === x._2))
+              val r = Ite(cond, PermMin(pLeft, ch.perm),NoPerm())
+              pLeft = pLeft - TermPerm(r)
+              hqExhaled = hqExhaled + (ch - TermPerm(r))
+             }
+            }
+          }
+          if(!permAssert(pLeft === NoPerm())) {
+            return None
+          }
+
+          hq = hqExhaled
+        }
+      }
+    Some(hq)
+  }
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
 //    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)

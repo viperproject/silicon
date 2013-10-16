@@ -134,6 +134,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case IntPermTimes(t0, t1) =>
       "(* %s %s)".format(convert2real(t0), convert2real(t1))
 
+    case PermMin(t0, t1) =>
+      "($Perm.min %s %s)".format(convert(t0), convert(t1))
     /* Sequences */
 
 //    case SeqEq(t0, t1) =>

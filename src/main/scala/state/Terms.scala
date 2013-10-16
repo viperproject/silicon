@@ -489,7 +489,7 @@ sealed abstract class DefaultFractionalPermissions extends FractionalPermissions
 
 case class NoPerm() extends DefaultFractionalPermissions { override val toString = "Z" }
 case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
-case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/d" }
+case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 //case class EpsilonPerm() extends DefaultFractionalPermissions { override val toString = "ε" }
 
@@ -594,6 +594,13 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   }
 
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
+}
+
+case class PermMin(val p1: Term, val p2: Term) extends DefaultFractionalPermissions {
+  utils.assertSort(p1, "Permission 1st", sorts.Perm)
+  utils.assertSort(p2, "Permission 2nd", sorts.Perm)
+
+  override val toString = s"min ($p1, $p2)"
 }
 
 /* Functions */

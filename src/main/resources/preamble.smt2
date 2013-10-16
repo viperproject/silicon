@@ -72,6 +72,10 @@
 	     (not (= p $Perm.No))
        (< (* 1000.0 p) $Perm.Write)))
 
+; min function for permissions
+(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
+    (ite (<= p1 p2) p1 p2))
+
 ; --- Sort wrappers ---
 
 (declare-fun $SortWrappers.$SnapToInt ($Snap) Int)

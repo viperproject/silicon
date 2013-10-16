@@ -48,7 +48,7 @@ class DeciderSpec extends FlatSpec {
     return decider
    } 
 
-  it should "say that we have  enough permissions for exhaling 'acc(x.f,1)' in case h: x.f -> _ # 1" in {
+  it should "say that we have enough permissions for exhaling 'acc(x.f,1)' in case h: x.f -> _ # 1" in {
     val decider = createDecider
 
     // tr.f -> tv # al
@@ -111,4 +111,92 @@ class DeciderSpec extends FlatSpec {
     // h, id
     assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
   }
-}
+
+  it should "say that we have enough permissions for exhaling 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z)" in {
+    val decider = createDecider
+
+    val x,y,z = decider.fresh(sorts.Ref)
+
+    decider.assume(Or(Eq(x,y), Eq(x,z)))
+
+    val heap = new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
+
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2)))) === true)
+
+    val exhaleHeap = new SetBackedHeap() + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))))
+  }
+
+  it should "let us exhale 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z)" in {
+    val decider = createDecider
+
+    val x,y,z = decider.fresh(sorts.Ref)
+
+    decider.assume(Or(Eq(x,y), Eq(x,z)))
+
+    val heap = new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
+
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2)))) === true)
+
+    val exhaleHeap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))))
+
+    val h = decider.exhalePermissions(heap, exhaleHeap)
+    h match {
+      case None => fail("exhale should not fail!")
+      case Some(_) =>
+    }
+  }
+
+
+
+  it should "let us exhale 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y && x==z)" in {
+    val decider = createDecider
+
+    val x,y,z = decider.fresh(sorts.Ref)
+
+    decider.assume(And(Eq(x,y), Eq(x,z)))
+
+    val heap = new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
+
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2)))) === true)
+
+    val exhaleHeap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm())
+
+    val h = decider.exhalePermissions(heap, exhaleHeap)
+    h match {
+      case None => fail("exhale should not fail!")
+      case Some(_) =>
+    }
+  }
+
+  it should "let us exhale 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z), but not let us exhale 'acc(z.f,0.5)' on the resulting heap" in {
+    val decider = createDecider
+
+    val x,y,z = decider.fresh(sorts.Ref)
+
+    decider.assume(Or(Eq(x,y), Eq(x,z)))
+
+    val heap = new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) ) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))) )
+
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2)))) === true)
+
+    val exhaleHeap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))))
+
+    val h = decider.exhalePermissions(heap, exhaleHeap)
+    h match {
+      case None => fail("exhale should not fail!")
+      case Some(exhaledHeap) => {
+
+        val exhaleHeap2 = new SetBackedHeap() + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))))
+
+        val h2 = decider.exhalePermissions(exhaledHeap, exhaleHeap2)
+        h2 match {
+          case None =>
+          case Some(_) => fail("exhale should fail!")
+        }
+      }
+    }
+
+
+  }
+
+ }
