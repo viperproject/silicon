@@ -388,6 +388,10 @@ class DefaultDecider[ST <: Store[ST],
   	  //return isAsPermissive(sum,p)
 	}
 
+  def exhalePermissions(h:H, id:ChunkIdentifier, p:P): Option[H] = {
+      return exhalePermissions(h, h.empty + DirectFieldChunk(id.args(0), id.name, null, p))
+  }
+
   def exhalePermissions(h:H, exhaleH: H): Option[H] = {
       var hq = h
 

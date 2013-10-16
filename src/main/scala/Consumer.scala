@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
@@ -126,7 +126,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-                if (decider.isPositive(tPerm, !isConditional(perm)))
+                if (decider.hasEnoughPermissionsGlobally(h, id, p * tPerm)) {
+                   val h1 = decider.exhalePermissions(h, id, p * tPerm)
+                   h1 match  {
+                    case Some(h1) =>  Q(h1, null, null, c2)
+                    case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
+                   }
+
+                } else {
+                  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
+                }))
+         /*       if (decider.isPositive(tPerm, !isConditional(perm)))
                   consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                     ch match {
                       case fc: DirectFieldChunk =>
@@ -141,7 +151,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             h1
                         Q(h2, pc.snap, pc :: Nil, c3)})
                 else
-                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
+                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))      */
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
