@@ -69,3 +69,21 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 
   override def toString = "%s(%s;%s)".format(name, args.mkString(","), snap)
 }
+
+
+/* TODO: Chunk and ChunkIdentifier should be changed s.t. they don't require `name` and `args` anymore. */
+
+case class MagicWandChunkIdentifier(wand: ast.MagicWand, localVariableTerms: Seq[Term]) extends ChunkIdentifier {
+  val name = "$MagicWandChunk"
+  val args = terms.IntLiteral(wand.hashCode) :: terms.IntLiteral(localVariableTerms.hashCode) :: Nil
+
+  override def toString = "%s(%s)".format(name, args.mkString(","))
+}
+
+case class MagicWandChunk(wand: ast.MagicWand, localVariableTerms: Seq[Term]) extends Chunk {
+  val name = "$MagicWandChunk"
+  val args = terms.IntLiteral(wand.hashCode) :: terms.IntLiteral(localVariableTerms.hashCode) :: Nil
+  val id = MagicWandChunkIdentifier(wand, localVariableTerms)
+
+  override val toString = s"$name($wand, ${localVariableTerms.mkString("[", ", ", "]")})"
+}

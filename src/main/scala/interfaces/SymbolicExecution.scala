@@ -2,7 +2,7 @@ package semper
 package silicon
 package interfaces
 
-import sil.verifier.{VerificationError, PartialVerificationError}
+import sil.verifier.{ PartialVerificationError}
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
 import reporting.{Context, TraceView}
 import silicon.state.terms.{Sort, Term, FractionalPermissions}
@@ -66,6 +66,8 @@ trait Producer[P <: FractionalPermissions[P],
                tv: TV)
               (Q: (S, C) => VerificationResult)
               : VerificationResult
+
+  def createMagicWandChunk(σ: S, wand: ast.MagicWand): Chunk
 }
 
 trait Consumer[P <: FractionalPermissions[P],

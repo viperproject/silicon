@@ -11,7 +11,7 @@ import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
 
 trait DefaultProducer[
@@ -164,6 +164,10 @@ trait DefaultProducer[
             assume(mts)
             Q(mh, c2)}))
 
+      case wand: ast.MagicWand =>
+        val ch = createMagicWandChunk(σ, wand)
+        Q(σ.h + ch, c)
+
 			/* Any regular expressions, i.e. boolean and arithmetic. */
 			case _ =>
 				eval(σ, φ, pve, c, tv)((t, c1) => {
@@ -173,6 +177,23 @@ trait DefaultProducer[
 
 		produced
 	}
+
+  private def collectLocalVariables(node: ast.Node): Seq[ast.LocalVariable] = {
+    var vars = List[ast.LocalVariable]()
+
+    node visit {
+      case lv: ast.LocalVariable => vars ::= lv
+    }
+
+    vars
+  }
+
+  def createMagicWandChunk(σ: S, wand: ast.MagicWand): MagicWandChunk = {
+    val vars = collectLocalVariables(wand.left) ++ collectLocalVariables(wand.right)
+    val terms = vars map (v => σ.γ(v))
+
+    MagicWandChunk(wand, terms)
+  }
 
 	override def pushLocalState() {
 		snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)

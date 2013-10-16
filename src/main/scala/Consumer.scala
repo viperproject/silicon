@@ -3,13 +3,13 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse}
+import sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse, MagicWandChunkNotFound}
 import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
-import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
+import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
+import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk}
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 
@@ -18,6 +18,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											TV <: TraceView[TV, ST, H, S]]
 		extends Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+                    with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
 									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
@@ -142,6 +143,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                         Q(h2, pc.snap, pc :: Nil, c3)})
                 else
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
+
+      case wand: ast.MagicWand =>
+        val ch = createMagicWandChunk(σ, wand)
+        decider.getChunk[MagicWandChunk](h, ch.id) match {
+          case Some(_) => Q(h - ch, Unit, Nil, c) // TODO: Are Unit and Nil appropriate?
+          case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)
+        }
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
