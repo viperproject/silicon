@@ -220,16 +220,17 @@ trait DefaultEvaluator[
             branchLocally(t0.get, c1, tv, LocalAndBranching(e0, t0.get),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get))
+                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
                   Success[C, ST, H, S](c3)}),
               (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
 
           decider.popScope()
 
           r && {
+            checkReserveHeaps(localResults)
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
-            Q(And(t0.get, t1), c1)}})
+            Q(And(t0.get, t1), localResults(0).context)}})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if !config.shortCircuitingEvaluation() =>
@@ -309,13 +310,15 @@ trait DefaultEvaluator[
             branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf))
+                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
                   Success[C, ST, H, S](c3)}),
               (c2: C, _) => Success[C, ST, H, S](c2))})
 
         decider.popScope()
 
         r && {
+          checkReserveHeaps(localResults)
+
           /* The additional path conditions gained while evaluating the
            * antecedent can be assumed in any case.
            * If the antecedent holds, then the additional path conditions
@@ -329,7 +332,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, c)
+          Q(tImplies, localResults(0).context)
         }
 
       case _: ast.Ite if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
@@ -357,17 +360,19 @@ trait DefaultEvaluator[
             branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) => {
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0))
+                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success[C, ST, H, S](c3)})},
 
               (c2: C, tv1: TV) => {
                 eval(σ, e2, pve, c2, tv1)((t2, c3) => {
-                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)))
+                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
                   Success[C, ST, H, S](c3)})})})
 
         decider.popScope()
 
         r && {
+          checkReserveHeaps(localResultsThen ::: localResultsElse)
+
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
@@ -393,7 +398,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, c)
+          Q(tActualIte, localResultsThen(0).context)
         }
 
       /* Integers */
@@ -514,7 +519,7 @@ trait DefaultEvaluator[
 
         val r =
           eval(σ \+ γVars, body, pve, c, tv)((tBody, c1) => {
-            localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
+            localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c1)
 
             /* We could call Q directly instead of returning Success, but in
              * that case the path conditions πDelta would also be outside of
@@ -534,11 +539,12 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
+          checkReserveHeaps(localResults)
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux))
           val tQuant = Quantification(tQuantOp, tVars, tActual)
           assume(tQuantAux)
-          Q(tQuant, c)}
+          Q(tQuant, localResults(0).context)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -637,17 +643,18 @@ trait DefaultEvaluator[
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                       eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
-                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre)
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                         Success[C, ST, H, S](c3)})})}))
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
           r && {
+            checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, c)
+            Q(tActualInVar, localResults(0).context)
           }
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
@@ -678,22 +685,23 @@ trait DefaultEvaluator[
               if (decider.isPositive(_tPerm))
                 evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, _, c3) => { // TODO: What to do with the consumed chunks?
+                  consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, chs, c3) => { // TODO: What to do with the consumed chunks?
                     produce(σ1 \ σ.γ, s => snap.convert(s), _tPerm, acc, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g) //, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
                       eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
-                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre)
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                         Success[C, ST, H, S](c3)})})})})
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
           r && {
+            checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
             /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, c)
+            Q(tActualInVar, localResults(0).context)
           }
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
@@ -908,7 +916,10 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private case class LocalEvaluationResult(πGuards: Seq[Term], actualResult: Term, auxiliaryTerms: Set[Term])
+  private case class LocalEvaluationResult(πGuards: Seq[Term],
+                                           actualResult: Term,
+                                           auxiliaryTerms: Set[Term],
+                                           context: C)
 
   private def combine(localResults: Seq[LocalEvaluationResult],
                       actualResultTransformer: Term => Term = Predef.identity)
@@ -926,6 +937,11 @@ trait DefaultEvaluator[
       }
 
     (t1, tAux)
+  }
+
+  private def checkReserveHeaps(localResults: Seq[LocalEvaluationResult]) {
+    assert(localResults.map(_.context.reserveHeap).toSet.size == 1,
+           "Unexpectedly found multiple different reserve heaps after a local evaluation.")
   }
 
 	override def pushLocalState() {

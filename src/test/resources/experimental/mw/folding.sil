@@ -11,8 +11,20 @@ function sum(p: Ref): Int
   unfolding acc(p.Pair(), write) in (p.f) + (p.g)
 }
 
-method test01()
-{
+method test06() {
+  var p: Ref
+  p := new()
+
+  p.g := 0;
+
+  // :: ExpectedError(assertion.false, insufficient.permissions)
+  package
+    (acc(p.f, write) && p.f > 0)
+      --*
+    folding acc(p.Pair(), write) in (sum(p) > 0) // Not self-framing!
+}
+
+method test01() {
   var p: Ref
   p := new()
 
@@ -21,7 +33,11 @@ method test01()
   package
     (acc(p.f, write) && p.f > 0)
       --*
-    folding acc(p.Pair(), write) in (sum(p) > 0)
+    folding acc(p.Pair(), write) in (acc(p.Pair(), write) && sum(p) > 0)
+
+  assert acc(p.f, write)
+  //:: ExpectedError(assertion.false, insufficient.permissions)
+  assert acc(p.g, write)
 }
 
 method test02()
@@ -35,11 +51,10 @@ method test02()
   package
     (acc(p.f, write) && p.f > 0)
       --*
-    folding acc(p.Pair(), write) in (sum(p) > 0)
+    folding acc(p.Pair(), write) in (acc(p.Pair(), write) && sum(p) > 0)
 }
 
-method test03()
-{
+method test03() {
   var p: Ref
   p := new()
 
@@ -52,3 +67,31 @@ method test03()
     folding acc(p.Pair(), write) in (sum(p) > 0)
 }
 
+method test04(p: Ref)
+  requires (acc(p.f, write) && p.f > 0) --* (acc(p.Pair(), write) && sum(p) > 0)
+  requires acc(p.f, write)
+{
+  p.f := 1
+  apply (acc(p.f, write) && p.f > 0) --* (acc(p.Pair(), write) && sum(p) > 0)
+
+  assert acc(p.Pair(), write) && sum(p) > 0
+  //:: ExpectedError(assertion.false, insufficient.permissions)
+  assert acc(p.f, write)
+}
+
+method test05() {
+  var p: Ref
+  p := new()
+
+  p.g := 0;
+
+  package
+    (acc(p.f, write) && p.f > 0)
+      --*
+    folding acc(p.Pair(), write) in (acc(p.Pair(), write) && sum(p) > 0)
+
+  test04(p)
+
+  //:: ExpectedError(assertion.false, wand.not.found)
+  assert (acc(p.f, write) && p.f > 0) --* (acc(p.Pair(), write) && sum(p) > 0)
+}
