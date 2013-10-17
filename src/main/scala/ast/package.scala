@@ -119,6 +119,8 @@ package object ast {
   val PredicateAccess = sil.ast.PredicateAccess
   type Unfolding = sil.ast.Unfolding
   val Unfolding = sil.ast.Unfolding
+  type Folding = sil.ast.Folding
+  val Folding = sil.ast.Folding
   type IntegerLiteral = sil.ast.IntLit
   val IntegerLiteral = sil.ast.IntLit
 //  type FieldRead = sil.ast.FieldAccess

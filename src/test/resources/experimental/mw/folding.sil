@@ -1,0 +1,54 @@
+var f: Int
+var g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+function sum(p: Ref): Int
+  requires acc(p.Pair(), write)
+{
+  unfolding acc(p.Pair(), write) in (p.f) + (p.g)
+}
+
+method test01()
+{
+  var p: Ref
+  p := new()
+
+  p.g := 0;
+
+  package
+    (acc(p.f, write) && p.f > 0)
+      --*
+    folding acc(p.Pair(), write) in (sum(p) > 0)
+}
+
+method test02()
+{
+  var p: Ref
+  p := new()
+
+  p.g := -1;
+
+  //:: ExpectedError(package.failed, assertion.false)
+  package
+    (acc(p.f, write) && p.f > 0)
+      --*
+    folding acc(p.Pair(), write) in (sum(p) > 0)
+}
+
+method test03()
+{
+  var p: Ref
+  p := new()
+
+  exhale acc(p.g, 1/2)
+
+  //:: ExpectedError(package.failed, insufficient.permissions)
+  package
+    (acc(p.f, write) && p.f > 0)
+      --*
+    folding acc(p.Pair(), write) in (sum(p) > 0)
+}
+

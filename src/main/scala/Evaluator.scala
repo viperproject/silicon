@@ -605,6 +605,8 @@ trait DefaultEvaluator[
                   assume(tPost)
                   Q(tFA, c4)})}}})})
 
+      /* Prover hint expressions */
+
       case _: ast.Unfolding if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case ast.Unfolding(
@@ -650,7 +652,53 @@ trait DefaultEvaluator[
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "supported. It should be  possible to wrap 'unfolding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + e)
+
+      case _: ast.Folding if !config.localEvaluations() =>
+        sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
+
+      case ast.Folding(
+              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
+              eIn) =>
+
+        var πPre: Set[Term] = Set()
+        var tPerm: Option[Term] = None
+        var localResults: List[LocalEvaluationResult] = Nil
+
+        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+          val c0a = c.incCycleCounter(predicate)
+
+          val r =
+            evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
+              assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
+              tPerm = Some(_tPerm)
+              πPre = decider.π
+              if (decider.isPositive(_tPerm))
+                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
+                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                  consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, _, c3) => { // TODO: What to do with the consumed chunks?
+                    produce(σ1 \ σ.γ, s => snap.convert(s), _tPerm, acc, pve, c3, tv)((σ2, c4) => {
+                      val c4a = c4.decCycleCounter(predicate)
+                      val σ3 = σ2 \ (g = σ.g) //, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
+                      eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre)
+                        Success[C, ST, H, S](c3)})})})})
+              else
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
+
+          r && {
+            val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+            val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+            /* TODO: See comment about performance in case ast.Ite */
+            assume(tAuxIn + tActualIn)
+            Q(tActualInVar, c)
+          }
+        } else
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+            "P {... && next != null ==> folding next.P in e} is currently not " +
+            "supported. It should be  possible to wrap 'folding next.P in e' " +
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
 
