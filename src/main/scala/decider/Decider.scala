@@ -371,7 +371,10 @@ class DefaultDecider[ST <: Store[ST],
   	  
   	  val s:Seq[Term] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
   	    // construct the big And for the condition
-  	    val condition = BigAnd(permChunk.args zip id.args map (x => x._1 === x._2))
+  	    val condition = BigAnd(permChunk.args zip id.args map {
+          case x if(x._1.sort == sorts.Ref) =>   x._1 === x._2
+          case _ =>  False()           /* TODO */
+        })
   	    // construct the ITE
   	    Ite(condition, permChunk.perm, NoPerm())
   	  } }
