@@ -496,7 +496,7 @@ case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override 
 case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
-  override val toString = "(Perm) %s".format(t)
+  override val toString = t.toString
 }
 
 case class IsValidPermVar(v: Var) extends BooleanTerm {
@@ -563,14 +563,19 @@ object PermPlus extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
 class PermMinus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
     extends DefaultFractionalPermissions
        with commonnodes.Minus[DefaultFractionalPermissions]
-       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions]
+       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions] {
+
+  override val toString = p1 match {
+    case _: commonnodes.BinaryOp[_] => s"$p0 $op ($p1)"
+    case _ => s"$p0 $op $p1"
+  }
+}
 
 object PermMinus extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
   def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (_, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
-//    case (PercPerm(n), PercPerm(m)) => if (n == m) NoPerm() else PercPerm(n - m)
-//    case (ConcretePerm(n1, d1), ConcretePerm(n2, d2)) => ConcretePerm(n1 * d2 - n2 * d1, d1 * d2)
+    case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
     case (PermPlus(p0, p1), p2) if p0 == p2 => p1
     case (PermPlus(p0, p1), p2) if p1 == p2 => p0
     case (_, _) => new PermMinus(t0, t1)
