@@ -2,13 +2,6 @@ package semper
 package silicon
 package heap
 
-/**
- * Created with IntelliJ IDEA.
- * User: korbinian
- * Date: 10/18/13
- * Time: 2:14 PM
- * To change this template use File | Settings | File Templates.
- */
 
 import interfaces.{VerificationResult}
 import semper.silicon.interfaces.state.{State, PathConditions, Heap, Store}
