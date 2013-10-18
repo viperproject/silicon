@@ -10,7 +10,9 @@ trait ChunkIdentifier {
 }
 
 trait Chunk {
+  /* field name */
   def name: String
+  /* receiver(s) */
   def args: List[Term]
   def id: ChunkIdentifier
 }

@@ -347,7 +347,7 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
-	override val toString = "Ite(%s, %s, %s)".format(t0, t1, t2)
+	override val toString = "%s ? %s : %s".format(t0, t1, t2)
 
   override val hashCode = silicon.utils.generateHashCode(t0, t1, t2)
 

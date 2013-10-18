@@ -372,8 +372,13 @@ class DefaultDecider[ST <: Store[ST],
   	  val s:Seq[Term] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
   	    // construct the big And for the condition
   	    val condition = BigAnd(permChunk.args zip id.args map {
-          case x if(x._1.sort == sorts.Ref) =>   x._1 === x._2
-          case _ =>  False()           /* TODO */
+          x:Pair[Term,Term] => {
+            x._1.sort match {
+              case sorts.Ref => x._1 === x._2
+              case sorts.Set(_) => SetIn(x._2, x._1)
+              case _ => False()
+            }
+          }
         })
   	    // construct the ITE
   	    Ite(condition, permChunk.perm, NoPerm())
@@ -381,7 +386,7 @@ class DefaultDecider[ST <: Store[ST],
   	  
   	  
   	  val goal = AtLeast(BigPermSum (s, { x => x}), p)
-  	  
+
   	  val res = prover.assert(goal)
   	  
   	  res

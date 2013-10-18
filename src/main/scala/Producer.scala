@@ -167,11 +167,13 @@ trait DefaultProducer[
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
       case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain)))=> {
         // restriction: the permission is constant and we can evaluate it here
-        evalp(σ, gain, pve, c, tv) ((pGain, c2) => {
-          val pNettoGain = pGain * p
-          val ch = DirectFieldChunk(sf(sorts.Set(sorts.Ref)), field.name ,null /* snapshot */, pNettoGain)
-          val mh = σ.h + ch
-          Q(mh, c2)
+        eval(σ, set, pve, c, tv) ((tSet, c1) => {
+          evalp(σ, gain, pve, c, tv) ((pGain, c2) => {
+            val pNettoGain = pGain * p
+            val ch = DirectFieldChunk(tSet, field.name ,null /* snapshot */, pNettoGain)
+            val mh = σ.h + ch
+            Q(mh, c2)
+          })
         })
       }
 
