@@ -100,6 +100,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 		logger.debug("\nCONSUME " + φ.toString)
 		logger.debug(stateFormatter.format(σ))
+    if (c.reserveHeap.nonEmpty)
+      logger.debug("hR = " + stateFormatter.format(c.reserveHeap.get))
 		logger.debug("h = " + stateFormatter.format(h))
 
 		val consumed = φ match {
@@ -144,12 +146,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 else
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
 
+      /* TODO: Needs to consider both heaps. Can we merge this code with consumeIncludingReserveHeap? */
       case wand: ast.MagicWand =>
         val ch = createMagicWandChunk(σ, wand)
         decider.getChunk[MagicWandChunk](h, ch.id) match {
-          case Some(_) => Q(h - ch, Unit, Nil, c) // TODO: Are Unit and Nil appropriate?
-          case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)
-        }
+          case Some(_) =>
+            Q(h - ch, Unit, Nil, c) // TODO: Are Unit and Nil appropriate?
+          case None if c.reserveHeap.nonEmpty =>
+            decider.getChunk[MagicWandChunk](c.reserveHeap.get, ch.id) match {
+              case Some(_) => Q(h, Unit, Nil, c.copy(reserveHeap = Some(c.reserveHeap.get - ch))) // TODO: Are Unit and Nil appropriate?
+              case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
+          case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and

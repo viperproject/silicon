@@ -367,7 +367,6 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case apply @ ast.Apply(wand) =>
         val pve = ApplyFailed(apply)
-        val ch = createMagicWandChunk(σ, wand) // TODO: Inefficient, is done again by consume
         consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, _, c1) =>
           consume(σ1, FullPerm(), wand.left, pve, c1, tv)((σ2, _, _, c2) =>
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) =>

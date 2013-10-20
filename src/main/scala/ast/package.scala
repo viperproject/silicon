@@ -117,16 +117,16 @@ package object ast {
   val FieldAccess = sil.ast.FieldAccess
   type PredicateAccess = sil.ast.PredicateAccess
   val PredicateAccess = sil.ast.PredicateAccess
+  type IntegerLiteral = sil.ast.IntLit
+  val IntegerLiteral = sil.ast.IntLit
+  type FuncApp = sil.ast.FuncApp
+  val FuncApp = sil.ast.FuncApp
   type Unfolding = sil.ast.Unfolding
   val Unfolding = sil.ast.Unfolding
   type Folding = sil.ast.Folding
   val Folding = sil.ast.Folding
-  type IntegerLiteral = sil.ast.IntLit
-  val IntegerLiteral = sil.ast.IntLit
-//  type FieldRead = sil.ast.FieldAccess
-//  val FieldRead = sil.ast.FieldAccess
-  type FuncApp = sil.ast.FuncApp
-  val FuncApp = sil.ast.FuncApp
+  type Applying = sil.ast.Applying
+  val Applying = sil.ast.Applying
 
   type InhaleExhaleExp = sil.ast.InhaleExhaleExp
   val InhaleExhaleExp = sil.ast.InhaleExhaleExp

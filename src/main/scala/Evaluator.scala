@@ -121,6 +121,8 @@ trait DefaultEvaluator[
 			case _ =>
 				logger.debug("\nEVALUATING " + e)
 				logger.debug(stateFormatter.format(σ))
+        if (c.reserveHeap.nonEmpty)
+          logger.debug("hR = " + stateFormatter.format(c.reserveHeap.get))
         decider.prover.logComment(s"[eval] $e")
 		}
 
@@ -617,6 +619,8 @@ trait DefaultEvaluator[
 
       case _: ast.Unfolding if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
+      /* TODO: Try to merge the code from Evaluator and Executor for fold/folding and unfold/unfolding. */
+
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
                 eIn) =>
@@ -690,7 +694,7 @@ trait DefaultEvaluator[
             evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
               assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
               tPerm = Some(_tPerm)
-              πPre = decider.π
+              πPre = decider.π // TODO: Why here? Why not after evals(eArgs)?
               if (decider.isPositive(_tPerm))
                 evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
@@ -718,6 +722,27 @@ trait DefaultEvaluator[
             "supported. It should be  possible to wrap 'folding next.P in e' " +
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
+
+      case ast.Applying(wand, eIn) =>
+        val πPre = decider.π
+        var localResults: List[LocalEvaluationResult] = Nil
+
+        val r =
+          consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, _, c1) =>
+            consume(σ1, FullPerm(), wand.left, pve, c1, tv)((σ2, _, _, c2) =>
+              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) =>
+                eval(σ3, eIn, pve, c3, tv)((tIn, c4) => {
+                  localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
+                  Success[C, ST, H, S](c4)}))))
+
+        r && {
+          checkReserveHeaps(localResults)
+          val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+          val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+          /* TODO: See comment about performance in case ast.Ite */
+          assume(tAuxIn + tActualIn)
+          Q(tActualInVar, localResults(0).context)
+        }
 
       /* Sequences */
 

@@ -10,6 +10,16 @@ method test01(p: Ref)
   requires acc(p.f, write) --* folding acc(p.Pair(), write) in true // ERROR
 {}
 
+/* Wands outside of package-statements should be ghost-operation-free */
+method test04(p: Ref)
+  requires acc(p.f, write) --* acc(p.Pair(), write)
+{
+  exhale
+    acc(p.f, write)
+      --*
+    (applying (acc(p.f, write) --* acc(p.Pair(), write)) in true) // ERROR
+}
+
 /* Ghost operations outside of package statements must be pure */
 method test02(p: Ref)
   requires acc(p.Pair(), write)
