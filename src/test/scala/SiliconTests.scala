@@ -43,9 +43,7 @@ class SiliconTests extends DefaultSilSuite {
   }
 
   private def optionsFromScalaTestConfigMap(configMap: Map[String, Any]): Seq[String] =
-    configMap.filter{case (k, v) => k.startsWith("silicon")}
-             .flatMap{case (k, v) => Seq("--" + k, v.toString)}
-             .toSeq
+    configMap.flatMap{case (k, v) => Seq("--" + k, v.toString)}.toSeq
 }
 
 private class SiliconFrontend extends SilFrontend {
