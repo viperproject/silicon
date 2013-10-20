@@ -371,7 +371,9 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
-          checkReserveHeaps(localResultsThen ::: localResultsElse)
+          val localResults = localResultsThen ::: localResultsElse
+
+          checkReserveHeaps(localResults)
 
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
@@ -398,7 +400,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, localResultsThen(0).context)
+          Q(tActualIte, localResults(0).context)
         }
 
       /* Integers */
@@ -665,6 +667,13 @@ trait DefaultEvaluator[
 
       case _: ast.Folding if !config.localEvaluations() =>
         sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
+
+      /* TOOD: Hack! For now, access predicates may only occur inside folding-expressions
+       * inside wand packaging statements. They are "only" there to make the inner-most wand
+       * expression self-framing, i.e., they are needed for applying a wand, but not for
+       * packaging them.
+       */
+      case _: ast.AccessPredicate => Q(True(), c)
 
       case ast.Folding(
               acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),

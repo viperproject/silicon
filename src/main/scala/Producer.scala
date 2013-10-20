@@ -178,21 +178,15 @@ trait DefaultProducer[
 		produced
 	}
 
-  private def collectLocalVariables(node: ast.Node): Seq[ast.LocalVariable] = {
-    var vars = List[ast.LocalVariable]()
-
-    node visit {
-      case lv: ast.LocalVariable => vars ::= lv
-    }
-
-    vars
-  }
-
   def createMagicWandChunk(σ: S, wand: ast.MagicWand): MagicWandChunk = {
-    val vars = collectLocalVariables(wand.left) ++ collectLocalVariables(wand.right)
+    val essentialWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
+
+    val vars = (   essentialWand.left.collect{case lv: ast.LocalVariable => lv}
+                ++ essentialWand.right.collect{case lv: ast.LocalVariable => lv}).toSeq
+
     val terms = vars map (v => σ.γ(v))
 
-    MagicWandChunk(wand, terms)
+    MagicWandChunk(essentialWand, terms)
   }
 
 	override def pushLocalState() {

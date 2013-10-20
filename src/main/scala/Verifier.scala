@@ -2,11 +2,11 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.silicon.decider.{PreambleFileEmitter, Z3ProverStdIO}
-import scala.io.Source
+import semper.silicon.decider.{PreambleFileEmitter}
+import util.control.Breaks._
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
-    PredicateNotWellformed}
-import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
+    PredicateNotWellformed, MagicWandNotWellformed}
+import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
 import interfaces.state.factoryUtils.Ø
@@ -51,13 +51,54 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val c = contextFactory.create(history.tree)
     val tv = traceviewFactory.create(history)
 
+    // TODO: Perform s.f.-checking of wands everywhere.
     member match {
-      case m: ast.Method => verify(m, c, tv)
+      case m: ast.Method => checkWandsAreSelfFraming(m, c, tv) && verify(m, c, tv)
       case f: ast.ProgramFunction => verify(f, c, tv)
       case p: ast.Predicate => verify(p, c, tv)
       case _: ast.Domain | _: ast.Field =>
         Success[C, ST, H, S](c)
     }
+  }
+
+  private def checkWandsAreSelfFraming(member: ast.Member, c: C, tv: TV): VerificationResult = {
+    val wands = member collect {case n: ast.MagicWand => n}
+    var result: VerificationResult = Success[C, ST, H, S](c)
+
+    def setUpInitialState(e: ast.Expression) = {
+      val localVars = e collect {case lv: sil.ast.LocalVar => lv}
+      val γ = Γ(localVars.map(v => (v, fresh(v))).toIterable)
+
+      Σ(γ, Ø, Ø)
+    }
+
+    breakable {
+      wands foreach {wand =>
+        val err = MagicWandNotWellformed(wand) //malformedErrorForWand(wand)
+        val left = wand.left
+        val right = ast.expressions.getInnermostExpr(wand.right)
+
+        result =
+          inScope {
+            produce(setUpInitialState(left), fresh, terms.FullPerm(), left, err, c, tv)((_, c1) =>
+              Success[C, ST, H, S](c1))
+          } && inScope {
+            produce(setUpInitialState(right), fresh, terms.FullPerm(), right, err, c, tv)((_, c1) =>
+              Success[C, ST, H, S](c1))
+          }
+
+        result match {
+          case failure: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, TV@unchecked] =>
+            /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
+            result = failure.copy[C, ST, H, S, TV](message = MagicWandNotWellformed(wand, failure.message.reason))
+            break()
+
+          case _: Success[C@unchecked, ST@unchecked, H@unchecked, S@unchecked] => /* Nothing needs to be done*/
+        }
+      }
+    }
+
+    result
   }
 
 	def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
