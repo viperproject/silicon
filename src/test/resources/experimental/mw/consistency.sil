@@ -1,0 +1,25 @@
+var f: Int
+var g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+/* Wands outside of package-statements should be ghost-operation-free */
+method test01(p: Ref)
+  requires acc(p.f, write) --* folding acc(p.Pair(), write) in true // ERROR
+{}
+
+/* Ghost operations outside of package statements must be pure */
+method test02(p: Ref)
+  requires acc(p.Pair(), write)
+  requires unfolding acc(p.Pair(), write) in acc(p.f, write) // ERROR
+{}
+
+/* Ghost operations outside of package statements must be pure */
+method test03() {
+  var p: Ref
+  p := new()
+
+  assert folding acc(p.Pair(), write) in acc(p.Pair(), write) // ERROR
+}
