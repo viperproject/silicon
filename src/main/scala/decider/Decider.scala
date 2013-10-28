@@ -10,13 +10,24 @@ import sil.verifier.reasons.{NonPositivePermission}
 import interfaces.decider.{Decider, Prover, Unsat}
 import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory, Chunk, PermissionChunk}
 import interfaces.reporting.Context
-import semper.silicon.state.{DirectChunk, DirectFieldChunk, SymbolConvert}
+import semper.silicon.state._
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 import silicon.state.terms.utils.{BigAnd, BigPermSum}
 import scala.util.control.Breaks._
-
+import semper.silicon.state.terms.IsValidPermVar
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.FullPerm
+import scala.Some
+import semper.silicon.state.terms.False
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.state.terms.Eq
+import semper.silicon.state.terms.True
+import semper.silicon.state.terms.NoPerm
+import semper.silicon.state.terms.PermMin
+import semper.sil.verifier.DependencyNotFoundError
+import semper.silicon.state.terms.WildcardPerm
 
 
 class DefaultDecider[ST <: Store[ST],
@@ -400,37 +411,76 @@ class DefaultDecider[ST <: Store[ST],
       return exhalePermissions(h, h.empty + DirectFieldChunk(id.args(0), id.name, null, p))
   }
 
-  def exhalePermissions(h:H, exhaleH: H): Option[H] = {
-      var hq = h
+  // replaces the placeholder with the given term
+  // awkward hack...
+  private def instance(t:Term, withT:Term):Term = {
+    t match {
+      case *() => withT
+      case Ite(t1, t2, t3) => Ite(instance(t1, withT), instance(t2, withT), instance(t3, withT))
+      case SetIn(t1, t2) => SetIn(instance(t1, withT), instance(t2, withT))
+      case Eq(t1, t2) => Eq(instance(t1, withT), instance(t2, withT))
+      case v: Var => v
+      case f: FractionPerm => f
+      case f: FullPerm => f
+      case p: NoPerm => p
+      case PermMinus(t1,t2) => PermMinus(instance(t1, withT).asInstanceOf[DefaultFractionalPermissions], instance(t2, withT).asInstanceOf[DefaultFractionalPermissions])
+      case TermPerm(t) => TermPerm(instance(t, withT))
+      case And(t1, t2) => And(instance(t1, withT), instance(t2, withT))
+      case PermMin(t1,t2) => PermMin(instance(t1, withT), instance(t2, withT))
+    }
+  }
 
-      exhaleH.values.foreach {
-        case exhaleCh: DirectFieldChunk => {
-          // get an empty instance
+  def toConditional(h:H) = {
+    var hqnew = h.empty
+    h.values.foreach {
+      case ch: DirectFieldChunk => {
+        hqnew = hqnew + DirectConditionalChunk(ch.name, ch.value,Eq(*(), ch.rcvr),ch.perm)
+      }
+      case ch: DirectConditionalChunk => hqnew = hqnew + ch
+    }
+    hqnew
+  }
+
+  def exhalePermissions(h: H, exhaleH: H): Option[H] = {
+    // convert to conditional chunks if necessary
+    var hq = toConditional(h)
+    val exhaleHC = toConditional(exhaleH)
+
+    exhaleHC.values.foreach {
+      ch => ch match {
+        case eCh: DirectConditionalChunk => {
+          val guard1 = eCh.guard
+
           var hqExhaled = h.empty
-          var pLeft = exhaleCh.perm
+          var pLeft = eCh.perm
+          inScope({
+            val * = fresh(sorts.Ref)
+            assume(instance(guard1, *))
+            breakable {
+              hq.values.foreach {
+                case ch: DirectConditionalChunk => {
+                  // leave early
+                  if (permAssert(instance(pLeft, *) === NoPerm())) {
+                    println("here")
+                    break
+                  }
 
-          breakable { h.values.foreach {
-            case ch: DirectFieldChunk if(exhaleCh.name == ch.name) =>  {
-              // leave early
-              if(permAssert(pLeft === NoPerm())) {
-                println("here")
-                break
+                  val r = Ite(And(eCh.guard, ch.guard), PermMin(pLeft, ch.perm), NoPerm())
+                  pLeft = pLeft - TermPerm(r)
+                  // not yet sound - take guard_{2}
+                  hqExhaled = hqExhaled + (ch - TermPerm(r))
+                  }
+                }
               }
-
-              val cond = BigAnd(exhaleCh.args zip ch.args map (x => x._1 === x._2))
-              val r = Ite(cond, PermMin(pLeft, ch.perm),NoPerm())
-              pLeft = pLeft - TermPerm(r)
-              hqExhaled = hqExhaled + (ch - TermPerm(r))
-             }
+            if (!permAssert(instance(pLeft, *) === NoPerm())) {
+              return None
             }
-          }
-          if(!permAssert(pLeft === NoPerm())) {
-            return None
-          }
+          })
 
           hq = hqExhaled
         }
       }
+    }
     Some(hq)
   }
 

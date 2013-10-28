@@ -187,7 +187,17 @@ sealed trait Quantifier
 object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
-case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term) extends BooleanTerm
+case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term) extends BooleanTerm {
+
+}
+
+// Placeholder
+case class *() extends Symbol {
+  val id = "*"
+  val sort = sorts.Ref
+
+  override val toString = "*"
+}
 
 /* Arithmetic expression terms */
 
@@ -848,6 +858,7 @@ case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ {
   override val toString = "{" + p + "}"
 }
 
+
 /*case*/ class SetAdd(val p0: Term, val p1: Term)
   extends SetTerm
   with    commonnodes.StructuralEqualityBinaryOp[Term] {
@@ -922,9 +933,26 @@ object SetSubset extends ((Term, Term) => SetTerm) {
   def unapply(ss: SetSubset) = Some((ss.p0, ss.p1))
 }
 
+class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
+  override val op = "disj"
+}
+
+object SetDisjoint extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameSetSorts(t0, t1)
+    new SetDisjoint(t0, t1)
+  }
+
+  def unapply(sd: SetDisjoint) = Some((sd.p0, sd.p1))
+}
+
+
+
 class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "\\"
 }
+
+
 
 object SetDifference extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {

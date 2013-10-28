@@ -3,7 +3,13 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import terms.{Term, DefaultFractionalPermissions}
+import semper.silicon.state.terms._
+import semper.silicon.state.FieldChunkIdentifier
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.PredicateChunkIdentifier
+import semper.silicon.state.terms.Quantification
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.state.DirectConditionalChunk
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 
@@ -23,6 +29,16 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	def -(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm - perm)
 
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
+}
+
+case class DirectConditionalChunk(name: String, value:Term, guard:BooleanTerm, perm: DefaultFractionalPermissions) extends DirectChunk {
+  val args = Nil
+  val id = FieldChunkIdentifier(*(), name)
+
+  def +(perm: DefaultFractionalPermissions): DirectConditionalChunk = this.copy(perm = this.perm + perm)
+  def -(perm: DefaultFractionalPermissions): DirectConditionalChunk = this.copy(perm = this.perm - perm)
+
+  override def toString = "%s -> %s # %s ? %s : 0".format(name, value, guard, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {
