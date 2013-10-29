@@ -129,9 +129,16 @@ trait DefaultExecutor[ST <: Store[ST],
           decider.prover.logComment("Verify loop body")
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
           produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(invAndGuard), c0, tv0)((σ1, c1) =>
-            exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
-              consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
-                Success[C, ST, H, S](c3))))}
+            /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
+             *       Should no longer be necessary once we have an on-demand handling of merging and
+             *       false-checking.
+             */
+            if (decider.assert(False()))
+              Success[C, ST, H, S](c1) /* TODO: Mark branch as dead? */
+            else
+              exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
+                consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
+                  Success[C, ST, H, S](c3))))}
             &&
           inScope {
             /* Verify call-site */
@@ -142,7 +149,14 @@ trait DefaultExecutor[ST <: Store[ST],
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
               produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(invAndNotGuard), c1, tv0)((σ3, c2) =>
-                leave(σ3, lb, c2, tv)(Q))})})
+              /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
+               *       Should no longer be necessary once we have an on-demand handling of merging and
+               *       false-checking.
+               */
+                if (decider.assert(False()))
+                  Success[C, ST, H, S](c2) /* TODO: Mark branch as dead? */
+                else
+                  leave(σ3, lb, c2, tv)(Q))})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
           val (arps, arpConstraints) =
@@ -359,10 +373,10 @@ trait DefaultExecutor[ST <: Store[ST],
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
         produce(Ø \ σ.γ, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.setReserveHeap(Some(σ.h))
+          val c2 = c1.copy(reserveHeap = Some(σ.h))
           consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
-            val σ2 = σ1 \ c3.reserveHeap.get
-            val c4 = c3.setReserveHeap(None)
+            val σ2 = σ \ c3.reserveHeap.get
+            val c4 = c3.copy(reserveHeap = None)
             produce(σ2, fresh, FullPerm(), wand, pve, c4, tv)(Q)})})
 
       case apply @ ast.Apply(wand) =>

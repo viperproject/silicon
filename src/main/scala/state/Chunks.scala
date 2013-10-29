@@ -72,18 +72,13 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 
 
 /* TODO: Chunk and ChunkIdentifier should be changed s.t. they don't require `name` and `args` anymore. */
+/* TODO: Remove `wand` from equals and hashCode. */
+case class MagicWandChunk(wand: ast.MagicWand, wandInstance: ast.MagicWand, localVariableTerms: Seq[Term])
+    extends ChunkIdentifier with Chunk {
 
-case class MagicWandChunkIdentifier(wand: ast.MagicWand, localVariableTerms: Seq[Term]) extends ChunkIdentifier {
-  val name = "$MagicWandChunk"
-  val args = terms.IntLiteral(wand.hashCode) :: terms.IntLiteral(localVariableTerms.hashCode) :: Nil
-
-  override def toString = "%s(%s)".format(name, args.mkString(","))
-}
-
-case class MagicWandChunk(wand: ast.MagicWand, localVariableTerms: Seq[Term]) extends Chunk {
-  val name = "$MagicWandChunk"
-  val args = terms.IntLiteral(wand.hashCode) :: terms.IntLiteral(localVariableTerms.hashCode) :: Nil
-  val id = MagicWandChunkIdentifier(wand, localVariableTerms)
+  val name = "$MagicWandChunk" + wandInstance.hashCode /* TODO: Hack! Equality should be used to compare wands syntactically! */
+  val args = localVariableTerms
+  def id = this
 
   override val toString = s"$name($wand, ${localVariableTerms.mkString("[", ", ", "]")})"
 }

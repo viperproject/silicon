@@ -143,14 +143,14 @@ class DefaultDecider[ST <: Store[ST],
 	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
 		val asserted = isKnownToBeTrue(t)
 
-		asserted || π.exists(_ == t) || proverAssert(t, logSink)
+		asserted /*|| π.exists(_ == t)*/ || proverAssert(t, logSink)
 	}
 
   /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
     case eq: Eq => eq.p0 == eq.p1
-    case _ if (π contains t) => true
+    case _ if π contains t => true
     case _ => false
   }
 
@@ -410,12 +410,20 @@ class DefaultDecider[ST <: Store[ST],
     common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
-    fcwpLog.println(id)
-		// prover.logComment("Chunk lookup ...")
-		// prover.enableLoggingComments(false)
     import silicon.state.terms.utils.BigAnd
-		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
-		// prover.enableLoggingComments(true)
+    fcwpLog.println(id)
+
+    var chunk: Option[CH] = None
+
+    id match {
+      case mwchid: silicon.state.MagicWandChunk =>
+        chunk = chunks find {ch =>
+          val t = BigAnd(ch.args zip id.args map (x => x._1 === x._2))
+          assert(t)
+        }
+      case _ =>
+        chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
+    }
 
 		chunk
 	}

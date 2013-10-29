@@ -174,8 +174,8 @@ trait DefaultEvaluator[
           decider.getChunk[FieldChunk](σ.h, id) match {
             case Some(ch) =>
               Q(ch.value, c)
-            case None if c.reserveHeap.nonEmpty =>
-              decider.getChunk[FieldChunk](c.reserveHeap.get, id) match {
+            case None if c.reserveEvalHeap.nonEmpty =>
+              decider.getChunk[FieldChunk](c.reserveEvalHeap.get, id) match {
                 case Some(ch) => Q(ch.value, c)
                 case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)
               }
@@ -228,11 +228,11 @@ trait DefaultEvaluator[
 
           decider.popScope()
 
-          r && {
+          r && (if (localResults.isEmpty) Success[C, ST, H, S](c1) else {
             checkReserveHeaps(localResults)
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
-            Q(And(t0.get, t1), localResults(0).context)}})
+            Q(And(t0.get, t1), localResults(0).context)})})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if !config.shortCircuitingEvaluation() =>
@@ -318,7 +318,7 @@ trait DefaultEvaluator[
 
         decider.popScope()
 
-        r && {
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
           checkReserveHeaps(localResults)
 
           /* The additional path conditions gained while evaluating the
@@ -334,8 +334,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, localResults(0).context)
-        }
+          Q(tImplies, localResults(0).context)})
 
       case _: ast.Ite if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
@@ -372,9 +371,9 @@ trait DefaultEvaluator[
 
         decider.popScope()
 
-        r && {
-          val localResults = localResultsThen ::: localResultsElse
+        val localResults = localResultsThen ::: localResultsElse
 
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
           checkReserveHeaps(localResults)
 
           /* Conjunct all auxiliary terms (sort: bool). */
@@ -402,8 +401,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, localResults(0).context)
-        }
+          Q(tActualIte, localResults(0).context)})
 
       /* Integers */
 
@@ -542,13 +540,13 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
 
-        r && {
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
           checkReserveHeaps(localResults)
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux))
           val tQuant = Quantification(tQuantOp, tVars, tActual)
           assume(tQuantAux)
-          Q(tQuant, localResults(0).context)}
+          Q(tQuant, localResults(0).context)})
 
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -654,14 +652,13 @@ trait DefaultEvaluator[
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
-          r && {
+          r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
             checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults(0).context)
-          }
+            Q(tActualInVar, localResults(0).context)})
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
@@ -676,6 +673,7 @@ trait DefaultEvaluator[
        * inside wand packaging statements. They are "only" there to make the inner-most wand
        * expression self-framing, i.e., they are needed for applying a wand, but not for
        * packaging them.
+       * It would be better to remove them from expression-ASTs before evaluating the latter.
        */
       case _: ast.AccessPredicate => Q(True(), c)
 
@@ -701,21 +699,20 @@ trait DefaultEvaluator[
                   consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, chs, c3) => { // TODO: What to do with the consumed chunks?
                     produce(σ1 \ σ.γ, s => snap.convert(s), _tPerm, acc, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(predicate)
-                      val σ3 = σ2 \ (g = σ.g) //, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
+                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
                       eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
                         localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                         Success[C, ST, H, S](c3)})})})})
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
-          r && {
+          r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
             checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
             /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults(0).context)
-          }
+            Q(tActualInVar, localResults(0).context)})
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> folding next.P in e} is currently not " +
@@ -735,14 +732,13 @@ trait DefaultEvaluator[
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
                   Success[C, ST, H, S](c4)}))))
 
-        r && {
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
           checkReserveHeaps(localResults)
           val tActualInVar = fresh("actualIn", toSort(eIn.typ))
           val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
           /* TODO: See comment about performance in case ast.Ite */
           assume(tAuxIn + tActualIn)
-          Q(tActualInVar, localResults(0).context)
-        }
+          Q(tActualInVar, localResults(0).context)})
 
       /* Sequences */
 
@@ -889,12 +885,13 @@ trait DefaultEvaluator[
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          if (assertRcvrNonNull)
+          if (assertRcvrNonNull) {
+            decider.prover.logComment("[XOXOX withChunkIdentifier]")
             if (decider.assert(tRcvr !== Null()))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)
-          else
+          } else
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
       case ast.PredicateAccess(eArgs, predicate) =>
@@ -974,7 +971,9 @@ trait DefaultEvaluator[
   }
 
   private def checkReserveHeaps(localResults: Seq[LocalEvaluationResult]) {
-    assert(localResults.map(_.context.reserveHeap).toSet.size == 1,
+    val heaps = localResults.flatMap(_.context.reserveHeap).toSet
+
+    assert(heaps.size <= 1,
            "Unexpectedly found multiple different reserve heaps after a local evaluation.")
   }
 

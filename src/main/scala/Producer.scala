@@ -1,12 +1,13 @@
 package semper
 package silicon
 
-import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
+import scala.collection.immutable.Stack
+import scala.collection.mutable.ListBuffer
 import sil.verifier.PartialVerificationError
 import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.{Success, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
@@ -142,16 +143,26 @@ trait DefaultProducer[
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
-          assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
-            val s = sf(toSort(field.typ))
-            val pNettoGain = pGain * p
-            val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            if (!isConditional(gain)) assume(NoPerm() < pGain)
-            val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            assume(mts)
-            Q(mh, c2)})})
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          /* Assuming receiver non-null might contradict current path conditions
+           * and we would like to detect that as early as possible.
+           * We could try to assert false after the assumption, but it seems likely
+           * that 'tRcvr === Null()' syntactically occurs in the path conditions if
+           * it is true. Hence, we assert it here, which (should) syntactically look
+           * for the term before calling Z3.
+           */
+          if (decider.assert(tRcvr === Null())) /* TODO: Benchmark performance impact */
+            Success[C, ST, H, S](c1)
+          else {
+            assume(tRcvr !== Null())
+            evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+              val s = sf(toSort(field.typ))
+              val pNettoGain = pGain * p
+              val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+              if (!isConditional(gain)) assume(NoPerm() < pGain)
+              val (mh, mts) = merge(σ.h, H(ch :: Nil))
+              assume(mts)
+              Q(mh, c2)})})
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
@@ -181,12 +192,21 @@ trait DefaultProducer[
   def createMagicWandChunk(σ: S, wand: ast.MagicWand): MagicWandChunk = {
     val essentialWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
 
-    val vars = (   essentialWand.left.collect{case lv: ast.LocalVariable => lv}
-                ++ essentialWand.right.collect{case lv: ast.LocalVariable => lv}).toSeq
+//    val vars = (   essentialWand.left.collect{case lv: ast.LocalVariable => lv}
+//                ++ essentialWand.right.collect{case lv: ast.LocalVariable => lv}).toSet.toSeq
 
-    val terms = vars map (v => σ.γ(v))
+    var terms = new ListBuffer[Term]()
+    var i = 0
 
-    MagicWandChunk(essentialWand, terms)
+    val instantiatedWand = essentialWand.transform {
+      case v: ast.LocalVariable =>
+        val id = "$r" + i
+        terms += σ.γ(v)
+        i += 1
+        ast.LocalVariable(id)(v.typ, v.pos, v.info)
+    }()
+
+    MagicWandChunk(essentialWand, instantiatedWand, terms)
   }
 
 	override def pushLocalState() {

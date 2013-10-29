@@ -50,10 +50,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    */
 	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
-             : VerificationResult =
+             : VerificationResult = {
 
-    consume2(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
+    /* TODO: What should the result of current-perms(x.f) be when it occurs on the rhs of a magic wand? */
+
+    val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
+
+    consume2(σ, σ.h, p, φ, pve, c0, tv)((h1, t, dcs, c1) =>
       Q(σ \ h1, t, dcs, c1))
+  }
 
   def consumes(σ: S,
                p: P,
@@ -159,17 +164,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
-			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
-			 * not in the partially consumed heap (h).
+			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and
+			 * not in the partially consumed heap(s) (h, c.reserveHeap).
 			 */
       case _ =>
-        // assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
-        eval(σ, φ, pve, c, tv)((t, c) =>
+        eval(σ, φ, pve, c, tv)((t, c1) =>
           if (decider.assert(t)) {
             assume(t)
-            Q(h, Unit, Nil, c)
+            Q(h, Unit, Nil, c1)
           } else
-            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
+            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c1, tv))
 		}
 
 		consumed
@@ -220,17 +224,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       Q(h1, optCh1.get, c1, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
     } else {
       val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(c1.reserveHeap.get, id, pLoss1, c1, tv)
-
       if (decider.assertNoAccess(pLoss2)) {
         val tVal = (optCh1, optCh2) match {
           case (Some(fc1: DirectFieldChunk), Some(fc2: DirectFieldChunk)) => fc1.value === fc2.value
           case (Some(pc1: DirectPredicateChunk), Some(pc2: DirectPredicateChunk)) => pc1.snap === pc2.snap
           case _ => True()}
-
         assume(tVal)
-
-        val c3 = c2.setReserveHeap(Some(h2))
-
+        val c3 = c2.copy(reserveHeap = Some(h2))
         Q(h1, optCh2.get, c3, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
       } else {
         Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
