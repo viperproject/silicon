@@ -372,7 +372,8 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
-        produce(Ø \ σ.γ, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+        val σ0 = Σ(σ.γ, Ø, σ.g)
+        produce(σ0, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
           val c2 = c1.copy(reserveHeap = Some(σ.h))
           consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
             val σ2 = σ \ c3.reserveHeap.get
