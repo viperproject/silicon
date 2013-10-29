@@ -267,12 +267,8 @@ trait DefaultExecutor[ST <: Store[ST],
            */
 
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
-//          val (rdVar, rdVarConstraints) = freshReadVar("$CallRd", c1.currentRdPerms)
-//          val c2 = (c1.setConsumeExactReads(false)
-//                      .setCurrentRdPerms(ReadPerm(rdVar)))
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = ast.utils.BigAnd(meth.pres)
-//          assume(rdVarConstraints, c2)
           consume(σ \ insγ, FullPerm(), pre, pve, c1, tv.stepInto(c1, ScopeChangingDescription[ST, H, S]("Consume Precondition")))((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
@@ -281,24 +277,14 @@ trait DefaultExecutor[ST <: Store[ST],
             produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
-//              val c5 = (c4.setConsumeExactReads(true)
-//                          .setCurrentRdPerms(c2.currentRdPerms))
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
-
-//      case ast.New(v, dt) =>
-//        assert(v.dataType == dt, "Expected same data type for lhs and rhs.")
-//        Q(σ \+ (v, fresh(v)), c)
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
-//          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               if (decider.isPositive(tPerm)) {
-//                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
-//                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-//                  val c2a = c2.setCurrentRdPerms(PredicateRdPerm())
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
                   val ncs = dcs.map{_ match {
                     case fc: DirectFieldChunk => new NestedFieldChunk(fc)
@@ -327,34 +313,23 @@ trait DefaultExecutor[ST <: Store[ST],
                   val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, id) match {
                     case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
                     case None => (σ1.h, True(), tPerm)}
-//                    val c3a = c3.setCurrentRdPerms(c2.currentRdPerms)
                   assume(t)
-                  val h1 = (h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs)
-                              + H(ncs))
+                  val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
                   Q(σ \ h1, c3)})}
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
-//          else
-//            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
       case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
-//          if (decider.assert(tRcvr !== Null()))
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
               if (decider.isPositive(tPerm)) {
-//                  val insγ = Γ((ast.ThisLiteral()() -> tRcvr))
-//                val insγ = Γ((predicate.formalArg.localVar -> tRcvr))
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
-//                    val c4 = c3.setCurrentRdPerms(PredicateRdPerm())
                   produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
-//                      val c5 = c4.setCurrentRdPerms(c3.currentRdPerms)
                     Q(σ2 \ σ.γ, c4)})})}
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
-//          else
-//            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(eRcvr), c1, tv))
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto
@@ -362,7 +337,7 @@ trait DefaultExecutor[ST <: Store[ST],
            | _: sil.ast.Label
            | _: sil.ast.Seqn
            | _: sil.ast.FreshReadPerm
-           | _: sil.ast.While => sys.error("Not yet implemented (%s): %s".format(stmt.getClass.getName, stmt))
+           | _: sil.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
 		}
 
 		executed
