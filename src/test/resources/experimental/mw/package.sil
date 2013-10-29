@@ -1,4 +1,5 @@
 var f: Int
+var g: Int
 
 method test06(x: Ref) {
   package acc(x.f, write) --* acc(x.f, write)
@@ -55,4 +56,25 @@ method test05(x: Ref)
 {
   //:: ExpectedError(package.failed:assertion.false)
   package (acc(x.f, 1/2) && x.f == 0) --* false
+}
+
+method test10(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 1
+
+  package true --* (acc(x.f, write) && x.f == 1)
+  package (acc(x.g, write) && x.g == 1) --* (acc(x.g, write) && x.g == 1)
+}
+
+method test11(x: Ref)
+  requires acc(x.f, write)
+  requires acc(x.g, write)
+{
+  x.f := 1
+
+  package
+    (acc(x.g, write) && x.g == 1)
+      --*
+    (acc(x.g, write) && x.g == 1 && acc(x.f, write) && x.f == 1)
 }

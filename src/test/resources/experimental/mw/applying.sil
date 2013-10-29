@@ -18,7 +18,7 @@ method test01(p: Ref)
 {
   p.g := 1;
 
-  assert applying (acc(p.f, 1/2) --* (acc(p.f, write) && p.f > 0)) in p.f > 0
+  // assert applying (acc(p.f, 1/2) --* (acc(p.f, write) && p.f > 0)) in p.f > 0
 
   package
     (acc(p.g, 1/2) && p.g > 0 && acc(p.f, 1/2)) /* Do we actually need p.g > 0 here? */
