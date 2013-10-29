@@ -1,0 +1,34 @@
+var f: Int
+var g: Int
+var h: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+method test01(p: Ref)
+  requires acc(p.f, write) && acc(p.h, write)
+  requires acc(p.h, write) --* acc(p.g, write)
+{
+    // h: p.f * p.h * (p.h --* p.g)
+  package true
+            --*
+          applying (acc(p.h, write) --* acc(p.g, write)) in
+            folding acc(p.Pair(), write) in
+             acc(p.Pair(), write)
+    // h: (true --* p.Pair)
+
+  assert true --* acc(p.Pair(), write);
+  //:: ExpectedError(assert.failed:insufficient.permission)
+  assert acc(p.f, write)
+}
+
+method test02(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+  assert acc(x.f, 1/2)
+  //:: ExpectedError(assert.failed:insufficient.permission)
+  assert acc(x.f, 2/3)
+}

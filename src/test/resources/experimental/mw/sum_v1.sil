@@ -1,0 +1,84 @@
+var v: Int
+var n: Ref
+
+predicate List(this: Ref) {
+	acc(this.v, write) && acc(this.n, write) && (this.n != null ==> acc(this.n.List(), write))
+}
+
+/*
+function length(this: Ref): Int
+	requires acc(this.List(), write)
+	ensures result > 0
+{ 1 + unfolding acc(this.List(), write) in (this.n == null ?  0 : length(this.n)) }
+*/
+
+function sum_rec(this: Ref): Int
+	requires acc(this.List(), write)
+{ unfolding acc(this.List(), write) in (this.v + (this.n == null ? 0 : sum_rec(this.n))) }
+
+method sum_it(ys: Ref) returns (sum: Int)
+  requires ys != null
+	requires acc(ys.List(), write)
+	ensures acc(ys.List(), write)
+	ensures sum == old(sum_rec(ys))
+{
+  /* TODO: Wands with old(e) might be reported as malformed because the correct old-heap isn't passed to that check yet. */
+  /* ghost */ var oldsum_ys: Int
+              oldsum_ys := sum_rec(ys)
+
+  var xs: Ref
+  xs := ys
+  sum := 0
+
+//  letass A := (xs != null) ==> (acc(xs.List(), write) && sum(xs) == OLD(sum(xs)))
+//  letass B := acc(ys.List(), write) && sum(ys) == old(sum(ys))
+
+  /* ghost */ var oldsum_xs: Int
+              oldsum_xs := sum_rec(xs)
+
+  package
+    ((xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == oldsum_xs))
+      --*
+    (acc(ys.List(), write) && sum_rec(ys) == oldsum_ys)
+
+  // TODO: There seems to be a problem with using old(sum_rec(ys)) here as well, even outside of wands.
+  while (xs != null)
+    invariant ((xs != null) ==> acc(xs.List(), write))
+    invariant sum == (oldsum_ys - (xs == null ? 0 : sum_rec(xs)));
+    invariant
+      ((xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == oldsum_xs))
+        --*
+      (acc(ys.List(), write) && sum_rec(ys) == oldsum_ys)
+  {
+    assume oldsum_xs == sum_rec(xs)
+    oldsum_xs := sum_rec(xs)
+
+    /* ghost */ var prev_xs: Ref
+                prev_xs := xs
+
+    unfold acc(xs.List(), write)
+    sum := sum + (xs.v)
+    xs := xs.n;
+
+  /* ghost */ var oldoldsum_xs: Int
+              oldoldsum_xs := oldsum_xs
+
+    if (xs != null) { oldsum_xs := sum_rec(xs) }
+
+    package
+      ((xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == oldsum_xs))
+        --*
+      folding acc(prev_xs.List(), write) in
+        (applying
+          (((prev_xs != null) ==> (acc(prev_xs.List(), write) && sum_rec(prev_xs) == oldoldsum_xs))
+            --*
+          (acc(ys.List(), write) && sum_rec(ys) == oldsum_ys))
+        in
+          (acc(ys.List(), write) && sum_rec(ys) == oldsum_ys));
+  }
+
+  apply
+    ((xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == oldsum_xs))
+      --*
+    (acc(ys.List(), write) && sum_rec(ys) == oldsum_ys)
+}
