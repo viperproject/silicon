@@ -51,9 +51,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val c = contextFactory.create(history.tree)
     val tv = traceviewFactory.create(history)
 
-    // TODO: Perform s.f.-checking of wands everywhere.
     member match {
-      case m: ast.Method => checkWandsAreSelfFraming(m, c, tv) && verify(m, c, tv)
+      case m: ast.Method => verify(m, c, tv)
       case f: ast.ProgramFunction => verify(f, c, tv)
       case p: ast.Predicate => verify(p, c, tv)
       case _: ast.Domain | _: ast.Field =>
@@ -61,29 +60,38 @@ trait AbstractElementVerifier[ST <: Store[ST],
     }
   }
 
-  private def checkWandsAreSelfFraming(member: ast.Member, c: C, tv: TV): VerificationResult = {
-    val wands = member collect {case n: ast.MagicWand => n}
+  private def checkWandsAreSelfFraming(root: ast.Member, γ: ST, g: H, c: C, tv: TV): VerificationResult = {
+    val wands = new scala.collection.mutable.ListBuffer[(ast.MagicWand, Seq[ast.LocalVariable])]()
+
+    /* Collect wands together with additional local variables that are in the wands scope,
+     * but are not yet available in the scope of the root node.
+     */
+    root.visitWithContext(Seq[ast.LocalVariable]()) (vs => {
+      case wand: ast.MagicWand =>
+        wands += (wand -> vs)
+        vs
+
+      case loop: ast.While =>
+        vs ++ (loop.locals map (_.localVar))
+    })
+
+    val σ = Σ(γ, Ø, g)
     var result: VerificationResult = Success[C, ST, H, S](c)
 
-    def setUpInitialState(e: ast.Expression) = {
-      val localVars = e collect {case lv: sil.ast.LocalVar => lv}
-      val γ = Γ(localVars.map(v => (v, fresh(v))).toIterable)
-
-      Σ(γ, Ø, Ø)
-    }
-
     breakable {
-      wands foreach {wand =>
+      wands foreach {case (wand, vs) =>
         val err = MagicWandNotWellformed(wand) //malformedErrorForWand(wand)
         val left = wand.left
         val right = ast.expressions.getInnermostExpr(wand.right)
+        val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable)
+        val σ1 = σ \+ γ1
 
         result =
           inScope {
-            produce(setUpInitialState(left), fresh, terms.FullPerm(), left, err, c, tv)((_, c1) =>
+            produce(σ1, fresh, terms.FullPerm(), left, err, c, tv)((_, c1) =>
               Success[C, ST, H, S](c1))
           } && inScope {
-            produce(setUpInitialState(right), fresh, terms.FullPerm(), right, err, c, tv)((_, c1) =>
+            produce(σ1, fresh, terms.FullPerm(), right, err, c, tv)((_, c1) =>
               Success[C, ST, H, S](c1))
           }
 
@@ -126,15 +134,17 @@ trait AbstractElementVerifier[ST <: Store[ST],
     inScope {
 			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
-			 (inScope {
-         produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
-           Success[C, ST, H, S](c3))}
-					&&
-        inScope {
-          exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
-            consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success[C, ST, H, S](c4)))})})}
+           (inScope {
+              val (c2a, tv2a) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
+              checkWandsAreSelfFraming(method, σ2.γ, σ2.g, c2a, tv2a)}
+        && inScope {
+             val (c2b, tv2b) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
+             produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2b, tv2b)((_, c3) =>
+                Success[C, ST, H, S](c3))}
+        &&  inScope {
+              exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
+                consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
+                  Success[C, ST, H, S](c4)))})})}
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
@@ -156,17 +166,19 @@ trait AbstractElementVerifier[ST <: Store[ST],
      */
 
     /* Produce includes well-formedness check */
-    inScope {
-      val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
-      (inScope {
-        produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
-          Success[C, ST, H, S](c2))}
-        &&
-        inScope {
+    val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
+       (inScope {
+          produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
+            Success[C, ST, H, S](c2))}
+    && inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
-            eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
-              consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success[C, ST, H, S](c4))))})}
+               inScope {
+                 val (c2a, tv2a) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
+                 checkWandsAreSelfFraming(function, σ1.γ, σ1.g, c2a, tv2a)}
+            && inScope {
+                 eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
+                    consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
+                      Success[C, ST, H, S](c4)))})})
   }
 
   def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {
@@ -178,9 +190,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val γ = Γ(ins.map(v => (v, fresh(v))))
     val σ = Σ(γ, Ø, Ø)
 
-    inScope {
-      produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
-        Success[C, ST, H, S](c1))}
+       (inScope {
+          val (c2a, tv2a) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
+            checkWandsAreSelfFraming(predicate, σ.γ, σ.g, c2a, tv2a)}
+    && inScope {
+          produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
+            Success[C, ST, H, S](c1))})
   }
 }
 
