@@ -609,7 +609,7 @@ case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Te
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
   val sort = function.sort.outSort
-  override val toString = function.id + tArgs.mkString("(", ", ", ")")
+  override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
 }
 
 /* Sequences */
