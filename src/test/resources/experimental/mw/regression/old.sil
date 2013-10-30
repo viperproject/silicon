@@ -23,7 +23,7 @@ method test02(x: Ref, v: Int)
 {
   package (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
   x.f := 0
-  //:: ExpectedError(apply.failed:wand.not.found)
+  //:: ExpectedError(apply.failed:assertion.false)
   apply (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
 }
 
@@ -39,7 +39,7 @@ method test04(x: Ref, v: Int)
   requires (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
 {
   x.f := 0
-  //:: ExpectedError(apply.failed:wand.not.found)
+  //:: ExpectedError(apply.failed:assertion.false)
   apply (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
 }
 
@@ -63,5 +63,6 @@ method test07(x: Ref, y: Ref)
   x.f := x.g
   fold acc(x.Pair(), write)
 
+  //:: ExpectedError(apply.failed:assertion.false)
   apply (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
 }

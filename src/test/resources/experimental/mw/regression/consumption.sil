@@ -6,6 +6,10 @@ predicate Pair(this: Ref) {
   acc(this.f, write) && acc(this.g, write)
 }
 
+function sum(p: Ref): Int
+  requires acc(p.Pair(), write)
+{ unfolding acc(p.Pair(), write) in (p.f) + (p.g) }
+
 method test01(p: Ref)
   requires acc(p.f, write) && acc(p.h, write)
   requires acc(p.h, write) --* acc(p.g, write)
@@ -31,4 +35,39 @@ method test02(x: Ref)
   assert acc(x.f, 1/2)
   //:: ExpectedError(assert.failed:insufficient.permission)
   assert acc(x.f, 2/3)
+}
+
+method test03(x: Ref)
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  //:: ExpectedError(package.failed:insufficient.permission)
+  package true --* folding acc(x.Pair(), write) in acc(x.f, write)
+}
+
+method test04(x: Ref, y: Ref)
+  requires y != null
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  //:: ExpectedError(package.failed:insufficient.permission)
+  package true --* folding acc(x.Pair(), write) in acc(y.f, write)
+}
+
+method test05(x: Ref, y: Ref)
+  requires acc(y.f, write)
+  requires acc(x.f, write) && acc(x.g, write)
+  ensures true --* acc(y.f, write)
+{
+  package true --* folding acc(x.Pair(), write) in acc(y.f, write)
+}
+
+method test06(x: Ref, y: Ref)
+  requires acc(x.Pair(), write)
+  requires (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+{
+  //:: ExpectedError(package.failed:insufficient.permission)
+  package
+    (acc(x.Pair(), write) && sum(x) == pold(sum(x)))
+      --*
+      applying ((acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)) in
+        (acc(y.f, write) && acc(y.g, write)) // No access to y.g
 }

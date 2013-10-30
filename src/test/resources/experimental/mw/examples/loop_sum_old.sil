@@ -19,12 +19,6 @@ method sum_it(ys: Ref) returns (sum: Int)
   xs := ys
   sum := 0
 
-//  letass A := (xs != null) ==> (acc(xs.List(), write) && sum(xs) == OLD(sum(xs)))
-//  letass B := acc(ys.List(), write) && sum(ys) == old(sum(ys))
-
-//  /* ghost */ var oldsum_xs: Int
-//              oldsum_xs := sum_rec(xs)
-
   package
     ((xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == pold(sum_rec(xs))))
       --*
@@ -39,27 +33,12 @@ method sum_it(ys: Ref) returns (sum: Int)
         --*
       (acc(ys.List(), write) && sum_rec(ys) == old(sum_rec(ys)))
   {
-//    assume oldsum_xs == sum_rec(xs)
-//      /* [Malte] I think that it is crucial that oldsum_xs is assigned to at
-//       *         least once in the loop, because it will otherwise still have
-//       *         the value that it had outside of the loop (a Sil/Silicon feature).
-//       *         If so, then the assume in here is unsound because xs changes in
-//       *         every loop iteration.
-//       */
-
     /* ghost */ var prev_xs: Ref
                 prev_xs := xs
 
     unfold acc(xs.List(), write)
     sum := sum + (xs.v)
     xs := xs.n;
-
-//  /* ghost */ var oldoldsum_xs: Int
-//              oldoldsum_xs := oldsum_xs
-
-//    if (xs != null) {
-//      oldsum_xs := sum_rec(xs)
-//    }
 
     package
       ((xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == pold(sum_rec(xs))))
