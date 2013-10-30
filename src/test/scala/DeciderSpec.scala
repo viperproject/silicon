@@ -18,12 +18,7 @@ import semper.silicon.Config
 import semper.silicon.reporting.DependencyNotFoundException
 import semper.silicon.decider.SMTLib2PreambleEmitter
 import semper.silicon.interfaces.decider.Decider
-import semper.silicon.state.terms.Eq
-import semper.silicon.state.terms.FractionPerm
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.terms.IntLiteral
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.TermPerm
+import semper.silicon.state.terms._
 
 
 class DeciderSpec extends FlatSpec {
@@ -232,7 +227,6 @@ class DeciderSpec extends FlatSpec {
       val exhaleHeap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm())
 
       val h = decider.exhalePermissions(heap, exhaleHeap)
-      println(h)
       h match {
         case None => fail("exhale should not fail!")
         case _ =>
@@ -254,7 +248,6 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm())
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
-    println(h)
     h match {
       case None =>
       case _ => fail("exhale should fail!")
@@ -277,7 +270,6 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), U), FullPerm())
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
-    println(h)
     h match {
       case None => fail("exhale should succeed!")
       case Some(exhaledHeap) =>  decider.exhalePermissions(exhaledHeap, exhaleHeap) match {
@@ -302,7 +294,6 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
-    println(h)
     h match {
       case None => fail("exhale should succeed!")
       case _ =>
@@ -324,7 +315,6 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
-    println(h)
     h match {
       case None =>
       case _ =>  fail("exhale should fail!")
@@ -350,7 +340,6 @@ class DeciderSpec extends FlatSpec {
 
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
-    println(h)
     h match {
       case None => fail("exhale should succeed!")
       case Some(exhaledHeap) =>  decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
@@ -368,7 +357,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(SetSubset(T, S))
     decider.assume(SetSubset(U, S))
-    decider.assume(SetDisjoint(U, T))
+    decider.assume(SetDisjoint(T,U))
 
     val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
 
@@ -380,7 +369,6 @@ class DeciderSpec extends FlatSpec {
 
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
-    println(h)
     h match {
       case None => fail("exhale should succeed!")
       case Some(exhaledHeap) =>  decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {

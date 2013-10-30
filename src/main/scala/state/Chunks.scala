@@ -32,7 +32,7 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 }
 
 case class DirectConditionalChunk(name: String, value:Term, guard:BooleanTerm, perm: DefaultFractionalPermissions) extends DirectChunk {
-  val args = Nil
+  val args = guard :: Nil   /* to make sure it does not match other chunks */
   val id = FieldChunkIdentifier(*(), name)
 
   def +(perm: DefaultFractionalPermissions): DirectConditionalChunk = this.copy(perm = this.perm + perm)

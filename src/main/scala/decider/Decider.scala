@@ -36,7 +36,7 @@ class DefaultDecider[ST <: Store[ST],
                      S <: State[ST, H, S],
                      C <: Context[C, ST, H, S]]
 		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
-		   with Logging {
+		   with Logging with DefaultHeapFactory {
 
   private type P = DefaultFractionalPermissions
 
@@ -371,9 +371,9 @@ class DefaultDecider[ST <: Store[ST],
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
   
   /**
-   * Does a global lookup on the heap h whether there _could_ be enough permissions (at least P)
+   * Does a global lookup on the heap h whether there are enough permissions (at least P)
    * for chunk id.
-   * @return returns true if there could be enough permissions on the heap, false if there are definitely not enough permissions on the heap.
+   * @return returns true if there are enough permissions on the heap, false if there are definitely not enough permissions on the heap.
    */
   	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
 	  // collect all chunks
@@ -387,6 +387,7 @@ class DefaultDecider[ST <: Store[ST],
             x._1.sort match {
               case sorts.Ref => x._1 === x._2
               case sorts.Set(_) => SetIn(x._2, x._1)
+              case sorts.Bool => instance(x._1, x._2)
               case _ => False()
             }
           }
@@ -427,6 +428,11 @@ class DefaultDecider[ST <: Store[ST],
       case TermPerm(t) => TermPerm(instance(t, withT))
       case And(t1, t2) => And(instance(t1, withT), instance(t2, withT))
       case PermMin(t1,t2) => PermMin(instance(t1, withT), instance(t2, withT))
+      case SetDifference(t1,t2) => SetDifference(instance(t1, withT), instance(t2, withT))
+      case SetUnion(t1, t2) => SetUnion(instance(t1, withT), instance(t2, withT))
+      case SetIntersection(t1, t2) => SetIntersection(instance(t1, withT), instance(t2, withT))
+      case SetAdd(t1, t2) => SetAdd(instance(t1, withT), instance(t2, withT))
+      case SingletonSet(t1) => SingletonSet(instance(t1, withT))
     }
   }
 
@@ -445,39 +451,44 @@ class DefaultDecider[ST <: Store[ST],
     // convert to conditional chunks if necessary
     var hq = toConditional(h)
     val exhaleHC = toConditional(exhaleH)
+    //println(hq.values.size)
+    //println(exhaleHC)
 
-    exhaleHC.values.foreach {
-      ch => ch match {
-        case eCh: DirectConditionalChunk => {
-          val guard1 = eCh.guard
+    breakable {
+      exhaleHC.values.foreach {
+        ch => ch match {
+          case eCh: DirectConditionalChunk => {
+            val guard1 = eCh.guard
 
-          var hqExhaled = h.empty
-          var pLeft = eCh.perm
-          inScope({
-            val * = fresh(sorts.Ref)
-            assume(instance(guard1, *))
-            breakable {
+            hq = H(hq.asInstanceOf[SetBackedHeap]).asInstanceOf[H]
+            var pLeft = eCh.perm
+            inScope({
+              val * = fresh(sorts.Ref)
+              assume(instance(guard1, *))
               hq.values.foreach {
                 case ch: DirectConditionalChunk => {
                   // leave early
                   if (permAssert(instance(pLeft, *) === NoPerm())) {
-                    println("here")
-                    break
+                    break;
                   }
 
                   val r = Ite(And(eCh.guard, ch.guard), PermMin(pLeft, ch.perm), NoPerm())
                   pLeft = pLeft - TermPerm(r)
-                  // not yet sound - take guard_{2}
-                  hqExhaled = hqExhaled + (ch - TermPerm(r))
-                  }
+                  inScope({
+                    prover.logComment("checking if chunk does contain permissions")
+                    if (permAssert(instance(Ite(ch.guard, ch.perm - TermPerm(r), NoPerm()), fresh(sorts.Ref)) === NoPerm())) {
+                      hq = hq - ch
+                    } else {
+                      hq = hq - ch + (ch - TermPerm(r))
+                    }
+                  })
                 }
               }
-            if (!permAssert(instance(pLeft, *) === NoPerm())) {
-              return None
-            }
-          })
-
-          hq = hqExhaled
+              if (!permAssert(instance(pLeft, *) === NoPerm())) {
+                return None
+              }
+            })
+          }
         }
       }
     }

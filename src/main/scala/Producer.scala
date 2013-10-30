@@ -11,8 +11,16 @@ import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import semper.silicon.state._
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.*
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.state.terms.Eq
+import semper.silicon.state.terms.Combine
+import semper.silicon.state.terms.Null
+import semper.silicon.state.terms.NoPerm
 
 trait DefaultProducer[
                       ST <: Store[ST],
@@ -61,8 +69,10 @@ trait DefaultProducer[
              : VerificationResult =
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
-      val (mh, mts) = merge(Ø, h)
-      assume(mts)
+      // TODO: merge for conditional chunks
+      // val (mh, mts) = merge(Ø, h)
+      //  assume(mts)
+      val mh = h
       Q(σ \ mh, c1)})
 
   def produces(σ: S,
@@ -170,7 +180,7 @@ trait DefaultProducer[
         eval(σ, set, pve, c, tv) ((tSet, c1) => {
           evalp(σ, gain, pve, c, tv) ((pGain, c2) => {
             val pNettoGain = pGain * p
-            val ch = DirectFieldChunk(tSet, field.name ,null /* snapshot */, pNettoGain)
+            val ch = DirectConditionalChunk(field.name, null /* value */, SetIn(*(), tSet), pNettoGain)
             val mh = σ.h + ch
             Q(mh, c2)
           })

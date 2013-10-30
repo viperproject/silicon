@@ -696,7 +696,7 @@ trait DefaultEvaluator[
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetSubset(e0, e1) => e.typ match {
+      case sil.ast.AnySetSubset(e0, e1) => e0.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c, tv)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c, tv)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
@@ -792,6 +792,7 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull)
+            //if(decider.hasEnoughPermissionsGlobally(σ.h, FieldChunkIdentifier(tRcvr, field.name)))
             if (decider.assert(tRcvr !== Null()))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else

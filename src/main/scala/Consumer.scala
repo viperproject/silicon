@@ -9,9 +9,10 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Sta
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
+import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DirectConditionalChunk}
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
+import semper.silicon.heap.HeapManager
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -36,6 +37,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
+
+  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
@@ -122,7 +125,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
-      /* Field and predicate access predicates */
+      // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)
+      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
+        eval(σ, set, pve, c, tv)((tSet, c1) =>
+          evalp(σ, loss, pve, c1, tv)((tPerm, c2) =>
+            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), pve, null /* locacc */, c2, tv)
+              ((h1) =>
+                Q(h1, null, Nil, c2)
+              )
+          )
+        )
+      }
+
+        /* Field and predicate access predicates */
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>

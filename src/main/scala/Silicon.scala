@@ -23,6 +23,7 @@ import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
+import semper.silicon.heap.DefaultHeapManager
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -146,6 +147,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val heapMerger =
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val heapManager = new DefaultHeapManager[ST, H, PC, S, C, TV](decider)
 
     bookkeeper.branches = 1
     bookkeeper.startTime = System.currentTimeMillis()
@@ -160,7 +162,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
-                           setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger,
+                           setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, heapManager,
                            stateUtils, bookkeeper, traceviewFactory)
 	}
 
