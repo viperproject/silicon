@@ -123,12 +123,16 @@ package object ast {
   val IntegerLiteral = sil.ast.IntLit
   type FuncApp = sil.ast.FuncApp
   val FuncApp = sil.ast.FuncApp
+
+  type GhostOperation = sil.ast.GhostOperation
   type Unfolding = sil.ast.Unfolding
   val Unfolding = sil.ast.Unfolding
   type Folding = sil.ast.Folding
   val Folding = sil.ast.Folding
   type Applying = sil.ast.Applying
   val Applying = sil.ast.Applying
+  type Exhaling = sil.ast.Exhaling
+  val Exhaling = sil.ast.Exhaling
 
   type InhaleExhaleExp = sil.ast.InhaleExhaleExp
   val InhaleExhaleExp = sil.ast.InhaleExhaleExp

@@ -8,13 +8,12 @@ import sil.verifier.errors.{Internal, LoopInvariantNotPreserved, UnfoldFailed, A
 import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
-    HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
-    DirectChunk, NestedFieldChunk, NestedPredicateChunk}
+import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk,
+    SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
 
@@ -300,9 +299,10 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.isPositive(tPerm)) {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
-                  val ncs = dcs.map {
-                    case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
+                  val ncs = dcs flatMap {
+                    case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
+                    case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
+                    case _: MagicWandChunk[H] => None
                   }
                   /* Producing Access is unfortunately not an option here
                   * since the following would fail due to productions
@@ -352,18 +352,22 @@ trait DefaultExecutor[ST <: Store[ST],
         val c0 = c.copy(poldHeap = Some(σ.h))
         produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
           val c2 = c1.copy(reserveHeap = Some(σ.h))
-          consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
+          val rhs = injectExhalingExp(wand.right)
+          consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
             val σ2 = σ \ c3.reserveHeap.get
             val c4 = c3.copy(reserveHeap = None, poldHeap = None)
-            /* TODO: Re-evaluates PackageOld. Can we avoid that? Reuse results from the preceding produce and consume ops? */
             produce(σ2, fresh, FullPerm(), wand, pve, c4, tv)(Q)})})
 
       case apply @ ast.Apply(wand) =>
         val pve = ApplyFailed(apply)
-        consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, _, c1) =>
-          consume(σ1, FullPerm(), wand.left, pve, c1, tv)((σ2, _, _, c2) =>
-            produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) =>
-              Q(σ3, c3))))
+        consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
+          assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
+          val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
+          val c1a = c1.copy(poldHeap = Some(ch.hPO))
+          consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) => {
+            val c2a = c2.copy(poldHeap = None)
+            produce(σ2, fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) =>
+              Q(σ3, c3))})})
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto
@@ -376,4 +380,25 @@ trait DefaultExecutor[ST <: Store[ST],
 
 		executed
 	}
+
+  private def injectExhalingExp(exp: ast.Expression): ast.Expression = {
+    /* TODO: Only works if exp is a direct nesting of ghost operations, i.e., not something such as
+     *       folding acc(x.P) in (acc(x.Q) &&  applying ...)
+     *       This structure is currently not guaranteed by consistency checks.
+     */
+
+    exp.transform {
+      case gop: ast.GhostOperation if (   !gop.body.isInstanceOf[ast.GhostOperation]
+                                       && !gop.body.isPure) =>
+
+        val exh = ast.Exhaling(gop.body)(gop.body.pos, gop.body.info)
+
+        gop match {
+          case e: ast.Folding => e.copy(body = exh)(e.pos, e.info)
+          case e: ast.Unfolding => e.copy(body = exh)(e.pos, e.info)
+          case e: ast.Applying => e.copy(body = exh)(e.pos, e.info)
+          case _ => sys.error(s"Unexpected ghost operation $gop (${gop.getClass.getName})")
+        }
+    }()
+  }
 }

@@ -448,8 +448,8 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
 
       case   _: ast.LocationAccess | _: ast.AccessPredicate | _: sil.ast.OldExp | _: ast.FractionalPerm
-           | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.Folding | _: ast.InhaleExhaleExp | _: ast.PredicateAccess
-           | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.MagicWand | _: ast.Applying =>
+           | _: ast.ResultLiteral | _: ast.InhaleExhaleExp | _: ast.PredicateAccess | _: ast.FuncApp
+           | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.GhostOperation | _: ast.MagicWand =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
     }

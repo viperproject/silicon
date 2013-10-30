@@ -13,7 +13,7 @@ import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, St
     FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.{TraceView}
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 
@@ -193,15 +193,12 @@ trait DefaultEvaluator[
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
       /* TODO: We should enforce the definedness of c.poldHeap whenever an expression
-       *       that may contain PackageOld is evaluated.
+       *       that may contain PackageOld is evaluated, instead of silently using σ.h
+       *       if c.poldHeap is not explicitly set.
        *       This might not always be straight-forward, for example, when checking
        *       self-framingness of wands.
        */
       case ast.PackageOld(e0) =>
-        println("\n[eval/pold]")
-        println("  e0: " + e0)
-        println("  c.poldHeap: " + c.poldHeap)
-        println("  σ.h: " + σ.h)
         eval(σ \ c.poldHeap.getOrElse(σ.h), e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
@@ -681,14 +678,6 @@ trait DefaultEvaluator[
       case _: ast.Folding if !config.localEvaluations() =>
         sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
 
-      /* TOOD: Hack! For now, access predicates may only occur inside folding-expressions
-       * inside wand packaging statements. They are "only" there to make the inner-most wand
-       * expression self-framing, i.e., they are needed for applying a wand, but not for
-       * packaging them.
-       * It would be better to remove them from expression-ASTs before evaluating the latter.
-       */
-      case _: ast.AccessPredicate => Q(True(), c)
-
       case ast.Folding(
               acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
               eIn) =>
@@ -737,12 +726,16 @@ trait DefaultEvaluator[
         var localResults: List[LocalEvaluationResult] = Nil
 
         val r =
-          consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, _, c1) =>
-            consume(σ1, FullPerm(), wand.left, pve, c1, tv)((σ2, _, _, c2) =>
-              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) =>
+          consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
+            assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
+            val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
+            val c1a = c1.copy(poldHeap = Some(ch.hPO))
+            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) => {
+              val c2a = c2.copy(poldHeap = None)
+              produce(σ2, fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) =>
                 eval(σ3, eIn, pve, c3, tv)((tIn, c4) => {
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
-                  Success[C, ST, H, S](c4)}))))
+                  Success[C, ST, H, S](c4)}))})})
 
         r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
           checkReserveHeaps(localResults)
@@ -751,6 +744,15 @@ trait DefaultEvaluator[
           /* TODO: See comment about performance in case ast.Ite */
           assume(tAuxIn + tActualIn)
           Q(tActualInVar, localResults(0).context)})
+
+      /* TODO: We need to think more about exhaling and what its semantics should be.
+       *       For example, what should the result of evaluating an exhaling be?
+       *
+       * TODO: Implement consistency checks (and parsing rules?) for Exhaling.
+       */
+      case ast.Exhaling(exp) =>
+        consume(σ, FullPerm(), exp, pve, c, tv)((_, _, _, c1) =>
+          Q(True(), c1))
 
       /* Sequences */
 

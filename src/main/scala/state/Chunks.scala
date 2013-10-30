@@ -2,7 +2,7 @@ package semper
 package silicon
 package state
 
-import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
+import interfaces.state.{Heap, Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
 import terms.{Term, DefaultFractionalPermissions}
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
@@ -72,13 +72,32 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 
 
 /* TODO: Chunk and ChunkIdentifier should be changed s.t. they don't require `name` and `args` anymore. */
-/* TODO: Remove `wand` from equals and hashCode. */
-case class MagicWandChunk(wand: ast.MagicWand, wandInstance: ast.MagicWand, localVariableTerms: Seq[Term])
-    extends ChunkIdentifier with Chunk {
+case class MagicWandChunk[H <: Heap[H]](wandInstance: ast.MagicWand,
+                                        localVariableTerms: Seq[Term],
+                                        hPO: H) /* TODO: Do we want this to contribute to equals and hashCode? */
+    extends DirectChunk {
 
-  val name = "$MagicWandChunk" + wandInstance.hashCode /* TODO: Hack! Equality should be used to compare wands syntactically! */
+  /* TODO: Big ugly hack! DirectChunk is extended so that DefaultConsumer can return a consumed
+   *       MagicWandChunk in the list of consumed chunks. Apply(ing) needs the consumed chunk
+   *       to get to the pold-heap which is needed while consuming the rhs of the wand-to-apply.
+   */
+  val perm = terms.NoPerm()
+  def +(perm: DefaultFractionalPermissions) = sys.error("Unexpected call")
+  def -(perm: DefaultFractionalPermissions) = sys.error("Unexpected call")
+  def \(perm: DefaultFractionalPermissions) = sys.error("Unexpected call")
+
+  val name = MagicWandChunkUtils.name(wandInstance)
   val args = localVariableTerms
-  def id = this
+  def id = MagicWandChunkIdentifier(wandInstance, localVariableTerms)
 
-  override val toString = s"$name($wand, ${localVariableTerms.mkString("[", ", ", "]")})"
+  override val toString = s"$name(${wandInstance.pos}, ${localVariableTerms.mkString("[", ", ", "]")}, $hPO)"
+}
+
+case class MagicWandChunkIdentifier(wandInstance: ast.MagicWand, localVariableTerms: Seq[Term]) extends ChunkIdentifier {
+  val name = MagicWandChunkUtils.name(wandInstance)
+  val args = localVariableTerms
+}
+
+private object MagicWandChunkUtils {
+  def name(wand: ast.MagicWand) = "$MagicWandChunk" + wand.hashCode /* TODO: Hack! Equality should be used to compare wands syntactically! */
 }

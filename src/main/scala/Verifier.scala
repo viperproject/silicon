@@ -215,6 +215,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val bookkeeper: Bookkeeper,
 			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
+    (protected implicit val manifestH: Manifest[H])
 		extends AbstractElementVerifier[ST, H, PC, S, TV]
        with Logging
        with DefaultEvaluator[ST, H, PC, S, TV]
@@ -375,7 +376,7 @@ trait AbstractVerifier[ST <: Store[ST],
 }
 
 class DefaultVerifierFactory[ST <: Store[ST],
-                             H <: Heap[H],
+                             H <: Heap[H] : Manifest,
                              PC <: PathConditions[PC],
                              S <: State[ST, H, S],
                              TV <: TraceView[TV, ST, H, S]]
@@ -404,7 +405,7 @@ class DefaultVerifierFactory[ST <: Store[ST],
 
 }
 
-class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
+class DefaultVerifier[ST <: Store[ST], H <: Heap[H] : Manifest, PC <: PathConditions[PC],
 											S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
 		(	val config: Config,
@@ -429,4 +430,5 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, chunkFinder, stateFormatter,
                                       heapMerger, stateUtils, bookkeeper, contextFactory, traceviewFactory)
+                                     (manifest[H])
 }

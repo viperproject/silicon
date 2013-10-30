@@ -24,6 +24,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
+  protected implicit val manifestH: Manifest[H]
+
 	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.assume
 
@@ -147,20 +149,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                           else
                             h1
-                        Q(h2, pc.snap, pc :: Nil, c3)})
+                        Q(h2, pc.snap, pc :: Nil, c3)
+
+                      case _ => sys.error(s"Unexpected chunk after consuming $φ: $ch")})
                 else
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
 
       /* TODO: Needs to consider both heaps. Can we merge this code with consumeIncludingReserveHeap? */
       case wand: ast.MagicWand =>
-        val ch = createMagicWandChunk(σ, σ.h, wand, pve, c, tv)
-          /* TODO: Shouldn't we adapt the wand when consuming it? σ.h (too) restrictive but sound? */
-        decider.getChunk[MagicWandChunk](h, ch.id) match {
-          case Some(_) =>
-            Q(h - ch, Unit, Nil, c) // TODO: Are Unit and Nil appropriate?
+        /* TODO: Getting id by first creating a chunk is not elegant. */
+        val id = createMagicWandChunk(σ, wand).id
+        /* TODO: Shouldn't we do a view-point adaptation when consuming a wand? */
+        decider.getChunk[MagicWandChunk[H]](h, id) match {
+          case Some(ch) =>
+            Q(h - ch, Unit, List(ch), c) // TODO: Is unit the right choice?
           case None if c.reserveHeap.nonEmpty =>
-            decider.getChunk[MagicWandChunk](c.reserveHeap.get, ch.id) match {
-              case Some(_) => Q(h, Unit, Nil, c.copy(reserveHeap = Some(c.reserveHeap.get - ch))) // TODO: Are Unit and Nil appropriate?
+            decider.getChunk[MagicWandChunk[H]](c.reserveHeap.get, id) match {
+              case Some(ch) => Q(h, Unit, List(ch), c.copy(reserveHeap = Some(c.reserveHeap.get - ch))) // TODO: Is unit the right choice?
               case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
           case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
 

@@ -416,7 +416,7 @@ class DefaultDecider[ST <: Store[ST],
     var chunk: Option[CH] = None
 
     id match {
-      case mwchid: silicon.state.MagicWandChunk =>
+      case mwchid: silicon.state.MagicWandChunk[H] =>
         chunk = chunks find {ch =>
           val t = BigAnd(ch.args zip id.args map (x => x._1 === x._2))
           assert(t)

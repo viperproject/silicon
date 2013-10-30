@@ -176,7 +176,7 @@ trait DefaultProducer[
             Q(mh, c2)}))
 
       case wand: ast.MagicWand =>
-        val ch = createMagicWandChunk(σ, σ.h, wand, pve, c, tv)
+        val ch = createMagicWandChunk(σ, wand)
         Q(σ.h + ch, c)
 
 			/* Any regular expressions, i.e. boolean and arithmetic. */
@@ -193,7 +193,7 @@ trait DefaultProducer[
    *       Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
    *       that term?
    */
-  def createMagicWandChunk(σ: S, hPO: H, wand: ast.MagicWand, pve: PartialVerificationError, c: C, tv: TV) = {
+  def createMagicWandChunk(σ: S, wand: ast.MagicWand) = {
     val essentialWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
 
     var terms = new ListBuffer[Term]()
@@ -205,24 +205,9 @@ trait DefaultProducer[
         terms += σ.γ(lv)
         i += 1
         ast.LocalVariable(id)(lv.typ, lv.pos, lv.info)
-
-      /* TODO: Should take a continuation! What if eval doesn't yield a term? Also, r is discarded. */
-      case po @ ast.PackageOld(e) =>
-        val id = "$po" + i
-        val lv = ast.LocalVariable(id)(po.typ, po.pos, po.info)
-        var t: Term = null
-        val r = /* TODO: Evaluate PackageOld(e) instead of e directly? */
-          eval(σ \ hPO, e, pve, c, tv)((_t, c1) => {
-            assert(t == null, "Unexpected re-execution of this continuation")
-            t = _t
-            Success[C, ST, H, S](c1)})
-        assert(t != null, "Evaluation did not yield a term")
-        terms += t
-        i += 1
-        lv
     }()
 
-    MagicWandChunk(essentialWand, instantiatedWand, terms)
+    MagicWandChunk(instantiatedWand, terms, σ.h)
   }
 
 	override def pushLocalState() {
