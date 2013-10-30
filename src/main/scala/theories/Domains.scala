@@ -447,7 +447,7 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet =>
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
 
-      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
+      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: sil.ast.OldExp | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.Folding | _: ast.InhaleExhaleExp | _: ast.PredicateAccess
            | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.MagicWand | _: ast.Applying =>
 

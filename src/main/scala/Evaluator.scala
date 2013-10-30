@@ -192,6 +192,18 @@ trait DefaultEvaluator[
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
+      /* TODO: We should enforce the definedness of c.poldHeap whenever an expression
+       *       that may contain PackageOld is evaluated.
+       *       This might not always be straight-forward, for example, when checking
+       *       self-framingness of wands.
+       */
+      case ast.PackageOld(e0) =>
+        println("\n[eval/pold]")
+        println("  e0: " + e0)
+        println("  c.poldHeap: " + c.poldHeap)
+        println("  σ.h: " + σ.h)
+        eval(σ \ c.poldHeap.getOrElse(σ.h), e0, pve, c, tv)(Q)
+
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if !config.shortCircuitingEvaluation() =>
         evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
@@ -886,7 +898,6 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull) {
-            decider.prover.logComment("[XOXOX withChunkIdentifier]")
             if (decider.assert(tRcvr !== Null()))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else

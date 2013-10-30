@@ -67,7 +67,7 @@ trait Producer[P <: FractionalPermissions[P],
               (Q: (S, C) => VerificationResult)
               : VerificationResult
 
-  def createMagicWandChunk(σ: S, wand: ast.MagicWand): Chunk
+  def createMagicWandChunk(σ: S, hPO: H, wand: ast.MagicWand, pve: PartialVerificationError, c: C, tv: TV): Chunk
 }
 
 trait Consumer[P <: FractionalPermissions[P],

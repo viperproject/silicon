@@ -218,7 +218,6 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
-        val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
             eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
@@ -301,9 +300,10 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.isPositive(tPerm)) {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
-                  val ncs = dcs.map{_ match {
+                  val ncs = dcs.map {
                     case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
+                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
+                  }
                   /* Producing Access is unfortunately not an option here
                   * since the following would fail due to productions
                   * starting in an empty heap:
@@ -349,11 +349,13 @@ trait DefaultExecutor[ST <: Store[ST],
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
         val σ0 = Σ(σ.γ, Ø, σ.g)
-        produce(σ0, fresh, FullPerm(), wand.left, pve, c, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+        val c0 = c.copy(poldHeap = Some(σ.h))
+        produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
           val c2 = c1.copy(reserveHeap = Some(σ.h))
           consume(σLhs, FullPerm(), wand.right, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
             val σ2 = σ \ c3.reserveHeap.get
-            val c4 = c3.copy(reserveHeap = None)
+            val c4 = c3.copy(reserveHeap = None, poldHeap = None)
+            /* TODO: Re-evaluates PackageOld. Can we avoid that? Reuse results from the preceding produce and consume ops? */
             produce(σ2, fresh, FullPerm(), wand, pve, c4, tv)(Q)})})
 
       case apply @ ast.Apply(wand) =>

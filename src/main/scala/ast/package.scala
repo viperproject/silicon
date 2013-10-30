@@ -104,6 +104,8 @@ package object ast {
 
   type Old = sil.ast.Old
   val Old = sil.ast.Old
+  type PackageOld = sil.ast.PackageOld
+  val PackageOld = sil.ast.PackageOld
 
   type AccessPredicate = sil.ast.AccessPredicate
   val AccessPredicate = sil.ast.AccessPredicate

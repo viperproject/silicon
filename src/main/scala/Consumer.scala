@@ -153,7 +153,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       /* TODO: Needs to consider both heaps. Can we merge this code with consumeIncludingReserveHeap? */
       case wand: ast.MagicWand =>
-        val ch = createMagicWandChunk(σ, wand)
+        val ch = createMagicWandChunk(σ, σ.h, wand, pve, c, tv)
+          /* TODO: Shouldn't we adapt the wand when consuming it? σ.h (too) restrictive but sound? */
         decider.getChunk[MagicWandChunk](h, ch.id) match {
           case Some(_) =>
             Q(h - ch, Unit, Nil, c) // TODO: Are Unit and Nil appropriate?
