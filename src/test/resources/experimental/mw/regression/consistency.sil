@@ -33,3 +33,7 @@ method test03() {
 
   assert folding acc(p.Pair(), write) in acc(p.Pair(), write) // ERROR
 }
+
+method test04(x: Ref) {
+  apply folding acc(x.Pair(), write) in true --* true // ERROR
+}

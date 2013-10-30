@@ -1,0 +1,67 @@
+var f: Int
+var g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+function sum(p: Ref): Int
+  requires acc(p.Pair(), write)
+{ unfolding acc(p.Pair(), write) in (p.f) + (p.g) }
+
+method test01(x: Ref, v: Int)
+  requires acc(x.f, write) && x.f == v
+  ensures acc(x.f, write) && x.f == v
+{
+  package (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+  apply (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+}
+
+method test02(x: Ref, v: Int)
+  requires acc(x.f, write) && x.f == v
+  ensures acc(x.f, write) && x.f == v
+{
+  package (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+  x.f := 0
+  //:: ExpectedError(apply.failed:wand.not.found)
+  apply (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+}
+
+method test03(x: Ref, v: Int)
+  requires acc(x.f, write) && x.f == v
+  requires (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+{
+  apply (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+}
+
+method test04(x: Ref, v: Int)
+  requires acc(x.f, write) && x.f == v
+  requires (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+{
+  x.f := 0
+  //:: ExpectedError(apply.failed:wand.not.found)
+  apply (acc(x.f, write) && x.f == pold(x.f)) --* (acc(x.f, write) && x.f == v)
+}
+
+method test05(x: Ref, y: Ref)
+  requires acc(x.Pair(), write)
+  requires (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+  ensures acc(y.f, write)
+{
+  unfold acc(x.Pair(), write)
+  fold acc(x.Pair(), write)
+
+  apply (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+}
+
+method test07(x: Ref, y: Ref)
+  requires acc(x.Pair(), write)
+  requires (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+  ensures acc(y.f, write)
+{
+  unfold acc(x.Pair(), write)
+  x.f := x.g
+  fold acc(x.Pair(), write)
+
+  apply (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+}
