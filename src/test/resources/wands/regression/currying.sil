@@ -1,3 +1,7 @@
+var f: Int
+var g: Int
+var h: Int
+
 method nearly_sound_curry(x: Ref)
   requires (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
   ensures acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
@@ -58,4 +62,6 @@ method uncurry(x: Ref)
   letass H := acc(x.h, write)
 
   package (F&&G) --* (applying (F--*(G--*H)) in (applying (G--*H) in H))
+
+  assert false // Never trust a magic wand!
 }
