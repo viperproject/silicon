@@ -24,25 +24,3 @@ method test02(x: Ref)
 
   assert acc(x.g, write)
 }
-
-method curry(x: Ref)
-  requires (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
-  ensures acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
-{
-  inhale acc(x.f, write) && acc(x.g, write) /* inhaling A in applying ... in packaging ... in packaging ... */
-
-  apply (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
-  package acc(x.g, write) --* acc(x.h, write)
-  package acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
-}
-
-method uncurry(x: Ref)
-  requires acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
-  ensures (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
-{
-  inhale acc(x.f, write) && acc(x.g, write) /* inhaling A in applying ... in applying ... in packaging ... */
-
-  apply acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
-  apply acc(x.g, write) --* acc(x.h, write)
-  package (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
-}
