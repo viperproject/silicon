@@ -1,0 +1,48 @@
+var f: Int
+var g: Int
+var h: Int
+
+method test01(x: Ref)
+  requires acc(x.f, write) && acc(x.g, write) && acc(x.h, write)
+{
+  letass F := acc(x.f, write)
+  letass G := acc(x.g, write)
+  letass H := acc(x.h, write)
+
+  package F --* (F && G)
+  package H --* (H && (F --* (F && G)))
+
+  test02(x)
+}
+
+method test02(x: Ref)
+  requires acc(x.h, write) --* (acc(x.h, write) && (acc(x.f, write) --* (acc(x.f, write) && acc(x.g, write))))
+  requires acc(x.h, write) && acc(x.f, write)
+{
+  apply acc(x.h, write) --* (acc(x.h, write) && (acc(x.f, write) --* (acc(x.f, write) && acc(x.g, write))))
+  apply acc(x.f, write) --* (acc(x.f, write) && acc(x.g, write))
+
+  assert acc(x.g, write)
+}
+
+method curry(x: Ref)
+  requires (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
+  ensures acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
+{
+  inhale acc(x.f, write) && acc(x.g, write) /* inhaling A in applying ... in packaging ... in packaging ... */
+
+  apply (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
+  package acc(x.g, write) --* acc(x.h, write)
+  package acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
+}
+
+method uncurry(x: Ref)
+  requires acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
+  ensures (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
+{
+  inhale acc(x.f, write) && acc(x.g, write) /* inhaling A in applying ... in applying ... in packaging ... */
+
+  apply acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
+  apply acc(x.g, write) --* acc(x.h, write)
+  package (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
+}
