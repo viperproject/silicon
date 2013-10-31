@@ -19,9 +19,6 @@ method sum_it(ys: Ref) returns (sum: Int)
   xs := ys
   sum := 0
 
-//  letass A := (xs != null) ==> (acc(xs.List(), write) && sum(xs) == OLD(sum(xs)))
-//  letass B := acc(ys.List(), write) && sum(ys) == old(sum(ys))
-
   /* ghost */ var oldsum_xs: Int
               oldsum_xs := sum_rec(xs)
 
@@ -30,7 +27,6 @@ method sum_it(ys: Ref) returns (sum: Int)
       --*
     (acc(ys.List(), write) && sum_rec(ys) == old(sum_rec(ys)))
 
-  // TODO: There seems to be a problem with using old(sum_rec(ys)) here as well, even outside of wands.
   while (xs != null)
     invariant ((xs != null) ==> acc(xs.List(), write))
     invariant sum == (old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs)));
