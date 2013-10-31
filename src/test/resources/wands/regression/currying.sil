@@ -63,5 +63,6 @@ method uncurry(x: Ref)
 
   package (F&&G) --* (applying (F--*(G--*H)) in (applying (G--*H) in H))
 
+  //:: ExpectedError(assert.failed:assertion.false)
   assert false // Never trust a magic wand!
 }
