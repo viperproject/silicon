@@ -193,6 +193,7 @@ package object ast {
     val Bool = semper.sil.ast.Bool
     val Int = semper.sil.ast.Int
     val Ref = semper.sil.ast.Ref
+    val Wand = semper.sil.ast.Wand
     type Seq = semper.sil.ast.SeqType
     val Seq = semper.sil.ast.SeqType
     type Set = semper.sil.ast.SetType

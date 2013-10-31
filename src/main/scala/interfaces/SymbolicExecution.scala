@@ -66,8 +66,6 @@ trait Producer[P <: FractionalPermissions[P],
                tv: TV)
               (Q: (S, C) => VerificationResult)
               : VerificationResult
-
-  def createMagicWandChunk(σ: S, wand: ast.MagicWand): Chunk
 }
 
 trait Consumer[P <: FractionalPermissions[P],

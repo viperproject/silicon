@@ -14,6 +14,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
+import supporters.MagicWandSupporter
 
 trait DefaultProducer[
                       ST <: Store[ST],
@@ -43,6 +44,8 @@ trait DefaultProducer[
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
+
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
@@ -176,7 +179,7 @@ trait DefaultProducer[
             Q(mh, c2)}))
 
       case wand: ast.MagicWand =>
-        val ch = createMagicWandChunk(σ, wand)
+        val ch = magicWandSupporter.createChunk(σ, wand)
         Q(σ.h + ch, c)
 
 			/* Any regular expressions, i.e. boolean and arithmetic. */
@@ -188,27 +191,6 @@ trait DefaultProducer[
 
 		produced
 	}
-
-  /* TODO: Move into another file, shouldn't be part of the Producer. MagicWandSupport? ChunksUtils?
-   *       Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
-   *       that term?
-   */
-  def createMagicWandChunk(σ: S, wand: ast.MagicWand) = {
-    val essentialWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
-
-    var terms = new ListBuffer[Term]()
-    var i = 0
-
-    val instantiatedWand = essentialWand.transform {
-      case lv: ast.LocalVariable =>
-        val id = "$lv" + i
-        terms += σ.γ(lv)
-        i += 1
-        ast.LocalVariable(id)(lv.typ, lv.pos, lv.info)
-    }()
-
-    MagicWandChunk(instantiatedWand, terms, σ.h)
-  }
 
 	override def pushLocalState() {
 		snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)

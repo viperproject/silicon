@@ -1,0 +1,31 @@
+var f: Int
+
+method test01(x: Ref)
+  requires acc(x.f, write)
+  ensures acc(x.f, write)
+{
+  package true --* acc(x.f, write)
+
+  letwand w := true --* acc(x.f, write)
+
+  apply w
+}
+
+method test02(x: Ref)
+  requires acc(x.f, write)
+  ensures acc(x.f, write)
+{
+  letass A := true
+  letass B := acc(x.f, write)
+
+  package A --* B
+  letwand w := A --* B
+
+  apply w
+}
+
+method test03(xs: Ref) {
+  while (xs != null) {
+    letwand w := true --* true
+  }
+}

@@ -16,6 +16,7 @@ import interfaces.reporting.{TraceView}
 import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
+import supporters.MagicWandSupporter
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -44,6 +45,7 @@ trait DefaultEvaluator[
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
@@ -721,12 +723,13 @@ trait DefaultEvaluator[
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
 
-      case ast.Applying(wand, eIn) =>
+      case ast.Applying(eWand, eIn) =>
         val πPre = decider.π
         var localResults: List[LocalEvaluationResult] = Nil
+        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
 
         val r =
-          consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
+          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
             assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
             val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
             val c1a = c1.copy(poldHeap = Some(ch.hPO))

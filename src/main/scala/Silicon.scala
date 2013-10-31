@@ -21,6 +21,7 @@ DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolCo
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
+import supporters.MagicWandSupporter
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 
@@ -141,6 +142,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val stateFactory = new DefaultStateFactory(decider.π _)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
+    val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]]()
 
     val dlb = FullPerm()
 
@@ -161,7 +163,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
                            setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger,
-                           stateUtils, bookkeeper, traceviewFactory)
+                           stateUtils, magicWandSupporter, bookkeeper, traceviewFactory)
 	}
 
 	private def runVerifier(program: ast.Program): List[Failure[C, ST, H, S, _]] = {

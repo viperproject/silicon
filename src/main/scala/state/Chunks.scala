@@ -71,10 +71,17 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 }
 
 
-/* TODO: Chunk and ChunkIdentifier should be changed s.t. they don't require `name` and `args` anymore. */
+/* It is expected that localVariables are all local variables occurring in
+ * wandInstance, and in that order from left to right.
+ * It is expected that localVariables and their values (localVariableValues)
+ * are in matching order.
+ *λ
+ * TODO: ??? Chunk and ChunkIdentifier should be changed s.t. they don't require `name` and `args` anymore.
+ */
 case class MagicWandChunk[H <: Heap[H]](wandInstance: ast.MagicWand,
-                                        localVariableTerms: Seq[Term],
-                                        hPO: H) /* TODO: Do we want this to contribute to equals and hashCode? */
+                                        localVariables: Seq[ast.LocalVariable],
+                                        localVariableValues: Seq[Term],
+                                        hPO: H)
     extends DirectChunk {
 
   /* TODO: Big ugly hack! DirectChunk is extended so that DefaultConsumer can return a consumed
@@ -87,15 +94,15 @@ case class MagicWandChunk[H <: Heap[H]](wandInstance: ast.MagicWand,
   def \(perm: DefaultFractionalPermissions) = sys.error("Unexpected call")
 
   val name = MagicWandChunkUtils.name(wandInstance)
-  val args = localVariableTerms
-  def id = MagicWandChunkIdentifier(wandInstance, localVariableTerms)
+  val args = localVariableValues
+  def id = MagicWandChunkIdentifier(wandInstance, localVariableValues)
 
-  override val toString = s"$name(${wandInstance.pos}, ${localVariableTerms.mkString("[", ", ", "]")}, $hPO)"
+  override val toString = s"$name(${wandInstance.pos}, ${localVariables.mkString("[", ", ", "]")}, ${localVariableValues.mkString("[", ", ", "]")}, $hPO)"
 }
 
-case class MagicWandChunkIdentifier(wandInstance: ast.MagicWand, localVariableTerms: Seq[Term]) extends ChunkIdentifier {
+case class MagicWandChunkIdentifier(wandInstance: ast.MagicWand, localVariableValues: Seq[Term]) extends ChunkIdentifier {
   val name = MagicWandChunkUtils.name(wandInstance)
-  val args = localVariableTerms
+  val args = localVariableValues
 }
 
 private object MagicWandChunkUtils {

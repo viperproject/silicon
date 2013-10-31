@@ -3,6 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import semper.silicon.decider.{PreambleFileEmitter}
+import supporters.MagicWandSupporter
 import util.control.Breaks._
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed, MagicWandNotWellformed}
@@ -212,6 +213,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+      val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
 			val bookkeeper: Bookkeeper,
 			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
@@ -245,6 +247,7 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              stateFormatter: StateFormatter[ST, H, S, String],
              heapMerger: HeapMerger[H],
              stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+             magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
              bookkeeper: Bookkeeper,
              traceviewFactory: TraceViewFactory[TV, ST, H, S]): V
 }
@@ -395,13 +398,14 @@ class DefaultVerifierFactory[ST <: Store[ST],
              stateFormatter: StateFormatter[ST, H, S, String],
              heapMerger: HeapMerger[H],
              stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+             magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
              bookkeeper: Bookkeeper,
              traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
     new DefaultVerifier[ST, H, PC, S, TV](
                         config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
                         multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils,
-                        bookkeeper, traceviewFactory)
+                        magicWandSupporter, bookkeeper, traceviewFactory)
 
 }
 
@@ -421,6 +425,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H] : Manifest, PC <: PathCondit
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+      val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
 			val bookkeeper: Bookkeeper,
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
 		extends AbstractVerifier[ST, H, PC, S, TV]
@@ -429,6 +434,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H] : Manifest, PC <: PathCondit
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, chunkFinder, stateFormatter,
-                                      heapMerger, stateUtils, bookkeeper, contextFactory, traceviewFactory)
+                                      heapMerger, stateUtils, magicWandSupporter, bookkeeper, contextFactory,
+                                      traceviewFactory)
                                      (manifest[H])
 }

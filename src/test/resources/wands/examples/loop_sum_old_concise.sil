@@ -29,23 +29,16 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant sum == (old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs)));
     invariant A --* B
   {
-    /* ghost */ var prev_xs: Ref
-                prev_xs := xs
+    letwand w := A --* B
+
+    var prev_xs: Ref /* ghost */
+    prev_xs := xs
 
     unfold acc(xs.List(), write)
     sum := sum + (xs.v)
     xs := xs.n;
 
-    package
-      A
-        --*
-      folding acc(prev_xs.List(), write) in
-        (applying
-          (((prev_xs != null) ==> (acc(prev_xs.List(), write) && sum_rec(prev_xs) == pold(sum_rec(prev_xs))))
-            --*
-          B)
-        in
-          B);
+    package A --* folding acc(prev_xs.List(), write) in (applying (w) in B)
   }
 
   apply A --* B

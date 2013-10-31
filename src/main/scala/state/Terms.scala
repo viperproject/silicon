@@ -3,6 +3,9 @@ package silicon
 package state.terms
 
 import ast.commonnodes
+import semper.silicon.state.MagicWandChunk
+import semper.silicon.interfaces.state.Heap
+
 //import ast.commonnodes.{BinaryOp}
 //import interfaces.state.{Heap}
 
@@ -1059,7 +1062,7 @@ case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term {
   override val toString = function.id + tArgs.mkString("(", ", ", ")")
 }
 
-/* Snapshots */
+/* Snapshots (in various senses) */
 
 sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 
@@ -1089,6 +1092,11 @@ case class SortWrapper(t: Term, to: Sort) extends Term {
 
   override val toString = s"$t"
   override val sort = to
+}
+
+case class WandChunkRef[H <: Heap[H]](ch: MagicWandChunk[H]) extends Term {
+  override val sort = sorts.Unit
+  override val toString = s"WandChunkRef(${ch.name}})"
 }
 
 /* Other terms */

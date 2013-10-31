@@ -12,6 +12,7 @@ import interfaces.decider.Decider
 import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk}
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
+import supporters.MagicWandSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -33,6 +34,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
+
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -158,7 +161,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* TODO: Needs to consider both heaps. Can we merge this code with consumeIncludingReserveHeap? */
       case wand: ast.MagicWand =>
         /* TODO: Getting id by first creating a chunk is not elegant. */
-        val id = createMagicWandChunk(σ, wand).id
+        val id = magicWandSupporter.createChunk(σ, wand).id
         /* TODO: Shouldn't we do a view-point adaptation when consuming a wand? */
         decider.getChunk[MagicWandChunk[H]](h, id) match {
           case Some(ch) =>

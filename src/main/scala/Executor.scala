@@ -16,6 +16,7 @@ import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, Di
     SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
+import supporters.MagicWandSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -48,6 +49,8 @@ trait DefaultExecutor[ST <: Store[ST],
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
+
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
@@ -120,7 +123,9 @@ trait DefaultExecutor[ST <: Store[ST],
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val wvs = lb.writtenVars
+        val wvs = lb.writtenVars filterNot (_.typ == ast.types.Wand)
+          /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
+
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
@@ -212,8 +217,16 @@ trait DefaultExecutor[ST <: Store[ST],
         exec(σ, stmts, c, tv)(Q)
 
       case ass @ ast.Assignment(v, rhs) =>
-        eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
-          Q(σ \+ (v, tRhs), c1))
+        v.typ match {
+          case ast.types.Wand =>
+            assert(rhs.isInstanceOf[ast.MagicWand], s"Expected magic wand but found $rhs (${rhs.getClass.getName}})")
+            val ch = magicWandSupporter.createChunk(σ, rhs.asInstanceOf[ast.MagicWand])
+            Q(σ \+ (v, WandChunkRef(ch)), c)
+
+          case _ =>
+            eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
+              Q(σ \+ (v, tRhs), c1))
+        }
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
@@ -358,16 +371,24 @@ trait DefaultExecutor[ST <: Store[ST],
             val c4 = c3.copy(reserveHeap = None, poldHeap = None)
             produce(σ2, fresh, FullPerm(), wand, pve, c4, tv)(Q)})})
 
-      case apply @ ast.Apply(wand) =>
+      case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        consume(σ, FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
+        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, e)
+//      println("\n[exec/apply]")
+//      println("  e = " + e)
+//      println("  wand = " + wand)
+//      println("  wandValues = " + wandValues)
+        /* TODO: Since resolveWand might already know the chunk it would be faster if we
+         *       removed it from the heap directly instead of consuming the wand.
+         */
+        consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
           assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
           val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
           val c1a = c1.copy(poldHeap = Some(ch.hPO))
           consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) => {
             val c2a = c2.copy(poldHeap = None)
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) =>
-              Q(σ3, c3))})})
+              Q(σ3 \ σ.γ, c3))})}) /* TODO: Remove wandValues from γ instead of using old σ.γ */
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto
