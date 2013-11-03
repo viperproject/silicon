@@ -165,10 +165,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         /* TODO: Shouldn't we do a view-point adaptation when consuming a wand? */
         decider.getChunk[MagicWandChunk[H]](h, id) match {
           case Some(ch) =>
-            Q(h - ch, Unit, List(ch), c) // TODO: Is unit the right choice?
+            Q(h - ch, decider.fresh(sorts.Snap), List(ch), c)
           case None if c.reserveHeap.nonEmpty =>
             decider.getChunk[MagicWandChunk[H]](c.reserveHeap.get, id) match {
-              case Some(ch) => Q(h, Unit, List(ch), c.copy(reserveHeap = Some(c.reserveHeap.get - ch))) // TODO: Is unit the right choice?
+              case Some(ch) => Q(h, decider.fresh(sorts.Snap), List(ch), c.copy(reserveHeap = Some(c.reserveHeap.get - ch)))
               case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
           case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
 

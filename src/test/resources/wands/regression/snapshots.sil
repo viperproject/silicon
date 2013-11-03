@@ -1,0 +1,49 @@
+var f: Int
+var g: Int
+var h: Bool
+
+predicate P(x: Ref) {
+  (acc(x.f, write) && x.f > 0) --* (acc(x.f, write) && acc(x.g, write) && ((x.f) + (x.g) > 0))
+}
+
+method test01(x: Ref)
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  letass A := (acc(x.f, write) && x.f > 0) --* (acc(x.f, write) && acc(x.g, write) && ((x.f) + (x.g) > 0))
+
+  x.f := 1
+  x.g := 1
+  package A
+  fold acc(x.P(), write)
+  unfold acc(x.P(), write)
+  apply A
+  assert acc(x.g, write) && ((x.f) + (x.g) > 0)
+  //:: UnexpectedError(assert.failed:assertion.false, /wand-silicon/issue/1/)
+  assert (x.g) == 1
+}
+
+function fun(x: Ref): Bool
+  requires (acc(x.h, write) --* acc(x.h, write))
+  requires acc(x.h, write)
+{ applying (acc(x.h, write) --* acc(x.h, write)) in x.h }
+
+method test02(x: Ref)
+  requires acc(x.h, write)
+{
+  package acc(x.h, write) --* acc(x.h, write)
+  var b: Bool
+  b := fun(x)
+  //:: UnexpectedError(assert.failed:assertion.false, /wand-silicon/issue/1/)
+  assert b == fun(x)
+}
+
+method test03(x: Ref)
+  requires acc(x.h, write)
+{
+  package acc(x.h, write) --* acc(x.h, write)
+  var b: Bool
+  b := fun(x)
+  x.h := !(x.h)
+  //:: ExpectedError(assert.failed:assertion.false)
+  assert b == fun(x)
+}
