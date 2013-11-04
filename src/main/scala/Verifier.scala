@@ -61,7 +61,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     }
   }
 
-  private def checkWandsAreSelfFraming(root: ast.Member, γ: ST, g: H, c: C, tv: TV): VerificationResult = {
+  private def checkWandsAreSelfFraming(σ: S, root: ast.Member, c: C, tv: TV): VerificationResult = {
     val wands = new scala.collection.mutable.ListBuffer[(ast.MagicWand, Seq[ast.LocalVariable])]()
 
     /* Collect wands together with additional local variables that are in the wands scope,
@@ -76,25 +76,25 @@ trait AbstractElementVerifier[ST <: Store[ST],
         vs ++ (loop.locals map (_.localVar))
     })
 
-    val σ = Σ(γ, Ø, g)
+//    val σ = Σ(γ, Ø, g)
     var result: VerificationResult = Success[C, ST, H, S](c)
 
     breakable {
       wands foreach {case (wand, vs) =>
-        val err = MagicWandNotWellformed(wand) //malformedErrorForWand(wand)
+        val err = MagicWandNotWellformed(wand)
         val left = wand.left
         val right = ast.expressions.getInnermostExpr(wand.right)
         val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable)
         val σ1 = σ \+ γ1
+        val c1 = c.copy(poldHeap = Some(σ.h))
 
         result =
           inScope {
-            produce(σ1, fresh, terms.FullPerm(), left, err, c, tv)((_, c1) =>
-              Success[C, ST, H, S](c1))
-          } && inScope {
-            produce(σ1, fresh, terms.FullPerm(), right, err, c, tv)((_, c1) =>
-              Success[C, ST, H, S](c1))
-          }
+            produce(σ1, fresh, terms.FullPerm(), left, err, c1, tv)((σ2, c2) => {
+              val c3 = c2.copy(givenHeap = Some(σ2.h))
+              val σ3 = σ1
+              produce(σ3, fresh, terms.FullPerm(), right, err, c3, tv)((_, c4) =>
+                Success[C, ST, H, S](c4))})}
 
         result match {
           case failure: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, TV@unchecked] =>
@@ -135,12 +135,15 @@ trait AbstractElementVerifier[ST <: Store[ST],
     inScope {
 			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-           (inScope {
+           (/*inScope {
               val (c2a, tv2a) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
-              checkWandsAreSelfFraming(method, σ2.γ, σ2.g, c2a, tv2a)}
-        && inScope {
-             val (c2b, tv2b) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
-             produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2b, tv2b)((_, c3) =>
+              /* TODO: Checking self-framingness here fails if pold(e) reads a location
+               *       to which access is not required by the precondition.
+               */
+              checkWandsAreSelfFraming(σ2 \ σ1.h, method, c2a, tv2a)}
+        &&*/ inScope {
+              val (c2b, tv2b) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
+              produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2b, tv2b)((_, c3) =>
                 Success[C, ST, H, S](c3))}
         &&  inScope {
               exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
@@ -175,7 +178,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
                inScope {
                  val (c2a, tv2a) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
-                 checkWandsAreSelfFraming(function, σ1.γ, σ1.g, c2a, tv2a)}
+                 checkWandsAreSelfFraming(σ1, function, c2a, tv2a)}
             && inScope {
                  eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
                     consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
@@ -193,7 +196,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
        (inScope {
           val (c2a, tv2a) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
-            checkWandsAreSelfFraming(predicate, σ.γ, σ.g, c2a, tv2a)}
+            checkWandsAreSelfFraming(σ, predicate, c2a, tv2a)}
     && inScope {
           produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
             Success[C, ST, H, S](c1))})

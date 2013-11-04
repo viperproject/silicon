@@ -3,7 +3,6 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import scala.collection.immutable.Stack
-import scala.collection.mutable.ListBuffer
 import sil.verifier.PartialVerificationError
 import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
@@ -12,7 +11,7 @@ import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
 import supporters.MagicWandSupporter
 
@@ -43,10 +42,7 @@ trait DefaultProducer[
 	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
-
   protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
-
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
@@ -179,7 +175,7 @@ trait DefaultProducer[
             Q(mh, c2)}))
 
       case wand: ast.MagicWand =>
-        val ch = magicWandSupporter.createChunk(σ, wand)
+        val ch = magicWandSupporter.createChunk(σ.γ, σ.h, wand)
         Q(σ.h + ch, c)
 
 			/* Any regular expressions, i.e. boolean and arithmetic. */

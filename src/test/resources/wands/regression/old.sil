@@ -66,3 +66,17 @@ method test07(x: Ref, y: Ref)
   //:: ExpectedError(apply.failed:assertion.false)
   apply (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
 }
+
+method test08(x: Ref)
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  letass A := acc(x.f, write)
+  letass B := acc(x.Pair(), write) && sum(x) == (given(x.f) + pold(x.g))
+
+  package A --* folding acc(x.Pair(), write) in B
+  apply A --* B
+  unfold acc(x.Pair(), write)
+
+  //:: ExpectedError(assert.failed:assertion.false)
+  assert false
+}

@@ -26,6 +26,14 @@ method test02(x: Ref)
 
 method test03(xs: Ref) {
   while (xs != null) {
+    package true --* true
+    letwand w := true --* true
+  }
+}
+
+method test04(xs: Ref) {
+  while (xs != null) {
+    //:: ExpectedError(letwand.failed:wand.not.found)
     letwand w := true --* true
   }
 }

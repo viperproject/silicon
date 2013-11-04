@@ -34,7 +34,7 @@ class MagicWandSupporter[ST <: Store[ST],
    *       Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
    *       that term?
    */
-  def createChunk(σ: S, wand: ast.MagicWand) = {
+  def createChunk(γ: ST, hPO: H, wand: ast.MagicWand) = {
     val essentialWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
 
     var vs = new ListBuffer[ast.LocalVariable]()
@@ -47,12 +47,12 @@ class MagicWandSupporter[ST <: Store[ST],
         val v = ast.LocalVariable(id)(lv.typ, lv.pos, lv.info)
 
         vs += v
-        ts += σ.γ(lv)
+        ts += γ(lv)
         i += 1
 
         v
     }()
 
-    MagicWandChunk(instantiatedWand, vs, ts, σ.h)
+    MagicWandChunk(instantiatedWand, vs, ts, hPO)
   }
 }

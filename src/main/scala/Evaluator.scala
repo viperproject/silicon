@@ -42,11 +42,8 @@ trait DefaultEvaluator[
 	import symbolConverter.toSort
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
-	import chunkFinder.withChunk
-
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
-
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -193,15 +190,8 @@ trait DefaultEvaluator[
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
-
-      /* TODO: We should enforce the definedness of c.poldHeap whenever an expression
-       *       that may contain PackageOld is evaluated, instead of silently using σ.h
-       *       if c.poldHeap is not explicitly set.
-       *       This might not always be straight-forward, for example, when checking
-       *       self-framingness of wands.
-       */
-      case ast.PackageOld(e0) =>
-        eval(σ \ c.poldHeap.getOrElse(σ.h), e0, pve, c, tv)(Q)
+      case ast.PackageOld(e0) => eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
+      case ast.ApplyOld(e0) => eval(σ \ c.givenHeap.get, e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if !config.shortCircuitingEvaluation() =>
@@ -732,13 +722,13 @@ trait DefaultEvaluator[
           consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
             assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
             val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
-            val c1a = c1.copy(poldHeap = Some(ch.hPO))
-            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) => {
-              val c2a = c2.copy(poldHeap = None)
-              produce(σ2, fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) =>
-                eval(σ3, eIn, pve, c3, tv)((tIn, c4) => {
+            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h)) /* TODO: See comment in exec/apply about givenHeap */
+            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
+              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
+                val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+                eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
-                  Success[C, ST, H, S](c4)}))})})
+                  Success[C, ST, H, S](c4)})}))})
 
         r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
           checkReserveHeaps(localResults)

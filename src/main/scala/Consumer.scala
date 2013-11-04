@@ -161,7 +161,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* TODO: Needs to consider both heaps. Can we merge this code with consumeIncludingReserveHeap? */
       case wand: ast.MagicWand =>
         /* TODO: Getting id by first creating a chunk is not elegant. */
-        val id = magicWandSupporter.createChunk(σ, wand).id
+        val id = magicWandSupporter.createChunk(σ.γ, σ.h, wand).id
         /* TODO: Shouldn't we do a view-point adaptation when consuming a wand? */
         decider.getChunk[MagicWandChunk[H]](h, id) match {
           case Some(ch) =>

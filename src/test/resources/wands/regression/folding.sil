@@ -18,7 +18,7 @@ method test06() {
   p.g := 0;
 
   package
-    //:: ExpectedError(wand.not.wellformed:insufficient.permission)
+    //:: MissingError(wand.not.wellformed:insufficient.permission, /wand-silicon/issue/2/)
     (acc(p.f, write) && p.f > 0)
       --*
     folding acc(p.Pair(), write) in (sum(p) > 0) // rhs is not self-framing
