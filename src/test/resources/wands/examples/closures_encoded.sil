@@ -1,0 +1,86 @@
+var f: Int
+
+predicate c1_pre(x: Ref) { true }
+predicate c1_post(x: Ref) { true }
+predicate c2_pre(x: Ref) { true }
+predicate c2_post(x: Ref) { true }
+predicate c3_pre(x: Ref) { true }
+predicate c3_post(x: Ref) { true }
+
+method triple_not_nested(x: Ref)
+  requires acc(x.c1_pre(), write)
+  requires acc(x.c1_post(), write) --* acc(x.c2_pre(), write)
+  requires acc(x.c2_post(), write) --* acc(x.c3_pre(), write)
+  ensures acc(x.c3_post(), write)
+{
+  exhale acc(x.c1_pre(), write)
+  inhale acc(x.c1_post(), write)
+
+  apply acc(x.c1_post(), write) --* acc(x.c2_pre(), write)
+
+  exhale acc(x.c2_pre(), write)
+  inhale acc(x.c2_post(), write)
+
+  apply acc(x.c2_post(), write) --* acc(x.c3_pre(), write)
+
+  exhale acc(x.c3_pre(), write)
+  inhale acc(x.c3_post(), write)
+}
+
+method call_triple_not_nested() {
+  var x: Ref
+  x := new()
+
+  x.f := 1
+
+  package (acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --* acc(x.f, write)
+  package (acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)
+
+  x.f := -10
+
+  exhale     acc(x.f, write)
+         && ((acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0))
+         && ((acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --* acc(x.f, write))
+}
+
+method triple_nested(x: Ref)
+  requires acc(x.c1_pre(), write)
+  requires acc(x.c1_post(), write) --*
+            (   acc(x.c2_pre(), write)
+             && (acc(x.c2_post(), write) --* acc(x.c3_pre(), write)))
+  ensures acc(x.c3_post(), write)
+{
+  exhale acc(x.c1_pre(), write)
+  inhale acc(x.c1_post(), write)
+
+  apply (acc(x.c1_post(), write) --*
+          (   acc(x.c2_pre(), write)
+           && (acc(x.c2_post(), write) --* acc(x.c3_pre(), write))))
+
+  exhale acc(x.c2_pre(), write)
+  inhale acc(x.c2_post(), write)
+
+  apply acc(x.c2_post(), write) --* acc(x.c3_pre(), write)
+
+  exhale acc(x.c3_pre(), write)
+  inhale acc(x.c3_post(), write)
+}
+
+method call_triple_nested() {
+  var x: Ref
+  x := new()
+
+  x.f := 1
+
+  package (acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)
+
+  package (acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --*
+               (acc(x.f, write)
+            && ((acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)))
+
+  x.f := -10
+
+  exhale (acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --*
+               (acc(x.f, write)
+            && ((acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)))
+}
