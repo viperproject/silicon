@@ -1,0 +1,75 @@
+var v: Int
+var n: Ref
+
+predicate List(xs: Ref) {
+	acc(xs.v, write) && acc(xs.n, write) && (xs.n != null ==> acc(xs.n.List(), write))
+}
+
+function elems(xs: Ref): Seq[Int]
+  requires acc(xs.List(), write)
+{ unfolding acc(xs.List(), write) in Seq(xs.v) ++ (xs.n == null ? Seq[Int]() : elems(xs.n)) }
+
+function head(xs: Ref): Int
+  requires acc(xs.List(), write)
+{ unfolding acc(xs.List(), write) in xs.v }
+
+method insert(xs: Ref, x: Int) returns (i: Int)
+  requires acc(xs.List(), write)
+  requires head(xs) < x
+  ensures acc(xs.List(), write)
+  ensures elems(xs) == (old(elems(xs))[0..i+1] ++ Seq(x) ++ (old(elems(xs))[i+1..]))
+{
+  var curr: Ref
+  var next: Ref
+  i := 0
+
+  letass A := acc(curr.List(), write)
+  letass B := acc(xs.List(), write) && elems(xs) == ((old(elems(xs))[0..i]) ++ given(elems(curr)))
+
+  unfold acc(xs.List(), write)
+  curr := xs
+  next := xs.n
+
+  package A --* B;
+
+  while (next != null && head(next) < x)
+    invariant (0 <= i) && (i < |old(elems(xs))|);
+    invariant acc(curr.v, write) && acc(curr.n, write);
+    invariant next == (curr.n);
+    invariant (curr.v) == (old(elems(xs))[i]); /* inv4 */
+    invariant (next != null) ==> (acc(next.List(), write) && (elems(next) == (old(elems(xs))[i+1..])));
+    invariant A --* B;
+  {
+    assert (old(elems(xs))[i+1..]) == elems(next);
+      /* Can be shown */
+    assume (old(elems(xs))[i+1]) == unfolding acc(next.List(), write) in next.v;
+      /* Cannot be shown by Silicon, and thus INV4 cannot be shown at the end of the loop */
+
+    letwand w := A --* B;
+
+    var prev: Ref
+    prev := curr
+
+    unfold acc(next.List(), write)
+    curr := next
+    next := next.n
+    i := i + 1
+
+    assert curr.v == (old(elems(xs))[i]); /* INV4 */
+
+    package A --* folding acc(prev.List(), write) in applying (w) in B;
+  }
+
+  var node: Ref
+  node := new()
+  node.v := x
+  node.n := next
+
+  fold acc(node.List(), write)
+  assert elems(node) == (Seq(x) ++ (old(elems(xs))[i+1..])); /* Silicon function unrolling? */
+
+  curr.n := node
+  fold acc(curr.List(), write)
+
+  apply A --* B
+}

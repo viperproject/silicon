@@ -1,0 +1,12 @@
+var f: Int
+
+method test(x: Ref)
+  requires acc(x.f, write)
+{
+  var i: Int
+  i := x.f
+
+  while (true)
+    invariant i == old(x.f)
+  {}
+}
