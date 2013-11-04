@@ -183,7 +183,7 @@ trait DefaultEvaluator[
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
-      case ast.And(e0, e1) if !config.shortCircuitingEvaluation() =>
+      case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
         evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
 
       /* Short-circuiting evaluation of AND */
@@ -224,7 +224,7 @@ trait DefaultEvaluator[
             Q(And(t0.get, t1), c1)}})
 
       /* Strict evaluation of OR */
-      case ast.Or(e0, e1) if !config.shortCircuitingEvaluation() =>
+      case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
         evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
 
       /* Short-circuiting evaluation of OR */
@@ -266,7 +266,7 @@ trait DefaultEvaluator[
             assume(tAux)
             Q(tOr, c1)}})
 
-      case _: ast.Implies if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Implies if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case impl @ ast.Implies(e0, e1) =>
         /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
@@ -324,7 +324,7 @@ trait DefaultEvaluator[
           Q(tImplies, c)
         }
 
-      case _: ast.Ite if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case ite @ ast.Ite(e0, e1, e2) =>
         val πPre: Set[Term] = decider.π
@@ -560,7 +560,7 @@ trait DefaultEvaluator[
                     eval(σ3, post, pve, c4, tv)((tPost, c5) => {
                       val c5a = c5.decCycleCounter(func)
                       val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
-                      if (config.cacheFunctionApplications())
+                      if (!config.disableFunctionApplicationCaching())
                         fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                       assume(Set(tFAEqFB, tPost))
                       Q(tFA, c5a)}))
@@ -568,7 +568,7 @@ trait DefaultEvaluator[
                   /* Function body is invisible, use postcondition instead */
                     eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
                       val c4a = c4.decCycleCounter(func)
-                      if (config.cacheFunctionApplications())
+                      if (!config.disableFunctionApplicationCaching())
                         fappCache += (tFA -> (decider.π -- πPre + tPost))
                       assume(tPost)
                       Q(tFA, c4a)})}
@@ -592,12 +592,12 @@ trait DefaultEvaluator[
 
                 val πPre = decider.π
                 eval(σ3, post, pve, c3, tv)((tPost, c4) => {
-                  if (config.cacheFunctionApplications())
+                  if (!config.disableFunctionApplicationCaching())
                     fappCache += (tFA -> (decider.π -- πPre + tPost))
                   assume(tPost)
                   Q(tFA, c4)})}}})})
 
-      case _: ast.Unfolding if !config.localEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
@@ -735,8 +735,8 @@ trait DefaultEvaluator[
                           (Q: (Term, C) => VerificationResult)
                           : VerificationResult = {
 
-    assert(!config.localEvaluations(),
-      "Unexpected call to performNonLocalEvaluation since config.localEvaluations is true.")
+    assert(config.disableLocalEvaluations(),
+           "Unexpected call to performNonLocalEvaluation since config.localEvaluations is true.")
 
     e match {
       case ast.Implies(e0, e1) =>

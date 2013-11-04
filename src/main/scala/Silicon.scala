@@ -323,16 +323,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val includeMembers = opt[String]("includeMembers",
-    descr = (  "Include members in verification (default: '.*'). "
-             + "Wildcard characters are '?' and '*'. "
-             + "Examples: 'Test.*', '*.init', 'Tests.short*', 'Tests.example?'."),
+    descr = "Include members in verification (default: '*'). Wildcard characters are '?' and '*'. ",
     default = Some(".*"),
     noshort = true
   )(singleArgConverter[String](s => silicon.common.config.wildcardToRegex(s)))
 
   val excludeMembers = opt[String]("excludeMembers",
-    descr = (  "Exclude members from verification (default: ''). "
-             + "Is applied after the include pattern."),
+    descr = "Exclude members from verification (default: ''). Is applied after the include pattern.",
     default = Some(""),
     noshort = true
   )
@@ -343,38 +340,36 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
-  val cacheFunctionApplications = opt[Boolean]("cacheFunctionApplications",
-    descr = (  "Cache evaluated function bodies and/or postconditions. "
-             + "Results in incompletenesses."),
-    default = Some(true),
+  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
+    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
+             + "Caching results in incompletenesses, but is usually faster."),
+    default = Some(false),
     noshort = true
   )
 
-  val cacheSnapshots = opt[Boolean]("cacheSnapshots",
-    descr = "Reduce number of fresh snapshot symbols when producing assertions\n",
-    default = Some(true),
+  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
+    descr = (  "Disable caching of snapshot symbols. "
+             + "Caching reduces the number of symbols the prover has to work with."),
+    default = Some(false),
     noshort = true
   )
 
-  val localEvaluations = opt[Boolean]("localEvaluations",
-    descr = (  "Locally evaluate pure conditionals and unfoldings. "
-             + "Is known to be unsound and incomplete, "
-             + "intended for debugging only! (default: true)"),
-    default = Some(true),
+  val disableLocalEvaluations = opt[Boolean]("disableLocalEvaluations",
+    descr = (  "Disable local evaluation of pure conditionals, function applications, unfoldings etc. "
+             + "WARNING: Disabling it is unsound unsound and incomplete, intended for debugging only!"),
+    default = Some(false),
     noshort = true
   )
 
-  val shortCircuitingEvaluation = opt[Boolean]("shortCircuitingEvaluation",
-    descr = (  "Perform short-circuiting evaluation of AND, OR. If not, "
-             + "evaluating e.g., i > 0 && f(i), will fail if f's "
-             + "precondition requires i > 0 (default: true)"),
-    default = Some(true),
+  val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
+    descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
+             + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),
+    default = Some(false),
     noshort = true
   )
 
   val logLevel = opt[String]("logLevel",
-    descr = (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF "
-             + "(default: OFF)"),
+    descr = (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)"),
     default = Some("OFF"),
     noshort = true
   )
