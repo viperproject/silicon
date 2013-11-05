@@ -19,12 +19,19 @@ class MagicWandSupporter[ST <: Store[ST],
 
     case v: ast.LocalVariable =>
       val ch = σ.γ(v).asInstanceOf[terms.WandChunkRef[H]].ch
-      // give all local vars fresh names
+
+      /* Give all local vars fresh names. This ensures that we can add them to
+       * a store without risking to overwrite existing local variables.
+       * Renaming is currently necessary because local variables inside wands
+       * in wand chunks are always given the same names when the wand chunk
+       * is created.
+       */
       val lvs = ch.localVariables map (lv => silicon.ast.utils.fresh(lv))
-      val wand = sil.ast.utility.Expressions.instantiateVariables(ch.wandInstance, ch.localVariables, lvs)
-      // create mappings from these fresh variables to the receivers that come with the chunk
+
+      /* Create mappings from these fresh variables to the receivers that come with the chunk */
       val map: Map[ast.LocalVariable, terms.Term] = (lvs zip ch.localVariableValues).toMap
-      // return fresh chunk AST and mappings
+      val wand = sil.ast.utility.Expressions.instantiateVariables(ch.wandInstance, ch.localVariables, lvs)
+
       (wand, map)
 
     case _ => sys.error(s"Unexpected expression $exp (${exp.getClass.getName}})")
@@ -35,12 +42,18 @@ class MagicWandSupporter[ST <: Store[ST],
    *       that term?
    */
   def createChunk(γ: ST, hPO: H, wand: ast.MagicWand) = {
+    /* Remove all ghost operations and keep only the real rhs of the wand */
     val essentialWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
 
     var vs = new ListBuffer[ast.LocalVariable]()
     var ts = new ListBuffer[terms.Term]()
     var i = 0
 
+    /* Collect all local variables and their values.
+     * Rename local variables to $lv_i to simplify comparing wands syntactically,
+     * which is currently done to find a potentially matching wand chunk in the
+     * heap when consuming a wand.
+     */
     val instantiatedWand = essentialWand.transform {
       case lv: ast.LocalVariable =>
         val id = "$lv" + i
