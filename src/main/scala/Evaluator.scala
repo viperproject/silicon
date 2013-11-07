@@ -16,6 +16,7 @@ import interfaces.reporting.{TraceView}
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
+import semper.silicon.heap.HeapManager
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -48,6 +49,9 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
+
+  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+
 
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -124,6 +128,9 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"[eval] $e")
 		}
 
+    //println(e)
+    //println(e.getClass)
+
     /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
      * might be tempting to think that we don't need to locally evaluate
      * Implies and Ite anymore. However, that is not true, because not all of
@@ -142,7 +149,9 @@ trait DefaultEvaluator[
       case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, Eq, pve, c, tv)(Q)
       case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c, tv)(Q)
 
-      case v: ast.Variable => Q(σ.γ(v), c)
+      case v: ast.Variable => {
+        Q(σ.γ(v), c)
+      }
 
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
@@ -167,10 +176,21 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-          withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-            Q(ch.value, c1)))
+      case fa: ast.FieldAccess =>  {
+        // TODO generalize
+        fa.rcv match  {
+          case v: ast.Variable if(v.name == "o") =>
+            println("hai")
+            eval(σ, v, pve, c, tv)((tRcvr, c1) =>
+              heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) => Q(t, c1))
+            )
+          case _ =>
+            withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
+              withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
+                Q(ch.value, c1)))
+        }
+
+      }
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>

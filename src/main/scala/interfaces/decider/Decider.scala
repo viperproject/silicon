@@ -24,6 +24,7 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assume(φ: Term)
 	def assume(φ: Set[Term])
 
+  def canReadGlobally(h:H, id:ChunkIdentifier):Boolean
 	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean
   def exhalePermissions(h:H, id:ChunkIdentifier, p:P): Option[H]
   def exhalePermissions(h:H, exhaleH:H):Option[H]

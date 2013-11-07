@@ -54,6 +54,8 @@ object sorts {
     override val toString = "Multiset[%s]".format(elementsSort)
   }
 
+
+
   case class Arrow(from: Sort, to: Sort) extends Sort {
     private def decompose(a: Arrow, ss: scala.collection.immutable.Seq[Sort])
                          : (scala.collection.immutable.Seq[Sort], Sort) = {

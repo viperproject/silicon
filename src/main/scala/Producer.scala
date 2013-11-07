@@ -21,6 +21,12 @@ import semper.silicon.state.terms.Eq
 import semper.silicon.state.terms.Combine
 import semper.silicon.state.terms.Null
 import semper.silicon.state.terms.NoPerm
+import semper.silicon.heap.HeapManager
+import interfaces.state.StoreFactory
+import state.terms._
+import state.terms.implicits._
+import semper.sil.ast.{LocalVar, LocalVarDecl}
+
 
 trait DefaultProducer[
                       ST <: Store[ST],
@@ -45,7 +51,9 @@ trait DefaultProducer[
 	protected val heapMerger: HeapMerger[H]
 	import heapMerger.merge
 
-	protected val symbolConverter: SymbolConvert
+  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+
+  protected val symbolConverter: SymbolConvert
 	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
@@ -175,21 +183,58 @@ trait DefaultProducer[
             Q(mh, c2)}))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
-      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain)))=> {
-        // restriction: the permission is constant and we can evaluate it here
-        eval(σ, set, pve, c, tv) ((tSet, c1) => {
-          evalp(σ, gain, pve, c, tv) ((pGain, c2) => {
-            val pNettoGain = pGain * p
-            val ch = DirectConditionalChunk(field.name, null /* value */, SetIn(*(), tSet), pNettoGain)
-            val mh = σ.h + ch
-            Q(mh, c2)
-          })
+
+      // TODO: generalize for an arbitrary condition
+      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), body)) => {
+
+        body match {
+          case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+            // restriction: the permission is constant and we can evaluate it here
+            eval(σ, set, pve, c, tv)((tSet, c1) => {
+              evalp(σ, gain, pve, c, tv)((pGain, c2) => {
+                val pNettoGain = pGain * p
+                // val s = sf(sorts.UninterpretedCollectionValues(toSort(field.typ)))   we don't yet use snapshots
+                // TODO: snapshot conversions for uninterpreted collection values
+                val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(field.typ)))
+                // TODO: move actual inhale to HeapManager
+                val ch = DirectConditionalChunk(field.name, s, SetIn(*(), tSet), pNettoGain)
+                val mh = σ.h + ch
+                Q(mh, c2)
+              })
+            })
+        }
+      }
+
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.And(ast.SetContains(elem2, set2), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr2, field2), gain)))) => {
+        // add the variables to the local variables within a new scope
+        decider.inScope({
+
+        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+
+        // eval the condition
+        eval(σ \+ γVars, cond, pve,c, tv)((tCond, c1) =>
+            // TODO: produce the body - how exactly?
+        )
+        produce(σ \+ γVars, sf,  p, cond, pve,c, tv)((σ, c1) => Q(null, c1 ))
+
+        /*eval(σ , set, pve, c, tv)((tSet, c1) =>
+          eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
+            heapManager.getValue(σ.h, tRcvr, field, tSet, pve, null, c, tv)((tValue) => {
+                println(σ.h)
+                println(tValue)
+                Q(null, c2)
+            })
+          }
+          ))*/
+
         })
       }
 
 			/* Any regular expressions, i.e. boolean and arithmetic. */
 			case _ =>
 				eval(σ, φ, pve, c, tv)((t, c1) => {
+          println("assuming " + t)
 					assume(t)
           Q(σ.h, c1)})
 		}

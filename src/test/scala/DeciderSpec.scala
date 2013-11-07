@@ -74,13 +74,26 @@ class DeciderSpec extends FlatSpec {
   }
   
   it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: x.f -> _ # 0" in {
-        val decider = createDecider
+    val decider = createDecider
+
 
     val x = decider.fresh(sorts.Ref)
     // tr.f -> tv # al
     val heap = new SetBackedHeap() + DirectFieldChunk(x, "f", null, NoPerm())
     
     // h, id
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
+  }
+
+  it should "say that we have not enough permissions to access x.f if we do not know that it is in a set" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+
+    val x = decider.fresh(sorts.Ref)
+    val S = decider.fresh(sorts.Set(sorts.Ref))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+
     assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
   }
   

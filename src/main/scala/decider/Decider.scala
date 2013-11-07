@@ -369,13 +369,22 @@ class DefaultDecider[ST <: Store[ST],
 //  }
 //
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
-  
-  /**
+
+
+  def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
+     hasPermissions(h,id,p, AtLeast)
+  }
+
+  def canReadGlobally(h:H, id:ChunkIdentifier):Boolean = {
+    hasPermissions(h,id,NoPerm(), Greater)
+  }
+
+    /**
    * Does a global lookup on the heap h whether there are enough permissions (at least P)
    * for chunk id.
    * @return returns true if there are enough permissions on the heap, false if there are definitely not enough permissions on the heap.
    */
-  	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
+  	def hasPermissions(h: H, id: ChunkIdentifier, p:P, comp: (Term,Term) => Term): Boolean = {
 	  // collect all chunks
   	  
   	  //println("looking up global permissions")
@@ -397,7 +406,7 @@ class DefaultDecider[ST <: Store[ST],
   	  } }
   	  
   	  
-  	  val goal = AtLeast(BigPermSum (s, { x => x}), p)
+  	  val goal = comp(BigPermSum (s, { x => x}), p)
 
   	  val res = prover.assert(goal)
   	  
@@ -433,6 +442,10 @@ class DefaultDecider[ST <: Store[ST],
       case SetIntersection(t1, t2) => SetIntersection(instance(t1, withT), instance(t2, withT))
       case SetAdd(t1, t2) => SetAdd(instance(t1, withT), instance(t2, withT))
       case SingletonSet(t1) => SingletonSet(instance(t1, withT))
+      case False() => False()
+      case True() => True()
+      case Not(t) => Not(instance(t, withT))
+      case s: SortWrapper => s
     }
   }
 
