@@ -156,7 +156,7 @@ class DefaultDecider[ST <: Store[ST],
 	def assert(t: Term) = assert(t, null)
 
 	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
-	  	//println("Asserting in decider.... " + t)
+	  //println("Asserting in decider.... " + t)
 	  
 		val asserted = isKnownToBeTrue(t)
 
@@ -388,7 +388,7 @@ class DefaultDecider[ST <: Store[ST],
 	  // collect all chunks
   	  
   	  //println("looking up global permissions")
-  	  
+
   	  val s:Seq[Term] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
   	    // construct the big And for the condition
   	    val condition = BigAnd(permChunk.args zip id.args map {
@@ -402,7 +402,7 @@ class DefaultDecider[ST <: Store[ST],
           }
         })
   	    // construct the ITE
-  	    Ite(condition, permChunk.perm, NoPerm())
+  	    Ite(condition, instance(permChunk.perm, id.args.last), NoPerm())
   	  } }
   	  
   	  
@@ -464,13 +464,14 @@ class DefaultDecider[ST <: Store[ST],
     // convert to conditional chunks if necessary
     var hq = toConditional(h)
     val exhaleHC = toConditional(exhaleH)
+
     //println(hq.values.size)
     //println(exhaleHC)
 
     breakable {
       exhaleHC.values.foreach {
         ch => ch match {
-          case eCh: DirectConditionalChunk => {
+          case eCh: DirectConditionalChunk if(eCh.name == ch.name) => {
             val guard1 = eCh.guard
 
             hq = H(hq.asInstanceOf[SetBackedHeap]).asInstanceOf[H]

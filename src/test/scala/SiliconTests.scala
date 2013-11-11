@@ -7,15 +7,18 @@ import semper.sil.frontend.{Frontend, SilFrontend}
 
 class SiliconTests extends DefaultSilSuite {
   private val siliconTestDirectories: Seq[String] = List(
-//    "experimental"
+  //  "experimental/cc"
   )
 
   private val silTestDirectories: Seq[String] = List(
-    "all"//,
-//    "all/basic",
-//    "all/chalice",
-//    "all/sequences",
-//    "all/issues/silicon"
+   // "all"//,
+   //   "all/predicates"
+   //  "all/basic"//,
+ //   "all/chalice"//,
+     //"all/sequences"//,
+    //"all/quantifiers",
+   "all/curr"
+   // "all/my"
   )
 
   override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
@@ -38,6 +41,7 @@ class SiliconTests extends DefaultSilSuite {
 
     silicon.parseCommandLine(args)
     silicon.config.initialize {case _ =>}
+    
 
     silicon
   }

@@ -13,10 +13,41 @@ import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, St
     FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.{TraceView}
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import semper.silicon.state._
 import state.terms._
 import state.terms.implicits._
 import semper.silicon.heap.HeapManager
+import semper.silicon.interfaces.Failure
+import scala.Some
+import semper.silicon.state.terms.False
+import semper.silicon.state.terms.Eq
+import semper.silicon.state.terms.SeqSingleton
+import semper.silicon.state.terms.Div
+import semper.silicon.state.terms.SeqNil
+import semper.silicon.state.terms.WildcardPerm
+import semper.silicon.state.terms.SeqRanged
+import semper.silicon.state.FieldChunkIdentifier
+import semper.silicon.state.terms.Quantification
+import semper.silicon.state.terms.Mod
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.silicon.state.terms.DomainFApp
+import semper.silicon.state.terms.*
+import semper.silicon.state.PredicateChunkIdentifier
+import semper.silicon.state.terms.FullPerm
+import semper.silicon.state.terms.SingletonSet
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.interfaces.Success
+import semper.silicon.state.terms.True
+import semper.silicon.state.terms.IntLiteral
+import semper.silicon.state.terms.Null
+import semper.silicon.state.terms.FApp
+import semper.silicon.state.terms.EmptySet
+import semper.silicon.state.terms.NoPerm
+import semper.sil.verifier.errors.PreconditionInAppFalse
+import semper.silicon.state.terms.FractionPerm
+import semper.sil.verifier.reasons.ReceiverNull
+import semper.sil.verifier.reasons.DivisionByZero
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -177,19 +208,18 @@ trait DefaultEvaluator[
           })
 
       case fa: ast.FieldAccess =>  {
-        // TODO generalize
-        fa.rcv match  {
-          case v: ast.Variable if(v.name == "o") =>
-            println("hai")
-            eval(σ, v, pve, c, tv)((tRcvr, c1) =>
-              heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) => Q(t, c1))
-            )
-          case _ =>
-            withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-              withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-                Q(ch.value, c1)))
-        }
+        // TODO: should not be needed - migrate all value lookups into heapmanager
+        val hasCondChunks = σ.h.values exists {case ch:DirectConditionalChunk => true case _ => false}
 
+        if (hasCondChunks) {
+          eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
+            heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) => Q(t, c1))
+          )
+        } else {
+          withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
+            withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
+              Q(ch.value, c1)))
+        }
       }
 
       case ast.Not(e0) =>
@@ -535,7 +565,7 @@ trait DefaultEvaluator[
              * to not pollute the path conditions.
              *
              * Actually, only path conditions in which the quantified variable
-             * occurrs are waste, others, especially $combine-terms, are actually
+             * occurs are waste, others, especially $combine-terms, are actually
              * of interest and should be in the path conditions to avoid the
              * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
              * which is currently overcome by caching fapp-terms.

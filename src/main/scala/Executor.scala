@@ -13,10 +13,66 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.{/*Message,*/ TraceView}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk,
-    SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
+import semper.silicon.state._
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.sil.verifier.errors.Internal
+import semper.silicon.state.DirectFieldChunk
+import semper.sil.verifier.errors.FoldFailed
+import semper.silicon.state.PredicateChunkIdentifier
+import semper.silicon.state.terms.FullPerm
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import scala.Some
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.interfaces.Success
+import semper.silicon.state.NestedFieldChunk
+import semper.silicon.state.terms.True
+import semper.sil.verifier.errors.LoopInvariantNotPreserved
+import semper.silicon.state.terms.Null
+import semper.sil.verifier.errors.WhileFailed
+import semper.sil.verifier.errors.ExhaleFailed
+import semper.sil.verifier.errors.LoopInvariantNotEstablished
+import semper.sil.verifier.reasons.InsufficientPermission
+import semper.sil.verifier.errors.UnfoldFailed
+import semper.sil.verifier.errors.PreconditionInCallFalse
+import semper.sil.verifier.errors.AssignmentFailed
+import semper.silicon.state.FieldChunkIdentifier
+import semper.sil.verifier.errors.AssertFailed
+import semper.sil.verifier.reasons.AssertionFalse
+import semper.sil.verifier.reasons.ReceiverNull
+import semper.silicon.state.NestedPredicateChunk
+import semper.silicon.heap.HeapManager
+import semper.silicon.ast._
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.sil.verifier.errors.Internal
+import semper.silicon.state.DirectFieldChunk
+import semper.sil.verifier.errors.FoldFailed
+import semper.silicon.state.PredicateChunkIdentifier
+import semper.silicon.state.terms.FullPerm
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import scala.Some
+import semper.silicon.state.DirectConditionalChunk
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.interfaces.Success
+import semper.silicon.state.NestedFieldChunk
+import semper.silicon.state.terms.True
+import semper.sil.verifier.errors.LoopInvariantNotPreserved
+import semper.silicon.state.terms.Null
+import semper.sil.verifier.errors.WhileFailed
+import semper.sil.verifier.errors.ExhaleFailed
+import semper.sil.verifier.errors.LoopInvariantNotEstablished
+import semper.sil.verifier.reasons.InsufficientPermission
+import semper.sil.verifier.errors.UnfoldFailed
+import semper.sil.verifier.errors.PreconditionInCallFalse
+import semper.sil.verifier.errors.AssignmentFailed
+import semper.silicon.state.FieldChunkIdentifier
+import semper.sil.verifier.errors.AssertFailed
+import semper.sil.verifier.reasons.AssertionFalse
+import semper.sil.verifier.reasons.ReceiverNull
+import semper.silicon.state.NestedPredicateChunk
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -44,7 +100,10 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val heapMerger: HeapMerger[H]
   import heapMerger.merge
 
-	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
+  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+
+
+  protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
@@ -203,17 +262,31 @@ trait DefaultExecutor[ST <: Store[ST],
           Q(σ \+ (v, tRhs), c1))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
+        // TODO: should not be needed - migrate all fields writes into HeapManager
+        val hasCondChunks = σ.h.values exists {case ch:DirectConditionalChunk => true case _ => false}
         val pve = AssignmentFailed(ass)
-        val id = field.name
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
-            eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
-              val id = FieldChunkIdentifier(tRcvr, field.name)
-              withChunk[DirectChunk](σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
-                Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
 
+        if(hasCondChunks) {
+          // (inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, Q: H => VerificationResult)
+          eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+            // TODO: this evaluation could also take place _after_ checking the permissions
+            eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
+              heapManager.setValue(σ.h, tRcvr, field, tRhs, fl, pve, c, tv)((nh) =>
+                Q(σ \ nh, c2)
+              )
+            )
+          )
+        } else {
+          val id = field.name
+          eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+            if (decider.assert(tRcvr !== Null()))
+              eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+                val id = FieldChunkIdentifier(tRcvr, field.name)
+                withChunk[DirectChunk](σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
+                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
+            else
+              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
+        }
       case ast.New(v) =>
         val t = fresh(v)
         assume(t !== Null())

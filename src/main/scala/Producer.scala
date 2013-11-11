@@ -29,59 +29,65 @@ import semper.sil.ast.{LocalVar, LocalVarDecl}
 
 
 trait DefaultProducer[
-                      ST <: Store[ST],
-                      H <: Heap[H],
-											PC <: PathConditions[PC],
-                      S <: State[ST, H, S],
-											TV <: TraceView[TV, ST, H, S]]
-		extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+ST <: Store[ST],
+H <: Heap[H],
+PC <: PathConditions[PC],
+S <: State[ST, H, S],
+TV <: TraceView[TV, ST, H, S]]
+  extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState {
+  this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+    with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C]
-	import decider.{fresh, assume}
+  protected val decider: Decider[P, ST, H, PC, S, C]
 
-	protected val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  import decider.{fresh, assume}
 
-	protected val heapMerger: HeapMerger[H]
-	import heapMerger.merge
+  protected val stateFactory: StateFactory[ST, H, S]
+
+  import stateFactory._
+
+  protected val heapMerger: HeapMerger[H]
+
+  import heapMerger.merge
 
   protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
 
   protected val symbolConverter: SymbolConvert
-	import symbolConverter.toSort
+
+  import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
+
   import stateUtils.freshARP
 
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
-	protected val bookkeeper: Bookkeeper
-	protected val config: Config
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val bookkeeper: Bookkeeper
+  protected val config: Config
 
-	private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
-	private var snapshotCache: Map[Term, (Term, Term)] = Map()
+  private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
+  private var snapshotCache: Map[Term, (Term, Term)] = Map()
 
-	def produce(σ: S,
+  def produce(σ: S,
               sf: Sort => Term,
               p: P,
               φ: ast.Expression,
               pve: PartialVerificationError,
               c: C,
               tv: TV)
-			       (Q: (S, C) => VerificationResult)
-             : VerificationResult =
+             (Q: (S, C) => VerificationResult)
+  : VerificationResult =
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
       // TODO: merge for conditional chunks
       // val (mh, mts) = merge(Ø, h)
       //  assume(mts)
       val mh = h
-      Q(σ \ mh, c1)})
+      Q(σ \ mh, c1)
+    })
 
   def produces(σ: S,
                sf: Sort => Term,
@@ -91,7 +97,7 @@ trait DefaultProducer[
                c: C,
                tv: TV)
               (Q: (S, C) => VerificationResult)
-              : VerificationResult =
+  : VerificationResult =
 
     if (φs.isEmpty)
       Q(σ, c)
@@ -106,8 +112,8 @@ trait DefaultProducer[
                        pve: PartialVerificationError,
                        c: C,
                        tv: TV)
-                       (Q: (H, C) => VerificationResult)
-                      : VerificationResult = {
+                      (Q: (H, C) => VerificationResult)
+  : VerificationResult = {
 
     val tv1 = tv.stepInto(c, Producing[ST, H, S](σ, p, φ))
 
@@ -117,20 +123,20 @@ trait DefaultProducer[
     })
   }
 
-	private def internalProduce(σ: S,
+  private def internalProduce(σ: S,
                               sf: Sort => Term,
                               p: P,
                               φ: ast.Expression,
                               pve: PartialVerificationError,
                               c: C,
                               tv: TV)
-			                       (Q: (H, C) => VerificationResult)
-                             : VerificationResult = {
+                             (Q: (H, C) => VerificationResult)
+  : VerificationResult = {
 
-		logger.debug("\nPRODUCE " + φ.toString)
-		logger.debug(stateFormatter.format(σ))
+    logger.debug("\nPRODUCE " + φ.toString)
+    logger.debug(stateFormatter.format(σ))
 
-		val produced = φ match {
+    val produced = φ match {
       case ast.InhaleExhaleExp(a0, _) =>
         produce2(σ, sf, p, a0, pve, c, tv)(Q)
 
@@ -142,16 +148,16 @@ trait DefaultProducer[
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
 
-				assume(tSnapEq)
+        assume(tSnapEq)
         produce2(σ, sf0, p, a0, pve, c, tv)((h1, c1) =>
           produce2(σ \ h1, sf1, p, a1, pve, c1, tv)((h2, c2) =>
-          Q(h2, c2)))
+            Q(h2, c2)))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-				eval(σ, e0, pve, c, tv)((t0, c1) =>
-					branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
-						(c2: C, tv1: TV) => produce2(σ, sf, p, a0, pve, c2, tv1)(Q),
-						(c2: C, tv1: TV) => Q(σ.h, c2)))
+        eval(σ, e0, pve, c, tv)((t0, c1) =>
+          branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
+            (c2: C, tv1: TV) => produce2(σ, sf, p, a0, pve, c2, tv1)(Q),
+            (c2: C, tv1: TV) => Q(σ.h, c2)))
 
       case ast.Ite(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -169,7 +175,9 @@ trait DefaultProducer[
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
-            Q(mh, c2)})})
+            Q(mh, c2)
+          })
+        })
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
@@ -180,76 +188,108 @@ trait DefaultProducer[
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
-            Q(mh, c2)}))
+            Q(mh, c2)
+          }))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
 
       // TODO: generalize for an arbitrary condition
-      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), body)) => {
-
-        body match {
-          case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-            // restriction: the permission is constant and we can evaluate it here
-            eval(σ, set, pve, c, tv)((tSet, c1) => {
-              evalp(σ, gain, pve, c, tv)((pGain, c2) => {
-                val pNettoGain = pGain * p
-                // val s = sf(sorts.UninterpretedCollectionValues(toSort(field.typ)))   we don't yet use snapshots
-                // TODO: snapshot conversions for uninterpreted collection values
-                val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(field.typ)))
-                // TODO: move actual inhale to HeapManager
-                val ch = DirectConditionalChunk(field.name, s, SetIn(*(), tSet), pNettoGain)
-                val mh = σ.h + ch
-                Q(mh, c2)
-              })
-            })
-        }
-      }
-
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.And(ast.SetContains(elem2, set2), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr2, field2), gain)))) => {
-        // add the variables to the local variables within a new scope
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain))) => {
         decider.inScope({
 
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+          val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
-        // eval the condition
-        eval(σ \+ γVars, cond, pve,c, tv)((tCond, c1) =>
-            // TODO: produce the body - how exactly?
-        )
-        produce(σ \+ γVars, sf,  p, cond, pve,c, tv)((σ, c1) => Q(null, c1 ))
 
-        /*eval(σ , set, pve, c, tv)((tSet, c1) =>
-          eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
-            heapManager.getValue(σ.h, tRcvr, field, tSet, pve, null, c, tv)((tValue) => {
-                println(σ.h)
-                println(tValue)
-                Q(null, c2)
-            })
-          }
-          ))*/
+          // restriction: the permission is constant and we can evaluate it here
+          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>  {
+            assume(tCond)
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
+                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p)((newHeap) =>
+                  Q(newHeap, c2)
+                )
+              )
+            )
+          })
+        })
 
+      }
+
+      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if (body.isPure) => {
+        // TODO emit to Z3 -- how??
+
+        decider.inScope({
+
+          val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+          // restriction: the permission is constant and we can evaluate it here
+          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+            assume(tCond)
+            eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) =>
+              Q(σ.h, c2)
+            )
+          })
         })
       }
 
-			/* Any regular expressions, i.e. boolean and arithmetic. */
-			case _ =>
-				eval(σ, φ, pve, c, tv)((t, c1) => {
-          println("assuming " + t)
-					assume(t)
-          Q(σ.h, c1)})
-		}
+      // restricted to single implication for the moment
+      /*
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.And(ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain), rest))) => {
+        // add the variables to the local variables within a new scope
+        decider.inScope({
 
-		produced
-	}
+          val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
-	override def pushLocalState() {
-		snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)
-		super.pushLocalState()
-	}
 
-	override def popLocalState() {
-		snapshotCache = snapshotCacheFrames.top
-		snapshotCacheFrames = snapshotCacheFrames.pop
-		super.popLocalState()
-	}
+
+          // eval the condition
+          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
+          // TODO: produce the body - how exactly?
+          // an initial approach: just produce the first access permissions
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
+                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p)((newHeap) =>
+                  Q(newHeap, c2)
+                )
+              )
+            )
+          )
+
+          /*eval(σ , set, pve, c, tv)((tSet, c1) =>
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
+              heapManager.getValue(σ.h, tRcvr, field, tSet, pve, null, c, tv)((tValue) => {
+                  println(σ.h)
+                  println(tValue)
+                  Q(null, c2)
+              })
+            }
+            ))*/
+
+        })
+      } */
+
+      /* Any regular expressions, i.e. boolean and arithmetic. */
+      case _ =>
+        eval(σ, φ, pve, c, tv)((t, c1) => {
+          //println("assuming " + t)
+          assume(t)
+          Q(σ.h, c1)
+        })
+    }
+
+    produced
+  }
+
+  override def pushLocalState() {
+    snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)
+    super.pushLocalState()
+  }
+
+  override def popLocalState() {
+    snapshotCache = snapshotCacheFrames.top
+    snapshotCacheFrames = snapshotCacheFrames.pop
+    super.popLocalState()
+  }
 }
