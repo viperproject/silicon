@@ -5,15 +5,22 @@ import interfaces.state.{Store, Heap, State, StateFormatter}
 import state.terms._
 
 class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+                           (val config: Config)
     extends StateFormatter[ST, H, S, String] {
 
   def format(σ: S) = {
 		val γ = format(σ.γ)
 		val h = format(σ.h, "h")
 		val g = format(σ.g, "g")
-		val π = format(σ.π)
 
-		"σ(\n  %s, \n  %s, \n  %s, \n  %s\n)".format(γ, h, g, π)
+    val π =
+      if (config.logLevel.apply() == "TRACE" || config.logLevel.apply() == "ALL")
+		    s"  ${format(σ.π)}\n"
+      else
+        ""
+
+
+		"σ(\n  %s, \n  %s, \n  %s, \n%s)".format(γ, h, g, π)
 	}
 
 	def format(γ: ST) = {
