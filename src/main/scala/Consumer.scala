@@ -3,7 +3,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse, MagicWandChunkNotFound}
+import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse, MagicWandChunkNotFound}
 import sil.ast.utility.Permissions.isConditional
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
@@ -31,11 +31,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
-
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
-
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+  import stateFactory.Γ
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -43,6 +39,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
+  protected val stateUtils: StateUtils[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
@@ -158,19 +156,55 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 else
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
 
-      /* TODO: Needs to consider both heaps. Can we merge this code with consumeIncludingReserveHeap? */
-      case wand: ast.MagicWand =>
+      /* TODO: Needs to consider both heaps. Try to merge this code with consumeIncludingReserveHeap. */
+      case _ if φ.typ == ast.types.Wand =>
+        /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
+        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
+        val σ0 = σ \+ Γ(wandValues)
+
+        /* If necessary, reinterprets the wand chunk. */
+        def reinterpret(ch: MagicWandChunk[H], c: C, tv: TV)
+               (Q: C => VerificationResult)
+               : VerificationResult = {
+
+          if (!c.reinterpretWand)
+            Q(c)
+          else {
+            /* Collect pold-expressions together with conditional guards they are nested in.
+             * For example, b ==> pold(e) will be returned as (b, pold(e)).
+             */
+            val pathConditionedPOlds = magicWandSupporter.pathConditionedPOlds(wand)
+            /* Extract e from pold(e) and turn the list of pairs (b, pold(e)) into a list
+             * of terms of the shape b && e == pold(e).
+             */
+            val eqs = pathConditionedPOlds.map{case (pc, po) =>
+              val eq = ast.Equals(po.exp, po)(po.pos, po.info)
+              ast.And(pc, eq)(eq.pos, eq.info)
+            }
+            val eSame = ast.utils.BigAnd(eqs)
+            /* Check the generated equalities. */
+            eval(σ0, eSame, pve, c.copy(poldHeap = Some(ch.hPO)), tv)((tSame, c1) =>
+              if (decider.assert(tSame))
+                Q(c1.copy(poldHeap = c.poldHeap))
+              else
+                Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), c1, tv))}}
+
         /* TODO: Getting id by first creating a chunk is not elegant. */
-        val id = magicWandSupporter.createChunk(σ.γ, σ.h, wand).id
-        /* TODO: Shouldn't we do a view-point adaptation when consuming a wand? */
+        val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
         decider.getChunk[MagicWandChunk[H]](h, id) match {
           case Some(ch) =>
-            Q(h - ch, decider.fresh(sorts.Snap), List(ch), c)
+            reinterpret(ch, c, tv)(c2 =>
+              Q(h - ch, decider.fresh(sorts.Snap), List(ch), c2))
           case None if c.reserveHeap.nonEmpty =>
             decider.getChunk[MagicWandChunk[H]](c.reserveHeap.get, id) match {
-              case Some(ch) => Q(h, decider.fresh(sorts.Snap), List(ch), c.copy(reserveHeap = Some(c.reserveHeap.get - ch)))
-              case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
-          case None => Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
+              case Some(ch) =>
+                reinterpret(ch, c, tv)(c2 => {
+                  val c3 = c2.copy(reserveHeap = Some(c.reserveHeap.get - ch))
+                  Q(h, decider.fresh(sorts.Snap), List(ch), c3)})
+              case None =>
+                Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
+          case None =>
+            Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and

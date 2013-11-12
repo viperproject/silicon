@@ -78,7 +78,8 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
  *λ
  * TODO: ??? Chunk and ChunkIdentifier should be changed s.t. they don't require `name` and `args` anymore.
  */
-case class MagicWandChunk[H <: Heap[H]](wandInstance: ast.MagicWand,
+case class MagicWandChunk[H <: Heap[H]](ghostFreeWand: ast.MagicWand,
+                                        renamedWand: ast.MagicWand,
                                         localVariables: Seq[ast.LocalVariable],
                                         localVariableValues: Seq[Term],
                                         hPO: H)
@@ -93,16 +94,18 @@ case class MagicWandChunk[H <: Heap[H]](wandInstance: ast.MagicWand,
   def -(perm: DefaultFractionalPermissions) = sys.error("Unexpected call")
   def \(perm: DefaultFractionalPermissions) = sys.error("Unexpected call")
 
-  val name = MagicWandChunkUtils.name(wandInstance)
+  val name = MagicWandChunkUtils.name(renamedWand)
   val args = localVariableValues
-  def id = MagicWandChunkIdentifier(wandInstance, localVariableValues)
+  def id = MagicWandChunkIdentifier(renamedWand, localVariableValues)
 
-  override val toString = s"$name(${wandInstance.pos}, ${localVariables.mkString("[", ", ", "]")}, ${localVariableValues.mkString("[", ", ", "]")}, $hPO)"
+  override val toString = s"$name(${renamedWand.pos}, ${args.mkString("[", ", ", "]")}, $hPO)"
 }
 
-case class MagicWandChunkIdentifier(wandInstance: ast.MagicWand, localVariableValues: Seq[Term]) extends ChunkIdentifier {
-  val name = MagicWandChunkUtils.name(wandInstance)
+case class MagicWandChunkIdentifier(renamedWand: ast.MagicWand, localVariableValues: Seq[Term]) extends ChunkIdentifier {
+  val name = MagicWandChunkUtils.name(renamedWand)
   val args = localVariableValues
+
+  override val toString = s"$name(${renamedWand.pos}, ${args.mkString("[", ", ", "]")})"
 }
 
 private object MagicWandChunkUtils {

@@ -285,12 +285,12 @@ trait DefaultExecutor[ST <: Store[ST],
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
+                consume(σ, FullPerm(), a, pve, c.copy(reinterpretWand = false), tv)((σ1, _, _, c1) =>
                   Success[C, ST, H, S](c1))
-              r && Q(σ,c)
+              r && Q(σ, c)
             } else
-              consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
-                Q(σ, c1))
+              consume(σ, FullPerm(), a, pve, c.copy(reinterpretWand = false), tv)((σ1, _, _, c1) =>
+                Q(σ, c1.copy(reinterpretWand = true)))
         }
 
       case call @ ast.Call(meth, eArgs, lhs) =>
@@ -372,12 +372,12 @@ trait DefaultExecutor[ST <: Store[ST],
         val σ0 = Σ(σ.γ, Ø, σ.g)
         val c0 = c.copy(poldHeap = Some(σ.h))
         produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeap = Some(σ.h), givenHeap = Some(σLhs.h))
+          val c2 = c1.copy(reserveHeap = Some(σ.h), givenHeap = Some(σLhs.h), reinterpretWand = false)
           val rhs = injectExhalingExp(wand.right)
           consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
             val σ2 = σ \ c3.reserveHeap.get
-            val c4 = c3.copy(reserveHeap = None, poldHeap = None, givenHeap = None)
-            /* Consuming the wand is not an option because we need to pass in σ.h */
+            val c4 = c3.copy(reserveHeap = None, poldHeap = None, givenHeap = None, reinterpretWand = true)
+            /* Producing the wand is not an option because we need to pass in σ.h */
             val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, wand)
             Q(σ2 \+ ch, c4)})})
 
@@ -387,7 +387,7 @@ trait DefaultExecutor[ST <: Store[ST],
         /* TODO: Since resolveWand might already know the chunk it would be faster if we
          *       removed it from the heap directly instead of consuming the wand.
          */
-        consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
+        consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
           assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
           val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
           /* TODO: The given heap is not σ.h, but rather the consumed portion only. However,
@@ -395,10 +395,10 @@ trait DefaultExecutor[ST <: Store[ST],
            *       the given-heap while checking self-framingness of the wand is the heap
            *       described by the left-hand side.
            */
-          val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h))
+          val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = true)
           consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
-              val c4 = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+              val c4 = c3.copy(poldHeap = None, givenHeap = None)
               Q(σ3 \ σ.γ, c4)}))}) /* TODO: Remove wandValues from γ instead of using old σ.γ */
 
       /* These cases should not occur when working with the CFG-representation of the program. */

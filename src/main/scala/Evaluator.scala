@@ -719,10 +719,10 @@ trait DefaultEvaluator[
         val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
 
         val r =
-          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c, tv)((σ1, _, chs, c1) => {
+          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
             assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
             val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
-            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h)) /* TODO: See comment in exec/apply about givenHeap */
+            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = c.reinterpretWand) /* TODO: See comment in exec/apply about givenHeap */
             consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
               produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
                 val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
