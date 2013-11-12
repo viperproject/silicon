@@ -7,8 +7,8 @@ predicate Pair(this: Ref) {
 }
 
 function sum(p: Ref): Int
-  requires acc(p.Pair(), write)
-{ unfolding acc(p.Pair(), write) in (p.f) + (p.g) }
+  requires acc(Pair(p), write)
+{ unfolding acc(Pair(p), write) in (p.f) + (p.g) }
 
 method test01(p: Ref)
   requires acc(p.f, write) && acc(p.h, write)
@@ -18,11 +18,11 @@ method test01(p: Ref)
   package true
             --*
           applying (acc(p.h, write) --* acc(p.g, write)) in
-            folding acc(p.Pair(), write) in
-             acc(p.Pair(), write)
+            folding acc(Pair(p), write) in
+             acc(Pair(p), write)
     // h: (true --* p.Pair)
 
-  assert true --* acc(p.Pair(), write);
+  assert true --* acc(Pair(p), write);
   //:: ExpectedError(assert.failed:insufficient.permission)
   assert acc(p.f, write)
 }
@@ -41,7 +41,7 @@ method test03(x: Ref)
   requires acc(x.f, write) && acc(x.g, write)
 {
   //:: ExpectedError(package.failed:insufficient.permission)
-  package true --* folding acc(x.Pair(), write) in acc(x.f, write)
+  package true --* folding acc(Pair(x), write) in acc(x.f, write)
 }
 
 method test04(x: Ref, y: Ref)
@@ -49,7 +49,7 @@ method test04(x: Ref, y: Ref)
   requires acc(x.f, write) && acc(x.g, write)
 {
   //:: ExpectedError(package.failed:insufficient.permission)
-  package true --* folding acc(x.Pair(), write) in acc(y.f, write)
+  package true --* folding acc(Pair(x), write) in acc(y.f, write)
 }
 
 method test05(x: Ref, y: Ref)
@@ -57,17 +57,17 @@ method test05(x: Ref, y: Ref)
   requires acc(x.f, write) && acc(x.g, write)
   ensures true --* acc(y.f, write)
 {
-  package true --* folding acc(x.Pair(), write) in acc(y.f, write)
+  package true --* folding acc(Pair(x), write) in acc(y.f, write)
 }
 
 method test06(x: Ref, y: Ref)
-  requires acc(x.Pair(), write)
-  requires (acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+  requires acc(Pair(x), write)
+  requires (acc(Pair(x), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
 {
   //:: ExpectedError(package.failed:insufficient.permission)
   package
-    (acc(x.Pair(), write) && sum(x) == pold(sum(x)))
+    (acc(Pair(x), write) && sum(x) == pold(sum(x)))
       --*
-      applying ((acc(x.Pair(), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)) in
+      applying ((acc(Pair(x), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)) in
         (acc(y.f, write) && acc(y.g, write)) // No access to y.g
 }

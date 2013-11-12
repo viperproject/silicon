@@ -6,9 +6,9 @@ predicate Pair(this: Ref) {
 }
 
 function sum(p: Ref): Int
-  requires acc(p.Pair(), write)
+  requires acc(Pair(p), write)
 {
-  unfolding acc(p.Pair(), write) in (p.f) + (p.g)
+  unfolding acc(Pair(p), write) in (p.f) + (p.g)
 }
 
 method test01(p: Ref)
@@ -33,7 +33,7 @@ method test01(p: Ref)
       --*
     (acc(p.f, write) && acc(p.g, write) && ((p.f) + (p.g) > 0))
 
-  fold acc(p.Pair(), write)
+  fold acc(Pair(p), write)
   assert sum(p) > 0
 
   //:: ExpectedError(assert.failed:assertion.false)

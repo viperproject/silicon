@@ -2,31 +2,31 @@ var v: Int
 var n: Ref
 
 predicate List(this: Ref) {
-	acc(this.v, write) && acc(this.n, write) && (this.n != null ==> acc(this.n.List(), write))
+	acc(this.v) && acc(this.n) && (this.n != null ==> acc(List(this.n)))
 }
 
 function sum_rec(this: Ref): Int
-	requires acc(this.List(), write)
-{ unfolding acc(this.List(), write) in (this.v + (this.n == null ? 0 : sum_rec(this.n))) }
+	requires acc(List(this))
+{ unfolding acc(List(this)) in this.v + (this.n == null ? 0 : sum_rec(this.n)) }
 
 method sum_it(ys: Ref) returns (sum: Int)
   requires ys != null
-	requires acc(ys.List(), write)
-	ensures acc(ys.List(), write)
+	requires acc(List(ys))
+	ensures acc(List(ys))
 	ensures sum == old(sum_rec(ys))
 {
   var xs: Ref
   xs := ys
   sum := 0
 
-  letass A := (xs != null) ==> (acc(xs.List(), write) && sum_rec(xs) == pold(sum_rec(xs)))
-  letass B := acc(ys.List(), write) && sum_rec(ys) == old(sum_rec(ys))
+  letass A := xs != null ==> acc(List(xs)) && sum_rec(xs) == pold(sum_rec(xs))
+  letass B := acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))
 
   package A --* B
 
   while (xs != null)
-    invariant ((xs != null) ==> acc(xs.List(), write))
-    invariant sum == (old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs)));
+    invariant xs != null ==> acc(List(xs))
+    invariant sum == old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs));
     invariant A --* B
   {
     letwand w := A --* B
@@ -34,11 +34,11 @@ method sum_it(ys: Ref) returns (sum: Int)
     var prev_xs: Ref /* ghost */
     prev_xs := xs
 
-    unfold acc(xs.List(), write)
+    unfold acc(List(xs))
     sum := sum + (xs.v)
     xs := xs.n;
 
-    package A --* folding acc(prev_xs.List(), write) in (applying (w) in B)
+    package A --* folding acc(List(prev_xs)) in applying w in B
   }
 
   apply A --* B

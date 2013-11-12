@@ -14,8 +14,8 @@ method test01(x: Ref)
   x.f := 1
   x.g := 1
   package A
-  fold acc(x.P(), write)
-  unfold acc(x.P(), write)
+  fold acc(P(x), write)
+  unfold acc(P(x), write)
   apply A
   assert acc(x.g, write) && ((x.f) + (x.g) > 0)
   //:: UnexpectedError(assert.failed:assertion.false, /wand-silicon/issue/1/)

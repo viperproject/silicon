@@ -8,23 +8,23 @@ predicate c3_pre(x: Ref) { true }
 predicate c3_post(x: Ref) { true }
 
 method triple_not_nested(x: Ref)
-  requires acc(x.c1_pre(), write)
-  requires acc(x.c1_post(), write) --* acc(x.c2_pre(), write)
-  requires acc(x.c2_post(), write) --* acc(x.c3_pre(), write)
-  ensures acc(x.c3_post(), write)
+  requires acc(c1_pre(x))
+  requires acc(c1_post(x)) --* acc(c2_pre(x))
+  requires acc(c2_post(x)) --* acc(c3_pre(x))
+  ensures acc(c3_post(x))
 {
-  exhale acc(x.c1_pre(), write)
-  inhale acc(x.c1_post(), write)
+  exhale acc(c1_pre(x))
+  inhale acc(c1_post(x))
 
-  apply acc(x.c1_post(), write) --* acc(x.c2_pre(), write)
+  apply acc(c1_post(x)) --* acc(c2_pre(x))
 
-  exhale acc(x.c2_pre(), write)
-  inhale acc(x.c2_post(), write)
+  exhale acc(c2_pre(x))
+  inhale acc(c2_post(x))
 
-  apply acc(x.c2_post(), write) --* acc(x.c3_pre(), write)
+  apply acc(c2_post(x)) --* acc(c3_pre(x))
 
-  exhale acc(x.c3_pre(), write)
-  inhale acc(x.c3_post(), write)
+  exhale acc(c3_pre(x))
+  inhale acc(c3_post(x))
 }
 
 method call_triple_not_nested() {
@@ -33,37 +33,38 @@ method call_triple_not_nested() {
 
   x.f := 1
 
-  package (acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --* acc(x.f, write)
-  package (acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)
+  package (acc(x.f) && (x.f) == (pold(x.f) - 2)) --* acc(x.f)
+  package (acc(x.f) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f) && (x.f) > 0)
 
   x.f := -10
 
-  exhale     acc(x.f, write)
-         && ((acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0))
-         && ((acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --* acc(x.f, write))
+  //:: ExpectedError(exhale.failed:wand.outdated)
+  exhale     acc(x.f)
+         && ((acc(x.f) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f) && (x.f) > 0))
+         && ((acc(x.f) && (x.f) == (pold(x.f) - 2)) --* acc(x.f))
 }
 
 method triple_nested(x: Ref)
-  requires acc(x.c1_pre(), write)
-  requires acc(x.c1_post(), write) --*
-            (   acc(x.c2_pre(), write)
-             && (acc(x.c2_post(), write) --* acc(x.c3_pre(), write)))
-  ensures acc(x.c3_post(), write)
+  requires acc(c1_pre(x))
+  requires acc(c1_post(x)) --*
+            (   acc(c2_pre(x))
+             && (acc(c2_post(x)) --* acc(c3_pre(x))))
+  ensures acc(c3_post(x))
 {
-  exhale acc(x.c1_pre(), write)
-  inhale acc(x.c1_post(), write)
+  exhale acc(c1_pre(x))
+  inhale acc(c1_post(x))
 
-  apply (acc(x.c1_post(), write) --*
-          (   acc(x.c2_pre(), write)
-           && (acc(x.c2_post(), write) --* acc(x.c3_pre(), write))))
+  apply (acc(c1_post(x)) --*
+          (   acc(c2_pre(x))
+           && (acc(c2_post(x)) --* acc(c3_pre(x)))))
 
-  exhale acc(x.c2_pre(), write)
-  inhale acc(x.c2_post(), write)
+  exhale acc(c2_pre(x))
+  inhale acc(c2_post(x))
 
-  apply acc(x.c2_post(), write) --* acc(x.c3_pre(), write)
+  apply acc(c2_post(x)) --* acc(c3_pre(x))
 
-  exhale acc(x.c3_pre(), write)
-  inhale acc(x.c3_post(), write)
+  exhale acc(c3_pre(x))
+  inhale acc(c3_post(x))
 }
 
 method call_triple_nested() {
@@ -72,15 +73,8 @@ method call_triple_nested() {
 
   x.f := 1
 
-  package (acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)
+  package (acc(x.f) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f) && (x.f) > 0)
+  letwand w := (acc(x.f) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f) && (x.f) > 0)
 
-  package (acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --*
-               (acc(x.f, write)
-            && ((acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)))
-
-  x.f := -10
-
-  exhale (acc(x.f, write) && (x.f) == (pold(x.f) - 2)) --*
-               (acc(x.f, write)
-            && ((acc(x.f, write) && (x.f) == (pold(x.f) + 1)) --* (acc(x.f, write) && (x.f) > 0)))
+  package acc(x.f) && (x.f) == (pold(x.f) - 2) --* acc(x.f) && w
 }
