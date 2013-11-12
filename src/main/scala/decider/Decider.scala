@@ -446,6 +446,8 @@ class DefaultDecider[ST <: Store[ST],
       case True() => True()
       case Not(t) => Not(instance(t, withT))
       case s: SortWrapper => s
+      case w: WildcardPerm => w
+
     }
   }
 

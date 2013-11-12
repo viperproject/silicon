@@ -124,43 +124,14 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
-  // TODO: rather specify the variable we quantify over in the chunk!
-  private def replace(inTerm:Term, term:Term, withTerm:Term):Term = {
-    if (inTerm==term) withTerm else
-    inTerm match {
-      case *() => *()
-      case Ite(t1, t2, t3) => Ite(replace(t1, term, withTerm), replace(t2, term, withTerm), replace(t3, term, withTerm))
-      case SetIn(t1, t2) => SetIn(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case Eq(t1, t2) => Eq(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case v: Var => v
-      case f: FractionPerm => f
-      case f: FullPerm => f
-      case p: NoPerm => p
-      case PermMinus(t1,t2) => PermMinus(replace(t1, term, withTerm).asInstanceOf[DefaultFractionalPermissions], replace(t2, term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-      case TermPerm(t) => TermPerm(replace(t, term, withTerm))
-      case And(t1, t2) => And(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case PermMin(t1,t2) => PermMin(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case SetDifference(t1,t2) => SetDifference(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case SetUnion(t1, t2) => SetUnion(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case SetIntersection(t1, t2) => SetIntersection(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case SetAdd(t1, t2) => SetAdd(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case SingletonSet(t1) => SingletonSet(replace(t1, term, withTerm))
-      case False() => False()
-      case True() => True()
-      case Not(t) => Not(replace(t, term, withTerm))
-      case s: SortWrapper => s
-      case Implies(t1, t2) => Implies(replace(t1, term, withTerm), replace(t2, term, withTerm))
-      case DomainFApp(function, tArgs) => DomainFApp(function, tArgs map {t => replace(t, term, withTerm) })
-      case n: Null => n
-    }
-  }
 
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions)(Q: H => VerificationResult):VerificationResult = {
-    val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(field.typ)))
+      val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(field.typ)))
 
-    val ch = DirectConditionalChunk(field.name, s, replace(cond, variable, *()).asInstanceOf[BooleanTerm], pNettoGain)
+      // TODO: rather specify the variable we quantify over in the chunk than using *()
+      val ch = DirectConditionalChunk(field.name, s, cond.replace(variable, *()).asInstanceOf[BooleanTerm], pNettoGain)
 
-    Q(inHeap + ch)
+      Q(inHeap + ch)
   }
 
 }

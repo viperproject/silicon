@@ -17,10 +17,6 @@ import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.reporting.DefaultContext
-import semper.silicon.state.terms.Eq
-import semper.silicon.state.terms.Combine
-import semper.silicon.state.terms.Null
-import semper.silicon.state.terms.NoPerm
 import semper.silicon.heap.HeapManager
 import interfaces.state.StoreFactory
 import state.terms._
@@ -216,9 +212,16 @@ TV <: TraceView[TV, ST, H, S]]
 
       }
 
-      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if (body.isPure) => {
+      case ast.Forall(vars, triggers, ast.Implies(cond, body)) => {
         // TODO emit to Z3 -- how??
+        println("here")
+        val forall = (cond:Term) => (body:Term) => Quantification(Forall, vars map {v => Var(v.name, symbolConverter.toSort(v.typ))}, Implies(cond, body))
+        val QP = (cond: Term, body: Term, γVars: ST,  h:H, c:C) => {
 
+          /* TODO: ugly - make it work with more than 1 var */
+          assume(forall(cond)(body).replace(γVars.values.head._2, Var(vars.head.name, symbolConverter.toSort(vars.head.typ))))
+          Q(h, c)
+        }
         decider.inScope({
 
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
@@ -227,7 +230,7 @@ TV <: TraceView[TV, ST, H, S]]
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
             assume(tCond)
             eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) =>
-              Q(σ.h, c2)
+              QP(tCond, tBody, γVars, σ.h, c2)
             )
           })
         })
@@ -273,7 +276,8 @@ TV <: TraceView[TV, ST, H, S]]
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         eval(σ, φ, pve, c, tv)((t, c1) => {
-          //println("assuming " + t)
+          println(φ)
+          println("assuming " + t)
           assume(t)
           Q(σ.h, c1)
         })

@@ -3,6 +3,30 @@ package silicon
 package state.terms
 
 import ast.commonnodes
+import semper.silicon.state.terms._
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+import scala.Some
+
 //import ast.commonnodes.{BinaryOp}
 //import interfaces.state.{Heap}
 
@@ -105,6 +129,38 @@ sealed trait Term {
     case _ if to == this.sort => this
     case sw: SortWrapper if sw.t.sort == to => sw.t
     case _ => SortWrapper(this, to)
+  }
+
+  def replace(term:Term, withTerm:Term):Term = {
+    if (this==term) withTerm else
+      this match {
+        case *() => *()
+        case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
+        case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Eq(t1, t2) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case v: Var => v
+        case f: FractionPerm => f
+        case f: FullPerm => f
+        case p: NoPerm => p
+        case PermMinus(t1,t2) => PermMinus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
+        case TermPerm(t) => TermPerm(t.replace(term, withTerm))
+        case And(t1, t2) => And(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case PermMin(t1,t2) => PermMin(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetDifference(t1,t2) => SetDifference(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetUnion(t1, t2) => SetUnion(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetIntersection(t1, t2) => SetIntersection(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetAdd(t1, t2) => SetAdd(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SingletonSet(t1) => SingletonSet(t1.replace(term, withTerm))
+        case False() => False()
+        case True() => True()
+        case Not(t) => Not(t.replace(term, withTerm))
+        case s: SortWrapper => s
+        case Implies(t1, t2) => Implies(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case DomainFApp(function, tArgs) => DomainFApp(function, tArgs map {t => t.replace(term, withTerm) })
+        case n: Null => n
+        case w: WildcardPerm => w
+        case Quantification(quant, vars, body) => Quantification(quant, vars, body.replace(term, withTerm))
+      }
   }
 
 	def sort: Sort
