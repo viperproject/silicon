@@ -133,7 +133,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 	  val decider = new DefaultDecider[ST, H, PC, S, C]()
     shutDownHooks = shutDownHooks + (() => decider.stop())
 
-    val stateFormatter = new DefaultStateFormatter[ST, H, S]()
+    val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
