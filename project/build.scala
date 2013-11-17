@@ -1,5 +1,7 @@
 import sbt._
 import Keys._
+import sbtassembly.Plugin._
+import AssemblyKeys._
 import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
 
@@ -30,6 +32,7 @@ object SiliconBuild extends Build {
       base = file("."),
       settings = (
            baseSettings
+			  ++ assemblySettings
         ++ Seq(
               name := "Silicon",
               traceLevel := 10,
