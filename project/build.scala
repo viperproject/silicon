@@ -1,5 +1,7 @@
 import sbt._
 import Keys._
+import sbtassembly.Plugin._
+import AssemblyKeys._
 import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
 
@@ -30,6 +32,7 @@ object SiliconBuild extends Build {
       base = file("."),
       settings = (
            baseSettings
+			  ++ assemblySettings
         ++ Seq(
               name := "Silicon",
               traceLevel := 10,
@@ -42,12 +45,13 @@ object SiliconBuild extends Build {
                  * There have been reports about problems with forking. If you
                  * experience strange problems, disable forking and try again.
                  */
-              javaOptions in Test += "-Xss32M",
+               javaOptions in run += "-Xss256M",
+               javaOptions in Test += "-Xss256M",
                 /* Options passed to JVMs forked by test-related Sbt command.
                  * See http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html
                  * In contrast to what the documentation states, it seemed
                  * that neither were the options passed to Sbt's JVM forwarded
-                 * to forked JVMs, not did "javaOptions in (Test,run)"
+                 * to forked JVMs, nor did "javaOptions in (Test,run)"
                  * work for me (using Sbt 0.12.4).
                  * You can inspect the settings in effect using via
                  * "show javaOptions" on the Sbt console.
