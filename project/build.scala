@@ -44,6 +44,13 @@ object SiliconBuild extends Build {
                  *
                  * There have been reports about problems with forking. If you
                  * experience strange problems, disable forking and try again.
+                 *
+                 * Malte 2013-11-18: Jenkins failed with
+                 * "OutOfMemoryError: unable to create new native thread".
+                 * Reducing the stack size from 256M to 128M seems to resolve
+                 * the problem and Silicon seems to be fine with less stack.
+                 * Not sure what to do if Silicon really required so much
+                 * stack at some point.
                  */
                javaOptions in run += "-Xss128M",
                javaOptions in Test += "-Xss128M",
