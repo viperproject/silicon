@@ -7,7 +7,7 @@ predicate List(this: Ref) {
 
 function sum_rec(this: Ref): Int
 	requires acc(List(this))
-{ unfolding acc(List(this)) in (this.v + (this.n == null ? 0 : sum_rec(this.n))) }
+{ unfolding List(this) in (this.v + (this.n == null ? 0 : sum_rec(this.n))) }
 
 method sum_it(ys: Ref) returns (sum: Int)
   requires ys != null
@@ -35,14 +35,14 @@ method sum_it(ys: Ref) returns (sum: Int)
     /* ghost */ var prev_xs: Ref
                 prev_xs := xs
 
-    unfold acc(List(xs))
+    unfold List(xs)
     sum := sum + (xs.v)
     xs := xs.n;
 
     package
       ((xs != null) ==> (acc(List(xs)) && sum_rec(xs) == pold(sum_rec(xs))))
         --*
-      folding acc(List(prev_xs)) in
+      folding List(prev_xs) in
         (applying
           (((prev_xs != null) ==> (acc(List(prev_xs)) && sum_rec(prev_xs) == pold(sum_rec(prev_xs))))
             --*
