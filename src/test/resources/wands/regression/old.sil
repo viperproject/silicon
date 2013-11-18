@@ -13,50 +13,50 @@ method test01(x: Ref, v: Int)
   requires acc(x.f) && x.f == v
   ensures acc(x.f) && x.f == v
 {
-  package (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
-  apply (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 }
 
 method test02(x: Ref, v: Int)
   requires acc(x.f) && x.f == v
   ensures acc(x.f) && x.f == v
 {
-  package (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
   x.f := 0
   //:: ExpectedError(apply.failed:assertion.false)
-  apply (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 }
 
 method test03(x: Ref, v: Int)
   requires acc(x.f) && x.f == v
-  requires (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 {
-  apply (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 }
 
 method test04(x: Ref, v: Int)
   requires acc(x.f) && x.f == v
-  requires (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 {
   x.f := 0
   //:: ExpectedError(apply.failed:assertion.false)
-  apply (acc(x.f) && x.f == pold(x.f)) --* (acc(x.f) && x.f == v)
+  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 }
 
 method test05(x: Ref, y: Ref)
   requires acc(Pair(x))
-  requires (acc(Pair(x)) && sum(x) == pold(sum(x))) --* acc(y.f)
+  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
   ensures acc(y.f)
 {
   unfold acc(Pair(x))
   fold acc(Pair(x))
 
-  apply (acc(Pair(x)) && sum(x) == pold(sum(x))) --* acc(y.f)
+  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
 }
 
 method test07(x: Ref, y: Ref)
   requires acc(Pair(x))
-  requires (acc(Pair(x)) && sum(x) == pold(sum(x))) --* acc(y.f)
+  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
   ensures acc(y.f)
 {
   unfold acc(Pair(x))
@@ -64,14 +64,14 @@ method test07(x: Ref, y: Ref)
   fold acc(Pair(x))
 
   //:: ExpectedError(apply.failed:assertion.false)
-  apply (acc(Pair(x)) && sum(x) == pold(sum(x))) --* acc(y.f)
+  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
 }
 
 method test08(x: Ref)
   requires acc(x.f) && acc(x.g)
 {
-  letass A := acc(x.f)
-  letass B := acc(Pair(x)) && sum(x) == (given(x.f) + pold(x.g))
+  define A acc(x.f)
+  define B acc(Pair(x)) && sum(x) == (lhs(x.f) + now(x.g))
 
   package A --* folding acc(Pair(x)) in B
   apply A --* B
@@ -85,8 +85,8 @@ method test08(x: Ref)
 //method test09(x: Ref)
 //  requires acc(x.f) && acc(x.g)
 //{
-//  letass A := acc(x.f)
-//  letass B := acc(Pair(x)) && sum(x) == given(x.f) + unfolding acc(Pair(x)) in x.g
+//  define A acc(x.f)
+//  define B acc(Pair(x)) && sum(x) == lhs(x.f) + unfolding acc(Pair(x)) in x.g
 //
 //  package A --* folding acc(Pair(x)) in B
 //  apply A --* B
@@ -101,31 +101,31 @@ method test10(b: Bool, x: Ref)
   requires x != null
   requires b ==> acc(x.f)
 {
-  package (b ==> (acc(x.f) && x.f > pold(x.f))) --* true
-  exhale (b ==> (acc(x.f) && x.f > pold(x.f))) --* true
+  package (b ==> (acc(x.f) && x.f > now(x.f))) --* true
+  exhale (b ==> (acc(x.f) && x.f > now(x.f))) --* true
 
   x.f := 1
-  package (b ==> (acc(x.f) && x.f == pold(x.f) - 1)) --* acc(x.f) && x.f == 0
-  exhale (b ==> (acc(x.f) && x.f == pold(x.f) - 1)) --* acc(x.f) && x.f == 0
+  package (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
+  exhale (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
 
   x.f := 1
-  package (b ==> (acc(x.f) && x.f == pold(x.f) - 1)) --* acc(x.f) && x.f == 0
+  package (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
   x.f := 10
   //:: ExpectedError(exhale.failed:wand.outdated)
-  exhale (b ==> (acc(x.f) && x.f == pold(x.f) - 1)) --* acc(x.f) && x.f == 0
+  exhale (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
 }
 
 method test11(b: Bool, x: Ref)
   requires x != null
   requires acc(x.f)
 {
-  package acc(x.f) && x.f > pold(x.f) --* acc(x.f)
+  package acc(x.f) && x.f > now(x.f) --* acc(x.f)
   x.f := x.f + 1
-  apply acc(x.f) && x.f > pold(x.f) --* acc(x.f)
+  apply acc(x.f) && x.f > now(x.f) --* acc(x.f)
 
-  package acc(x.f) && x.f > pold(x.f) --* acc(x.f)
+  package acc(x.f) && x.f > now(x.f) --* acc(x.f)
   x.f := x.f + 1
   //:: ExpectedError(exhale.failed:wand.outdated)
-  exhale acc(x.f) && x.f > pold(x.f) --* acc(x.f)
+  exhale acc(x.f) && x.f > now(x.f) --* acc(x.f)
     /* TODO: Can we do better? Requiring that polds haven't changed seems to restrictive. */
 }

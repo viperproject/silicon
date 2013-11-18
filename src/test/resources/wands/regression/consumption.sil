@@ -62,12 +62,12 @@ method test05(x: Ref, y: Ref)
 
 method test06(x: Ref, y: Ref)
   requires acc(Pair(x), write)
-  requires (acc(Pair(x), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)
+  requires (acc(Pair(x), write) && sum(x) == now(sum(x))) --* acc(y.f, write)
 {
   //:: ExpectedError(package.failed:insufficient.permission)
   package
-    (acc(Pair(x), write) && sum(x) == pold(sum(x)))
+    (acc(Pair(x), write) && sum(x) == now(sum(x)))
       --*
-      applying ((acc(Pair(x), write) && sum(x) == pold(sum(x))) --* acc(y.f, write)) in
+      applying ((acc(Pair(x), write) && sum(x) == now(sum(x))) --* acc(y.f, write)) in
         (acc(y.f, write) && acc(y.g, write)) // No access to y.g
 }

@@ -5,9 +5,9 @@ var h: Int
 method test01(x: Ref)
   requires acc(x.f, write) && acc(x.g, write) && acc(x.h, write)
 {
-  letass F := acc(x.f, write)
-  letass G := acc(x.g, write)
-  letass H := acc(x.h, write)
+  define F acc(x.f, write)
+  define G acc(x.g, write)
+  define H acc(x.h, write)
 
   package F --* (F && G)
   package H --* (H && (F --* (F && G)))

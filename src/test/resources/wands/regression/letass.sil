@@ -1,6 +1,6 @@
 method test01() {
-  letass A := true
-  letass B := true
+  define A true
+  define B true
 
   //:: ExpectedError(assert.failed:wand.not.found)
   assert A --* B
