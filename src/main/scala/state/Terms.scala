@@ -187,7 +187,15 @@ sealed trait Quantifier
 object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
-case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term) extends BooleanTerm
+case class Trigger(ts: Seq[Term])
+
+case class Quantification(q: Quantifier,
+                          vars: Seq[Var],
+                          tBody: Term)
+                         (val id: Option[String] = None,
+                          val desc: Option[String] = None,
+                          val triggers: Seq[Trigger] = Seq())
+    extends BooleanTerm
 
 /* Arithmetic expression terms */
 
