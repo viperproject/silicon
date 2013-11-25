@@ -98,6 +98,9 @@ trait AbstractElementVerifier[ST <: Store[ST],
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
+    println("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
+    println(function.pres)
+    println(function.posts)
     logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
 
@@ -123,10 +126,15 @@ trait AbstractElementVerifier[ST <: Store[ST],
           Success[C, ST, H, S](c2))}
         &&
         inScope {
-          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
-            eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
+          println("Produce Precondition")
+          decider.prover.logComment("Produce Precondition")
+          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
+            println("Execute Body")
+            decider.prover.logComment("Execute Body")
+            eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) => {
+              println("Consume Postcondition")
               consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success[C, ST, H, S](c4))))})}
+                Success[C, ST, H, S](c4))})})})}
   }
 
   def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {

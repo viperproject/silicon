@@ -396,13 +396,13 @@ class DefaultDecider[ST <: Store[ST],
             x._1.sort match {
               case sorts.Ref => x._1 === x._2
               case sorts.Set(_) => SetIn(x._2, x._1)
-              case sorts.Bool => instance(x._1, x._2)
+              case sorts.Bool => x._1.replace(terms.*(), x._2)
               case _ => False()
             }
           }
         })
   	    // construct the ITE
-  	    Ite(condition, instance(permChunk.perm, id.args.last), NoPerm())
+  	    Ite(condition, permChunk.perm.replace(terms.*(), id.args.last), NoPerm())
   	  } }
   	  
   	  
@@ -419,36 +419,6 @@ class DefaultDecider[ST <: Store[ST],
 
   def exhalePermissions(h:H, id:ChunkIdentifier, p:P): Option[H] = {
       return exhalePermissions(h, h.empty + DirectFieldChunk(id.args(0), id.name, null, p))
-  }
-
-  // replaces the placeholder with the given term
-  // awkward hack...
-  private def instance(t:Term, withT:Term):Term = {
-    t match {
-      case *() => withT
-      case Ite(t1, t2, t3) => Ite(instance(t1, withT), instance(t2, withT), instance(t3, withT))
-      case SetIn(t1, t2) => SetIn(instance(t1, withT), instance(t2, withT))
-      case Eq(t1, t2) => Eq(instance(t1, withT), instance(t2, withT))
-      case v: Var => v
-      case f: FractionPerm => f
-      case f: FullPerm => f
-      case p: NoPerm => p
-      case PermMinus(t1,t2) => PermMinus(instance(t1, withT).asInstanceOf[DefaultFractionalPermissions], instance(t2, withT).asInstanceOf[DefaultFractionalPermissions])
-      case TermPerm(t) => TermPerm(instance(t, withT))
-      case And(t1, t2) => And(instance(t1, withT), instance(t2, withT))
-      case PermMin(t1,t2) => PermMin(instance(t1, withT), instance(t2, withT))
-      case SetDifference(t1,t2) => SetDifference(instance(t1, withT), instance(t2, withT))
-      case SetUnion(t1, t2) => SetUnion(instance(t1, withT), instance(t2, withT))
-      case SetIntersection(t1, t2) => SetIntersection(instance(t1, withT), instance(t2, withT))
-      case SetAdd(t1, t2) => SetAdd(instance(t1, withT), instance(t2, withT))
-      case SingletonSet(t1) => SingletonSet(instance(t1, withT))
-      case False() => False()
-      case True() => True()
-      case Not(t) => Not(instance(t, withT))
-      case s: SortWrapper => s
-      case w: WildcardPerm => w
-
-    }
   }
 
   def toConditional(h:H) = {
@@ -480,11 +450,11 @@ class DefaultDecider[ST <: Store[ST],
             var pLeft = eCh.perm
             inScope({
               val * = fresh(sorts.Ref)
-              assume(instance(guard1, *))
+              assume(guard1.replace(terms.*(), *))
               hq.values.foreach {
                 case ch: DirectConditionalChunk => {
                   // leave early
-                  if (permAssert(instance(pLeft, *) === NoPerm())) {
+                  if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
                     break;
                   }
 
@@ -492,7 +462,7 @@ class DefaultDecider[ST <: Store[ST],
                   pLeft = pLeft - TermPerm(r)
                   inScope({
                     prover.logComment("checking if chunk does contain permissions")
-                    if (permAssert(instance(Ite(ch.guard, ch.perm - TermPerm(r), NoPerm()), fresh(sorts.Ref)) === NoPerm())) {
+                    if (permAssert(Ite(ch.guard, ch.perm - TermPerm(r), NoPerm()).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
                       hq = hq - ch
                     } else {
                       hq = hq - ch + (ch - TermPerm(r))
@@ -500,7 +470,7 @@ class DefaultDecider[ST <: Store[ST],
                   })
                 }
               }
-              if (!permAssert(instance(pLeft, *) === NoPerm())) {
+              if (!permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
                 return None
               }
             })

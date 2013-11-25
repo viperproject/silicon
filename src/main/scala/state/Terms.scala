@@ -143,6 +143,7 @@ sealed trait Term {
         case f: FullPerm => f
         case p: NoPerm => p
         case PermMinus(t1,t2) => PermMinus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
+        case PermTimes(t1, t2) => PermTimes(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
         case TermPerm(t) => TermPerm(t.replace(term, withTerm))
         case And(t1, t2) => And(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case PermMin(t1,t2) => PermMin(t1.replace(term, withTerm), t2.replace(term, withTerm))
@@ -160,6 +161,9 @@ sealed trait Term {
         case n: Null => n
         case w: WildcardPerm => w
         case Quantification(quant, vars, body) => Quantification(quant, vars, body.replace(term, withTerm))
+        case Plus(t1, t2) => Plus(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case i:IntLiteral => i
+        case AtLeast(t1, t2) => AtLeast(t1.replace(term, withTerm), t2.replace(term, withTerm))
       }
   }
 
@@ -453,10 +457,17 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 //case class TermEq(p0: Term, p1: Term) extends Eq
 
-case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
-  assert(p0.sort == p1.sort,
-         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-         .format(p0.sort, p0, p1.sort, p1))
+/*case*/ class Eq(val p0: Term, val p1: Term) extends ComparisonTerm with commonnodes.Eq[Term]
+
+object Eq extends Function2[Term, Term, BooleanTerm] {
+  def apply(e0: Term, e1:Term) = {
+    assert(e0.sort == e1.sort,
+      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+        .format(e0.sort, e0, e1.sort, e1))
+
+    if (e0 == e1) True() else new Eq(e0, e1)
+  }
+  def unapply(eq:Eq) = Some((eq.p0, eq.p1))
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm

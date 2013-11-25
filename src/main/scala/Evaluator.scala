@@ -243,6 +243,8 @@ trait DefaultEvaluator[
          *       Hence, implement evaluation of AND similar to that of OR.
          *       Try to reuse code!
          */
+        println("Evaluating And")
+        decider.prover.logComment("Evaluating And")
         var πPre: Set[Term] = Set()
         var t0: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
@@ -271,6 +273,9 @@ trait DefaultEvaluator[
           r && {
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
+            println("End Evaluating And")
+            decider.prover.logComment("End Evaluating And")
+
             Q(And(t0.get, t1), c1)}})
 
       /* Strict evaluation of OR */
@@ -583,6 +588,7 @@ trait DefaultEvaluator[
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
+        println("evaluating " + func.name)
         val err = PreconditionInAppFalse(fapp)
 
         evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
@@ -591,6 +597,7 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
+            println("consumed the preconditions")
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
@@ -604,24 +611,23 @@ trait DefaultEvaluator[
                 val c3a = c3.incCycleCounter(func)
                 val πPre = decider.π
                 val post = ast.utils.BigAnd(func.posts)
-                if (true) {
-                  bookkeeper.functionBodyEvaluations += 1
-                  eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
-                    eval(σ3, post, pve, c4, tv)((tPost, c5) => {
-                      val c5a = c5.decCycleCounter(func)
-                      val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
-                      if (config.cacheFunctionApplications())
-                        fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                      assume(Set(tFAEqFB, tPost))
-                      Q(tFA, c5a)}))
-                } else {
-                  /* Function body is invisible, use postcondition instead */
-                    eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
-                      val c4a = c4.decCycleCounter(func)
-                      if (config.cacheFunctionApplications())
-                        fappCache += (tFA -> (decider.π -- πPre + tPost))
-                      assume(tPost)
-                      Q(tFA, c4a)})}
+                bookkeeper.functionBodyEvaluations += 1
+                decider.prover.logComment("begin strange evaluation")
+
+                decider.pushScope()
+                  val q = eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
+                  eval(σ3, post, pve, c4, tv)((tPost, c5) => {
+                    val c5a = c5.decCycleCounter(func)
+                    val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
+                    if (config.cacheFunctionApplications())
+                      fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
+                    decider.prover.logComment("end strange evaluation")
+                    decider.popScope()
+                    assume(Set(tFAEqFB, tPost))
+                    Q(tFA, c5a)
+                  }))
+                  q
+
               } else {
                 /* Unfolded the function often enough already. We still need to
                  * evaluate the postcondition, though, because Z3 might
@@ -630,7 +636,7 @@ trait DefaultEvaluator[
                  */
                 val post = ast.utils.BigAnd(func.posts)
 
-                /* TODO: Probably doesn't detect mutuall recursion. */
+                /* TODO: Probably doesn't detect mutual recursion. */
                 val badPostcondition =
                   post existsDefined {
                     case ast.FuncApp(someFunc, _) if func.name == someFunc.name =>
@@ -652,11 +658,10 @@ trait DefaultEvaluator[
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
                 eIn) =>
-
+        println("Unfolding " + acc.loc.predicate.name)
         /* Unfolding only has a temporary effect on the current heap because
          * the resulting heap is not forwarded to the final continuation.
          */
-
         var πPre: Set[Term] = Set()
         var tPerm: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
@@ -686,7 +691,9 @@ trait DefaultEvaluator[
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
+            decider.prover.logComment("assuming in unfolding... " + acc.loc.predicate.name)
             assume(tAuxIn + tActualIn)
+            println("Done unfolding " + acc.loc.predicate.name)
             Q(tActualInVar, c)
           }
         } else

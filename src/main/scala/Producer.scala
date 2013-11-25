@@ -93,13 +93,13 @@ TV <: TraceView[TV, ST, H, S]]
                c: C,
                tv: TV)
               (Q: (S, C) => VerificationResult)
-  : VerificationResult =
-
+  : VerificationResult = {
+    println(φs)
     if (φs.isEmpty)
       Q(σ, c)
     else
       produce(σ, sf, p, φs.head, pvef(φs.head), c, tv)((σ1, c1) =>
-        produces(σ1, sf, p, φs.tail, pvef, c1, tv)(Q))
+        produces(σ1, sf, p, φs.tail, pvef, c1, tv)(Q))   }
 
   private def produce2(σ: S,
                        sf: Sort => Term,
@@ -129,6 +129,7 @@ TV <: TraceView[TV, ST, H, S]]
                              (Q: (H, C) => VerificationResult)
   : VerificationResult = {
 
+    println("PRODUCE " + φ)
     logger.debug("\nPRODUCE " + φ.toString)
     logger.debug(stateFormatter.format(σ))
 
@@ -183,6 +184,7 @@ TV <: TraceView[TV, ST, H, S]]
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            decider.prover.logComment("assuming predicate " + predicate.name)
             assume(mts)
             Q(mh, c2)
           }))
@@ -190,8 +192,9 @@ TV <: TraceView[TV, ST, H, S]]
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
 
       // TODO: generalize for an arbitrary condition
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain))) => {
-        decider.inScope({
+      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain))) => {
+        decider.prover.logComment("Producing set access predicate " + fa)
+        decider.pushScope()
 
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
@@ -200,38 +203,43 @@ TV <: TraceView[TV, ST, H, S]]
           // restriction: the permission is constant and we can evaluate it here
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>  {
             assume(tCond)
-            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
+              // Why pop here? We need the permission to be in the scope because it goes into the chunk
+              decider.prover.logComment("End produce set access predicate " + fa)
+              decider.popScope()
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
-                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p)((newHeap) =>
+                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p)((newHeap) =>  {
                   Q(newHeap, c2)
-                )
+                })
               )
-            )
+            })
           })
-        })
 
       }
 
-      case ast.Forall(vars, triggers, ast.Implies(cond, body)) => {
-        // TODO emit to Z3 -- how??
+      case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) => {
+        decider.prover.logComment("Producing pure quantifier " + fa)
         println("here")
-        val forall = (cond:Term) => (body:Term) => Quantification(Forall, vars map {v => Var(v.name, symbolConverter.toSort(v.typ))}, Implies(cond, body))
-        val QP = (cond: Term, body: Term, γVars: ST,  h:H, c:C) => {
+        val forall = (cond: Term) => (body: Term) => Quantification(Forall, vars map {
+          v => Var(v.name, symbolConverter.toSort(v.typ))
+        }, Implies(cond, body))
+        val QP = (cond: Term, body: Term, γVars: ST, h: H, c: C) => {
 
           /* TODO: ugly - make it work with more than 1 var */
           assume(forall(cond)(body).replace(γVars.values.head._2, Var(vars.head.name, symbolConverter.toSort(vars.head.typ))))
           Q(h, c)
         }
-        decider.inScope({
-
-          val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-          // restriction: the permission is constant and we can evaluate it here
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-            assume(tCond)
-            eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) =>
-              QP(tCond, tBody, γVars, σ.h, c2)
-            )
+        decider.pushScope()
+        decider.prover.logComment("start test evaluation")
+        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+        // restriction: the permission is constant and we can evaluate it here
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+          assume(tCond)
+          eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
+            decider.prover.logComment("end of the fun - here comes the forall!")
+            decider.popScope()
+            QP(tCond, tBody, γVars, σ.h, c2)
           })
         })
       }

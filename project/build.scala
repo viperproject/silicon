@@ -105,8 +105,8 @@ object SiliconBuild extends Build {
     lazy val slf4j = "org.slf4j" % "slf4j-log4j12" %	"1.6.4"
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
-
+    
     lazy val sil = "semper" %% "sil" %  "0.1-SNAPSHOT"
-    lazy val silSrc = RootProject(new java.io.File("../Sil"))
+    lazy val silSrc = RootProject(new java.io.File("../sil"))
   }
 }
