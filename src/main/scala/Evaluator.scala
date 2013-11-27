@@ -612,21 +612,15 @@ trait DefaultEvaluator[
                 val πPre = decider.π
                 val post = ast.utils.BigAnd(func.posts)
                 bookkeeper.functionBodyEvaluations += 1
-                decider.prover.logComment("begin strange evaluation")
-
-                decider.pushScope()
-                  val q = eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
+                eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
                   eval(σ3, post, pve, c4, tv)((tPost, c5) => {
                     val c5a = c5.decCycleCounter(func)
                     val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
                     if (config.cacheFunctionApplications())
                       fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                    decider.prover.logComment("end strange evaluation")
-                    decider.popScope()
                     assume(Set(tFAEqFB, tPost))
                     Q(tFA, c5a)
                   }))
-                  q
 
               } else {
                 /* Unfolded the function often enough already. We still need to
