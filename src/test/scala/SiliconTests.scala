@@ -6,17 +6,8 @@ import semper.sil.verifier.Verifier
 import semper.sil.frontend.{Frontend, SilFrontend}
 
 class SiliconTests extends DefaultSilSuite {
-  private val siliconTestDirectories: Seq[String] = List(
-//    "experimental"
-  )
-
-  private val silTestDirectories: Seq[String] = List(
-    "all"//,
-//    "all/basic",
-//    "all/chalice",
-//    "all/sequences",
-//    "all/issues/silicon"
-  )
+  private val siliconTestDirectories: Seq[String] = Nil
+  private val silTestDirectories: Seq[String] = List("all")
 
   override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
 
