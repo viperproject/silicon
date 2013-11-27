@@ -437,6 +437,7 @@ object Ite extends Function3[Term, Term, Term, Term] {
 	def apply(e0: Term, e1: Term, e2: Term) = e0 match {
 		case True() => e1
 		case False() => e2
+    case _ if e1 == e2 => e1
 		case _ => new Ite(e0, e1, e2)
 	}
 
@@ -695,7 +696,7 @@ case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Te
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
   val sort = function.sort.outSort
-  override val toString = function.id + tArgs.mkString("(", ", ", ")")
+  override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
 }
 
 /* Sequences */

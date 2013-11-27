@@ -30,7 +30,8 @@ package object io {
    * @return The instantiated sink.
    */
   def PrintWriter(file: JFile): JPrintWriter = {
-    file.getParentFile.mkdirs()
+    val pf = file.getParentFile()
+    if (pf != null) pf.mkdirs()
 
     new JPrintWriter(new JBufferedWriter(new JFileWriter(file)), true)
   }

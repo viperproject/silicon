@@ -6,13 +6,13 @@ import state.terms.{Term, FractionalPermissions}
 
 trait ChunkIdentifier {
   def name: String
-  def args: List[Term]
+  def args: Seq[Term]
 }
 
 trait Chunk {
   /* field name */
   def name: String
-  def args: List[Term]
+  def args: Seq[Term]
   def id: ChunkIdentifier
 }
 

@@ -470,7 +470,7 @@ case class ImplBranching
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =
-    "%s antecedent at %s (%s)".format(b.toString.capitalize, n.pos, if (b) t else ¬(t))
+    "%s antecedent at %s: %s (%s)".format(b.toString.capitalize, n.pos, n, if (b) t else ¬(t))
 }
 
 
@@ -492,8 +492,8 @@ case class IffBranching
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format = (
-    "%s operands at %s (%s, %s)"
-    .format(b.toString.capitalize, n.pos, if (b) t1 else ¬(t1), if (b) t2 else ¬(t2)))
+    "%s operands at %s: %s (%s, %s)"
+    .format(b.toString.capitalize, n.pos, n, if (b) t1 else ¬(t1), if (b) t2 else ¬(t2)))
 }
 
 
@@ -515,7 +515,7 @@ case class IfBranching
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =
-    "%s-branch at %s (%s)".format(if (b) "If" else "Else", n.pos, if (b) t else ¬(t))
+    "%s-branch at %s: %s (%s)".format(if (b) "If" else "Else", n.pos, n, if (b) t else ¬(t))
 }
 
 
@@ -544,7 +544,7 @@ case class AndBranching
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =
-    "%s antecedent at %s (%s)".format(b.toString.capitalize, n.pos, if (b) t else ¬(t))
+    "%s antecedent at %s: %s (%s)".format(b.toString.capitalize, n.pos, n, if (b) t else ¬(t))
 }
 
 /** Branching step for And */
@@ -554,7 +554,7 @@ case class OrBranching
   extends DefaultSubStep[ST, H, S] with DescriptiveStep[ST, H, S]
 {
   lazy val format =
-    "%s antecedent at %s (%s)".format(b.toString.capitalize, n.pos, if (b) t else ¬(t))
+    "%s antecedent at %s: %s (%s)".format(b.toString.capitalize, n.pos, n, if (b) t else ¬(t))
 }
 
 
