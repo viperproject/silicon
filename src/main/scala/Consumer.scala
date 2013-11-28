@@ -131,6 +131,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           evalp(σ, loss, pve, c1, tv)((tPerm, c2) =>
             heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), pve, null /* locacc */, c2, tv)
               ((h1) =>
+                /* TODO: is this correct? */
                 Q(h1, null, Nil, c2)
               )
           )
@@ -139,6 +140,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
         /* Field and predicate access predicates */
       case ast.AccessPredicate(locacc, perm) =>
+        // TODO: should not be needed - migrate all consuming of permissions into heapmanager
+        val hasCondChunks = σ.h.values exists {case ch:DirectConditionalChunk => true case _ => false}
+        if(hasCondChunks && !locacc.isInstanceOf[ast.PredicateAccess] /* TODO generalize */) {
+            locacc match {
+              case ast.FieldAccess(eRcvr, field) =>
+                eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+                  evalp(σ, perm, pve, c1, tv) ((tPerm, c2) =>
+                    heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(locacc.loc.name, null, Eq(*(), tRcvr), tPerm), pve, locacc, c2, tv) ((h:H) =>
+                      /* TODO: is this correct? */
+                      Q(h, Unit, Nil, c2)
+                    )))
+            }
+        } else
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
              /*   if (decider.hasEnoughPermissionsGlobally(h, id, p * tPerm)) {

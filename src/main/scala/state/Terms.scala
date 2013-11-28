@@ -165,6 +165,7 @@ sealed trait Term {
         case i:IntLiteral => i
         case AtLeast(t1, t2) => AtLeast(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
       }
   }
 
