@@ -373,7 +373,8 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
           case _: ast.Forall => terms.Forall
           case _: ast.Exists => terms.Exists
         }
-        terms.Quantification(quantifier, qvars map (v => terms.Var(v.name, toSort(v.typ, Map()))), f(body))
+        /* TODO: Translate triggers as well */
+        terms.Quantification(quantifier, qvars map (v => terms.Var(v.name, toSort(v.typ, Map()))), f(body))()
 
       case ast.True() => terms.True()
       case ast.False() => terms.False()

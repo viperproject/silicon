@@ -527,8 +527,9 @@ trait DefaultEvaluator[
 
         r && {
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
-          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux))
-          val tQuant = Quantification(tQuantOp, tVars, tActual)
+          /* TODO: Translate triggers as well */
+          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux))()
+          val tQuant = Quantification(tQuantOp, tVars, tActual)()
           assume(tQuantAux)
           Q(tQuant, c)}
 
