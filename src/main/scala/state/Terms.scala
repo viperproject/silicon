@@ -96,16 +96,11 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
  */
 
 sealed trait Term {
-	def ===(t: Term): Term = Eq(this, t)
-	def !==(t: Term): Term = Not(Eq(this, t))
+  def sort: Sort
 
-	def convert(to: Sort): Term = this match {
-    case _ if to == this.sort => this
-    case sw: SortWrapper if sw.t.sort == to => sw.t
-    case _ => SortWrapper(this, to)
-  }
-
-	def sort: Sort
+  def ===(t: Term): Term = Eq(this, t)
+  def !==(t: Term): Term = Not(Eq(this, t))
+  def convert(to: Sort): Term = SortWrapper(this, to)
 }
 
 /* Symbols */
@@ -1091,12 +1086,22 @@ case class Second(t: Term) extends SnapshotTerm {
   utils.assertSort(t, "term", sorts.Snap)
 }
 
-case class SortWrapper(t: Term, to: Sort) extends Term {
+class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert(!(t.sort == sorts.Ref && to == sorts.Int),
-         "Unexpected sort wrapping from %s to %s".format(t.sort, to))
+    "Unexpected sort wrapping from %s to %s".format(t.sort, to))
 
   override val toString = s"$t"
   override val sort = to
+}
+
+object SortWrapper {
+  def apply(t: Term, to: Sort) = t match {
+    case _ if t.sort == to => t
+    case sw: SortWrapper if sw.t.sort == to => sw.t
+    case _ => new SortWrapper(t, to)
+  }
+
+  def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
 }
 
 /* Other terms */
