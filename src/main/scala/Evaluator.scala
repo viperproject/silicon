@@ -877,6 +877,14 @@ trait DefaultEvaluator[
     (t1, tAux)
   }
 
+  /* TODO: The CP-style in which Silicon's main components are written makes it hard to work
+   *       with sequences. evalTriggers, evals and execs all share the same pattern, they
+   *       essentially recurse over a sequence and accumulate results, where results can be
+   *       terms, verification results, contexts, or any combination of these.
+   *       It would be nice to find a (probably crazy functional) abstraction that avoids
+   *       having to implement that pattern over and over again.
+   *
+   */
   private def evalTriggers(σ: S, silTriggers: Seq[ast.Trigger], pve: PartialVerificationError, c: C, tv: TV)
                           (Q: (List[Trigger], C) => VerificationResult)
                           : VerificationResult =
@@ -899,6 +907,15 @@ trait DefaultEvaluator[
         evalTriggers(σ, silTriggers.tail, t :: triggers, pve, c1, tv)(Q))
   }
 
+  /* TODO: Support applications of user-provided functions as triggers as well.
+   *       We can use eval for this, but we don't want to evaluate the function
+   *       body as well. Moreover, we don't need to check the preconditions
+   *       of functions used as triggers, but we do need to compute the snapshot,
+   *       because it is part of terms.FApp.
+   *       Axiomatising functions could make this task easier, and it is thus
+   *       probably not worth to address this problem before function
+   *       axiomatisation has been implemented (or discarded as an idea).
+   */
   private def evalTrigger(σ: S, trigger: ast.Trigger, pve: PartialVerificationError, c: C, tv: TV)
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
