@@ -184,12 +184,7 @@ object Exists extends Quantifier { override val toString = "∃ " }
 
 case class Trigger(ts: Seq[Term])
 
-case class Quantification(q: Quantifier,
-                          vars: Seq[Var],
-                          tBody: Term)
-                         (val id: Option[String] = None,
-                          val desc: Option[String] = None,
-                          val triggers: Seq[Trigger] = Seq())
+case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
     extends BooleanTerm
 
 /* Arithmetic expression terms */
