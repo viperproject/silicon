@@ -463,9 +463,9 @@ trait DefaultEvaluator[
         val body = quant.exp
         val vars = quant.variables map (_.localVar)
 
-        val tQuantOp = quant match {
-          case _: ast.Forall => Forall
-          case _: ast.Exists => Exists
+        val (tQuantOp, silTriggers) = quant match {
+          case fa: ast.Forall => (Forall, fa.autoTrigger.triggers)
+          case _: ast.Exists => (Exists, Seq())
         }
 
         /* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
@@ -498,29 +498,33 @@ trait DefaultEvaluator[
 
         val πPre: Set[Term] = decider.π
         var localResults: List[LocalEvaluationResult] = Nil
+        var triggers: List[Trigger] = Nil
 
         decider.pushScope()
 
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
+        val σQuant = σ \+ γVars
 
         val r =
-          eval(σ \+ γVars, body, pve, c, tv)((tBody, c1) => {
-            localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
+          evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
+            eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
+              triggers = _triggers
+              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
 
-            /* We could call Q directly instead of returning Success, but in
-             * that case the path conditions πDelta would also be outside of
-             * the quantification. Since they are not needed outside of the
-             * quantification we go the extra mile to get ride of them in order
-             * to not pollute the path conditions.
-             *
-             * Actually, only path conditions in which the quantified variable
-             * occurrs are waste, others, especially $combine-terms, are actually
-             * of interest and should be in the path conditions to avoid the
-             * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
-             * which is currently overcome by caching fapp-terms.
-             */
-            Success[C, ST, H, S](c1)})
+              /* We could call Q directly instead of returning Success, but in
+               * that case the path conditions πDelta would also be outside of
+               * the quantification. Since they are not needed outside of the
+               * quantification we go the extra mile to get ride of them in order
+               * to not pollute the path conditions.
+               *
+               * Actually, only path conditions in which the quantified variable
+               * occurrs are waste, others, especially $combine-terms, are actually
+               * of interest and should be in the path conditions to avoid the
+               * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
+               * which is currently overcome by caching fapp-terms.
+               */
+              Success[C, ST, H, S](c2)}))
 
         decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
@@ -528,8 +532,8 @@ trait DefaultEvaluator[
         r && {
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
           /* TODO: Translate triggers as well */
-          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux))
-          val tQuant = Quantification(tQuantOp, tVars, tActual)
+          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
+          val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
           Q(tQuant, c)}
 
@@ -872,6 +876,40 @@ trait DefaultEvaluator[
 
     (t1, tAux)
   }
+
+  private def evalTriggers(σ: S, silTriggers: Seq[ast.Trigger], pve: PartialVerificationError, c: C, tv: TV)
+                          (Q: (List[Trigger], C) => VerificationResult)
+                          : VerificationResult =
+
+    evalTriggers(σ, silTriggers, Nil, pve, c, tv)(Q)
+
+  private def evalTriggers(σ: S,
+                           silTriggers: Seq[ast.Trigger],
+                           triggers: List[Trigger],
+                           pve: PartialVerificationError,
+                           c: C,
+                           tv: TV)
+                          (Q: (List[Trigger], C) => VerificationResult)
+                          : VerificationResult = {
+
+    if (silTriggers.isEmpty)
+      Q(triggers.reverse, c)
+    else
+      evalTrigger(σ, silTriggers.head, pve, c, tv)((t, c1) =>
+        evalTriggers(σ, silTriggers.tail, t :: triggers, pve, c1, tv)(Q))
+  }
+
+  private def evalTrigger(σ: S, trigger: ast.Trigger, pve: PartialVerificationError, c: C, tv: TV)
+                         (Q: (Trigger, C) => VerificationResult)
+                         : VerificationResult = {
+
+    val es = trigger.exps collect {case f: ast.DomainFuncApp => f}
+    if (es.length != trigger.exps.length)
+      logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
+    evals2(σ, es, Nil, pve, c, tv)((ts, c1) =>
+      Q(Trigger(ts), c1))
+  }
+
 
 	override def pushLocalState() {
 		fappCacheFrames = fappCacheFrames.push(fappCache)
