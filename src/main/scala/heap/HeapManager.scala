@@ -102,7 +102,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
   /* TODO generalize */
   private def merge(inHeap: H, field: Field /* potential TODO: give some more heuristics which field should be merged */):H = {
-      val newHeap = inHeap.clone()
+      inHeap
   }
 
   def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult = {
@@ -132,10 +132,31 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
               case Some(v) =>
                   Q(v)
               case _ => {
-                if(inHeap.values.collect({case pf:DirectConditionalChunk if(pf.name == withField.name)}).size == 1) {
-                  // we already merged everything to one chunk
-                  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc, c, tv))
-                }  else /* merge some chunks */ getValue(merge(inHeap, withField), ofReceiver, withField, ofSet, pve, locacc, c, tv)(Q)
+                  // there is no one chunk that we can get the value from
+                  // let's create a new uninterpreted function!
+                  decider.prover.logComment("creating function to represent")
+                  val f = decider.fresh(sorts.Arrow(sorts.Ref, toSort(withField.typ)))
+                  println(inHeap.values)
+                  inHeap.values.foreach(u => u match {
+                    case pf:DirectConditionalChunk =>
+                      println("what?")
+                      pf.value match {
+                        case Var(id, s) if s.isInstanceOf[sorts.Arrow] =>
+                              val x = Var("x", sorts.Ref)
+                              decider.assume(Quantification(Forall, List(x), Implies(And(pf.guard.replace(*(), x), pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm()), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
+                                === DomainFApp(Function(id, s.asInstanceOf[sorts.Arrow]), List(x)))))
+                        case _ =>
+                            /* TODO maybe set the value for sets to DomainFApp with *(), so this here is not needed */
+                          val x = Var("x", sorts.Ref)
+                          decider.assume(Quantification(Forall, List(x), Implies(And(pf.guard.replace(*(), x), pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm()), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
+                              === pf.value)))
+                      }
+                    case pf:DirectFieldChunk =>
+                      decider.assume(DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))),List(pf.rcvr)) === pf.value)
+                    }
+                  )
+                  println("hereooooo")
+                  Q(DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(ofReceiver)))
               }
             }
         }

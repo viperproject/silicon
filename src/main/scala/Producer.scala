@@ -170,9 +170,11 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            assume(mts)
-            Q(mh, c2)
+            // TODO merge does not work yet with conditional chunks
+            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            //assume(mts)
+            //Q(mh, c2)
+            Q(σ.h + ch, c2)
           })
         })
 

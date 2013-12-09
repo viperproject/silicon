@@ -13,6 +13,7 @@ import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.HeapManager
+import semper.sil.ast.LocalVar
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -28,6 +29,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
@@ -136,6 +139,26 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               )
           )
         )
+      }
+
+      // pure forall e.g. ensures forall y:Ref :: y in xs ==> y.f > 0
+      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure) => {
+        decider.inScope({
+          decider.prover.logComment("CONSUMING PURE FORALL")
+          val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
+          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+          // restriction: the permission is constant and we can evaluate it here
+          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+            assume(tCond)
+            eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
+              if (decider.assert(tBody)) {
+                Q(h, null, Nil, c2)
+              } else {
+                Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
+              }
+            })
+          })
+        })
       }
 
         /* Field and predicate access predicates */
