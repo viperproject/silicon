@@ -110,8 +110,13 @@ trait DefaultExecutor[ST <: Store[ST],
           leave(σ1, block, c1, tv)(Q))
 
       case lb: sil.ast.LoopBlock =>
-        decider.prover.logComment(sil.ast.pretty.PrettyPrinter.pretty(lb.toAst))
+        decider.prover.logComment(s"loop at ${lb.pos}")
 
+        /* TODO: We should avoid roundtripping, i.e., parsing a SIL file into an AST,
+         *       which is then converted into a CFG, from which we then compute an
+         *       AST again.
+         */
+        val loopStmt = lb.toAst.asInstanceOf[ast.While]
         val inv = ast.utils.BigAnd(lb.invs, Predef.identity, lb.pos)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
         val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
@@ -128,9 +133,9 @@ trait DefaultExecutor[ST <: Store[ST],
           /* Verify loop body (including well-formedness check) */
           decider.prover.logComment("Verify loop body")
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
-          produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(invAndGuard), c0, tv0)((σ1, c1) =>
+          produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(loopStmt), c0, tv0)((σ1, c1) =>
             exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
-              consume(σ2,  FullPerm(), inv, LoopInvariantNotPreserved(inv), c2, tv0)((σ3, _, _, c3) =>
+              consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2, tv0)((σ3, _, _, c3) =>
                 Success[C, ST, H, S](c3))))}
             &&
           inScope {
@@ -138,10 +143,10 @@ trait DefaultExecutor[ST <: Store[ST],
             decider.prover.logComment("Establish loop invariant")
             val tv0 = tv.stepInto(c, Description[ST, H, S]("Loop Invariant Establishment"))
             val c0 = c
-            consume(σ,  FullPerm(), inv, LoopInvariantNotEstablished(inv), c0, tv0)((σ1, _, _, c1) => {
+            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(invAndNotGuard), c1, tv0)((σ3, c2) =>
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) =>
                 leave(σ3, lb, c2, tv)(Q))})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
