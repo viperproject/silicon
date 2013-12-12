@@ -1,0 +1,3 @@
+Links for handling transitive dependencies
+  https://github.com/mslinn/dependencyReport
+  https://groups.google.com/forum/#!topic/simple-build-tool/rcPh-lWbDtk

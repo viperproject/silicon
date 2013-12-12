@@ -42,11 +42,17 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case FApp(f, s, tArgs) =>
       "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))
 
-    case Quantification(quant, vars, body) =>
+    case Quantification(quant, vars, body, triggers) =>
       val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
       val strBody = convert(body)
+      val strQuant = convert(quant)
 
-      "(%s (%s) %s)".format(convert(quant), strVars, strBody)
+      val strTriggers: String =
+        triggers.map(trigger => trigger.ts map convert mkString(" "))
+                .map(s => s":pattern ($s)")
+                .mkString(" ")
+
+      "(%s (%s) (! %s %s))".format(strQuant, strVars, strBody, strTriggers)
 
     /* Booleans */
 
