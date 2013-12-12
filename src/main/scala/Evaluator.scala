@@ -526,7 +526,7 @@ trait DefaultEvaluator[
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
             eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
               triggers = _triggers
-              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
+              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2)
 
               /* We could call Q directly instead of returning Success, but in
                * that case the path conditions πDelta would also be outside of
