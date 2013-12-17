@@ -56,17 +56,17 @@ class Bookkeeper {
       List.fill(proverStatistics.size)("|Z3 %s: %s").mkString("\n")
 
     ("""
-      |Syxc errors: %s
-      |Syxc start time: %s
-      |Syxc time: %s
-      |Syxc branches: %s
-      |Syxc heap merger iterations: %d
-      |Syxc object cistinctness computations: %d
-      |Syxc function applications: %d
-      |Syxc function body evaluations: %d
-      |Syxc prover assumptions: %d
-      |Syxc prover assertions: %d
-      |Syxc fresh prover symbols: %d
+      |Silicon errors: %d
+      |Silicon start time: %s
+      |Silicon time: %d
+      |Silicon branches: %d
+      |Silicon heap merger iterations: %d
+      |Silicon object distinctness computations: %d
+      |Silicon function applications: %d
+      |Silicon function body evaluations: %d
+      |Silicon prover assumptions: %d
+      |Silicon prover assertions: %d
+      |Silicon fresh prover symbols: %d
     """ + placeholderLines).trim.stripMargin
   }
 
@@ -76,17 +76,17 @@ class Bookkeeper {
 
     ("""
       |{
-      |  "syxc_errors": %d,
-      |  "syxc_start_time": %d,
-      |  "syxc_time": %d,
-      |  "syxc_branches": %d,
-      |  "syxc_heapMergeIterations": %d,
-      |  "syxc_objectDistinctnessComputations": %d,
-      |  "syxc_functionApplications": %d,
-      |  "syxc_functionBodyEvaluations": %d,
-      |  "syxc_assumptionCounter": %d,
-      |  "syxc_assertionCounter": %d,
-      |  "syxc_freshSymbols": %d""" + (if (proverStatistics.size == 0) "\n" else ",\n")
+      |  "silicon_errors": %d,
+      |  "silicon_start_time": "%s",
+      |  "silicon_time": %d,
+      |  "silicon_branches": %d,
+      |  "silicon_heapMergeIterations": %d,
+      |  "silicon_objectDistinctnessComputations": %d,
+      |  "silicon_functionApplications": %d,
+      |  "silicon_functionBodyEvaluations": %d,
+      |  "silicon_assumptionCounter": %d,
+      |  "silicon_assertionCounter": %d,
+      |  "silicon_freshSymbols": %d""" + (if (proverStatistics.size == 0) "\n" else ",\n")
     + placeholderLines + "\n}").trim.stripMargin
 //    """
 //      |}
