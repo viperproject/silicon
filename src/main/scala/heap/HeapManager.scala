@@ -56,6 +56,8 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
   // TODO: generalize
   def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
+
+  //def consumePermissions(inHeap: H, receiver:Term, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: (H,Term) => VerificationResult) : VerificationResult;
   def consumePermissions(inHeap: H, h: H, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: H => VerificationResult): VerificationResult;
 
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions)(Q: H => VerificationResult):VerificationResult
@@ -78,10 +80,14 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     if (!decider.hasEnoughPermissionsGlobally(inHeap, FieldChunkIdentifier(ofReceiver, withField.name), FullPerm()))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fieldAccess), c, tv)
 
+    /* legacy: if there is a direct chunk with syntactically exactly the same receiver, just replace this */
+    // TODO
+
     // exhale and inhale again
     consumePermissions(inHeap, inHeap.empty + DirectFieldChunk(ofReceiver, withField.name, null, FullPerm()), pve, fieldAccess, c, tv)((nh) => {
       // TODO: move producing permissions to a method
       val nhInhaled = nh + DirectFieldChunk(ofReceiver, withField.name, toValue, FullPerm())
+      decider.prover.logComment("wrote " + ofReceiver + "." + withField + ":=" + toValue + " resulting heap for field: " + nhInhaled.values.filter(ch => (ch.name == withField.name)) + " initial heap: " + inHeap.values.filter(ch => (ch.name == withField.name)))
       Q(nhInhaled)
     }
     )
@@ -112,6 +118,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
     }
     else if(!decider.canReadGlobally(inHeap, FieldChunkIdentifier(ofReceiver, withField.name))) {
+      decider.prover.logComment("cannot read " + ofReceiver + "." + withField.name + " in heap: " + inHeap.values.filter(ch => (ch.name == withField.name) ))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     } else {
       // TODO: generalize
@@ -123,8 +130,11 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
                 // instantiate the function with the receiver
                 Q(DomainFApp(Function(id, q), List(ofReceiver)))
+              case sorts.Ref =>
+                // just pass the ref
+                //println("CASE: " + inHeap)
+                Q(Var(id,s))
             }
-
         }
         case _ => {
             /* Legacy lookup */
@@ -134,12 +144,12 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
               case _ => {
                   // there is no one chunk that we can get the value from
                   // let's create a new uninterpreted function!
-                  decider.prover.logComment("creating function to represent")
+                  decider.prover.logComment("creating function to represent " + withField + " relevant heap portion: " + inHeap.values.filter(ch => ch.name == withField.name))
                   val f = decider.fresh(sorts.Arrow(sorts.Ref, toSort(withField.typ)))
-                  println(inHeap.values)
+                  //println(inHeap.values)
                   inHeap.values.foreach(u => u match {
-                    case pf:DirectConditionalChunk =>
-                      println("what?")
+                    case pf:DirectConditionalChunk if(pf.name == withField.name) =>
+                      //println("what?")
                       pf.value match {
                         case Var(id, s) if s.isInstanceOf[sorts.Arrow] =>
                               val x = Var("x", sorts.Ref)
@@ -151,11 +161,13 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
                           decider.assume(Quantification(Forall, List(x), Implies(And(pf.guard.replace(*(), x), pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm()), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
                               === pf.value)))
                       }
-                    case pf:DirectFieldChunk =>
+                    case pf:DirectFieldChunk if(pf.name == withField.name) =>
                       decider.assume(DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))),List(pf.rcvr)) === pf.value)
+                    case _ => {}
                     }
+
                   )
-                  println("hereooooo")
+                  //println("hereooooo")
                   Q(DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(ofReceiver)))
               }
             }
@@ -171,8 +183,14 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       val ch = DirectConditionalChunk(field.name, s, cond.replace(variable, *()).asInstanceOf[BooleanTerm], pNettoGain)
 
       // all Refs that match the condition cannot be null
-      val quantifiedVar = Var("nonnull", sorts.Ref)
-      decider.assume(Quantification(Forall, List(quantifiedVar), Implies(cond.replace(variable, quantifiedVar), quantifiedVar !== Null())))
+      cond match {
+        case Eq(a,b) =>
+           val vari = if (a == variable) b else a;
+           decider.assume(vari !== Null())
+        case _ =>
+          val quantifiedVar = Var("nonnull", sorts.Ref)
+          decider.assume(Quantification(Forall, List(quantifiedVar), Implies(cond.replace(variable, quantifiedVar), quantifiedVar !== Null())))
+      }
 
     Q(inHeap + ch)
   }

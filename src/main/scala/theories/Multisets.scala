@@ -52,15 +52,15 @@ class DefaultMultisetsEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/multiset_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/multiset_declarations_dafny.smt2", s.elementsSort)
+      prover.logComment(s"/multisets_declarations_dafny.smt2 [${s.elementsSort}]")
+      preambleFileEmitter.emitSortParametricAssertions("/multisets_declarations_dafny.smt2", s.elementsSort)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/multiset_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/multiset_axioms_dafny.smt2", s.elementsSort)
+      prover.logComment(s"/multisets_axioms_dafny.smt2 [${s.elementsSort}]")
+      preambleFileEmitter.emitSortParametricAssertions("/multisets_axioms_dafny.smt2", s.elementsSort)
     }
   }
 }

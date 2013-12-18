@@ -428,6 +428,7 @@ class DefaultDecider[ST <: Store[ST],
         hqnew = hqnew + DirectConditionalChunk(ch.name, ch.value,Eq(*(), ch.rcvr),ch.perm)
       }
       case ch: DirectConditionalChunk => hqnew = hqnew + ch
+      case ch: DirectPredicateChunk => hqnew = hqnew + ch
     }
     hqnew
   }
@@ -443,7 +444,7 @@ class DefaultDecider[ST <: Store[ST],
     breakable {
       exhaleHC.values.foreach {
         ch => ch match {
-          case eCh: DirectConditionalChunk if(eCh.name == ch.name) => {
+          case eCh: DirectConditionalChunk  => {
             val guard1 = eCh.guard
 
             hq = H(hq.asInstanceOf[SetBackedHeap]).asInstanceOf[H]
@@ -452,7 +453,7 @@ class DefaultDecider[ST <: Store[ST],
               val * = fresh(sorts.Ref)
               assume(guard1.replace(terms.*(), *))
               hq.values.foreach {
-                case ch: DirectConditionalChunk => {
+                case ch: DirectConditionalChunk if(eCh.name == ch.name) => {
                   // leave early
                   if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
                     break;
@@ -469,6 +470,7 @@ class DefaultDecider[ST <: Store[ST],
                     }
                   })
                 }
+                case _ => {}
               }
               if (!permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
                 return None

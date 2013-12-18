@@ -6,44 +6,44 @@
 ;
 
 ;axiom (forall a: int, b: int :: { Math#min(a, b) } a <= b <==> Math#min(a, b) == a);
-(assert (forall ((x Int) (y Int)) (!
-	(iff
-	  (<= a b)
-	  (= ($Math.min a b) a))
-	:pattern (($Math.min a b))
-	)))
+;(assert (forall ((x Int) (y Int)) (!
+;	(iff
+;	  (<= x y)
+;	  (= ($Math.min x y) x))
+;	:pattern (($Math.min x y))
+;	)))
 
 ;axiom (forall a: int, b: int :: { Math#min(a, b) } b <= a <==> Math#min(a, b) == b);
-(assert (forall ((x Int) (y Int)) (!
-	(iff
-	  (<= b a)
-	  (= ($Math.min a b) b))
-	:pattern (($Math.min a b))
-	)))
+;(assert (forall ((x Int) (y Int)) (!
+;	(iff
+;	  (<= b a)
+;	  (= ($Math.min a b) b))
+;	:pattern (($Math.min a b))
+;	)))
 
 ;axiom (forall a: int, b: int :: { Math#min(a, b) } Math#min(a, b) == a || Math#min(a, b) == b);
-(assert (forall ((x Int) (y Int)) (!
-	(or
-	  (= ($Math.min a b) a)
-	  (= ($Math.min a b) b))
-	:pattern (($Math.min a b))
-	)))
+;(assert (forall ((x Int) (y Int)) (!
+;	(or
+;	  (= ($Math.min a b) a)
+;	  (= ($Math.min a b) b))
+;	:pattern (($Math.min a b))
+;	)))
 
 ;axiom (forall a: int :: { Math#clip(a) } 0 <= a ==> Math#clip(a) == a);
-(assert (forall ((x Int)) (!
-	(implies
-	  (<= 0 a)
-	  (= ($Math.clip a) a))
-	:pattern (($Math.clip a))
-	)))
+;(assert (forall ((x Int)) (!
+;	(implies
+;	  (<= 0 a)
+;	  (= ($Math.clip a) a))
+;	:pattern (($Math.clip a))
+;	)))
 
 ;axiom (forall a: int :: { Math#clip(a) } a < 0  ==> Math#clip(a) == 0);
-(assert (forall ((x Int)) (!
-	(implies
-	  (<= 0 a)
-	  (= ($Math.clip a) a))
-	:pattern (($Math.clip a))
-	)))
+;(assert (forall ((x Int)) (!
+;	(implies
+;	  (<= 0 a)
+;	  (= ($Math.clip a) a))
+;	:pattern (($Math.clip a))
+;	)))
 
 ;
 ; Multiset axioms
@@ -74,7 +74,7 @@
 
 ;axiom (forall<T> o: T :: { MultiSet#Empty()[o] } MultiSet#Empty()[o] == 0);
 (assert (forall ((x $S$)) (!
-  (= ($Multiset.count $Multiset.empty<$S$> x))
+  (= ($Multiset.count $Multiset.empty<$S$> x) 0)
 	:pattern (($Multiset.count $Multiset.empty<$S$> x))
 	)))
 
@@ -90,7 +90,7 @@
       (not (= ($Multiset.card xs) 0))
       (exists ((x $S$)) (!
         (< 0 ($Multiset.count xs x))
-        :pattern (($Set.in x xs))
+       ; WRONG! :pattern (($Set.in x xs))
         ))))
 	:pattern (($Multiset.card xs))
 	)))
@@ -185,13 +185,14 @@
 
 ;axiom (forall<T> a: MultiSet T, b: MultiSet T :: { MultiSet#Card(MultiSet#Union(a,b)) }
 ;  MultiSet#Card(MultiSet#Union(a,b)) == MultiSet#Card(a) + MultiSet#Card(b));
-(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
-  (=
-    ($Multiset.card ($Multiset.union xs ys) x)
-    (+ ($Multiset.card  xs) ($Multiset.card  ys)))
-	:pattern (($Multiset.card ($Multiset.union xs ys) x))
+; Implementation does not make sense
+;(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
+;  (=
+;    ($Multiset.card ($Multiset.union xs ys) x)
+;    (+ ($Multiset.card  xs) ($Multiset.card  ys)))
+;	:pattern (($Multiset.card ($Multiset.union xs ys) x))
 ;	:pattern (($Multiset.card  xs) ($Multiset.card  ys))
-	)))
+;	)))
 
 ;// two containment axioms
 ;axiom (forall<T> a, b: MultiSet T, y: T :: { MultiSet#Union(a, b), a[y] }
@@ -284,7 +285,7 @@
 (assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
   (iff
     ($Multiset.subset xs ys)
-    (forall ((x $S$>)) (!
+    (forall ((x $S$)) (!
       (<= ($Multiset.count xs x) ($Multiset.count ys x))
 	    :pattern (($Multiset.count xs x) ($Multiset.count ys x)))))
 	:pattern (($Multiset.subset xs ys))
@@ -295,7 +296,7 @@
 (assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
   (iff
     ($Multiset.eq xs ys)
-    (forall ((x $S$>)) (!
+    (forall ((x $S$)) (!
       (= ($Multiset.count xs x) ($Multiset.count ys x))
       :pattern (($Multiset.count xs x) ($Multiset.count ys x)))))
 	:pattern (($Multiset.eq xs ys))
@@ -317,7 +318,7 @@
 (assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
   (iff
     ($Multiset.disjoint xs ys)
-    (forall ((x $S$>)) (!
+    (forall ((x $S$)) (!
       (or
         (= ($Multiset.count xs x) 0)
         (= ($Multiset.count ys x) 0))
@@ -329,7 +330,7 @@
 ;axiom (forall<T> s: Set T, a: T :: { MultiSet#FromSet(s)[a] }
 ;  (MultiSet#FromSet(s)[a] == 0 <==> !s[a]) &&
 ;  (MultiSet#FromSet(s)[a] == 1 <==> s[a]));
-(assert (forall ((xs $Set<$S$>) (x <$S$>)) (!
+(assert (forall ((xs $Set<$S$>) (x $S$)) (!
   (and
     (iff
       (= ($Multiset.count ($Multiset.fromSet xs) x) 0)

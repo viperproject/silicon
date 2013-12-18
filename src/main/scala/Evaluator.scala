@@ -243,7 +243,7 @@ trait DefaultEvaluator[
          *       Hence, implement evaluation of AND similar to that of OR.
          *       Try to reuse code!
          */
-        println("Evaluating And")
+        //println("Evaluating And")
         decider.prover.logComment("Evaluating And")
         var πPre: Set[Term] = Set()
         var t0: Option[Term] = None
@@ -273,7 +273,7 @@ trait DefaultEvaluator[
           r && {
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
-            println("End Evaluating And")
+            //println("End Evaluating And")
             decider.prover.logComment("End Evaluating And")
 
             Q(And(t0.get, t1), c1)}})
@@ -588,7 +588,7 @@ trait DefaultEvaluator[
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
-        println("evaluating " + func.name)
+        //println("evaluating " + func.name)
         val err = PreconditionInAppFalse(fapp)
 
         evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
@@ -597,7 +597,7 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
-            println("consumed the preconditions")
+            decider.prover.logComment("consumed the preconditions")
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
@@ -652,7 +652,7 @@ trait DefaultEvaluator[
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
                 eIn) =>
-        println("Unfolding " + acc.loc.predicate.name)
+        //println("Unfolding " + acc.loc.predicate.name)
         /* Unfolding only has a temporary effect on the current heap because
          * the resulting heap is not forwarded to the final continuation.
          */
@@ -687,7 +687,7 @@ trait DefaultEvaluator[
               /* TODO: See comment about performance in case ast.Ite */
             decider.prover.logComment("assuming in unfolding... " + acc.loc.predicate.name)
             assume(tAuxIn + tActualIn)
-            println("Done unfolding " + acc.loc.predicate.name)
+            //println("Done unfolding " + acc.loc.predicate.name)
             Q(tActualInVar, c)
           }
         } else

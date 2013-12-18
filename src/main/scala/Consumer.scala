@@ -103,9 +103,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
 
-		logger.debug("\nCONSUME " + φ.toString)
-		logger.debug(stateFormatter.format(σ))
-		logger.debug("h = " + stateFormatter.format(h))
+		decider.prover.logComment("\nCONSUME " + φ.toString)
+    decider.prover.logComment(stateFormatter.format(σ))
+    decider.prover.logComment("h = " + stateFormatter.format(h))
 
 		val consumed = φ match {
       case ast.InhaleExhaleExp(_, a1) =>
@@ -135,7 +135,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), pve, null /* locacc */, c2, tv)
               ((h1) =>
                 /* TODO: is this correct? */
-                Q(h1, null, Nil, c2)
+                Q(h1, Unit /* not really correct */, Nil, c2)
               )
           )
         )
@@ -152,7 +152,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             assume(tCond)
             eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
               if (decider.assert(tBody)) {
-                Q(h, null, Nil, c2)
+                Q(h, Unit /* not really correct */, Nil, c2)
               } else {
                 Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
               }

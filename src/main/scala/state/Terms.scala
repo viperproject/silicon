@@ -164,8 +164,10 @@ sealed trait Term {
         case Plus(t1, t2) => Plus(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case i:IntLiteral => i
         case AtLeast(t1, t2) => AtLeast(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Less(t1, t2) => Less(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
       }
   }
 

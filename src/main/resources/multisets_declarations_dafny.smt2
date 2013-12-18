@@ -10,7 +10,7 @@
 ; 2013-07-24 Malte: Ignored for now. Not sure when it should be used.
 ;function $IsGoodMultiSet<T>(ms: MultiSet T): bool;
 
-(declare-fun $Multiset.count ($Multiset<$S$ $S$>) Int)
+(declare-fun $Multiset.count ($Multiset<$S$> $S$) Int)
 
 ;function MultiSet#Card<T>(MultiSet T): int;
 (declare-fun $Multiset.card ($Multiset<$S$>) Int)

@@ -94,7 +94,7 @@ TV <: TraceView[TV, ST, H, S]]
                tv: TV)
               (Q: (S, C) => VerificationResult)
   : VerificationResult = {
-    println(φs)
+    //println(φs)
     if (φs.isEmpty)
       Q(σ, c)
     else
@@ -129,7 +129,7 @@ TV <: TraceView[TV, ST, H, S]]
                              (Q: (H, C) => VerificationResult)
   : VerificationResult = {
 
-    println("PRODUCE " + φ)
+    //println("PRODUCE " + φ)
     logger.debug("\nPRODUCE " + φ.toString)
     logger.debug(stateFormatter.format(σ))
 
@@ -221,7 +221,7 @@ TV <: TraceView[TV, ST, H, S]]
 
       case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) => {
         decider.prover.logComment("Producing pure quantifier " + fa)
-        println("here")
+        //println("here")
         val forall = (cond: Term) => (body: Term) => Quantification(Forall, vars map {
           v => Var(v.name, symbolConverter.toSort(v.typ))
         }, Implies(cond, body))
@@ -286,8 +286,8 @@ TV <: TraceView[TV, ST, H, S]]
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         eval(σ, φ, pve, c, tv)((t, c1) => {
-          println(φ)
-          println("assuming " + t)
+          //println(φ)
+          //println("assuming " + t)
           assume(t)
           Q(σ.h, c1)
         })
