@@ -588,7 +588,7 @@ trait DefaultEvaluator[
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
-        //println("evaluating " + func.name)
+        decider.prover.logComment("evaluating " + func.name)
         val err = PreconditionInAppFalse(fapp)
 
         evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
@@ -659,6 +659,7 @@ trait DefaultEvaluator[
         var πPre: Set[Term] = Set()
         var tPerm: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
+        decider.prover.logComment("unfolding " + acc.loc.predicate.name)
 
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
@@ -672,6 +673,7 @@ trait DefaultEvaluator[
                 evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
                   consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                    decider.prover.logComment("producing predicate body!")
                     produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)

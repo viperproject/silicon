@@ -131,13 +131,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)
       case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
         eval(σ, set, pve, c, tv)((tSet, c1) =>
-          evalp(σ, loss, pve, c1, tv)((tPerm, c2) =>
-            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), pve, null /* locacc */, c2, tv)
-              ((h1) =>
+          evalp(σ, loss, pve, c1, tv)((tPerm, c2) => {
+            val k = decider.fresh("myblub", sorts.Ref)
+            // quick workaround: check if it is false
+            // TODO: this is unsound!!! Imagine the set to be empty, then we assume false!
+            assume(SetIn(k, tSet))
+
+            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), k, field, pve, null /* locacc */, c2, tv)((h1,t) =>  {
                 /* TODO: is this correct? */
-                Q(h1, Unit /* not really correct */, Nil, c2)
-              )
-          )
+                Q(h1, t, Nil, c2)
+              })
+          })
         )
       }
 
@@ -149,6 +153,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
           // restriction: the permission is constant and we can evaluate it here
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+            // TODO: this is unsound if the condition is always false
             assume(tCond)
             eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
               if (decider.assert(tBody)) {
@@ -170,9 +175,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case ast.FieldAccess(eRcvr, field) =>
                 eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
                   evalp(σ, perm, pve, c1, tv) ((tPerm, c2) =>
-                    heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(locacc.loc.name, null, Eq(*(), tRcvr), tPerm), pve, locacc, c2, tv) ((h:H) =>
+                    heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(locacc.loc.name, null, Eq(*(), tRcvr), tPerm), tRcvr, field, pve, locacc, c2, tv) ((h:H, t) =>
                       /* TODO: is this correct? */
-                      Q(h, Unit, Nil, c2)
+                      Q(h, t, Nil, c2)
                     )))
             }
         } else
@@ -211,12 +216,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			 */
       case _ =>
         // assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
-        eval(σ, φ, pve, c, tv)((t, c) =>
+        eval(σ, φ, pve, c, tv)((t, c) => {
+          decider.prover.logComment("asserting: " + φ)
           if (decider.assert(t)) {
             assume(t)
             Q(h, Unit, Nil, c)
           } else
-            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
+            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv) })
+
 		}
 
 		consumed

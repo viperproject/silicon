@@ -58,7 +58,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
 
 
   //def consumePermissions(inHeap: H, receiver:Term, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: (H,Term) => VerificationResult) : VerificationResult;
-  def consumePermissions(inHeap: H, h: H, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: H => VerificationResult): VerificationResult;
+  def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult;
 
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions)(Q: H => VerificationResult):VerificationResult
 
@@ -84,18 +84,18 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     // TODO
 
     // exhale and inhale again
-    consumePermissions(inHeap, inHeap.empty + DirectFieldChunk(ofReceiver, withField.name, null, FullPerm()), pve, fieldAccess, c, tv)((nh) => {
+    consumePermissions(inHeap, inHeap.empty + DirectFieldChunk(ofReceiver, withField.name, null, FullPerm()), ofReceiver, withField, pve, fieldAccess, c, tv)((nh,t) => {
       // TODO: move producing permissions to a method
       val nhInhaled = nh + DirectFieldChunk(ofReceiver, withField.name, toValue, FullPerm())
-      decider.prover.logComment("wrote " + ofReceiver + "." + withField + ":=" + toValue + " resulting heap for field: " + nhInhaled.values.filter(ch => (ch.name == withField.name)) + " initial heap: " + inHeap.values.filter(ch => (ch.name == withField.name)))
+      decider.prover.logComment("wrote " + ofReceiver + "." + withField.name + ":=" + toValue + " resulting heap for field: " + nhInhaled.values.filter(ch => (ch.name == withField.name)) + " initial heap: " + inHeap.values.filter(ch => (ch.name == withField.name)))
       Q(nhInhaled)
     }
     )
   }
 
-  def consumePermissions(inHeap: H, h: H, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: H => VerificationResult): VerificationResult = {
+  def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult = {
     decider.exhalePermissions(inHeap, h) match {
-      case Some(h) => Q(h)
+      case Some(h) => getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h, t))   /* TODO effing ugly - refactor! */
       case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     }
   }
@@ -134,7 +134,14 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
                 // just pass the ref
                 //println("CASE: " + inHeap)
                 Q(Var(id,s))
+
+
             }
+          // happens if a chunk value comes out of an unfold (at least the non-conditional ones)
+          case s:SortWrapper =>
+            Q(s)
+          // happens if a chunk value comes out of an function application
+          case s:FApp => Q(s)
         }
         case _ => {
             /* Legacy lookup */
@@ -178,7 +185,10 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
 
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions)(Q: H => VerificationResult):VerificationResult = {
-      val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(field.typ)))
+      /* TODO: this should not be fresh, but something with the sf function of produce. When unfolding a predicate, the snapshot should be used as a value instead of
+         fresh varsm
+       */
+      val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
 
       val ch = DirectConditionalChunk(field.name, s, cond.replace(variable, *()).asInstanceOf[BooleanTerm], pNettoGain)
 

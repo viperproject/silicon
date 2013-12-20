@@ -368,6 +368,8 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.isPositive(tPerm)) {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
+                  println(predicate.body)
+                  println(snap)
                   val ncs = dcs.map{_ match {
                     case fc: DirectFieldChunk => new NestedFieldChunk(fc)
                     case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
@@ -409,6 +411,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
                   produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
+                    decider.prover.logComment("heap after the unfold: " + σ2.h)
                     Q(σ2 \ σ.γ, c4)})})}
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))

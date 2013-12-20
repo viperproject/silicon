@@ -291,10 +291,11 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
-    emitSortWrappers(sequencesEmitter.sorts)
-    emitSortWrappers(setsEmitter.sorts)
-    emitSortWrappers(multisetsEmitter.sorts)
-    emitSortWrappers(domainsEmitter.sorts)
+    sequencesEmitter.declareSortWrappers()
+    setsEmitter.declareSortWrappers()
+    multisetsEmitter.declareSortWrappers()
+    // TODO: not sure what to do here
+    // domainEmitter.declareSortWrappers()
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)

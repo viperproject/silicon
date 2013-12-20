@@ -168,6 +168,7 @@ sealed trait Term {
         case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
+        case e:EmptySet => e
       }
   }
 

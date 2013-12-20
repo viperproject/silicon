@@ -9,6 +9,8 @@ trait PreambleFileEmitter[R] {
   def readPreamble(resource: String): R
   def emitPreamble(resource: String)
 
+  def readParametric(resource:String, sorts:Map[String, Sort]):R
+
   def readSortParametricAssertions(resource: String, sort: Sort): R
   def emitSortParametricAssertions(resource: String, sort: Sort)
 
@@ -48,14 +50,22 @@ class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[
     emitPreamble(readPreamble(resource))
   }
 
-  def readSortParametricAssertions(resource: String, sort: Sort) = {
-    //println(resource)
+  def readParametric(resource:String, sorts:Map[String, Sort]) = {
     val lines = readPreamble(resource)
-    lines.map(_.replace("$S$", prover.termConverter.convert(sort)))
+    lines.map(l => sorts.foldLeft(l)((l2, x) => l2.replace(x._1, prover.termConverter.convert(x._2))))
   }
 
-  def emitSortParametricAssertions(resource: String, sort: Sort) {
+  def readSortParametricAssertions(resource: String, sort: Sort) = {
+    //println(resource)
+    readParametric(resource, Map("$S$" -> sort))
+  }
+
+  def emitSortParametricAssertions(resource: String, sort: Sort) = {
     emitPreamble(readSortParametricAssertions(resource, sort))
+  }
+
+  def emitSortParametricAssertions(resource:String, sort: Sort, genericSort: Sort) = {
+    emitPreamble(readParametric(resource, Map("$S$" -> sort)))
   }
 
   def emitPreamble(lines: List[String]) {

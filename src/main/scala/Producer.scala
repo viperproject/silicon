@@ -167,6 +167,7 @@ TV <: TraceView[TV, ST, H, S]]
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(toSort(field.typ))
+            decider.prover.logComment("new var for snapshot!")
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
@@ -185,10 +186,10 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
             decider.prover.logComment("assuming predicate " + predicate.name)
-            assume(mts)
-            Q(mh, c2)
+            //assume(mts)
+            Q(σ.h+ch, c2)
           }))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
