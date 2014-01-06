@@ -134,9 +134,16 @@ trait DefaultExecutor[ST <: Store[ST],
           decider.prover.logComment("Verify loop body")
           val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
           produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(loopStmt), c0, tv0)((σ1, c1) =>
-            exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
-              consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2, tv0)((σ3, _, _, c3) =>
-                Success[C, ST, H, S](c3))))}
+          /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
+           *       Should no longer be necessary once we have an on-demand handling of merging and
+           *       false-checking.
+           */
+            if (decider.assert(False()))
+              Success[C, ST, H, S](c1) /* TODO: Mark branch as dead? */
+            else
+              exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
+                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2, tv0)((σ3, _, _, c3) =>
+                  Success[C, ST, H, S](c3))))}
             &&
           inScope {
             /* Verify call-site */
@@ -147,7 +154,14 @@ trait DefaultExecutor[ST <: Store[ST],
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
               produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) =>
-                leave(σ3, lb, c2, tv)(Q))})})
+              /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
+               *       Should no longer be necessary once we have an on-demand handling of merging and
+               *       false-checking.
+               */
+                if (decider.assert(False()))
+                  Success[C, ST, H, S](c2) /* TODO: Mark branch as dead? */
+                else
+                  leave(σ3, lb, c2, tv)(Q))})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
           val (arps, arpConstraints) =
