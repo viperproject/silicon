@@ -433,6 +433,18 @@ class DefaultDecider[ST <: Store[ST],
     hqnew
   }
 
+  // TODO move (there is one version of this already in Consumer)
+  def isWildcard(perm: DefaultFractionalPermissions):Boolean = { perm match {
+    case _: TermPerm => false
+    case _: WildcardPerm => true
+    case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case PermTimes(t0, t1) => isWildcard(t0) && isWildcard(t1)
+    case IntPermTimes(_, t1) => isWildcard(t1)
+    case _ => false
+   }
+  }
+
   def exhalePermissions(h: H, exhaleH: H): Option[H] = {
     // convert to conditional chunks if necessary
     var hq = toConditional(h)
@@ -455,14 +467,21 @@ class DefaultDecider[ST <: Store[ST],
               hq.values.foreach {
                 case ch: DirectConditionalChunk if(eCh.name == ch.name) => {
                   // leave early
+                  prover.logComment("are we done?")
                   if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
                     break;
+                  }
+
+                  // if what we want to exhale is a wildcard, we need to assume that it's less than what we get
+                  if(isWildcard(pLeft)) {
+                    prover.logComment("assuming that wildcard " + pLeft + " is less than chunk " + ch.perm)
+                    assume(pLeft.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < ch.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
                   }
 
                   val r = Ite(And(eCh.guard, ch.guard), PermMin(pLeft, ch.perm), NoPerm())
                   pLeft = pLeft - TermPerm(r)
                   inScope({
-                    prover.logComment("checking if chunk does contain permissions")
+                    prover.logComment("checking if chunk does still contain permissions")
                     if (permAssert(Ite(ch.guard, ch.perm - TermPerm(r), NoPerm()).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
                       hq = hq - ch
                     } else {
@@ -472,6 +491,7 @@ class DefaultDecider[ST <: Store[ST],
                 }
                 case _ => {}
               }
+              prover.logComment("are we done?")
               if (!permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
                 return None
               }

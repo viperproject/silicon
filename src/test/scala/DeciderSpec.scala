@@ -60,6 +60,26 @@ class DeciderSpec extends FlatSpec {
     preambleFileEmitter.emitSortParametricAssertions("/sets_axioms_dafny.smt2", sorts.Ref)
   }
 
+  def emitMultisetPreamble(decider:Decider[P, ST, H, PC, S, C]) {
+    val preambleFileEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])
+    decider.prover.declare(terms.SortDecl(sorts.Multiset(sorts.Ref)))
+    decider.prover.logComment(s"/multisets_declarations_dafny.smt2 [Multiset[Ref]]")
+    preambleFileEmitter.emitSortParametricAssertions("/multisets_declarations_dafny.smt2", sorts.Ref)
+    decider.prover.logComment(s"/multisets_axioms_dafny.smt2 [Multiset[Ref]]")
+    preambleFileEmitter.emitSortParametricAssertions("/multisets_axioms_dafny.smt2", sorts.Ref)
+  }
+
+  def emitSequencePreamble(decider:Decider[P, ST, H, PC, S, C]) {
+    val preambleFileEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])
+    decider.prover.declare(terms.SortDecl(sorts.Seq(sorts.Ref)))
+    decider.prover.logComment(s"/sequences_declarations_dafny.smt2 [Seq[Ref]]")
+    preambleFileEmitter.emitSortParametricAssertions("/sequences_declarations_dafny.smt2", sorts.Ref)
+    decider.prover.logComment(s"/sequences_axioms_dafny.smt2 [Seq[Ref]]")
+    preambleFileEmitter.emitSortParametricAssertions("/sequences_axioms_dafny.smt2", sorts.Ref)
+  }
+
+
+
 
   it should "say that we have enough permissions for exhaling 'acc(x.f,1)' in case h: x.f -> _ # 1" in {
     val decider = createDecider
@@ -389,6 +409,121 @@ class DeciderSpec extends FlatSpec {
         case _ =>
       }
     }
+  }
+
+  it should "let us do a basic exhale for Multisets!" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+
+    val S,T = decider.fresh(sorts.Multiset(sorts.Ref))
+
+    decider.assume(MultisetSubset(S,T))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null /* we dont care about the value */, MultisetIn(*(), T), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), T))))
+
+    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, MultisetIn(*(), S), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), S))))
+
+    val h = decider.exhalePermissions(heap, exhaleHeap)
+    h match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) =>
+    }
+  }
+
+  it should "let do us a complex exhale for Multisets!" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+
+    val t = decider.fresh(sorts.Ref)
+    val S,T = decider.fresh(sorts.Multiset(sorts.Ref))
+
+    decider.assume(MultisetSubset(S,T))
+    decider.assume(MultisetIn(t, T))
+    decider.assume(Not(MultisetIn(t, S)))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null /* we dont care about the value */, MultisetIn(*(), T), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), T))))
+
+    val exhaleHeap1 = new SetBackedHeap() + DirectFieldChunk(t, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))))
+    val exhaleHeap2 = new SetBackedHeap() + DirectConditionalChunk("f", null, MultisetIn(*(), S), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), S))))
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
+        case None => fail("exhale should succeed!")
+        case _ =>
+      }
+    }
+
+  }
+
+  it should "be possible to split a sequence in two parts" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S = decider.fresh(sorts.Seq(sorts.Ref))
+    val k = decider.fresh(sorts.Int)
+    decider.assume(Less(k,SeqLength(S)))
+    decider.assume(Not(Less(k, IntLiteral(0))))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
+
+    val S1 = SeqTake(S, k)
+    val S2 = SeqDrop(S, k)
+
+    val exhaleHeap1 = new SetBackedHeap + DirectConditionalChunk("f", null, SeqIn(S1, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
+    val exhaleHeap2 = new SetBackedHeap + DirectConditionalChunk("f", null, SeqIn(S2, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
+
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
+        case None => fail("exhale should succeed!")
+        case Some(rest) =>
+      }
+    }
+
+  }
+
+  it should "be possible to exhale two elements with known indices from a sequence" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S = decider.fresh(sorts.Seq(sorts.Ref))
+    val k, l = decider.fresh(sorts.Int)
+    decider.assume(Less(k,SeqLength(S)))
+    decider.assume(Not(Less(k, IntLiteral(0))))
+    decider.assume(Less(l,SeqLength(S)))
+    decider.assume(Not(Less(l, IntLiteral(0))))
+    decider.assume(Not(Eq(k,l)))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
+    val exhaleHeap1 = new SetBackedHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S, k)), FullPerm())
+    val exhaleHeap2 = new SetBackedHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S, l)), FullPerm())
+
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) => println(exhaledHeap)
+        decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
+        case None => fail("exhale should succeed!")
+        case Some(_) =>
+      }
+    }
+
+  }
+
+  it should "be possible to exhale elements with unknown indices"  in {
+
+  }
+
+  it should "be possible to split and do something extra for the element in the middle"  in {
+    
   }
 
  }

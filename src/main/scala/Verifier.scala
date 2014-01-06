@@ -62,7 +62,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
 	def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
-    logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
+    println("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
@@ -247,6 +247,8 @@ trait AbstractVerifier[ST <: Store[ST],
       results = members.map(ev.verify _).toList
     }
 
+	println("end")
+	decider.prover.logComment("woop!")
     results
   }
 

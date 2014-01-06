@@ -169,6 +169,13 @@ sealed trait Term {
         case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
         case e:EmptySet => e
+        case MultisetIn(t1, t2) => MultisetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case MultisetCount(t1, t2) => MultisetCount(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqIn(t1, t2) => SeqIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqTake(t1, t2) => SeqTake(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqDrop(t1, t2) => SeqDrop(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqAt(t1, t2) => SeqAt(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case MultisetFromSeq(t1) => MultisetFromSeq(t1.replace(term, withTerm))
       }
   }
 
@@ -1158,6 +1165,37 @@ object MultisetCardinality {
   }
 
   def unapply(mc: MultisetCardinality) = Some((mc.p))
+}
+
+class MultisetCount(val p0:Term, val p1:Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
+  val sort = sorts.Int
+  override val toString = s"cnt($p0,$p1)"
+}
+
+object MultisetCount extends {
+  def apply(e:Term, t:Term) = {
+    utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
+    utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
+
+    new MultisetCount(e,t)
+  }
+
+  def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
+}
+
+class MultisetFromSeq(val p:Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+  val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
+  val sort = sorts.Multiset(elementsSort)
+}
+
+object MultisetFromSeq {
+  def apply(p:Term) = {
+    utils.assertSort(p, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+
+    new MultisetFromSeq(p)
+  }
+
+  def unapply(m:MultisetFromSeq) = Some(m.p)
 }
 
 /* Domains */

@@ -419,3 +419,87 @@
       ($Seq.drop xs j)))
   :pattern (($Seq.drop ($Seq.update xs i x) j))
   )))
+;axiom (forall<T> s: Seq T, v: T :: { MultiSet#FromSeq(Seq#Build(s, v)) } MultiSet#FromSeq(Seq#Build(s, v)) == MultiSet#UnionOne(MultiSet#FromSeq(s), v));
+;(assert (forall ((xs $Seq<$S$>) (x $S$)) (!
+;    (=
+;        ($Multiset<$S$>.fromSeq ($Seq<$S$>.build xs x))
+;        ($Multiset<$S$>.union (Multiset<$S$>.fromSeq(xs)) (Multiset<$S$>.singleton x)))
+;    :pattern (($Multiset<$S$>.fromSeq ($Seq<$S$>.build xs x)))
+;    )))
+
+;axiom (forall<T> :: MultiSet#FromSeq(Seq#Empty(): Seq T) == MultiSet#Empty(): MultiSet T);
+(assert (= ($Multiset.fromSeq $Seq.nil<$S$>) $Multiset.empty<$S$>))
+
+;axiom (forall<T> a: Seq T, b: Seq T :: { MultiSet#FromSeq(Seq#Append(a, b)) } MultiSet#FromSeq(Seq#Append(a, b)) == MultiSet#Union(MultiSet#FromSeq(a), MultiSet#FromSeq(b)));
+;(assert (forall ((a $Seq<$S$>) (b $Seq<$S$>)) (!
+;    (=
+;        ($Multiset.fromSeq ($Seq.con a b))
+;        ($Multiset.union ($Multiset.fromSeq a) ($Multiset.fromSeq b)))
+;    :pattern (($Multiset.fromSeq ($Seq.con a b)))
+;)))
+
+;axiom (forall<T> s: Seq T, i: int, v: T, x: T :: { MultiSet#FromSeq(Seq#Update(s, i, v))[x] } 0 <= i && i < Seq#Length(s) ==> MultiSet#FromSeq(Seq#Update(s, i, v))[x] == MultiSet#Union(MultiSet#Difference(MultiSet#FromSeq(s), MultiSet#Singleton(Seq#Index(s, i))), MultiSet#Singleton(v))[x]);
+
+
+;axiom (forall<T> s: Seq T, x: T :: { MultiSet#FromSeq(s)[x] } (exists i: int :: { Seq#Index(s, i) } 0 <= i && i < Seq#Length(s) && x == Seq#Index(s, i)) <==> 0 < MultiSet#FromSeq(s)[x]);
+(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+    (iff
+        (exists ((i Int)) (!
+            (and
+                (<= 0 i)
+                (< i ($Seq.len s))
+                (= x ($Seq.at s i)))
+       :pattern (($Seq.at s i))))
+        (< 0 ($Multiset.count ($Multiset.fromSeq s) x)))
+    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
+    )))
+
+;additional axioms to support counting for splitted sequences
+;TODO: fix the pattern! I guess this is prone to a instantiation loop
+;(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (iff true (= s s))))
+(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (!
+    (iff
+        (and (<= 0 k) (< k ($Seq.len s)))
+        (= ($Multiset.count ($Multiset.fromSeq s) x)
+            (+ ($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x) ($Multiset.count ($Multiset.fromSeq ($Seq.drop s k)) x))
+        )
+    )
+    ;:pattern (($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x) ($Multiset.count ($Multiset.fromSeq($Seq.drop s k)) x))
+    )))
+; TODO: Somehow, the end of an expression must be indented. strange.
+; count is always >= 0
+; TODO move over to multisets
+(assert (forall ((s $Multiset<$S$>) (x $S$)) (!
+   (>= ($Multiset.count s x) 0)
+   :pattern (($Multiset.count s x))
+    )))
+; count if we know two different indices
+; bit of a special case
+; TODO: pattern
+(assert (forall ((s $Seq<$Ref>) (x $Ref)) (!
+    (iff
+        (exists ((i Int) (j Int))
+            (and
+                (not (= i j))
+                (<= 0 i)
+                (<= 0 j)
+                (< i ($Seq.len s))
+                (< j ($Seq.len s))
+                (= ($Seq.at s i) x)
+                (= ($Seq.at s j) x)
+            )
+         )
+        (>= ($Multiset.count ($Multiset.fromSeq s) x) 2)
+    )
+    )))
+
+
+
+;(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (!
+;    (iff
+;        (and
+;            (<= 0 k)
+;            (< k ($Seq.len s)))
+;       (<= ($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x) ($Multiset.count ($Multiset.fromSeq s) x)))
+;     :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x))
+;     )))

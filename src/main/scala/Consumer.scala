@@ -135,12 +135,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val k = decider.fresh("myblub", sorts.Ref)
             // quick workaround: check if it is false
             // TODO: this is unsound!!! Imagine the set to be empty, then we assume false!
-            assume(SetIn(k, tSet))
-
+            if (decider.inScope({
+            	assume(SetIn(k, tSet))
+            	decider.assert(False())
+        	})) {
+        		// guard is false, we do not need to do anything
+        		Q(h, Unit, Nil, c2)
+        	}
+        	else
+        	 {
+        	// we may safely assume it
+        	assume(SetIn(k, tSet))
             heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), k, field, pve, null /* locacc */, c2, tv)((h1,t) =>  {
                 /* TODO: is this correct? */
                 Q(h1, t, Nil, c2)
               })
+            }
           })
         )
       }
@@ -154,14 +164,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           // restriction: the permission is constant and we can evaluate it here
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
             // TODO: this is unsound if the condition is always false
-            assume(tCond)
-            eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-              if (decider.assert(tBody)) {
-                Q(h, Unit /* not really correct */, Nil, c2)
-              } else {
-                Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
-              }
+            if(decider.inScope({
+            	assume(tCond)
+            	decider.assert(False())
+            })) {
+            	Q(h, Unit, Nil, c1)
+            } else {
+            	assume(tCond)
+            	eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
+              		if (decider.assert(tBody)) {
+                	Q(h, Unit /* not really correct */, Nil, c2)
+              	} else {
+               		 Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
+              	}
             })
+            }
+            
           })
         })
       }

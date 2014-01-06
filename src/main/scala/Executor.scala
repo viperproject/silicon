@@ -249,7 +249,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case _ =>
         logger.debug("\nEXECUTE " + stmt.toString)
         logger.debug(stateFormatter.format(σ))
-        decider.prover.logComment("")
+        decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString)
     }
 
