@@ -523,7 +523,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "be possible to split and do something extra for the element in the middle"  in {
-    
+
   }
 
  }
