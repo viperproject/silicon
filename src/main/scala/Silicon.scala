@@ -13,7 +13,7 @@ import semper.sil.verifier.{
     Failure => SilError,
     DefaultDependency => SilDefaultDependency}
 import sil.frontend.SilFrontendConfig
-import interfaces.{VerificationResult, ContextAwareResult, Failure}
+import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.{TraceView, TraceViewFactory}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
@@ -58,6 +58,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]
+  private type TV = BranchingOnlyTraceView[ST, H, S]
+  private type V = DefaultVerifier[ST, H, PC, S, TV]
+  private type Failure = SiliconFailure[C, ST, H, S, TV]
 
   private var shutDownHooks: Set[() => Unit] = _
 
@@ -122,13 +125,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     *
     * @param verifierFactory
     * @param traceviewFactory
-    * @tparam V
-    * @tparam TV
     * @return A fully set up verifier, ready to be used.
     */
-  private  def createVerifier[V <: AbstractVerifier[ST, H, PC, S, TV],
-                              TV <: TraceView[TV, ST, H, S]]
-                             (verifierFactory: VerifierFactory[V, TV, ST, H, PC, S],
+  private  def createVerifier(verifierFactory: VerifierFactory[V, TV, ST, H, PC, S],
                               traceviewFactory: TraceViewFactory[TV, ST, H, S])
                              : V = {
 
@@ -167,9 +166,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
                            stateUtils, bookkeeper, traceviewFactory)
 	}
 
-	private def runVerifier(program: ast.Program): List[Failure[C, ST, H, S, _]] = {
+	private def runVerifier(program: ast.Program): List[Failure] = {
 	  val verifierFactory = new DefaultVerifierFactory[ST, H, PC, S, BranchingOnlyTraceView[ST, H, S]]
-	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()
+	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()    
 
 	  val verifier = createVerifier(verifierFactory, traceviewFactory)
 
@@ -180,11 +179,13 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 		 *  - Remove Successes from the results before continuing
 		 */
 
-		var results: List[VerificationResult] = verifier.verify(program)
+		val results: List[VerificationResult] = verifier.verify(program)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
-		results = results.flatMap(r => r :: r.allPrevious)
+    var failures =
+      results.flatMap(r => r :: r.allPrevious)
+             .collect{ case f: Failure => f }
 
     /* Removes results that have the same textual representation of their
      * error message.
@@ -194,8 +195,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
      *       once for each fold/unfold and once when they are checked for
      *       well-formedness.
      */
-    results = results.reverse
-           .foldLeft((Set[String](), List[VerificationResult]())){
+    failures = failures.reverse
+           .foldLeft((Set[String](), List[Failure]())){
               case ((ss, rs), r: ContextAwareResult[_, _, _, _]) =>
                 if (r.message == null) (ss, r :: rs)
                 else if (ss.contains(r.message.readableMessage)) (ss, rs)
@@ -203,9 +204,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
 
-    val failures = results.collect{
-      case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f
-    }
+//    val failures = results.collect{
+//      case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f
+//    }
 
 		if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.getStatistics
@@ -228,7 +229,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       }
 		}
 
-		logResults(results)
+    failures foreach (f => logFailure(f, s => logger.info(s)))
 
 		logger.info("\nVerification finished in %s with %s error(s)".format(
         silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
@@ -237,29 +238,24 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     failures
 	}
 
-  private def convertFailures(failures: Seq[Failure[C, ST, H, S, _]]): SilVerificationResult = {
+  private def convertFailures(failures: List[Failure]): SilVerificationResult = {
     failures match {
       case Seq() => SilSuccess
       case _ => SilError(failures map (_.message))
     }
   }
 
-	private def logResults(rs: List[VerificationResult]) {
-    rs.collect{case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f}
-      .foreach(f => logContextAwareMessage(f, s => logger.info(s)))
-	}
+	private def logFailure(failure: Failure, log: String => Unit) {
+		log("\n" + failure.message.readableMessage(true))
 
-	private def logContextAwareMessage(r: ContextAwareResult[C, ST, H, S], log: String => Unit) {
-		log("\n" + r.message.readableMessage(true))
-
-		if (config.showBranches() && r.context.branchings.nonEmpty) {
+		if (config.showBranches() && failure.context.branchings.nonEmpty) {
 			logger.error("    Branches taken:")
 
-			r.context.branchings.reverse foreach (b =>
+      failure.context.branchings.reverse foreach (b =>
 				logger.error("      " + b.format))
 
       logger.error("")
-			r.context.currentBranch.print("")
+      failure.context.currentBranch.print("")
 		}
 	}
 

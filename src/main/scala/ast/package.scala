@@ -131,6 +131,8 @@ package object ast {
   val Exists = sil.ast.Exists
   type Forall = sil.ast.Forall
   val Forall = sil.ast.Forall
+  type Trigger = sil.ast.Trigger
+  val Trigger = sil.ast.Trigger
 
   type Statement = sil.ast.Stmt
   type Assignment = sil.ast.LocalVarAssign
