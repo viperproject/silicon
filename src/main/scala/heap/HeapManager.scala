@@ -60,7 +60,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
   //def consumePermissions(inHeap: H, receiver:Term, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: (H,Term) => VerificationResult) : VerificationResult;
   def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult;
 
-  def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions)(Q: H => VerificationResult):VerificationResult
+  def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult
 
 
 
@@ -102,6 +102,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
   private def givesReadAccess(chunk: DirectChunk, rcv:Term, field:Field):Boolean = {
     // TODO: move heap management methods to HeapManager
+    println("hia " + chunk)
     decider.prover.logComment("checking if " + chunk + " gives access to " + rcv + "." + field)
     decider.canReadGlobally(H(List(chunk)), FieldChunkIdentifier(rcv, field.name))
   }
@@ -122,6 +123,16 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     } else {
       // TODO: generalize
+      println("looking in " + inHeap.values)
+      println("for " + ofReceiver)
+      println(inHeap.values.collectFirst{case pf:DirectConditionalChunk => println("mugu")})
+      println(inHeap.values foreach {
+        case pf: DirectConditionalChunk if (pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => println("bubu " + pf)
+        case _ => println("whatever")
+      })
+      decider.prover.logComment("end of bullshit")
+
+
       inHeap.values.collectFirst{case pf:DirectConditionalChunk if(pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => pf.value} match {
         case Some(v) => v match {
           case Var(id, s) =>
@@ -134,7 +145,10 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
                 // just pass the ref
                 //println("CASE: " + inHeap)
                 Q(Var(id,s))
-
+              // TODO ???
+              case sorts.Seq(_) =>
+                // just pass the ref
+                Q(Var(id, s))
 
             }
           // happens if a chunk value comes out of an unfold (at least the non-conditional ones)
@@ -184,13 +198,24 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   }
 
 
-  def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions)(Q: H => VerificationResult):VerificationResult = {
+  def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult = {
       /* TODO: this should not be fresh, but something with the sf function of produce. When unfolding a predicate, the snapshot should be used as a value instead of
-         fresh varsm
+         fresh vars
        */
+      println(cond)
+      //println(variable)
+      //println(rcvr)
       val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
 
-      val ch = DirectConditionalChunk(field.name, s, cond.replace(variable, *()).asInstanceOf[BooleanTerm], pNettoGain)
+      val rewrittenCond = rcvr match {
+        case SeqAt(seq, index) => SeqIn(seq, *())
+      }
+
+      val rewrittenGain = rcvr match {
+        case SeqAt(seq, index) => PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
+      }
+
+      val ch = DirectConditionalChunk(field.name, s, rewrittenCond/*cond.replace(variable, *()).asInstanceOf[BooleanTerm] */, rewrittenGain /* pNettoGain */)
 
       // all Refs that match the condition cannot be null
       cond match {
@@ -199,9 +224,19 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
            decider.assume(vari !== Null())
         case _ =>
           val quantifiedVar = Var("nonnull", sorts.Ref)
-          decider.assume(Quantification(Forall, List(quantifiedVar), Implies(cond.replace(variable, quantifiedVar), quantifiedVar !== Null())))
+          decider.assume(Quantification(Forall, List(quantifiedVar), Implies(rewrittenCond.replace(*(), quantifiedVar)/*cond.replace(variable, quantifiedVar) */, quantifiedVar !== Null())))
+          // TODO generalize - this is a weakness of the sequence axiomatization
+          rcvr match {
+            // additionally
+            case SeqAt(seq, index) =>
+              val idx = Var("idx", sorts.Int)
+              decider.assume(Quantification(Forall, List(idx), Implies(cond.replace(variable, idx), SeqAt(seq, idx) !== Null())))
+            case _ =>
+          }
+
       }
 
+    //println(ch)
     Q(inHeap + ch)
   }
 

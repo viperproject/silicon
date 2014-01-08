@@ -86,15 +86,19 @@ trait AbstractElementVerifier[ST <: Store[ST],
     inScope {
 			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
+        println("heap after produce pre:" + σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
          produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
            Success[C, ST, H, S](c3))}
 					&&
         inScope {
-          exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
+          println("Body::")
+          println(body)
+          exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) => {
+            println("heap before consume post: " + σ2.h);
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success[C, ST, H, S](c4)))})})}
+              Success[C, ST, H, S](c4))})})})}
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
@@ -277,20 +281,20 @@ trait AbstractVerifier[ST <: Store[ST],
 
     emitStaticPreamble()
 
-    sequencesEmitter.declareSorts()
     setsEmitter.declareSorts()
     multisetsEmitter.declareSorts()
+    sequencesEmitter.declareSorts()
     domainsEmitter.declareSorts()
 
-    sequencesEmitter.declareSymbols()
     setsEmitter.declareSymbols()
     multisetsEmitter.declareSymbols()
+    sequencesEmitter.declareSymbols()
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
 
-    sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
+    sequencesEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
     sequencesEmitter.declareSortWrappers()

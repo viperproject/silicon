@@ -129,6 +129,8 @@ trait DefaultBrancher[ST <: Store[ST],
 						         fFalse: (C, TV) => VerificationResult)
                     : VerificationResult = {
 
+    println("trololo")
+
 		val guardsTrue = BigAnd(ts)
 		val guardsFalse = BigAnd(ts, t => ¬(t))
 

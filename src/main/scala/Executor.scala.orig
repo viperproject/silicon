@@ -117,14 +117,12 @@ trait DefaultExecutor[ST <: Store[ST],
                     : VerificationResult = {
 
     edge match {
-      case ce: sil.ast.ConditionalEdge => {
-        decider.prover.logComment("Starting Internal Eval")
+      case ce: sil.ast.ConditionalEdge =>
         eval(σ, ce.cond, Internal(ce.cond), c, tv)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
-        { decider.prover.logComment("result is " + tCond)
           branch(tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
             (c2: C, tv1: TV) => exec(σ, ce.dest, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Success[C, ST, H, S](c2))})}
+            (c2: C, tv1: TV) => Success[C, ST, H, S](c2)))
 
       case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c, tv)(Q)
     }
@@ -376,7 +374,6 @@ trait DefaultExecutor[ST <: Store[ST],
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
             val post = ast.utils.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
-              println("heap after method call: " + σ3.h)
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})

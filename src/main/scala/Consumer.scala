@@ -128,6 +128,33 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
+
+      // TODO: generalize for arbitrary condition and receiver
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(ast.SeqIndex(seq, idx), field), loss))) => {
+        decider.prover.logComment("CONSUMING SEQ FORALL")
+        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+        // TODO: consider the condition!!
+        eval(σ \+ γVars, seq, pve, c, tv)((tSeq, c1) =>
+          evalp(σ, loss, pve, c1, tv) ((tPerm, c2) => {
+          val k = decider.fresh("blabu", sorts.Ref)
+          if(decider.inScope({
+            assume(SeqIn(tSeq,k))
+            decider.assert(False())
+          })) {
+            // guard is false, we do not need to do anything
+            Q(h, Unit, Nil, c2)
+          } else {
+            // we may safely assume the ""guard""
+            assume(SeqIn(tSeq, k))
+
+            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null, SeqIn(tSeq,*()), PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(tSeq))), tPerm)), k, field, pve, null, c2, tv) ((h1, t) => {
+              Q(h1, t, Nil, c2)
+            })
+          }
+        }))
+      }
+
       // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)
       case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
         eval(σ, set, pve, c, tv)((tSet, c1) =>

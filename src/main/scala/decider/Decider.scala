@@ -159,6 +159,7 @@ class DefaultDecider[ST <: Store[ST],
 	  //println("Asserting in decider.... " + t)
 	  
 		val asserted = isKnownToBeTrue(t)
+    if(asserted) prover.logComment(t + " is trivially true")
 
 		asserted || π.exists(_ == t) || proverAssert(t, logSink)
 	}
@@ -439,7 +440,7 @@ class DefaultDecider[ST <: Store[ST],
     case _: WildcardPerm => true
     case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
     case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case PermTimes(t0, t1) => isWildcard(t0) && isWildcard(t1)
+    case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
     case IntPermTimes(_, t1) => isWildcard(t1)
     case _ => false
    }

@@ -211,7 +211,7 @@ TV <: TraceView[TV, ST, H, S]]
               decider.prover.logComment("End produce set access predicate " + fa)
               decider.popScope()
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
-                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p)((newHeap) =>  {
+                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p, tRcvr)((newHeap) =>  {
                   Q(newHeap, c2)
                 })
               )

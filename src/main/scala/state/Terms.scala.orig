@@ -5,27 +5,6 @@ package state.terms
 import ast.commonnodes
 import semper.silicon.state.terms._
 import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
 
 //import ast.commonnodes.{BinaryOp}
 //import interfaces.state.{Heap}
@@ -169,10 +148,6 @@ sealed trait Term {
         case SeqDrop(t1, t2) => SeqDrop(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SeqAt(t1, t2) => SeqAt(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case MultisetFromSeq(t1) => MultisetFromSeq(t1.replace(term, withTerm))
-        case SeqLength(t) => SeqLength(t.replace(term, withTerm))
-        case Minus(t1, t2) => Minus(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
       }
   }
 
@@ -260,9 +235,6 @@ sealed trait Quantifier
 object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
-
-case class Trigger(ts: Seq[Term])
-
 // Placeholder
 case class *() extends Symbol {
   val id = "*"
@@ -270,6 +242,10 @@ case class *() extends Symbol {
 
   override val toString = "*"
 }
+
+case class Trigger(ts: Seq[Term])
+
+
 
 case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
     extends BooleanTerm
