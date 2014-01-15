@@ -349,3 +349,9 @@
     ($Set.card xs))
 	:pattern (($Multiset.card ($Multiset.fromSet xs)))
 	)))
+
+; count is always >= 0
+(assert (forall ((s $Multiset<$S$>) (x $S$)) (!
+    (>= ($Multiset.count s x) 0)
+    :pattern (($Multiset.count s x))
+    )))

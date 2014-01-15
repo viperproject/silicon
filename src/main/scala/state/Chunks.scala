@@ -9,7 +9,7 @@ import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.PredicateChunkIdentifier
 import semper.silicon.state.terms.Quantification
 import semper.silicon.state.DirectPredicateChunk
-import semper.silicon.state.DirectConditionalChunk
+import semper.silicon.state.DirectQuantifiedChunk
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 
@@ -31,14 +31,14 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class DirectConditionalChunk(name: String, value:Term, guard:BooleanTerm, perm: DefaultFractionalPermissions) extends DirectChunk {
-  val args = guard :: Nil   /* to make sure it does not match other chunks */
+case class DirectQuantifiedChunk(name: String, value:Term, perm: DefaultFractionalPermissions) extends DirectChunk {
+  val args = *() :: Nil   /* to make sure it does not match other chunks */
   val id = FieldChunkIdentifier(*(), name)
 
-  def +(perm: DefaultFractionalPermissions): DirectConditionalChunk = this.copy(perm = this.perm + perm)
-  def -(perm: DefaultFractionalPermissions): DirectConditionalChunk = this.copy(perm = this.perm - perm)
+  def +(perm: DefaultFractionalPermissions): DirectQuantifiedChunk = this.copy(perm = this.perm + perm)
+  def -(perm: DefaultFractionalPermissions): DirectQuantifiedChunk = this.copy(perm = this.perm - perm)
 
-  override def toString = "%s -> %s # %s ? %s : 0".format(name, value, guard, perm)
+  override def toString = "∀ %s -> %s # %s".format(name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {

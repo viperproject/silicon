@@ -21,7 +21,7 @@ import semper.silicon.state.terms.Var
 import semper.silicon.state.terms.*
 import semper.silicon.interfaces.Failure
 import scala.Some
-import semper.silicon.state.DirectConditionalChunk
+import semper.silicon.state.DirectQuantifiedChunk
 import semper.silicon.state.FieldChunkIdentifier
 import semper.silicon.state.terms.Null
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -37,7 +37,7 @@ import semper.silicon.state.terms.NoPerm
 import semper.silicon.state.terms.PermMin
 import semper.sil.ast.FieldAccess
 import scala.Some
-import semper.silicon.state.DirectConditionalChunk
+import semper.silicon.state.DirectQuantifiedChunk
 import semper.silicon.state.terms.False
 import semper.silicon.state.terms.SingletonSet
 import semper.silicon.state.terms.TermPerm
@@ -127,15 +127,15 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       // TODO: generalize
       println("looking in " + inHeap.values)
       println("for " + ofReceiver)
-      println(inHeap.values.collectFirst{case pf:DirectConditionalChunk => println("mugu")})
+      println(inHeap.values.collectFirst{case pf:DirectQuantifiedChunk => println("mugu")})
       println(inHeap.values foreach {
-        case pf: DirectConditionalChunk if (pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => println("bubu " + pf)
+        case pf: DirectQuantifiedChunk if (pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => println("bubu " + pf)
         case _ => println("whatever")
       })
       decider.prover.logComment("end of bullshit")
 
 
-      inHeap.values.collectFirst{case pf:DirectConditionalChunk if(pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => pf.value} match {
+      inHeap.values.collectFirst{case pf:DirectQuantifiedChunk if(pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => pf.value} match {
         case Some(v) => v match {
           case Var(id, s) =>
             s match {
@@ -171,17 +171,17 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
                   val f = decider.fresh(sorts.Arrow(sorts.Ref, toSort(withField.typ)))
                   //println(inHeap.values)
                   inHeap.values.foreach(u => u match {
-                    case pf:DirectConditionalChunk if(pf.name == withField.name) =>
+                    case pf:DirectQuantifiedChunk if(pf.name == withField.name) =>
                       //println("what?")
                       pf.value match {
                         case Var(id, s) if s.isInstanceOf[sorts.Arrow] =>
                               val x = Var("x", sorts.Ref)
-                              decider.assume(Quantification(Forall, List(x), Implies(And(pf.guard.replace(*(), x), pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm()), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
+                              decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
                                 === DomainFApp(Function(id, s.asInstanceOf[sorts.Arrow]), List(x)))))
                         case _ =>
                             /* TODO maybe set the value for sets to DomainFApp with *(), so this here is not needed */
                           val x = Var("x", sorts.Ref)
-                          decider.assume(Quantification(Forall, List(x), Implies(And(pf.guard.replace(*(), x), pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm()), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
+                          decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
                               === pf.value)))
                       }
                     case pf:DirectFieldChunk if(pf.name == withField.name) =>
@@ -230,7 +230,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
          // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
       }
 
-      val ch = DirectConditionalChunk(field.name, s, rewrittenCond/*cond.replace(variable, *()).asInstanceOf[BooleanTerm] */, rewrittenGain /* pNettoGain */)
+      val ch = DirectQuantifiedChunk(field.name, s, rewrittenGain /* pNettoGain */)
 
       // all Refs that match the condition cannot be null
       cond match {

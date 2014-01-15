@@ -52,7 +52,7 @@ import semper.silicon.state.terms.FullPerm
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
 import scala.Some
-import semper.silicon.state.DirectConditionalChunk
+import semper.silicon.state.DirectQuantifiedChunk
 import semper.silicon.reporting.DefaultContext
 import semper.silicon.interfaces.Success
 import semper.silicon.state.NestedFieldChunk
@@ -285,7 +285,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         // TODO: should not be needed - migrate all fields writes into HeapManager
-        val hasCondChunks = σ.h.values exists {case ch:DirectConditionalChunk => true case _ => false}
+        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
         val pve = AssignmentFailed(ass)
 
         if(hasCondChunks) {

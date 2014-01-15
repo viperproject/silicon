@@ -105,18 +105,7 @@ class DeciderSpec extends FlatSpec {
     assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
   }
 
-  it should "say that we have not enough permissions to access x.f if we do not know that it is in a set" in {
-    val decider = createDecider
-    emitSetPreamble(decider)
 
-    val x = decider.fresh(sorts.Ref)
-    val S = decider.fresh(sorts.Set(sorts.Ref))
-
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
-
-    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
-  }
-  
      it should "say that we have enough permissions for exhaling 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5 π: {(x==y || x==z)}" in {
     val decider = createDecider
 
@@ -252,7 +241,7 @@ class DeciderSpec extends FlatSpec {
 
       decider.assume(SetIn(x, S))
 
-      val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+      val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
       // TODO
       // assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === true)
@@ -273,7 +262,7 @@ class DeciderSpec extends FlatSpec {
     val x = decider.fresh(sorts.Ref)
     val S = decider.fresh(sorts.Set(sorts.Ref))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S),FullPerm(), NoPerm())))
 
     // TODO
     // assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === true)
@@ -295,12 +284,12 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(SetSubset(U, SetIntersection(S, T)))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2)))) + DirectConditionalChunk("f", null, SetIn(*(), T), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))))
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))), NoPerm()))) + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))), NoPerm())))
 
     // TODO
     // assert(decider.hasEnough...)
 
-    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), U), FullPerm())
+    val exhaleHeap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, (TermPerm(Ite( SetIn(*(), U), FullPerm(), NoPerm()))))
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
     h match {
@@ -324,7 +313,7 @@ class DeciderSpec extends FlatSpec {
     val heap = new SetBackedHeap + DirectFieldChunk(x, "f", null, FullPerm()) + DirectFieldChunk(y, "f", null, FullPerm())
 
 
-    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+    val exhaleHeap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite( SetIn(*(), S), FullPerm(), NoPerm())))
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
     h match {
@@ -345,7 +334,7 @@ class DeciderSpec extends FlatSpec {
     val heap = new SetBackedHeap + DirectFieldChunk(x, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2)))) + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)),TermPerm(IntLiteral(2))))
 
 
-    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+    val exhaleHeap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
     h match {
@@ -363,13 +352,13 @@ class DeciderSpec extends FlatSpec {
     decider.assume(SetSubset(T, S))
     decider.assume(SetSubset(U, S))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
     // TODO
     // assert(decider.hasEnough...)
 
-    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), T), FullPerm())
-    val exhaleHeap2 = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), U), FullPerm())
+    val exhaleHeap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FullPerm(), NoPerm())))
+    val exhaleHeap2 = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm())))
 
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
@@ -392,13 +381,13 @@ class DeciderSpec extends FlatSpec {
     decider.assume(SetSubset(U, S))
     decider.assume(SetDisjoint(T,U))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), S), FullPerm())
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm()))))
 
     // TODO
     // assert(decider.hasEnough...)
 
-    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), T), FullPerm())
-    val exhaleHeap2 = new SetBackedHeap() + DirectConditionalChunk("f", null, SetIn(*(), U), FullPerm())
+    val exhaleHeap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), T), FullPerm(), NoPerm()))))
+    val exhaleHeap2 = new SetBackedHeap() + DirectQuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm()))))
 
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
@@ -420,9 +409,9 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(MultisetSubset(S,T))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null /* we dont care about the value */, MultisetIn(*(), T), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), T))))
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null /* we dont care about the value */, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), T))))
 
-    val exhaleHeap = new SetBackedHeap() + DirectConditionalChunk("f", null, MultisetIn(*(), S), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), S))))
+    val exhaleHeap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), S))))
 
     val h = decider.exhalePermissions(heap, exhaleHeap)
     h match {
@@ -431,32 +420,7 @@ class DeciderSpec extends FlatSpec {
     }
   }
 
-  it should "let do us a complex exhale for Multisets!" in {
-    val decider = createDecider
-    emitSetPreamble(decider)
-    emitMultisetPreamble(decider)
 
-    val t = decider.fresh(sorts.Ref)
-    val S,T = decider.fresh(sorts.Multiset(sorts.Ref))
-
-    decider.assume(MultisetSubset(S,T))
-    decider.assume(MultisetIn(t, T))
-    decider.assume(Not(MultisetIn(t, S)))
-
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null /* we dont care about the value */, MultisetIn(*(), T), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), T))))
-
-    val exhaleHeap1 = new SetBackedHeap() + DirectFieldChunk(t, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))))
-    val exhaleHeap2 = new SetBackedHeap() + DirectConditionalChunk("f", null, MultisetIn(*(), S), PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), S))))
-
-    decider.exhalePermissions(heap, exhaleHeap1) match {
-      case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
-        case None => fail("exhale should succeed!")
-        case _ =>
-      }
-    }
-
-  }
 
   it should "be possible to split a sequence in two parts" in {
     val decider = createDecider
@@ -469,13 +433,13 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Less(k,SeqLength(S)))
     decider.assume(Not(Less(k, IntLiteral(0))))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
 
     val S1 = SeqTake(S, k)
     val S2 = SeqDrop(S, k)
 
-    val exhaleHeap1 = new SetBackedHeap + DirectConditionalChunk("f", null, SeqIn(S1, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
-    val exhaleHeap2 = new SetBackedHeap + DirectConditionalChunk("f", null, SeqIn(S2, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
+    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
+    val exhaleHeap2 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
 
 
     decider.exhalePermissions(heap, exhaleHeap1) match {
@@ -502,9 +466,9 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Not(Less(l, IntLiteral(0))))
     decider.assume(Not(Eq(k,l)))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
-    val exhaleHeap1 = new SetBackedHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S, k)), FullPerm())
-    val exhaleHeap2 = new SetBackedHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S, l)), FullPerm())
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
+    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))
+    val exhaleHeap2 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, l)), FullPerm(), NoPerm())))
 
 
     decider.exhalePermissions(heap, exhaleHeap1) match {
@@ -518,39 +482,7 @@ class DeciderSpec extends FlatSpec {
 
   }
 
-  it should "be possible to give permission to certain parts of the array, and then split it" in {
-    val decider = createDecider
-    emitSetPreamble(decider)
-    emitMultisetPreamble(decider)
-    emitSequencePreamble(decider)
 
-    val S = decider.fresh(sorts.Seq(sorts.Ref))
-    val start, end, k = decider.fresh(sorts.Int)
-
-    decider.assume(AtLeast(IntLiteral(0), start))
-    decider.assume(AtMost(start, end))
-    decider.assume(Less(end, SeqLength(S)))
-    // start <= k <= end
-    decider.assume(AtLeast(k, start))
-    decider.assume(AtMost(k, end))
-
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(SeqDrop(SeqTake(S, end), start), *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
-
-    val S1 = SeqDrop(SeqTake(S, k), start)
-    val S2 = SeqDrop(SeqTake(S, end), k)
-
-    val exhaleHeap1 = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S1, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
-    val exhaleHeap2 = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S2, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
-
-
-    decider.exhalePermissions(heap, exhaleHeap2) match {
-      case None =>fail("exhale should succeed!")
-      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap1) match {
-        case None => fail("exhale should succeed")
-        case Some(exhaledHeap2) =>
-      }
-    }
-  }
 
   it should "be possible to write an index in an array" in {
     val decider = createDecider
@@ -561,20 +493,20 @@ class DeciderSpec extends FlatSpec {
     val S= decider.fresh(sorts.Seq(sorts.Ref))
     val start, end, k = decider.fresh(sorts.Int)
 
-    decider.assume(AtLeast(IntLiteral(0), start))
+    decider.assume(AtLeast(start, IntLiteral(0)))
     decider.assume(AtMost(start, end))
     decider.assume(Less(end, SeqLength(S)))
     // start <= k <= end
     decider.assume(AtLeast(k, start))
     decider.assume(Less(k, end))
 
-    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(SeqDrop(SeqTake(S, end), start), *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null,  PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
 
-    val exhaleHeap1 = new SetBackedHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S, k)), FullPerm())
+    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null,  TermPerm(Ite(Eq(*(), SeqAt(S,k)), FullPerm(), NoPerm())))
 
     decider.exhalePermissions(heap, exhaleHeap1) match {
       case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S,k)), FullPerm()), heap) match {
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap + DirectQuantifiedChunk("f", null, (TermPerm(Ite(Eq(*(), SeqAt(S,k)), FullPerm(), NoPerm())))), heap) match {
         case None => fail("exhale should succeed!")
         case Some(done) => // yipyip
           //println(done)
@@ -603,4 +535,99 @@ class DeciderSpec extends FlatSpec {
 
   }
 
- }
+  it should "say that we have not enough permissions to access x.f if we do not know that it is in a set" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+
+    val x = decider.fresh(sorts.Ref)
+    val S = decider.fresh(sorts.Set(sorts.Ref))
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
+
+    assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === false)
+  }
+
+  it should "let do us a complex exhale for Multisets!" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+
+    val t = decider.fresh(sorts.Ref)
+    val S,T = decider.fresh(sorts.Multiset(sorts.Ref))
+
+    decider.assume(MultisetSubset(S,T))
+    decider.assume(MultisetIn(t, T))
+    decider.assume(Not(MultisetIn(t, S)))
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null /* we dont care about the value */, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), T))))
+
+    val exhaleHeap1 = new SetBackedHeap() + DirectFieldChunk(t, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))))
+    val exhaleHeap2 = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), S))))
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
+        case None => fail("exhale should succeed!")
+        case _ =>
+      }
+    }
+
+  }
+
+  it should "be possible to give permission to certain parts of the array, and then split it" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S = decider.fresh(sorts.Seq(sorts.Ref))
+    val start, end, k = decider.fresh(sorts.Int)
+
+    decider.assume(AtLeast(IntLiteral(0), start))
+    decider.assume(AtMost(start, end))
+    decider.assume(Less(end, SeqLength(S)))
+    // start <= k <= end
+    decider.assume(AtLeast(k, start))
+    decider.assume(AtMost(k, end))
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
+
+    val S1 = SeqDrop(SeqTake(S, k), start)
+    val S2 = SeqDrop(SeqTake(S, end), k)
+
+    val exhaleHeap1 = new SetBackedHeap() + DirectQuantifiedChunk("f", null,  PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
+    val exhaleHeap2 = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
+
+
+    decider.exhalePermissions(heap, exhaleHeap2) match {
+      case None =>fail("exhale should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap1) match {
+        case None => fail("exhale should succeed")
+        case Some(exhaledHeap2) =>
+      }
+    }
+  }
+
+  it should "indirection" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+
+    val S = decider.fresh("S", sorts.Set(sorts.Ref))
+    val Svalue = decider.fresh("t", sorts.Arrow(sorts.Ref, sorts.Ref))
+
+    val idx = Var("idx", sorts.Ref)
+    val indirectionChunk = DirectQuantifiedChunk("f", null, TermPerm(Ite(Quantification(Exists, List(idx), Eq(DomainFApp(Function(Svalue.id, sorts.Arrow(sorts.Ref, sorts.Ref)), List(idx)), *())), FullPerm(), NoPerm())))
+
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("a", Svalue, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm()))) + indirectionChunk
+
+    decider.exhalePermissions(heap, new SetBackedHeap() + indirectionChunk) match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) =>
+    }
+
+
+
+  }
+
+}

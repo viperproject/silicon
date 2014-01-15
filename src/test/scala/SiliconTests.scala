@@ -15,7 +15,7 @@ class SiliconTests extends DefaultSilSuite {
     //   "all/chalice"//,
     //"all/sequences"//,
     //  "all/quantifiers",
-   // "all/curr"
+    //"all/curr"
     // "all/my"
   )
 

@@ -388,23 +388,12 @@ class DefaultDecider[ST <: Store[ST],
    */
   	def hasPermissions(h: H, id: ChunkIdentifier, p:P, comp: (Term,Term) => Term): Boolean = {
 	  // collect all chunks
-  	  
+  	  val condH = toConditional(h)
   	  //println("looking up global permissions")
 
-  	  val s:Seq[Term] = h.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
+  	  val s:Seq[Term] = condH.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
   	    // construct the big And for the condition
-  	    val condition = BigAnd(permChunk.args zip id.args map {
-          x:Pair[Term,Term] => {
-            x._1.sort match {
-              case sorts.Ref => x._1 === x._2
-              case sorts.Set(_) => SetIn(x._2, x._1)
-              case sorts.Bool => x._1.replace(terms.*(), x._2)
-              case _ => False()
-            }
-          }
-        })
-  	    // construct the ITE
-  	    Ite(condition, permChunk.perm.replace(terms.*(), id.args.last), NoPerm())
+  	    permChunk.perm.replace(terms.*(), id.args.last)
   	  } }
   	  
   	  
@@ -427,9 +416,9 @@ class DefaultDecider[ST <: Store[ST],
     var hqnew = h.empty
     h.values.foreach {
       case ch: DirectFieldChunk => {
-        hqnew = hqnew + DirectConditionalChunk(ch.name, ch.value,Eq(*(), ch.rcvr),ch.perm)
+        hqnew = hqnew + DirectQuantifiedChunk(ch.name, ch.value,TermPerm(Ite(Eq(*(), ch.rcvr),ch.perm, NoPerm())))
       }
-      case ch: DirectConditionalChunk => hqnew = hqnew + ch
+      case ch: DirectQuantifiedChunk => hqnew = hqnew + ch
       case ch: DirectPredicateChunk => hqnew = hqnew + ch
     }
     hqnew
@@ -458,16 +447,14 @@ class DefaultDecider[ST <: Store[ST],
     breakable {
       exhaleHC.values.foreach {
         ch => ch match {
-          case eCh: DirectConditionalChunk  => {
-            val guard1 = eCh.guard
+          case eCh: DirectQuantifiedChunk  => {
 
             hq = H(hq.asInstanceOf[SetBackedHeap]).asInstanceOf[H]
             var pLeft = eCh.perm
             inScope({
               val * = fresh(sorts.Ref)
-              assume(guard1.replace(terms.*(), *))
               hq.values.foreach {
-                case ch: DirectConditionalChunk if(eCh.name == ch.name) => {
+                case ch: DirectQuantifiedChunk if(eCh.name == ch.name) => {
                   // leave early
                   prover.logComment("are we done?")
                   if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
@@ -482,11 +469,11 @@ class DefaultDecider[ST <: Store[ST],
                     assume(pLeft.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < ch.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
                   }
 
-                  val r = Ite(And(eCh.guard, ch.guard), PermMin(pLeft, ch.perm), NoPerm())
+                  val r = PermMin(pLeft, ch.perm)
                   pLeft = pLeft - TermPerm(r)
                   inScope({
                     prover.logComment("checking if chunk does still contain permissions")
-                    if (permAssert(Ite(ch.guard, ch.perm - TermPerm(r), NoPerm()).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
+                    if (permAssert((ch.perm - TermPerm(r)).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
                       hq = hq - ch
                     } else {
                       hq = hq - ch + (ch - TermPerm(r))

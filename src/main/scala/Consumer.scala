@@ -9,11 +9,26 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Sta
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DirectConditionalChunk}
-import state.terms._
+import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DirectQuantifiedChunk}
+import semper.silicon.state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.HeapManager
 import semper.sil.ast.LocalVar
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.*
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.terms.False
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.state.terms.Combine
+import semper.silicon.PermissionsConsumptionResult
+import semper.silicon.state.terms.Var
+import semper.sil.ast.LocalVar
+import semper.silicon.state.terms.WildcardPerm
+import semper.sil.verifier.reasons.AssertionFalse
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -139,6 +154,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           evalp(σ, loss, pve, c1, tv) ((tPerm, c3) => {
           val k = decider.fresh("blabu", sorts.Ref)
           // TODO: decide where the rewriting should be done - here or in the heapmanager
+          // TODO: we dont need cond rewriting anymore
           val rewrittenCond = tCond match {
             case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(tSeq, e), b), *())
             case _ => sys.error("cannot handle such a condition " + cond)
@@ -158,7 +174,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             // we may safely assume the ""guard""
             assume(rewrittenCond.replace(*(), k))
 
-            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null, rewrittenCond, rewrittenGain), k, field, pve, null, c2, tv) ((h1, t) => {
+            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, null, c2, tv) ((h1, t) => {
               Q(h1, t, Nil, c3)
             })
           }
@@ -183,7 +199,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         	 {
         	// we may safely assume it
         	assume(SetIn(k, tSet))
-            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null /* value of the chunk */, SetIn(*(), tSet), tPerm), k, field, pve, null /* locacc */, c2, tv)((h1,t) =>  {
+            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, null /* locacc */, c2, tv)((h1,t) =>  {
                 /* TODO: is this correct? */
                 Q(h1, t, Nil, c2)
               })
@@ -224,13 +240,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         /* Field and predicate access predicates */
       case ast.AccessPredicate(locacc, perm) =>
         // TODO: should not be needed - migrate all consuming of permissions into heapmanager
-        val hasCondChunks = σ.h.values exists {case ch:DirectConditionalChunk => true case _ => false}
+        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
         if(hasCondChunks && !locacc.isInstanceOf[ast.PredicateAccess] /* TODO generalize */) {
             locacc match {
               case ast.FieldAccess(eRcvr, field) =>
                 eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
                   evalp(σ, perm, pve, c1, tv) ((tPerm, c2) =>
-                    heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(locacc.loc.name, null, Eq(*(), tRcvr), tPerm), tRcvr, field, pve, locacc, c2, tv) ((h:H, t) =>
+                    heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr),tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv) ((h:H, t) =>
                       /* TODO: is this correct? */
                       Q(h, t, Nil, c2)
                     )))

@@ -212,7 +212,7 @@ trait DefaultEvaluator[
 
       case fa: ast.FieldAccess =>  {
         // TODO: should not be needed - migrate all value lookups into heapmanager
-        val hasCondChunks = σ.h.values exists {case ch:DirectConditionalChunk => true case _ => false}
+        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
 
         if (hasCondChunks) {
           eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
