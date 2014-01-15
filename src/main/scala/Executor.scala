@@ -119,6 +119,7 @@ trait DefaultExecutor[ST <: Store[ST],
     edge match {
       case ce: sil.ast.ConditionalEdge => {
         decider.prover.logComment("Starting Internal Eval")
+        decider.prover.logComment("budy " + ce.dest)
         eval(σ, ce.cond, Internal(ce.cond), c, tv)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
         { decider.prover.logComment("result is " + tCond)
@@ -162,10 +163,12 @@ trait DefaultExecutor[ST <: Store[ST],
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
+    println("[exec] " + block + " " + block.getClass)
 //    logger.debug("\n[exec] " + block.label)
 
     block match {
       case block @ sil.ast.StatementBlock(stmt, _) =>
+        println("executin stmt " + stmt + " " + stmt.getClass)
         exec(σ, stmt, c, tv)((σ1, c1) =>
           leave(σ1, block, c1, tv)(Q))
 

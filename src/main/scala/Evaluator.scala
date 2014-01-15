@@ -152,7 +152,12 @@ trait DefaultEvaluator[
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
 			case _ =>
-				logger.debug("\nEVALUATING " + e)
+				println("\nEVALUATING " + e + " " + e.getClass)
+        e match {
+          case semper.sil.ast.SeqDrop(t1, semper.sil.ast.IntLit(i)) => println(t1.getClass + " " + i)
+          case semper.sil.ast.SeqTake(t1, semper.sil.ast.IntLit(j)) => println(t1.getClass + " " + j)
+          case _ => println("no match")
+        }
 				logger.debug(stateFormatter.format(σ))
         decider.prover.logComment(s"[eval] $e")
 		}

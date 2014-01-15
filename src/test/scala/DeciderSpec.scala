@@ -518,6 +518,83 @@ class DeciderSpec extends FlatSpec {
 
   }
 
+  it should "be possible to give permission to certain parts of the array, and then split it" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S = decider.fresh(sorts.Seq(sorts.Ref))
+    val start, end, k = decider.fresh(sorts.Int)
+
+    decider.assume(AtLeast(IntLiteral(0), start))
+    decider.assume(AtMost(start, end))
+    decider.assume(Less(end, SeqLength(S)))
+    // start <= k <= end
+    decider.assume(AtLeast(k, start))
+    decider.assume(AtMost(k, end))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(SeqDrop(SeqTake(S, end), start), *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
+
+    val S1 = SeqDrop(SeqTake(S, k), start)
+    val S2 = SeqDrop(SeqTake(S, end), k)
+
+    val exhaleHeap1 = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S1, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
+    val exhaleHeap2 = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(S2, *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
+
+
+    decider.exhalePermissions(heap, exhaleHeap2) match {
+      case None =>fail("exhale should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap1) match {
+        case None => fail("exhale should succeed")
+        case Some(exhaledHeap2) =>
+      }
+    }
+  }
+
+  it should "be possible to write an index in an array" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S= decider.fresh(sorts.Seq(sorts.Ref))
+    val start, end, k = decider.fresh(sorts.Int)
+
+    decider.assume(AtLeast(IntLiteral(0), start))
+    decider.assume(AtMost(start, end))
+    decider.assume(Less(end, SeqLength(S)))
+    // start <= k <= end
+    decider.assume(AtLeast(k, start))
+    decider.assume(Less(k, end))
+
+    val heap = new SetBackedHeap() + DirectConditionalChunk("f", null, SeqIn(SeqDrop(SeqTake(S, end), start), *()), PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
+
+    val exhaleHeap1 = new SetBackedHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S, k)), FullPerm())
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap + DirectConditionalChunk("f", null, Eq(*(), SeqAt(S,k)), FullPerm()), heap) match {
+        case None => fail("exhale should succeed!")
+        case Some(done) => // yipyip
+          //println(done)
+      }
+    }
+  }
+
+  /*it should "wildcards" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val a,b= decider.fresh(sorts.Ref)
+
+    val ch1 = DirectFieldChunk(x, "f", null, WildcardPerm())
+    val ch2 = DirectFieldChunk(y, "f", null, WildcardPerm())
+
+  }*/
+
   it should "be possible to exhale elements with unknown indices"  in {
 
   }

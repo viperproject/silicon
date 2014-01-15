@@ -77,6 +77,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val pres = method.pres
     val posts = method.posts
     val body = method.body.toCfg
+    println(body)
 
     val postViolated = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, method)
 

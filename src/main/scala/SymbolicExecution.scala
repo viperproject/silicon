@@ -129,13 +129,20 @@ trait DefaultBrancher[ST <: Store[ST],
 						         fFalse: (C, TV) => VerificationResult)
                     : VerificationResult = {
 
-    println("trololo")
+    decider.prover.logComment("trololo " + ts)
 
 		val guardsTrue = BigAnd(ts)
 		val guardsFalse = BigAnd(ts, t => ¬(t))
 
+    decider.prover.logComment("guards true " + guardsTrue)
+    decider.prover.logComment("guards false " + guardsFalse)
+
+    decider.prover.logComment("explore true branch:")
 		val exploreTrueBranch = !decider.assert(guardsFalse)
+    decider.prover.logComment("explore false branch:")
     val exploreFalseBranch = !decider.assert(guardsTrue)
+
+    decider.prover.logComment("exploring true: " + exploreTrueBranch + " exploring false: " + exploreFalseBranch)
 
 		val additionalPaths =
 			if (exploreTrueBranch && exploreFalseBranch) 1

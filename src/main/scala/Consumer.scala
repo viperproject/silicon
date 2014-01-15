@@ -134,25 +134,35 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         decider.prover.logComment("CONSUMING SEQ FORALL")
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-        // TODO: consider the condition!!
-        eval(σ \+ γVars, seq, pve, c, tv)((tSeq, c1) =>
-          evalp(σ, loss, pve, c1, tv) ((tPerm, c2) => {
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
+        eval(σ \+ γVars, seq, pve, c, tv)((tSeq, c2) =>
+          evalp(σ, loss, pve, c1, tv) ((tPerm, c3) => {
           val k = decider.fresh("blabu", sorts.Ref)
-          if(decider.inScope({
-            assume(SeqIn(tSeq,k))
+          // TODO: decide where the rewriting should be done - here or in the heapmanager
+          val rewrittenCond = tCond match {
+            case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(tSeq, e), b), *())
+            case _ => sys.error("cannot handle such a condition " + cond)
+          }
+          val rewrittenGain = tCond match {
+             case And(AtLeast(a,b),Implies(c,Less(d,e))) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq, e), b)))))
+             case _ => sys.error("I cannot work with condition of the form " + cond)
+          }
+
+            if(decider.inScope({
+            assume(rewrittenCond.replace(*(), k))
             decider.assert(False())
           })) {
             // guard is false, we do not need to do anything
-            Q(h, Unit, Nil, c2)
+            Q(h, Unit, Nil, c3)
           } else {
             // we may safely assume the ""guard""
-            assume(SeqIn(tSeq, k))
+            assume(rewrittenCond.replace(*(), k))
 
-            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null, SeqIn(tSeq,*()), PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(tSeq))), tPerm)), k, field, pve, null, c2, tv) ((h1, t) => {
-              Q(h1, t, Nil, c2)
+            heapManager.consumePermissions(h, h.empty + DirectConditionalChunk(field.name, null, rewrittenCond, rewrittenGain), k, field, pve, null, c2, tv) ((h1, t) => {
+              Q(h1, t, Nil, c3)
             })
           }
-        }))
+        })))
       }
 
       // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)

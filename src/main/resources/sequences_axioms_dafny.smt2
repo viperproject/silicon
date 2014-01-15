@@ -476,7 +476,7 @@
 ; count if we know two different indices
 ; bit of a special case
 ; TODO: pattern
-(assert (forall ((s $Seq<$Ref>) (x $Ref)) (!
+(assert (forall ((s $Seq<$S$>) (x $S$)) (!
     (iff
         (exists ((i Int) (j Int))
             (and
@@ -493,7 +493,82 @@
     )
     )))
 
+; some more splitting axioms
+; TODO: generalize with l
+(assert (forall ((S $Seq<$S$>) (start Int) (end Int) (k Int) (x $S$)) (!
+        (implies
+            (and
+                (<= k end)
+                (>= k start)
+                ($Seq.in ($Seq.drop ($Seq.take S k) start) x)
+            )
+            ($Seq.in ($Seq.drop ($Seq.take S end) start) x)
+         )
+         ; :pattern (($Seq.in ($Seq.drop ($Seq.take S end) start) x))
+    )))
+(assert (forall ((S $Seq<$S$>) (start Int) (end Int) (k Int) (x $S$)) (!
+        (implies
+            (and
+                (<= k end)
+                (>= k start)
+                ($Seq.in ($Seq.drop ($Seq.take S end) k) x)
+            )
+            ($Seq.in ($Seq.drop ($Seq.take S end) start) x)
+         )
+         ; :pattern (($Seq.in ($Seq.drop ($Seq.take S end) start) x))
+    )))
+;(assert (forall ((S $Seq<$S$>)) (!
+;        (=
+;            S
+;            ($Seq.drop ($Seq.take S ($Seq.len S)) 0)
+;        )
+; )))
 
+(assert (forall ((s $Seq<$S$>) (x $S$) (start Int) (end Int) (k Int)) (!
+        (iff
+            (and (<= start k) (<= k end))
+            (= ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) start)) x)
+                (+ ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s k) start)) x)
+                    ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) k)) x)
+            )
+        )
+    ))))
+
+; TODO: debug this for three or more splits - currently Z3 does strange things with it - maybe I got indices wrong?
+; (set-option :SMT.QI.EAGER_THRESHOLD 100) <-- changes the behavior
+;(assert (forall ((S $Seq<$S$>) (start Int) (end Int) (k Int) (l Int) (x $S$)) (!
+;        (implies
+;            (and
+;                (<= l end)
+;                (>= k start)
+;                (< k l)
+;                ($Seq.in ($Seq.drop ($Seq.take S l) k) x)
+;            )
+;            ($Seq.in ($Seq.drop ($Seq.take S end) start) x)
+;         )
+;         ; :pattern (($Seq.in ($Seq.drop ($Seq.take S end) start) x))
+;    )))
+
+; TODO: which of these are really needed?
+(assert (forall ((S $Seq<$S$>) (start Int) (end Int) (k Int)) (!
+    (implies
+        (and
+            (<= start k)
+            (< k end)
+        )
+        ($Seq.in ($Seq.drop ($Seq.take S end) start) ($Seq.at S k))
+    )
+    )))
+
+(assert (forall ((S $Seq<$S$>) (start Int) (end  Int) (i Int)) (!
+    (iff
+        (and
+            (<= 0 start)
+            (< end ($Seq.len S))
+        )
+        (< 0 ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i))
+    )
+    ))))
 
 ;(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (!
 ;    (iff

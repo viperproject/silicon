@@ -159,7 +159,7 @@ class DefaultDecider[ST <: Store[ST],
 	  //println("Asserting in decider.... " + t)
 	  
 		val asserted = isKnownToBeTrue(t)
-    if(asserted) prover.logComment(t + " is trivially true")
+    if(asserted) prover.logComment(t + " is trivially true " /*+ π*/)
 
 		asserted || π.exists(_ == t) || proverAssert(t, logSink)
 	}
@@ -377,6 +377,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   def canReadGlobally(h:H, id:ChunkIdentifier):Boolean = {
+    prover.logComment("checking if I can read " + id + " globally in heap " + h.values.filter(ch => ch.name == id.name))
     hasPermissions(h,id,NoPerm(), Greater)
   }
 
@@ -470,6 +471,8 @@ class DefaultDecider[ST <: Store[ST],
                   // leave early
                   prover.logComment("are we done?")
                   if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
+                    // manually come out of scope
+                    popScope()
                     break;
                   }
 

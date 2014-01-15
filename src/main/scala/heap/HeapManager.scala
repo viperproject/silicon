@@ -95,7 +95,9 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
   def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult = {
     decider.exhalePermissions(inHeap, h) match {
-      case Some(h) => getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h, t))   /* TODO effing ugly - refactor! */
+      case Some(h) =>
+        decider.prover.logComment("value after consume")
+        getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h, t))   /* TODO effing ugly - refactor! */
       case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     }
   }
@@ -208,11 +210,24 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
 
       val rewrittenCond = rcvr match {
-        case SeqAt(seq, index) => SeqIn(seq, *())
+        case SeqAt(seq, index) => {
+          println("condo: " + cond)
+          cond match {
+            // this is a syntactic rewrite - pretty bad, but whatever.
+            case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(seq, e), b), *())
+            case _ => sys.error("I cannot work with condition of the form " + cond)
+          }
+          //SeqIn(seq, *())
+        }
       }
-
+      // TODO: rewrite cond and gain together
       val rewrittenGain = rcvr match {
-        case SeqAt(seq, index) => PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
+        case SeqAt(seq, index) =>
+          cond match {
+            case And(AtLeast(a,b),Implies(c,Less(d,e))) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq, e), b)))))
+            case _ => sys.error("I cannot work with condition of the form " + cond)
+          }
+         // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
       }
 
       val ch = DirectConditionalChunk(field.name, s, rewrittenCond/*cond.replace(variable, *()).asInstanceOf[BooleanTerm] */, rewrittenGain /* pNettoGain */)
@@ -230,7 +245,12 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
             // additionally
             case SeqAt(seq, index) =>
               val idx = Var("idx", sorts.Int)
-              decider.assume(Quantification(Forall, List(idx), Implies(cond.replace(variable, idx), SeqAt(seq, idx) !== Null())))
+              cond match {
+                // TODO: this should not be needed if the axiomatization is strong enough, but, whatever.
+                case And(AtLeast(a,b),Implies(c,Less(d,e))) =>
+                  decider.assume(Quantification(Forall, List(idx), Implies(cond.replace(variable, idx), /*SeqAt(SeqDrop(SeqTake(seq, e), b)*/ SeqAt(seq, idx) !== Null())))
+                case _ => sys.error("I cannot work with condition of the form " + cond)
+              }
             case _ =>
           }
 
