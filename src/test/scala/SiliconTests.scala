@@ -9,7 +9,7 @@ class SiliconTests extends DefaultSilSuite {
 
   private val siliconTestDirectories: Seq[String] = Nil
   private val silTestDirectories: Seq[String] = List(
-    // "all"//,
+     "all"//,
     //   "all/predicates"
     //  "all/basic"//,
     //   "all/chalice"//,

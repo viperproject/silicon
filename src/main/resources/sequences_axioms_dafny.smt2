@@ -496,6 +496,8 @@
 ;        )
 ; )))
 
+; trigger function for this axiom
+;(declare-fun $Seq.bounds($Seq<$S$> Int Int) Bool)
 ;  TODO: we NEED a pattern here
 (assert (forall ((s $Seq<$S$>) (x $S$) (start Int) (end Int) (k Int)) (!
         (iff

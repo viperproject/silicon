@@ -147,11 +147,12 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
                 // just pass the ref
                 //println("CASE: " + inHeap)
                 Q(Var(id,s))
-              // TODO ???
+              // TODO: generalize
               case sorts.Seq(_) =>
                 // just pass the ref
                 Q(Var(id, s))
-
+              case sorts.Int =>
+                Q(Var(id,s))
             }
           // happens if a chunk value comes out of an unfold (at least the non-conditional ones)
           case s:SortWrapper =>
@@ -211,11 +212,11 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
       val rewrittenCond = rcvr match {
         case SeqAt(seq, index) => {
-          println("condo: " + cond)
+          println("condo: " + cond + " " + cond.getClass)
           cond match {
             // this is a syntactic rewrite - pretty bad, but whatever.
             case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(seq, e), b), *())
-            case _ => sys.error("I cannot work with condition of the form " + cond)
+            case _ => sys.error("I cannota work with condition of the form " + cond)
           }
           //SeqIn(seq, *())
         }
@@ -225,7 +226,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
         case SeqAt(seq, index) =>
           cond match {
             case And(AtLeast(a,b),Implies(c,Less(d,e))) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq, e), b)))))
-            case _ => sys.error("I cannot work with condition of the form " + cond)
+            case _ => sys.error("I cannotf work with condition of the form " + cond)
           }
          // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
       }
@@ -249,7 +250,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
                 // TODO: this should not be needed if the axiomatization is strong enough, but, whatever.
                 case And(AtLeast(a,b),Implies(c,Less(d,e))) =>
                   decider.assume(Quantification(Forall, List(idx), Implies(cond.replace(variable, idx), /*SeqAt(SeqDrop(SeqTake(seq, e), b)*/ SeqAt(seq, idx) !== Null())))
-                case _ => sys.error("I cannot work with condition of the form " + cond)
+                case _ => sys.error("I cannote work with condition of the form " + cond)
               }
             case _ =>
           }
