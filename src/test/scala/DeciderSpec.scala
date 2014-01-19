@@ -422,68 +422,6 @@ class DeciderSpec extends FlatSpec {
 
 
 
-  it should "be possible to split a sequence in two parts" in {
-    val decider = createDecider
-    emitSetPreamble(decider)
-    emitMultisetPreamble(decider)
-    emitSequencePreamble(decider)
-
-    val S = decider.fresh(sorts.Seq(sorts.Ref))
-    val k = decider.fresh(sorts.Int)
-    decider.assume(Less(k,SeqLength(S)))
-    decider.assume(Not(Less(k, IntLiteral(0))))
-
-    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
-
-    val S1 = SeqTake(S, k)
-    val S2 = SeqDrop(S, k)
-
-    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
-    val exhaleHeap2 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
-
-
-    decider.exhalePermissions(heap, exhaleHeap1) match {
-      case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
-        case None => fail("exhale should succeed!")
-        case Some(rest) =>
-      }
-    }
-
-  }
-
-  it should "be possible to exhale two elements with known indices from a sequence" in {
-    val decider = createDecider
-    emitSetPreamble(decider)
-    emitMultisetPreamble(decider)
-    emitSequencePreamble(decider)
-
-    val S = decider.fresh(sorts.Seq(sorts.Ref))
-    val k, l = decider.fresh(sorts.Int)
-    decider.assume(Less(k,SeqLength(S)))
-    decider.assume(Not(Less(k, IntLiteral(0))))
-    decider.assume(Less(l,SeqLength(S)))
-    decider.assume(Not(Less(l, IntLiteral(0))))
-    decider.assume(Not(Eq(k,l)))
-
-    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S)))) )
-    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))
-    val exhaleHeap2 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, l)), FullPerm(), NoPerm())))
-
-
-    decider.exhalePermissions(heap, exhaleHeap1) match {
-      case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => println(exhaledHeap)
-        decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
-        case None => fail("exhale should succeed!")
-        case Some(_) =>
-      }
-    }
-
-  }
-
-
-
   it should "be possible to write an index in an array" in {
     val decider = createDecider
     emitSetPreamble(decider)
@@ -574,39 +512,7 @@ class DeciderSpec extends FlatSpec {
 
   }
 
-  it should "be possible to give permission to certain parts of the array, and then split it" in {
-    val decider = createDecider
-    emitSetPreamble(decider)
-    emitMultisetPreamble(decider)
-    emitSequencePreamble(decider)
 
-    val S = decider.fresh(sorts.Seq(sorts.Ref))
-    val start, end, k = decider.fresh(sorts.Int)
-
-    decider.assume(AtLeast(IntLiteral(0), start))
-    decider.assume(AtMost(start, end))
-    decider.assume(Less(end, SeqLength(S)))
-    // start <= k <= end
-    decider.assume(AtLeast(k, start))
-    decider.assume(AtMost(k, end))
-
-    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
-
-    val S1 = SeqDrop(SeqTake(S, k), start)
-    val S2 = SeqDrop(SeqTake(S, end), k)
-
-    val exhaleHeap1 = new SetBackedHeap() + DirectQuantifiedChunk("f", null,  PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
-    val exhaleHeap2 = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
-
-
-    decider.exhalePermissions(heap, exhaleHeap2) match {
-      case None =>fail("exhale should succeed!")
-      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap1) match {
-        case None => fail("exhale should succeed")
-        case Some(exhaledHeap2) =>
-      }
-    }
-  }
 
   it should "indirection" in {
     val decider = createDecider
@@ -628,6 +534,77 @@ class DeciderSpec extends FlatSpec {
 
 
 
+  }
+
+  it should "be possible to give permission to certain parts of the array, and then split it" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S = decider.fresh("S", sorts.Seq(sorts.Ref))
+    val start, end, k = decider.fresh(sorts.Int)
+
+    decider.assume(AtLeast(IntLiteral(0), start))
+    decider.assume(AtMost(start, end))
+    decider.assume(AtMost(end, SeqLength(S)))
+    // start <= k <= end
+    decider.assume(AtLeast(k, start))
+    decider.assume(AtMost(k, end))
+
+    //decider.assume(SeqBounds(S, start,k) === True())
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
+
+    val S1 = SeqDrop(SeqTake(S, k), start)
+    val S2 = SeqDrop(SeqTake(S, end), k)
+
+    val exhaleHeap1 = new SetBackedHeap() + DirectQuantifiedChunk("f", null,  PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S1)))))
+    val exhaleHeap2 = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
+
+
+    decider.exhalePermissions(heap, exhaleHeap2) match {
+      case None =>fail("exhale 1 should succeed!")
+      case Some(exhaledHeap) => decider.exhalePermissions(exhaledHeap, exhaleHeap1) match {
+        case None => fail("exhale 2 should succeed")
+        case Some(exhaledHeap2) =>
+      }
+    }
+  }
+
+  it should "be possible to exhale two elements with known indices from a sequence" in {
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S = decider.fresh(sorts.Seq(sorts.Ref))
+    val k, l = decider.fresh(sorts.Int)
+    decider.assume(Less(k,SeqLength(S)))
+    decider.assume(Not(Less(k, IntLiteral(0))))
+    decider.assume(Less(l,SeqLength(S)))
+    decider.assume(Not(Less(l, IntLiteral(0))))
+    decider.assume(Less(k,l))
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S,SeqLength(S)), IntLiteral(0)))))) )
+    //val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))
+    //val exhaleHeap2 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, l)), FullPerm(), NoPerm())))
+    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, (Plus(k,IntLiteral(1)))),k))))))
+    val exhaleHeap2 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, (Plus(l,IntLiteral(1)))),l))))))
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale 1 should succeed!")
+      case Some(exhaledHeap) => println(exhaledHeap)
+        decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
+          case None => fail("exhale 2 should succeed!")
+          case Some(_) =>
+        }
+    }
+
+  }
+
+  it should "be possible to write an element where we have two times 1/2 permission (same index)" in {
+    // TODO
   }
 
 }

@@ -230,14 +230,15 @@
 	)))
 
 
+; As the min function is currently commented out, I also commented out this axiom.
 ;axiom (forall<T> a: MultiSet T, b: MultiSet T, o: T :: { MultiSet#Intersection(a,b)[o] }
 ;  MultiSet#Intersection(a,b)[o] == Math#min(a[o],  b[o]));
-(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
-  (=
-    ($Multiset.count ($Multiset.intersection xs ys) x)
-    ($Math.min ($Multiset.count xs x) ($Multiset.count ys x)))
-	:pattern (($Multiset.count ($Multiset.intersection xs ys) x))
-	)))
+;(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
+;  (=
+;    ($Multiset.count ($Multiset.intersection xs ys) x)
+;    ($Math.min ($Multiset.count xs x) ($Multiset.count ys x)))
+;	:pattern (($Multiset.count ($Multiset.intersection xs ys) x))
+;	)))
 
 ;// left and right pseudo-idempotence
 ;axiom (forall<T> a, b: MultiSet T :: { MultiSet#Intersection(MultiSet#Intersection(a, b), b) }
@@ -258,15 +259,16 @@
 	:pattern (($Multiset.intersection xs ($Multiset.intersection xs ys)))
 	)))
 
+; As the clip function is currently commented out, I also commented out this axiom.
 ;// multiset difference, a - b. clip() makes it positive.
 ;axiom (forall<T> a: MultiSet T, b: MultiSet T, o: T :: { MultiSet#Difference(a,b)[o] }
 ;  MultiSet#Difference(a,b)[o] == Math#clip(a[o] - b[o]));
-(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
-  (=
-    ($Multiset.count ($Multiset.difference xs ys) x)
-    ($Math.clip (- ($Multiset.count xs x) ($Multiset.count ys x))))
-	:pattern (($Multiset.count ($Multiset.difference xs ys) x))
-	)))
+;(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
+;  (=
+;    ($Multiset.count ($Multiset.difference xs ys) x)
+;    ($Math.clip (- ($Multiset.count xs x) ($Multiset.count ys x))))
+;	:pattern (($Multiset.count ($Multiset.difference xs ys) x))
+;	)))
 
 ;axiom (forall<T> a, b: MultiSet T, y: T :: { MultiSet#Difference(a, b), b[y], a[y] }
 ;  a[y] <= b[y] ==> MultiSet#Difference(a, b)[y] == 0 );

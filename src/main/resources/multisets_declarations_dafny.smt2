@@ -2,10 +2,10 @@
 ; They depend on the set axiomatisation due to the fromSet-function.
 
 ;function Math#min(a: int, b: int): int;
-(declare-fun $Math.min (Int Int) Int)
+;(declare-fun $Math.min (Int Int) Int)
 
 ;function Math#clip(a: int): int;
-(declare-fun $Math.clip (Int) Int)
+;(declare-fun $Math.clip (Int) Int)
 
 ; 2013-07-24 Malte: Ignored for now. Not sure when it should be used.
 ;function $IsGoodMultiSet<T>(ms: MultiSet T): bool;

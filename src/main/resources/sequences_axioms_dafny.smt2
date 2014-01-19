@@ -442,32 +442,19 @@
 
 
 ;axiom (forall<T> s: Seq T, x: T :: { MultiSet#FromSeq(s)[x] } (exists i: int :: { Seq#Index(s, i) } 0 <= i && i < Seq#Length(s) && x == Seq#Index(s, i)) <==> 0 < MultiSet#FromSeq(s)[x]);
-(assert (forall ((s $Seq<$S$>) (x $S$)) (!
-    (iff
-        (exists ((i Int)) (!
-            (and
-                (<= 0 i)
-                (< i ($Seq.len s))
-                (= x ($Seq.at s i)))
-       :pattern (($Seq.at s i))))
-        (< 0 ($Multiset.count ($Multiset.fromSeq s) x)))
-    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
-    )))
+;(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+;    (iff
+ ;       (exists ((i Int)) (!
+ ;           (and
+ ;               (<= 0 i)
+ ;               (< i ($Seq.len s))
+ ;               (= x ($Seq.at s i)))
+  ;     :pattern (($Seq.at s i))))
+  ;      (< 0 ($Multiset.count ($Multiset.fromSeq s) x)))
+  ;  :pattern (($Multiset.count ($Multiset.fromSeq s) x))
+  ;  )))
 
 ;additional axioms to support counting for splitted sequences
-;TODO: fix the pattern! I guess this is prone to a instantiation loop
-;(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (iff true (= s s))))
-(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (!
-    (iff
-        (and (<= 0 k) (< k ($Seq.len s)))
-        (= ($Multiset.count ($Multiset.fromSeq s) x)
-            (+ ($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x) ($Multiset.count ($Multiset.fromSeq ($Seq.drop s k)) x))
-        )
-    )
-    ;:pattern (($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x) ($Multiset.count ($Multiset.fromSeq($Seq.drop s k)) x))
-    )))
-; TODO: Somehow, the end of an expression must be indented. strange.
-
 ; count if we know two different indices
 ; bit of a special case
 ; TODO: pattern
@@ -489,62 +476,49 @@
     )))
 
 
-;(assert (forall ((S $Seq<$S$>)) (!
-;        (=
-;            S
-;            ($Seq.drop ($Seq.take S ($Seq.len S)) 0)
-;        )
-; )))
-
-; trigger function for this axiom
-;(declare-fun $Seq.bounds($Seq<$S$> Int Int) Bool)
-;  TODO: we NEED a pattern here
+; trigger functions for these axioms
+(declare-fun $Seq.split($Seq<$S$> $S$ Int Int Int) Bool)
+(declare-fun $Seq.countP ($Seq<$S$> $S$) Int)
+(assert (forall ((s $Seq<$S$>) (x $S$) (a Int) (b Int) (c Int) (d Int) (e Int) (f Int)) (!
+    (and
+        ($Seq.split s x d e b)
+        ($Seq.split s x a c b)
+        ($Seq.split s x a f b)
+        ($Seq.split s x a c d)
+    )
+    :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s b) a)) x)
+              ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s d) c)) x)
+              ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s f) e)) x))
+    )))
+(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+        (= ($Multiset.count ($Multiset.fromSeq s) x) ($Seq.countP s x))
+    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
+    )))
+(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+        (<= 0 ($Seq.countP s x))
+    :pattern (($Seq.countP s x))
+    )))
 (assert (forall ((s $Seq<$S$>) (x $S$) (start Int) (end Int) (k Int)) (!
-        (iff
+        (implies
             (and (<= start k) (<= k end))
-            (= ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) start)) x)
-                (+ ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s k) start)) x)
-                    ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) k)) x)
+            (= ($Seq.countP  ($Seq.drop ($Seq.take s end) start) x)
+                (+ ($Seq.countP ($Seq.drop ($Seq.take s k) start) x)
+                    ($Seq.countP  ($Seq.drop ($Seq.take s end) k) x)
             )
             )
         )
-        :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) start)) x) ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s k) start)) x))
-        :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) start)) x) ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s end) k)) x))
+        :pattern (($Seq.split s x start k end))
     )))
-
-; TODO: debug this for three or more splits - currently Z3 does strange things with it - maybe I got indices wrong?
-; (set-option :SMT.QI.EAGER_THRESHOLD 100) <-- changes the behavior
-;(assert (forall ((S $Seq<$S$>) (start Int) (end Int) (k Int) (l Int) (x $S$)) (!
-;        (implies
-;            (and
-;                (<= l end)
-;                (>= k start)
-;                (< k l)
-;                ($Seq.in ($Seq.drop ($Seq.take S l) k) x)
-;            )
-;            ($Seq.in ($Seq.drop ($Seq.take S end) start) x)
-;         )
-;         ; :pattern (($Seq.in ($Seq.drop ($Seq.take S end) start) x))
-;    )))
-
-; TODO: which of these are really needed?
 (assert (forall ((S $Seq<$S$>) (start Int) (end  Int) (i Int)) (!
     (iff
         (and
             (<= 0 start)
-            (< end ($Seq.len S))
+            (<= end ($Seq.len S))
             (<= start i)
-            (<= i end)
+            (< i end)
         )
-        (< 0 ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i))
+        (< 0 ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i)))
     )
-    ))))
+   :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i)))
+   )))
 
-;(assert (forall ((s $Seq<$S$>) (x $S$) (k Int)) (!
-;    (iff
-;        (and
-;            (<= 0 k)
-;            (< k ($Seq.len s)))
-;       (<= ($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x) ($Multiset.count ($Multiset.fromSeq s) x)))
-;     :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.take s k)) x))
-;     )))

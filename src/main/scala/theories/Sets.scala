@@ -39,6 +39,10 @@ class DefaultSetsEmitter(prover: Prover,
     program visit {
       case t: sil.ast.Typed => t.typ match {
         case s: ast.types.Set => setTypes += s
+        // multisets have a dependency on sets
+        case s: ast.types.Multiset => setTypes += ast.types.Set(s.elementType)
+        // sequences have a dependency on multisets, which have a dependency on sets
+        case s: ast.types.Seq => setTypes += ast.types.Set(s.elementType)
         case _ => /* Ignore other types */
       }
     }

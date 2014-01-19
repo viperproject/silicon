@@ -39,9 +39,13 @@ class DefaultMultisetsEmitter(prover: Prover,
     program visit {
       case t: sil.ast.Typed => t.typ match {
         case s: ast.types.Multiset => multisetTypes += s
+        // sequences have a dependency on multisets
+        case s: ast.types.Seq => multisetTypes += ast.types.Multiset(s.elementType)
         case _ => /* Ignore other types */
       }
     }
+
+    println(multisetTypes)
 
     collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Multiset])
   }

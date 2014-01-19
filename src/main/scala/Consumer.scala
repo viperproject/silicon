@@ -157,10 +157,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           // TODO: we dont need cond rewriting anymore
           val rewrittenCond = tCond match {
             case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(tSeq, e), b), *())
+            case SeqIn(SeqRanged(a,b),c) => SeqIn(SeqDrop(SeqTake(tSeq, b), a), *())
             case _ => sys.error("cannot handle such a condition " + cond)
           }
           val rewrittenGain = tCond match {
              case And(AtLeast(a,b),Implies(c,Less(d,e))) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq, e), b)))))
+             case SeqIn(SeqRanged(a,b),c) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq,b),a)))))
              case _ => sys.error("I cannot work with condition of the form " + cond)
           }
 

@@ -202,6 +202,9 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case SeqUpdate(t0, t1, t2) =>
       s"($$Seq.update ${convert(t0)} ${convert(t1)} ${convert(t2)})"
 
+    case SeqBounds(t0, t1, t2) =>
+      s"($$Seq.bounds ${convert(t0)} ${convert(t1)} ${convert(t2)})"
+
     /* Sets */
 
     case SingletonSet(t0) => "($Set.singleton " + convert(t0) + ")"
