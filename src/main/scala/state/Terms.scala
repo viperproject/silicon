@@ -173,6 +173,7 @@ sealed trait Term {
         case Minus(t1, t2) => Minus(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
       }
   }
 
@@ -912,21 +913,6 @@ object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
   def unapply(su: SeqUpdate) = Some((su.t0, su.t1, su.t2))
 }
 
-class SeqBounds(val t0:Term, val t1:Term, val t2:Term) extends Term {
-  val sort = sorts.Bool
-}
-
-object SeqBounds {
-  def apply(t0:Term, t1:Term, t2:Term) = {
-    utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-    utils.assertSort(t1, "second operand", sorts.Int)
-    utils.assertSort(t2, "third operand", sorts.Int)
-
-    new SeqBounds(t0,t1,t2)
-  }
-
-  def unapply(b:SeqBounds) = Some((b.t0, b.t1, b.t2))
-}
 
 /* Sets */
 

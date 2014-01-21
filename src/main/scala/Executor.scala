@@ -189,7 +189,9 @@ trait DefaultExecutor[ST <: Store[ST],
          * that have been declared outside of it, i.e. before the loop.
          */
         val wvs = lb.writtenVars
+        decider.prover.logComment("written vars: " + wvs)
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
+        decider.prover.logComment("old gamma: " + γBody)
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
         (inScope {
@@ -215,16 +217,17 @@ trait DefaultExecutor[ST <: Store[ST],
             val c0 = c
             consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ γBody
-              decider.prover.logComment("Continue after loop")
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) =>
+              decider.prover.logComment("Continue after loop, heap " + σ2.h)
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) => {
               /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
                *       Should no longer be necessary once we have an on-demand handling of merging and
                *       false-checking.
                */
+                decider.prover.logComment(" "  + σ2.γ)
                 if (decider.assert(False()))
                   Success[C, ST, H, S](c2) /* TODO: Mark branch as dead? */
                 else
-                  leave(σ3, lb, c2, tv)(Q))})})
+                  leave(σ3, lb, c2, tv)(Q)})})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
           val (arps, arpConstraints) =

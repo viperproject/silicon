@@ -584,7 +584,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Not(Less(k, IntLiteral(0))))
     decider.assume(Less(l,SeqLength(S)))
     decider.assume(Not(Less(l, IntLiteral(0))))
-    decider.assume(Less(k,l))
+    decider.assume(k !== l)
 
     val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S,SeqLength(S)), IntLiteral(0)))))) )
     //val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))
@@ -594,7 +594,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.exhalePermissions(heap, exhaleHeap1) match {
       case None => fail("exhale 1 should succeed!")
-      case Some(exhaledHeap) => println(exhaledHeap)
+      case Some(exhaledHeap) =>
         decider.exhalePermissions(exhaledHeap, exhaleHeap2) match {
           case None => fail("exhale 2 should succeed!")
           case Some(_) =>
@@ -604,7 +604,26 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "be possible to write an element where we have two times 1/2 permission (same index)" in {
-    // TODO
+    val decider = createDecider
+    emitSetPreamble(decider)
+    emitMultisetPreamble(decider)
+    emitSequencePreamble(decider)
+
+    val S,T = decider.fresh(sorts.Seq(sorts.Ref))
+
+    decider.assume (S===T)
+    val k = decider.fresh("k", sorts.Int)
+    decider.assume(AtLeast(k, IntLiteral(0)))
+    decider.assume(Less(k, SeqLength(S)))
+
+    val heap = new SetBackedHeap() + DirectQuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm( IntLiteral(2))), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, SeqLength(S)), IntLiteral(0))))))) + DirectQuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm( IntLiteral(2))), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(T, SeqLength(T)), IntLiteral(0)))))))
+
+    val exhaleHeap1 = new SetBackedHeap + DirectQuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, (Plus(k,IntLiteral(1)))),k))))))
+
+    decider.exhalePermissions(heap, exhaleHeap1) match {
+      case None => fail("exhale should succeed")
+      case Some(exhaledHeap) =>
+    }
   }
 
 }

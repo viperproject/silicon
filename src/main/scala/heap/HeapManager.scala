@@ -83,10 +83,16 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     /* legacy: if there is a direct chunk with syntactically exactly the same receiver, just replace this */
     // TODO
 
+    val chunk = ofReceiver match {
+      case SeqAt(s,i) => DirectQuantifiedChunk(withField.name, toValue, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s,Plus(i,IntLiteral(1))), i))))))
+      case _ => DirectFieldChunk(ofReceiver, withField.name, toValue, FullPerm())
+    }
+
+
     // exhale and inhale again
-    consumePermissions(inHeap, inHeap.empty + DirectFieldChunk(ofReceiver, withField.name, null, FullPerm()), ofReceiver, withField, pve, fieldAccess, c, tv)((nh,t) => {
+    consumePermissions(inHeap, inHeap.empty + chunk, ofReceiver, withField, pve, fieldAccess, c, tv)((nh,t) => {
       // TODO: move producing permissions to a method
-      val nhInhaled = nh + DirectFieldChunk(ofReceiver, withField.name, toValue, FullPerm())
+      val nhInhaled = nh + chunk
       decider.prover.logComment("wrote " + ofReceiver + "." + withField.name + ":=" + toValue + " resulting heap for field: " + nhInhaled.values.filter(ch => (ch.name == withField.name)) + " initial heap: " + inHeap.values.filter(ch => (ch.name == withField.name)))
       Q(nhInhaled)
     }
@@ -95,16 +101,15 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
   def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult = {
     decider.exhalePermissions(inHeap, h) match {
-      case Some(h) =>
-        decider.prover.logComment("value after consume")
-        getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h, t))   /* TODO effing ugly - refactor! */
+      case Some(h2) =>
+        decider.prover.logComment("value after consume, heap " + h2)
+        getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h2, t))   /* TODO effing ugly - refactor! */
       case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     }
   }
 
   private def givesReadAccess(chunk: DirectChunk, rcv:Term, field:Field):Boolean = {
     // TODO: move heap management methods to HeapManager
-    println("hia " + chunk)
     decider.prover.logComment("checking if " + chunk + " gives access to " + rcv + "." + field)
     decider.canReadGlobally(H(List(chunk)), FieldChunkIdentifier(rcv, field.name))
   }
@@ -125,13 +130,13 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     } else {
       // TODO: generalize
-      println("looking in " + inHeap.values)
+      /*println("looking in " + inHeap.values)
       println("for " + ofReceiver)
       println(inHeap.values.collectFirst{case pf:DirectQuantifiedChunk => println("mugu")})
       println(inHeap.values foreach {
         case pf: DirectQuantifiedChunk if (pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => println("bubu " + pf)
         case _ => println("whatever")
-      })
+      })*/
       decider.prover.logComment("end of bullshit")
 
 
@@ -159,6 +164,8 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
             Q(s)
           // happens if a chunk value comes out of an function application
           case s:FApp => Q(s)
+          // happens if some part of a quantified chunk is directly assigned an Int
+          case i:IntLiteral => Q(i)
         }
         case _ => {
             /* Legacy lookup */
@@ -210,13 +217,14 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       //println(rcvr)
       val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
 
+      // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
+
       // TODO: should not be needed any more
       val rewrittenCond = rcvr match {
         case SeqAt(seq, index) => {
           println("condo: " + cond + " " + cond.getClass)
           cond match {
             // this is a syntactic rewrite - pretty bad, but whatever.
-            case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(seq, e), b), *())
             case SeqIn(SeqRanged(a,b),c) => SeqIn(SeqDrop(SeqTake(seq, b), a), *())
             case _ => sys.error("I cannota work with condition of the form " + cond)
           }
@@ -227,7 +235,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       val rewrittenGain = rcvr match {
         case SeqAt(seq, index) =>
           cond match {
-            case And(AtLeast(a,b),Implies(c,Less(d,e))) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq, e), b)))))
             case SeqIn(SeqRanged(a,b),c) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq,b),a)))))
             case _ => sys.error("I cannotf work with condition of the form " + cond)
           }
@@ -243,6 +250,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
            decider.assume(vari !== Null())
         case _ =>
           val quantifiedVar = Var("nonnull", sorts.Ref)
+          // TODO: this is not needed in the sequences case
           decider.assume(Quantification(Forall, List(quantifiedVar), Implies(rewrittenCond.replace(*(), quantifiedVar)/*cond.replace(variable, quantifiedVar) */, quantifiedVar !== Null())))
           // TODO generalize - this is a weakness of the sequence axiomatization
           rcvr match {
@@ -250,10 +258,8 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
             case SeqAt(seq, index) =>
               val idx = Var("idx", sorts.Int)
               cond match {
-                // TODO: this should not be needed if the axiomatization is strong enough, but, whatever.
-                case And(AtLeast(a,b),Implies(c,Less(d,e))) =>
-                  decider.assume(Quantification(Forall, List(idx), Implies(cond.replace(variable, idx), /*SeqAt(SeqDrop(SeqTake(seq, e), b)*/ SeqAt(seq, idx) !== Null())))
                 case SeqIn(SeqRanged(a,b),c) =>
+                  decider.assume(Quantification(Forall, List(idx), Implies(And(AtLeast(idx, a), Less(idx, b)), /*SeqAt(SeqDrop(SeqTake(seq, e), b)*/ SeqAt(seq, idx) !== Null())))
                 case _ => sys.error("I cannote work with condition of the form " + cond)
               }
             case _ =>

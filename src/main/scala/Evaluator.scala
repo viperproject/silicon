@@ -152,12 +152,6 @@ trait DefaultEvaluator[
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
 			case _ =>
-				println("\nEVALUATING " + e + " " + e.getClass)
-        e match {
-          case semper.sil.ast.SeqDrop(t1, semper.sil.ast.IntLit(i)) => println(t1.getClass + " " + i)
-          case semper.sil.ast.SeqTake(t1, semper.sil.ast.IntLit(j)) => println(t1.getClass + " " + j)
-          case _ => println("no match")
-        }
 				logger.debug(stateFormatter.format(σ))
         decider.prover.logComment(s"[eval] $e")
 		}
@@ -215,8 +209,13 @@ trait DefaultEvaluator[
         val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
 
         if (hasCondChunks) {
+          decider.prover.logComment("heap " + σ.h)
           eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
-            heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) => Q(t, c1))
+            heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) =>
+              {
+              decider.prover.logComment("final value " + t)
+              Q(t, c1)
+              })
           )
         } else {
           withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>

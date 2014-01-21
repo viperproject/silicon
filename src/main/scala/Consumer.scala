@@ -13,7 +13,7 @@ import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk
 import semper.silicon.state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.HeapManager
-import semper.sil.ast.LocalVar
+import semper.sil.ast.{LocationAccess, LocalVar}
 import semper.sil.verifier.reasons.NonPositivePermission
 import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
@@ -26,7 +26,6 @@ import semper.silicon.reporting.DefaultContext
 import semper.silicon.state.terms.Combine
 import semper.silicon.PermissionsConsumptionResult
 import semper.silicon.state.terms.Var
-import semper.sil.ast.LocalVar
 import semper.silicon.state.terms.WildcardPerm
 import semper.sil.verifier.reasons.AssertionFalse
 
@@ -145,7 +144,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 
       // TODO: generalize for arbitrary condition and receiver
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(ast.SeqIndex(seq, idx), field), loss))) => {
+      case ast.Forall(vars, triggers, ast.Implies(cond, a@ast.FieldAccessPredicate(ast.FieldAccess(ast.SeqIndex(seq, idx), field), loss))) => {
         decider.prover.logComment("CONSUMING SEQ FORALL")
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
@@ -153,15 +152,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         eval(σ \+ γVars, seq, pve, c, tv)((tSeq, c2) =>
           evalp(σ, loss, pve, c1, tv) ((tPerm, c3) => {
           val k = decider.fresh("blabu", sorts.Ref)
+          val i = decider.fresh("i", sorts.Int)
           // TODO: decide where the rewriting should be done - here or in the heapmanager
           // TODO: we dont need cond rewriting anymore
           val rewrittenCond = tCond match {
-            case And(AtLeast(a,b),Implies(c,Less(d,e))) => SeqIn(SeqDrop(SeqTake(tSeq, e), b), *())
-            case SeqIn(SeqRanged(a,b),c) => SeqIn(SeqDrop(SeqTake(tSeq, b), a), *())
+            case SeqIn(SeqRanged(a,b),c) => (And(And(AtLeast(i,a),Less(i, b)), SeqAt(tSeq,i)===k))
             case _ => sys.error("cannot handle such a condition " + cond)
           }
           val rewrittenGain = tCond match {
-             case And(AtLeast(a,b),Implies(c,Less(d,e))) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq, e), b)))))
              case SeqIn(SeqRanged(a,b),c) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq,b),a)))))
              case _ => sys.error("I cannot work with condition of the form " + cond)
           }
@@ -176,7 +174,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             // we may safely assume the ""guard""
             assume(rewrittenCond.replace(*(), k))
 
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, null, c2, tv) ((h1, t) => {
+            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, a.loc, c2, tv) ((h1, t) => {
               Q(h1, t, Nil, c3)
             })
           }
@@ -184,7 +182,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       }
 
       // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)
-      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
+      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), a@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
         eval(σ, set, pve, c, tv)((tSet, c1) =>
           evalp(σ, loss, pve, c1, tv)((tPerm, c2) => {
             val k = decider.fresh("myblub", sorts.Ref)
@@ -201,7 +199,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         	 {
         	// we may safely assume it
         	assume(SetIn(k, tSet))
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, null /* locacc */, c2, tv)((h1,t) =>  {
+            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, a.loc , c2, tv)((h1,t) =>  {
                 /* TODO: is this correct? */
                 Q(h1, t, Nil, c2)
               })
@@ -214,18 +212,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure) => {
         decider.inScope({
           decider.prover.logComment("CONSUMING PURE FORALL")
+
           val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
           // restriction: the permission is constant and we can evaluate it here
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-            // TODO: this is unsound if the condition is always false
+            val rewrittenCond = tCond match {
+              case SeqIn(SeqRanged(a,b),c) => And(AtLeast(c,a), Less(c,b))
+              case _ => sys.error("I cannot work with condition of the form " + cond)
+            }
             if(decider.inScope({
-            	assume(tCond)
+            	assume(rewrittenCond)
             	decider.assert(False())
             })) {
             	Q(h, Unit, Nil, c1)
             } else {
-            	assume(tCond)
+            	assume(rewrittenCond)
             	eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
               		if (decider.assert(tBody)) {
                 	Q(h, Unit /* not really correct */, Nil, c2)
@@ -248,9 +250,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case ast.FieldAccess(eRcvr, field) =>
                 eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
                   evalp(σ, perm, pve, c1, tv) ((tPerm, c2) =>
-                    heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr),tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv) ((h:H, t) =>
+                    heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr),tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv) ((h2:H, t) =>
                       /* TODO: is this correct? */
-                      Q(h, t, Nil, c2)
+                    {decider.prover.logComment("consumed, result is " + h2)
+                      Q(h2, t, Nil, c2)}
                     )))
             }
         } else

@@ -425,14 +425,20 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   // TODO move (there is one version of this already in Consumer)
-  def isWildcard(perm: DefaultFractionalPermissions):Boolean = { perm match {
-    case _: TermPerm => false
+  // TODO walk terms somehow...
+  def isWildcard(perm: Term):Boolean = { perm match {
+    case TermPerm(t) => isWildcard(t)
     case _: WildcardPerm => true
     case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
     case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
     case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
     case IntPermTimes(_, t1) => isWildcard(t1)
-    case _ => false
+    case Ite(a,b,c) => isWildcard(b) || isWildcard(c)
+    case FullPerm() => false
+    case NoPerm() => false
+    case PermMin(a,b) => isWildcard(a) || isWildcard(b)
+    case MultisetCount(_) => false
+    case FractionPerm(_,_) => false
    }
   }
 
@@ -464,6 +470,7 @@ class DefaultDecider[ST <: Store[ST],
                   }
 
                   // if what we want to exhale is a wildcard, we need to assume that it's less than what we get
+                  prover.logComment("pLeft: " + pLeft + " " + pLeft.getClass())
                   if(isWildcard(pLeft)) {
                     prover.logComment("assuming that wildcard " + pLeft + " is less than chunk " + ch.perm)
                     assume(pLeft.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < ch.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
@@ -474,7 +481,9 @@ class DefaultDecider[ST <: Store[ST],
                   inScope({
                     prover.logComment("checking if chunk does still contain permissions")
                     if (permAssert((ch.perm - TermPerm(r)).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
+                      prover.logComment("before removin " + ch +  ": " + hq)
                       hq = hq - ch
+                      prover logComment("after removin " + ch + ": " + hq)
                     } else {
                       hq = hq - ch + (ch - TermPerm(r))
                     }
@@ -484,6 +493,7 @@ class DefaultDecider[ST <: Store[ST],
               }
               prover.logComment("are we done?")
               if (!permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
+                prover.logComment("finally could not exhale...")
                 return None
               }
             })
@@ -491,6 +501,7 @@ class DefaultDecider[ST <: Store[ST],
         }
       }
     }
+    prover.logComment("finally the result is " + hq)
     Some(hq)
   }
 

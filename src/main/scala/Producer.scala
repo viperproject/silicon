@@ -226,6 +226,7 @@ TV <: TraceView[TV, ST, H, S]]
         val forall = (cond: Term) => (body: Term) => Quantification(Forall, vars map {
           v => Var(v.name, symbolConverter.toSort(v.typ))
         }, Implies(cond, body))
+
         val QP = (cond: Term, body: Term, γVars: ST, h: H, c: C) => {
 
           /* TODO: ugly - make it work with more than 1 var */
@@ -238,11 +239,15 @@ TV <: TraceView[TV, ST, H, S]]
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
         // restriction: the permission is constant and we can evaluate it here
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          assume(tCond)
+          val rewrittenCond = tCond match {
+            case SeqIn(SeqRanged(a,b),c) => And(AtLeast(c,a), Less(c,b))
+            case _ => sys.error("I cannot work with condition of the form " + cond)
+          }
+          assume(rewrittenCond)
           eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
             decider.prover.logComment("end of the fun - here comes the forall!")
             decider.popScope()
-            QP(tCond, tBody, γVars, σ.h, c2)
+            QP(rewrittenCond, tBody, γVars, σ.h, c2)
           })
         })
       }
