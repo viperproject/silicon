@@ -230,6 +230,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
           }
           //SeqIn(seq, *())
         }
+        case v:Var => *() === v
       }
       // TODO: rewrite cond and gain together
       val rewrittenGain = rcvr match {
@@ -238,6 +239,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
             case SeqIn(SeqRanged(a,b),c) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq,b),a)))))
             case _ => sys.error("I cannotf work with condition of the form " + cond)
           }
+        case v:Var => TermPerm(Ite(*() === v, pNettoGain, NoPerm()))
          // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
       }
 
