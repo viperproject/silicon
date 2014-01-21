@@ -90,7 +90,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        : VerificationResult =
 
     if (φs.isEmpty)
-      Q(σ, ts.reverse, dcs.reverse, c)
+      Q(σ \ h, ts.reverse, dcs.reverse, c)
     else
       consume(σ, h, p, φs.head, pvef(φs.head), c, tv)((h1, t, dcs1, c1) =>
         consumes2(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
