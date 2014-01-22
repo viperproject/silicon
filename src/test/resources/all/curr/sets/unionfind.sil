@@ -1,0 +1,78 @@
+// class Node
+var struct: Ref
+var parent: Ref
+
+/* add to structure */
+method add(this:Ref, struct:Ref)
+requires acc(this.struct, write)
+requires acc(this.parent, write)
+requires acc(inv(struct), write)
+ensures acc(this.struct, 1/2)
+ensures acc(inv(this.struct), write)
+ensures valid(this)
+ensures (this.struct == struct)
+{
+    this.struct := struct
+    this.parent := this
+
+    unfold acc(inv(struct), write)
+    struct.nodes := (struct.nodes union Set(this))
+    fold acc(inv(struct), write)
+}
+
+function valid(this:Ref) : Bool
+requires acc(this.struct, wildcard)
+requires acc(inv(this.struct), wildcard)
+{
+  unfolding acc(inv(this.struct), wildcard) in (this in (this.struct.nodes))
+}
+
+function find(this:Ref) : Ref
+requires acc(this.struct, wildcard)
+requires acc(inv(this.struct), wildcard)
+requires valid(this)
+{
+    (unfolding acc(inv(this.struct), wildcard) in (this==(this.parent))) ? this : this /* should be: (unfolding acc(this.struct.inv(), wildcard) in find(this.parent)) */
+}
+
+method unionn(this: Ref, other: Ref)
+requires acc(this.struct, 1/2)
+requires acc(inv(this.struct), write)
+requires valid(this)
+requires acc(other.struct, 1/2)
+requires (this.struct) == (other.struct)
+requires valid(other)
+ensures acc(this.struct, 1/2)
+ensures acc(other.struct, 1/2)
+ensures acc(inv(this.struct), write)
+ensures allNodes(this.struct) == old(allNodes(this.struct))
+{
+	var this1:Ref := find(this)
+	assert(valid(this1))
+	var other1:Ref := find(other)
+	if(other1!=this1)
+	{
+	  unfold acc(inv(this1.struct), write)
+	  this1.parent := other1
+	  //this1.struct.nodes := Set()
+	  fold acc(inv(this1.struct), write)
+	}
+}
+
+// class UnionFind
+var nodes: Set[Ref]
+
+predicate inv(this:Ref /* of class UnionFind */)
+{
+    acc(this.nodes, write) &&
+    (forall o : Ref :: o in (this.nodes) ==> acc(o.struct, 1/2)) &&
+    (forall p : Ref :: p in (this.nodes) ==> p.struct == this)  &&
+    (forall n : Ref :: n in (this.nodes) ==> acc(n.parent, write)) &&
+    (forall q : Ref :: q in (this.nodes) ==> (q.parent != null) && (q.parent in (this.nodes)))
+}
+
+function allNodes(this:Ref): Set[Ref] /* of class UnionFind */
+requires acc(inv(this), write)
+{
+    unfolding acc(inv(this), write) in this.nodes
+}

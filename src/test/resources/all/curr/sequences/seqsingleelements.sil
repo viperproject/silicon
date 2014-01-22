@@ -1,0 +1,40 @@
+var value: Int
+
+method a(S:Seq[Ref], a:Int)
+requires 0 <= a && a < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+ensures S[a].value == 2
+{
+    S[a].value := 2
+}
+
+method singleelements(S:Seq[Ref],a:Int, b:Int, c:Int)
+requires 0 <= a && a < b && b < c && c < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+ensures S[a].value == 5
+ensures S[b].value == 10
+ensures S[c].value == 1
+{
+    S[a].value := 5
+    S[b].value := 10
+    S[c].value := 1
+}
+
+method bla(S:Seq[Ref], k:Int, a:Int, b:Int)
+requires 0 <= k && k < |S| && 0 <= a && a < b && b < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].value, write)
+ensures S[a].value == 5
+ensures S[b].value == 6
+{
+    exhale forall l:Int :: l in [0..k)==> acc(S[l].value, 1/2)
+    inhale forall o:Int :: o in [0..k) ==> acc(S[o].value, 1/2)
+    exhale forall p:Int :: p in [k..|S|) ==> acc(S[p].value, 1/2)
+    inhale forall q:Int :: q in [k..|S|) ==> acc(S[q].value, 1/2)
+    // we probably need merging here (not because of the permissions, but for a distinctive! axiom)
+    S[a].value := 5
+    S[b].value := 6
+}
+

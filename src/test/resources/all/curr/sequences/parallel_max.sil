@@ -1,0 +1,38 @@
+// class Cell
+var value:Int
+
+// class ArrayOfInt
+var array:Seq[Ref] // containing Cell(s)
+
+method parallel_max(a:Ref, start:Int, end:Int) returns (mx:Int)
+requires a != null
+requires acc(a.array, wildcard)
+requires 0 <= start && start < end && end < |a.array|
+requires forall i:Int :: i in [start..end) ==> acc(a.array[i].value, wildcard)
+requires |a.array| >= 1
+ensures acc(a.array, wildcard)
+ensures a.array==old(a.array)
+ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, wildcard)
+ensures forall i:Int :: i in [start..end) ==> a.array[i].value == old(a.array[i].value)
+// ensures contains(a, start, end, mx)
+ensures (forall l: Int :: l in [start..end) ==> a.array[l].value<=mx)
+{
+    var middle:Int
+    var ml: Int
+    var mr: Int
+
+    if(end-start > 1)
+    {
+        middle := start + (end-start)\2
+        ml := parallel_max(a, start, middle)
+        mr := parallel_max(a, middle, end)
+        mx := ml>mr ? ml : mr
+    } else {
+        mx := (a.array[start]).value
+    }
+}
+
+
+
+
+

@@ -1,0 +1,28 @@
+
+var f:Int
+
+var s:Seq[Ref]
+
+method m(S:Seq[Ref], start:Int, end:Int)
+requires start >= 0
+requires end <= |S|
+requires start <= end
+requires forall i:Int :: i in [start..end) ==> acc(S[i].f, write)
+{
+    var k:Int := start + (end - start)\2
+    exhale forall i:Int :: i in [start..k) ==> acc(S[i].f, write)
+    exhale forall i:Int :: i in [k..end) ==> acc(S[i].f, write)
+}
+
+method m2(S:Seq[Ref], start:Int, end:Int)
+requires start >= 0
+requires end <= |S|
+requires start <= end
+requires forall i:Int :: i in [start..end) ==> acc(S[i].f, write)
+{
+    var k:Int := start + (end - start)\3
+    var k2:Int := start + 2*(end - start)\3
+    exhale forall i:Int :: i in [start..k) ==> acc(S[i].f, write)
+    exhale forall i:Int :: i in [k..k2) ==> acc(S[i].f, write)
+    exhale forall i:Int :: i in [k2..end) ==> acc(S[i].f,write)
+}

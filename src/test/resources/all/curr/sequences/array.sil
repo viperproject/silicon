@@ -1,0 +1,59 @@
+var value: Int
+
+var array: Seq[Ref]
+
+method init(this:Ref, i:Int)
+requires acc(this.array, write)
+// TODO: change this to wildcard
+ensures acc(this.array, 1/2)
+ensures |this.array| == i
+ensures forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
+{
+    assume |this.array| == i
+    inhale forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
+}
+
+method set(this:Ref, i:Int, val:Int)
+requires acc(this.array, 1/2)
+requires 0 <= i && i < |this.array|
+// TODO: change this syntax to acc(this.array[i].value, write)
+requires forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, write)
+ensures acc(this.array, 1/2)
+ensures forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, write)
+ensures 0 <= i && i < |this.array|
+ensures this.array[i].value == val
+ensures |this.array| == old(|this.array|) // this is required because we disabled merging!
+{
+    this.array[i].value := val
+}
+
+function get(this:Ref, i:Int):Int
+requires acc(this.array, 1/2)
+requires 0 <= i && i < |this.array|
+requires forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, 1/2)
+{
+    this.array[i].value
+}
+
+method caller()
+{
+    var mutableArray:Ref
+    mutableArray := new()
+    init(mutableArray, 5)
+    set(mutableArray, 0, 2)
+    assert get(mutableArray, 0) == 2
+}
+
+// TODO: wildcard issues!
+/*method set(this:Ref, i:Int, val:Int)
+requires acc(this.array, wildcard)
+requires 0 <= i && i < |this.array|
+requires forall j:Int :: j >= i && j < i+1 ==> acc(this.array[j].value, write)
+ensures acc(this.array, wildcard)
+ensures forall k:Int :: k >= i && k < i+1 ==> acc(this.array[k].value, write)
+ensures this.array[i].value == val
+{
+    this.array[i].value := val
+}*/
+
+

@@ -1,0 +1,72 @@
+var f: Int
+
+method t1(xs: Set[Ref])
+requires forall y:Ref :: y in xs ==> acc(y.f, write)
+{
+    exhale(forall z:Ref :: z in xs ==> acc(z.f, write))
+    //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale(forall w:Ref :: w in xs ==> acc(w.f, write))
+}
+
+method t2(zs:Set[Ref], ys:Set[Ref])
+requires forall x:Ref :: x in zs ==> acc(x.f, write)
+requires (ys subset zs)
+{
+    exhale(forall u:Ref :: u in ys ==> acc(u.f, write))
+    //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale(forall q:Ref :: q in zs ==> acc(q.f, write))
+}
+
+method t3(xs:Set[Ref], ys:Set[Ref], zs:Set[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f, write)
+requires forall y:Ref :: y in ys ==> acc(y.f, write)
+requires zs subset (xs union ys)
+{
+   exhale(forall z:Ref :: z in zs ==> acc(z.f, write))
+   //:: ExpectedOutput(exhale.failed:insufficient.permission)
+   exhale(forall a:Ref :: a in ys ==> acc(a.f, write))
+}
+
+method t4(xs:Set[Ref], ys:Set[Ref], zs:Set[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f, write)
+requires forall y:Ref :: y in ys ==> acc(y.f, write)
+requires zs subset (xs union ys)
+{
+  exhale(forall z:Ref :: z in zs ==> acc(z.f, write))
+
+  exhale(forall b:Ref :: b in (xs setminus zs) ==> acc(b.f, write))
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale(forall c:Ref :: c in (ys setminus xs) ==> acc(c.f, write))
+}
+
+method t5(xs:Set[Ref], ys:Set[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f, write)
+requires forall y:Ref :: y in ys ==> acc(y.f, write)
+{
+    exhale(forall z:Ref :: z in (xs intersection ys) ==> acc(z.f, write))
+    exhale(forall a:Ref :: a in (xs setminus (xs intersection ys)) ==> acc(a.f, write))
+    exhale(forall b:Ref :: b in (ys setminus (ys intersection xs)) ==> acc(b.f, write))
+}
+
+method t6(xs:Set[Ref], ys:Set[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f, 1/2)
+requires forall y:Ref :: y in ys ==> acc(y.f, 1/2)
+{
+    exhale(forall z:Ref :: z in (xs intersection ys) ==> acc(z.f, write))
+}
+
+method t7(xs:Set[Ref])
+requires forall x:Ref :: x in xs ==> acc(x.f, 1/3)
+ensures forall y:Ref :: y in xs ==> acc(y.f, 1/3)
+{}
+
+
+/* TODO: wildcard */
+method m4(S: Set[Ref], T: Set[Ref])
+requires (forall s: Ref :: s in S ==> acc(s.f, wildcard))
+requires (forall t: Ref :: t in T ==> acc(t.f, wildcard))
+ensures (forall x: Ref :: x in (T union S) ==> acc(x.f, wildcard))
+{
+
+}

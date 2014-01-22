@@ -1,0 +1,28 @@
+var all: Set[Ref]
+var f: Int
+
+method m1(this:Ref, x:Ref, y:Ref)
+  requires acc(this.all, write) && x in (this.all) && y in (this.all) && x!=y && !(null in (this.all))
+  requires (forall o:Ref :: o in (this.all) ==> acc(o.f, write))
+{
+    assert y.f == old(y.f)
+    assert x.f == old(x.f)
+}
+
+method m2(this:Ref, x:Ref, y:Ref)
+  requires acc(this.all, write) && x in (this.all) && y in (this.all) && x!=y && !(null in (this.all))
+  requires (forall o:Ref :: o in (this.all) ==> acc(o.f, write))
+{
+    x.f := 3
+    assert y.f == old(y.f)
+    assert x.f == 3
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert x.f == old(x.f)
+}
+
+method m3(x:Ref)
+requires x != null && acc(x.f, write)
+{
+    x.f := 3
+    assert x.f == 3
+}

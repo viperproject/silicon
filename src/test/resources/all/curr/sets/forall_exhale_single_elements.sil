@@ -1,0 +1,33 @@
+var f: Int
+
+method t1(xs: Set[Ref], x:Ref)
+requires forall y:Ref :: y in xs ==> acc(y.f, write)
+requires x in xs
+{
+    assert(acc(x.f, write))
+    exhale(forall z:Ref :: z in xs ==> acc(z.f, write))
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert(acc(x.f, write))
+}
+
+method t2(x:Ref, y:Ref)
+requires acc(x.f, write)
+requires acc(y.f, write)
+{
+    exhale(forall z:Ref :: z in Set(x,y) ==> acc(z.f, write))
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert(acc(x.f,1/8))
+}
+
+method t3 (xs: Set[Ref], ys: Set[Ref], x:Ref)
+requires forall z:Ref :: z in xs ==> acc(z.f, 1/2)
+requires forall y:Ref :: y in ys ==> acc(y.f, 1/2)
+requires x in xs
+requires x in ys
+requires x != null
+{
+   assert(acc(x.f,write))
+}
+
+
+

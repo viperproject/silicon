@@ -1,0 +1,87 @@
+// class Cell
+var value:Int
+
+// class ArrayOfInt
+var array:Seq[Ref] // containing Cell(s)
+
+method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
+requires acc(a.array, write)
+requires acc(b.array, write)
+requires start >= 0 && end <= |a.array| && |a.array| == |b.array|
+requires forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+requires forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
+ensures acc(a.array, write)
+ensures acc(b.array, write)
+ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+ensures forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
+ensures a.array == old(a.array)
+ensures b.array == old(b.array)
+{
+    var middle: Int
+    if(end-start > 1)
+    {
+        middle := start + (end-start)\2
+        parallel_mergesort(a,b, start,middle)
+        parallel_mergesort(a,b, middle,end)
+        merge(a,b,start,middle,end)
+    }
+}
+
+method merge(a: Ref, b:Ref, start:Int, middle:Int, end:Int)
+requires acc(a.array, write)
+requires acc(b.array, write)
+requires 0 <= start && end <= |a.array| && |b.array| == |a.array| && start < middle && middle < end
+requires forall k:Int :: k in [start..end) ==> acc(a.array[k].value, write)
+//requires forall k:Int :: k in [start..middle-1) ==> a.array[k].value <= a.array[k+1].value
+//requires forall k:Int :: k in [middle..end-1) ==> a.array[k].value <= a.array[k+1].value
+requires forall l:Int :: l in [start..end) ==> acc(b.array[l].value, write)
+ensures acc(a.array, write)
+ensures acc(b.array, write)
+ensures 0 <= start && start < end && end <= |b.array|
+ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+ensures forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
+// TODO: unsoundness!!!
+// TODO unsoundness!!! !=
+//ensures false
+ensures a.array == old(a.array)
+ensures b.array == old(b.array)
+// TODO: invariant has to establish sortedness
+//ensures forall i:Int :: i in [start..end-1) ==> b.array[i].value <= b.array[i+1].value
+{
+    var I:Int := start
+    var J:Int := middle
+    var N:Int := start
+
+    while(N < end)
+    // TODO: fix the issues with wildcard
+    invariant acc(a.array, write)
+    invariant acc(b.array, write)
+    invariant end <= |a.array|
+    invariant N == I+J-middle && 0 <= start
+    invariant start <= I
+    invariant middle <= J
+    invariant J <= end
+    invariant |a.array| == |b.array|
+    invariant a.array == old(a.array)
+    invariant forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
+    // easier:
+    //invariant forall i:Int :: i in [start..middle-1) ==> a.array[i].value == old(a.array[i].value)
+    //invariant forall k:Int :: k in [start..middle-1) ==> a.array[k].value <= a.array[k+1].value
+    //invariant forall k:Int :: k in [middle..end-1) ==> a.array[k].value <= a.array[k+1].value
+    invariant forall j:Int :: j in [start..end) ==> acc(b.array[j].value, write)
+    invariant b.array == old(b.array)
+    {
+        N:=N
+        if(J == end || (a.array[I]).value < (a.array[J]).value)
+        {
+            (b.array[N]).value := (a.array[I]).value
+            I:=I+1
+        } else
+        {
+            (b.array[N]).value := (a.array[J]).value
+            J:=J+1
+        }
+        N:=N+1
+    }
+}
+

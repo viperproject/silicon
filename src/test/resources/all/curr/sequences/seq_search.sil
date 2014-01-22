@@ -1,0 +1,23 @@
+var f:Int
+
+method m(S:Seq[Ref], find:Int) returns (found:Bool)
+requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, wildcard)
+//ensures found == exists i:Int :: i >= 0 && i < |S| && S[i].f == find
+{
+    if(|S| == 0) {
+        found := false
+    }
+    elsif (|S|==1) {
+        found := find == S[0].f
+    }
+    else {
+        // split in the (kind-of) middle
+        var k:Int := |S|-1
+        var f1:Bool
+        var f2:Bool
+        f1 := m(S[..k],find)
+        f2 := m(S[k..],find)
+        found := f1 || f2
+    }
+}

@@ -7,9 +7,11 @@ import semper.sil.frontend.{Frontend, SilFrontend}
 
 class SiliconTests extends DefaultSilSuite {
 
-  private val siliconTestDirectories: Seq[String] = Nil
+  private val siliconTestDirectories: Seq[String] = List (
+    "all"
+  )
   private val silTestDirectories: Seq[String] = List(
-     "all"//,
+     //"all"//,
     //   "all/predicates"
     //  "all/basic"//,
     //   "all/chalice"//,
