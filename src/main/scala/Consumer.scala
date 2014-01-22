@@ -209,7 +209,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       }
 
       // pure forall e.g. ensures forall y:Ref :: y in xs ==> y.f > 0
-      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure) => {
+      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure &&  /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk])) => {
         decider.inScope({
           decider.prover.logComment("CONSUMING PURE FORALL")
 
@@ -217,10 +217,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
           // restriction: the permission is constant and we can evaluate it here
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-            val rewrittenCond = tCond match {
-              case SeqIn(SeqRanged(a,b),c) => And(AtLeast(c,a), Less(c,b))
-              case _ => sys.error("I cannot work with condition of the form " + cond)
-            }
+            val rewrittenCond = heapManager.rewriteGuard(tCond)
+
             if(decider.inScope({
             	assume(rewrittenCond)
             	decider.assert(False())

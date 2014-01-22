@@ -62,7 +62,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
 
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult
 
-
+  def rewriteGuard(guard:Term):Term
 
 }
 
@@ -71,6 +71,24 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   import symbolConverter.toSort
 
   import stateFactory._
+
+  // TODO also depends on the rest of the expression
+  def stable(guard:Term):Boolean = {
+    guard match{
+      case SetIn(_,_) => true
+      case And(SetIn(_,_), b) => true
+      case _ => false
+    }
+  }
+
+  def rewriteGuard(guard:Term):Term = {
+    guard match {
+      case SeqIn(SeqRanged(a,b),c) => And(AtLeast(c,a), Less(c,b))
+      // sets
+      case t if(stable(t))  => t
+      case _ => sys.error("Condition " + guard + " is not stable.")
+    }
+  }
 
 
   def setValue(inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, fieldAccess: FieldAccess, pve: PartialVerificationError, c: C, tv: TV)(Q: H => VerificationResult): VerificationResult = {
@@ -212,7 +230,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       /* TODO: this should not be fresh, but something with the sf function of produce. When unfolding a predicate, the snapshot should be used as a value instead of
          fresh vars
        */
-      println(cond)
       //println(variable)
       //println(rcvr)
       val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
@@ -222,7 +239,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       // TODO: should not be needed any more
       val rewrittenCond = rcvr match {
         case SeqAt(seq, index) => {
-          println("condo: " + cond + " " + cond.getClass)
           cond match {
             // this is a syntactic rewrite - pretty bad, but whatever.
             case SeqIn(SeqRanged(a,b),c) => SeqIn(SeqDrop(SeqTake(seq, b), a), *())
@@ -230,7 +246,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
           }
           //SeqIn(seq, *())
         }
-        case v:Var => *() === v
+        case v:Var => cond.replace(rcvr, *())
       }
       // TODO: rewrite cond and gain together
       val rewrittenGain = rcvr match {
@@ -239,7 +255,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
             case SeqIn(SeqRanged(a,b),c) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq,b),a)))))
             case _ => sys.error("I cannotf work with condition of the form " + cond)
           }
-        case v:Var => TermPerm(Ite(*() === v, pNettoGain, NoPerm()))
+        case v:Var => TermPerm(Ite(rewrittenCond, pNettoGain, NoPerm()))
          // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
       }
 

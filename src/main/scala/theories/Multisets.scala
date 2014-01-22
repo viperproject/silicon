@@ -45,8 +45,6 @@ class DefaultMultisetsEmitter(prover: Prover,
       }
     }
 
-    println(multisetTypes)
-
     collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Multiset])
   }
 

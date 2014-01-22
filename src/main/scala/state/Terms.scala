@@ -136,9 +136,11 @@ sealed trait Term {
         case f: FullPerm => f
         case p: NoPerm => p
         case PermMinus(t1,t2) => PermMinus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
+        case PermPlus(t1,t2) => PermPlus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
         case PermTimes(t1, t2) => PermTimes(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
         case TermPerm(t) => TermPerm(t.replace(term, withTerm))
         case And(t1, t2) => And(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Or(t1, t2) => Or(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case PermMin(t1,t2) => PermMin(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SetDifference(t1,t2) => SetDifference(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SetUnion(t1, t2) => SetUnion(t1.replace(term, withTerm), t2.replace(term, withTerm))

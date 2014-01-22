@@ -79,10 +79,14 @@ TV <: TraceView[TV, ST, H, S]]
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
       // TODO: merge for conditional chunks
-      // val (mh, mts) = merge(Ø, h)
-      //  assume(mts)
-      val mh = h
-      Q(σ \ mh, c1)
+      if(h.values.forall(!_.isInstanceOf[DirectQuantifiedChunk])) {
+        val (mh, mts) = merge(Ø, h)
+        assume(mts)
+        Q(σ \ mh, c1)
+      } else {
+        val mh = h
+        Q(σ \ mh, c1)
+      }
     })
 
   def produces(σ: S,
@@ -220,7 +224,7 @@ TV <: TraceView[TV, ST, H, S]]
 
       }
 
-      case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) => {
+      case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) /* only if there are conditional chunks on the heap */ if(σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk]))=> {
         decider.prover.logComment("Producing pure quantifier " + fa)
         //println("here")
         val forall = (cond: Term) => (body: Term) => Quantification(Forall, vars map {
@@ -239,10 +243,7 @@ TV <: TraceView[TV, ST, H, S]]
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
         // restriction: the permission is constant and we can evaluate it here
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          val rewrittenCond = tCond match {
-            case SeqIn(SeqRanged(a,b),c) => And(AtLeast(c,a), Less(c,b))
-            case _ => sys.error("I cannot work with condition of the form " + cond)
-          }
+          val rewrittenCond = heapManager.rewriteGuard(tCond)
           assume(rewrittenCond)
           eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
             decider.prover.logComment("end of the fun - here comes the forall!")
@@ -251,43 +252,6 @@ TV <: TraceView[TV, ST, H, S]]
           })
         })
       }
-
-      // restricted to single implication for the moment
-      /*
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.And(ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain), rest))) => {
-        // add the variables to the local variables within a new scope
-        decider.inScope({
-
-          val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-
-
-
-          // eval the condition
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
-          // TODO: produce the body - how exactly?
-          // an initial approach: just produce the first access permissions
-            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
-              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
-                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p)((newHeap) =>
-                  Q(newHeap, c2)
-                )
-              )
-            )
-          )
-
-          /*eval(σ , set, pve, c, tv)((tSet, c1) =>
-            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
-              heapManager.getValue(σ.h, tRcvr, field, tSet, pve, null, c, tv)((tValue) => {
-                  println(σ.h)
-                  println(tValue)
-                  Q(null, c2)
-              })
-            }
-            ))*/
-
-        })
-      } */
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

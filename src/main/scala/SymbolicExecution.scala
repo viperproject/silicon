@@ -250,13 +250,6 @@ class DefaultChunkFinder[ST <: Store[ST],
 							 (Q: CH => VerificationResult)
                : VerificationResult = {
 	  
-	  	// are there globally enough permissions for field f?
-	  	val enoughGlobalPermissions = decider.hasEnoughPermissionsGlobally(h, id, NoPerm())
-	  	
-	  	if(!enoughGlobalPermissions)  {
-	  	  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-	  	}
-	  	
 		decider.getChunk[CH](h, id) match {
 			case Some(c) =>
         Q(c)
