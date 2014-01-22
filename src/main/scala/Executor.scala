@@ -163,12 +163,12 @@ trait DefaultExecutor[ST <: Store[ST],
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
-    println("[exec] " + block + " " + block.getClass)
+    //println("[exec] " + block + " " + block.getClass)
 //    logger.debug("\n[exec] " + block.label)
 
     block match {
       case block @ sil.ast.StatementBlock(stmt, _) =>
-        println("executin stmt " + stmt + " " + stmt.getClass)
+        //println("executin stmt " + stmt + " " + stmt.getClass)
         exec(σ, stmt, c, tv)((σ1, c1) =>
           leave(σ1, block, c1, tv)(Q))
 
@@ -347,14 +347,6 @@ trait DefaultExecutor[ST <: Store[ST],
             else
               Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(a), c, tv)
 
-          case ast.AccessPredicate(locacc, perm) =>
-            withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
-              evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-                if (decider.hasEnoughPermissionsGlobally(σ.h, id, tPerm))
-                  Q(σ, c2)
-                else
-                  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)))
-
           case _ =>
             if (config.disableSubsumption()) {
               val r =
@@ -382,7 +374,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
             val post = ast.utils.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
-              println("heap after method call: " + σ3.h)
+              //println("heap after method call: " + σ3.h)
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
@@ -394,8 +386,8 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.isPositive(tPerm)) {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
-                  println(predicate.body)
-                  println(snap)
+                  //println(predicate.body)
+                  //println(snap)
                   val ncs = dcs.map{_ match {
                     case fc: DirectFieldChunk => new NestedFieldChunk(fc)
                     case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
