@@ -39,7 +39,7 @@ trait SiliconConstants {
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
   val copyright = "(c) Copyright ETH Zurich 2012 - 2013"
   val z3ExeEnvironmentVariable = "Z3_EXE"
-  val expectedZ3Version = "4.3.2"
+  val expectedZ3Version = "4.3.0"
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
 
