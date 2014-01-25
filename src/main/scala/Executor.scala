@@ -292,14 +292,13 @@ trait DefaultExecutor[ST <: Store[ST],
           eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
             if (!decider.assert(tRcvr !== Null()))
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
-            else if (!decider.hasEnoughPermissionsGlobally(σ.h, FieldChunkIdentifier(tRcvr, field.name), FullPerm()))
+            else if (!decider.assert(AtLeast(heapManager.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
               Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
             else {
               val ch = heapManager.transformExhale(tRcvr, field.name, tRhs, FullPerm())
-              decider.exhalePermissions(σ.h, σ.h.empty + ch) match {
-                case Some(heap) => Q((σ \ heap) \+ ch, c2)
-                case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
-              }
+              heapManager.exhale(σ.h, ch, pve, fl, c2, tv)(h =>
+                Q((σ \ h) \+ ch, c2)
+              )
             }
           )
         )

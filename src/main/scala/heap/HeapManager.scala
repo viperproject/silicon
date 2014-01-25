@@ -11,7 +11,7 @@ import semper.silicon.state._
 import semper.silicon.ast.Field
 import semper.silicon.interfaces.decider.Decider
 import semper.sil.verifier.reasons.{ReceiverNull, InsufficientPermission}
-import semper.sil.ast.{FieldAccess, LocationAccess}
+import semper.sil.ast.{LocationAccess, FieldAccess}
 import semper.sil.verifier.PartialVerificationError
 import semper.silicon.interfaces.Failure
 import scala.Some
@@ -35,7 +35,6 @@ import semper.sil.verifier.reasons.InsufficientPermission
 import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.NoPerm
 import semper.silicon.state.terms.PermMin
-import semper.sil.ast.FieldAccess
 import scala.Some
 import semper.silicon.state.DirectQuantifiedChunk
 import semper.silicon.state.terms.False
@@ -47,11 +46,27 @@ import semper.silicon.state.terms.Eq
 import semper.sil.verifier.reasons.ReceiverNull
 import semper.silicon.state.terms.SortWrapper
 import semper.silicon.state.terms.True
+import semper.silicon.state.terms.utils._
+import semper.silicon.state.terms.DomainFApp
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.terms.*
+import semper.silicon.interfaces.Failure
+import scala.Some
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.state.terms.IntLiteral
+import semper.silicon.state.terms.Null
+import semper.silicon.state.terms.Var
+import semper.sil.verifier.reasons.InsufficientPermission
+import semper.silicon.state.terms.FApp
+import semper.silicon.state.terms.NoPerm
+import semper.silicon.state.terms.SeqRanged
+import semper.silicon.state.FieldChunkIdentifier
+import semper.silicon.state.terms.Quantification
+import semper.sil.verifier.reasons.ReceiverNull
 
 
 trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
-
-  def setValue(inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, fieldAccess: FieldAccess, pve:PartialVerificationError, c:C, tv:TV)(Q: H => VerificationResult): VerificationResult;
 
   // TODO: generalize
   def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
@@ -59,7 +74,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
   def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:DirectQuantifiedChunk => true case _ => false}
 
   //def consumePermissions(inHeap: H, receiver:Term, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: (H,Term) => VerificationResult) : VerificationResult;
-  def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult;
+  def consumePermissions(inHeap: H, ch: DirectQuantifiedChunk, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult;
 
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult
 
@@ -67,6 +82,9 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
 
   def transformExhale(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk
 
+  def permission(h: H, id: ChunkIdentifier): Term
+
+  def exhale(h: H, ch: DirectQuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
 }
 
 class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends HeapManager[ST, H, PC, S, C, TV] {
@@ -74,10 +92,26 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   import symbolConverter.toSort
 
   import stateFactory._
+  import decider._
+
+  def ⊢(t:Term) = assert(t)
+
 
   def transformExhale(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk = rcvr match {
     case SeqAt(s,i) => DirectQuantifiedChunk(field, value, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i)))))
     case _ => DirectQuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
+  }
+
+  /**
+   * Gives the permissions in the heap for the given receiver
+   */
+  def permission(h: H, id: ChunkIdentifier): Term = {
+    // collect all chunks
+    val condH = toConditional(h)
+    //println("looking up global permissions")
+    BigPermSum(condH.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
+      permChunk.perm.replace(terms.*(), id.args.last)
+    }}, {x => x})
   }
 
   // TODO also depends on the rest of the expression
@@ -98,46 +132,16 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
-
-  def setValue(inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, fieldAccess: FieldAccess, pve: PartialVerificationError, c: C, tv: TV)(Q: H => VerificationResult): VerificationResult = {
-    if (decider.assert(ofReceiver === Null()))
-      Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fieldAccess), c, tv)
-
-    if (!decider.hasEnoughPermissionsGlobally(inHeap, FieldChunkIdentifier(ofReceiver, withField.name), FullPerm()))
-      Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fieldAccess), c, tv)
-
-    /* legacy: if there is a direct chunk with syntactically exactly the same receiver, just replace this */
-    // TODO
-
-    val chunk = ofReceiver match {
-      case SeqAt(s,i) => DirectQuantifiedChunk(withField.name, toValue, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s,Plus(i,IntLiteral(1))), i))))))
-      case _ => DirectFieldChunk(ofReceiver, withField.name, toValue, FullPerm())
-    }
-
-
-    // exhale and inhale again
-    consumePermissions(inHeap, inHeap.empty + chunk, ofReceiver, withField, pve, fieldAccess, c, tv)((nh,t) => {
-      // TODO: move producing permissions to a method
-      val nhInhaled = nh + chunk
-      decider.prover.logComment("wrote " + ofReceiver + "." + withField.name + ":=" + toValue + " resulting heap for field: " + nhInhaled.values.filter(ch => (ch.name == withField.name)) + " initial heap: " + inHeap.values.filter(ch => (ch.name == withField.name)))
-      Q(nhInhaled)
-    }
+  def consumePermissions(inHeap: H, ch: DirectQuantifiedChunk, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult =
+    exhale(inHeap, ch, pve, locacc, c, tv)((h2:H) =>
+        /* TODO effing ugly - refactor! */
+        getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h2, t))
     )
-  }
-
-  def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult = {
-    decider.exhalePermissions(inHeap, h) match {
-      case Some(h2) =>
-        decider.prover.logComment("value after consume, heap " + h2)
-        getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h2, t))   /* TODO effing ugly - refactor! */
-      case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-    }
-  }
 
   private def givesReadAccess(chunk: DirectChunk, rcv:Term, field:Field):Boolean = {
     // TODO: move heap management methods to HeapManager
     decider.prover.logComment("checking if " + chunk + " gives access to " + rcv + "." + field)
-    decider.canReadGlobally(H(List(chunk)), FieldChunkIdentifier(rcv, field.name))
+    (⊢ (Less(NoPerm(), permission(H(List(chunk)), FieldChunkIdentifier(rcv, field.name)))))
   }
 
   /* TODO generalize */
@@ -151,7 +155,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     if(!decider.assert(ofReceiver !== Null())) {
       Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
     }
-    else if(!decider.canReadGlobally(inHeap, FieldChunkIdentifier(ofReceiver, withField.name))) {
+    else if(!(⊢ (Less(NoPerm(), permission(inHeap, FieldChunkIdentifier(ofReceiver, withField.name)))))) {
       decider.prover.logComment("cannot read " + ofReceiver + "." + withField.name + " in heap: " + inHeap.values.filter(ch => (ch.name == withField.name) ))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     } else {
@@ -298,6 +302,74 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
     //println(ch)
     Q(inHeap + ch)
+  }
+
+  def toConditional(h:H) = {
+    var hqnew = h.empty
+    h.values.foreach {
+      case ch: DirectFieldChunk => {
+        hqnew = hqnew + DirectQuantifiedChunk(ch.name, ch.value,TermPerm(Ite(Eq(*(), ch.rcvr),ch.perm, NoPerm())))
+      }
+      case ch: DirectQuantifiedChunk => hqnew = hqnew + ch
+      case ch: DirectPredicateChunk => hqnew = hqnew + ch
+      case ch: NestedChunk => hqnew = hqnew + ch
+    }
+    hqnew
+  }
+
+  // TODO move (there is one version of this already in Consumer)
+  // TODO walk terms somehow...
+  def isWildcard(perm: Term):Boolean = { perm match {
+    case TermPerm(t) => isWildcard(t)
+    case _: WildcardPerm => true
+    case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case IntPermTimes(_, t1) => isWildcard(t1)
+    case Ite(a,b,c) => isWildcard(b) || isWildcard(c)
+    case FullPerm() => false
+    case NoPerm() => false
+    case PermMin(a,b) => isWildcard(a) || isWildcard(b)
+    case MultisetCount(_) => false
+    case FractionPerm(_,_) => false
+  }
+  }
+
+
+  def exhalePermissions2(h:H, ch:DirectQuantifiedChunk) = {
+    val * = fresh(sorts.Ref)
+    h.values.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
+      case ((ch1:DirectQuantifiedChunk, h, true), ch2) => (ch1, h+ch2, true)
+      case ((ch1:DirectQuantifiedChunk, h, false), ch2) =>
+        ch2 match {
+          case quant:DirectQuantifiedChunk if quant.name == ch1.name =>
+            if(isWildcard(ch1.perm)) assume(ch1.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < quant.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
+            val r = PermMin(ch1.perm, quant.perm)
+            val d = ⊢ ((ch1.perm-r).replace(terms.*(), *) === NoPerm())
+            if(⊢ ((quant.perm - r).replace(terms.*(), *) === NoPerm())) {
+              (DirectQuantifiedChunk(ch1.name, null, ch1.perm - r), h, d)
+            } else {
+              (DirectQuantifiedChunk(ch1.name, null, ch1.perm-r), h+DirectQuantifiedChunk(quant.name, quant.value, quant.perm - r), d)
+            }
+          case ch => (ch1, h + ch, false)
+        }
+    }
+  }
+
+  def exhaleTest(h:H, ch:DirectQuantifiedChunk) = {
+    val hq = toConditional(h)
+    val k = exhalePermissions2(hq,ch)
+    if(!k._3) None else Some(k._2)
+  }
+
+  def exhale(h: H, ch: DirectQuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
+    // convert to conditional chunks if necessary
+    // TODO: where exactly?
+    val hq = toConditional(h)
+    val k = exhalePermissions2(hq, ch)
+    if(!k._3)
+      Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+    else Q(k._2)
   }
 
 }

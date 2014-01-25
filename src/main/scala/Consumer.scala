@@ -174,7 +174,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             // we may safely assume the ""guard""
             assume(rewrittenCond.replace(*(), k))
 
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, a.loc, c2, tv) ((h1, t) => {
+            heapManager.consumePermissions(h, DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, a.loc, c2, tv) ((h1, t) => {
               Q(h1, t, Nil, c3)
             })
           }
@@ -199,7 +199,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         	 {
         	// we may safely assume it
         	assume(SetIn(k, tSet))
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, a.loc , c2, tv)((h1,t) =>  {
+            heapManager.consumePermissions(h, DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, a.loc , c2, tv)((h1,t) =>  {
                 /* TODO: is this correct? */
                 Q(h1, t, Nil, c2)
               })
@@ -243,7 +243,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr), tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv)((h2: H, t) =>
+            heapManager.consumePermissions(h, DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr), tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv)((h2: H, t) =>
               Q(h2, t, Nil, c2)
             )))
 

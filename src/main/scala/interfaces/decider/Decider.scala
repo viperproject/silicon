@@ -7,6 +7,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, Chunk, ChunkIdentif
 import interfaces.reporting.{Context}
 import state.terms.{Term, Var, FractionalPermissions, Sort}
 import silicon.utils.notNothing._
+import semper.silicon.state.DirectQuantifiedChunk
 
 trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 						PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S]] {
@@ -24,11 +25,6 @@ trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
 	def assume(φ: Term)
 	def assume(φ: Set[Term])
 
-  def canReadGlobally(h:H, id:ChunkIdentifier):Boolean
-	def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean
-  def exhalePermissions(h:H, id:ChunkIdentifier, p:P): Option[H]
-  def exhalePermissions(h:H, exhaleH:H):Option[H]
-	
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH]
 
 	def assertNoAccess(p: P): Boolean
