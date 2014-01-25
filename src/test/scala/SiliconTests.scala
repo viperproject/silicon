@@ -11,10 +11,10 @@ class SiliconTests extends DefaultSilSuite {
     "all"
   )
   private val silTestDirectories: Seq[String] = List(
-     //"all"//,
-    //   "all/predicates"
-    //  "all/basic"//,
-    //   "all/chalice"//,
+   //  "all"//,
+       "all/predicates",
+      "all/basic",//,
+       "all/chalice"//,
     //"all/sequences"//,
     //  "all/quantifiers",
     //"all/curr"

@@ -56,6 +56,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
   // TODO: generalize
   def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
+  def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:DirectQuantifiedChunk => true case _ => false}
 
   //def consumePermissions(inHeap: H, receiver:Term, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: (H,Term) => VerificationResult) : VerificationResult;
   def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult;
@@ -64,6 +65,8 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
 
   def rewriteGuard(guard:Term):Term
 
+  def transformExhale(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk
+
 }
 
 class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends HeapManager[ST, H, PC, S, C, TV] {
@@ -71,6 +74,11 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   import symbolConverter.toSort
 
   import stateFactory._
+
+  def transformExhale(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk = rcvr match {
+    case SeqAt(s,i) => DirectQuantifiedChunk(field, value, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i)))))
+    case _ => DirectQuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
+  }
 
   // TODO also depends on the rest of the expression
   def stable(guard:Term):Boolean = {
@@ -184,6 +192,9 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
           case s:FApp => Q(s)
           // happens if some part of a quantified chunk is directly assigned an Int
           case i:IntLiteral => Q(i)
+          // +
+          case p:Plus => Q(p)
+          case t:Times => Q(t)
         }
         case _ => {
             /* Legacy lookup */

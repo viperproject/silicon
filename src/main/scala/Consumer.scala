@@ -239,34 +239,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         })
       }
 
-        /* Field and predicate access predicates */
+      /* Field and predicate access predicates */
+      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr), tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv)((h2: H, t) =>
+              Q(h2, t, Nil, c2)
+            )))
+
       case ast.AccessPredicate(locacc, perm) =>
-        // TODO: should not be needed - migrate all consuming of permissions into heapmanager
-        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
-        if(hasCondChunks && !locacc.isInstanceOf[ast.PredicateAccess] /* TODO generalize */) {
-            locacc match {
-              case ast.FieldAccess(eRcvr, field) =>
-                eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-                  evalp(σ, perm, pve, c1, tv) ((tPerm, c2) =>
-                    heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr),tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv) ((h2:H, t) =>
-                      /* TODO: is this correct? */
-                    {decider.prover.logComment("consumed, result is " + h2)
-                      Q(h2, t, Nil, c2)}
-                    )))
-            }
-        } else
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-             /*   if (decider.hasEnoughPermissionsGlobally(h, id, p * tPerm)) {
-                   val h1 = decider.exhalePermissions(h, id, p * tPerm)
-                   h1 match  {
-                    case Some(h1) =>  Q(h1, True(), List[DirectChunk](), c2)
-                    case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
-                   }
-
-                } else {
-                  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
-                }))  */
                 if (decider.isPositive(tPerm, !isConditional(perm)))
                   consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                     ch match {

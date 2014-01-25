@@ -204,24 +204,19 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess =>  {
-        // TODO: should not be needed - migrate all value lookups into heapmanager
-        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
-
-        if (hasCondChunks) {
-          decider.prover.logComment("heap " + σ.h)
+      case fa: ast.FieldAccess if(heapManager.isQuantifiedFor(σ.h, fa.field.name)) =>  {
           eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
             heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) =>
               {
-              decider.prover.logComment("final value " + t)
-              Q(t, c1)
+                Q(t, c1)
               })
           )
-        } else {
-          withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-            withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-              Q(ch.value, c1)))
-        }
+      }
+
+      case fa: ast.FieldAccess => {
+      withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
+        withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
+          Q(ch.value, c1)))
       }
 
       case ast.Not(e0) =>

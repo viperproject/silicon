@@ -286,23 +286,28 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
+      case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if heapManager.isQuantifiedFor(σ.h, field.name) =>
+        val pve = AssignmentFailed(ass)
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
+            if (!decider.assert(tRcvr !== Null()))
+              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
+            else if (!decider.hasEnoughPermissionsGlobally(σ.h, FieldChunkIdentifier(tRcvr, field.name), FullPerm()))
+              Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
+            else {
+              val ch = heapManager.transformExhale(tRcvr, field.name, tRhs, FullPerm())
+              decider.exhalePermissions(σ.h, σ.h.empty + ch) match {
+                case Some(heap) => Q((σ \ heap) \+ ch, c2)
+                case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
+              }
+            }
+          )
+        )
+
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
-        // TODO: should not be needed - migrate all fields writes into HeapManager
-        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
         val pve = AssignmentFailed(ass)
 
-        if(hasCondChunks) {
-          // (inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, Q: H => VerificationResult)
-          eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-            // TODO: this evaluation could also take place _after_ checking the permissions
-            eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
-              heapManager.setValue(σ.h, tRcvr, field, tRhs, fl, pve, c, tv)((nh) =>
-                Q(σ \ nh, c2)
-              )
-            )
-          )
-        } else {
-          val id = field.name
+        val id = field.name
           eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
             if (decider.assert(tRcvr !== Null()))
               eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
@@ -311,7 +316,7 @@ trait DefaultExecutor[ST <: Store[ST],
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             else
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
-        }
+
       case ast.New(v) =>
         val t = fresh(v)
         assume(t !== Null())

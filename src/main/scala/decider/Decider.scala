@@ -28,6 +28,7 @@ import semper.silicon.state.terms.NoPerm
 import semper.silicon.state.terms.PermMin
 import semper.sil.verifier.DependencyNotFoundError
 import semper.silicon.state.terms.WildcardPerm
+import semper.silicon.interfaces.state.factoryUtils.Ø
 
 
 class DefaultDecider[ST <: Store[ST],
@@ -420,6 +421,7 @@ class DefaultDecider[ST <: Store[ST],
       }
       case ch: DirectQuantifiedChunk => hqnew = hqnew + ch
       case ch: DirectPredicateChunk => hqnew = hqnew + ch
+      case ch: NestedChunk => hqnew = hqnew + ch
     }
     hqnew
   }
@@ -442,67 +444,35 @@ class DefaultDecider[ST <: Store[ST],
    }
   }
 
+  def ⊢(t:Term) = assert(t)
+
+  def exhalePermissions2(h:H, ch:DirectQuantifiedChunk) = {
+    val * = fresh(sorts.Ref)
+    h.values.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
+    case ((ch1:DirectQuantifiedChunk, h, true), ch2) => (ch1, h+ch2, true)
+    case ((ch1:DirectQuantifiedChunk, h, false), ch2) =>
+      ch2 match {
+        case quant:DirectQuantifiedChunk if quant.name == ch1.name =>
+          if(isWildcard(ch1.perm)) assume(ch1.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < quant.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
+          val r = PermMin(ch1.perm, quant.perm)
+          val d = ⊢ ((ch1.perm-r).replace(terms.*(), *) === NoPerm())
+          if(⊢ ((quant.perm - r).replace(terms.*(), *) === NoPerm())) {
+            (DirectQuantifiedChunk(ch1.name, null, ch1.perm - r), h, d)
+          } else {
+            (DirectQuantifiedChunk(ch1.name, null, ch1.perm-r), h+DirectQuantifiedChunk(quant.name, quant.value, quant.perm - r), d)
+          }
+        case ch => (ch1, h + ch, false)
+      }
+    }
+  }
+
   def exhalePermissions(h: H, exhaleH: H): Option[H] = {
     // convert to conditional chunks if necessary
     var hq = toConditional(h)
     val exhaleHC = toConditional(exhaleH)
 
-    //println(hq.values.size)
-    //println(exhaleHC)
-
-    breakable {
-      exhaleHC.values.foreach {
-        ch => ch match {
-          case eCh: DirectQuantifiedChunk  => {
-
-            hq = H(hq.asInstanceOf[SetBackedHeap]).asInstanceOf[H]
-            var pLeft = eCh.perm
-            inScope({
-              val * = fresh(sorts.Ref)
-              hq.values.foreach {
-                case ch: DirectQuantifiedChunk if(eCh.name == ch.name) => {
-                  // leave early
-                  prover.logComment("are we done?")
-                  if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
-                    // manually come out of scope
-                    popScope()
-                    break;
-                  }
-
-                  // if what we want to exhale is a wildcard, we need to assume that it's less than what we get
-                  prover.logComment("pLeft: " + pLeft + " " + pLeft.getClass())
-                  if(isWildcard(pLeft)) {
-                    prover.logComment("assuming that wildcard " + pLeft + " is less than chunk " + ch.perm)
-                    assume(pLeft.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < ch.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
-                  }
-
-                  val r = PermMin(pLeft, ch.perm)
-                  pLeft = pLeft - TermPerm(r)
-                  inScope({
-                    prover.logComment("checking if chunk does still contain permissions")
-                    if (permAssert((ch.perm - TermPerm(r)).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
-                      prover.logComment("before removin " + ch +  ": " + hq)
-                      hq = hq - ch
-                      prover logComment("after removin " + ch + ": " + hq)
-                    } else {
-                      hq = hq - ch + (ch - TermPerm(r))
-                    }
-                  })
-                }
-                case _ => {}
-              }
-              prover.logComment("are we done?")
-              if (!permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
-                prover.logComment("finally could not exhale...")
-                return None
-              }
-            })
-          }
-        }
-      }
-    }
-    prover.logComment("finally the result is " + hq)
-    Some(hq)
+    val k = exhalePermissions2(hq, exhaleHC.values.head.asInstanceOf[DirectQuantifiedChunk])
+    if(k._3) Some(k._2) else None
   }
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =

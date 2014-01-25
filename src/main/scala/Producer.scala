@@ -166,20 +166,29 @@ TV <: TraceView[TV, ST, H, S]]
             (c2: C, tv1: TV) => produce2(σ, sf, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if heapManager.isQuantifiedFor(σ.h, field.name) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
+          assume(tRcvr !== Null())
+          evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+            val s = sf(toSort(field.typ))
+            val pNettoGain = pGain * p
+            val ch = DirectQuantifiedChunk(field.name, s, TermPerm(Ite(*() === tRcvr, pNettoGain, NoPerm())))
+            if (!isConditional(gain)) assume(NoPerm() < pGain)
+            Q(σ.h + ch, c2)
+          })
+        })
+
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(toSort(field.typ))
-            decider.prover.logComment("new var for snapshot!")
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            // TODO merge does not work yet with conditional chunks
-            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            //assume(mts)
-            //Q(mh, c2)
-            Q(σ.h + ch, c2)
+            val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            assume(mts)
+            Q(mh, c2)
           })
         })
 
