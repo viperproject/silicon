@@ -206,24 +206,18 @@ TV <: TraceView[TV, ST, H, S]]
           }))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
-
-      // TODO: generalize for an arbitrary condition
       case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain))) => {
         decider.prover.logComment("Producing set access predicate " + fa)
-        decider.pushScope()
 
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
-
-          // restriction: the permission is constant and we can evaluate it here
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>  {
-            assume(tCond)
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
-              // Why pop here? We need the permission to be in the scope because it goes into the chunk
               decider.prover.logComment("End produce set access predicate " + fa)
-              decider.popScope()
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
+                val s = sf(toSort(field.typ))
+
                 heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p, tRcvr)((newHeap) =>  {
                   Q(newHeap, c2)
                 })
@@ -233,6 +227,8 @@ TV <: TraceView[TV, ST, H, S]]
 
       }
 
+      // TODO: maybe we can remove this and use the mechanism of eval instead
+      // but it may be more complicated to describe the general forall mechanism implemented in eval
       case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) /* only if there are conditional chunks on the heap */ if(σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk]))=> {
         decider.prover.logComment("Producing pure quantifier " + fa)
         //println("here")

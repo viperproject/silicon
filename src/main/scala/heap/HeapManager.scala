@@ -138,11 +138,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
         getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h2, t))
     )
 
-  private def givesReadAccess(chunk: DirectChunk, rcv:Term, field:Field):Boolean = {
-    // TODO: move heap management methods to HeapManager
-    decider.prover.logComment("checking if " + chunk + " gives access to " + rcv + "." + field)
-    (⊢ (Less(NoPerm(), permission(H(List(chunk)), FieldChunkIdentifier(rcv, field.name)))))
-  }
 
   /* TODO generalize */
   private def merge(inHeap: H, field: Field /* potential TODO: give some more heuristics which field should be merged */):H = {
@@ -170,7 +165,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       decider.prover.logComment("end of bullshit")
 
 
-      inHeap.values.collectFirst{case pf:DirectQuantifiedChunk if(pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => pf.value} match {
+      inHeap.values.collectFirst{case pf:DirectQuantifiedChunk if(pf.name == withField.name && (⊢ (Less(NoPerm(), permission(H(List(pf)), FieldChunkIdentifier(ofReceiver, withField.name)))))) => pf.value} match {
         case Some(v) => v match {
           case Var(id, s) =>
             s match {
@@ -202,7 +197,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
         }
         case _ => {
             /* Legacy lookup */
-            inHeap.values.collectFirst {case pf:DirectFieldChunk if(pf.name == withField.name) && givesReadAccess(pf, ofReceiver, withField) => pf.value} match {
+            inHeap.values.collectFirst {case pf:DirectFieldChunk if(pf.name == withField.name) && (⊢ (Less(NoPerm(), permission(H(List(pf)), FieldChunkIdentifier(ofReceiver, withField.name))))) => pf.value} match {
               case Some(v) =>
                   Q(v)
               case _ => {
@@ -240,7 +235,22 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
+  def ∀ = DirectQuantifiedChunk
 
+  def transformInhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk = {
+    val count = rcvr match {
+      case SeqAt(s, i) =>
+        cond match {
+          case SeqIn(SeqRanged(a, b), c) if c == s => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
+          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>'!")
+        }
+         //DirectQuantifiedChunk(f, )
+      case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+    }
+    ∀(f.name, tv, PermTimes(TermPerm(count), talpha))
+  }
+
+  // TODO: inline in producer
   def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult = {
       /* TODO: this should not be fresh, but something with the sf function of produce. When unfolding a predicate, the snapshot should be used as a value instead of
          fresh vars
