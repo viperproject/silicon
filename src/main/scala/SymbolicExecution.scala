@@ -5,7 +5,7 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{InsufficientPermission}
-import interfaces.{VerificationResult, Failure, Unreachable}
+import semper.silicon.interfaces.{Success, VerificationResult, Failure, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
     TwinBranch, LocalTwinBranch, Step}
@@ -242,8 +242,11 @@ class DefaultChunkFinder[ST <: Store[ST],
         Q(c)
 
 			case None =>
-        /* TODO: We need the location node, not only the receiver. */
-        Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+        if (decider.assert(False()))
+          Success[C, ST, H, S](c) /* TODO: Mark branch as dead? */
+        else
+          /* TODO: We need the location node, not only the receiver. */
+          Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
 		}
 	}
 
@@ -262,7 +265,10 @@ class DefaultChunkFinder[ST <: Store[ST],
 			if (decider.isAsPermissive(chunk.perm, p))
 				Q(chunk)
 			else
-				Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)})
+        if (decider.assert(False()))
+          Success[C, ST, H, S](c) /* TODO: Mark branch as dead? */
+			  else
+          Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)})
 }
 
 class StateUtils[ST <: Store[ST],
