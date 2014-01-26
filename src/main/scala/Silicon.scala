@@ -129,6 +129,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
                               traceviewFactory: TraceViewFactory[TV, ST, H, S])
                              : V = {
 
+    val bookkeeper = new Bookkeeper()
+    bookkeeper.branches = 1
+    bookkeeper.startTime = System.currentTimeMillis()
+
 	  val decider = new DefaultDecider[ST, H, PC, S, C]()
     shutDownHooks = shutDownHooks + (() => decider.stop())
 
@@ -136,7 +140,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
-    val bookkeeper = new Bookkeeper()
     val stateFactory = new DefaultStateFactory(decider.π _)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
@@ -145,9 +148,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val heapMerger =
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-
-    bookkeeper.branches = 1
-    bookkeeper.startTime = System.currentTimeMillis()
 
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
