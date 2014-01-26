@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, ContractNotWellformed, LoopInvariantNotPreserved,
+import sil.verifier.errors.{Internal, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
@@ -10,10 +10,11 @@ import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
     HeapMerger}
-import interfaces.reporting.{/*Message,*/ TraceView}
+import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk}
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
+    DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
 
@@ -206,7 +207,7 @@ trait DefaultExecutor[ST <: Store[ST],
     stmt match {
       case _: sil.ast.Seqn =>
       case _ =>
-        logger.debug("\nEXECUTE " + stmt.toString)
+        logger.debug(s"\nEXECUTE ${stmt.pos}: ${stmt}")
         logger.debug(stateFormatter.format(σ))
         decider.prover.logComment("")
         decider.prover.logComment(stmt.toString)

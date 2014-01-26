@@ -119,7 +119,7 @@ trait DefaultEvaluator[
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
 			case _ =>
-				logger.debug("\nEVALUATING " + e)
+        logger.debug(s"\nEVAL ${e.pos}: ${e}")
 				logger.debug(stateFormatter.format(σ))
         decider.prover.logComment(s"[eval] $e")
 		}

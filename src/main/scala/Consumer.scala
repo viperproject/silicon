@@ -97,8 +97,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
 
-		logger.debug("\nCONSUME " + φ.toString)
-		logger.debug(stateFormatter.format(σ))
+    logger.debug(s"\CONSUME ${φ.pos}: ${φ}")
+    logger.debug(stateFormatter.format(σ))
 		logger.debug("h = " + stateFormatter.format(h))
 
 		val consumed = φ match {

@@ -109,7 +109,7 @@ trait DefaultProducer[
 			                       (Q: (H, C) => VerificationResult)
                              : VerificationResult = {
 
-		logger.debug("\nPRODUCE " + φ.toString)
+    logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
 		logger.debug(stateFormatter.format(σ))
 
 		val produced = φ match {
