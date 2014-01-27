@@ -28,6 +28,30 @@ import semper.silicon.PermissionsConsumptionResult
 import semper.silicon.state.terms.Var
 import semper.silicon.state.terms.WildcardPerm
 import semper.sil.verifier.reasons.AssertionFalse
+import semper.silicon.ast._
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.*
+import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import semper.silicon.state.terms.PermPlus
+import semper.silicon.state.terms.False
+import semper.silicon.state.terms.And
+import semper.silicon.state.terms.PermMinus
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.state.terms.Combine
+import semper.silicon.state.terms.PermTimes
+import semper.silicon.PermissionsConsumptionResult
+import semper.silicon.state.terms.Var
+import semper.silicon.state.terms.IntPermTimes
+import semper.silicon.state.terms.NoPerm
+import semper.sil.ast.LocalVar
+import semper.silicon.state.terms.SeqRanged
+import semper.silicon.state.terms.WildcardPerm
+import semper.silicon.state.terms.Ite
+import semper.sil.verifier.reasons.AssertionFalse
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -174,9 +198,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             // we may safely assume the ""guard""
             assume(rewrittenCond.replace(*(), k))
 
-            heapManager.consumePermissions(h, DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, a.loc, c2, tv) ((h1, t) => {
-              Q(h1, t, Nil, c3)
-            })
+            heapManager.value(h, k, field, pve, a.loc, c2, tv)(t =>
+              heapManager.exhale(h, DirectQuantifiedChunk(field.name, null, rewrittenGain), pve, a.loc, c2, tv) (h2 =>
+                Q(h2, t, Nil, c3)
+            ))
           }
         })))
       }
@@ -189,21 +214,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             // quick workaround: check if it is false
             // TODO: this is unsound!!! Imagine the set to be empty, then we assume false!
             if (decider.inScope({
-            	assume(SetIn(k, tSet))
-            	decider.assert(False())
-        	})) {
-        		// guard is false, we do not need to do anything
-        		Q(h, Unit, Nil, c2)
-        	}
-        	else
-        	 {
-        	// we may safely assume it
-        	assume(SetIn(k, tSet))
-            heapManager.consumePermissions(h, DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, a.loc , c2, tv)((h1,t) =>  {
-                /* TODO: is this correct? */
-                Q(h1, t, Nil, c2)
-              })
+              assume(SetIn(k, tSet))
+              decider.assert(False())
+            })) {
+              // guard is false, we do not need to do anything
+              Q(h, Unit, Nil, c2)
             }
+            // we may safely assume it
+            assume(SetIn(k, tSet))
+            heapManager.value(h, k, field, pve, a.loc, c2, tv)(t =>
+              heapManager.exhale(h, DirectQuantifiedChunk(field.name, null, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), pve, a.loc, c2, tv)(h2 =>
+                Q(h2, t, Nil, c2)
+              )
+            )
           })
         )
       }
@@ -243,9 +266,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-            heapManager.consumePermissions(h, DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr), tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv)((h2: H, t) =>
-              Q(h2, t, Nil, c2)
-            )))
+            heapManager.value(h, tRcvr, field, pve, locacc, c2, tv)(t =>
+              heapManager.exhale(h, DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr), tPerm, NoPerm()))), pve, locacc, c2, tv)(h2 =>
+                Q(h2, t, Nil, c2)
+            ))))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>

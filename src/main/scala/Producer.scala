@@ -186,9 +186,10 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            assume(mts)
-            Q(mh, c2)
+            // TODO: make merge work here again
+            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            //assume(mts)
+            Q(σ.h+ch, c2)
           })
         })
 
@@ -199,6 +200,7 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
+            // TODO: make merge work again
             //val (mh, mts) = merge(σ.h, H(ch :: Nil))
             decider.prover.logComment("assuming predicate " + predicate.name)
             //assume(mts)
@@ -206,24 +208,26 @@ TV <: TraceView[TV, ST, H, S]]
           }))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
-      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain))) => {
+      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) => {
         decider.prover.logComment("Producing set access predicate " + fa)
 
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>  {
+          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
               decider.prover.logComment("End produce set access predicate " + fa)
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
-                val s = sf(toSort(field.typ))
-
-                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p, tRcvr)((newHeap) =>  {
-                  Q(newHeap, c2)
-                })
+                // TODO: why does sf not work? This might introduce an incompleteness somewhere - ask Malte
+                val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+                val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val ch = heapManager.transformInhale(tRcvr, f, app, pGain * p, tCond)
+                val v = Var("nonnull", sorts.Ref)
+                decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
+                Q(σ.h+ch, c3)
               })
             })
-          })
+          )
       }
 
       // TODO: maybe we can remove this and use the mechanism of eval instead

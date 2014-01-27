@@ -204,13 +204,12 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess if(heapManager.isQuantifiedFor(σ.h, fa.field.name)) =>  {
-          eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
-            heapManager.getValue(σ.h, tRcvr, fa.field, null, pve, fa, c, tv) ((t) =>
-              {
-                Q(t, c1)
-              })
-          )
+      case fa: ast.FieldAccess if (heapManager.isQuantifiedFor(σ.h, fa.field.name)) => {
+        eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
+          heapManager.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
+            Q(t, c1)
+          })
+        )
       }
 
       case fa: ast.FieldAccess => {
