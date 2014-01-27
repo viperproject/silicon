@@ -56,6 +56,7 @@
 
 (declare-sort $Ref)
 (declare-const $Ref.null $Ref)
+(declare-fun $Ref.nullX ($Ref) Bool)
 
 ; --- Permissions ---
 

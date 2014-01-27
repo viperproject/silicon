@@ -215,16 +215,15 @@ TV <: TraceView[TV, ST, H, S]]
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>  {
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
               decider.prover.logComment("End produce set access predicate " + fa)
-              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
+              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
                 val s = sf(toSort(field.typ))
 
                 heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p, tRcvr)((newHeap) =>  {
                   Q(newHeap, c2)
                 })
-              )
+              })
             })
           })
-
       }
 
       // TODO: maybe we can remove this and use the mechanism of eval instead

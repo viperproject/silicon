@@ -147,6 +147,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult = {
     // check if the receiver is not null
     decider.prover.logComment("looking up the value for " + ofReceiver + "." + withField)
+    decider.assume(NullTrigger(ofReceiver))
     if(!decider.assert(ofReceiver !== Null())) {
       Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
     }
@@ -241,8 +242,8 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     val count = rcvr match {
       case SeqAt(s, i) =>
         cond match {
-          case SeqIn(SeqRanged(a, b), c) if c == s => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
-          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>'!")
+          case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
+          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>'!" + cond)
         }
          //DirectQuantifiedChunk(f, )
       case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
@@ -260,55 +261,10 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
 
       // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
+      val ch = transformInhale(rcvr, field, s, pNettoGain, cond)
 
-      // TODO: should not be needed any more
-      val rewrittenCond = rcvr match {
-        case SeqAt(seq, index) => {
-          cond match {
-            // this is a syntactic rewrite - pretty bad, but whatever.
-            case SeqIn(SeqRanged(a,b),c) => SeqIn(SeqDrop(SeqTake(seq, b), a), *())
-            case _ => sys.error("I cannota work with condition of the form " + cond)
-          }
-          //SeqIn(seq, *())
-        }
-        case v:Var => cond.replace(rcvr, *())
-      }
-      // TODO: rewrite cond and gain together
-      val rewrittenGain = rcvr match {
-        case SeqAt(seq, index) =>
-          cond match {
-            case SeqIn(SeqRanged(a,b),c) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq,b),a)))))
-            case _ => sys.error("I cannotf work with condition of the form " + cond)
-          }
-        case v:Var => TermPerm(Ite(rewrittenCond, pNettoGain, NoPerm()))
-         // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
-      }
-
-      val ch = DirectQuantifiedChunk(field.name, s, rewrittenGain /* pNettoGain */)
-
-      // all Refs that match the condition cannot be null
-      cond match {
-        case Eq(a,b) =>
-           val vari = if (a == variable) b else a;
-           decider.assume(vari !== Null())
-        case _ =>
-          val quantifiedVar = Var("nonnull", sorts.Ref)
-          // TODO: this is not needed in the sequences case
-          decider.assume(Quantification(Forall, List(quantifiedVar), Implies(rewrittenCond.replace(*(), quantifiedVar)/*cond.replace(variable, quantifiedVar) */, quantifiedVar !== Null())))
-          // TODO generalize - this is a weakness of the sequence axiomatization
-          rcvr match {
-            // additionally
-            case SeqAt(seq, index) =>
-              val idx = Var("idx", sorts.Int)
-              cond match {
-                case SeqIn(SeqRanged(a,b),c) =>
-                  decider.assume(Quantification(Forall, List(idx), Implies(And(AtLeast(idx, a), Less(idx, b)), /*SeqAt(SeqDrop(SeqTake(seq, e), b)*/ SeqAt(seq, idx) !== Null())))
-                case _ => sys.error("I cannote work with condition of the form " + cond)
-              }
-            case _ =>
-          }
-
-      }
+      val quantifiedVar = Var("nonnull", sorts.Ref)
+      decider.assume(Quantification(Forall, List(quantifiedVar), Implies(Less(NoPerm(), ch.perm.replace(*(), quantifiedVar)), quantifiedVar !== Null()), List(Trigger(List(NullTrigger(quantifiedVar))))))
 
     //println(ch)
     Q(inHeap + ch)
@@ -342,6 +298,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     case PermMin(a,b) => isWildcard(a) || isWildcard(b)
     case MultisetCount(_) => false
     case FractionPerm(_,_) => false
+    case _ => false
   }
   }
 

@@ -289,7 +289,8 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if heapManager.isQuantifiedFor(σ.h, field.name) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          eval(σ, rhs, pve, c1, tv)((tRhs, c2) =>
+          eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+            decider.assume(NullTrigger(tRcvr))
             if (!decider.assert(tRcvr !== Null()))
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
             else if (!decider.assert(AtLeast(heapManager.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
@@ -300,7 +301,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 Q((σ \ h) \+ ch, c2)
               )
             }
-          )
+          })
         )
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>

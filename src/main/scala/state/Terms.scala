@@ -241,6 +241,7 @@ case class Null() extends Term with Literal {
   override val toString = "Null"
 }
 
+
 sealed trait BooleanLiteral extends BooleanTerm with Literal {
   def value: Boolean
   override def toString = value.toString
@@ -1280,6 +1281,19 @@ object Distinct {
 
   def unapply(d: Distinct) = Some(d.ts)
 }
+
+class NullTrigger(val t:Term) extends BooleanTerm {
+  override val toString = s"Null($t)"
+  assert(t.sort == sorts.Ref)
+}
+
+object NullTrigger {
+  def apply(t:Term):Term =
+    new NullTrigger(t)
+
+  def unapply(n:NullTrigger) = Some(n.t)
+}
+
 
 /* Utility functions */
 
