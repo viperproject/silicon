@@ -377,9 +377,13 @@ trait DefaultExecutor[ST <: Store[ST],
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
+            decider.prover.logComment("after consume!")
+            decider.prover.logComment(stateFormatter.format(σ2))
+
             val post = ast.utils.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
               //println("heap after method call: " + σ3.h)
+              decider.prover.logComment("produced postcondition")
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
