@@ -21,7 +21,7 @@ import semper.silicon.state.terms.Var
 import semper.silicon.state.terms.*
 import semper.silicon.interfaces.Failure
 import scala.Some
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.FieldChunkIdentifier
 import semper.silicon.state.terms.Null
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -36,7 +36,7 @@ import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.NoPerm
 import semper.silicon.state.terms.PermMin
 import scala.Some
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.terms.False
 import semper.silicon.state.terms.SingletonSet
 import semper.silicon.state.terms.TermPerm
@@ -49,7 +49,7 @@ import semper.silicon.state.terms.True
 import semper.silicon.state.terms.utils._
 import semper.silicon.state.terms.DomainFApp
 import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.terms.*
 import semper.silicon.interfaces.Failure
 import scala.Some
@@ -68,20 +68,19 @@ import semper.sil.verifier.reasons.ReceiverNull
 
 trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
 
-  // TODO: generalize
   def value(h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
-  def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:DirectQuantifiedChunk => true case _ => false}
+  def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:QuantifiedChunk => true case _ => false}
 
   def rewriteGuard(guard:Term):Term
 
-  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk
+  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk
 
-  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk
+  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
 
   def permission(h: H, id: ChunkIdentifier): Term
 
-  def exhale(h: H, ch: DirectQuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
+  def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
 }
 
 class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends HeapManager[ST, H, PC, S, C, TV] {
@@ -94,9 +93,9 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   def ⊢(t:Term) = assert(t)
 
 
-  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk = rcvr match {
-    case SeqAt(s,i) => DirectQuantifiedChunk(field, value, PermTimes(perm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))))))
-    case _ => DirectQuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
+  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk = rcvr match {
+    case SeqAt(s,i) => QuantifiedChunk(field, value, PermTimes(perm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))))))
+    case _ => QuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
   }
 
   /**
@@ -106,7 +105,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     // collect all chunks
     val condH = quantifyChunksForField(h, id.name)
     //println("looking up global permissions")
-    BigPermSum(condH.values.toSeq collect { case permChunk: DirectQuantifiedChunk if(permChunk.name == id.name) => {
+    BigPermSum(condH.values.toSeq collect { case permChunk: QuantifiedChunk if(permChunk.name == id.name) => {
       permChunk.perm.replace(terms.*(), id.args.last)
     }}, {x => x})
   }
@@ -141,7 +140,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     }
     condH.values.collectFirst {
-      case pf: DirectQuantifiedChunk if (pf.name == f.name && (⊢(Less(NoPerm(), permission(H(List(pf)), FieldChunkIdentifier(rcvr, f.name)))))) => pf.value
+      case pf: QuantifiedChunk if (pf.name == f.name && (⊢(Less(NoPerm(), permission(H(List(pf)), FieldChunkIdentifier(rcvr, f.name)))))) => pf.value
     } match {
       case Some(v) => Q(v.replace(*(), rcvr))
       case _ => {
@@ -153,7 +152,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
         val x = Var("x", sorts.Ref)
 
         condH.values.foreach {
-          case pf: DirectQuantifiedChunk if (pf.name == f.name) => {
+          case pf: QuantifiedChunk if (pf.name == f.name) => {
             decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
               === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
           }
@@ -167,10 +166,10 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
-  def ∀ = DirectQuantifiedChunk
+  def ∀ = QuantifiedChunk
 
   // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
-  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk = {
+  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
     val count = rcvr match {
       case SeqAt(s, i) =>
         cond match {
@@ -204,68 +203,40 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   }
   }
 
-  // TODO: implement an optimization along these lines
-  /*def collectSeqs(t:Term):Set[Term] = {
-    println(t)
-    t match {
-      case TermPerm(t2) => collectSeqs(t2)
-      case MultisetCount(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case Times(t1,t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case PermTimes(t1,t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case *() => Set()
-      case MultisetFromSeq(t1) => collectSeqs(t1)
-      case SeqDrop(t1,t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case SeqTake(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case v@Var(t1, s) if s == sorts.Seq(sorts.Ref) => Set(v)
-      case v:Var => Set()
-      case Plus(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case i: IntLiteral => Set()
-      case PermMinus(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case PermMin(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
-      case q@SortWrapper(t1, s) if s == sorts.Seq(sorts.Ref) => Set(q)
-      case s:SortWrapper => Set()
-      case Div(t1,t2) => Set()
-      case s:SeqLength => Set()
-    }
-  }
+  // TODO: Implement an optimized order for exhale.
+  // One heuristic could be to take chunks first that
+  // mention the same sets/sequences (syntactically modulo equality)
 
-  def optimizedOrder(it: Iterable[Chunk], ch:DirectQuantifiedChunk):Iterable[Chunk] = {
-    val seqs = collectSeqs(ch.perm)
-    val (ch1, ch2) = it.partition{case q: DirectQuantifiedChunk => !collectSeqs(q.perm).intersect(seqs).isEmpty}
-    ch1 ++ ch2
-  }*/
-
-
-  def exhalePermissions2(h:H, ch:DirectQuantifiedChunk) = {
+  def exhalePermissions2(h:H, ch:QuantifiedChunk) = {
     println("hua")
     val * = fresh(sorts.Ref)
     val opt = h.values //optimizedOrder(h.values, ch)
     decider.prover.logComment("" + opt)
     opt.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
-      case ((ch1:DirectQuantifiedChunk, h, true), ch2) => (ch1, h+ch2, true)
-      case ((ch1:DirectQuantifiedChunk, h, false), ch2) =>
+      case ((ch1:QuantifiedChunk, h, true), ch2) => (ch1, h+ch2, true)
+      case ((ch1:QuantifiedChunk, h, false), ch2) =>
         ch2 match {
-          case quant:DirectQuantifiedChunk if quant.name == ch1.name =>
+          case quant:QuantifiedChunk if quant.name == ch1.name =>
             if(isWildcard(ch1.perm)) assume(ch1.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < quant.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
             val r = PermMin(ch1.perm, quant.perm)
             val d = ⊢ ((ch1.perm-r).replace(terms.*(), *) === NoPerm())
             if(⊢ ((quant.perm - r).replace(terms.*(), *) === NoPerm())) {
-              (DirectQuantifiedChunk(ch1.name, null, ch1.perm - r), h, d)
+              (QuantifiedChunk(ch1.name, null, ch1.perm - r), h, d)
             } else {
-              (DirectQuantifiedChunk(ch1.name, null, ch1.perm-r), h+DirectQuantifiedChunk(quant.name, quant.value, quant.perm - r), d)
+              (QuantifiedChunk(ch1.name, null, ch1.perm-r), h+QuantifiedChunk(quant.name, quant.value, quant.perm - r), d)
             }
           case ch => (ch1, h + ch, false)
         }
     }
   }
 
-  def exhaleTest(h:H, ch:DirectQuantifiedChunk) = {
+  def exhaleTest(h:H, ch:QuantifiedChunk) = {
     val hq = quantifyChunksForField(h, ch.name)
     val k = exhalePermissions2(hq,ch)
     if(!k._3) None else Some(k._2)
   }
 
-  def exhale(h: H, ch: DirectQuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
+  def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
     // convert to conditional chunks if necessary
     // TODO: where exactly?
     val hq = quantifyChunksForField(h, ch.name)

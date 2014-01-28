@@ -52,7 +52,7 @@ import semper.silicon.state.terms.FullPerm
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
 import scala.Some
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.reporting.DefaultContext
 import semper.silicon.interfaces.Success
 import semper.silicon.state.NestedFieldChunk

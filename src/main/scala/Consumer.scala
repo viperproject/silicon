@@ -9,7 +9,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Sta
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DirectQuantifiedChunk}
+import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, QuantifiedChunk}
 import semper.silicon.state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.HeapManager
@@ -19,7 +19,7 @@ import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.terms.False
 import semper.silicon.state.terms.TermPerm
 import semper.silicon.reporting.DefaultContext
@@ -32,7 +32,7 @@ import semper.silicon.ast._
 import semper.sil.verifier.reasons.NonPositivePermission
 import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.PermPlus
@@ -191,9 +191,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }
         })
       }
-
-
-     case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk])) => {
+     case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[QuantifiedChunk])) => {
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
@@ -205,6 +203,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             decider.assume(rewrittenCond)
             eval(σ \+ γVars, body, pve, c, tv)((tBody, c2) =>
               if(decider.assert(tBody)) {
+                // to pop the condition out of scope, just in case (not to have unwanted triggers).
                 decider.popScope()
                 Q(h, Unit, Nil, c2)
               }
@@ -217,7 +216,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         })
       }
 
-      /* Field access predicates */
+      /* Field access predicates for quantified fields */
       case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>

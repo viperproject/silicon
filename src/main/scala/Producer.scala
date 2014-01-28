@@ -167,7 +167,7 @@ TV <: TraceView[TV, ST, H, S]]
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch = DirectQuantifiedChunk(field.name, s, TermPerm(Ite(*() === tRcvr, pNettoGain, NoPerm())))
+            val ch = QuantifiedChunk(field.name, s, TermPerm(Ite(*() === tRcvr, pNettoGain, NoPerm())))
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)
           })
@@ -227,30 +227,18 @@ TV <: TraceView[TV, ST, H, S]]
 
       // TODO: maybe we can remove this and use the mechanism of eval instead
       // but it may be more complicated to describe the general forall mechanism implemented in eval
-      case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) /* only if there are conditional chunks on the heap */ if(σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk]))=> {
-        decider.prover.logComment("Producing pure quantifier " + fa)
-        //println("here")
-        val forall = (cond: Term) => (body: Term) => Quantification(Forall, vars map {
-          v => Var(v.name, symbolConverter.toSort(v.typ))
-        }, Implies(cond, body))
-
-        val QP = (cond: Term, body: Term, γVars: ST, h: H, c: C) => {
-
-          /* TODO: ugly - make it work with more than 1 var */
-          assume(forall(cond)(body).replace(γVars.values.head._2, Var(vars.head.name, symbolConverter.toSort(vars.head.typ))))
-          Q(h, c)
-        }
-        decider.pushScope()
-        decider.prover.logComment("start test evaluation")
+      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && σ.h.values.exists(_.isInstanceOf[QuantifiedChunk])) => {
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
           val rewrittenCond = heapManager.rewriteGuard(tCond)
+          decider.pushScope()
           assume(rewrittenCond)
           eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-            decider.prover.logComment("end of the fun - here comes the forall!")
             decider.popScope()
-            QP(rewrittenCond, tBody, γVars, σ.h, c2)
+            val v = vars map { v => Var(v.name, symbolConverter.toSort(v.typ))}
+            assume(Quantification(Forall, v, Implies(rewrittenCond.replace(tVars(0), v(0)), tBody.replace(tVars(0), v(0)))))
+            Q(σ.h, c2)
           })
         })
       }
