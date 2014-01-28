@@ -3,13 +3,13 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import sil.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import sil.ast.utility.Permissions.isConditional
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk}
+import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk}
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 
@@ -25,14 +25,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.assume
-
-  protected val stateFactory: StateFactory[ST, H, S]
-
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
-
-  protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk

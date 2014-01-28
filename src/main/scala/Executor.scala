@@ -306,9 +306,10 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.isPositive(tPerm)) {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
-                  val ncs = dcs.map{_ match {
+                  val ncs = dcs.map {
                     case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
+                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
+                  }
                   /* Producing Access is unfortunately not an option here
                   * since the following would fail due to productions
                   * starting in an empty heap:

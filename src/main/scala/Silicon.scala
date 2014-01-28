@@ -14,7 +14,7 @@ import semper.sil.verifier.{
     DefaultDependency => SilDefaultDependency}
 import sil.frontend.SilFrontendConfig
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
-import interfaces.reporting.{TraceView, TraceViewFactory}
+import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
 DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
@@ -291,8 +291,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   private val statisticsSinkConverter = new ValueConverter[(String, String)] {
-    val stdioRegex = """(stdio)"""r
-    val fileRegex = """(file)=(.*)"""r
+    val stdioRegex = """(stdio)""".r
+    val fileRegex = """(file)=(.*)""".r
 
     def parse(s: List[(String, List[String])]) = s match {
       case (_, stdioRegex(stdioId) :: Nil) :: Nil => Right(Some(stdioId, ""))
@@ -365,7 +365,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val logLevel = opt[String]("logLevel",
-    descr = (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)"),
+    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
     default = Some("OFF"),
     noshort = true
   )

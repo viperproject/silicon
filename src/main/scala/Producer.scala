@@ -40,9 +40,6 @@ trait DefaultProducer[
 	protected val symbolConverter: SymbolConvert
 	import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
-
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config

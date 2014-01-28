@@ -4,7 +4,7 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{InsufficientPermission}
+import sil.verifier.reasons.InsufficientPermission
 import semper.silicon.interfaces.{Success, VerificationResult, Failure, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
@@ -238,8 +238,8 @@ class DefaultChunkFinder[ST <: Store[ST],
                : VerificationResult = {
 
 		decider.getChunk[CH](h, id) match {
-			case Some(c) =>
-        Q(c)
+			case Some(c1) =>
+        Q(c1)
 
 			case None =>
         if (decider.assert(False()))

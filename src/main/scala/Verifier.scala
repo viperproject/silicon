@@ -2,8 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.silicon.decider.{PreambleFileEmitter, Z3ProverStdIO}
-import scala.io.Source
+import semper.silicon.decider.PreambleFileEmitter
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
@@ -32,7 +31,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 	/*protected*/ val config: Config
 
   /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
-	import decider.{fresh, assume, inScope}
+	import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
