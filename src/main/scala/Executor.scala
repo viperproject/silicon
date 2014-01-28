@@ -296,7 +296,7 @@ trait DefaultExecutor[ST <: Store[ST],
             else if (!decider.assert(AtLeast(heapManager.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
               Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
             else {
-              val ch = heapManager.transformExhale(tRcvr, field.name, tRhs, FullPerm())
+              val ch = heapManager.transformWrite(tRcvr, field.name, tRhs, FullPerm())
               heapManager.exhale(σ.h, ch, pve, fl, c2, tv)(h =>
                 Q((σ \ h) \+ ch, c2)
               )

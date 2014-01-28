@@ -75,9 +75,9 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
 
   def rewriteGuard(guard:Term):Term
 
-  def transformExhale(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk
+  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk
 
-  def transformInhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk
+  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk
 
   def permission(h: H, id: ChunkIdentifier): Term
 
@@ -94,8 +94,8 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   def ⊢(t:Term) = assert(t)
 
 
-  def transformExhale(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk = rcvr match {
-    case SeqAt(s,i) => DirectQuantifiedChunk(field, value, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i)))))
+  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):DirectQuantifiedChunk = rcvr match {
+    case SeqAt(s,i) => DirectQuantifiedChunk(field, value, PermTimes(perm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))))))
     case _ => DirectQuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
   }
 
@@ -170,7 +170,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   def ∀ = DirectQuantifiedChunk
 
   // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
-  def transformInhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk = {
+  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): DirectQuantifiedChunk = {
     val count = rcvr match {
       case SeqAt(s, i) =>
         cond match {
@@ -204,10 +204,44 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   }
   }
 
+  // TODO: implement an optimization along these lines
+  /*def collectSeqs(t:Term):Set[Term] = {
+    println(t)
+    t match {
+      case TermPerm(t2) => collectSeqs(t2)
+      case MultisetCount(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case Times(t1,t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case PermTimes(t1,t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case *() => Set()
+      case MultisetFromSeq(t1) => collectSeqs(t1)
+      case SeqDrop(t1,t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case SeqTake(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case v@Var(t1, s) if s == sorts.Seq(sorts.Ref) => Set(v)
+      case v:Var => Set()
+      case Plus(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case i: IntLiteral => Set()
+      case PermMinus(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case PermMin(t1, t2) => collectSeqs(t1).union(collectSeqs(t2))
+      case q@SortWrapper(t1, s) if s == sorts.Seq(sorts.Ref) => Set(q)
+      case s:SortWrapper => Set()
+      case Div(t1,t2) => Set()
+      case s:SeqLength => Set()
+    }
+  }
+
+  def optimizedOrder(it: Iterable[Chunk], ch:DirectQuantifiedChunk):Iterable[Chunk] = {
+    val seqs = collectSeqs(ch.perm)
+    val (ch1, ch2) = it.partition{case q: DirectQuantifiedChunk => !collectSeqs(q.perm).intersect(seqs).isEmpty}
+    ch1 ++ ch2
+  }*/
+
 
   def exhalePermissions2(h:H, ch:DirectQuantifiedChunk) = {
+    println("hua")
     val * = fresh(sorts.Ref)
-    h.values.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
+    val opt = h.values //optimizedOrder(h.values, ch)
+    decider.prover.logComment("" + opt)
+    opt.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
       case ((ch1:DirectQuantifiedChunk, h, true), ch2) => (ch1, h+ch2, true)
       case ((ch1:DirectQuantifiedChunk, h, false), ch2) =>
         ch2 match {

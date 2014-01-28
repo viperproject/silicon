@@ -221,7 +221,7 @@ TV <: TraceView[TV, ST, H, S]]
                 // TODO: why does sf not work? This might introduce an incompleteness somewhere - ask Malte
                 val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
                 val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val ch = heapManager.transformInhale(tRcvr, f, app, pGain * p, tCond)
+                val ch = heapManager.transformInExhale(tRcvr, f, app, pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
                 decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
                 Q(σ.h+ch, c3)
@@ -249,7 +249,6 @@ TV <: TraceView[TV, ST, H, S]]
         decider.prover.logComment("start test evaluation")
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-        // restriction: the permission is constant and we can evaluate it here
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
           val rewrittenCond = heapManager.rewriteGuard(tCond)
           assume(rewrittenCond)

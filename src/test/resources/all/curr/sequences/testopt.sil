@@ -1,0 +1,10 @@
+var f:Int
+
+method m(s:Seq[Ref], t:Seq[Ref])
+requires forall i:Int :: i in [0..|s|) ==> acc(s[i].f, write)
+requires forall i:Int :: i in [0..|t|) ==> acc(t[i].f, write)
+ensures forall i:Int :: i in [0..|t|) ==> acc(t[i].f, write)
+ensures forall i:Int :: i in [0..|s|) ==> acc(s[i].f, write)
+{
+
+}

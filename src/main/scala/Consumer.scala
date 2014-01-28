@@ -167,7 +167,37 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
 
-      // TODO: generalize for arbitrary condition and receiver
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, field), loss))) => {
+        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+          // we cheat a bit and syntactically rewrite the range
+          // this should not be needed if the axiomatization supports it
+          val rewrittenCond = tCond match {
+            case SeqIn(SeqRanged(a,b),v@Var(i, s)) if i == tVars(0).id => And(AtLeast(v,a),Less(v, b))
+            case t:Term => t
+          }
+
+          if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
+          else {
+            decider.assume(rewrittenCond)
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) =>
+                heapManager.value(h, tRcvr, field, pve, locacc, c3, tv)(t => {
+                  val ch = heapManager.transformInExhale(tRcvr, field, null, tPerm, tCond)
+                  heapManager.exhale(h, ch, pve, locacc, c3, tv)(h2 =>
+                    Q(h2, t, Nil, c3)
+                  )
+                })
+              )
+            )
+          }
+        })
+      }
+
+
+   /*   // TODO: generalize for arbitrary condition and receiver
       case ast.Forall(vars, triggers, ast.Implies(cond, a@ast.FieldAccessPredicate(ast.FieldAccess(ast.SeqIndex(seq, idx), field), loss))) => {
         decider.prover.logComment("CONSUMING SEQ FORALL")
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
@@ -229,7 +259,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             )
           })
         )
-      }
+      }*/
 
       // pure forall e.g. ensures forall y:Ref :: y in xs ==> y.f > 0
       case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure &&  /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk])) => {
@@ -266,10 +296,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-            heapManager.value(h, tRcvr, field, pve, locacc, c2, tv)(t =>
-              heapManager.exhale(h, DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr), tPerm, NoPerm()))), pve, locacc, c2, tv)(h2 =>
+            heapManager.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
+              val ch = heapManager.transformWrite(tRcvr, field.name, null, tPerm)
+              heapManager.exhale(h, ch, pve, locacc, c2, tv)(h2 =>
                 Q(h2, t, Nil, c2)
-            ))))
+              )
+            })))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
