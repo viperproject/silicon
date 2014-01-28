@@ -31,7 +31,7 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class DirectQuantifiedChunk(name: String, value:Term, perm: DefaultFractionalPermissions) extends DirectChunk {
+case class DirectQuantifiedChunk(name: String, value:Term, perm: DefaultFractionalPermissions) extends Chunk {
   val args = *() :: Nil   /* to make sure it does not match other chunks */
   val id = FieldChunkIdentifier(*(), name)
 

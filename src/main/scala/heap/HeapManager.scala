@@ -106,7 +106,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     // collect all chunks
     val condH = quantifyChunksForField(h, id.name)
     //println("looking up global permissions")
-    BigPermSum(condH.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
+    BigPermSum(condH.values.toSeq collect { case permChunk: DirectQuantifiedChunk if(permChunk.name == id.name) => {
       permChunk.perm.replace(terms.*(), id.args.last)
     }}, {x => x})
   }
@@ -155,7 +155,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
         condH.values.foreach {
           case pf: DirectQuantifiedChunk if (pf.name == f.name) => {
             decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
-              === pf.value.replace(*(), x))))
+              === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
           }
           case pf if (pf.name == f.name) =>
             sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(condH, pf.name))

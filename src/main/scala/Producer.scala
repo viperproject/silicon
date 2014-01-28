@@ -79,14 +79,9 @@ TV <: TraceView[TV, ST, H, S]]
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
       // TODO: merge for conditional chunks
-      if(h.values.forall(!_.isInstanceOf[DirectQuantifiedChunk])) {
         val (mh, mts) = merge(Ø, h)
         assume(mts)
         Q(σ \ mh, c1)
-      } else {
-        val mh = h
-        Q(σ \ mh, c1)
-      }
     })
 
   def produces(σ: S,
@@ -187,9 +182,9 @@ TV <: TraceView[TV, ST, H, S]]
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             // TODO: make merge work here again
-            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            //assume(mts)
-            Q(σ.h+ch, c2)
+            val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            assume(mts)
+            Q(mh, c2)
           })
         })
 
@@ -201,10 +196,10 @@ TV <: TraceView[TV, ST, H, S]]
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             // TODO: make merge work again
-            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            val (mh, mts) = merge(σ.h, H(ch :: Nil))
             decider.prover.logComment("assuming predicate " + predicate.name)
-            //assume(mts)
-            Q(σ.h+ch, c2)
+            assume(mts)
+            Q(mh, c2)
           }))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
