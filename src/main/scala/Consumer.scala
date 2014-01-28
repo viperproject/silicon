@@ -178,7 +178,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             case SeqIn(SeqRanged(a,b),v@Var(i, s)) if i == tVars(0).id => And(AtLeast(v,a),Less(v, b))
             case t:Term => t
           }
-
           if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
           else {
             decider.assume(rewrittenCond)
@@ -196,70 +195,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         })
       }
 
-
-   /*   // TODO: generalize for arbitrary condition and receiver
-      case ast.Forall(vars, triggers, ast.Implies(cond, a@ast.FieldAccessPredicate(ast.FieldAccess(ast.SeqIndex(seq, idx), field), loss))) => {
-        decider.prover.logComment("CONSUMING SEQ FORALL")
-        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
-        eval(σ \+ γVars, seq, pve, c, tv)((tSeq, c2) =>
-          evalp(σ, loss, pve, c1, tv) ((tPerm, c3) => {
-          val k = decider.fresh("blabu", sorts.Ref)
-          val i = decider.fresh("i", sorts.Int)
-          // TODO: decide where the rewriting should be done - here or in the heapmanager
-          // TODO: we dont need cond rewriting anymore
-          val rewrittenCond = tCond match {
-            case SeqIn(SeqRanged(a,b),c) => (And(And(AtLeast(i,a),Less(i, b)), SeqAt(tSeq,i)===k))
-            case _ => sys.error("cannot handle such a condition " + cond)
-          }
-          val rewrittenGain = tCond match {
-             case SeqIn(SeqRanged(a,b),c) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq,b),a)))))
-             case _ => sys.error("I cannot work with condition of the form " + cond)
-          }
-
-            if(decider.inScope({
-            assume(rewrittenCond.replace(*(), k))
-            decider.assert(False())
-          })) {
-            // guard is false, we do not need to do anything
-            Q(h, Unit, Nil, c3)
-          } else {
-            // we may safely assume the ""guard""
-            assume(rewrittenCond.replace(*(), k))
-
-            heapManager.value(h, k, field, pve, a.loc, c2, tv)(t =>
-              heapManager.exhale(h, DirectQuantifiedChunk(field.name, null, rewrittenGain), pve, a.loc, c2, tv) (h2 =>
-                Q(h2, t, Nil, c3)
-            ))
-          }
-        })))
-      }
-
-      // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)
-      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), a@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
-        eval(σ, set, pve, c, tv)((tSet, c1) =>
-          evalp(σ, loss, pve, c1, tv)((tPerm, c2) => {
-            val k = decider.fresh("myblub", sorts.Ref)
-            // quick workaround: check if it is false
-            // TODO: this is unsound!!! Imagine the set to be empty, then we assume false!
-            if (decider.inScope({
-              assume(SetIn(k, tSet))
-              decider.assert(False())
-            })) {
-              // guard is false, we do not need to do anything
-              Q(h, Unit, Nil, c2)
-            }
-            // we may safely assume it
-            assume(SetIn(k, tSet))
-            heapManager.value(h, k, field, pve, a.loc, c2, tv)(t =>
-              heapManager.exhale(h, DirectQuantifiedChunk(field.name, null, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), pve, a.loc, c2, tv)(h2 =>
-                Q(h2, t, Nil, c2)
-              )
-            )
-          })
-        )
-      }*/
 
       // pure forall e.g. ensures forall y:Ref :: y in xs ==> y.f > 0
       case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure &&  /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk])) => {
