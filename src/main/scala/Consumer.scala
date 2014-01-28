@@ -217,37 +217,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         })
       }
 
-      // pure forall e.g. ensures forall y:Ref :: y in xs ==> y.f > 0
-    /* case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure &&  /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk])) => {
-        decider.inScope({
-          decider.prover.logComment("CONSUMING PURE FORALL")
-
-          val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-          // restriction: the permission is constant and we can evaluate it here
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-            val rewrittenCond = heapManager.rewriteGuard(tCond)
-
-            if(decider.inScope({
-            	assume(rewrittenCond)
-            	decider.assert(False())
-            })) {
-            	Q(h, Unit, Nil, c1)
-            } else {
-            	assume(rewrittenCond)
-            	eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-              		if (decider.assert(tBody)) {
-                	Q(h, Unit /* not really correct */, Nil, c2)
-              	} else {
-               		 Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
-              	}
-            })
-            }
-            
-          })
-        })
-      }*/
-
       /* Field access predicates */
       case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
