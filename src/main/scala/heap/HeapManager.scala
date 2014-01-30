@@ -11,7 +11,7 @@ import semper.silicon.state._
 import semper.silicon.ast.Field
 import semper.silicon.interfaces.decider.Decider
 import semper.sil.verifier.reasons.{ReceiverNull, InsufficientPermission}
-import semper.sil.ast.{FieldAccess, LocationAccess}
+import semper.sil.ast.{LocationAccess, FieldAccess}
 import semper.sil.verifier.PartialVerificationError
 import semper.silicon.interfaces.Failure
 import scala.Some
@@ -21,7 +21,7 @@ import semper.silicon.state.terms.Var
 import semper.silicon.state.terms.*
 import semper.silicon.interfaces.Failure
 import scala.Some
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.FieldChunkIdentifier
 import semper.silicon.state.terms.Null
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -35,9 +35,8 @@ import semper.sil.verifier.reasons.InsufficientPermission
 import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.NoPerm
 import semper.silicon.state.terms.PermMin
-import semper.sil.ast.FieldAccess
 import scala.Some
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.terms.False
 import semper.silicon.state.terms.SingletonSet
 import semper.silicon.state.terms.TermPerm
@@ -47,23 +46,41 @@ import semper.silicon.state.terms.Eq
 import semper.sil.verifier.reasons.ReceiverNull
 import semper.silicon.state.terms.SortWrapper
 import semper.silicon.state.terms.True
+import semper.silicon.state.terms.utils._
+import semper.silicon.state.terms.DomainFApp
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.QuantifiedChunk
+import semper.silicon.state.terms.*
+import semper.silicon.interfaces.Failure
+import scala.Some
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.state.terms.IntLiteral
+import semper.silicon.state.terms.Null
+import semper.silicon.state.terms.Var
+import semper.sil.verifier.reasons.InsufficientPermission
+import semper.silicon.state.terms.FApp
+import semper.silicon.state.terms.NoPerm
+import semper.silicon.state.terms.SeqRanged
+import semper.silicon.state.FieldChunkIdentifier
+import semper.silicon.state.terms.Quantification
+import semper.sil.verifier.reasons.ReceiverNull
 
 
 trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
 
-  def setValue(inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, fieldAccess: FieldAccess, pve:PartialVerificationError, c:C, tv:TV)(Q: H => VerificationResult): VerificationResult;
+  def value(h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
-  // TODO: generalize
-  def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
-
-
-  //def consumePermissions(inHeap: H, receiver:Term, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: (H,Term) => VerificationResult) : VerificationResult;
-  def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult;
-
-  def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult
+  def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:QuantifiedChunk => true case _ => false}
 
   def rewriteGuard(guard:Term):Term
 
+  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk
+
+  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
+
+  def permission(h: H, id: ChunkIdentifier): Term
+
+  def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
 }
 
 class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends HeapManager[ST, H, PC, S, C, TV] {
@@ -71,6 +88,27 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   import symbolConverter.toSort
 
   import stateFactory._
+  import decider._
+
+  def ⊢(t:Term) = assert(t)
+
+
+  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk = rcvr match {
+    case SeqAt(s,i) => QuantifiedChunk(field, value, PermTimes(perm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))))))
+    case _ => QuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
+  }
+
+  /**
+   * Gives the permissions in the heap for the given receiver
+   */
+  def permission(h: H, id: ChunkIdentifier): Term = {
+    // collect all chunks
+    val condH = quantifyChunksForField(h, id.name)
+    //println("looking up global permissions")
+    BigPermSum(condH.values.toSeq collect { case permChunk: QuantifiedChunk if(permChunk.name == id.name) => {
+      permChunk.perm.replace(terms.*(), id.args.last)
+    }}, {x => x})
+  }
 
   // TODO also depends on the rest of the expression
   def stable(guard:Term):Boolean = {
@@ -90,203 +128,122 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
-
-  def setValue(inHeap: H, ofReceiver: Term, withField: Field, toValue: Term, fieldAccess: FieldAccess, pve: PartialVerificationError, c: C, tv: TV)(Q: H => VerificationResult): VerificationResult = {
-    if (decider.assert(ofReceiver === Null()))
-      Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fieldAccess), c, tv)
-
-    if (!decider.hasEnoughPermissionsGlobally(inHeap, FieldChunkIdentifier(ofReceiver, withField.name), FullPerm()))
-      Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fieldAccess), c, tv)
-
-    /* legacy: if there is a direct chunk with syntactically exactly the same receiver, just replace this */
-    // TODO
-
-    val chunk = ofReceiver match {
-      case SeqAt(s,i) => DirectQuantifiedChunk(withField.name, toValue, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s,Plus(i,IntLiteral(1))), i))))))
-      case _ => DirectFieldChunk(ofReceiver, withField.name, toValue, FullPerm())
-    }
-
-
-    // exhale and inhale again
-    consumePermissions(inHeap, inHeap.empty + chunk, ofReceiver, withField, pve, fieldAccess, c, tv)((nh,t) => {
-      // TODO: move producing permissions to a method
-      val nhInhaled = nh + chunk
-      decider.prover.logComment("wrote " + ofReceiver + "." + withField.name + ":=" + toValue + " resulting heap for field: " + nhInhaled.values.filter(ch => (ch.name == withField.name)) + " initial heap: " + inHeap.values.filter(ch => (ch.name == withField.name)))
-      Q(nhInhaled)
-    }
-    )
-  }
-
-  def consumePermissions(inHeap: H, h: H, rcvr:Term, withField:Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: (H, Term) => VerificationResult): VerificationResult = {
-    decider.exhalePermissions(inHeap, h) match {
-      case Some(h2) =>
-        decider.prover.logComment("value after consume, heap " + h2)
-        getValue(inHeap, rcvr, withField, null, pve, locacc, c, tv)(t => Q(h2, t))   /* TODO effing ugly - refactor! */
-      case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-    }
-  }
-
-  private def givesReadAccess(chunk: DirectChunk, rcv:Term, field:Field):Boolean = {
-    // TODO: move heap management methods to HeapManager
-    decider.prover.logComment("checking if " + chunk + " gives access to " + rcv + "." + field)
-    decider.canReadGlobally(H(List(chunk)), FieldChunkIdentifier(rcv, field.name))
-  }
-
-  /* TODO generalize */
-  private def merge(inHeap: H, field: Field /* potential TODO: give some more heuristics which field should be merged */):H = {
-      inHeap
-  }
-
-  def getValue(inHeap: H, ofReceiver: Term, withField: Field, ofSet: Term, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult = {
+  def value(h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
     // check if the receiver is not null
-    decider.prover.logComment("looking up the value for " + ofReceiver + "." + withField)
-    if(!decider.assert(ofReceiver !== Null())) {
+    val condH = quantifyChunksForField(h, f.name)
+    decider.assume(NullTrigger(rcvr))
+    if (!decider.assert(rcvr !== Null())) {
       Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
     }
-    else if(!decider.canReadGlobally(inHeap, FieldChunkIdentifier(ofReceiver, withField.name))) {
-      decider.prover.logComment("cannot read " + ofReceiver + "." + withField.name + " in heap: " + inHeap.values.filter(ch => (ch.name == withField.name) ))
+    else if (!(⊢(Less(NoPerm(), permission(condH, FieldChunkIdentifier(rcvr, f.name)))))) {
+      decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + condH.values.filter(ch => (ch.name == f.name)))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-    } else {
-      // TODO: generalize
-      /*println("looking in " + inHeap.values)
-      println("for " + ofReceiver)
-      println(inHeap.values.collectFirst{case pf:DirectQuantifiedChunk => println("mugu")})
-      println(inHeap.values foreach {
-        case pf: DirectQuantifiedChunk if (pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => println("bubu " + pf)
-        case _ => println("whatever")
-      })*/
-      decider.prover.logComment("end of bullshit")
+    }
+    condH.values.collectFirst {
+      case pf: QuantifiedChunk if (pf.name == f.name && (⊢(Less(NoPerm(), permission(H(List(pf)), FieldChunkIdentifier(rcvr, f.name)))))) => pf.value
+    } match {
+      case Some(v) => Q(v.replace(*(), rcvr))
+      case _ => {
+        // there is no one chunk that we can get the value from
+        // let's create a new uninterpreted function!
+        decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + condH.values.filter(ch => ch.name == f.name))
+        val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
+        val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+        val x = Var("x", sorts.Ref)
 
-
-      inHeap.values.collectFirst{case pf:DirectQuantifiedChunk if(pf.name == withField.name && givesReadAccess(pf, ofReceiver, withField)) => pf.value} match {
-        case Some(v) => v match {
-          case Var(id, s) =>
-            s match {
-              case q: sorts.Arrow =>
-
-                // instantiate the function with the receiver
-                Q(DomainFApp(Function(id, q), List(ofReceiver)))
-              case sorts.Ref =>
-                // just pass the ref
-                //println("CASE: " + inHeap)
-                Q(Var(id,s))
-              // TODO: generalize
-              case sorts.Seq(_) =>
-                // just pass the ref
-                Q(Var(id, s))
-              case sorts.Int =>
-                Q(Var(id,s))
-            }
-          // happens if a chunk value comes out of an unfold (at least the non-conditional ones)
-          case s:SortWrapper =>
-            Q(s)
-          // happens if a chunk value comes out of an function application
-          case s:FApp => Q(s)
-          // happens if some part of a quantified chunk is directly assigned an Int
-          case i:IntLiteral => Q(i)
+        condH.values.foreach {
+          case pf: QuantifiedChunk if (pf.name == f.name) => {
+            decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
+              === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
+          }
+          case pf if (pf.name == f.name) =>
+            sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(condH, pf.name))
+          case _ =>
         }
-        case _ => {
-            /* Legacy lookup */
-            inHeap.values.collectFirst {case pf:DirectFieldChunk if(pf.name == withField.name) && givesReadAccess(pf, ofReceiver, withField) => pf.value} match {
-              case Some(v) =>
-                  Q(v)
-              case _ => {
-                  // there is no one chunk that we can get the value from
-                  // let's create a new uninterpreted function!
-                  decider.prover.logComment("creating function to represent " + withField + " relevant heap portion: " + inHeap.values.filter(ch => ch.name == withField.name))
-                  val f = decider.fresh(sorts.Arrow(sorts.Ref, toSort(withField.typ)))
-                  //println(inHeap.values)
-                  inHeap.values.foreach(u => u match {
-                    case pf:DirectQuantifiedChunk if(pf.name == withField.name) =>
-                      //println("what?")
-                      pf.value match {
-                        case Var(id, s) if s.isInstanceOf[sorts.Arrow] =>
-                              val x = Var("x", sorts.Ref)
-                              decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
-                                === DomainFApp(Function(id, s.asInstanceOf[sorts.Arrow]), List(x)))))
-                        case _ =>
-                            /* TODO maybe set the value for sets to DomainFApp with *(), so this here is not needed */
-                          val x = Var("x", sorts.Ref)
-                          decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(x))
-                              === pf.value)))
-                      }
-                    case pf:DirectFieldChunk if(pf.name == withField.name) =>
-                      decider.assume(DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))),List(pf.rcvr)) === pf.value)
-                    case _ => {}
-                    }
-
-                  )
-                  //println("hereooooo")
-                  Q(DomainFApp(Function(f.id, sorts.Arrow(sorts.Ref, toSort(withField.typ))), List(ofReceiver)))
-              }
-            }
-        }
+        //println("hereooooo")
+        Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))
       }
     }
   }
 
+  def ∀ = QuantifiedChunk
 
-  def producePermissions(inHeap: H, variable:Term, field: Field, cond:BooleanTerm, pNettoGain:DefaultFractionalPermissions, rcvr:Term)(Q: H => VerificationResult):VerificationResult = {
-      /* TODO: this should not be fresh, but something with the sf function of produce. When unfolding a predicate, the snapshot should be used as a value instead of
-         fresh vars
-       */
-      //println(variable)
-      //println(rcvr)
-      val s = decider.fresh(field.name, sorts.Arrow(sorts.Ref, toSort(field.typ)))
-
-      // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
-
-      // TODO: should not be needed any more
-      val rewrittenCond = rcvr match {
-        case SeqAt(seq, index) => {
-          cond match {
-            // this is a syntactic rewrite - pretty bad, but whatever.
-            case SeqIn(SeqRanged(a,b),c) => SeqIn(SeqDrop(SeqTake(seq, b), a), *())
-            case _ => sys.error("I cannota work with condition of the form " + cond)
-          }
-          //SeqIn(seq, *())
+  // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
+  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
+    val count = rcvr match {
+      case SeqAt(s, i) =>
+        cond match {
+          case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
+          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>'!" + cond)
         }
-        case v:Var => cond.replace(rcvr, *())
-      }
-      // TODO: rewrite cond and gain together
-      val rewrittenGain = rcvr match {
-        case SeqAt(seq, index) =>
-          cond match {
-            case SeqIn(SeqRanged(a,b),c) => PermTimes(pNettoGain, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(seq,b),a)))))
-            case _ => sys.error("I cannotf work with condition of the form " + cond)
-          }
-        case v:Var => TermPerm(Ite(rewrittenCond, pNettoGain, NoPerm()))
-         // PermTimes(TermPerm(MultisetCount(*(), MultisetFromSeq(seq))), pNettoGain)
-      }
+         //DirectQuantifiedChunk(f, )
+      case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+    }
+    ∀(f.name, tv, PermTimes(TermPerm(count), talpha))
+  }
 
-      val ch = DirectQuantifiedChunk(field.name, s, rewrittenGain /* pNettoGain */)
+  def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => ∀(ch.name, ch.value, TermPerm(Ite(Eq(*(), ch.rcvr), ch.perm, NoPerm()))) case ch => ch})
 
-      // all Refs that match the condition cannot be null
-      cond match {
-        case Eq(a,b) =>
-           val vari = if (a == variable) b else a;
-           decider.assume(vari !== Null())
-        case _ =>
-          val quantifiedVar = Var("nonnull", sorts.Ref)
-          // TODO: this is not needed in the sequences case
-          decider.assume(Quantification(Forall, List(quantifiedVar), Implies(rewrittenCond.replace(*(), quantifiedVar)/*cond.replace(variable, quantifiedVar) */, quantifiedVar !== Null())))
-          // TODO generalize - this is a weakness of the sequence axiomatization
-          rcvr match {
-            // additionally
-            case SeqAt(seq, index) =>
-              val idx = Var("idx", sorts.Int)
-              cond match {
-                case SeqIn(SeqRanged(a,b),c) =>
-                  decider.assume(Quantification(Forall, List(idx), Implies(And(AtLeast(idx, a), Less(idx, b)), /*SeqAt(SeqDrop(SeqTake(seq, e), b)*/ SeqAt(seq, idx) !== Null())))
-                case _ => sys.error("I cannote work with condition of the form " + cond)
-              }
-            case _ =>
-          }
+  // TODO move (there is one version of this already in Consumer)
+  // TODO walk terms somehow...
+  def isWildcard(perm: Term):Boolean = { perm match {
+    case TermPerm(t) => isWildcard(t)
+    case _: WildcardPerm => true
+    case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
+    case IntPermTimes(_, t1) => isWildcard(t1)
+    case Ite(a,b,c) => isWildcard(b) || isWildcard(c)
+    case FullPerm() => false
+    case NoPerm() => false
+    case PermMin(a,b) => isWildcard(a) || isWildcard(b)
+    case MultisetCount(_) => false
+    case FractionPerm(_,_) => false
+    case _ => false
+  }
+  }
 
-      }
+  // TODO: Implement an optimized order for exhale.
+  // One heuristic could be to take chunks first that
+  // mention the same sets/sequences (syntactically modulo equality)
 
-    //println(ch)
-    Q(inHeap + ch)
+  def exhalePermissions2(h:H, ch:QuantifiedChunk) = {
+    println("hua")
+    val * = fresh(sorts.Ref)
+    val opt = h.values //optimizedOrder(h.values, ch)
+    decider.prover.logComment("" + opt)
+    opt.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
+      case ((ch1:QuantifiedChunk, h, true), ch2) => (ch1, h+ch2, true)
+      case ((ch1:QuantifiedChunk, h, false), ch2) =>
+        ch2 match {
+          case quant:QuantifiedChunk if quant.name == ch1.name =>
+            if(isWildcard(ch1.perm)) assume(ch1.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < quant.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
+            val r = PermMin(ch1.perm, quant.perm)
+            val d = ⊢ ((ch1.perm-r).replace(terms.*(), *) === NoPerm())
+            if(⊢ ((quant.perm - r).replace(terms.*(), *) === NoPerm())) {
+              (QuantifiedChunk(ch1.name, null, ch1.perm - r), h, d)
+            } else {
+              (QuantifiedChunk(ch1.name, null, ch1.perm-r), h+QuantifiedChunk(quant.name, quant.value, quant.perm - r), d)
+            }
+          case ch => (ch1, h + ch, false)
+        }
+    }
+  }
+
+  def exhaleTest(h:H, ch:QuantifiedChunk) = {
+    val hq = quantifyChunksForField(h, ch.name)
+    val k = exhalePermissions2(hq,ch)
+    if(!k._3) None else Some(k._2)
+  }
+
+  def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
+    // convert to conditional chunks if necessary
+    // TODO: where exactly?
+    val hq = quantifyChunksForField(h, ch.name)
+    val k = exhalePermissions2(hq, ch)
+    if(!k._3)
+      Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+    else Q(k._2)
   }
 
 }

@@ -9,7 +9,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Sta
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DirectQuantifiedChunk}
+import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, QuantifiedChunk}
 import semper.silicon.state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.HeapManager
@@ -19,7 +19,7 @@ import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
-import semper.silicon.state.DirectQuantifiedChunk
+import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.terms.False
 import semper.silicon.state.terms.TermPerm
 import semper.silicon.reporting.DefaultContext
@@ -27,6 +27,30 @@ import semper.silicon.state.terms.Combine
 import semper.silicon.PermissionsConsumptionResult
 import semper.silicon.state.terms.Var
 import semper.silicon.state.terms.WildcardPerm
+import semper.sil.verifier.reasons.AssertionFalse
+import semper.silicon.ast._
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.*
+import semper.silicon.state.QuantifiedChunk
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import semper.silicon.state.terms.PermPlus
+import semper.silicon.state.terms.False
+import semper.silicon.state.terms.And
+import semper.silicon.state.terms.PermMinus
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.state.terms.Combine
+import semper.silicon.state.terms.PermTimes
+import semper.silicon.PermissionsConsumptionResult
+import semper.silicon.state.terms.Var
+import semper.silicon.state.terms.IntPermTimes
+import semper.silicon.state.terms.NoPerm
+import semper.sil.ast.LocalVar
+import semper.silicon.state.terms.SeqRanged
+import semper.silicon.state.terms.WildcardPerm
+import semper.silicon.state.terms.Ite
 import semper.sil.verifier.reasons.AssertionFalse
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
@@ -143,130 +167,69 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
 
-      // TODO: generalize for arbitrary condition and receiver
-      case ast.Forall(vars, triggers, ast.Implies(cond, a@ast.FieldAccessPredicate(ast.FieldAccess(ast.SeqIndex(seq, idx), field), loss))) => {
-        decider.prover.logComment("CONSUMING SEQ FORALL")
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, field), loss))) => {
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
-        eval(σ \+ γVars, seq, pve, c, tv)((tSeq, c2) =>
-          evalp(σ, loss, pve, c1, tv) ((tPerm, c3) => {
-          val k = decider.fresh("blabu", sorts.Ref)
-          val i = decider.fresh("i", sorts.Int)
-          // TODO: decide where the rewriting should be done - here or in the heapmanager
-          // TODO: we dont need cond rewriting anymore
-          val rewrittenCond = tCond match {
-            case SeqIn(SeqRanged(a,b),c) => (And(And(AtLeast(i,a),Less(i, b)), SeqAt(tSeq,i)===k))
-            case _ => sys.error("cannot handle such a condition " + cond)
-          }
-          val rewrittenGain = tCond match {
-             case SeqIn(SeqRanged(a,b),c) => PermTimes(tPerm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(tSeq,b),a)))))
-             case _ => sys.error("I cannot work with condition of the form " + cond)
-          }
 
-            if(decider.inScope({
-            assume(rewrittenCond.replace(*(), k))
-            decider.assert(False())
-          })) {
-            // guard is false, we do not need to do anything
-            Q(h, Unit, Nil, c3)
-          } else {
-            // we may safely assume the ""guard""
-            assume(rewrittenCond.replace(*(), k))
-
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null, rewrittenGain), k, field, pve, a.loc, c2, tv) ((h1, t) => {
-              Q(h1, t, Nil, c3)
-            })
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+          // we cheat a bit and syntactically rewrite the range
+          // this should not be needed if the axiomatization supports it
+          val rewrittenCond = heapManager.rewriteGuard(tCond)
+          if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
+          else {
+            decider.assume(rewrittenCond)
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) =>
+                heapManager.value(h, tRcvr, field, pve, locacc, c3, tv)(t => {
+                  val ch = heapManager.transformInExhale(tRcvr, field, null, tPerm, /* takes care of rewriting the cond */ tCond)
+                  heapManager.exhale(h, ch, pve, locacc, c3, tv)(h2 =>
+                    Q(h2, t, Nil, c3)
+                  )
+                })
+              )
+            )
           }
-        })))
+        })
       }
+     case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[QuantifiedChunk])) => {
+        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
-      // e.g. ensures forall y:Ref :: y in xs ==> acc(y.f, write)
-      case ast.Forall(vars, triggers, ast.Implies(ast.SetContains(elem, set), a@ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), loss))) => {
-        eval(σ, set, pve, c, tv)((tSet, c1) =>
-          evalp(σ, loss, pve, c1, tv)((tPerm, c2) => {
-            val k = decider.fresh("myblub", sorts.Ref)
-            // quick workaround: check if it is false
-            // TODO: this is unsound!!! Imagine the set to be empty, then we assume false!
-            if (decider.inScope({
-            	assume(SetIn(k, tSet))
-            	decider.assert(False())
-        	})) {
-        		// guard is false, we do not need to do anything
-        		Q(h, Unit, Nil, c2)
-        	}
-        	else
-        	 {
-        	// we may safely assume it
-        	assume(SetIn(k, tSet))
-            heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(field.name, null /* value of the chunk */, TermPerm(Ite(SetIn(*(), tSet), tPerm, NoPerm()))), k, field, pve, a.loc , c2, tv)((h1,t) =>  {
-                /* TODO: is this correct? */
-                Q(h1, t, Nil, c2)
-              })
-            }
-          })
-        )
-      }
-
-      // pure forall e.g. ensures forall y:Ref :: y in xs ==> y.f > 0
-      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure &&  /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk])) => {
-        decider.inScope({
-          decider.prover.logComment("CONSUMING PURE FORALL")
-
-          val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-          // restriction: the permission is constant and we can evaluate it here
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-            val rewrittenCond = heapManager.rewriteGuard(tCond)
-
-            if(decider.inScope({
-            	assume(rewrittenCond)
-            	decider.assert(False())
-            })) {
-            	Q(h, Unit, Nil, c1)
-            } else {
-            	assume(rewrittenCond)
-            	eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-              		if (decider.assert(tBody)) {
-                	Q(h, Unit /* not really correct */, Nil, c2)
-              	} else {
-               		 Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
-              	}
-            })
-            }
-            
-          })
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+          val rewrittenCond = heapManager.rewriteGuard(tCond)
+          if(decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
+          else {
+            decider.pushScope()
+            decider.assume(rewrittenCond)
+            eval(σ \+ γVars, body, pve, c, tv)((tBody, c2) =>
+              if(decider.assert(tBody)) {
+                // to pop the condition out of scope, just in case (not to have unwanted triggers).
+                decider.popScope()
+                Q(h, Unit, Nil, c2)
+              }
+              else {
+                decider.popScope()
+                Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c2, tv)
+              }
+            )
+          }
         })
       }
 
-        /* Field and predicate access predicates */
+      /* Field access predicates for quantified fields */
+      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+            heapManager.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
+              val ch = heapManager.transformWrite(tRcvr, field.name, null, tPerm)
+              heapManager.exhale(h, ch, pve, locacc, c2, tv)(h2 =>
+                Q(h2, t, Nil, c2)
+              )
+            })))
+
       case ast.AccessPredicate(locacc, perm) =>
-        // TODO: should not be needed - migrate all consuming of permissions into heapmanager
-        val hasCondChunks = σ.h.values exists {case ch:DirectQuantifiedChunk => true case _ => false}
-        if(hasCondChunks && !locacc.isInstanceOf[ast.PredicateAccess] /* TODO generalize */) {
-            locacc match {
-              case ast.FieldAccess(eRcvr, field) =>
-                eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-                  evalp(σ, perm, pve, c1, tv) ((tPerm, c2) =>
-                    heapManager.consumePermissions(h, h.empty + DirectQuantifiedChunk(locacc.loc.name, null, TermPerm(Ite(Eq(*(), tRcvr),tPerm, NoPerm()))), tRcvr, field, pve, locacc, c2, tv) ((h2:H, t) =>
-                      /* TODO: is this correct? */
-                    {decider.prover.logComment("consumed, result is " + h2)
-                      Q(h2, t, Nil, c2)}
-                    )))
-            }
-        } else
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-             /*   if (decider.hasEnoughPermissionsGlobally(h, id, p * tPerm)) {
-                   val h1 = decider.exhalePermissions(h, id, p * tPerm)
-                   h1 match  {
-                    case Some(h1) =>  Q(h1, True(), List[DirectChunk](), c2)
-                    case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
-                   }
-
-                } else {
-                  Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
-                }))  */
                 if (decider.isPositive(tPerm, !isConditional(perm)))
                   consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                     ch match {

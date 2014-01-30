@@ -21,6 +21,7 @@ import semper.silicon.state.terms.True
 import semper.silicon.state.terms.SeqSingleton
 import semper.silicon.state.terms.IntLiteral
 import semper.silicon.state.terms.Null
+import semper.silicon.state.terms.NullTrigger
 import semper.silicon.state.terms.FApp
 import semper.silicon.state.terms.EmptySet
 import semper.silicon.state.terms.NoPerm
@@ -85,6 +86,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(%s (%s) (! %s %s))".format(strQuant, strVars, strBody, strTriggers)
 
     /* Booleans */
+
+    case NullTrigger(t) => "($Ref.nullX " + convert(t) + ")"
 
     case Not(f) => "(not " + convert(f) + ")"
 

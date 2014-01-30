@@ -79,14 +79,9 @@ TV <: TraceView[TV, ST, H, S]]
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
       // TODO: merge for conditional chunks
-      if(h.values.forall(!_.isInstanceOf[DirectQuantifiedChunk])) {
         val (mh, mts) = merge(Ø, h)
         assume(mts)
         Q(σ \ mh, c1)
-      } else {
-        val mh = h
-        Q(σ \ mh, c1)
-      }
     })
 
   def produces(σ: S,
@@ -166,20 +161,30 @@ TV <: TraceView[TV, ST, H, S]]
             (c2: C, tv1: TV) => produce2(σ, sf, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if heapManager.isQuantifiedFor(σ.h, field.name) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
+          assume(tRcvr !== Null())
+          evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+            val s = sf(toSort(field.typ))
+            val pNettoGain = pGain * p
+            val ch = QuantifiedChunk(field.name, s, TermPerm(Ite(*() === tRcvr, pNettoGain, NoPerm())))
+            if (!isConditional(gain)) assume(NoPerm() < pGain)
+            Q(σ.h + ch, c2)
+          })
+        })
+
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(toSort(field.typ))
-            decider.prover.logComment("new var for snapshot!")
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            // TODO merge does not work yet with conditional chunks
-            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            //assume(mts)
-            //Q(mh, c2)
-            Q(σ.h + ch, c2)
+            // TODO: make merge work here again
+            val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            assume(mts)
+            Q(mh, c2)
           })
         })
 
@@ -190,65 +195,50 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            //val (mh, mts) = merge(σ.h, H(ch :: Nil))
+            // TODO: make merge work again
+            val (mh, mts) = merge(σ.h, H(ch :: Nil))
             decider.prover.logComment("assuming predicate " + predicate.name)
-            //assume(mts)
-            Q(σ.h+ch, c2)
+            assume(mts)
+            Q(mh, c2)
           }))
 
       // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
-
-      // TODO: generalize for an arbitrary condition
-      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain))) => {
+      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) => {
         decider.prover.logComment("Producing set access predicate " + fa)
-        decider.pushScope()
 
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
           val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
-
-          // restriction: the permission is constant and we can evaluate it here
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>  {
-            assume(tCond)
+          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
-              // Why pop here? We need the permission to be in the scope because it goes into the chunk
               decider.prover.logComment("End produce set access predicate " + fa)
-              decider.popScope()
-              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) =>
-                heapManager.producePermissions(σ.h, tVars(0), field,  tCond.asInstanceOf[BooleanTerm] /* TODO: what if tCond is no Boolean Term? */, pGain * p, tRcvr)((newHeap) =>  {
-                  Q(newHeap, c2)
-                })
-              )
+              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
+                // TODO: why does sf not work? This might introduce an incompleteness somewhere - ask Malte
+                val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+                val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val ch = heapManager.transformInExhale(tRcvr, f, app, pGain * p, tCond)
+                val v = Var("nonnull", sorts.Ref)
+                decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
+                Q(σ.h+ch, c3)
+              })
             })
-          })
-
+          )
       }
 
-      case fa@ast.Forall(vars, triggers, ast.Implies(cond, body)) /* only if there are conditional chunks on the heap */ if(σ.h.values.exists(_.isInstanceOf[DirectQuantifiedChunk]))=> {
-        decider.prover.logComment("Producing pure quantifier " + fa)
-        //println("here")
-        val forall = (cond: Term) => (body: Term) => Quantification(Forall, vars map {
-          v => Var(v.name, symbolConverter.toSort(v.typ))
-        }, Implies(cond, body))
-
-        val QP = (cond: Term, body: Term, γVars: ST, h: H, c: C) => {
-
-          /* TODO: ugly - make it work with more than 1 var */
-          assume(forall(cond)(body).replace(γVars.values.head._2, Var(vars.head.name, symbolConverter.toSort(vars.head.typ))))
-          Q(h, c)
-        }
-        decider.pushScope()
-        decider.prover.logComment("start test evaluation")
+      // TODO: maybe we can remove this and use the mechanism of eval instead
+      // but it may be more complicated to describe the general forall mechanism implemented in eval
+      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && σ.h.values.exists(_.isInstanceOf[QuantifiedChunk])) => {
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-        // restriction: the permission is constant and we can evaluate it here
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
           val rewrittenCond = heapManager.rewriteGuard(tCond)
+          decider.pushScope()
           assume(rewrittenCond)
           eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-            decider.prover.logComment("end of the fun - here comes the forall!")
             decider.popScope()
-            QP(rewrittenCond, tBody, γVars, σ.h, c2)
+            val v = vars map { v => Var(v.name, symbolConverter.toSort(v.typ))}
+            assume(Quantification(Forall, v, Implies(rewrittenCond.replace(tVars(0), v(0)), tBody.replace(tVars(0), v(0)))))
+            Q(σ.h, c2)
           })
         })
       }

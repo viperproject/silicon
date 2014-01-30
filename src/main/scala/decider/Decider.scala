@@ -28,6 +28,7 @@ import semper.silicon.state.terms.NoPerm
 import semper.silicon.state.terms.PermMin
 import semper.sil.verifier.DependencyNotFoundError
 import semper.silicon.state.terms.WildcardPerm
+import semper.silicon.interfaces.state.factoryUtils.Ø
 
 
 class DefaultDecider[ST <: Store[ST],
@@ -372,138 +373,7 @@ class DefaultDecider[ST <: Store[ST],
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
 
 
-  def hasEnoughPermissionsGlobally(h: H, id: ChunkIdentifier, p:P): Boolean = {
-     hasPermissions(h,id,p, AtLeast)
-  }
 
-  def canReadGlobally(h:H, id:ChunkIdentifier):Boolean = {
-    prover.logComment("checking if I can read " + id + " globally in heap " + h.values.filter(ch => ch.name == id.name))
-    hasPermissions(h,id,NoPerm(), Greater)
-  }
-
-    /**
-   * Does a global lookup on the heap h whether there are enough permissions (at least P)
-   * for chunk id.
-   * @return returns true if there are enough permissions on the heap, false if there are definitely not enough permissions on the heap.
-   */
-  	def hasPermissions(h: H, id: ChunkIdentifier, p:P, comp: (Term,Term) => Term): Boolean = {
-	  // collect all chunks
-  	  val condH = toConditional(h)
-  	  //println("looking up global permissions")
-
-  	  val s:Seq[Term] = condH.values.toSeq collect { case permChunk: DirectChunk if(permChunk.name == id.name) => {
-  	    // construct the big And for the condition
-  	    permChunk.perm.replace(terms.*(), id.args.last)
-  	  } }
-  	  
-  	  
-  	  val goal = comp(BigPermSum (s, { x => x}), p)
-
-  	  val res = prover.assert(goal)
-  	  
-  	  res
-  	 // true
-  	  //println(sum)
-  	  
-  	  //return isAsPermissive(sum,p)
-	}
-
-  def exhalePermissions(h:H, id:ChunkIdentifier, p:P): Option[H] = {
-      return exhalePermissions(h, h.empty + DirectFieldChunk(id.args(0), id.name, null, p))
-  }
-
-  def toConditional(h:H) = {
-    var hqnew = h.empty
-    h.values.foreach {
-      case ch: DirectFieldChunk => {
-        hqnew = hqnew + DirectQuantifiedChunk(ch.name, ch.value,TermPerm(Ite(Eq(*(), ch.rcvr),ch.perm, NoPerm())))
-      }
-      case ch: DirectQuantifiedChunk => hqnew = hqnew + ch
-      case ch: DirectPredicateChunk => hqnew = hqnew + ch
-    }
-    hqnew
-  }
-
-  // TODO move (there is one version of this already in Consumer)
-  // TODO walk terms somehow...
-  def isWildcard(perm: Term):Boolean = { perm match {
-    case TermPerm(t) => isWildcard(t)
-    case _: WildcardPerm => true
-    case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case IntPermTimes(_, t1) => isWildcard(t1)
-    case Ite(a,b,c) => isWildcard(b) || isWildcard(c)
-    case FullPerm() => false
-    case NoPerm() => false
-    case PermMin(a,b) => isWildcard(a) || isWildcard(b)
-    case MultisetCount(_) => false
-    case FractionPerm(_,_) => false
-   }
-  }
-
-  def exhalePermissions(h: H, exhaleH: H): Option[H] = {
-    // convert to conditional chunks if necessary
-    var hq = toConditional(h)
-    val exhaleHC = toConditional(exhaleH)
-
-    //println(hq.values.size)
-    //println(exhaleHC)
-
-    breakable {
-      exhaleHC.values.foreach {
-        ch => ch match {
-          case eCh: DirectQuantifiedChunk  => {
-
-            hq = H(hq.asInstanceOf[SetBackedHeap]).asInstanceOf[H]
-            var pLeft = eCh.perm
-            inScope({
-              val * = fresh(sorts.Ref)
-              hq.values.foreach {
-                case ch: DirectQuantifiedChunk if(eCh.name == ch.name) => {
-                  // leave early
-                  prover.logComment("are we done?")
-                  if (permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
-                    // manually come out of scope
-                    popScope()
-                    break;
-                  }
-
-                  // if what we want to exhale is a wildcard, we need to assume that it's less than what we get
-                  prover.logComment("pLeft: " + pLeft + " " + pLeft.getClass())
-                  if(isWildcard(pLeft)) {
-                    prover.logComment("assuming that wildcard " + pLeft + " is less than chunk " + ch.perm)
-                    assume(pLeft.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < ch.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
-                  }
-
-                  val r = PermMin(pLeft, ch.perm)
-                  pLeft = pLeft - TermPerm(r)
-                  inScope({
-                    prover.logComment("checking if chunk does still contain permissions")
-                    if (permAssert((ch.perm - TermPerm(r)).replace(terms.*(), fresh(sorts.Ref)) === NoPerm())) {
-                      prover.logComment("before removin " + ch +  ": " + hq)
-                      hq = hq - ch
-                      prover logComment("after removin " + ch + ": " + hq)
-                    } else {
-                      hq = hq - ch + (ch - TermPerm(r))
-                    }
-                  })
-                }
-                case _ => {}
-              }
-              prover.logComment("are we done?")
-              if (!permAssert(pLeft.replace(terms.*(), *) === NoPerm())) {
-                prover.logComment("finally could not exhale...")
-                return None
-              }
-            })
-          }
-        }
-      }
-    }
-    prover.logComment("finally the result is " + hq)
-    Some(hq)
-  }
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
 //    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)

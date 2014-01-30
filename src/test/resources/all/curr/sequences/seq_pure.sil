@@ -1,0 +1,52 @@
+var f: Int
+
+method a(S:Seq[Ref], a:Int)
+requires 0 <= a && a < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+requires forall j:Int :: j in [0..|S|) ==> S[j].f > 0
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+ensures forall j:Int :: j in [0..|S|) ==> S[j].f > 0
+{
+    S[a].f := 2
+}
+
+method a2(S:Seq[Ref], a:Int)
+requires 0 <= a && a < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+requires forall j:Int :: j in [0..|S|) ==> S[j].f > 0
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+ensures forall j:Int :: j in [0..|S|) ==> S[j].f > 0
+{
+    S[a].f := -1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert (forall j:Int :: j in [0..|S|) ==> S[j].f > 0)
+}
+
+method sorted(S:Seq[Ref])
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+requires forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+ensures forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
+{
+
+}
+
+method sorted2(S:Seq[Ref], a:Int)
+requires 0 <= a && a < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+requires forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
+ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+//:: ExpectedOutput(postcondition.violated:assertion.false)
+ensures forall j:Int :: j in [0..|S|-1) ==> S[j].f <= S[j+1].f
+{
+    S[a].f := 5
+}
+
+method a3(S:Seq[Ref], a:Int)
+requires 0 <= a && a < |S|
+requires forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+{
+    exhale forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+    //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    exhale forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+}
