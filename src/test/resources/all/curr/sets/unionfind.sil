@@ -3,14 +3,19 @@ var struct: Ref
 var parent: Ref
 
 /* add to structure */
-method add(this:Ref, struct:Ref)
-requires acc(this.struct, write)
-requires acc(this.parent, write)
-requires acc(inv(struct), write)
-ensures acc(this.struct, 1/2)
-ensures acc(inv(this.struct), write)
-ensures valid(this)
-ensures (this.struct == struct)
+method add(this: Ref, struct: Ref)
+  requires this != null && struct != null   // Yannis: added this line; I don't know if Silicon really needs it
+  requires acc(this.struct, write)
+  requires acc(this.parent, write)
+  requires acc(inv(struct), write)
+  requires this.parent == null    // Yannis: this guarantees that the node is not already in the structure
+  ensures acc(this.struct, wildcard)    // Yannis: changed from acc(this.struct, 1/2).  If the intention is immutability of the reference, then using the wildcard is cleaner
+  ensures acc(inv(this.struct), write)
+  ensures valid(this)
+  ensures (this.struct == struct)
+  ensures (forall o: Ref :: o in old(allNodes(struct)) ==> unfolding acc(inv(struct), write) in find(o) == old(find(o)))   // Yannis: no nodes in the structure were influenced
+  ensures this == find(this)   // Yannis: the new node is representative of a singleton that contains only itself
+  ensures allNodes(struct) == old(allNodes(struct)) union Set(this)   // Yannis: only this has been added to the structure
 {
     this.struct := struct
     this.parent := this
@@ -62,10 +67,11 @@ ensures allNodes(this.struct) == old(allNodes(this.struct))
 // class UnionFind
 var nodes: Set[Ref]
 
-predicate inv(this:Ref /* of class UnionFind */)
+predicate inv(this: Ref /* of class UnionFind */)
 {
     acc(this.nodes, write) &&
-    (forall o : Ref :: o in (this.nodes) ==> acc(o.struct, 1/2)) &&
+	(forall o : Ref :: o in (this.nodes) ==> o != null) &&    // Yannis: added this line; I don't know if Silicon really needs it
+    (forall o : Ref :: o in (this.nodes) ==> acc(o.struct, wildcard)) &&   // Yannis: changed the immutablity access here too
     (forall p : Ref :: p in (this.nodes) ==> p.struct == this)  &&
     (forall n : Ref :: n in (this.nodes) ==> acc(n.parent, write)) &&
     (forall q : Ref :: q in (this.nodes) ==> (q.parent != null) && (q.parent in (this.nodes)))

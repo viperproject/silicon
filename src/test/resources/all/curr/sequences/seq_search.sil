@@ -1,23 +1,84 @@
 var f:Int
 
-method m(S:Seq[Ref], find:Int) returns (found:Bool)
-requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
-ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, wildcard)
-//ensures found == exists i:Int :: i >= 0 && i < |S| && S[i].f == find
+method find (S:Seq[Ref], x:Int) returns (index:Int)
+  requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, wildcard)
+  ensures 0 <= index && index <= |S|
+  ensures 0 <= index && index < |S| ==> S[index].f==x
+  // ensures index == |S| ==> (forall k:Int :: 0<=k && k<|S| ==> S[k].f != x)  // Yannis: cannot prove this behavior
 {
     if(|S| == 0) {
-        found := false
+        index := 0
     }
     elsif (|S|==1) {
-        found := find == S[0].f
+        index := x == S[0].f ? 0 : 1
     }
     else {
-        // split in the (kind-of) middle
-        var k:Int := |S|-1
-        var f1:Bool
-        var f2:Bool
-        f1 := m(S[..k],find)
-        f2 := m(S[k..],find)
-        found := f1 || f2
+        // split
+        var k:Int
+        inhale 0<k && k<|S|-1
+        var f1:Int
+        var f2:Int
+        f1 := find (S[..k],x)
+        f2 := find (S[k..],x)
+        if (f1 != k) { index := f1 }
+        else {
+          // assert (forall k3:Int :: 0<=k3 && k3<|S[..k]| ==> (S[..k])[k3].f != x)  // Yannis: this assertion throws an exception "expression not stable"
+          index := k+f2
+        }
     }
 }
+
+//Yannis: I am trying this variation to see whether write permissions introduce framing problems.  Unfortunately, the verification fails now
+method find_var (S:Seq[Ref], x:Int) returns (index:Int)
+  requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, write)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+  ensures 0 <= index && index <= |S|
+  ensures 0 <= index && index < |S| ==> S[index].f==x
+{
+    if(|S| == 0) {
+        index := 0
+    }
+    elsif (|S|==1) {
+        index := x == S[0].f ? 0 : 1
+    }
+    else {
+        // split
+        var k:Int
+        inhale 0<k && k<|S|-1
+        var f1:Int
+        var f2:Int
+        f1 := find_var (S[..k],x)  // Yannis: not enough permission?  bad sign!
+        f2 := find_var (S[k..],x)
+        if (f1 != k) { index := f1 }
+        else { index := k+f2 }
+    }
+}
+
+//Yannis: Here's one with arbitrary read permissions -- does not work
+/*method find_var1 (S:Seq[Ref], x:Int, p: Perm) returns (index:Int)
+  requires 0<p && p<write
+  requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, p)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, p)
+  ensures 0 <= index && index <= |S|
+  ensures 0 <= index && index < |S| ==> S[index].f==x
+{
+    if(|S| == 0) {
+        index := 0
+    }
+    elsif (|S|==1) {
+        index := x == S[0].f ? 0 : 1
+    }
+    else {
+        // split
+        var k:Int
+        inhale 0<k && k<|S|-1
+        var f1:Int
+        var f2:Int
+        // Yannis: Silicon does not understand perm1 and perm2 in the following calls:
+        fresh(perm1) { f1 := find_var1 (S[..k],x,perm1) }
+        fresh(perm2) { f2 := find_var1 (S[k..],x,perm2) }
+        if (f1 != k) { index := f1 }
+        else { index := k+f2 }
+    }
+}*/

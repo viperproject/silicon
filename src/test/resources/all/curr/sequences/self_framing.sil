@@ -1,0 +1,26 @@
+var f:Int
+
+// Yannis: the following precondition should be rejected, as non-self-framing
+method foo(s: Seq[Ref])
+  requires |s| > 2 && (forall i: Int :: 0<=i && i<2 ==> acc(s[i].f, write))    // Yannis: throws exception "I cannota work with condition of the form 0 <= i@5 && 0 <= i@5 ==> i@5 < 2".  Not nice
+                                                                                // Yannis: tried several different ways of expressing this; cannot get past the exception!
+  requires |s| > 3 ==> s[2].f == 1
+{}
+
+// Yannis: same, but should be accepted
+method foo1(s: Seq[Ref])
+  requires |s| > 2 && (forall i1: Int :: 0<=i1 && i1<2 ==> acc(s[i1].f, write))
+  requires s[0].f == 1
+{}
+
+// Yannis: same, should be accepted
+method foo2(s: Seq[Ref])
+  requires |s| > 2 && acc(s[0].f, write) && acc(s[1].f, write)
+  requires (forall i2: Int :: 0<=i2 && i2<2 ==> s[i2].f == 0)
+{}
+
+// Yannis: same, should be rejected
+method foo3(s: Seq[Ref])
+  requires |s| > 2 && acc(s[0].f, write) && acc(s[1].f, write)
+  requires (forall i3: Int :: 0<=i3 && i3<|s| ==> s[i3].f == 0)
+{}
