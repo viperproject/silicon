@@ -10,7 +10,7 @@ ensures b.f > 0
 }
 
 
-/* TODO
+// Yannis: your "todo" example works
 method m4(S: Set[Ref], T: Set[Ref])
 requires (forall s: Ref :: s in S ==> acc(s.f, write))
 requires (forall t: Ref :: t in T ==> acc(t.f, write))
@@ -21,7 +21,7 @@ ensures (forall y: Ref :: y in (T union S) ==> y.f > 0)
 {
 
 }
-*/
+
 
 method m2(S: Set[Ref], b:Ref)
 requires (forall s: Ref :: s in S ==> acc(s.f, write))
@@ -33,24 +33,23 @@ ensures (forall q : Ref :: q in S ==> q.f > 0)
    b.f := 3
 }
 
-// TODO: set axiomatization is not perfect
-/*
-method m3(S: Set[Ref], b:Ref, a:Int)
+// TODO: set axiomatization is not perfect // Yannis: works for me!
+method m13(S: Set[Ref], b:Ref, a:Int)
 requires (forall s: Ref :: s in S ==> acc(s.f, write))
 requires S == Set(b)
-// requires b in S
+// requires b in S  // Yannis: this precondition is superfluous
 requires b.f == a
-//ensures (forall r : Ref :: r in S ==> acc(r.f, write))
-//ensures (forall t : Ref :: t in S ==> ((t.f) > (2*a)))
+ensures (forall r : Ref :: r in S ==> acc(r.f, write))
+ensures (forall t : Ref :: t in S ==> ((t.f) > (2*a)))
 {
     b.f := 2*a+1
 }
-*/
+
 
 method m3(S: Set[Ref], b:Ref, a:Int)
 requires (forall s: Ref :: s in S ==> acc(s.f, write))
 requires S == Set(b)
-requires b in S
+//requires b in S  // Yannis: this precondition is superfluous
 requires b.f == a
 ensures (forall r : Ref :: r in S ==> acc(r.f, write))
 ensures (forall t : Ref :: t in S ==> ((t.f) > (2*a)))
@@ -61,7 +60,7 @@ ensures (forall t : Ref :: t in S ==> ((t.f) > (2*a)))
 method m7(S: Set[Ref], b:Ref, a:Int)
 requires (forall s: Ref :: s in S ==> acc(s.f, write))
 requires S == Set(b)
-requires b in S
+//requires b in S  // Yannis: this precondition is superfluous
 requires b.f == a
 ensures (forall r : Ref :: r in S ==> acc(r.f, write))
 {
