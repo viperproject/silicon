@@ -40,16 +40,4 @@ method caller()
     assert get(mutableArray, 0) == 2
 }
 
-// TODO: wildcard issues!
-/*method set(this:Ref, i:Int, val:Int)
-requires acc(this.array, wildcard)
-requires 0 <= i && i < |this.array|
-requires forall j:Int :: j >= i && j < i+1 ==> acc(this.array[j].value, write)
-ensures acc(this.array, wildcard)
-ensures forall k:Int :: k >= i && k < i+1 ==> acc(this.array[k].value, write)
-ensures this.array[i].value == val
-{
-    this.array[i].value := val
-}*/
-
 
