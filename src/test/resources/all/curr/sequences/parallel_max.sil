@@ -1,34 +1,43 @@
+// Yannis: I used an unknown read permission instead of wildcard.  It doesn't seem to work: a Scala match exception is thrown.  Please look at it
+  // note: the same thing happens if I use fresh
+
 // class Cell
 var value:Int
 
 // class ArrayOfInt
 var array:Seq[Ref] // containing Cell(s)
 
-method parallel_max(a:Ref, start:Int, end:Int) returns (mx:Int)
-requires a != null
-requires acc(a.array, wildcard)
-requires 0 <= start && start < end && end < |a.array|
-requires forall i:Int :: i in [start..end) ==> acc(a.array[i].value, wildcard)
-requires |a.array| >= 1
-ensures acc(a.array, wildcard)
-ensures a.array==old(a.array)
-ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, wildcard)
-ensures forall i:Int :: i in [start..end) ==> a.array[i].value == old(a.array[i].value)
-// ensures contains(a, start, end, mx)
-ensures (forall l: Int :: l in [start..end) ==> a.array[l].value<=mx)
+method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, pos: Int)  // Yannis: skolemizing so that I don't use an existential
+  requires a != null
+  requires acc(a.array, wildcard)
+  requires 0 <= start && start < end && end < |a.array|
+  requires forall i:Int :: i in [start..end) ==> acc(a.array[i].value, kperm)
+  requires |a.array| >= 1
+  requires none < kperm && kperm < write
+  ensures acc(a.array, wildcard)
+  //ensures a.array==old(a.array)  // Yannis: this should be obsolete; you only hold read permission to a.array
+  ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, kperm)
+  ensures forall i:Int :: i in [start..end) ==> a.array[i].value == old(a.array[i].value)
+  ensures start<=pos && pos<end && a.array[pos].value == mx
+  ensures (forall l: Int :: l in [start..end) ==> a.array[l].value<=mx)
 {
     var middle:Int
     var ml: Int
     var mr: Int
+    var kperm1: Perm
+    var posl: Int
+    var posr: Int
 
     if(end-start > 1)
     {
         middle := start + (end-start)\2
-        ml := parallel_max(a, start, middle)
-        mr := parallel_max(a, middle, end)
+        ml,posl := parallel_max(a, start, middle, (1 / 2) * kperm)
+        mr,posr := parallel_max(a, middle, end, (1 / 2) * kperm)
         mx := ml>mr ? ml : mr
+        if (mx == ml) { pos := posl } else { pos := posr }
     } else {
         mx := (a.array[start]).value
+        pos := start
     }
 }
 

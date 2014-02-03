@@ -22,8 +22,8 @@ ensures acc(a.f,write)
 method m3(a:Seq[Ref])
 requires forall i:Int :: i in [0..|a|) ==> acc(a[i].f, wildcard)
 ensures forall j:Int :: j in [0..|a|) ==> acc(a[j].f, wildcard)
-// TODO: incompleteness - we have to ensure it's "oldity"
-ensures forall l:Int :: l in [0..|a|) ==> a[l].f == old(a[l].f)
+// TODO: incompleteness - we have to ensure it's "oldity"  // Yannis: works for me...
+//ensures forall l:Int :: l in [0..|a|) ==> a[l].f == old(a[l].f)
 {
     m3(a)
     assert(forall k:Int :: k in [0..|a|) ==> a[k].f == old(a[k].f))
