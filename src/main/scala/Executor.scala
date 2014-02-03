@@ -61,6 +61,7 @@ import semper.sil.verifier.errors.LoopInvariantNotPreserved
 import semper.silicon.state.terms.Null
 import semper.sil.verifier.errors.WhileFailed
 import semper.sil.verifier.errors.ExhaleFailed
+import semper.sil.verifier.errors.InhaleFailed
 import semper.sil.verifier.errors.LoopInvariantNotEstablished
 import semper.sil.verifier.reasons.InsufficientPermission
 import semper.sil.verifier.errors.UnfoldFailed
@@ -326,8 +327,8 @@ trait DefaultExecutor[ST <: Store[ST],
         assume(state.terms.utils.BigAnd(refs map (_ !== t)))
         Q(σ1, c)
 
-      case ast.Inhale(a) =>
-        produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
+      case inhale @ ast.Inhale(a) =>
+        produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
           Q(σ1, c1))
 
       case exhale @ ast.Exhale(a) =>

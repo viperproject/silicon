@@ -7,8 +7,11 @@ var f:Int
 // Yannis: the following precondition should be rejected, as non-self-framing
 method foo(s: Seq[Ref])
   requires |s| > 2 && (forall i: Int :: i in [0..2) ==> acc(s[i].f, write))
-  requires |s| > 3 ==> s[2].f == 1
-{}
+{
+    //:: ExpectedOutput(inhale.failed:receiver.null)
+    inhale |s| > 3 ==> s[2].f == 1
+}
+
 
 // Yannis: same, but should be accepted
 method foo1(s: Seq[Ref])
@@ -19,8 +22,9 @@ method foo1(s: Seq[Ref])
 // Yannis: same, should be accepted
 method foo2(s: Seq[Ref])
   requires |s| > 2 && acc(s[0].f, write) && acc(s[1].f, write)
-  requires (forall i2: Int :: i2 in [0..2) ==> s[i2].f == 0)
-{}
+{
+    inhale forall i2: Int :: i2 in [0..2) ==> s[i2].f == 0
+}
 
 method foo2korbinian(s:Seq[Ref])
 requires |s| > 2
@@ -34,5 +38,6 @@ method foo3(s: Seq[Ref])
   requires |s| > 2 && acc(s[0].f, write) && acc(s[1].f, write)
   requires forall i3: Int :: i3 in [0..|s|) ==> s[i3] != null
 {
+  //:: ExpectedOutput(inhale.failed:insufficient.permission)
   inhale (forall i3: Int :: i3 in [0..|s|) ==> s[i3].f == 0)
 }
