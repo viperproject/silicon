@@ -61,8 +61,6 @@ requires forall x:Ref :: x in xs ==> acc(x.f, 1/3)
 ensures forall y:Ref :: y in xs ==> acc(y.f, 1/3)
 {}
 
-
-/* TODO: wildcard */
 method m4(S: Set[Ref], T: Set[Ref])
 requires (forall s: Ref :: s in S ==> acc(s.f, wildcard))
 requires (forall t: Ref :: t in T ==> acc(t.f, wildcard))

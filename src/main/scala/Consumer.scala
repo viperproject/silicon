@@ -183,7 +183,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 heapManager.value(h, tRcvr, field, pve, locacc, c3, tv)(t => {
                   val ch = heapManager.transformInExhale(tRcvr, field, null, tPerm, /* takes care of rewriting the cond */ tCond)
                   heapManager.exhale(h, ch, pve, locacc, c3, tv)(h2 =>
-                    Q(h2, t, Nil, c3)
+                    {
+                      decider.prover.logComment("exhaled: " + σ.h)
+                      Q(h2, t, Nil, c3)
+                    }
                   )
                 })
               )

@@ -11,7 +11,7 @@ import semper.silicon.state._
 import semper.silicon.ast.Field
 import semper.silicon.interfaces.decider.Decider
 import semper.sil.verifier.reasons.{ReceiverNull, InsufficientPermission}
-import semper.sil.ast.{LocationAccess, FieldAccess}
+import semper.sil.ast.{Exp, LocationAccess, FieldAccess}
 import semper.sil.verifier.PartialVerificationError
 import semper.silicon.interfaces.Failure
 import scala.Some
@@ -128,6 +128,13 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
+  def first[A, B](as: Traversable[A], f: A => Option[B]): Option[B] =
+    if (as.isEmpty) None
+    else f(as.head) match {
+      case s @ Some(_) => s
+      case _ => first(as.tail, f)
+    }
+
   def value(h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
     // check if the receiver is not null
     val condH = quantifyChunksForField(h, f.name)
@@ -138,32 +145,39 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     else if (!(⊢(Less(NoPerm(), permission(condH, FieldChunkIdentifier(rcvr, f.name)))))) {
       decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + condH.values.filter(ch => (ch.name == f.name)))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-    }
-    condH.values.collectFirst {
-      case pf: QuantifiedChunk if (pf.name == f.name && (⊢(Less(NoPerm(), permission(H(List(pf)), FieldChunkIdentifier(rcvr, f.name)))))) => pf.value
-    } match {
-      case Some(v) => Q(v.replace(*(), rcvr))
-      case _ => {
-        // there is no one chunk that we can get the value from
-        // let's create a new uninterpreted function!
-        decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + condH.values.filter(ch => ch.name == f.name))
-        val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
-        val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-        val x = Var("x", sorts.Ref)
+    } else {
 
-        condH.values.foreach {
-          case pf: QuantifiedChunk if (pf.name == f.name) => {
-            decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
-              === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
+      // TODO: incomplete!!!! (because of triggering)
+      decider.prover.logComment("heap " + condH.values.filter(ch => (ch.name == f.name)))
+      val check: Chunk => Option[Term] = {
+        case qf: QuantifiedChunk if (qf.name == f.name && ⊢(Less(NoPerm(), qf.perm.replace(*(), rcvr)))) => Some(qf.value)
+        case _ => None
+      }
+      val res = first(condH.values.toTraversable, check)
+      decider.prover.logComment("done")
+
+      first(condH.values.toTraversable, check) match {
+        case Some(value) => Q(value.replace(*(), rcvr))
+        case None =>
+          decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + condH.values.filter(ch => ch.name == f.name))
+          val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
+          val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+          val x = Var("x", sorts.Ref)
+
+          condH.values.foreach {
+            case pf: QuantifiedChunk if (pf.name == f.name) => {
+              decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
+                === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
+            }
+            case pf if (pf.name == f.name) =>
+              sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(condH, pf.name))
+            case _ =>
           }
-          case pf if (pf.name == f.name) =>
-            sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(condH, pf.name))
-          case _ =>
-        }
-        //println("hereooooo")
-        Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))
+          //println("hereooooo")
+          Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))
       }
     }
+
   }
 
   def ∀ = QuantifiedChunk
@@ -174,7 +188,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
       case SeqAt(s, i) =>
         cond match {
           case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
-          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>'!" + cond)
+          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
         }
          //DirectQuantifiedChunk(f, )
       case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))

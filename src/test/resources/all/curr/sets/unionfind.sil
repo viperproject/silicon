@@ -4,7 +4,7 @@ var parent: Ref
 
 /* add to structure */
 method add(this: Ref, struct: Ref)
-  requires this != null && struct != null   // Yannis: added this line; I don't know if Silicon really needs it
+  requires this != null && struct != null   // Yannis: added this line; I don't know if Silicon really needs it Korbinian: No, as soon as you give access to something, non-nullness is assumed
   requires acc(this.struct, write)
   requires acc(this.parent, write)
   requires acc(inv(struct), write)
@@ -41,14 +41,14 @@ requires valid(this)
 }
 
 method unionn(this: Ref, other: Ref)
-requires acc(this.struct, 1/2)
+requires acc(this.struct, wildcard)
 requires acc(inv(this.struct), write)
 requires valid(this)
-requires acc(other.struct, 1/2)
+requires acc(other.struct, wildcard)
 requires (this.struct) == (other.struct)
 requires valid(other)
-ensures acc(this.struct, 1/2)
-ensures acc(other.struct, 1/2)
+ensures acc(this.struct, wildcard)
+ensures acc(other.struct, wildcard)
 ensures acc(inv(this.struct), write)
 ensures allNodes(this.struct) == old(allNodes(this.struct))
 {

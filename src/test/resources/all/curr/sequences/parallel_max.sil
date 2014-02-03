@@ -1,5 +1,6 @@
 // Yannis: I used an unknown read permission instead of wildcard.  It doesn't seem to work: a Scala match exception is thrown.  Please look at it
   // note: the same thing happens if I use fresh
+// Korbinian(2/3/2014): Yep, I corrected that. I was indeed an implementation error.
 
 // class Cell
 var value:Int
@@ -15,10 +16,15 @@ method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, po
   requires |a.array| >= 1
   requires none < kperm && kperm < write
   ensures acc(a.array, wildcard)
+  // Korbinian: Had to add the following two lines to ensure that i in [start..end) is in the correct bounds when
+  // doing well-formedness check
+  ensures none < kperm && kperm < write
+  ensures 0 <= start && start < end && end < |a.array|
   //ensures a.array==old(a.array)  // Yannis: this should be obsolete; you only hold read permission to a.array
   ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, kperm)
   ensures forall i:Int :: i in [start..end) ==> a.array[i].value == old(a.array[i].value)
-  ensures start<=pos && pos<end && a.array[pos].value == mx
+  ensures start<=pos && pos<end
+  ensures a.array[pos].value == mx
   ensures (forall l: Int :: l in [start..end) ==> a.array[l].value<=mx)
 {
     var middle:Int

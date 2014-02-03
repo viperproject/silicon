@@ -23,7 +23,9 @@ method find (S:Seq[Ref], x:Int) returns (index:Int)
         f2 := find (S[k..],x)
         if (f1 != k) { index := f1 }
         else {
-          // assert (forall k3:Int :: 0<=k3 && k3<|S[..k]| ==> (S[..k])[k3].f != x)  // Yannis: this assertion throws an exception "expression not stable"
+          assert (forall k3:Int :: k in [0..|S[..k]|) ==> (S[..k])[k3].f != x)
+          // Yannis: this assertion throws an exception "expression not stable"
+          // Korbinian (2/3/14): I changed it to the correct syntax, and it works
           index := k+f2
         }
     }
@@ -49,6 +51,7 @@ method find_var (S:Seq[Ref], x:Int) returns (index:Int)
         var f1:Int
         var f2:Int
         f1 := find_var (S[..k],x)  // Yannis: not enough permission?  bad sign!
+        // Korbinian(2/3/14): I am not sure about that. I opened an issue: https://bitbucket.org/mschwerhoff/silicon_ccproto/issue/2/split-sequence
         f2 := find_var (S[k..],x)
         if (f1 != k) { index := f1 }
         else { index := k+f2 }

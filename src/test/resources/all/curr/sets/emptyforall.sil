@@ -1,4 +1,3 @@
-// TODO: write the annotation that this should fail!
 var nodes:Set[Ref]
 var f:Int
 

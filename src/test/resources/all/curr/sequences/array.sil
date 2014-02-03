@@ -4,7 +4,6 @@ var array: Seq[Ref]
 
 method init(this:Ref, i:Int)
 requires acc(this.array, write)
-// TODO: change this to wildcard // Yannis: done
 ensures acc(this.array, wildcard)
 ensures |this.array| == i
 ensures forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
@@ -16,12 +15,12 @@ method set(this:Ref, i:Int, val:Int)
 requires acc(this.array, wildcard)  // Yannis: changed permission to wildcard
 requires 0 <= i && i < |this.array|
 // TODO: change this syntax to acc(this.array[i].value, write)  // Yannis: this does not work.  Apparently, the exhaling of line 21 insists on finding a quantified heap chunk
+// Korbinian: Added a issue here: https://bitbucket.org/mschwerhoff/silicon_ccproto/issue/1/allow-syntax-acc-s-i-f-write-instead-of
 requires forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, write)
 ensures acc(this.array, wildcard)
 ensures forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, write)
 ensures 0 <= i && i < |this.array|
 ensures this.array[i].value == val
-//ensures |this.array| == old(|this.array|) // this is required because we disabled merging!  // Yannis: this works fine for me
 {
     this.array[i].value := val
 }
@@ -29,7 +28,6 @@ ensures this.array[i].value == val
 function get(this:Ref, i:Int):Int
 requires acc(this.array, wildcard)
 requires 0 <= i && i < |this.array|
-//requires forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, 1/2)
 requires acc(this.array[i].value, wildcard)  // Yannis: changed the spec into a more elegant one.  Still works
 {
     this.array[i].value

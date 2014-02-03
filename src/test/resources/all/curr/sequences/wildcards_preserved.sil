@@ -8,6 +8,7 @@ method foo (S:Seq[Ref])
 {
   if(|S| > 1) { exhale acc(S[0].f, wildcard) }
   exhale forall i1:Int :: i1 in [0..|S|-2)  ==> acc(S[i1].f, wildcard) // Yannis: fails here already!
+  // Korbinian(2/3/14): Why shouldn't it?
   exhale forall i2:Int :: i2 in [0..|S|)  ==> acc(S[i2].f, wildcard)
 }
   
