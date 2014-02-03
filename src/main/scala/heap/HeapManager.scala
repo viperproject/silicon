@@ -196,7 +196,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     ∀(f.name, tv, PermTimes(TermPerm(count), talpha))
   }
 
-  def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => ∀(ch.name, ch.value, TermPerm(Ite(Eq(*(), ch.rcvr), ch.perm, NoPerm()))) case ch => ch})
+ def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => transformWrite(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
 
   // TODO move (there is one version of this already in Consumer)
   // TODO walk terms somehow...

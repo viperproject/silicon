@@ -14,11 +14,9 @@ ensures forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
 method set(this:Ref, i:Int, val:Int)
 requires acc(this.array, wildcard)  // Yannis: changed permission to wildcard
 requires 0 <= i && i < |this.array|
-// TODO: change this syntax to acc(this.array[i].value, write)  // Yannis: this does not work.  Apparently, the exhaling of line 21 insists on finding a quantified heap chunk
-// Korbinian: Added a issue here: https://bitbucket.org/mschwerhoff/silicon_ccproto/issue/1/allow-syntax-acc-s-i-f-write-instead-of
-requires forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, write)
+requires acc(this.array[i].value, write)
 ensures acc(this.array, wildcard)
-ensures forall k:Int :: k in [i..i+1) ==> acc(this.array[k].value, write)
+ensures acc(this.array[i].value, write)
 ensures 0 <= i && i < |this.array|
 ensures this.array[i].value == val
 {

@@ -10,12 +10,13 @@ method add(this: Ref, struct: Ref)
   requires acc(inv(struct), write)
   requires this.parent == null    // Yannis: this guarantees that the node is not already in the structure
   ensures acc(this.struct, wildcard)    // Yannis: changed from acc(this.struct, 1/2).  If the intention is immutability of the reference, then using the wildcard is cleaner
+  ensures (this.struct == struct)
+  ensures (this.struct == old(this.struct))
   ensures acc(inv(this.struct), write)
   ensures valid(this)
-  ensures (this.struct == struct)
-  ensures (forall o: Ref :: o in old(allNodes(struct)) ==> unfolding acc(inv(struct), write) in find(o) == old(find(o)))   // Yannis: no nodes in the structure were influenced
-  ensures this == find(this)   // Yannis: the new node is representative of a singleton that contains only itself
   ensures allNodes(struct) == old(allNodes(struct)) union Set(this)   // Yannis: only this has been added to the structure
+  ensures (forall o: Ref :: o in old(allNodes(this.struct)) ==> unfolding acc(inv(this.struct), write) in find(o) == old(find(o)))   // Yannis: no nodes in the structure were influenced
+  //ensures this == find(this)   // Yannis: the new node is representative of a singleton that contains only itself
 {
     this.struct := struct
     this.parent := this
@@ -40,7 +41,7 @@ requires valid(this)
     (unfolding acc(inv(this.struct), wildcard) in (this==(this.parent))) ? this : this /* should be: (unfolding acc(this.struct.inv(), wildcard) in find(this.parent)) */
 }
 
-method unionn(this: Ref, other: Ref)
+/*method unionn(this: Ref, other: Ref)
 requires acc(this.struct, wildcard)
 requires acc(inv(this.struct), write)
 requires valid(this)
@@ -62,7 +63,7 @@ ensures allNodes(this.struct) == old(allNodes(this.struct))
 	  //this1.struct.nodes := Set()
 	  fold acc(inv(this1.struct), write)
 	}
-}
+}*/
 
 // class UnionFind
 var nodes: Set[Ref]
@@ -78,7 +79,7 @@ predicate inv(this: Ref /* of class UnionFind */)
 }
 
 function allNodes(this:Ref): Set[Ref] /* of class UnionFind */
-requires acc(inv(this), write)
+requires acc(inv(this), wildcard)
 {
-    unfolding acc(inv(this), write) in this.nodes
+    unfolding acc(inv(this), wildcard) in this.nodes
 }
