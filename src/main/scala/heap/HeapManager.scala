@@ -71,6 +71,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
   def value(h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
   def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:QuantifiedChunk => true case _ => false}
+  def quantifyChunksForField(h:H, f:String):H
 
   def rewriteGuard(guard:Term):Term
 
@@ -103,9 +104,8 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
    */
   def permission(h: H, id: ChunkIdentifier): Term = {
     // collect all chunks
-    val condH = quantifyChunksForField(h, id.name)
     //println("looking up global permissions")
-    BigPermSum(condH.values.toSeq collect { case permChunk: QuantifiedChunk if(permChunk.name == id.name) => {
+    BigPermSum(h.values.toSeq collect { case permChunk: QuantifiedChunk if(permChunk.name == id.name) => {
       permChunk.perm.replace(terms.*(), id.args.last)
     }}, {x => x})
   }
@@ -137,40 +137,39 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
   def value(h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
     // check if the receiver is not null
-    val condH = quantifyChunksForField(h, f.name)
     decider.assume(NullTrigger(rcvr))
     if (!decider.assert(rcvr !== Null())) {
       Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
     }
-    else if (!(⊢(Less(NoPerm(), permission(condH, FieldChunkIdentifier(rcvr, f.name)))))) {
-      decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + condH.values.filter(ch => (ch.name == f.name)))
+    else if (!(⊢(Less(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, f.name)))))) {
+      decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => (ch.name == f.name)))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     } else {
 
       // TODO: incomplete!!!! (because of triggering)
-      decider.prover.logComment("heap " + condH.values.filter(ch => (ch.name == f.name)))
+      decider.prover.logComment("heap " + h.values.filter(ch => (ch.name == f.name)))
       val check: Chunk => Option[Term] = {
         case qf: QuantifiedChunk if (qf.name == f.name && ⊢(Less(NoPerm(), qf.perm.replace(*(), rcvr)))) => Some(qf.value)
         case _ => None
       }
-      val res = first(condH.values.toTraversable, check)
+      val res = first(h.values.toTraversable, check)
       decider.prover.logComment("done")
 
-      first(condH.values.toTraversable, check) match {
+      first(h.values.toTraversable, check) match {
         case Some(value) => Q(value.replace(*(), rcvr))
         case None =>
-          decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + condH.values.filter(ch => ch.name == f.name))
+          decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
           val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
           val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
           val x = Var("x", sorts.Ref)
 
-          condH.values.foreach {
+          h.values.foreach {
             case pf: QuantifiedChunk if (pf.name == f.name) => {
               decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
                 === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
             }
             case pf if (pf.name == f.name) =>
-              sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(condH, pf.name))
+              sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
             case _ =>
           }
           //println("hereooooo")
@@ -181,6 +180,8 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   }
 
   def ∀ = QuantifiedChunk
+
+  def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => transformWrite(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
 
   // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
   def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
@@ -196,7 +197,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     ∀(f.name, tv, PermTimes(TermPerm(count), talpha))
   }
 
- def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => transformWrite(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
 
   // TODO move (there is one version of this already in Consumer)
   // TODO walk terms somehow...
@@ -220,7 +220,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   // TODO: Implement an optimized order for exhale.
   // One heuristic could be to take chunks first that
   // mention the same sets/sequences (syntactically modulo equality)
-
   def exhalePermissions2(h:H, ch:QuantifiedChunk) = {
     println("hua")
     val * = fresh(sorts.Ref)
@@ -253,8 +252,7 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
   def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
     // convert to conditional chunks if necessary
     // TODO: where exactly?
-    val hq = quantifyChunksForField(h, ch.name)
-    val k = exhalePermissions2(hq, ch)
+    val k = exhalePermissions2(h, ch)
     if(!k._3)
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     else Q(k._2)

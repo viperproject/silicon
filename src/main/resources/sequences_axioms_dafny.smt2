@@ -477,18 +477,14 @@
 
 
 ; trigger functions for these axioms
-(declare-fun $Seq.split($Seq<$S$> $S$ Int Int Int) Bool)
+(declare-fun $Seq.split($Seq<$S$> $S$ Int) Bool)
 (declare-fun $Seq.countP ($Seq<$S$> $S$) Int)
-(assert (forall ((s $Seq<$S$>) (x $S$) (a Int) (b Int) (c Int) (d Int) (e Int) (f Int)) (!
+(assert (forall ((s $Seq<$S$>) (x $S$) (a Int) (b Int)) (!
     (and
-        ($Seq.split s x d e b)
-        ($Seq.split s x a c b)
-        ($Seq.split s x a f b)
-        ($Seq.split s x a c d)
+        ($Seq.split s x a)
+        ($Seq.split s x b)
     )
-    :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s b) a)) x)
-              ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s d) c)) x)
-              ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s f) e)) x))
+    :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s b) a)) x))
     )))
 (assert (forall ((s $Seq<$S$>) (x $S$)) (!
         (= ($Multiset.count ($Multiset.fromSeq s) x) ($Seq.countP s x))
@@ -507,7 +503,7 @@
             )
             )
         )
-        :pattern (($Seq.split s x start k end))
+        :pattern (($Seq.split s x start) ($Seq.split s x k) ($Seq.split s x end))
     )))
 (assert (forall ((S $Seq<$S$>) (start Int) (end  Int) (i Int)) (!
     (iff

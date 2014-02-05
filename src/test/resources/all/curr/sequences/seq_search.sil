@@ -1,6 +1,6 @@
 var f:Int
 
-method find (S:Seq[Ref], x:Int) returns (index:Int)
+/*method find (S:Seq[Ref], x:Int) returns (index:Int)
   requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
   ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, wildcard)
   ensures 0 <= index && index <= |S|
@@ -29,7 +29,7 @@ method find (S:Seq[Ref], x:Int) returns (index:Int)
           index := k+f2
         }
     }
-}
+}*/
 
 //Yannis: I am trying this variation to see whether write permissions introduce framing problems.  Unfortunately, the verification fails now
 method find_var (S:Seq[Ref], x:Int) returns (index:Int)

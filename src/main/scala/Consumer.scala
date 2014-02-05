@@ -167,7 +167,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
 
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, field), loss))) => {
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) => {
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
@@ -179,17 +179,18 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           else {
             decider.assume(rewrittenCond)
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
-              evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) =>
-                heapManager.value(h, tRcvr, field, pve, locacc, c3, tv)(t => {
-                  val ch = heapManager.transformInExhale(tRcvr, field, null, tPerm, /* takes care of rewriting the cond */ tCond)
-                  heapManager.exhale(h, ch, pve, locacc, c3, tv)(h2 =>
+              evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) => {
+                val h2 = if(heapManager.isQuantifiedFor(h,f.name)) σ.h else heapManager.quantifyChunksForField(h, f.name)
+                heapManager.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
+                  val ch = heapManager.transformInExhale(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
+                  heapManager.exhale(h2, ch, pve, locacc, c3, tv)(h3 =>
                     {
                       decider.prover.logComment("exhaled: " + σ.h)
-                      Q(h2, t, Nil, c3)
+                      Q(h3, t, Nil, c3)
                     }
                   )
                 })
-              )
+              })
             )
           }
         })
