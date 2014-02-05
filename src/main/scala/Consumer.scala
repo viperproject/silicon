@@ -12,7 +12,7 @@ import interfaces.decider.Decider
 import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, QuantifiedChunk}
 import semper.silicon.state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
-import semper.silicon.heap.HeapManager
+import semper.silicon.heap.QuantifiedChunkHelper
 import semper.sil.ast.{LocationAccess, LocalVar}
 import semper.sil.verifier.reasons.NonPositivePermission
 import semper.silicon.state.DirectFieldChunk
@@ -79,7 +79,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
-  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
@@ -174,16 +174,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
           // we cheat a bit and syntactically rewrite the range
           // this should not be needed if the axiomatization supports it
-          val rewrittenCond = heapManager.rewriteGuard(tCond)
+          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
           if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
           else {
             decider.assume(rewrittenCond)
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
               evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) => {
-                val h2 = if(heapManager.isQuantifiedFor(h,f.name)) σ.h else heapManager.quantifyChunksForField(h, f.name)
-                heapManager.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
-                  val ch = heapManager.transformInExhale(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
-                  heapManager.exhale(h2, ch, pve, locacc, c3, tv)(h3 =>
+                val h2 = if(quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
+                quantifiedChunkHelper.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
+                  val ch = quantifiedChunkHelper.transformInExhale(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
+                  quantifiedChunkHelper.exhale(h2, ch, pve, locacc, c3, tv)(h3 =>
                     {
                       decider.prover.logComment("exhaled: " + σ.h)
                       Q(h3, t, Nil, c3)
@@ -200,7 +200,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          val rewrittenCond = heapManager.rewriteGuard(tCond)
+          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
           if(decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
           else {
             decider.pushScope()
@@ -221,12 +221,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       }
 
       /* Field access predicates for quantified fields */
-      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (heapManager.isQuantifiedFor(h, field.name)) =>
+      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-            heapManager.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
-              val ch = heapManager.transformWrite(tRcvr, field.name, null, tPerm)
-              heapManager.exhale(h, ch, pve, locacc, c2, tv)(h2 =>
+            quantifiedChunkHelper.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
+              val ch = quantifiedChunkHelper.transformWrite(tRcvr, field.name, null, tPerm)
+              quantifiedChunkHelper.exhale(h, ch, pve, locacc, c2, tv)(h2 =>
                 Q(h2, t, Nil, c2)
               )
             })))

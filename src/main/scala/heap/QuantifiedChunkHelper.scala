@@ -66,7 +66,7 @@ import semper.silicon.state.terms.Quantification
 import semper.sil.verifier.reasons.ReceiverNull
 
 
-trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
+trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
 
   def value(h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
@@ -84,7 +84,7 @@ trait HeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: 
   def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
 }
 
-class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends HeapManager[ST, H, PC, S, C, TV] {
+class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends QuantifiedChunkHelper[ST, H, PC, S, C, TV] {
 
   import symbolConverter.toSort
 
@@ -128,36 +128,15 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
     }
   }
 
-  def first[A, B](as: Traversable[A], f: A => Option[B]): Option[B] =
-    if (as.isEmpty) None
-    else f(as.head) match {
-      case s @ Some(_) => s
-      case _ => first(as.tail, f)
-    }
-
   def value(h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
     // check if the receiver is not null
-    decider.assume(NullTrigger(rcvr))
-    if (!decider.assert(rcvr !== Null())) {
+    if (!decider.assert(Or(NullTrigger(rcvr),rcvr !== Null()))) {
       Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
     }
     else if (!(⊢(Less(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, f.name)))))) {
       decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => (ch.name == f.name)))
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     } else {
-
-      // TODO: incomplete!!!! (because of triggering)
-      decider.prover.logComment("heap " + h.values.filter(ch => (ch.name == f.name)))
-      val check: Chunk => Option[Term] = {
-        case qf: QuantifiedChunk if (qf.name == f.name && ⊢(Less(NoPerm(), qf.perm.replace(*(), rcvr)))) => Some(qf.value)
-        case _ => None
-      }
-      val res = first(h.values.toTraversable, check)
-      decider.prover.logComment("done")
-
-      first(h.values.toTraversable, check) match {
-        case Some(value) => Q(value.replace(*(), rcvr))
-        case None =>
           decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
           val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
           val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
@@ -165,8 +144,12 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
 
           h.values.foreach {
             case pf: QuantifiedChunk if (pf.name == f.name) => {
+              val valtrigger = pf.value match {
+                case DomainFApp(f, s) => Trigger(List(pf.value.replace(*(), x)))
+                case _ => Trigger(List())
+              }
               decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
-                === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))))))
+                === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))), valtrigger)))
             }
             case pf if (pf.name == f.name) =>
               sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
@@ -174,7 +157,6 @@ class DefaultHeapManager[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC]
           }
           //println("hereooooo")
           Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))
-      }
     }
 
   }

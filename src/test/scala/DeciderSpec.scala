@@ -4,7 +4,7 @@ import scala.Some
 import scala.Some
 import scala.Some
 import semper.silicon.decider.DefaultDecider
-import semper.silicon.heap.{HeapManager, DefaultHeapManager}
+import semper.silicon.heap.{QuantifiedChunkHelper, DefaultQuantifiedChunkHelper}
 import semper.silicon.interfaces.reporting.{TraceView, Context}
 import semper.silicon.interfaces.state._
 import semper.silicon.reporting._
@@ -91,7 +91,7 @@ class DeciderSpec extends FlatSpec {
 
   def createHeapManager = {
     val decider = createDecider
-    (new DefaultHeapManager[ST, H, PC, S, C, TV](decider, new DefaultSymbolConvert(), new DefaultStateFactory(decider.π _)), decider)
+    (new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, new DefaultSymbolConvert(), new DefaultStateFactory(decider.π _)), decider)
   }
 
   def emitSetPreamble(decider: Decider[P, ST, H, PC, S, C]) {
@@ -123,58 +123,58 @@ class DeciderSpec extends FlatSpec {
 
 
   it should "say that we have enough permissions for exhaling 'acc(x.f,1)' in case h: x.f -> _ # 1" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     // tr.f -> tv # al
     val x = decider.fresh(sorts.Ref)
 
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm()), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm()), "f")
 
     // h, id
-    assert(decider.assert(heapManager.permission(heap, FieldChunkIdentifier(x, "f")) === FullPerm()))
+    assert(decider.assert(quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")) === FullPerm()))
   }
 
   it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: x.f -> _ # 0" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
 
     val x = decider.fresh(sorts.Ref)
     // tr.f -> tv # al
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(x, "f", null, NoPerm()), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(x, "f", null, NoPerm()), "f")
 
     // h, id
-    assert(!decider.assert(heapManager.permission(heap, FieldChunkIdentifier(x, "f")) === FullPerm()))
+    assert(!decider.assert(quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")) === FullPerm()))
   }
 
 
   it should "say that we have enough permissions for exhaling 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5 π: {(x==y || x==z)}" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
     // tr.f -> tv # al
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
 
     // h, id
-    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
 
   it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5 π: {}" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
     // tr.f -> tv # al
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     // h, id
-    assert(!decider.assert(AtMost(FullPerm(), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(!decider.assert(AtMost(FullPerm(), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
 
   it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z) && y ≠ z" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
@@ -182,38 +182,38 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Not(Eq(y, z)))
 
     // tr.f -> tv # al
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     // h, id
-    assert(!decider.assert(AtMost(FullPerm(), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(!decider.assert(AtMost(FullPerm(), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
 
   it should "say that we have enough permissions for exhaling 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z)" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
-    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
 
   it should "let us exhale 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z)" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
-    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
 
     val exhale = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhale) match {
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhale) match {
       case None => fail("exhale should not fail!")
       case Some(_) =>
     }
@@ -222,19 +222,19 @@ class DeciderSpec extends FlatSpec {
 
 
   it should "let us exhale 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y && x==z)" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
     decider.assume(And(Eq(x, y), Eq(x, z)))
 
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
-    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FullPerm(), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should not fail!")
       case Some(_) =>
@@ -242,26 +242,26 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "let us exhale 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5. π: (x==y || x==z), but not let us exhale 'acc(z.f,0.5)' on the resulting heap" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x, y, z = decider.fresh(sorts.Ref)
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
-    val heap = heapManager.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
-    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(decider.assert(AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should not fail!")
       case Some(exhaledHeap) => {
 
         val exhaleHeap2 = QuantifiedChunk("f", null, TermPerm(Ite(z === *(), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm())))
 
-        val h2 = heapManager.exhaleTest(exhaledHeap, exhaleHeap2)
+        val h2 = quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap2)
         h2 match {
           case None =>
           case Some(_) => fail("exhale should fail!")
@@ -271,7 +271,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "let us exhale a single object from a set" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val x = decider.fresh(sorts.Ref)
@@ -283,7 +283,7 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FullPerm(), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should not fail!")
       case _ =>
@@ -291,7 +291,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "not let us exhale a single object x when there is a set chunk S, but we do not have the info that x is in S" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val x = decider.fresh(sorts.Ref)
@@ -304,7 +304,7 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FullPerm(), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None =>
       case _ => fail("exhale should fail!")
@@ -312,7 +312,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "let us exhale a set from set chunks" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val S, T, U = decider.fresh(sorts.Set(sorts.Ref))
@@ -326,10 +326,10 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap = QuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm()))))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => heapManager.exhaleTest(exhaledHeap, exhaleHeap) match {
+      case Some(exhaledHeap) => quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap) match {
         case None =>
         case _ => fail("exhale should fail!")
       }
@@ -337,7 +337,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "let us exhale a set from field chunks" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val x, y = decider.fresh(sorts.Ref)
@@ -350,7 +350,7 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should succeed!")
       case _ =>
@@ -358,7 +358,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "not let us exhale a set from field chunks when there are not enough permissions" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val x, y = decider.fresh(sorts.Ref)
@@ -371,7 +371,7 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None =>
       case _ => fail("exhale should fail!")
@@ -379,7 +379,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "not let us exhale two sets from a set chunk when we do not know that these sets are disjoint" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val S, T, U = decider.fresh(sorts.Set(sorts.Ref))
@@ -396,10 +396,10 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap2 = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm())))
 
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => heapManager.exhaleTest(exhaledHeap, exhaleHeap2) match {
+      case Some(exhaledHeap) => quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap2) match {
         case None =>
         case _ => fail("exhale should fail!")
       }
@@ -407,7 +407,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "let us exhale two sets from a set chunk when we do know that these sets are disjoint" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val S, T, U = decider.fresh(sorts.Set(sorts.Ref))
@@ -425,10 +425,10 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap2 = QuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm()))))
 
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => heapManager.exhaleTest(exhaledHeap, exhaleHeap2) match {
+      case Some(exhaledHeap) => quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap2) match {
         case None => fail("exhale should succeed!")
         case _ =>
       }
@@ -436,7 +436,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "let us do a basic exhale for Multisets!" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
 
@@ -448,7 +448,7 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap = QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), S))))
 
-    val h = heapManager.exhaleTest(heap, exhaleHeap)
+    val h = quantifiedChunkHelper.exhaleTest(heap, exhaleHeap)
     h match {
       case None => fail("exhale should succeed!")
       case Some(exhaledHeap) =>
@@ -458,7 +458,7 @@ class DeciderSpec extends FlatSpec {
 
 
   it should "be possible to write an index in an array" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
     emitSequencePreamble(decider)
@@ -478,9 +478,9 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap1 = QuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))
 
-    heapManager.exhaleTest(heap, exhaleHeap1) match {
+    quantifiedChunkHelper.exhaleTest(heap, exhaleHeap1) match {
       case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => heapManager.exhaleTest(exhaledHeap + QuantifiedChunk("f", null, (TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))), ch) match {
+      case Some(exhaledHeap) => quantifiedChunkHelper.exhaleTest(exhaledHeap + QuantifiedChunk("f", null, (TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))), ch) match {
         case None => fail("exhale should succeed!")
         case Some(done) => // yipyip
         //println(done)
@@ -489,7 +489,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   /*it should "wildcards" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
     emitSequencePreamble(decider)
@@ -510,7 +510,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "say that we have not enough permissions to access x.f if we do not know that it is in a set" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val x = decider.fresh(sorts.Ref)
@@ -518,11 +518,11 @@ class DeciderSpec extends FlatSpec {
 
     val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
-    assert(!decider.assert(AtMost(FullPerm(), heapManager.permission(heap, FieldChunkIdentifier(x, "f")))))
+    assert(!decider.assert(AtMost(FullPerm(), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
 
   it should "let do us a complex exhale for Multisets!" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
 
@@ -538,9 +538,9 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap1 = QuantifiedChunk("f", null, TermPerm(Ite(*() === t, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), NoPerm())))
     val exhaleHeap2 = QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), S))))
 
-    heapManager.exhaleTest(heap, exhaleHeap1) match {
+    quantifiedChunkHelper.exhaleTest(heap, exhaleHeap1) match {
       case None => fail("exhale should succeed!")
-      case Some(exhaledHeap) => heapManager.exhaleTest(exhaledHeap, exhaleHeap2) match {
+      case Some(exhaledHeap) => quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap2) match {
         case None => fail("exhale should succeed!")
         case _ =>
       }
@@ -551,7 +551,7 @@ class DeciderSpec extends FlatSpec {
 
 
   it should "indirection" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
 
     val S = decider.fresh("S", sorts.Set(sorts.Ref))
@@ -563,7 +563,7 @@ class DeciderSpec extends FlatSpec {
 
     val heap = new SetBackedHeap() + QuantifiedChunk("a", Svalue, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm()))) + indirectionChunk
 
-    heapManager.exhaleTest(heap, indirectionChunk) match {
+    quantifiedChunkHelper.exhaleTest(heap, indirectionChunk) match {
       case None => fail("exhale should succeed!")
       case Some(exhaledHeap) =>
     }
@@ -572,7 +572,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "be possible to give permission to certain parts of the array, and then split it" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
     emitSequencePreamble(decider)
@@ -598,9 +598,9 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap2 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(S2)))))
 
 
-    heapManager.exhaleTest(heap, exhaleHeap2) match {
+    quantifiedChunkHelper.exhaleTest(heap, exhaleHeap2) match {
       case None => fail("exhale 1 should succeed!")
-      case Some(exhaledHeap) => heapManager.exhaleTest(exhaledHeap, exhaleHeap1) match {
+      case Some(exhaledHeap) => quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap1) match {
         case None => fail("exhale 2 should succeed")
         case Some(exhaledHeap2) =>
       }
@@ -608,7 +608,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "be possible to exhale two elements with known indices from a sequence" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
     emitSequencePreamble(decider)
@@ -627,10 +627,10 @@ class DeciderSpec extends FlatSpec {
     val exhaleHeap1 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, (Plus(k, IntLiteral(1)))), k))))))
     val exhaleHeap2 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, (Plus(l, IntLiteral(1)))), l))))))
 
-    heapManager.exhaleTest(heap, exhaleHeap1) match {
+    quantifiedChunkHelper.exhaleTest(heap, exhaleHeap1) match {
       case None => fail("exhale 1 should succeed!")
       case Some(exhaledHeap) =>
-        heapManager.exhaleTest(exhaledHeap, exhaleHeap2) match {
+        quantifiedChunkHelper.exhaleTest(exhaledHeap, exhaleHeap2) match {
           case None => fail("exhale 2 should succeed!")
           case Some(_) =>
         }
@@ -639,7 +639,7 @@ class DeciderSpec extends FlatSpec {
   }
 
   it should "be possible to write an element where we have two times 1/2 permission (same index)" in {
-    val (heapManager, decider) = createHeapManager
+    val (quantifiedChunkHelper, decider) = createHeapManager
     emitSetPreamble(decider)
     emitMultisetPreamble(decider)
     emitSequencePreamble(decider)
@@ -655,7 +655,7 @@ class DeciderSpec extends FlatSpec {
 
     val exhaleHeap1 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, (Plus(k, IntLiteral(1)))), k))))))
 
-    heapManager.exhaleTest(heap, exhaleHeap1) match {
+    quantifiedChunkHelper.exhaleTest(heap, exhaleHeap1) match {
       case None => fail("exhale should succeed")
       case Some(exhaledHeap) =>
     }

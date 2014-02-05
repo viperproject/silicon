@@ -17,7 +17,7 @@ import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.reporting.DefaultContext
-import semper.silicon.heap.HeapManager
+import semper.silicon.heap.QuantifiedChunkHelper
 import interfaces.state.StoreFactory
 import state.terms._
 import state.terms.implicits._
@@ -50,7 +50,7 @@ TV <: TraceView[TV, ST, H, S]]
 
   import heapMerger.merge
 
-  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
   protected val symbolConverter: SymbolConvert
 
@@ -161,7 +161,7 @@ TV <: TraceView[TV, ST, H, S]]
             (c2: C, tv1: TV) => produce2(σ, sf, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if heapManager.isQuantifiedFor(σ.h, field.name) =>
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
@@ -216,9 +216,9 @@ TV <: TraceView[TV, ST, H, S]]
                 // TODO: why does sf not work? This might introduce an incompleteness somewhere - ask Malte
                 val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
                 val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val ch = heapManager.transformInExhale(tRcvr, f, app, pGain * p, tCond)
+                val ch = quantifiedChunkHelper.transformInExhale(tRcvr, f, app, pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
-                val h = if(heapManager.isQuantifiedFor(σ.h,f.name)) σ.h else heapManager.quantifyChunksForField(σ.h, f.name)
+                val h = if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
                 decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
                 Q(h+ch, c3)
               })
@@ -232,11 +232,9 @@ TV <: TraceView[TV, ST, H, S]]
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          val rewrittenCond = heapManager.rewriteGuard(tCond)
-          decider.pushScope()
+          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
           assume(rewrittenCond)
           eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-            decider.popScope()
             val v = vars map { v => Var(v.name, symbolConverter.toSort(v.typ))}
             assume(Quantification(Forall, v, Implies(rewrittenCond.replace(tVars(0), v(0)), tBody.replace(tVars(0), v(0)))))
             Q(σ.h, c2)

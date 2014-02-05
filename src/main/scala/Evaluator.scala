@@ -14,7 +14,7 @@ import interfaces.reporting.{TraceView}
 import semper.silicon.state._
 import state.terms._
 import state.terms.implicits._
-import semper.silicon.heap.HeapManager
+import semper.silicon.heap.QuantifiedChunkHelper
 import semper.silicon.interfaces.Failure
 import scala.Some
 import semper.silicon.state.terms.False
@@ -79,7 +79,7 @@ trait DefaultEvaluator[
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
 
-  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
 
 	private var fappCache: Map[Term, Set[Term]] = Map()
@@ -204,9 +204,9 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess if (heapManager.isQuantifiedFor(σ.h, fa.field.name)) => {
+      case fa: ast.FieldAccess if (quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name)) => {
         eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
-          heapManager.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
+          quantifiedChunkHelper.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
             Q(t, c1)
           })
         )
@@ -847,7 +847,7 @@ trait DefaultEvaluator[
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull)
             //if(decider.hasEnoughPermissionsGlobally(σ.h, FieldChunkIdentifier(tRcvr, field.name)))
-            if (decider.assert(tRcvr !== Null()))
+            if (decider.assert(Or(NullTrigger(tRcvr), tRcvr !== Null())))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)

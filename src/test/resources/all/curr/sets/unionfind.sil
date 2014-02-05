@@ -1,3 +1,4 @@
+//:: IgnoreFile(/silicon/issue/40/)
 // class Node
 var struct: Ref
 var parent: Ref

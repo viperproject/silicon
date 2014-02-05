@@ -42,7 +42,7 @@ import semper.silicon.state.FieldChunkIdentifier
 import semper.sil.verifier.errors.AssertFailed
 import semper.sil.verifier.reasons.AssertionFalse
 import semper.sil.verifier.reasons.ReceiverNull
-import semper.silicon.heap.HeapManager
+import semper.silicon.heap.QuantifiedChunkHelper
 import semper.sil.verifier.reasons.NonPositivePermission
 import semper.sil.verifier.errors.Internal
 import semper.silicon.state.DirectFieldChunk
@@ -99,7 +99,7 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val heapMerger: HeapMerger[H]
   import heapMerger.merge
 
-  protected val heapManager: HeapManager[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
 
   protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
@@ -287,18 +287,18 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if heapManager.isQuantifiedFor(σ.h, field.name) =>
+      case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
             decider.assume(NullTrigger(tRcvr))
             if (!decider.assert(tRcvr !== Null()))
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
-            else if (!decider.assert(AtLeast(heapManager.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
+            else if (!decider.assert(AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
               Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
             else {
-              val ch = heapManager.transformWrite(tRcvr, field.name, tRhs, FullPerm())
-              heapManager.exhale(σ.h, ch, pve, fl, c2, tv)(h =>
+              val ch = quantifiedChunkHelper.transformWrite(tRcvr, field.name, tRhs, FullPerm())
+              quantifiedChunkHelper.exhale(σ.h, ch, pve, fl, c2, tv)(h =>
                 Q((σ \ h) \+ ch, c2)
               )
             }
