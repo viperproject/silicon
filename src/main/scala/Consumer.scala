@@ -195,30 +195,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }
         })
       }
-     case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && /* only if there are conditional chunks on the heap */ σ.h.values.exists(_.isInstanceOf[QuantifiedChunk])) => {
-        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-
-        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
-          if(decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
-          else {
-            decider.pushScope()
-            decider.assume(rewrittenCond)
-            eval(σ \+ γVars, body, pve, c, tv)((tBody, c2) =>
-              if(decider.assert(tBody)) {
-                // to pop the condition out of scope, just in case (not to have unwanted triggers).
-                decider.popScope()
-                Q(h, Unit, Nil, c2)
-              }
-              else {
-                decider.popScope()
-                Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c2, tv)
-              }
-            )
-          }
-        })
-      }
 
       /* Field access predicates for quantified fields */
       case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) =>

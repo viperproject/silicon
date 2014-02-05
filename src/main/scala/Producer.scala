@@ -226,21 +226,7 @@ TV <: TraceView[TV, ST, H, S]]
           )
       }
 
-      // TODO: maybe we can remove this and use the mechanism of eval instead
-      // but it may be more complicated to describe the general forall mechanism implemented in eval
-      case ast.Forall(vars, triggers, ast.Implies(cond, body)) if(body.isPure && σ.h.values.exists(_.isInstanceOf[QuantifiedChunk])) => {
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
-        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
-          assume(rewrittenCond)
-          eval(σ \+ γVars, body, pve, c1, tv)((tBody, c2) => {
-            val v = vars map { v => Var(v.name, symbolConverter.toSort(v.typ))}
-            assume(Quantification(Forall, v, Implies(rewrittenCond.replace(tVars(0), v(0)), tBody.replace(tVars(0), v(0)))))
-            Q(σ.h, c2)
-          })
-        })
-      }
+
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

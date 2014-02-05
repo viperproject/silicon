@@ -121,7 +121,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
 
   def rewriteGuard(guard:Term):Term = {
     guard match {
-      case SeqIn(SeqRanged(a,b),c) => And(AtLeast(c,a), Less(c,b))
+      case SeqIn(SeqRanged(a,b),c) => /*SeqIn(SeqRanged(a,b),c)*/And(AtLeast(c,a), Less(c,b))
       // sets
       case t if(stable(t))  => t
       case _ => sys.error("Condition " + guard + " is not stable.")
