@@ -56,10 +56,6 @@ TV <: TraceView[TV, ST, H, S]]
 
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-
-  import stateUtils.freshARP
-
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -128,9 +124,8 @@ TV <: TraceView[TV, ST, H, S]]
                              (Q: (H, C) => VerificationResult)
   : VerificationResult = {
 
-    //println("PRODUCE " + φ)
-    logger.debug("\nPRODUCE " + φ.toString)
-    logger.debug(stateFormatter.format(σ))
+    logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
+		logger.debug(stateFormatter.format(σ))
 
     val produced = φ match {
       case ast.InhaleExhaleExp(a0, _) =>

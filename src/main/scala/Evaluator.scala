@@ -10,8 +10,8 @@ import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, Loca
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
-import interfaces.reporting.{TraceView}
-import semper.silicon.state._
+import interfaces.reporting.TraceView
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import semper.silicon.heap.QuantifiedChunkHelper
@@ -152,6 +152,7 @@ trait DefaultEvaluator[
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
 			case _ =>
+        logger.debug(s"\nEVAL ${e.pos}: $e")
 				logger.debug(stateFormatter.format(σ))
         decider.prover.logComment(s"[eval] $e")
 		}
@@ -709,7 +710,7 @@ trait DefaultEvaluator[
       case sil.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c, tv)(Q)
       case sil.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c, tv)(Q)
       case sil.ast.SeqIndex(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c, tv)(Q)
-      case sil.ast.SeqLength(e) => eval(σ, e, pve, c, tv)((t0, c1) => Q(SeqLength(t0), c1))
+      case sil.ast.SeqLength(e0) => eval(σ, e0, pve, c, tv)((t0, c1) => Q(SeqLength(t0), c1))
       case sil.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
       case sil.ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c, tv)(Q)
 

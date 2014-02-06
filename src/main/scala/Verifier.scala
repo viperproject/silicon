@@ -2,8 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.silicon.decider.{PreambleFileEmitter, Z3ProverStdIO}
-import scala.io.Source
+import semper.silicon.decider.PreambleFileEmitter
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
@@ -33,7 +32,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 	/*protected*/ val config: Config
 
   /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
-	import decider.{fresh, assume, inScope}
+	import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
 	import stateFactory._
@@ -62,7 +61,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
 	def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
-    println("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
@@ -100,7 +98,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
-    println("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
     logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
 

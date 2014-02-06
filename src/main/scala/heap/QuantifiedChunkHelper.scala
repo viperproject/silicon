@@ -203,7 +203,6 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
   // One heuristic could be to take chunks first that
   // mention the same sets/sequences (syntactically modulo equality)
   def exhalePermissions2(h:H, ch:QuantifiedChunk) = {
-    println("hua")
     val * = fresh(sorts.Ref)
     val opt = h.values //optimizedOrder(h.values, ch)
     decider.prover.logComment("" + opt)

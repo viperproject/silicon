@@ -2,61 +2,28 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, LoopInvariantNotPreserved, LoopInvariantNotEstablished,
-    WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
+import sil.verifier.errors.{Internal, LoopInvariantNotPreserved,
+    LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
     HeapMerger}
-import interfaces.reporting.{/*Message,*/ TraceView}
+import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
 import semper.silicon.state._
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.sil.verifier.errors.Internal
-import semper.silicon.state.DirectFieldChunk
-import semper.sil.verifier.errors.FoldFailed
-import semper.silicon.state.PredicateChunkIdentifier
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.DirectPredicateChunk
-import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.interfaces.Success
-import semper.silicon.state.NestedFieldChunk
-import semper.silicon.state.terms.True
-import semper.sil.verifier.errors.LoopInvariantNotPreserved
-import semper.silicon.state.terms.Null
-import semper.sil.verifier.errors.WhileFailed
-import semper.sil.verifier.errors.ExhaleFailed
-import semper.sil.verifier.errors.LoopInvariantNotEstablished
-import semper.sil.verifier.reasons.InsufficientPermission
-import semper.sil.verifier.errors.UnfoldFailed
-import semper.sil.verifier.errors.PreconditionInCallFalse
-import semper.sil.verifier.errors.AssignmentFailed
-import semper.silicon.state.FieldChunkIdentifier
-import semper.sil.verifier.errors.AssertFailed
-import semper.sil.verifier.reasons.AssertionFalse
-import semper.sil.verifier.reasons.ReceiverNull
 import semper.silicon.heap.QuantifiedChunkHelper
 import semper.sil.verifier.reasons.NonPositivePermission
 import semper.sil.verifier.errors.Internal
-import semper.silicon.state.DirectFieldChunk
 import semper.sil.verifier.errors.FoldFailed
-import semper.silicon.state.PredicateChunkIdentifier
 import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.state.QuantifiedChunk
 import semper.silicon.reporting.DefaultContext
 import semper.silicon.interfaces.Success
-import semper.silicon.state.NestedFieldChunk
-import semper.silicon.state.terms.True
 import semper.sil.verifier.errors.LoopInvariantNotPreserved
 import semper.silicon.state.terms.Null
 import semper.sil.verifier.errors.WhileFailed
@@ -67,11 +34,34 @@ import semper.sil.verifier.reasons.InsufficientPermission
 import semper.sil.verifier.errors.UnfoldFailed
 import semper.sil.verifier.errors.PreconditionInCallFalse
 import semper.sil.verifier.errors.AssignmentFailed
+import semper.sil.verifier.errors.AssertFailed
+import semper.sil.verifier.reasons.AssertionFalse
+import semper.sil.verifier.reasons.ReceiverNull
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.sil.verifier.errors.Internal
+import semper.silicon.state.DirectFieldChunk
+import semper.sil.verifier.errors.FoldFailed
+import semper.silicon.state.terms.FullPerm
+import semper.silicon.interfaces.Failure
+import scala.Some
+import semper.silicon.state.terms.False
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.interfaces.Success
+import semper.sil.verifier.errors.InhaleFailed
+import semper.silicon.state.terms.True
+import semper.sil.verifier.errors.LoopInvariantNotPreserved
+import semper.silicon.state.terms.Null
+import semper.sil.verifier.errors.WhileFailed
+import semper.sil.verifier.errors.ExhaleFailed
+import semper.sil.verifier.errors.LoopInvariantNotEstablished
+import semper.sil.verifier.reasons.InsufficientPermission
+import semper.sil.verifier.errors.UnfoldFailed
+import semper.sil.verifier.errors.PreconditionInCallFalse
+import semper.sil.verifier.errors.AssignmentFailed
 import semper.silicon.state.FieldChunkIdentifier
 import semper.sil.verifier.errors.AssertFailed
 import semper.sil.verifier.reasons.AssertionFalse
 import semper.sil.verifier.reasons.ReceiverNull
-import semper.silicon.state.NestedPredicateChunk
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -273,7 +263,7 @@ trait DefaultExecutor[ST <: Store[ST],
     stmt match {
       case _: sil.ast.Seqn =>
       case _ =>
-        logger.debug("\nEXECUTE " + stmt.toString)
+        logger.debug(s"\nEXECUTE ${stmt.pos}: ${stmt}")
         logger.debug(stateFormatter.format(σ))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString)
@@ -396,11 +386,10 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.isPositive(tPerm)) {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
-                  //println(predicate.body)
-                  //println(snap)
-                  val ncs = dcs.map{_ match {
+                  val ncs = dcs.map {
                     case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)}}
+                    case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
+                  }
                   /* Producing Access is unfortunately not an option here
                   * since the following would fail due to productions
                   * starting in an empty heap:

@@ -14,7 +14,7 @@ import semper.sil.verifier.{
     DefaultDependency => SilDefaultDependency}
 import sil.frontend.SilFrontendConfig
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
-import interfaces.reporting.{TraceView, TraceViewFactory}
+import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
 DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
@@ -41,7 +41,7 @@ trait SiliconConstants {
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
   val copyright = "(c) Copyright ETH Zurich 2012 - 2013"
   val z3ExeEnvironmentVariable = "Z3_EXE"
-  val expectedZ3Version = "4.3.2"
+  val expectedZ3Version = "4.3.0"
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
 
@@ -131,6 +131,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
                               traceviewFactory: TraceViewFactory[TV, ST, H, S])
                              : V = {
 
+    val bookkeeper = new Bookkeeper()
+    bookkeeper.branches = 1
+    bookkeeper.startTime = System.currentTimeMillis()
+
 	  val decider = new DefaultDecider[ST, H, PC, S, C]()
     shutDownHooks = shutDownHooks + (() => decider.stop())
 
@@ -138,7 +142,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
-    val bookkeeper = new Bookkeeper()
     val stateFactory = new DefaultStateFactory(decider.π _)
     val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
@@ -148,9 +151,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val heapMerger =
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
-
-    bookkeeper.branches = 1
-    bookkeeper.startTime = System.currentTimeMillis()
 
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
@@ -294,8 +294,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   private val statisticsSinkConverter = new ValueConverter[(String, String)] {
-    val stdioRegex = """(stdio)"""r
-    val fileRegex = """(file)=(.*)"""r
+    val stdioRegex = """(stdio)""".r
+    val fileRegex = """(file)=(.*)""".r
 
     def parse(s: List[(String, List[String])]) = s match {
       case (_, stdioRegex(stdioId) :: Nil) :: Nil => Right(Some(stdioId, ""))
@@ -368,7 +368,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val logLevel = opt[String]("logLevel",
-    descr = (  "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)"),
+    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
     default = Some("OFF"),
     noshort = true
   )

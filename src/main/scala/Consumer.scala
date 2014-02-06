@@ -3,23 +3,20 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
+import sil.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import sil.ast.utility.Permissions.isConditional
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
+import semper.silicon.interfaces.state._
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state.{FieldChunkIdentifier, SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, QuantifiedChunk}
-import semper.silicon.state.terms._
+import semper.silicon.state._
+import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.QuantifiedChunkHelper
 import semper.sil.ast.{LocationAccess, LocalVar}
 import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
-import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
-import semper.silicon.state.QuantifiedChunk
 import semper.silicon.state.terms.False
 import semper.silicon.state.terms.TermPerm
 import semper.silicon.reporting.DefaultContext
@@ -30,10 +27,7 @@ import semper.silicon.state.terms.WildcardPerm
 import semper.sil.verifier.reasons.AssertionFalse
 import semper.silicon.ast._
 import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.DirectFieldChunk
 import semper.silicon.state.terms.*
-import semper.silicon.state.QuantifiedChunk
-import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.PermPlus
 import semper.silicon.state.terms.False
@@ -52,6 +46,32 @@ import semper.silicon.state.terms.SeqRanged
 import semper.silicon.state.terms.WildcardPerm
 import semper.silicon.state.terms.Ite
 import semper.sil.verifier.reasons.AssertionFalse
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.*
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.state.terms.Combine
+import semper.silicon.PermissionsConsumptionResult
+import semper.silicon.state.terms.Var
+import semper.sil.ast.LocalVar
+import semper.silicon.state.terms.WildcardPerm
+import semper.sil.verifier.reasons.AssertionFalse
+import semper.sil.verifier.reasons.NonPositivePermission
+import semper.silicon.state.DirectFieldChunk
+import semper.silicon.state.terms.*
+import semper.silicon.state.DirectPredicateChunk
+import semper.silicon.interfaces.Failure
+import semper.silicon.state.terms.TermPerm
+import semper.silicon.reporting.DefaultContext
+import semper.silicon.state.terms.Combine
+import semper.silicon.PermissionsConsumptionResult
+import semper.silicon.state.terms.Var
+import semper.sil.ast.LocalVar
+import semper.silicon.state.terms.WildcardPerm
+import semper.sil.verifier.reasons.AssertionFalse
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -69,9 +89,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -141,9 +158,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
 
-		decider.prover.logComment("\nCONSUME " + φ.toString)
-    decider.prover.logComment(stateFormatter.format(σ))
-    decider.prover.logComment("h = " + stateFormatter.format(h))
+    logger.debug(s"\CONSUME ${φ.pos}: ${φ}")
+    logger.debug(stateFormatter.format(σ))
+		logger.debug("h = " + stateFormatter.format(h))
 
 		val consumed = φ match {
       case ast.InhaleExhaleExp(_, a1) =>

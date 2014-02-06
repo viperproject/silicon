@@ -4,5 +4,8 @@ package common
 
 package object config {
   def wildcardToRegex(str: String) =
-    str.replace(".", "\\.").replace("?", ".?").replace("*", ".*?")
+    str.replace(".", "\\.")
+       .replace("?", ".?")
+       .replace("*", ".*?")
+       .replace("$", "\\$")
 }

@@ -2,13 +2,12 @@ package semper
 package silicon
 package decider
 
-import scala.io.Source
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.DependencyNotFoundError
-import sil.verifier.reasons.{NonPositivePermission}
 import interfaces.decider.{Decider, Prover, Unsat}
-import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory, Chunk, PermissionChunk}
+import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory,
+    Chunk}
 import interfaces.reporting.Context
 import semper.silicon.state._
 import state.terms._
@@ -78,8 +77,6 @@ class DefaultDecider[ST <: Store[ST],
     this.state = State.Initialised
   }
 
-  /* TODO: Create an areDepsFulfilled method that checks if Z3 exists and if it is the expected version. */
-
   def start(): Option[DependencyNotFoundError] = {
     state match {
       case State.Initialised => /* OK */
@@ -110,7 +107,7 @@ class DefaultDecider[ST <: Store[ST],
 
 //    pushPreamble()
 
-    return None
+    None
   }
 
   private lazy val z3Exe: String = {
@@ -169,7 +166,7 @@ class DefaultDecider[ST <: Store[ST],
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
     case eq: Eq => eq.p0 == eq.p1
-    case _ if (π contains t) => true
+    case _ if π contains t => true
     case _ => false
   }
 
@@ -247,15 +244,11 @@ class DefaultDecider[ST <: Store[ST],
     case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm))
   }
 
-	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean = (
-		getChunk[DirectChunk](h, id)
-      .map(ch => assertReadAccess(ch.perm))
-      .getOrElse(false))
+	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean =
+    getChunk[DirectChunk](h, id).exists(ch => assertReadAccess(ch.perm))
 
-	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean = (
-    getChunk[DirectChunk](h, id)
-      .map(ch => assertWriteAccess(ch.perm))
-      .getOrElse(false))
+	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean =
+    getChunk[DirectChunk](h, id).exists(ch => assertWriteAccess(ch.perm))
 
 	def isPositive(perm: P, strict: Boolean = true) = perm match {
     case  _: FullPerm
