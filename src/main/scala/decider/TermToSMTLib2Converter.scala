@@ -4,37 +4,6 @@ package decider
 
 import interfaces.decider.TermConverter
 import semper.silicon.state.terms._
-import semper.silicon.state.terms.Mod
-import semper.silicon.state.terms.IsValidPermVar
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.terms.False
-import semper.silicon.state.terms.SingletonSet
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.state.terms.First
-import semper.silicon.state.terms.IsReadPermVar
-import semper.silicon.state.terms.Eq
-import semper.silicon.state.terms.Combine
-import semper.silicon.state.terms.FunctionDecl
-import semper.silicon.state.terms.SortWrapper
-import semper.silicon.state.terms.True
-import semper.silicon.state.terms.SeqSingleton
-import semper.silicon.state.terms.IntLiteral
-import semper.silicon.state.terms.Null
-import semper.silicon.state.terms.NullTrigger
-import semper.silicon.state.terms.FApp
-import semper.silicon.state.terms.EmptySet
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.Second
-import semper.silicon.state.terms.PermMin
-import semper.silicon.state.terms.Div
-import semper.silicon.state.terms.SeqNil
-import semper.silicon.state.terms.WildcardPerm
-import semper.silicon.state.terms.SeqRanged
-import semper.silicon.state.terms.SortWrapperDecl
-import semper.silicon.state.terms.Quantification
-import semper.silicon.state.terms.FractionPerm
-import semper.silicon.state.terms.SortDecl
 
 class TermToSMTLib2Converter extends TermConverter[String, String, String] {
   def convert(sort: Sort) = sort match {
@@ -87,7 +56,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Booleans */
 
-    case NullTrigger(t) => "($Ref.nullX " + convert(t) + ")"
+    case NullTrigger(t) => "($Ref.nullTrigger " + convert(t) + ")"
 
     case Not(f) => "(not " + convert(f) + ")"
 

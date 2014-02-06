@@ -10,7 +10,6 @@ trait ChunkIdentifier {
 }
 
 trait Chunk {
-  /* field name */
   def name: String
   def args: Seq[Term]
   def id: ChunkIdentifier

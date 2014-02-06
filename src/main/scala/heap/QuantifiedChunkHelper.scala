@@ -13,57 +13,12 @@ import semper.silicon.interfaces.decider.Decider
 import semper.sil.verifier.reasons.{ReceiverNull, InsufficientPermission}
 import semper.sil.ast.{Exp, LocationAccess, FieldAccess}
 import semper.sil.verifier.PartialVerificationError
-import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.state.terms.sorts.Snap
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.terms.Var
-import semper.silicon.state.terms.*
-import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.state.QuantifiedChunk
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.terms.Null
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
 HeapMerger}
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.terms.Var
-import semper.silicon.state.terms.*
-import semper.silicon.state.terms.FullPerm
-import semper.sil.verifier.reasons.InsufficientPermission
 import semper.silicon.interfaces.Failure
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.PermMin
-import scala.Some
-import semper.silicon.state.QuantifiedChunk
-import semper.silicon.state.terms.False
-import semper.silicon.state.terms.SingletonSet
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.terms.FractionPerm
-import semper.silicon.state.terms.Eq
-import semper.sil.verifier.reasons.ReceiverNull
-import semper.silicon.state.terms.SortWrapper
-import semper.silicon.state.terms.True
-import semper.silicon.state.terms.utils._
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.QuantifiedChunk
-import semper.silicon.state.terms.*
-import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.state.terms.IntLiteral
-import semper.silicon.state.terms.Null
-import semper.silicon.state.terms.Var
 import semper.sil.verifier.reasons.InsufficientPermission
-import semper.silicon.state.terms.FApp
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.SeqRanged
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.terms.Quantification
 import semper.sil.verifier.reasons.ReceiverNull
+import silicon.state.terms.utils.{BigAnd, BigPermSum}
 
 
 trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
@@ -75,9 +30,9 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
 
   def rewriteGuard(guard:Term):Term
 
-  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk
+  def transformElement(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk
 
-  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
+  def transform(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
 
   def permission(h: H, id: ChunkIdentifier): Term
 
@@ -94,7 +49,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
   def ⊢(t:Term) = assert(t)
 
 
-  def transformWrite(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk = rcvr match {
+  def transformElement(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk = rcvr match {
     case SeqAt(s,i) => QuantifiedChunk(field, value, PermTimes(perm, TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))))))
     case _ => QuantifiedChunk(field, value, TermPerm(Ite(*() === rcvr, perm, NoPerm())))
   }
@@ -110,7 +65,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
     }}, {x => x})
   }
 
-  // TODO also depends on the rest of the expression
+  // TODO Implement this properly
   def stable(guard:Term):Boolean = {
     guard match{
       case SetIn(_,_) => true
@@ -163,18 +118,18 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
 
   def ∀ = QuantifiedChunk
 
-  def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => transformWrite(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
+  def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if(ch.name == f) => transformElement(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
 
   // TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall
-  def transformInExhale(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
+  def transform(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
     val count = rcvr match {
       case SeqAt(s, i) =>
         cond match {
           case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
           case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
         }
-         //DirectQuantifiedChunk(f, )
       case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+      case _ => sys.error("Unknown type of receiver, cannot rewrite.")
     }
     ∀(f.name, tv, PermTimes(TermPerm(count), talpha))
   }
@@ -231,8 +186,6 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
   }
 
   def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
-    // convert to conditional chunks if necessary
-    // TODO: where exactly?
     val k = exhalePermissions2(h, ch)
     if(!k._3)
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)

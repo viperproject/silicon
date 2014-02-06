@@ -13,61 +13,17 @@ import semper.silicon.state._
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.QuantifiedChunkHelper
-import semper.sil.ast.{LocationAccess, LocalVar}
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.terms.*
-import semper.silicon.interfaces.Failure
-import semper.silicon.state.terms.False
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.state.terms.Combine
-import semper.silicon.PermissionsConsumptionResult
-import semper.silicon.state.terms.Var
-import semper.silicon.state.terms.WildcardPerm
-import semper.sil.verifier.reasons.AssertionFalse
-import semper.silicon.ast._
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.terms.*
-import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.PermPlus
-import semper.silicon.state.terms.False
-import semper.silicon.state.terms.And
 import semper.silicon.state.terms.PermMinus
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.state.terms.Combine
 import semper.silicon.state.terms.PermTimes
-import semper.silicon.PermissionsConsumptionResult
-import semper.silicon.state.terms.Var
 import semper.silicon.state.terms.IntPermTimes
-import semper.silicon.state.terms.NoPerm
-import semper.sil.ast.LocalVar
-import semper.silicon.state.terms.SeqRanged
-import semper.silicon.state.terms.WildcardPerm
-import semper.silicon.state.terms.Ite
-import semper.sil.verifier.reasons.AssertionFalse
 import semper.sil.verifier.reasons.NonPositivePermission
 import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.terms.*
 import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.interfaces.Failure
 import semper.silicon.state.terms.TermPerm
 import semper.silicon.reporting.DefaultContext
 import semper.silicon.state.terms.Combine
-import semper.silicon.PermissionsConsumptionResult
-import semper.silicon.state.terms.Var
-import semper.sil.ast.LocalVar
-import semper.silicon.state.terms.WildcardPerm
-import semper.sil.verifier.reasons.AssertionFalse
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.terms.*
-import semper.silicon.state.DirectPredicateChunk
-import semper.silicon.interfaces.Failure
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.state.terms.Combine
-import semper.silicon.PermissionsConsumptionResult
 import semper.silicon.state.terms.Var
 import semper.sil.ast.LocalVar
 import semper.silicon.state.terms.WildcardPerm
@@ -184,6 +140,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
 
+      /* Quantified field access predicate */
       case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) => {
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
@@ -199,10 +156,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) => {
                 val h2 = if(quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
                 quantifiedChunkHelper.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
-                  val ch = quantifiedChunkHelper.transformInExhale(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
+                  val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
                   quantifiedChunkHelper.exhale(h2, ch, pve, locacc, c3, tv)(h3 =>
                     {
-                      decider.prover.logComment("exhaled: " + σ.h)
                       Q(h3, t, Nil, c3)
                     }
                   )
@@ -218,7 +174,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
             quantifiedChunkHelper.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
-              val ch = quantifiedChunkHelper.transformWrite(tRcvr, field.name, null, tPerm)
+              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, null, tPerm)
               quantifiedChunkHelper.exhale(h, ch, pve, locacc, c2, tv)(h2 =>
                 Q(h2, t, Nil, c2)
               )
@@ -250,13 +206,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			 */
       case _ =>
         // assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
-        eval(σ, φ, pve, c, tv)((t, c) => {
-          decider.prover.logComment("asserting: " + φ)
+        eval(σ, φ, pve, c, tv)((t, c) =>
           if (decider.assert(t)) {
             assume(t)
             Q(h, Unit, Nil, c)
           } else
-            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv) })
+            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
 
 		}
 

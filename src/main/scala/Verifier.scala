@@ -61,6 +61,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
 	def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
+    logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
@@ -84,17 +85,15 @@ trait AbstractElementVerifier[ST <: Store[ST],
     inScope {
 			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
 				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-        //println("heap after produce pre:" + σ1.h)
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
          produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
            Success[C, ST, H, S](c3))}
 					&&
         inScope {
-          exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) => {
-            //println("heap before consume post: " + σ2.h);
+          exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success[C, ST, H, S](c4))})})})}
+              Success[C, ST, H, S](c4)))})})}
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
@@ -123,15 +122,10 @@ trait AbstractElementVerifier[ST <: Store[ST],
           Success[C, ST, H, S](c2))}
         &&
         inScope {
-          //println("Produce Precondition")
-          decider.prover.logComment("Produce Precondition")
-          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
-            //println("Execute Body")
-            decider.prover.logComment("Execute Body")
-            eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) => {
-              //println("Consume Postcondition")
+          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
+            eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
               consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success[C, ST, H, S](c4))})})})}
+                Success[C, ST, H, S](c4))))})}
   }
 
   def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {
@@ -244,7 +238,6 @@ trait AbstractVerifier[ST <: Store[ST],
       results = members.map(ev.verify _).toList
     }
 
-	decider.prover.logComment("woop!")
     results
   }
 

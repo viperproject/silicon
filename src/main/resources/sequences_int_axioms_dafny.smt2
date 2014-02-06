@@ -45,14 +45,7 @@
 	:pattern (($Seq.at ($Seq.rng i j) k))
 	)))
 
-;(assert (forall ((i Int) (start Int) (end Int)) (!
-;    (implies
-;        ($Seq.in ($Seq.rng start end) i)
-;        (and (>= i start) (< i end))
-;    )
-;    :pattern (($Seq.in ($Seq.rng start end) i))
-;    )))
-
+; Range splitting
 (declare-fun $Seq.rngP (Int Int) $Seq<Int>)
 
 (assert (forall ((start Int) (end Int)) (!

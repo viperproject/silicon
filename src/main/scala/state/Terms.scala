@@ -3,29 +3,6 @@ package silicon
 package state.terms
 
 import ast.commonnodes
-import semper.silicon.state.terms._
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
 
 //import ast.commonnodes.{BinaryOp}
 //import interfaces.state.{Heap}
@@ -77,8 +54,6 @@ object sorts {
   case class Multiset(val elementsSort: Sort) extends Sort {
     override val toString = "Multiset[%s]".format(elementsSort)
   }
-
-
 
   case class Arrow(from: Sort, to: Sort) extends Sort {
     private def decompose(a: Arrow, ss: scala.collection.immutable.Seq[Sort])
@@ -176,6 +151,7 @@ sealed trait Term {
         case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case _ => sys.error("Cannot replace for term. Implement me!")
       }
   }
 
@@ -241,7 +217,6 @@ case class Null() extends Term with Literal {
   override val toString = "Null"
 }
 
-
 sealed trait BooleanLiteral extends BooleanTerm with Literal {
   def value: Boolean
   override def toString = value.toString
@@ -263,7 +238,6 @@ sealed trait Quantifier
 
 object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
-
 
 case class Trigger(ts: Seq[Term])
 
@@ -716,6 +690,7 @@ case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Te
 }
 
 /* Sequences */
+
 /* TODO: Make arguments more specific, i.e., SeqTerm instead of Term. The problem is that terms.Var can be
  *       used there, as well as terms.FApp, and probably other terms that are not SeqTerms but of sort Seq.
  *       How to deal with those?
@@ -916,7 +891,6 @@ object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
   def unapply(su: SeqUpdate) = Some((su.t0, su.t1, su.t2))
 }
 
-
 /* Sets */
 
 sealed trait SetTerm extends Term {
@@ -944,7 +918,6 @@ case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ {
 
   override val toString = "{" + p + "}"
 }
-
 
 /*case*/ class SetAdd(val p0: Term, val p1: Term)
   extends SetTerm
@@ -1032,8 +1005,6 @@ object SetDisjoint extends ((Term, Term) => SetTerm) {
 
   def unapply(sd: SetDisjoint) = Some((sd.p0, sd.p1))
 }
-
-
 
 class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "\\"

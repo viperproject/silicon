@@ -2,50 +2,6 @@
 ; They depend on the set axiomatisation due to the fromSet-function.
 
 ;
-; Auxiliary math axioms
-;
-
-;axiom (forall a: int, b: int :: { Math#min(a, b) } a <= b <==> Math#min(a, b) == a);
-;(assert (forall ((x Int) (y Int)) (!
-;	(iff
-;	  (<= x y)
-;	  (= ($Math.min x y) x))
-;	:pattern (($Math.min x y))
-;	)))
-
-;axiom (forall a: int, b: int :: { Math#min(a, b) } b <= a <==> Math#min(a, b) == b);
-;(assert (forall ((x Int) (y Int)) (!
-;	(iff
-;	  (<= b a)
-;	  (= ($Math.min a b) b))
-;	:pattern (($Math.min a b))
-;	)))
-
-;axiom (forall a: int, b: int :: { Math#min(a, b) } Math#min(a, b) == a || Math#min(a, b) == b);
-;(assert (forall ((x Int) (y Int)) (!
-;	(or
-;	  (= ($Math.min a b) a)
-;	  (= ($Math.min a b) b))
-;	:pattern (($Math.min a b))
-;	)))
-
-;axiom (forall a: int :: { Math#clip(a) } 0 <= a ==> Math#clip(a) == a);
-;(assert (forall ((x Int)) (!
-;	(implies
-;	  (<= 0 a)
-;	  (= ($Math.clip a) a))
-;	:pattern (($Math.clip a))
-;	)))
-
-;axiom (forall a: int :: { Math#clip(a) } a < 0  ==> Math#clip(a) == 0);
-;(assert (forall ((x Int)) (!
-;	(implies
-;	  (<= 0 a)
-;	  (= ($Math.clip a) a))
-;	:pattern (($Math.clip a))
-;	)))
-
-;
 ; Multiset axioms
 ;
 
@@ -90,7 +46,7 @@
       (not (= ($Multiset.card xs) 0))
       (exists ((x $S$)) (!
         (< 0 ($Multiset.count xs x))
-       ; WRONG! :pattern (($Set.in x xs))
+        :pattern (($Multiset.count xs x))
         ))))
 	:pattern (($Multiset.card xs))
 	)))
@@ -185,14 +141,13 @@
 
 ;axiom (forall<T> a: MultiSet T, b: MultiSet T :: { MultiSet#Card(MultiSet#Union(a,b)) }
 ;  MultiSet#Card(MultiSet#Union(a,b)) == MultiSet#Card(a) + MultiSet#Card(b));
-; Implementation does not make sense
-;(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
-;  (=
-;    ($Multiset.card ($Multiset.union xs ys) x)
-;    (+ ($Multiset.card  xs) ($Multiset.card  ys)))
-;	:pattern (($Multiset.card ($Multiset.union xs ys) x))
+(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>)) (!
+  (=
+    ($Multiset.card ($Multiset.union xs ys))
+    (+ ($Multiset.card  xs) ($Multiset.card  ys)))
+	:pattern (($Multiset.card ($Multiset.union xs ys)))
 ;	:pattern (($Multiset.card  xs) ($Multiset.card  ys))
-;	)))
+	)))
 
 ;// two containment axioms
 ;axiom (forall<T> a, b: MultiSet T, y: T :: { MultiSet#Union(a, b), a[y] }
@@ -230,15 +185,14 @@
 	)))
 
 
-; As the min function is currently commented out, I also commented out this axiom.
 ;axiom (forall<T> a: MultiSet T, b: MultiSet T, o: T :: { MultiSet#Intersection(a,b)[o] }
 ;  MultiSet#Intersection(a,b)[o] == Math#min(a[o],  b[o]));
-;(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
-;  (=
-;    ($Multiset.count ($Multiset.intersection xs ys) x)
-;    ($Math.min ($Multiset.count xs x) ($Multiset.count ys x)))
-;	:pattern (($Multiset.count ($Multiset.intersection xs ys) x))
-;	)))
+(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
+  (=
+    ($Multiset.count ($Multiset.intersection xs ys) x)
+    ($Math.min ($Multiset.count xs x) ($Multiset.count ys x)))
+	:pattern (($Multiset.count ($Multiset.intersection xs ys) x))
+	)))
 
 ;// left and right pseudo-idempotence
 ;axiom (forall<T> a, b: MultiSet T :: { MultiSet#Intersection(MultiSet#Intersection(a, b), b) }
@@ -259,16 +213,15 @@
 	:pattern (($Multiset.intersection xs ($Multiset.intersection xs ys)))
 	)))
 
-; As the clip function is currently commented out, I also commented out this axiom.
 ;// multiset difference, a - b. clip() makes it positive.
 ;axiom (forall<T> a: MultiSet T, b: MultiSet T, o: T :: { MultiSet#Difference(a,b)[o] }
 ;  MultiSet#Difference(a,b)[o] == Math#clip(a[o] - b[o]));
-;(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
-;  (=
-;    ($Multiset.count ($Multiset.difference xs ys) x)
-;    ($Math.clip (- ($Multiset.count xs x) ($Multiset.count ys x))))
-;	:pattern (($Multiset.count ($Multiset.difference xs ys) x))
-;	)))
+(assert (forall ((xs $Multiset<$S$>) (ys $Multiset<$S$>) (x $S$)) (!
+  (=
+    ($Multiset.count ($Multiset.difference xs ys) x)
+    ($Math.clip (- ($Multiset.count xs x) ($Multiset.count ys x))))
+	:pattern (($Multiset.count ($Multiset.difference xs ys) x))
+	)))
 
 ;axiom (forall<T> a, b: MultiSet T, y: T :: { MultiSet#Difference(a, b), b[y], a[y] }
 ;  a[y] <= b[y] ==> MultiSet#Difference(a, b)[y] == 0 );

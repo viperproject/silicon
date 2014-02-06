@@ -14,21 +14,6 @@ import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 import silicon.state.terms.utils.{BigAnd, BigPermSum}
-import scala.util.control.Breaks._
-import semper.silicon.state.terms.IsValidPermVar
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.terms.FullPerm
-import scala.Some
-import semper.silicon.state.terms.False
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.state.terms.Eq
-import semper.silicon.state.terms.True
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.PermMin
-import semper.sil.verifier.DependencyNotFoundError
-import semper.silicon.state.terms.WildcardPerm
-import semper.silicon.interfaces.state.factoryUtils.Ø
-
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
@@ -36,7 +21,7 @@ class DefaultDecider[ST <: Store[ST],
                      S <: State[ST, H, S],
                      C <: Context[C, ST, H, S]]
 		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
-		   with Logging with DefaultHeapFactory {
+		   with Logging {
 
   private type P = DefaultFractionalPermissions
 
@@ -154,10 +139,7 @@ class DefaultDecider[ST <: Store[ST],
 	def assert(t: Term) = assert(t, null)
 
 	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
-	  //println("Asserting in decider.... " + t)
-	  
 		val asserted = isKnownToBeTrue(t)
-    if(asserted) prover.logComment(t + " is trivially true " /*+ π*/)
 
 		asserted || π.exists(_ == t) || proverAssert(t, logSink)
 	}
@@ -181,7 +163,6 @@ class DefaultDecider[ST <: Store[ST],
 
     result
   }
-  
 
   /* ATTENTION: Caching the values of permission expression assertions is only
    * sound as long as the value does not change over time, i.e., by adding new
@@ -365,9 +346,6 @@ class DefaultDecider[ST <: Store[ST],
 //
 //  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
 
-
-
-
 	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
 //    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)
   		getChunk(
@@ -419,10 +397,8 @@ class DefaultDecider[ST <: Store[ST],
 					 findChunkLiterally(chunks, id)
 		orElse findChunkWithProver(chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) = {
-	  	//println("attempting to find chunk " +id+ " literally")
+	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
 		chunks find (ch => ch.args == id.args)
-	}
 
   lazy val fcwpLog =
     common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
@@ -434,8 +410,6 @@ class DefaultDecider[ST <: Store[ST],
     fcwpLog.println(id)
 		// prover.logComment("Chunk lookup ...")
 		// prover.enableLoggingComments(false)
-    //println("attempting to find chunk " +id+ " with prover")
-
 		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 		// prover.enableLoggingComments(true)
 

@@ -17,51 +17,7 @@ import semper.silicon.state._
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
 import semper.silicon.heap.QuantifiedChunkHelper
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.sil.verifier.errors.Internal
-import semper.sil.verifier.errors.FoldFailed
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.interfaces.Failure
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.interfaces.Success
-import semper.sil.verifier.errors.LoopInvariantNotPreserved
-import semper.silicon.state.terms.Null
-import semper.sil.verifier.errors.WhileFailed
-import semper.sil.verifier.errors.ExhaleFailed
 import semper.sil.verifier.errors.InhaleFailed
-import semper.sil.verifier.errors.LoopInvariantNotEstablished
-import semper.sil.verifier.reasons.InsufficientPermission
-import semper.sil.verifier.errors.UnfoldFailed
-import semper.sil.verifier.errors.PreconditionInCallFalse
-import semper.sil.verifier.errors.AssignmentFailed
-import semper.sil.verifier.errors.AssertFailed
-import semper.sil.verifier.reasons.AssertionFalse
-import semper.sil.verifier.reasons.ReceiverNull
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.sil.verifier.errors.Internal
-import semper.silicon.state.DirectFieldChunk
-import semper.sil.verifier.errors.FoldFailed
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.state.terms.False
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.interfaces.Success
-import semper.sil.verifier.errors.InhaleFailed
-import semper.silicon.state.terms.True
-import semper.sil.verifier.errors.LoopInvariantNotPreserved
-import semper.silicon.state.terms.Null
-import semper.sil.verifier.errors.WhileFailed
-import semper.sil.verifier.errors.ExhaleFailed
-import semper.sil.verifier.errors.LoopInvariantNotEstablished
-import semper.sil.verifier.reasons.InsufficientPermission
-import semper.sil.verifier.errors.UnfoldFailed
-import semper.sil.verifier.errors.PreconditionInCallFalse
-import semper.sil.verifier.errors.AssignmentFailed
-import semper.silicon.state.FieldChunkIdentifier
-import semper.sil.verifier.errors.AssertFailed
-import semper.sil.verifier.reasons.AssertionFalse
-import semper.sil.verifier.reasons.ReceiverNull
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -91,7 +47,6 @@ trait DefaultExecutor[ST <: Store[ST],
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
-
   protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
@@ -108,15 +63,12 @@ trait DefaultExecutor[ST <: Store[ST],
                     : VerificationResult = {
 
     edge match {
-      case ce: sil.ast.ConditionalEdge => {
-        decider.prover.logComment("Starting Internal Eval")
-        decider.prover.logComment("budy " + ce.dest)
+      case ce: sil.ast.ConditionalEdge =>
         eval(σ, ce.cond, Internal(ce.cond), c, tv)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
-        { decider.prover.logComment("result is " + tCond)
           branch(tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
             (c2: C, tv1: TV) => exec(σ, ce.dest, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Success[C, ST, H, S](c2))})}
+            (c2: C, tv1: TV) => Success[C, ST, H, S](c2)))
 
       case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c, tv)(Q)
     }
@@ -154,12 +106,10 @@ trait DefaultExecutor[ST <: Store[ST],
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
-    //println("[exec] " + block + " " + block.getClass)
 //    logger.debug("\n[exec] " + block.label)
 
     block match {
       case block @ sil.ast.StatementBlock(stmt, _) =>
-        //println("executin stmt " + stmt + " " + stmt.getClass)
         exec(σ, stmt, c, tv)((σ1, c1) =>
           leave(σ1, block, c1, tv)(Q))
 
@@ -180,9 +130,7 @@ trait DefaultExecutor[ST <: Store[ST],
          * that have been declared outside of it, i.e. before the loop.
          */
         val wvs = lb.writtenVars
-        decider.prover.logComment("written vars: " + wvs)
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
-        decider.prover.logComment("old gamma: " + γBody)
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
         (inScope {
@@ -208,17 +156,16 @@ trait DefaultExecutor[ST <: Store[ST],
             val c0 = c
             consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c0, tv0)((σ1, _, _, c1) => {
               val σ2 = σ1 \ γBody
-              decider.prover.logComment("Continue after loop, heap " + σ2.h)
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) => {
+              decider.prover.logComment("Continue after loop")
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) =>
               /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
                *       Should no longer be necessary once we have an on-demand handling of merging and
                *       false-checking.
                */
-                decider.prover.logComment(" "  + σ2.γ)
                 if (decider.assert(False()))
                   Success[C, ST, H, S](c2) /* TODO: Mark branch as dead? */
                 else
-                  leave(σ3, lb, c2, tv)(Q)})})})
+                  leave(σ3, lb, c2, tv)(Q))})})
 
         case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
           val (arps, arpConstraints) =
@@ -277,6 +224,7 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
+      /* Assignment for a field that contains quantified chunks */
       case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
@@ -287,7 +235,7 @@ trait DefaultExecutor[ST <: Store[ST],
             else if (!decider.assert(AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
               Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
             else {
-              val ch = quantifiedChunkHelper.transformWrite(tRcvr, field.name, tRhs, FullPerm())
+              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
               quantifiedChunkHelper.exhale(σ.h, ch, pve, fl, c2, tv)(h =>
                 Q((σ \ h) \+ ch, c2)
               )
@@ -299,14 +247,14 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = AssignmentFailed(ass)
 
         val id = field.name
-          eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-            if (decider.assert(tRcvr !== Null()))
-              eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
-                val id = FieldChunkIdentifier(tRcvr, field.name)
-                withChunk[DirectChunk](σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
-                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
-            else
-              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          if (decider.assert(tRcvr !== Null()))
+            eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+              val id = FieldChunkIdentifier(tRcvr, field.name)
+              withChunk[DirectChunk](σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
+                Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
+          else
+            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
 
       case ast.New(v) =>
         val t = fresh(v)
@@ -368,13 +316,8 @@ trait DefaultExecutor[ST <: Store[ST],
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            decider.prover.logComment("after consume!")
-            decider.prover.logComment(stateFormatter.format(σ2))
-
             val post = ast.utils.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
-              //println("heap after method call: " + σ3.h)
-              decider.prover.logComment("produced postcondition")
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
@@ -428,7 +371,6 @@ trait DefaultExecutor[ST <: Store[ST],
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
                   produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
-                    decider.prover.logComment("heap after the unfold: " + σ2.h)
                     Q(σ2 \ σ.γ, c4)})})}
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))

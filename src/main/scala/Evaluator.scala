@@ -16,34 +16,9 @@ import state.terms._
 import state.terms.implicits._
 import semper.silicon.heap.QuantifiedChunkHelper
 import semper.silicon.interfaces.Failure
-import scala.Some
-import semper.silicon.state.terms.False
-import semper.silicon.state.terms.Eq
-import semper.silicon.state.terms.SeqSingleton
-import semper.silicon.state.terms.Div
-import semper.silicon.state.terms.SeqNil
-import semper.silicon.state.terms.WildcardPerm
-import semper.silicon.state.terms.SeqRanged
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.terms.Quantification
-import semper.silicon.state.terms.Mod
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.terms.*
-import semper.silicon.state.PredicateChunkIdentifier
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.terms.SingletonSet
-import semper.silicon.state.terms.TermPerm
 import semper.silicon.reporting.DefaultContext
 import semper.silicon.interfaces.Success
-import semper.silicon.state.terms.True
-import semper.silicon.state.terms.IntLiteral
-import semper.silicon.state.terms.Null
-import semper.silicon.state.terms.FApp
-import semper.silicon.state.terms.EmptySet
-import semper.silicon.state.terms.NoPerm
 import semper.sil.verifier.errors.PreconditionInAppFalse
-import semper.silicon.state.terms.FractionPerm
 import semper.sil.verifier.reasons.ReceiverNull
 import semper.sil.verifier.reasons.DivisionByZero
 
@@ -157,9 +132,6 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"[eval] $e")
 		}
 
-    //println(e)
-    //println(e.getClass)
-
     /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
      * might be tempting to think that we don't need to locally evaluate
      * Implies and Ite anymore. However, that is not true, because not all of
@@ -178,9 +150,7 @@ trait DefaultEvaluator[
       case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, Eq, pve, c, tv)(Q)
       case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c, tv)(Q)
 
-      case v: ast.Variable => {
-        Q(σ.γ(v), c)
-      }
+      case v: ast.Variable => Q(σ.γ(v), c)
 
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
@@ -205,6 +175,7 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
+      /* Field access if the heap is quantified for that field */
       case fa: ast.FieldAccess if (quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name)) => {
         eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
           quantifiedChunkHelper.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
@@ -240,8 +211,6 @@ trait DefaultEvaluator[
          *       Hence, implement evaluation of AND similar to that of OR.
          *       Try to reuse code!
          */
-        //println("Evaluating And")
-        decider.prover.logComment("Evaluating And")
         var πPre: Set[Term] = Set()
         var t0: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
@@ -270,8 +239,6 @@ trait DefaultEvaluator[
           r && {
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
-            //println("End Evaluating And")
-            decider.prover.logComment("End Evaluating And")
 
             Q(And(t0.get, t1), c1)}})
 
@@ -590,7 +557,6 @@ trait DefaultEvaluator[
           Q(tQuant, c)}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
-        decider.prover.logComment("evaluating " + func.name)
         val err = PreconditionInAppFalse(fapp)
 
         evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
@@ -599,7 +565,6 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
-            decider.prover.logComment("consumed the preconditions")
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
@@ -654,14 +619,12 @@ trait DefaultEvaluator[
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
                 eIn) =>
-        //println("Unfolding " + acc.loc.predicate.name)
         /* Unfolding only has a temporary effect on the current heap because
          * the resulting heap is not forwarded to the final continuation.
          */
         var πPre: Set[Term] = Set()
         var tPerm: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
-        decider.prover.logComment("unfolding " + acc.loc.predicate.name)
 
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
@@ -675,7 +638,6 @@ trait DefaultEvaluator[
                 evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
                   consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    decider.prover.logComment("producing predicate body!")
                     produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
@@ -689,9 +651,7 @@ trait DefaultEvaluator[
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
-            decider.prover.logComment("assuming in unfolding... " + acc.loc.predicate.name)
             assume(tAuxIn + tActualIn)
-            //println("Done unfolding " + acc.loc.predicate.name)
             Q(tActualInVar, c)
           }
         } else
@@ -791,7 +751,7 @@ trait DefaultEvaluator[
                           : VerificationResult = {
 
     assert(config.disableLocalEvaluations(),
-      "Unexpected call to performNonLocalEvaluation since config.localEvaluations is true.")
+           "Unexpected call to performNonLocalEvaluation since config.localEvaluations is true.")
 
     e match {
       case ast.Implies(e0, e1) =>
@@ -847,7 +807,6 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull)
-            //if(decider.hasEnoughPermissionsGlobally(σ.h, FieldChunkIdentifier(tRcvr, field.name)))
             if (decider.assert(Or(NullTrigger(tRcvr), tRcvr !== Null())))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else

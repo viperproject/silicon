@@ -4,12 +4,6 @@ package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
 import semper.silicon.state.terms._
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.PredicateChunkIdentifier
-import semper.silicon.state.terms.Quantification
-import semper.silicon.state.DirectPredicateChunk
-import semper.silicon.state.QuantifiedChunk
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 

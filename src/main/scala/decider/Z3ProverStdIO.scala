@@ -116,7 +116,6 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
   def assert(goal: Term) = assert(convert(goal))
 
-  // check that the goal _does_ hold
   def assert(goal: String) = {
     bookkeeper.assertionCounter += 1
 
@@ -128,21 +127,6 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		pop()
 
 		r
-  }
-  
-  def couldHold(goal : Term):Boolean = couldHold(convert(goal))
-  
-  // check that the goal _could_ hold
-  def couldHold(goal: String) = {
-	  // TODO: bookkeeper?
-	  push()
-	  writeLine("(assert " + goal + ")")
-	  readSuccess
-	  writeLine("(check-sat)")
-	  val r = readUnsat
-	  pop()
-	  
-	  !r
   }
 
 	def check() = {
@@ -241,7 +225,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     case result =>
       throw new Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
 	}
-	
+
   private def readLine(): String = {
 		var repeat = true
 		var result = ""
@@ -258,7 +242,6 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
 	private def log(str: String) {
 		if (logfile != null) {
-		// println(str)
 		logfile.println(str);
 		logfile.flush()
 		}

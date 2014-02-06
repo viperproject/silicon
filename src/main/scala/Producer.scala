@@ -13,47 +13,35 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import semper.silicon.state._
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.terms.*
-import semper.silicon.state.DirectPredicateChunk
 import semper.silicon.reporting.DefaultContext
 import semper.silicon.heap.QuantifiedChunkHelper
-import interfaces.state.StoreFactory
-import state.terms._
-import state.terms.implicits._
-import semper.sil.ast.{LocalVar, LocalVarDecl}
+import semper.sil.ast.LocalVar
 
-
-trait DefaultProducer[
-ST <: Store[ST],
-H <: Heap[H],
-PC <: PathConditions[PC],
-S <: State[ST, H, S],
-TV <: TraceView[TV, ST, H, S]]
-  extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState {
-  this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-    with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+trait DefaultProducer[ST <: Store[ST],
+                      H <: Heap[H],
+                      PC <: PathConditions[PC],
+                      S <: State[ST, H, S],
+                      TV <: TraceView[TV, ST, H, S]]
+                      extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState {
+                      this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+                        with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+                        with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
   protected val decider: Decider[P, ST, H, PC, S, C]
-
   import decider.{fresh, assume}
 
   protected val stateFactory: StateFactory[ST, H, S]
-
   import stateFactory._
 
   protected val heapMerger: HeapMerger[H]
-
   import heapMerger.merge
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
   protected val symbolConverter: SymbolConvert
-
   import symbolConverter.toSort
 
   protected val stateFormatter: StateFormatter[ST, H, S, String]
@@ -74,11 +62,9 @@ TV <: TraceView[TV, ST, H, S]]
   : VerificationResult =
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
-      // TODO: merge for conditional chunks
         val (mh, mts) = merge(Ø, h)
         assume(mts)
-        Q(σ \ mh, c1)
-    })
+        Q(σ \ mh, c1)})
 
   def produces(σ: S,
                sf: Sort => Term,
@@ -88,13 +74,12 @@ TV <: TraceView[TV, ST, H, S]]
                c: C,
                tv: TV)
               (Q: (S, C) => VerificationResult)
-  : VerificationResult = {
-    //println(φs)
+  : VerificationResult =
     if (φs.isEmpty)
       Q(σ, c)
     else
       produce(σ, sf, p, φs.head, pvef(φs.head), c, tv)((σ1, c1) =>
-        produces(σ1, sf, p, φs.tail, pvef, c1, tv)(Q))   }
+        produces(σ1, sf, p, φs.tail, pvef, c1, tv)(Q))
 
   private def produce2(σ: S,
                        sf: Sort => Term,
@@ -156,6 +141,7 @@ TV <: TraceView[TV, ST, H, S]]
             (c2: C, tv1: TV) => produce2(σ, sf, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
 
+      /* Produce a field access if the heap is quantified for that field */
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
           assume(tRcvr !== Null())
@@ -176,12 +162,9 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            // TODO: make merge work here again
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
             assume(mts)
-            Q(mh, c2)
-          })
-        })
+            Q(mh, c2)})})
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
@@ -190,14 +173,11 @@ TV <: TraceView[TV, ST, H, S]]
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            // TODO: make merge work again
             val (mh, mts) = merge(σ.h, H(ch :: Nil))
-            decider.prover.logComment("assuming predicate " + predicate.name)
             assume(mts)
-            Q(mh, c2)
-          }))
+            Q(mh, c2)}))
 
-      // e.g. requires forall y:Ref :: y in xs ==> acc(y.f, write)
+      /* Quantified field access predicate */
       case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) => {
         decider.prover.logComment("Producing set access predicate " + fa)
 
@@ -211,7 +191,7 @@ TV <: TraceView[TV, ST, H, S]]
                 // TODO: why does sf not work? This might introduce an incompleteness somewhere - ask Malte
                 val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
                 val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val ch = quantifiedChunkHelper.transformInExhale(tRcvr, f, app, pGain * p, tCond)
+                val ch = quantifiedChunkHelper.transform(tRcvr, f, app, pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
                 val h = if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
                 decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
