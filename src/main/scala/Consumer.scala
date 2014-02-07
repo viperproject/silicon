@@ -176,7 +176,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              */
             val eqs = pathConditionedPOlds.map{case (pc, po) =>
               val eq = ast.Equals(po.exp, po)(po.pos, po.info)
-              ast.And(pc, eq)(eq.pos, eq.info)
+              ast.Implies(pc, eq)(pc.pos, pc.info)
             }
             val eSame = ast.utils.BigAnd(eqs)
             /* Check the generated equalities. */
