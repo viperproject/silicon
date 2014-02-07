@@ -1,0 +1,73 @@
+var f: Int
+var g: Int
+var h: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+function sum(p: Ref): Int
+  requires acc(Pair(p), write)
+{ unfolding acc(Pair(p), write) in (p.f) + (p.g) }
+
+method test01(p: Ref)
+  requires acc(p.f, write) && acc(p.h, write)
+  requires acc(p.h, write) --* acc(p.g, write)
+{
+    // h: p.f * p.h * (p.h --* p.g)
+  package true
+            --*
+          applying (acc(p.h, write) --* acc(p.g, write)) in
+            folding acc(Pair(p), write) in
+             acc(Pair(p), write)
+    // h: (true --* p.Pair)
+
+  assert true --* acc(Pair(p), write);
+  //:: ExpectedError(assert.failed:insufficient.permission)
+  assert acc(p.f, write)
+}
+
+method test02(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+  assert acc(x.f, 1/2)
+  //:: ExpectedError(assert.failed:insufficient.permission)
+  assert acc(x.f, 2/3)
+}
+
+method test03(x: Ref)
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  //:: ExpectedError(package.failed:insufficient.permission)
+  package true --* folding acc(Pair(x), write) in acc(x.f, write)
+}
+
+method test04(x: Ref, y: Ref)
+  requires y != null
+  requires acc(x.f, write) && acc(x.g, write)
+{
+  //:: ExpectedError(package.failed:insufficient.permission)
+  package true --* folding acc(Pair(x), write) in acc(y.f, write)
+}
+
+method test05(x: Ref, y: Ref)
+  requires acc(y.f, write)
+  requires acc(x.f, write) && acc(x.g, write)
+  ensures true --* acc(y.f, write)
+{
+  package true --* folding acc(Pair(x), write) in acc(y.f, write)
+}
+
+method test06(x: Ref, y: Ref)
+  requires acc(Pair(x), write)
+  requires (acc(Pair(x), write) && sum(x) == now(sum(x))) --* acc(y.f, write)
+{
+  //:: ExpectedError(package.failed:insufficient.permission)
+  package
+    (acc(Pair(x), write) && sum(x) == now(sum(x)))
+      --*
+      applying ((acc(Pair(x), write) && sum(x) == now(sum(x))) --* acc(y.f, write)) in
+        (acc(y.f, write) && acc(y.g, write)) // No access to y.g
+}

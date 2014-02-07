@@ -5,7 +5,7 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
-import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import sil.verifier.reasons.{InsufficientPermission, DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
     ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
@@ -13,9 +13,10 @@ import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, St
     FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
+import supporters.MagicWandSupporter
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -41,10 +42,8 @@ trait DefaultEvaluator[
 	import symbolConverter.toSort
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
-	import chunkFinder.withChunk
-
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -121,6 +120,8 @@ trait DefaultEvaluator[
 			case _ =>
         logger.debug(s"\nEVAL ${e.pos}: $e")
 				logger.debug(stateFormatter.format(σ))
+        if (c.reserveHeap.nonEmpty)
+          logger.debug("hR = " + stateFormatter.format(c.reserveHeap.get))
         decider.prover.logComment(s"[eval] $e")
 		}
 
@@ -168,9 +169,17 @@ trait DefaultEvaluator[
           })
 
       case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-          withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-            Q(ch.value, c1)))
+        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) => {
+          decider.getChunk[FieldChunk](σ.h, id) match {
+            case Some(ch) =>
+              Q(ch.value, c)
+            case None if c.reserveEvalHeap.nonEmpty =>
+              decider.getChunk[FieldChunk](c.reserveEvalHeap.get, id) match {
+                case Some(ch) => Q(ch.value, c)
+                case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)
+              }
+            case None =>
+              Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)}})
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -181,6 +190,8 @@ trait DefaultEvaluator[
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
+      case ast.PackageOld(e0) => eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
+      case ast.ApplyOld(e0) => eval(σ \ c.givenHeap.get, e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -212,16 +223,17 @@ trait DefaultEvaluator[
             branchLocally(t0.get, c1, tv, LocalAndBranching(e0, t0.get),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get))
+                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
                   Success[C, ST, H, S](c3)}),
               (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
 
           decider.popScope()
 
-          r && {
+          r && (if (localResults.isEmpty) Success[C, ST, H, S](c1) else {
+            checkReserveHeaps(localResults)
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
-            Q(And(t0.get, t1), c1)}})
+            Q(And(t0.get, t1), localResults(0).context)})})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -301,13 +313,15 @@ trait DefaultEvaluator[
             branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf))
+                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
                   Success[C, ST, H, S](c3)}),
               (c2: C, _) => Success[C, ST, H, S](c2))})
 
         decider.popScope()
 
-        r && {
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+          checkReserveHeaps(localResults)
+
           /* The additional path conditions gained while evaluating the
            * antecedent can be assumed in any case.
            * If the antecedent holds, then the additional path conditions
@@ -321,8 +335,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, c)
-        }
+          Q(tImplies, localResults(0).context)})
 
       case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
@@ -349,17 +362,21 @@ trait DefaultEvaluator[
             branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) => {
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0))
+                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success[C, ST, H, S](c3)})},
 
               (c2: C, tv1: TV) => {
                 eval(σ, e2, pve, c2, tv1)((t2, c3) => {
-                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)))
+                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
                   Success[C, ST, H, S](c3)})})})
 
         decider.popScope()
 
-        r && {
+        val localResults = localResultsThen ::: localResultsElse
+
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+          checkReserveHeaps(localResults)
+
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
@@ -385,8 +402,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, c)
-        }
+          Q(tActualIte, localResults(0).context)})
 
       /* Integers */
 
@@ -510,7 +526,7 @@ trait DefaultEvaluator[
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
             eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
               triggers = _triggers
-              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
+              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2)
 
               /* We could call Q directly instead of returning Success, but in
                * that case the path conditions πDelta would also be outside of
@@ -529,13 +545,14 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
 
-        r && {
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+          checkReserveHeaps(localResults)
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
           /* TODO: Translate triggers as well */
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-          Q(tQuant, c)}
+          Q(tQuant, localResults(0).context)})
 
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -602,7 +619,11 @@ trait DefaultEvaluator[
                   assume(tPost)
                   Q(tFA, c4)})}}})})
 
+      /* Prover hint expressions */
+
       case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+
+      /* TODO: Try to merge the code from Evaluator and Executor for fold/folding and unfold/unfolding. */
 
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
@@ -632,24 +653,104 @@ trait DefaultEvaluator[
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                       eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
-                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre)
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                         Success[C, ST, H, S](c3)})})}))
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
-          r && {
+          r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+            checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, c)
-          }
+            Q(tActualInVar, localResults(0).context)})
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "supported. It should be  possible to wrap 'unfolding next.P in e' " +
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
+
+      case _: ast.Folding if config.disableLocalEvaluations() =>
+        sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
+
+      case ast.Folding(
+              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
+              eIn) =>
+
+        var πPre: Set[Term] = Set()
+        var tPerm: Option[Term] = None
+        var localResults: List[LocalEvaluationResult] = Nil
+
+        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+          val c0a = c.incCycleCounter(predicate)
+
+          val r =
+            evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
+              assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
+              tPerm = Some(_tPerm)
+              πPre = decider.π // TODO: Why here? Why not after evals(eArgs)?
+              if (decider.isPositive(_tPerm))
+                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
+                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                  consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, chs, c3) => { // TODO: What to do with the consumed chunks?
+                    produce(σ1 \ σ.γ, s => snap.convert(s), _tPerm, acc, pve, c3, tv)((σ2, c4) => {
+                      val c4a = c4.decCycleCounter(predicate)
+                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
+                      eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
+                        Success[C, ST, H, S](c3)})})})})
+              else
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
+
+          r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+            checkReserveHeaps(localResults)
+            val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+            val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+            /* TODO: See comment about performance in case ast.Ite */
+            assume(tAuxIn + tActualIn)
+            Q(tActualInVar, localResults(0).context)})
+        } else
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+            "P {... && next != null ==> folding next.P in e} is currently not " +
+            "supported. It should be  possible to wrap 'folding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + e)
+
+      case ast.Applying(eWand, eIn) =>
+        val πPre = decider.π
+        var localResults: List[LocalEvaluationResult] = Nil
+        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
+
+        val r =
+          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
+            assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
+            val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
+            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = c.reinterpretWand) /* TODO: See comment in exec/apply about givenHeap */
+            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
+              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
+                val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+                eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
+                  localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
+                  Success[C, ST, H, S](c4)})}))})
+
+        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+          checkReserveHeaps(localResults)
+          val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+          val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+          /* TODO: See comment about performance in case ast.Ite */
+          assume(tAuxIn + tActualIn)
+          Q(tActualInVar, localResults(0).context)})
+
+      /* TODO: We need to think more about exhaling and what its semantics should be.
+       *       For example, what should the result of evaluating an exhaling be?
+       *
+       * TODO: Implement consistency checks (and parsing rules?) for Exhaling.
+       */
+      case ast.Exhaling(exp) =>
+        consume(σ, FullPerm(), exp, pve, c, tv)((_, _, _, c1) =>
+          Q(True(), c1))
 
       /* Sequences */
 
@@ -796,12 +897,12 @@ trait DefaultEvaluator[
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          if (assertRcvrNonNull)
+          if (assertRcvrNonNull) {
             if (decider.assert(tRcvr !== Null()))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)
-          else
+          } else
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
       case ast.PredicateAccess(eArgs, predicate) =>
@@ -857,7 +958,10 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private case class LocalEvaluationResult(πGuards: Seq[Term], actualResult: Term, auxiliaryTerms: Set[Term])
+  private case class LocalEvaluationResult(πGuards: Seq[Term],
+                                           actualResult: Term,
+                                           auxiliaryTerms: Set[Term],
+                                           context: C)
 
   private def combine(localResults: Seq[LocalEvaluationResult],
                       actualResultTransformer: Term => Term = Predef.identity)
@@ -875,6 +979,13 @@ trait DefaultEvaluator[
       }
 
     (t1, tAux)
+  }
+
+  private def checkReserveHeaps(localResults: Seq[LocalEvaluationResult]) {
+    val heaps = localResults.flatMap(_.context.reserveHeap).toSet
+
+    assert(heaps.size <= 1,
+           "Unexpectedly found multiple different reserve heaps after a local evaluation.")
   }
 
   /* TODO: The CP-style in which Silicon's main components are written makes it hard to work

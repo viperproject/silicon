@@ -107,11 +107,11 @@ class DefaultDecider[ST <: Store[ST],
 //
 	def checkSmoke = prover.check() == Unsat
 
-  lazy val paLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
-
-  lazy val proverAssertionTimingsLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
+//  lazy val paLog =
+//    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
+//
+//  lazy val proverAssertionTimingsLog =
+//    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
 
   def stop() {
     if (prover != null) prover.stop()
@@ -140,7 +140,7 @@ class DefaultDecider[ST <: Store[ST],
 	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
 		val asserted = isKnownToBeTrue(t)
 
-		asserted || π.exists(_ == t) || proverAssert(t, logSink)
+		asserted /*|| π.exists(_ == t)*/ || proverAssert(t, logSink)
 	}
 
   /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
@@ -155,10 +155,10 @@ class DefaultDecider[ST <: Store[ST],
     if (logSink != null)
       logSink.println(t)
 
-    val startTime = System.currentTimeMillis()
+//    val startTime = System.currentTimeMillis()
     val result = prover.assert(t)
-    val endTime = System.currentTimeMillis()
-    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
+//    val endTime = System.currentTimeMillis()
+//    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
 
     result
   }
@@ -180,7 +180,7 @@ class DefaultDecider[ST <: Store[ST],
 //    if (permAssertCache.contains(t)) {
 //      permAssertCache(t)
 //    } else {
-      val r = assert(t, paLog)
+      val r = assert(t, /*paLog*/null)
       // permAssertCache.update(t, r)
       r
 //    }
@@ -399,16 +399,24 @@ class DefaultDecider[ST <: Store[ST],
 	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
 		chunks find (ch => ch.args == id.args)
 
-  lazy val fcwpLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
+//  lazy val fcwpLog =
+//    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
-    fcwpLog.println(id)
-		// prover.logComment("Chunk lookup ...")
-		// prover.enableLoggingComments(false)
     import silicon.state.terms.utils.BigAnd
-		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
-		// prover.enableLoggingComments(true)
+//    fcwpLog.println(id)
+
+    var chunk: Option[CH] = None
+
+    id match {
+      case mwchid: silicon.state.MagicWandChunk[H] =>
+        chunk = chunks find {ch =>
+          val t = BigAnd(ch.args zip id.args map (x => x._1 === x._2))
+          assert(t)
+        }
+      case _ =>
+        chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
+    }
 
 		chunk
 	}

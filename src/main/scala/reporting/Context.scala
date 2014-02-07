@@ -18,7 +18,12 @@ case class DefaultContext[ST <: Store[ST],
                           S <: State[ST, H, S]]
                          (currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
-                          constrainableARPs: Set[Var] = Set())
+                          constrainableARPs: Set[Var] = Set(),
+                          reserveHeap: Option[H] = None,
+                          reserveEvalHeap: Option[H] = None,
+                          poldHeap: Option[H] = None,
+                          givenHeap: Option[H] = None,
+                          reinterpretWand: Boolean = true)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
 
   def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] =

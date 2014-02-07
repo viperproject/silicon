@@ -1,0 +1,108 @@
+/* See loop_sum.sil for the running example of our FM'14 paper (currently
+ * under submission).
+ *
+ * The example encodes and specifies an iterative implementation of inserting
+ * a value into a linked-list. A magic wand is used to bookkeep permissions.
+ *
+ * Notes:
+ *  - Silicon might take a while to verify this example. We claim that this is
+ *    not due to using magic wands (w.r.t. their shape and number of
+ *    occurrences there is not a big difference to our running example
+ *    loop_sum.sil), but due to the use of mathematical sequences and
+ *    pure functions, which both entail more work for the underlying
+ *    prover. Moreover, Silicon's current treatment of pure functions is
+ *    not ideal and leads to even more work for the prover.
+ *  - The additional three asserts and the one assume are currently necessary,
+ *    Silicon otherwise fails to get the verification through. We believe that
+ *    this is due to a combination of the sequence axioms we use and Silicon's
+ *    currently handling of pure functions.
+ */
+
+var val: Int
+var next: Ref
+
+/* The usual linked-list predicate. */
+predicate List(xs: Ref) {
+	acc(xs.val) && acc(xs.next) && (xs.next != null ==> acc(List(xs.next)))
+}
+
+/* Returns the elements stored in the linked-list xs. */
+function elems(xs: Ref): Seq[Int]
+  requires acc(List(xs))
+{ unfolding List(xs) in Seq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next)) }
+
+/* Returns the head value of the linked-list xs. */
+function head(xs: Ref): Int
+  requires acc(List(xs))
+{ unfolding List(xs) in xs.val }
+
+/* Inserts value x at an appropriate position into the ordered linked-list xs, such that
+ * the list remains ordered if it was ascendingly ordered before.
+ */
+method insert(xs: Ref, x: Int) returns (i: Int)
+  requires acc(List(xs))
+  requires head(xs) < x
+  ensures acc(List(xs))
+  ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..]
+{
+  var curr: Ref
+  var next: Ref
+  i := 0
+
+  define A acc(List(curr))
+  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ lhs(elems(curr))
+
+  unfold List(xs)
+  curr := xs
+  next := xs.next
+
+  package A --* B
+
+	/* Find the appropriate position for x in the linked-list. After the loop,
+	 * curr points to the first node in the list s.t. curr.next is either null,
+	 * or curr.next.val >= x. next is always equal to curr.next.
+	 */
+  while (next != null && head(next) < x)
+    invariant 0 <= i && i < |old(elems(xs))|
+    invariant acc(curr.val) && acc(curr.next)
+    invariant next == curr.next
+    invariant curr.val == old(elems(xs))[i] /* inv4 */
+    invariant next != null ==> (acc(List(next)) && elems(next) == old(elems(xs))[i+1..])
+    invariant A --* B
+  {
+    assert old(elems(xs))[i+1..] == elems(next)
+      /* Can be shown */
+    assume old(elems(xs))[i+1] == unfolding List(next) in next.val
+      /* Cannot be shown by Silicon, and thus INV4 cannot be shown at the end of the loop */
+
+    wand w := A --* B
+
+    var prev: Ref := curr
+    unfold List(next)
+    curr := next
+    next := next.next
+    i := i + 1
+
+    assert curr.val == old(elems(xs))[i] /* INV4 */
+
+    package A --* folding List(prev) in applying w in B
+  }
+
+	/* Create a new node with value x and append the list tail starting at next to it. */
+  var node: Ref
+  node := new()
+  node.val := x
+  node.next := next
+
+  fold List(node)
+  assert elems(node) == Seq(x) ++ old(elems(xs))[i+1..] /* Silicon function unrolling? */
+
+	/* Append the new node (and its tail) to the current node. */
+  curr.next := node
+  fold List(curr)
+
+	/* Give up the sublist starting at curr and get back the original list *with*
+	 * the newly inserted value.
+	 */
+  apply A --* B
+}

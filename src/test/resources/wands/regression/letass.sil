@@ -1,0 +1,7 @@
+method test01() {
+  define A true
+  define B true
+
+  //:: ExpectedError(assert.failed:wand.not.found)
+  assert A --* B
+}

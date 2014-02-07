@@ -31,7 +31,7 @@ class DefaultSymbolConvert extends SymbolConvert {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(dt.toString)
 
-    case sil.ast.Pred | _: sil.ast.TypeVar =>
+    case sil.ast.Pred | _: sil.ast.TypeVar | sil.ast.Wand =>
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 

@@ -16,6 +16,8 @@ package object ast {
   type Field = sil.ast.Field
   type Variable = sil.ast.AbstractLocalVar
   val Variable = sil.ast.AbstractLocalVar
+  type LocalVariable = sil.ast.LocalVar
+  val LocalVariable = sil.ast.LocalVar
   type Typed = sil.ast.Typed
   type Expression = sil.ast.Exp
   type PermissionExpression = sil.ast.PermExp
@@ -43,6 +45,8 @@ package object ast {
   val Implies = sil.ast.Implies
   type Ite = sil.ast.CondExp
   val Ite = sil.ast.CondExp
+  type MagicWand = sil.ast.MagicWand
+  val MagicWand = sil.ast.MagicWand
 
   type NullLiteral = sil.ast.NullLit
   val NullLiteral = sil.ast.NullLit
@@ -100,6 +104,10 @@ package object ast {
 
   type Old = sil.ast.Old
   val Old = sil.ast.Old
+  type PackageOld = sil.ast.PackageOld
+  val PackageOld = sil.ast.PackageOld
+  type ApplyOld = sil.ast.ApplyOld
+  val ApplyOld = sil.ast.ApplyOld
 
   type AccessPredicate = sil.ast.AccessPredicate
   val AccessPredicate = sil.ast.AccessPredicate
@@ -113,14 +121,20 @@ package object ast {
   val FieldAccess = sil.ast.FieldAccess
   type PredicateAccess = sil.ast.PredicateAccess
   val PredicateAccess = sil.ast.PredicateAccess
-  type Unfolding = sil.ast.Unfolding
-  val Unfolding = sil.ast.Unfolding
   type IntegerLiteral = sil.ast.IntLit
   val IntegerLiteral = sil.ast.IntLit
-//  type FieldRead = sil.ast.FieldAccess
-//  val FieldRead = sil.ast.FieldAccess
   type FuncApp = sil.ast.FuncApp
   val FuncApp = sil.ast.FuncApp
+
+  type GhostOperation = sil.ast.GhostOperation
+  type Unfolding = sil.ast.Unfolding
+  val Unfolding = sil.ast.Unfolding
+  type Folding = sil.ast.Folding
+  val Folding = sil.ast.Folding
+  type Applying = sil.ast.Applying
+  val Applying = sil.ast.Applying
+  type Exhaling = sil.ast.Exhaling
+  val Exhaling = sil.ast.Exhaling
 
   type InhaleExhaleExp = sil.ast.InhaleExhaleExp
   val InhaleExhaleExp = sil.ast.InhaleExhaleExp
@@ -157,6 +171,10 @@ package object ast {
   val ConstrainFreshARP = sil.ast.FreshReadPerm
   type While = sil.ast.While
   val While = sil.ast.While
+  type Package = sil.ast.Package
+  val Package = sil.ast.Package
+  type Apply = sil.ast.Apply
+  val Apply = sil.ast.Apply
 
   type Domain = sil.ast.Domain
   val Domain = sil.ast.Domain
@@ -179,6 +197,7 @@ package object ast {
     val Bool = semper.sil.ast.Bool
     val Int = semper.sil.ast.Int
     val Ref = semper.sil.ast.Ref
+    val Wand = semper.sil.ast.Wand
     type Seq = semper.sil.ast.SeqType
     val Seq = semper.sil.ast.SeqType
     type Set = semper.sil.ast.SetType

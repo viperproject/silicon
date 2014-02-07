@@ -1,0 +1,47 @@
+var f: Int
+
+method test04(x: Ref)
+  requires acc(x.f, write)
+{
+  //:: ExpectedError(apply.failed:wand.not.found)
+  apply acc(x.f, 1/2) --* acc(x.f, 1/2)
+}
+
+method test02(x: Ref)
+  requires acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+  requires acc(x.f, 1/2)
+  ensures acc(x.f, write) && x.f == 0
+{
+  apply acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+}
+
+method test03(x: Ref, y: Ref)
+  requires acc(x.f, write) && acc(y.f, write)
+  requires x.f == 0
+{
+  var z: Ref := x
+  package acc(z.f, 1/2) --* (acc(z.f, 2/3) && z.f == 0)
+
+  z := y
+  //:: ExpectedError(apply.failed:wand.not.found)
+  apply acc(z.f, 1/2) --* (acc(z.f, 2/3) && z.f == 0)
+}
+
+method test01(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+
+  test02(x)
+}
+
+method test05(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  package acc(x.f, 1/2) --* (acc(x.f, 2/3) && x.f == 0)
+
+  //:: ExpectedError(call.precondition:wand.not.found)
+  test02(x)
+}

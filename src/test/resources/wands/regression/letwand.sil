@@ -1,0 +1,39 @@
+var f: Int
+
+method test01(x: Ref)
+  requires acc(x.f, write)
+  ensures acc(x.f, write)
+{
+  package true --* acc(x.f, write)
+
+  wand w := true --* acc(x.f, write)
+
+  apply w
+}
+
+method test02(x: Ref)
+  requires acc(x.f, write)
+  ensures acc(x.f, write)
+{
+  define A true
+  define B acc(x.f, write)
+
+  package A --* B
+  wand w := A --* B
+
+  apply w
+}
+
+method test03(xs: Ref) {
+  while (xs != null) {
+    package true --* true
+    wand w := true --* true
+  }
+}
+
+method test04(xs: Ref) {
+  while (xs != null) {
+    //:: ExpectedError(letwand.failed:wand.not.found)
+    wand w := true --* true
+  }
+}

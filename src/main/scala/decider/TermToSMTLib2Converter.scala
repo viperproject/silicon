@@ -216,6 +216,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     case Distinct(symbols) =>
       "(distinct %s)".format(symbols map(convert) mkString(" "))
+
+    case _: WandChunkRef[_] => sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
   }
 
   def sanitizeSymbol(str: String) = (
