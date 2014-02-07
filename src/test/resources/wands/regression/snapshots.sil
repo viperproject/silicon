@@ -18,7 +18,8 @@ method test01(x: Ref)
   unfold acc(P(x), write)
   apply A
   assert acc(x.g, write) && ((x.f) + (x.g) > 0)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /wand-silicon/issue/1/)
+  // wands-silicon issue 1
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/1/)
   assert (x.g) == 1
 }
 
@@ -33,7 +34,8 @@ method test02(x: Ref)
   package acc(x.h, write) --* acc(x.h, write)
   var b: Bool
   b := fun(x)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /wand-silicon/issue/1/)
+  // wands-silicon issue 1
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/1/)
   assert b == fun(x)
 }
 

@@ -28,13 +28,13 @@ object SiliconBuild extends Build {
 
 	lazy val silicon = {
     var p = Project(
-      id = "wand-silicon",
+      id = "silicon",
       base = file("."),
       settings = (
            baseSettings
 			  ++ assemblySettings
         ++ Seq(
-              name := "Wand-Silicon",
+              name := "Silicon",
               traceLevel := 10,
               maxErrors := 6,
               fork := true,
