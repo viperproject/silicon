@@ -103,7 +103,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                         : VerificationResult = {
 
-    logger.debug(s"\CONSUME ${φ.pos}: ${φ}")
+    logger.debug(s"\nCONSUME ${φ.pos}: ${φ}")
     logger.debug(stateFormatter.format(σ))
     if (c.reserveHeap.nonEmpty)
       logger.debug("hR = " + stateFormatter.format(c.reserveHeap.get))
