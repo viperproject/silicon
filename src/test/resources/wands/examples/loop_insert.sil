@@ -5,8 +5,8 @@
  * a value into a linked-list. A magic wand is used to bookkeep permissions.
  *
  * Notes:
- *  - Silicon might take a while to verify this example. We claim that this is
- *    not due to using magic wands (w.r.t. their shape and number of
+ *  - It takes Silicon quite a while to verify this example. We claim that this
+ *    is not due to using magic wands (w.r.t. their shape and number of
  *    occurrences there is not a big difference to our running example
  *    loop_sum.sil), but due to the use of mathematical sequences and
  *    pure functions, which both entail more work for the underlying
@@ -43,7 +43,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   requires acc(List(xs))
   requires head(xs) < x
   ensures acc(List(xs))
-  ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..]
+  ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..] /* POST2 */
 {
   var curr: Ref
   var next: Ref
@@ -64,16 +64,17 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 	 */
   while (next != null && head(next) < x)
     invariant 0 <= i && i < |old(elems(xs))|
+    invariant next == null ==> i == |old(elems(xs))| - 1 /* INV2*/
     invariant acc(curr.val) && acc(curr.next)
     invariant next == curr.next
-    invariant curr.val == old(elems(xs))[i] /* inv4 */
+    invariant curr.val == old(elems(xs))[i] /* INV5 */
     invariant next != null ==> (acc(List(next)) && elems(next) == old(elems(xs))[i+1..])
     invariant A --* B
   {
-    assert old(elems(xs))[i+1..] == elems(next)
-      /* Can be shown */
-    assume old(elems(xs))[i+1] == unfolding List(next) in next.val
-      /* Cannot be shown by Silicon, and thus INV4 cannot be shown at the end of the loop */
+    assert old(elems(xs))[i+1] == elems(next)[0]
+      /* Silicon function unrolling? Required to show INV5 */
+//    assume old(elems(xs))[i+1] == unfolding List(next) in next.val
+      /* Required by Silicon to show INV5? Was at least in here while we wrote the paper */
 
     wand w := A --* B
 
@@ -83,7 +84,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     next := next.next
     i := i + 1
 
-    assert curr.val == old(elems(xs))[i] /* INV4 */
+//    assert curr.val == old(elems(xs))[i] /* INV5 */
 
     package A --* folding List(prev) in applying w in B
   }
@@ -95,7 +96,9 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   node.next := next
 
   fold List(node)
-  assert elems(node) == Seq(x) ++ old(elems(xs))[i+1..] /* Silicon function unrolling? */
+
+  assert elems(node) == Seq(x) ++ old(elems(xs))[i+1..]
+    /* Silicon function unrolling? Required to show POST2, requires INV2 */
 
 	/* Append the new node (and its tail) to the current node. */
   curr.next := node
