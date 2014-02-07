@@ -132,6 +132,16 @@ trait DefaultEvaluator[
      * still shouldn't branch.
      */
 
+    /* TODO: LocalEvaluationResults collect contexts as well.
+     *       However, only one context can be passed on to Q, and currently
+     *       the one from the first LocalEvaluationResult is taken.
+     *       This shouldn't be much of a problem, except maybe for debugging,
+     *       as long as the context doesn't keep track of any crucial
+     *       information. This may not always be the case, however. E.g., the
+     *       Wands-Silicon prototype (for the rejected FM'14 paper) uses the
+     *       context to record the reserve heap.
+     */
+    
     val resultTerm = e match {
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)
@@ -212,7 +222,7 @@ trait DefaultEvaluator[
             branchLocally(t0.get, c1, tv, LocalAndBranching(e0, t0.get),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get))
+                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
                   Success[C, ST, H, S](c3)}),
               (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
 
@@ -220,8 +230,9 @@ trait DefaultEvaluator[
 
           r && {
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
+            val tAnd = And(t0.get, t1)
             assume(tAux)
-            Q(And(t0.get, t1), c1)}})
+            Q(tAnd, localResults.headOption.map(_.context).getOrElse(c1))}})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -301,7 +312,7 @@ trait DefaultEvaluator[
             branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf))
+                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
                   Success[C, ST, H, S](c3)}),
               (c2: C, _) => Success[C, ST, H, S](c2))})
 
@@ -321,8 +332,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, c)
-        }
+          Q(tImplies, localResults.headOption.map(_.context).getOrElse(c))}
 
       case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
@@ -349,15 +359,17 @@ trait DefaultEvaluator[
             branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) => {
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
-                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0))
+                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success[C, ST, H, S](c3)})},
 
               (c2: C, tv1: TV) => {
                 eval(σ, e2, pve, c2, tv1)((t2, c3) => {
-                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)))
+                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
                   Success[C, ST, H, S](c3)})})})
 
         decider.popScope()
+
+        val localResults = localResultsThen ::: localResultsElse
 
         r && {
           /* Conjunct all auxiliary terms (sort: bool). */
@@ -385,8 +397,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, c)
-        }
+          Q(tActualIte, localResults.headOption.map(_.context).getOrElse(c))}
 
       /* Integers */
 
@@ -510,7 +521,7 @@ trait DefaultEvaluator[
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
             eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
               triggers = _triggers
-              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre)
+              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2)
 
               /* We could call Q directly instead of returning Success, but in
                * that case the path conditions πDelta would also be outside of
@@ -535,7 +546,7 @@ trait DefaultEvaluator[
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-          Q(tQuant, c)}
+          Q(tQuant, localResults.headOption.map(_.context).getOrElse(c))}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -632,7 +643,7 @@ trait DefaultEvaluator[
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                       eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
-                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre)
+                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                         Success[C, ST, H, S](c3)})})}))
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
@@ -642,12 +653,11 @@ trait DefaultEvaluator[
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, c)
-          }
+            Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "supported. It should be  possible to wrap 'unfolding next.P in e' " +
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
 
@@ -857,7 +867,10 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private case class LocalEvaluationResult(πGuards: Seq[Term], actualResult: Term, auxiliaryTerms: Set[Term])
+  private case class LocalEvaluationResult(πGuards: Seq[Term],
+                                           actualResult: Term,
+                                           auxiliaryTerms: Set[Term],
+                                           context: C)
 
   private def combine(localResults: Seq[LocalEvaluationResult],
                       actualResultTransformer: Term => Term = Predef.identity)
