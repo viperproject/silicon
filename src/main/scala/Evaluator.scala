@@ -232,8 +232,9 @@ trait DefaultEvaluator[
           r && {
             checkReserveHeaps(localResults)
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
+            val tAnd = And(t0.get, t1)
             assume(tAux)
-            Q(And(t0.get, t1), localResults.headOption.map(_.context).getOrElse(c1))}})
+            Q(tAnd, localResults.headOption.map(_.context).getOrElse(c1))}})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
