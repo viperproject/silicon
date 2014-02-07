@@ -229,11 +229,11 @@ trait DefaultEvaluator[
 
           decider.popScope()
 
-          r && (if (localResults.isEmpty) Success[C, ST, H, S](c1) else {
+          r && {
             checkReserveHeaps(localResults)
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             assume(tAux)
-            Q(And(t0.get, t1), localResults(0).context)})})
+            Q(And(t0.get, t1), localResults.headOption.map(_.context).getOrElse(c1))}})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -319,7 +319,7 @@ trait DefaultEvaluator[
 
         decider.popScope()
 
-        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+        r && {
           checkReserveHeaps(localResults)
 
           /* The additional path conditions gained while evaluating the
@@ -335,7 +335,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, localResults(0).context)})
+          Q(tImplies, localResults.headOption.map(_.context).getOrElse(c))}
 
       case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
@@ -374,7 +374,7 @@ trait DefaultEvaluator[
 
         val localResults = localResultsThen ::: localResultsElse
 
-        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+        r && {
           checkReserveHeaps(localResults)
 
           /* Conjunct all auxiliary terms (sort: bool). */
@@ -402,7 +402,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, localResults(0).context)})
+          Q(tActualIte, localResults.headOption.map(_.context).getOrElse(c))}
 
       /* Integers */
 
@@ -545,14 +545,14 @@ trait DefaultEvaluator[
         decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
 
-        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+        r && {
           checkReserveHeaps(localResults)
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
           /* TODO: Translate triggers as well */
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-          Q(tQuant, localResults(0).context)})
+          Q(tQuant, localResults.headOption.map(_.context).getOrElse(c))}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -658,13 +658,13 @@ trait DefaultEvaluator[
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
-          r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+          r && {
             checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults(0).context)})
+            Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
@@ -704,13 +704,13 @@ trait DefaultEvaluator[
               else
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
 
-          r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+          r && {
             checkReserveHeaps(localResults)
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
             /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults(0).context)})
+            Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> folding next.P in e} is currently not " +
@@ -735,13 +735,13 @@ trait DefaultEvaluator[
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
                   Success[C, ST, H, S](c4)})}))})
 
-        r && (if (localResults.isEmpty) Success[C, ST, H, S](c) else {
+        r && {
           checkReserveHeaps(localResults)
           val tActualInVar = fresh("actualIn", toSort(eIn.typ))
           val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
           /* TODO: See comment about performance in case ast.Ite */
           assume(tAuxIn + tActualIn)
-          Q(tActualInVar, localResults(0).context)})
+          Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
 
       /* TODO: We need to think more about exhaling and what its semantics should be.
        *       For example, what should the result of evaluating an exhaling be?
