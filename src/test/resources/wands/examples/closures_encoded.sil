@@ -38,7 +38,7 @@ method call_triple_not_nested() {
 
   x.f := -10
 
-  //:: ExpectedError(exhale.failed:wand.outdated)
+  //:: ExpectedOutput(exhale.failed:wand.outdated)
   exhale     acc(x.f)
          && ((acc(x.f) && (x.f) == (now(x.f) + 1)) --* (acc(x.f) && (x.f) > 0))
          && ((acc(x.f) && (x.f) == (now(x.f) - 2)) --* acc(x.f))

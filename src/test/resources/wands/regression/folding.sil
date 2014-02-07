@@ -18,7 +18,7 @@ method test06() {
   p.g := 0;
 
   package
-    //:: MissingError(wand.not.wellformed:insufficient.permission, /wand-silicon/issue/2/)
+    //:: MissingOutput(wand.not.wellformed:insufficient.permission, /wand-silicon/issue/2/)
     (acc(p.f, write) && p.f > 0)
       --*
     folding acc(Pair(p), write) in (sum(p) > 0) // rhs is not self-framing
@@ -36,7 +36,7 @@ method test01() {
     folding acc(Pair(p), write) in (acc(Pair(p), write) && sum(p) > 0)
 
   assert acc(p.f, write)
-  //:: ExpectedError(assert.failed:insufficient.permission)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(p.g, write)
 }
 
@@ -47,7 +47,7 @@ method test02()
 
   p.g := -1;
 
-  //:: ExpectedError(package.failed:assertion.false)
+  //:: ExpectedOutput(package.failed:assertion.false)
   package
     (acc(p.f, write) && p.f > 0)
       --*
@@ -60,7 +60,7 @@ method test03() {
 
   exhale acc(p.g, 1/2)
 
-  //:: ExpectedError(package.failed:insufficient.permission)
+  //:: ExpectedOutput(package.failed:insufficient.permission)
   package
     (acc(p.f, write) && p.f > 0)
       --*
@@ -75,7 +75,7 @@ method test04(p: Ref)
   apply (acc(p.f, write) && p.f > 0) --* (acc(Pair(p), write) && sum(p) > 0)
 
   assert acc(Pair(p), write) && sum(p) > 0
-  //:: ExpectedError(assert.failed:insufficient.permission)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(p.f, write)
 }
 
@@ -92,6 +92,6 @@ method test05() {
 
   test04(p)
 
-  //:: ExpectedError(assert.failed:wand.not.found)
+  //:: ExpectedOutput(assert.failed:wand.not.found)
   assert (acc(p.f, write) && p.f > 0) --* (acc(Pair(p), write) && sum(p) > 0)
 }

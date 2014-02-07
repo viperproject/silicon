@@ -23,7 +23,7 @@ method test02(x: Ref, v: Int)
 {
   package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
   x.f := 0
-  //:: ExpectedError(apply.failed:assertion.false)
+  //:: ExpectedOutput(apply.failed:assertion.false)
   apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 }
 
@@ -39,7 +39,7 @@ method test04(x: Ref, v: Int)
   requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 {
   x.f := 0
-  //:: ExpectedError(apply.failed:assertion.false)
+  //:: ExpectedOutput(apply.failed:assertion.false)
   apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 }
 
@@ -63,7 +63,7 @@ method test07(x: Ref, y: Ref)
   x.f := x.g
   fold acc(Pair(x))
 
-  //:: ExpectedError(apply.failed:assertion.false)
+  //:: ExpectedOutput(apply.failed:assertion.false)
   apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
 }
 
@@ -78,7 +78,7 @@ method test08(x: Ref)
   
   unfold acc(Pair(x))
 
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
@@ -93,7 +93,7 @@ method test08(x: Ref)
 //    /* TODO: Ghost expressions are currently only allowed inside wands when these are packaged */
 //  unfold acc(Pair(x))
 //
-//  //:: ExpectedError(assert.failed:assertion.false)
+//  //:: ExpectedOutput(assert.failed:assertion.false)
 //  assert false
 //}
 
@@ -111,7 +111,7 @@ method test10(b: Bool, x: Ref)
   x.f := 1
   package (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
   x.f := 10
-  //:: ExpectedError(exhale.failed:wand.outdated)
+  //:: ExpectedOutput(exhale.failed:wand.outdated)
   exhale (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
 }
 
@@ -125,7 +125,7 @@ method test11(b: Bool, x: Ref)
 
   package acc(x.f) && x.f > now(x.f) --* acc(x.f)
   x.f := x.f + 1
-  //:: ExpectedError(exhale.failed:wand.outdated)
+  //:: ExpectedOutput(exhale.failed:wand.outdated)
   exhale acc(x.f) && x.f > now(x.f) --* acc(x.f)
     /* TODO: Can we do better? Requiring that polds haven't changed seems to restrictive. */
 }

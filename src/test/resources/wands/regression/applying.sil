@@ -36,6 +36,6 @@ method test01(p: Ref)
   fold acc(Pair(p), write)
   assert sum(p) > 0
 
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }

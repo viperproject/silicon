@@ -33,7 +33,7 @@ method test03(xs: Ref) {
 
 method test04(xs: Ref) {
   while (xs != null) {
-    //:: ExpectedError(letwand.failed:wand.not.found)
+    //:: ExpectedOutput(letwand.failed:wand.not.found)
     wand w := true --* true
   }
 }

@@ -7,7 +7,7 @@ method test06(x: Ref) {
 }
 
 method test07(x: Ref) {
-  //:: ExpectedError(package.failed:insufficient.permission)
+  //:: ExpectedOutput(package.failed:insufficient.permission)
   package acc(x.f, 1/2) --* acc(x.f, write)
 }
 
@@ -15,7 +15,7 @@ method test01(x: Ref)
   requires acc(x.f, write)
 {
   x.f := 0
-  //:: ExpectedError(package.failed:assertion.false)
+  //:: ExpectedOutput(package.failed:assertion.false)
   package acc(x.f, 1/2) --* (acc(x.f, 1/2) && x.f == 0)
 }
 
@@ -25,7 +25,7 @@ method test09(x: Ref)
   x.f := 0
   package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
   assert acc(x.f, 1/2)
-  //:: ExpectedError(assert.failed:insufficient.permission)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(x.f, 2/3)
 }
 
@@ -40,7 +40,7 @@ method test03(x: Ref)
   requires acc(x.f, write)
 {
   x.f := 1
-  //:: ExpectedError(package.failed:assertion.false)
+  //:: ExpectedOutput(package.failed:assertion.false)
   package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
 }
 
@@ -54,7 +54,7 @@ method test04(x: Ref)
 method test05(x: Ref)
   requires acc(x.f, 1/2) && x.f == 1
 {
-  //:: ExpectedError(package.failed:assertion.false)
+  //:: ExpectedOutput(package.failed:assertion.false)
   package (acc(x.f, 1/2) && x.f == 0) --* false
 }
 

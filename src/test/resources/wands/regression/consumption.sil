@@ -23,7 +23,7 @@ method test01(p: Ref)
     // h: (true --* p.Pair)
 
   assert true --* acc(Pair(p), write);
-  //:: ExpectedError(assert.failed:insufficient.permission)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(p.f, write)
 }
 
@@ -33,14 +33,14 @@ method test02(x: Ref)
   x.f := 0
   package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
   assert acc(x.f, 1/2)
-  //:: ExpectedError(assert.failed:insufficient.permission)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(x.f, 2/3)
 }
 
 method test03(x: Ref)
   requires acc(x.f, write) && acc(x.g, write)
 {
-  //:: ExpectedError(package.failed:insufficient.permission)
+  //:: ExpectedOutput(package.failed:insufficient.permission)
   package true --* folding acc(Pair(x), write) in acc(x.f, write)
 }
 
@@ -48,7 +48,7 @@ method test04(x: Ref, y: Ref)
   requires y != null
   requires acc(x.f, write) && acc(x.g, write)
 {
-  //:: ExpectedError(package.failed:insufficient.permission)
+  //:: ExpectedOutput(package.failed:insufficient.permission)
   package true --* folding acc(Pair(x), write) in acc(y.f, write)
 }
 
@@ -64,7 +64,7 @@ method test06(x: Ref, y: Ref)
   requires acc(Pair(x), write)
   requires (acc(Pair(x), write) && sum(x) == now(sum(x))) --* acc(y.f, write)
 {
-  //:: ExpectedError(package.failed:insufficient.permission)
+  //:: ExpectedOutput(package.failed:insufficient.permission)
   package
     (acc(Pair(x), write) && sum(x) == now(sum(x)))
       --*

@@ -30,7 +30,7 @@ method wrong_curry01(x: Ref)
 {
   inhale acc(x.f, write)
 
-  //:: ExpectedError(apply.failed:insufficient.permission)
+  //:: ExpectedOutput(apply.failed:insufficient.permission)
   apply (acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)
   package acc(x.g, write) --* acc(x.h, write)
 
@@ -47,7 +47,7 @@ method wrong_curry02(x: Ref)
 
   package acc(x.g, write) --* (applying ((acc(x.f, write) && acc(x.g, write)) --* acc(x.h, write)) in acc(x.h, write))
 
-  //:: ExpectedError(exhale.failed:insufficient.permission)
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale acc(x.f, write)
 
   package acc(x.f, write) --* (acc(x.g, write) --* acc(x.h, write))
@@ -63,6 +63,6 @@ method uncurry(x: Ref)
 
   package (F&&G) --* (applying (F--*(G--*H)) in (applying (G--*H) in H))
 
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert false // Never trust a magic wand!
 }
