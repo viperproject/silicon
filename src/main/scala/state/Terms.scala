@@ -299,12 +299,15 @@ class And(val p0: Term, val p1: Term) extends BooleanTerm
 		with commonnodes.And[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
 
 object And extends Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
+	def apply(el: Term, er: Term) = (el, er) match {
 		case (True(), e1) => e1
 		case (e0, True()) => e0
 		case (False(), _) | (_, False()) => False()
 		case (e0, e1) if e0 == e1 => e0
-		case _ => new And(e0, e1)
+    case (e0, Implies(e1, e2)) if e0 == e1 =>
+      /* This case arises quite often during local evaluation of expressions. */
+      new And(e0, e2)
+		case _ => new And(el, er)
 	}
 
 	def unapply(e: And) = Some((e.p0, e.p1))
