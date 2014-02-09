@@ -1069,11 +1069,17 @@ sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 //  utils.assertSort(p1, "second operand", sorts.Snap)
 //}
 
-case class Combine(t0: Term, t1: Term) extends SnapshotTerm {
-  utils.assertSort(t0, "first operand", sorts.Snap)
-  utils.assertSort(t1, "second operand", sorts.Snap)
+class Combine(val p0: Term, val p1: Term) extends SnapshotTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  utils.assertSort(p0, "first operand", sorts.Snap)
+  utils.assertSort(p1, "second operand", sorts.Snap)
 
-  override val toString = s"($t0, $t1)"
+  override val toString = s"($p0, $p1)"
+}
+
+object Combine {
+  def apply(t0: Term, t1: Term) = new Combine(t0.convert(sorts.Snap), t1.convert(sorts.Snap))
+
+  def unapply(c: Combine) = Some((c.p0, c.p1))
 }
 
 case class First(t: Term) extends SnapshotTerm {

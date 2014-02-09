@@ -100,7 +100,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
 					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
-						Q(h2, Combine(s1.convert(sorts.Snap), s2.convert(sorts.Snap)), dcs1 ::: dcs2, c2)))
+						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>

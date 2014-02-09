@@ -96,6 +96,35 @@ trait DefaultProducer[
     })
   }
 
+  def mkSnap(φ: ast.Expression): Term = {
+    def mkSnapFromPair(φ1: ast.Expression, φ2: ast.Expression) = {
+      if (φ1.isPure && !φ2.isPure) mkSnap(φ2)
+      else if (!φ1.isPure && φ2.isPure) mkSnap(φ1)
+      else fresh(sorts.Snap)
+    }
+
+    φ match {
+      case _ if φ.isPure => Unit
+
+      case ast.AccessPredicate(locacc, _) => locacc.typ match {
+        case ast.types.Pred => fresh(sorts.Snap)
+        case _ => fresh(toSort(locacc.typ))
+      }
+
+      case ast.Implies(e0, φ1) =>
+        /* φ1 must be impure, otherwise the first case would have applied. */
+        mkSnap(φ1)
+
+      case ast.And(φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+        mkSnapFromPair(φ1, φ2)
+
+      case ast.Ite(_, φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+        mkSnapFromPair(φ1, φ2)
+    }
+  }
+
 	private def internalProduce(σ: S,
                               sf: Sort => Term,
                               p: P,
@@ -114,8 +143,8 @@ trait DefaultProducer[
         produce2(σ, sf, p, a0, pve, c, tv)(Q)
 
       case ast.And(a0, a1) if !φ.isPure =>
-        val s0 = fresh(sorts.Snap)
-        val s1 = fresh(sorts.Snap)
+        val s0 = mkSnap(a0)
+        val s1 = mkSnap(a1)
         val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)

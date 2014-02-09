@@ -185,5 +185,6 @@ package object ast {
     val Set = semper.sil.ast.SetType
     type Multiset = semper.sil.ast.MultisetType
     val Multiset = semper.sil.ast.MultisetType
+    val Pred = sil.ast.Pred
   }
 }
