@@ -133,6 +133,16 @@ trait DefaultEvaluator[
      * still shouldn't branch.
      */
 
+    /* TODO: LocalEvaluationResults collect contexts as well.
+     *       However, only one context can be passed on to Q, and currently
+     *       the one from the first LocalEvaluationResult is taken.
+     *       This shouldn't be much of a problem, except maybe for debugging,
+     *       as long as the context doesn't keep track of any crucial
+     *       information. This may not always be the case, however. E.g., the
+     *       Wands-Silicon prototype (for the rejected FM'14 paper) uses the
+     *       context to record the reserve heap.
+     */
+    
     val resultTerm = e match {
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)
@@ -500,17 +510,6 @@ trait DefaultEvaluator[
          *    them due to the scope of the quantified variables
          *  - We thus have to determine these additional path conditions
          *    to be able to include them in the quantification
-         *
-         * ATTENTION The current implementation unfortunately disallows branching
-         * evaluations!
-         * Consider e.g. e0 ==> e1 which could be evaluated by
-         * branching over e0, returning once t0 ==> t1 and once ¬t0 ==> true.
-         * However, the second branch's result overwrites the first branch's
-         * result when being assigned to tActualBody. Hence, only the second
-         * branch is asserted which always succeeds.
-         *
-         * A possible solution would be to make tActualBody and πPost lists and
-         * to eventually invoke Q with a list of conjuncted quantifications.
          */
 
         val πPre: Set[Term] = decider.π
@@ -970,7 +969,9 @@ trait DefaultEvaluator[
 
     val (t1: Term, tAux: Set[Term]) =
       localResults.map {lr =>
-        val guard: Term = state.terms.utils.BigAnd(lr.πGuards)
+        val newGuards = lr.πGuards filterNot decider.π.contains
+
+        val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
 
