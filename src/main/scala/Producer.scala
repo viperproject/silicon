@@ -187,7 +187,7 @@ trait DefaultProducer[ST <: Store[ST],
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
               decider.prover.logComment("End produce set access predicate " + fa)
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
-                // TODO: why does sf not work? This might introduce an incompleteness somewhere - ask Malte
+                // TODO https://bitbucket.org/semperproject/silicon/issue/59/create-sortwrappers-for-functions
                 val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
                 val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, app, pGain * p, tCond)
