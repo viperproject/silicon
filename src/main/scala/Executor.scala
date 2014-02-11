@@ -236,7 +236,7 @@ trait DefaultExecutor[ST <: Store[ST],
               Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
             else {
               val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
-              quantifiedChunkHelper.exhale(σ.h, ch, pve, fl, c2, tv)(h =>
+              quantifiedChunkHelper.consume(σ.h, ch, pve, fl, c2, tv)(h =>
                 Q((σ \ h) \+ ch, c2)
               )
             }

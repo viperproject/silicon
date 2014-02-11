@@ -5,29 +5,15 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import sil.ast.utility.Permissions.isConditional
-import semper.silicon.interfaces.state._
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import semper.silicon.state._
+import state._
 import state.terms._
+import interfaces.state._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
-import semper.silicon.heap.QuantifiedChunkHelper
-import semper.silicon.state.terms.PermPlus
-import semper.silicon.state.terms.PermMinus
-import semper.silicon.state.terms.PermTimes
-import semper.silicon.state.terms.IntPermTimes
-import semper.sil.verifier.reasons.NonPositivePermission
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.DirectPredicateChunk
-import semper.silicon.interfaces.Failure
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.state.terms.Combine
-import semper.silicon.state.terms.Var
-import semper.sil.ast.LocalVar
-import semper.silicon.state.terms.WildcardPerm
-import semper.sil.verifier.reasons.AssertionFalse
+import heap.QuantifiedChunkHelper
+import sil.ast.{LocalVar}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -157,7 +143,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 val h2 = if(quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
                 quantifiedChunkHelper.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
-                  quantifiedChunkHelper.exhale(h2, ch, pve, locacc, c3, tv)(h3 =>
+                  quantifiedChunkHelper.consume(h2, ch, pve, locacc, c3, tv)(h3 =>
                     {
                       Q(h3, t, Nil, c3)
                     }
@@ -175,7 +161,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
             quantifiedChunkHelper.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
               val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, null, tPerm)
-              quantifiedChunkHelper.exhale(h, ch, pve, locacc, c2, tv)(h2 =>
+              quantifiedChunkHelper.consume(h, ch, pve, locacc, c2, tv)(h2 =>
                 Q(h2, t, Nil, c2)
               )
             })))

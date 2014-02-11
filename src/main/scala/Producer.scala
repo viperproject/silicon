@@ -13,7 +13,6 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import semper.silicon.state._
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
-import semper.silicon.reporting.DefaultContext
 import semper.silicon.heap.QuantifiedChunkHelper
 import semper.sil.ast.LocalVar
 

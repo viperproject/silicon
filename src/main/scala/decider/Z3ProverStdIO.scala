@@ -243,7 +243,6 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 	private def log(str: String) {
 		if (logfile != null) {
 		logfile.println(str);
-		logfile.flush()
 		}
 	}
 

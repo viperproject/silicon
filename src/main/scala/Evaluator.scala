@@ -4,8 +4,8 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.errors.PreconditionInAppFalse
 import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import sil.verifier.errors.PreconditionInAppFalse
 import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching, ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
@@ -14,13 +14,7 @@ import interfaces.reporting.TraceView
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
-import semper.silicon.heap.QuantifiedChunkHelper
-import semper.silicon.interfaces.Failure
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.interfaces.Success
-import semper.sil.verifier.errors.PreconditionInAppFalse
-import semper.sil.verifier.reasons.ReceiverNull
-import semper.sil.verifier.reasons.DivisionByZero
+import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],

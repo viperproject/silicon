@@ -3,40 +3,58 @@ package silicon
 package heap
 
 
-import semper.silicon.interfaces.{Failure, VerificationResult}
-import semper.silicon.interfaces.state._
-import semper.silicon.interfaces.reporting.{Context, TraceView}
-import semper.silicon.state.terms._
-import semper.silicon.state._
+import interfaces.{VerificationResult, Failure}
+import interfaces.state._
+import interfaces.reporting.{Context, TraceView}
+import state.terms._
+import state._
 import semper.silicon.ast.Field
-import semper.silicon.interfaces.decider.Decider
-import semper.sil.verifier.reasons.{ReceiverNull, InsufficientPermission}
-import semper.sil.ast.{Exp, LocationAccess, FieldAccess}
-import semper.sil.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
-HeapMerger}
-import semper.silicon.interfaces.Failure
-import semper.sil.verifier.reasons.InsufficientPermission
-import semper.sil.verifier.reasons.ReceiverNull
-import silicon.state.terms.utils.{BigAnd, BigPermSum}
+import interfaces.decider.Decider
+import sil.ast.{LocationAccess}
+import sil.verifier.PartialVerificationError
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory}
+import semper.sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import silicon.state.terms.utils.{BigPermSum}
 
 
+/**
+ * Helper functions to handle quantified chunks
+ */
 trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
 
   def value(h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult;
 
+  /**
+   * Check if the heap contains quantified chunks for a field
+   */
   def isQuantifiedFor(h:H, field:String) = h.values.filter{_.name == field}.exists{case ch:QuantifiedChunk => true case _ => false}
+
+  /**
+   * Converts all field chunks for the given field to their quantified equivalents
+   */
   def quantifyChunksForField(h:H, f:String):H
 
   def rewriteGuard(guard:Term):Term
 
+  /**
+   * Transform a single element (without a guard) to its axiomatization equivalent
+   */
   def transformElement(rcvr:Term, field:String, value:Term, perm:DefaultFractionalPermissions):QuantifiedChunk
 
+  /**
+   * Transform permissions under quantifiers to their axiomatization equivalents
+   */
   def transform(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
 
+  /**
+   * Returns a symbolic sum which is equivalent to the permissions for the given receiver/field combination
+   */
   def permission(h: H, id: ChunkIdentifier): Term
 
-  def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
+  /**
+   * Consumes the given chunk in the heap
+   */
+  def consume(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
 }
 
 class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], val symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends QuantifiedChunkHelper[ST, H, PC, S, C, TV] {
@@ -65,21 +83,11 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
     }}, {x => x})
   }
 
-  // TODO Implement this properly
-  def stable(guard:Term):Boolean = {
-    guard match{
-      case SetIn(_,_) => true
-      case And(SetIn(_,_), b) => true
-      case _ => false
-    }
-  }
-
   def rewriteGuard(guard:Term):Term = {
     guard match {
       case SeqIn(SeqRanged(a,b),c) => /*SeqIn(SeqRanged(a,b),c)*/And(AtLeast(c,a), Less(c,b))
       // sets
-      case t if(stable(t))  => t
-      case _ => sys.error("Condition " + guard + " is not stable.")
+      case t => t
     }
   }
 
@@ -135,8 +143,6 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
   }
 
 
-  // TODO move (there is one version of this already in Consumer)
-  // TODO walk terms somehow...
   def isWildcard(perm: Term):Boolean = { perm match {
     case TermPerm(t) => isWildcard(t)
     case _: WildcardPerm => true
@@ -179,13 +185,9 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
     }
   }
 
-  def exhaleTest(h:H, ch:QuantifiedChunk) = {
-    val hq = quantifyChunksForField(h, ch.name)
-    val k = exhalePermissions2(hq,ch)
-    if(!k._3) None else Some(k._2)
-  }
 
-  def exhale(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
+
+  def consume(h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
     val k = exhalePermissions2(h, ch)
     if(!k._3)
       Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)

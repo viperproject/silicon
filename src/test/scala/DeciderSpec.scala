@@ -1,59 +1,22 @@
-import collection.mutable.Stack
 import org.scalatest._
-import scala.Some
-import scala.Some
-import scala.Some
 import semper.silicon.decider.DefaultDecider
-import semper.silicon.heap.{QuantifiedChunkHelper, DefaultQuantifiedChunkHelper}
+import semper.silicon.decider.SMTLib2PreambleEmitter
+import semper.silicon.heap.{DefaultQuantifiedChunkHelper}
 import semper.silicon.interfaces.reporting.{TraceView, Context}
 import semper.silicon.interfaces.state._
 import semper.silicon.reporting._
-import semper.silicon.reporting.DefaultContext
-import semper.silicon.reporting.DependencyNotFoundException
-import semper.silicon.state.DefaultState
-import semper.silicon.state.DefaultState
-import semper.silicon.state.DefaultState
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.DirectFieldChunk
-import semper.silicon.state.QuantifiedChunk
-import semper.silicon.state.QuantifiedChunk
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.FieldChunkIdentifier
-import semper.silicon.state.MapBackedStore
-import semper.silicon.state.MapBackedStore
-import semper.silicon.state.MapBackedStore
-import semper.silicon.state.SetBackedHeap
-import semper.silicon.state.SetBackedHeap
-import semper.silicon.state.SetBackedHeap
-import semper.silicon.state.terms.*
-import semper.silicon.state.terms.*
-import semper.silicon.state.terms.DefaultFractionalPermissions
+import semper.silicon.Config
+import semper.silicon.interfaces.decider.Decider
 import semper.silicon.state._
 import semper.silicon.state.terms._
-import semper.silicon.Config
-import semper.silicon.decider.SMTLib2PreambleEmitter
-import semper.silicon.interfaces.decider.Decider
-import semper.silicon.state.terms._
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.terms.DomainFApp
-import semper.silicon.state.terms.FractionPerm
-import semper.silicon.state.terms.FractionPerm
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.terms.FullPerm
-import semper.silicon.state.terms.IntLiteral
-import semper.silicon.state.terms.IntLiteral
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.NoPerm
-import semper.silicon.state.terms.Quantification
-import semper.silicon.state.terms.Quantification
-import semper.silicon.state.terms.SingletonSet
-import semper.silicon.state.terms.SingletonSet
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.state.terms.TermPerm
-import semper.silicon.state.terms.Var
-import semper.silicon.state.terms.Var
+
+class QuantifiedChunkHelperTest[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]](decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C], symbolConverter: SymbolConvert, stateFactory: StateFactory[ST, H, S]) extends DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory) {
+  def exhaleTest(h:H, ch:QuantifiedChunk) = {
+    val hq = quantifyChunksForField(h, ch.name)
+    val k = exhalePermissions2(hq,ch)
+    if(!k._3) None else Some(k._2)
+  }
+}
 
 
 class DeciderSpec extends FlatSpec {
@@ -91,12 +54,12 @@ class DeciderSpec extends FlatSpec {
 
   def createHeapManager = {
     val decider = createDecider
-    (new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, new DefaultSymbolConvert(), new DefaultStateFactory(decider.π _)), decider)
+    (new QuantifiedChunkHelperTest[ST, H, PC, S, C, TV](decider, new DefaultSymbolConvert(), new DefaultStateFactory(decider.π _)), decider)
   }
 
   def emitSetPreamble(decider: Decider[P, ST, H, PC, S, C]) {
     val preambleFileEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])
-    decider.prover.declare(terms.SortDecl(sorts.Set(sorts.Ref)))
+    decider.prover.declare(SortDecl(sorts.Set(sorts.Ref)))
     decider.prover.logComment(s"/sets_declarations_dafny.smt2 [Set[Ref]]")
     preambleFileEmitter.emitSortParametricAssertions("/sets_declarations_dafny.smt2", sorts.Ref)
     decider.prover.logComment(s"/sets_axioms_dafny.smt2 [Set[Ref]]")
@@ -105,7 +68,7 @@ class DeciderSpec extends FlatSpec {
 
   def emitMultisetPreamble(decider: Decider[P, ST, H, PC, S, C]) {
     val preambleFileEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])
-    decider.prover.declare(terms.SortDecl(sorts.Multiset(sorts.Ref)))
+    decider.prover.declare(SortDecl(sorts.Multiset(sorts.Ref)))
     decider.prover.logComment(s"/multisets_declarations_dafny.smt2 [Multiset[Ref]]")
     preambleFileEmitter.emitSortParametricAssertions("/multisets_declarations_dafny.smt2", sorts.Ref)
     decider.prover.logComment(s"/multisets_axioms_dafny.smt2 [Multiset[Ref]]")
@@ -114,7 +77,7 @@ class DeciderSpec extends FlatSpec {
 
   def emitSequencePreamble(decider: Decider[P, ST, H, PC, S, C]) {
     val preambleFileEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])
-    decider.prover.declare(terms.SortDecl(sorts.Seq(sorts.Ref)))
+    decider.prover.declare(SortDecl(sorts.Seq(sorts.Ref)))
     decider.prover.logComment(s"/sequences_declarations_dafny.smt2 [Seq[Ref]]")
     preambleFileEmitter.emitSortParametricAssertions("/sequences_declarations_dafny.smt2", sorts.Ref)
     decider.prover.logComment(s"/sequences_axioms_dafny.smt2 [Seq[Ref]]")
@@ -299,8 +262,6 @@ class DeciderSpec extends FlatSpec {
 
     val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
-    // TODO
-    // assert(decider.hasEnoughPermissionsGlobally(heap, FieldChunkIdentifier(x, "f"), FullPerm()) === true)
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FullPerm(), NoPerm())))
 
@@ -321,8 +282,6 @@ class DeciderSpec extends FlatSpec {
 
     val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm()))) + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm())))
 
-    // TODO
-    // assert(decider.hasEnough...)
 
     val exhaleHeap = QuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm()))))
 
@@ -389,9 +348,6 @@ class DeciderSpec extends FlatSpec {
 
     val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
-    // TODO
-    // assert(decider.hasEnough...)
-
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FullPerm(), NoPerm())))
     val exhaleHeap2 = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm())))
 
@@ -417,9 +373,6 @@ class DeciderSpec extends FlatSpec {
     decider.assume(SetDisjoint(T, U))
 
     val heap = new SetBackedHeap() + QuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm()))))
-
-    // TODO
-    // assert(decider.hasEnough...)
 
     val exhaleHeap = QuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), T), FullPerm(), NoPerm()))))
     val exhaleHeap2 = QuantifiedChunk("f", null, (TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm()))))

@@ -3,7 +3,7 @@ package silicon
 package decider
 
 import interfaces.decider.TermConverter
-import semper.silicon.state.terms._
+import state.terms._
 
 class TermToSMTLib2Converter extends TermConverter[String, String, String] {
   def convert(sort: Sort) = sort match {
