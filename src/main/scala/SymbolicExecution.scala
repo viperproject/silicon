@@ -78,8 +78,10 @@ trait DefaultBrancher[ST <: Store[ST],
 
 
   private var currentGuards: Stack[Term] = Stack()
-
-  def guards = this.currentGuards
+  /* TODO: Use a set that preserves insertion order, should be faster than
+   *       calling Stack.distinct over and over again.
+   */
+  def guards = this.currentGuards.distinct
 
   def branchLocally(t: Term,
                     c: C,
