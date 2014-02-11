@@ -71,4 +71,12 @@ class DefaultSequencesEmitter(prover: Prover,
       preambleFileEmitter.emitSortParametricAssertions("/sequences_int_axioms_dafny.smt2", terms.sorts.Int)
     }
   }
+
+  def declareSortWrappers() {
+    collectedSorts foreach {
+      s =>
+      prover.logComment(s"/sortwrappers.smt2 Seq[${s.elementsSort}}]")
+      preambleFileEmitter.emitSortParametricAssertions("/sortwrappers.smt2", s)
+    }
+  }
 }

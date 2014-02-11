@@ -44,3 +44,26 @@
 		(= ($Seq.at ($Seq.rng i j) k) (+ i k)))
 	:pattern (($Seq.at ($Seq.rng i j) k))
 	)))
+
+; Range splitting
+(declare-fun $Seq.rngP (Int Int) $Seq<Int>)
+
+(assert (forall ((start Int) (end Int)) (!
+    (= ($Seq.rng start end) ($Seq.rngP start end))
+    :pattern (($Seq.rng start end))
+    )))
+
+(assert (forall ((start Int) (end Int) (k Int)) (!
+    (implies
+       (and
+          (<= start k)
+           (<= k end)
+       )
+       (=
+           ($Seq.rngP start end)
+           ($Seq.con ($Seq.rngP start k) ($Seq.rngP k end))
+       )
+     )
+    :pattern (($Seq.rng start k) ($Seq.rng k end))
+    )))
+

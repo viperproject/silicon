@@ -23,6 +23,8 @@ import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
+import semper.silicon.heap.DefaultQuantifiedChunkHelper
+import semper.silicon.interfaces.state.HeapFactory
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -148,6 +150,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val heapMerger =
 			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
     decider.init(pathConditionFactory, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
@@ -159,7 +162,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
-                           setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger,
+                           setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, quantifiedChunkHelper,
                            stateUtils, bookkeeper, traceviewFactory)
 	}
 

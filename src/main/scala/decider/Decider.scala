@@ -9,10 +9,11 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory,
     Chunk}
 import interfaces.reporting.Context
-import semper.silicon.state.{DirectChunk, SymbolConvert}
+import semper.silicon.state._
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
+import silicon.state.terms.utils.{BigAnd, BigPermSum}
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
@@ -402,11 +403,13 @@ class DefaultDecider[ST <: Store[ST],
   lazy val fcwpLog =
     common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
+    /**
+     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
+     */
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
     fcwpLog.println(id)
 		// prover.logComment("Chunk lookup ...")
 		// prover.enableLoggingComments(false)
-    import silicon.state.terms.utils.BigAnd
 		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 		// prover.enableLoggingComments(true)
 

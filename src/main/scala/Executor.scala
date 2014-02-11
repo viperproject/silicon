@@ -5,7 +5,7 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.errors.{Internal, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import semper.sil.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
@@ -13,10 +13,11 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
-    DirectChunk, NestedFieldChunk, NestedPredicateChunk}
+import semper.silicon.state._
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
+import semper.silicon.heap.QuantifiedChunkHelper
+import semper.sil.verifier.errors.InhaleFailed
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -44,7 +45,9 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val heapMerger: HeapMerger[H]
   import heapMerger.merge
 
-	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
+
+  protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
@@ -209,7 +212,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case _ =>
         logger.debug(s"\nEXECUTE ${stmt.pos}: ${stmt}")
         logger.debug(stateFormatter.format(σ))
-        decider.prover.logComment("")
+        decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString)
     }
 
@@ -221,8 +224,28 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
+      /* Assignment for a field that contains quantified chunks */
+      case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
+        val pve = AssignmentFailed(ass)
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+            decider.assume(NullTrigger(tRcvr))
+            if (!decider.assert(tRcvr !== Null()))
+              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
+            else if (!decider.assert(AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
+              Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
+            else {
+              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
+              quantifiedChunkHelper.consume(σ.h, ch, pve, fl, c2, tv)(h =>
+                Q((σ \ h) \+ ch, c2)
+              )
+            }
+          })
+        )
+
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
+
         val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))
@@ -242,8 +265,8 @@ trait DefaultExecutor[ST <: Store[ST],
         assume(state.terms.utils.BigAnd(refs map (_ !== t)))
         Q(σ1, c)
 
-      case ast.Inhale(a) =>
-        produce(σ, fresh, FullPerm(), a, Internal(stmt), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
+      case inhale @ ast.Inhale(a) =>
+        produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
           Q(σ1, c1))
 
       case exhale @ ast.Exhale(a) =>

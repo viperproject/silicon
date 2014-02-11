@@ -184,7 +184,10 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
    */
   def fresh(id: String, sort: Sort) = {
     val v = Var(freshId(id), sort)
-    val decl = "(declare-const %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
+    val decl = sort match {
+      case sorts.Arrow(_,_) => "(declare-fun %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
+      case _ =>  "(declare-const %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
+    }
     write(decl)
 
     v
@@ -238,7 +241,9 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   }
 
 	private def log(str: String) {
-		if (logfile != null) logfile.println(str);
+		if (logfile != null) {
+		logfile.println(str);
+		}
 	}
 
   private def writeLine(out: String) = {

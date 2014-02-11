@@ -3,6 +3,7 @@ package silicon
 package state.terms
 
 import ast.commonnodes
+
 //import ast.commonnodes.{BinaryOp}
 //import interfaces.state.{Heap}
 
@@ -98,6 +99,62 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 sealed trait Term {
   def sort: Sort
 
+  def replace(term:Term, withTerm:Term):Term = {
+    if (this==term) withTerm else
+      this match {
+        case *() => *()
+        case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
+        case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Eq(t1, t2) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case v: Var => v
+        case f: FractionPerm => f
+        case f: FullPerm => f
+        case p: NoPerm => p
+        case PermMinus(t1,t2) => PermMinus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
+        case PermPlus(t1,t2) => PermPlus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
+        case PermTimes(t1, t2) => PermTimes(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
+        case TermPerm(t) => TermPerm(t.replace(term, withTerm))
+        case And(t1, t2) => And(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Or(t1, t2) => Or(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case PermMin(t1,t2) => PermMin(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetDifference(t1,t2) => SetDifference(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetUnion(t1, t2) => SetUnion(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetIntersection(t1, t2) => SetIntersection(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SetAdd(t1, t2) => SetAdd(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SingletonSet(t1) => SingletonSet(t1.replace(term, withTerm))
+        case False() => False()
+        case True() => True()
+        case Not(t) => Not(t.replace(term, withTerm))
+        case s: SortWrapper => s
+        case Implies(t1, t2) => Implies(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case DomainFApp(function, tArgs) => DomainFApp(function, tArgs map {t => t.replace(term, withTerm) })
+        case n: Null => n
+        case w: WildcardPerm => w
+        case Quantification(quant, vars, body, triggers) => Quantification(quant, vars, body.replace(term, withTerm), triggers)
+        case Plus(t1, t2) => Plus(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case i:IntLiteral => i
+        case AtLeast(t1, t2) => AtLeast(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Less(t1, t2) => Less(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
+        case e:EmptySet => e
+        case MultisetIn(t1, t2) => MultisetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case MultisetCount(t1, t2) => MultisetCount(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqIn(t1, t2) => SeqIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqTake(t1, t2) => SeqTake(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqDrop(t1, t2) => SeqDrop(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqAt(t1, t2) => SeqAt(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case MultisetFromSeq(t1) => MultisetFromSeq(t1.replace(term, withTerm))
+        case SeqLength(t) => SeqLength(t.replace(term, withTerm))
+        case Minus(t1, t2) => Minus(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case _ => sys.error("Cannot replace for term. Implement me!")
+      }
+  }
+
   def ===(t: Term): Term = Eq(this, t)
   def !==(t: Term): Term = Not(Eq(this, t))
   def convert(to: Sort): Term = SortWrapper(this, to)
@@ -183,6 +240,14 @@ object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
 case class Trigger(ts: Seq[Term])
+
+// Placeholder
+case class *() extends Symbol {
+  val id = "*"
+  val sort = sorts.Ref
+
+  override val toString = "*"
+}
 
 case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
     extends BooleanTerm
@@ -348,7 +413,7 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
-	override val toString = "Ite(%s, %s, %s)".format(t0, t1, t2)
+	override val toString = "%s ? %s : %s".format(t0, t1, t2)
 
   override val hashCode = silicon.utils.generateHashCode(t0, t1, t2)
 
@@ -387,10 +452,17 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 //case class TermEq(p0: Term, p1: Term) extends Eq
 
-case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
-  assert(p0.sort == p1.sort,
-         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-         .format(p0.sort, p0, p1.sort, p1))
+/*case*/ class Eq(val p0: Term, val p1: Term) extends ComparisonTerm with commonnodes.Eq[Term]
+
+object Eq extends Function2[Term, Term, BooleanTerm] {
+  def apply(e0: Term, e1:Term) = {
+    assert(e0.sort == e1.sort,
+      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+        .format(e0.sort, e0, e1.sort, e1))
+
+    if (e0 == e1) True() else new Eq(e0, e1)
+  }
+  def unapply(eq:Eq) = Some((eq.p0, eq.p1))
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
@@ -601,6 +673,13 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   }
 
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
+}
+
+case class PermMin(val p1: Term, val p2: Term) extends DefaultFractionalPermissions {
+  utils.assertSort(p1, "Permission 1st", sorts.Perm)
+  utils.assertSort(p2, "Permission 2nd", sorts.Perm)
+
+  override val toString = s"min ($p1, $p2)"
 }
 
 /* Functions */
@@ -917,9 +996,24 @@ object SetSubset extends ((Term, Term) => SetTerm) {
   def unapply(ss: SetSubset) = Some((ss.p0, ss.p1))
 }
 
+class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
+  override val op = "disj"
+}
+
+object SetDisjoint extends ((Term, Term) => SetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSameSetSorts(t0, t1)
+    new SetDisjoint(t0, t1)
+  }
+
+  def unapply(sd: SetDisjoint) = Some((sd.p0, sd.p1))
+}
+
 class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "\\"
 }
+
+
 
 object SetDifference extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
@@ -1052,6 +1146,37 @@ object MultisetCardinality {
   def unapply(mc: MultisetCardinality) = Some((mc.p))
 }
 
+class MultisetCount(val p0:Term, val p1:Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
+  val sort = sorts.Int
+  override val toString = s"cnt($p0,$p1)"
+}
+
+object MultisetCount extends {
+  def apply(e:Term, t:Term) = {
+    utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
+    utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
+
+    new MultisetCount(e,t)
+  }
+
+  def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
+}
+
+class MultisetFromSeq(val p:Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+  val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
+  val sort = sorts.Multiset(elementsSort)
+}
+
+object MultisetFromSeq {
+  def apply(p:Term) = {
+    utils.assertSort(p, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+
+    new MultisetFromSeq(p)
+  }
+
+  def unapply(m:MultisetFromSeq) = Some(m.p)
+}
+
 /* Domains */
 
 //case class DomainFApp(function: Function, snapshot: Term, tArgs: Seq[Term]/*, sort: Sort*/) extends Term {
@@ -1131,6 +1256,19 @@ object Distinct {
   def unapply(d: Distinct) = Some(d.ts)
 }
 
+class NullTrigger(val t:Term) extends BooleanTerm {
+  override val toString = s"Null($t)"
+  assert(t.sort == sorts.Ref)
+}
+
+object NullTrigger {
+  def apply(t:Term):Term =
+    new NullTrigger(t)
+
+  def unapply(n:NullTrigger) = Some(n.t)
+}
+
+
 /* Utility functions */
 
 object utils {
@@ -1141,6 +1279,9 @@ object utils {
 
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, Or, True())
+    
+  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
+    silicon.utils.mapReduceLeft(it, f, Plus, NoPerm())
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def assertSort(t: Term, desc: String, s: Sort) {

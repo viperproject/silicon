@@ -124,6 +124,9 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     collectedAxioms foreach prover.assume
   }
 
+  def declareSortWrappers() = ???
+
+
   def emitUniquenessAssumptions() {
     prover.assume(terms.Distinct(uniqueSymbols))
   }
