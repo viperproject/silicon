@@ -13,8 +13,8 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
-import semper.silicon.heap.QuantifiedChunkHelper
-import semper.sil.ast.LocalVar
+import heap.QuantifiedChunkHelper
+import sil.ast.LocalVar
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],

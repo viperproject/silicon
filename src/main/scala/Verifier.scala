@@ -266,9 +266,9 @@ trait AbstractVerifier[ST <: Store[ST],
 
     emitStaticPreamble()
 
+    sequencesEmitter.declareSorts()
     setsEmitter.declareSorts()
     multisetsEmitter.declareSorts()
-    sequencesEmitter.declareSorts()
     domainsEmitter.declareSorts()
 
     // sequences are dependent on multisets ($Multiset.fromSeq, which is additionally axiomatised in the sequences axioms)
@@ -279,9 +279,9 @@ trait AbstractVerifier[ST <: Store[ST],
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
 
+    sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
-    sequencesEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
     sequencesEmitter.declareSortWrappers()

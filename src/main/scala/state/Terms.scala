@@ -3,7 +3,6 @@ package silicon
 package state.terms
 
 import ast.commonnodes
-
 //import ast.commonnodes.{BinaryOp}
 //import interfaces.state.{Heap}
 
@@ -326,7 +325,6 @@ class Not(val p: Term) extends BooleanTerm with commonnodes.StructuralEqualityUn
 		case eq: Eq => eq.p0.toString + " != " + eq.p1.toString
 		case _ => super.toString
 	}
-
 }
 
 object Not {
@@ -455,8 +453,8 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
   assert(p0.sort == p1.sort,
-    "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-      .format(p0.sort, p0, p1.sort, p1))
+      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+        .format(p0.sort, p0, p1.sort, p1))
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
@@ -1007,8 +1005,6 @@ class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "\\"
 }
 
-
-
 object SetDifference extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSetSorts(t0, t1)
@@ -1261,7 +1257,6 @@ object NullTrigger {
 
   def unapply(n:NullTrigger) = Some(n.t)
 }
-
 
 /* Utility functions */
 

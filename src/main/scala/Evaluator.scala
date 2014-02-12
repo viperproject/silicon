@@ -614,9 +614,11 @@ trait DefaultEvaluator[
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
                 eIn) =>
+
         /* Unfolding only has a temporary effect on the current heap because
          * the resulting heap is not forwarded to the final continuation.
          */
+
         var πPre: Set[Term] = Set()
         var tPerm: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil

@@ -2,7 +2,7 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, LoopInvariantNotPreserved,
+import sil.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
 import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
@@ -13,12 +13,11 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import semper.silicon.state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
     DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
     ScopeChangingDescription}
-import semper.silicon.heap.QuantifiedChunkHelper
-import semper.sil.verifier.errors.InhaleFailed
+import heap.QuantifiedChunkHelper
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -246,7 +245,6 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
-
         val id = field.name
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (decider.assert(tRcvr !== Null()))

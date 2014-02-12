@@ -198,7 +198,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             Q(h, Unit, Nil, c)
           } else
             Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
-
 		}
 
 		consumed

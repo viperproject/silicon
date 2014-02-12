@@ -23,8 +23,7 @@ import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
 import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
-import semper.silicon.heap.DefaultQuantifiedChunkHelper
-import semper.silicon.interfaces.state.HeapFactory
+import heap.DefaultQuantifiedChunkHelper
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
