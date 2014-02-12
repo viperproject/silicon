@@ -4,17 +4,16 @@ package heap
 
 
 import interfaces.{VerificationResult, Failure}
-import interfaces.state._
+import interfaces.state.{ChunkIdentifier, Chunk, Store, Heap, PathConditions, State, StateFactory}
 import interfaces.reporting.{Context, TraceView}
-import state.terms._
-import state._
-import semper.silicon.ast.Field
 import interfaces.decider.Decider
-import sil.ast.{LocationAccess}
+import state.terms._
+import silicon.state.terms.utils.BigPermSum
+import state.{SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
+import ast.Field
+import sil.ast.LocationAccess
 import sil.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory}
-import semper.sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
-import silicon.state.terms.utils.{BigPermSum}
+import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
 
 
 /**
@@ -79,7 +78,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
     // collect all chunks
     //println("looking up global permissions")
     BigPermSum(h.values.toSeq collect { case permChunk: QuantifiedChunk if(permChunk.name == id.name) => {
-      permChunk.perm.replace(terms.*(), id.args.last)
+      permChunk.perm.replace(*(), id.args.last)
     }}, {x => x})
   }
 
@@ -164,7 +163,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
   // One heuristic could be to take chunks first that
   // mention the same sets/sequences (syntactically modulo equality)
   def exhalePermissions2(h:H, ch:QuantifiedChunk) = {
-    val * = fresh(sorts.Ref)
+    val skolem = fresh(sorts.Ref)
     val opt = h.values //optimizedOrder(h.values, ch)
     decider.prover.logComment("" + opt)
     opt.foldLeft[(Chunk,H,Boolean)]((ch,h.empty,false)){
@@ -172,10 +171,10 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathCond
       case ((ch1:QuantifiedChunk, h, false), ch2) =>
         ch2 match {
           case quant:QuantifiedChunk if quant.name == ch1.name =>
-            if(isWildcard(ch1.perm)) assume(ch1.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions] < quant.perm.replace(terms.*(), *).asInstanceOf[DefaultFractionalPermissions])
+            if(isWildcard(ch1.perm)) assume(ch1.perm.replace(*(), skolem).asInstanceOf[DefaultFractionalPermissions] < quant.perm.replace(*(), skolem).asInstanceOf[DefaultFractionalPermissions])
             val r = PermMin(ch1.perm, quant.perm)
-            val d = ⊢ ((ch1.perm-r).replace(terms.*(), *) === NoPerm())
-            if(⊢ ((quant.perm - r).replace(terms.*(), *) === NoPerm())) {
+            val d = ⊢ ((ch1.perm-r).replace(*(), skolem) === NoPerm())
+            if(⊢ ((quant.perm - r).replace(*(), skolem) === NoPerm())) {
               (QuantifiedChunk(ch1.name, null, ch1.perm - r), h, d)
             } else {
               (QuantifiedChunk(ch1.name, null, ch1.perm-r), h+QuantifiedChunk(quant.name, quant.value, quant.perm - r), d)

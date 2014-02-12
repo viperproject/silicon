@@ -4,11 +4,13 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import sil.verifier.errors.PreconditionInAppFalse
-import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching, ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
+import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
+    ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
+import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
+    FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}

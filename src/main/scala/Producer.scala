@@ -11,7 +11,7 @@ import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import semper.silicon.state._
+import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
 import semper.silicon.heap.QuantifiedChunkHelper
 import semper.sil.ast.LocalVar
@@ -147,7 +147,7 @@ trait DefaultProducer[ST <: Store[ST],
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch = QuantifiedChunk(field.name, s, TermPerm(Ite(*() === tRcvr, pNettoGain, NoPerm())))
+            val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)
           })

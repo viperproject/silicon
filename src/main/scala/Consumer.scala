@@ -5,12 +5,12 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import sil.ast.utility.Permissions.isConditional
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import state._
+import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
-import interfaces.state._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import heap.QuantifiedChunkHelper
 import sil.ast.{LocalVar}

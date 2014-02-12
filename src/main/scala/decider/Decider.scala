@@ -9,11 +9,11 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory,
     Chunk}
 import interfaces.reporting.Context
-import semper.silicon.state._
+import semper.silicon.state.{DirectChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
-import silicon.state.terms.utils.{BigAnd, BigPermSum}
+import silicon.state.terms.utils.BigAnd
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
