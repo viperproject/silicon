@@ -271,6 +271,8 @@ trait AbstractVerifier[ST <: Store[ST],
     sequencesEmitter.declareSorts()
     domainsEmitter.declareSorts()
 
+    // sequences are dependent on multisets ($Multiset.fromSeq, which is additionally axiomatised in the sequences axioms)
+    // multisets are dependent on sets ($Multiset.fromSet)
     setsEmitter.declareSymbols()
     multisetsEmitter.declareSymbols()
     sequencesEmitter.declareSymbols()
