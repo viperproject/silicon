@@ -326,6 +326,7 @@ class Not(val p: Term) extends BooleanTerm with commonnodes.StructuralEqualityUn
 		case eq: Eq => eq.p0.toString + " != " + eq.p1.toString
 		case _ => super.toString
 	}
+
 }
 
 object Not {
@@ -452,17 +453,10 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 //case class TermEq(p0: Term, p1: Term) extends Eq
 
-/*case*/ class Eq(val p0: Term, val p1: Term) extends ComparisonTerm with commonnodes.Eq[Term]
-
-object Eq extends Function2[Term, Term, BooleanTerm] {
-  def apply(e0: Term, e1:Term) = {
-    assert(e0.sort == e1.sort,
-      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-        .format(e0.sort, e0, e1.sort, e1))
-
-    if (e0 == e1) True() else new Eq(e0, e1)
-  }
-  def unapply(eq:Eq) = Some((eq.p0, eq.p1))
+case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
+  assert(p0.sort == p1.sort,
+    "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+      .format(p0.sort, p0, p1.sort, p1))
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
