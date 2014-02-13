@@ -16,6 +16,7 @@ import interfaces.reporting.TraceView
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
+import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -48,6 +49,9 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
+
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
+
 
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -177,10 +181,20 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-          withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-            Q(ch.value, c1)))
+      /* Field access if the heap is quantified for that field */
+      case fa: ast.FieldAccess if (quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name)) => {
+        eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
+          quantifiedChunkHelper.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
+            Q(t, c1)
+          })
+        )
+      }
+
+      case fa: ast.FieldAccess => {
+      withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
+        withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
+          Q(ch.value, c1)))
+      }
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -559,24 +573,17 @@ trait DefaultEvaluator[
                 val c3a = c3.incCycleCounter(func)
                 val πPre = decider.π
                 val post = ast.utils.BigAnd(func.posts)
-                if (true) {
-                  bookkeeper.functionBodyEvaluations += 1
-                  eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
-                    eval(σ3, post, pve, c4, tv)((tPost, c5) => {
-                      val c5a = c5.decCycleCounter(func)
-                      val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
-                      if (!config.disableFunctionApplicationCaching())
-                        fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                      assume(Set(tFAEqFB, tPost))
-                      Q(tFA, c5a)}))
-                } else {
-                  /* Function body is invisible, use postcondition instead */
-                    eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
-                      val c4a = c4.decCycleCounter(func)
-                      if (!config.disableFunctionApplicationCaching())
-                        fappCache += (tFA -> (decider.π -- πPre + tPost))
-                      assume(tPost)
-                      Q(tFA, c4a)})}
+                bookkeeper.functionBodyEvaluations += 1
+                eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
+                  eval(σ3, post, pve, c4, tv)((tPost, c5) => {
+                    val c5a = c5.decCycleCounter(func)
+                    val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
+                    if (!config.disableFunctionApplicationCaching())
+                      fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
+                    assume(Set(tFAEqFB, tPost))
+                    Q(tFA, c5a)
+                  }))
+
               } else {
                 /* Unfolded the function often enough already. We still need to
                  * evaluate the postcondition, though, because Z3 might
@@ -585,7 +592,7 @@ trait DefaultEvaluator[
                  */
                 val post = ast.utils.BigAnd(func.posts)
 
-                /* TODO: Probably doesn't detect mutuall recursion. */
+                /* TODO: Probably doesn't detect mutual recursion. */
                 val badPostcondition =
                   post existsDefined {
                     case ast.FuncApp(someFunc, _) if func.name == someFunc.name =>
@@ -700,7 +707,7 @@ trait DefaultEvaluator[
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetSubset(e0, e1) => e.typ match {
+      case sil.ast.AnySetSubset(e0, e1) => e0.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c, tv)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c, tv)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
@@ -796,7 +803,7 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull)
-            if (decider.assert(tRcvr !== Null()))
+            if (decider.assert(Or(NullTrigger(tRcvr), tRcvr !== Null())))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)

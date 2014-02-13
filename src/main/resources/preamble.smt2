@@ -56,6 +56,7 @@
 
 (declare-sort $Ref)
 (declare-const $Ref.null $Ref)
+(declare-fun $Ref.nullTrigger ($Ref) Bool)
 
 ; --- Permissions ---
 
@@ -71,6 +72,10 @@
   (and ($Perm.isValidVar p)
 	     (not (= p $Perm.No))
        (< (* 1000.0 p) $Perm.Write)))
+
+; min function for permissions
+(define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
+    (ite (<= p1 p2) p1 p2))
 
 ; --- Sort wrappers ---
 
@@ -109,6 +114,16 @@
 
 (assert (forall ((x $Snap))
 	(= x ($SortWrappers.$PermTo$Snap($SortWrappers.$SnapTo$Perm x)))))
+
+; --- Math ---
+
+;function Math#min(a: int, b: int): int;
+(define-fun $Math.min ((a Int) (b Int)) Int
+    (ite (<= a b) a b))
+
+;function Math#clip(a: int): int;
+(define-fun $Math.clip ((a Int)) Int
+    (ite (< a 0) (- a) a))
 
 ; --- End static preamble ---
 

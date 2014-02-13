@@ -172,6 +172,19 @@ package object ast {
   type Type = sil.ast.Type
   type TypeVar = sil.ast.TypeVar
 
+  type SeqContains = sil.ast.SeqContains
+  val SeqContains = sil.ast.SeqContains
+
+  type SeqIndex = sil.ast.SeqIndex
+  val SeqIndex = sil.ast.SeqIndex
+
+  type SetContains = sil.ast.AnySetContains
+  val SetContains = sil.ast.AnySetContains
+
+  type SeqRanged = sil.ast.RangeSeq
+  val SeqRanged = sil.ast.RangeSeq
+
+
   object types {
     type DomainType = sil.ast.DomainType
     val DomainType = sil.ast.DomainType

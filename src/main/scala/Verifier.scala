@@ -15,6 +15,7 @@ import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.{DefaultContext, DefaultContextFactory, Bookkeeper}
 import reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription}
+import heap.QuantifiedChunkHelper
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
@@ -154,6 +155,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
+      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
 			val bookkeeper: Bookkeeper,
 			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
@@ -186,6 +188,7 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
              heapMerger: HeapMerger[H],
+             quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
              bookkeeper: Bookkeeper,
              traceviewFactory: TraceViewFactory[TV, ST, H, S]): V
@@ -268,9 +271,11 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
 
-    sequencesEmitter.declareSymbols()
+    // sequences are dependent on multisets ($Multiset.fromSeq, which is additionally axiomatised in the sequences axioms)
+    // multisets are dependent on sets ($Multiset.fromSet)
     setsEmitter.declareSymbols()
     multisetsEmitter.declareSymbols()
+    sequencesEmitter.declareSymbols()
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
 
@@ -279,10 +284,11 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
-    emitSortWrappers(sequencesEmitter.sorts)
-    emitSortWrappers(setsEmitter.sorts)
-    emitSortWrappers(multisetsEmitter.sorts)
-    emitSortWrappers(domainsEmitter.sorts)
+    sequencesEmitter.declareSortWrappers()
+    setsEmitter.declareSortWrappers()
+    multisetsEmitter.declareSortWrappers()
+    // TODO: not sure what to do here
+    // domainEmitter.declareSortWrappers()
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -336,13 +342,14 @@ class DefaultVerifierFactory[ST <: Store[ST],
              chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
              heapMerger: HeapMerger[H],
+             quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
              bookkeeper: Bookkeeper,
              traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
     new DefaultVerifier[ST, H, PC, S, TV](
                         config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
-                        multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, stateUtils,
+                        multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, quantifiedChunkHelper, stateUtils,
                         bookkeeper, traceviewFactory)
 
 }
@@ -362,6 +369,7 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
 			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapMerger: HeapMerger[H],
+      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
 			val bookkeeper: Bookkeeper,
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
@@ -371,5 +379,5 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC],
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, chunkFinder, stateFormatter,
-                                      heapMerger, stateUtils, bookkeeper, contextFactory, traceviewFactory)
+                                      heapMerger, quantifiedChunkHelper, stateUtils, bookkeeper, contextFactory, traceviewFactory)
 }

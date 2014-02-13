@@ -1,0 +1,6 @@
+(declare-fun $SortWrappers.$S$To$Snap ($S$) $Snap)
+(declare-fun $SortWrappers.$SnapTo$S$ ($Snap) $S$)
+(assert (forall ((x $S$))
+    (= x ($SortWrappers.$SnapTo$S$ ($SortWrappers.$S$To$Snap x)))))
+(assert (forall ((x $Snap))
+	(= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))))
