@@ -56,6 +56,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Booleans */
 
+    case NullTrigger(t) => "($Ref.nullTrigger " + convert(t) + ")"
+
     case Not(f) => "(not " + convert(f) + ")"
 
     /* TODO: Extract common conversion behaviour of binary expressions. */
@@ -140,6 +142,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case IntPermTimes(t0, t1) =>
       "(* %s %s)".format(convert2real(t0), convert2real(t1))
 
+    case PermMin(t0, t1) =>
+      "($Perm.min %s %s)".format(convert(t0), convert(t1))
     /* Sequences */
 
 //    case SeqEq(t0, t1) =>
@@ -180,6 +184,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case SetUnion(t0, t1) => "($Set.union " + convert(t0) + " " + convert(t1) + ")"
     case SetIn(t0, t1) => "($Set.in " + convert(t0) + " " + convert(t1) + ")"
     case SetSubset(t0, t1) => "($Set.subset " + convert(t0) + " " + convert(t1) + ")"
+    case SetDisjoint(t0, t1) =>  "($Set.disjoint " + convert(t0) + " " + convert(t1) + ")"
 
     /* Multisets */
 
@@ -188,8 +193,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case MultisetDifference(t0, t1) => "($Multiset.difference " + convert(t0) + " " + convert(t1) + ")"
     case MultisetIntersection(t0, t1) => "($Multiset.intersection " + convert(t0) + " " + convert(t1) + ")"
     case MultisetUnion(t0, t1) => "($Multiset.union " + convert(t0) + " " + convert(t1) + ")"
-    case MultisetIn(t0, t1) => "($Multiset.in " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetIn(t0, t1) => "(> ($Multiset.count " + convert(t1) + " " + convert(t0) + ") 0)"
     case MultisetSubset(t0, t1) => "($Multiset.subset " + convert(t0) + " " + convert(t1) + ")"
+    case MultisetCount(t0, t1) => "($Multiset.count " + convert(t1) + " " + convert(t0) + ")"
+    case MultisetFromSeq(t0) => "($Multiset.fromSeq " + convert(t0) + ")"
 
     /* Domains */
 

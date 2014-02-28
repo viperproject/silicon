@@ -23,3 +23,5 @@
 ; (declare-fun $Seq.rng (Int Int) Int)
 ; function Seq#Update<T>(Seq_ T, int, T): Seq_ T;
 (declare-fun $Seq.update ($Seq<$S$> Int $S$) $Seq<$S$>)
+
+(declare-fun $Multiset.fromSeq ($Seq<$S$>) $Multiset<$S$>)

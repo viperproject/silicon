@@ -13,6 +13,7 @@ import semper.silicon.state.{DirectChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
+import silicon.state.terms.utils.BigAnd
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
@@ -402,8 +403,10 @@ class DefaultDecider[ST <: Store[ST],
 //  lazy val fcwpLog =
 //    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
+    /**
+     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
+     */
 	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
-    import silicon.state.terms.utils.BigAnd
 //    fcwpLog.println(id)
 
     var chunk: Option[CH] = None

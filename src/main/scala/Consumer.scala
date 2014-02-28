@@ -5,7 +5,7 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse, MagicWandChunkNotFound}
 import sil.ast.utility.Permissions.isConditional
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, StateFactory, ChunkIdentifier}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
@@ -13,6 +13,7 @@ import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import supporters.MagicWandSupporter
+import heap.QuantifiedChunkHelper
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -32,6 +33,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory.Γ
+
+
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
 	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
 	import chunkFinder.withChunk
@@ -130,7 +135,47 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
-      /* Field and predicate access predicates */
+
+      /* Quantified field access predicate */
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) => {
+        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
+          // we cheat a bit and syntactically rewrite the range
+          // this should not be needed if the axiomatization supports it
+          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
+          if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
+          else {
+            decider.assume(rewrittenCond)
+            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) => {
+                val h2 = if(quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
+                quantifiedChunkHelper.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
+                  val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
+                  quantifiedChunkHelper.consume(h2, ch, pve, locacc, c3, tv)(h3 =>
+                    {
+                      Q(h3, t, Nil, c3)
+                    }
+                  )
+                })
+              })
+            )
+          }
+        })
+      }
+
+      /* Field access predicates for quantified fields */
+      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) =>
+        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+          evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+            quantifiedChunkHelper.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
+              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, null, tPerm)
+              quantifiedChunkHelper.consume(h, ch, pve, locacc, c2, tv)(h2 =>
+                Q(h2, t, Nil, c2)
+              )
+            })))
+
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
               evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>

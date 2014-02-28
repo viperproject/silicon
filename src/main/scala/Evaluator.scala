@@ -17,6 +17,7 @@ import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, Sy
 import state.terms._
 import state.terms.implicits._
 import supporters.MagicWandSupporter
+import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -47,6 +48,9 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
+
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
+
 
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -133,6 +137,16 @@ trait DefaultEvaluator[
      * still shouldn't branch.
      */
 
+    /* TODO: LocalEvaluationResults collect contexts as well.
+     *       However, only one context can be passed on to Q, and currently
+     *       the one from the first LocalEvaluationResult is taken.
+     *       This shouldn't be much of a problem, except maybe for debugging,
+     *       as long as the context doesn't keep track of any crucial
+     *       information. This may not always be the case, however. E.g., the
+     *       Wands-Silicon prototype (for the rejected FM'14 paper) uses the
+     *       context to record the reserve heap.
+     */
+    
     val resultTerm = e match {
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)
@@ -168,6 +182,13 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
+/* Field access if the heap is quantified for that field */
+      case fa: ast.FieldAccess if (quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name)) => {
+        eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
+          quantifiedChunkHelper.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
+            Q(t, c1)}))}
+
+          
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) => {
           decider.getChunk[FieldChunk](σ.h, id) match {
@@ -180,6 +201,7 @@ trait DefaultEvaluator[
               }
             case None =>
               Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)}})
+      
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -500,17 +522,6 @@ trait DefaultEvaluator[
          *    them due to the scope of the quantified variables
          *  - We thus have to determine these additional path conditions
          *    to be able to include them in the quantification
-         *
-         * ATTENTION The current implementation unfortunately disallows branching
-         * evaluations!
-         * Consider e.g. e0 ==> e1 which could be evaluated by
-         * branching over e0, returning once t0 ==> t1 and once ¬t0 ==> true.
-         * However, the second branch's result overwrites the first branch's
-         * result when being assigned to tActualBody. Hence, only the second
-         * branch is asserted which always succeeds.
-         *
-         * A possible solution would be to make tActualBody and πPost lists and
-         * to eventually invoke Q with a list of conjuncted quantifications.
          */
 
         val πPre: Set[Term] = decider.π
@@ -577,24 +588,17 @@ trait DefaultEvaluator[
                 val c3a = c3.incCycleCounter(func)
                 val πPre = decider.π
                 val post = ast.utils.BigAnd(func.posts)
-                if (true) {
-                  bookkeeper.functionBodyEvaluations += 1
-                  eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
-                    eval(σ3, post, pve, c4, tv)((tPost, c5) => {
-                      val c5a = c5.decCycleCounter(func)
-                      val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
-                      if (!config.disableFunctionApplicationCaching())
-                        fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                      assume(Set(tFAEqFB, tPost))
-                      Q(tFA, c5a)}))
-                } else {
-                  /* Function body is invisible, use postcondition instead */
-                    eval(σ3, post, pve, c3a, tv)((tPost, c4) => {
-                      val c4a = c4.decCycleCounter(func)
-                      if (!config.disableFunctionApplicationCaching())
-                        fappCache += (tFA -> (decider.π -- πPre + tPost))
-                      assume(tPost)
-                      Q(tFA, c4a)})}
+                bookkeeper.functionBodyEvaluations += 1
+                eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
+                  eval(σ3, post, pve, c4, tv)((tPost, c5) => {
+                    val c5a = c5.decCycleCounter(func)
+                    val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
+                    if (!config.disableFunctionApplicationCaching())
+                      fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
+                    assume(Set(tFAEqFB, tPost))
+                    Q(tFA, c5a)
+                  }))
+
               } else {
                 /* Unfolded the function often enough already. We still need to
                  * evaluate the postcondition, though, because Z3 might
@@ -603,7 +607,7 @@ trait DefaultEvaluator[
                  */
                 val post = ast.utils.BigAnd(func.posts)
 
-                /* TODO: Probably doesn't detect mutuall recursion. */
+                /* TODO: Probably doesn't detect mutual recursion. */
                 val badPostcondition =
                   post existsDefined {
                     case ast.FuncApp(someFunc, _) if func.name == someFunc.name =>
@@ -803,7 +807,7 @@ trait DefaultEvaluator[
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetSubset(e0, e1) => e.typ match {
+      case sil.ast.AnySetSubset(e0, e1) => e0.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c, tv)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c, tv)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
@@ -899,7 +903,7 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull) {
-            if (decider.assert(tRcvr !== Null()))
+            if (decider.assert(Or(NullTrigger(tRcvr), tRcvr !== Null())))
               Q(FieldChunkIdentifier(tRcvr, field.name), c1)
             else
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)
@@ -970,7 +974,9 @@ trait DefaultEvaluator[
 
     val (t1: Term, tAux: Set[Term]) =
       localResults.map {lr =>
-        val guard: Term = state.terms.utils.BigAnd(lr.πGuards)
+        val newGuards = lr.πGuards filterNot decider.π.contains
+
+        val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
 

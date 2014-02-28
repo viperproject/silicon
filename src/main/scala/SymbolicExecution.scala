@@ -78,8 +78,10 @@ trait DefaultBrancher[ST <: Store[ST],
 
 
   private var currentGuards: Stack[Term] = Stack()
-
-  def guards = this.currentGuards
+  /* TODO: Use a set that preserves insertion order, should be faster than
+   *       calling Stack.distinct over and over again.
+   */
+  def guards = this.currentGuards.distinct
 
   def branchLocally(t: Term,
                     c: C,
@@ -227,6 +229,10 @@ class DefaultChunkFinder[ST <: Store[ST],
                          val stateFormatter: StateFormatter[ST, H, S, String])
 		extends ChunkFinder[DefaultFractionalPermissions, ST, H, S, C, TV] with Logging {
 
+	/**
+	 * Lets the decider lookup the chunk in the given heap
+	 * fails if there is none
+	 */
 	def withChunk[CH <: Chunk : NotNothing : Manifest]
                (h: H,
                 id: ChunkIdentifier,
@@ -250,6 +256,9 @@ class DefaultChunkFinder[ST <: Store[ST],
 		}
 	}
 
+	/**
+	 * Additionally checks if the chunk is permissive enough (e.g. for a write)
+	 */
 	def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (h: H,
                 id: ChunkIdentifier,
