@@ -21,10 +21,12 @@ trait DefaultProducer[ST <: Store[ST],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S],
                       TV <: TraceView[TV, ST, H, S]]
-                      extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState {
-                      this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-                        with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-                        with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+       with HasLocalState {
+
+      this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+                    with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
@@ -59,7 +61,7 @@ trait DefaultProducer[ST <: Store[ST],
               c: C,
               tv: TV)
              (Q: (S, C) => VerificationResult)
-  : VerificationResult =
+             : VerificationResult =
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
         val (mh, mts) = merge(Ø, h)
@@ -89,7 +91,7 @@ trait DefaultProducer[ST <: Store[ST],
                        c: C,
                        tv: TV)
                       (Q: (H, C) => VerificationResult)
-  : VerificationResult = {
+                      : VerificationResult = {
 
     val tv1 = tv.stepInto(c, Producing[ST, H, S](σ, p, φ))
 
@@ -107,7 +109,7 @@ trait DefaultProducer[ST <: Store[ST],
                               c: C,
                               tv: TV)
                              (Q: (H, C) => VerificationResult)
-  : VerificationResult = {
+                             : VerificationResult = {
 
     logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
 		logger.debug(stateFormatter.format(σ))
@@ -150,9 +152,7 @@ trait DefaultProducer[ST <: Store[ST],
             val pNettoGain = pGain * p
             val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain)
             if (!isConditional(gain)) assume(NoPerm() < pGain)
-            Q(σ.h + ch, c2)
-          })
-        })
+            Q(σ.h + ch, c2)})})
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
@@ -192,39 +192,30 @@ trait DefaultProducer[ST <: Store[ST],
         Q(σ.h + ch, c)
 
       /* Quantified field access predicate */
-      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) => {
+      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
         decider.prover.logComment("Producing set access predicate " + fa)
 
-          val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
 
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
-            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
-              decider.prover.logComment("End produce set access predicate " + fa)
-              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
-                // TODO https://bitbucket.org/semperproject/silicon/issue/59/create-sortwrappers-for-functions
-                val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-                val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val ch = quantifiedChunkHelper.transform(tRcvr, f, app, pGain * p, tCond)
-                val v = Var("nonnull", sorts.Ref)
-                val h = if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
-                decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
-                Q(h+ch, c3)
-              })
-            })
-          )
-      }
-
-
+        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
+          eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
+            decider.prover.logComment("End produce set access predicate " + fa)
+            evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
+              // TODO https://bitbucket.org/semperproject/silicon/issue/59/create-sortwrappers-for-functions
+              val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+              val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+              val ch = quantifiedChunkHelper.transform(tRcvr, f, app, pGain * p, tCond)
+              val v = Var("nonnull", sorts.Ref)
+              val h = if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
+              decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
+              Q(h+ch, c3)})}))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         eval(σ, φ, pve, c, tv)((t, c1) => {
-          //println(φ)
-          //println("assuming " + t)
           assume(t)
-          Q(σ.h, c1)
-        })
+          Q(σ.h, c1)})
     }
 
     produced

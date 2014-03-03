@@ -34,7 +34,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory.Γ
 
-
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
@@ -46,6 +45,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -139,7 +139,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* Quantified field access predicate */
       case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) => {
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
 
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
           // we cheat a bit and syntactically rewrite the range
