@@ -2,9 +2,9 @@ package semper
 package silicon
 package interfaces.decider
 
-import sil.verifier.{DependencyNotFoundError}
+import sil.verifier.DependencyNotFoundError
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, ChunkIdentifier}
-import interfaces.reporting.{Context}
+import interfaces.reporting.Context
 import state.terms.{Term, Var, FractionalPermissions, Sort}
 import silicon.utils.notNothing._
 
