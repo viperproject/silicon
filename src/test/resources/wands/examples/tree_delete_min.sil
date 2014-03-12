@@ -1,0 +1,59 @@
+var v: Int
+var l: Ref
+var r: Ref
+
+predicate Tree(x: Ref) {
+  x == null
+    ? true
+    :    acc(x.v)
+      && acc(x.l) && acc(Tree(x.l))
+      && acc(x.r) && acc(Tree(x.r))
+}
+
+function vals(x: Ref): Seq[Int]
+  requires acc(Tree(x))
+{ x == null ? Seq[Int]() : unfolding acc(Tree(x)) in vals(x.l) ++ Seq(x.v) ++ vals(x.r) }
+
+method tree_delete_min(x: Ref) returns (z: Ref)
+  requires x != null && acc(Tree(x))
+  ensures acc(Tree(z))                  /* POST1 */
+  ensures vals(z) == old(vals(x))[1..]  /* POST2 */
+{
+  var p: Ref := x
+
+  define A acc(p.l) && acc(Tree(p.l)) && vals(p.l) == now(vals(p.l))[1..]
+  define B acc(Tree(x)) && vals(x) == old(vals(x))[1..]
+
+  unfold acc(Tree(p))
+
+  if (p.l == null) {
+    assert old(vals(x)) == vals(x.l) ++ Seq(x.v) ++ vals(x.r)
+      /* TODO: Required by Silicon for POST2; not necessary with --unrollFunctions 2 */
+
+    z := p.r
+  } else {
+    package A --* folding acc(Tree(p)) in B
+
+    while (unfolding acc(Tree(p.l)) in p.l.l != null)
+      invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
+      invariant A --* B
+    {
+      wand w := A --* B
+
+      unfold acc(Tree(p.l))
+      p := p.l
+
+      package A --* folding Tree(p) in applying w in B
+    }
+
+    assert vals(p.l) == unfolding acc(Tree(p.l)) in vals(p.l.l) ++ Seq(p.l.v) ++ vals(p.l.r)
+      /* TODO: Required by Silicon for POST2; not necessary with --unrollFunctions 2 */
+
+    unfold acc(Tree(p.l))
+    p.l := p.l.r
+
+    apply A --* B
+
+    z := x
+  }
+}
