@@ -9,7 +9,7 @@ import state.terms.Term
 trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
 	def Γ() = new MapBackedStore()
 	def Γ(pair: (ast.Variable, Term)) = new MapBackedStore(pair)
-	def Γ(pairs: Iterable[(ast.Variable, Term)]) = new MapBackedStore(pairs.toMap)
+	def Γ(pairs: Iterable[(ast.Variable, Term)]) = new MapBackedStore(toMap(pairs))
 	def Γ(store: Map[ast.Variable, Term]) = MapBackedStore(store)
 }
 

@@ -19,7 +19,7 @@ class DefaultSetsEmitter(prover: Prover,
 
   private var collectedSorts = Set[terms.sorts.Set]()
 
-  def sorts = collectedSorts.toSet[terms.Sort]
+  def sorts = toSet(collectedSorts)
 
   /**
    * The symbols are take from a file and it is currently not possible to retrieve a list of
