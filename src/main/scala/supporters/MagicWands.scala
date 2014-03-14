@@ -37,7 +37,7 @@ class MagicWandSupporter[ST <: Store[ST],
       val lvs = ch.localVariables map (lv => silicon.ast.utils.fresh(lv))
 
       /* Create mappings from these fresh variables to the receivers that come with the chunk */
-      val map: Map[ast.LocalVariable, terms.Term] = (lvs zip ch.localVariableValues).toMap
+      val map: Map[ast.LocalVariable, terms.Term] = toMap(lvs zip ch.localVariableValues)
       val wand = sil.ast.utility.Expressions.instantiateVariables(ch.renamedWand, ch.localVariables, lvs)
 
       (wand, map)
