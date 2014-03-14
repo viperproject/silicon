@@ -37,7 +37,7 @@ function head(xs: Ref): Int
 { unfolding List(xs) in xs.val }
 
 /* Inserts value x at an appropriate position into the ordered linked-list xs, such that
- * the list remains ordered if it was ascendingly ordered before.
+ * the list remains ordered if it was in ascending order before.
  */
 method insert(xs: Ref, x: Int) returns (i: Int)
   requires acc(List(xs))
