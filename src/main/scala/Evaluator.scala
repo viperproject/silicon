@@ -145,7 +145,7 @@ trait DefaultEvaluator[
      *       Wands-Silicon prototype (for the rejected FM'14 paper) uses the
      *       context to record the reserve heap.
      */
-    
+
     val resultTerm = e match {
       case ast.True() => Q(True(), c)
       case ast.False() => Q(False(), c)

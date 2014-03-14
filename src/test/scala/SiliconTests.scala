@@ -33,7 +33,7 @@ class SiliconTests extends DefaultSilSuite {
     silicon
   }
 
-  private def optionsFromScalaTestConfigMap(configMap: Map[String, Any]): Seq[String] = {
+  private def optionsFromScalaTestConfigMap(configMap: Predef.Map[String, Any]): Seq[String] = {
     val prefix = "silicon:"
 
     configMap.flatMap {

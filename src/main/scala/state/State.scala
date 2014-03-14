@@ -35,7 +35,7 @@ case class MapBackedStore(private val map: Map[Variable, Term])
 case class SetBackedHeap(private val chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
 	def this() = this(Set[Chunk]())
 	def this(h: SetBackedHeap) = this(h.chunks)
-	def this(chunks: Iterable[Chunk]) = this(chunks.toSet)
+	def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
 
 	val values = chunks /* Make sure that chunks is not modified! */
 	def empty = new SetBackedHeap()
@@ -72,15 +72,15 @@ case class SetBackedHeap(private val chunks: Set[Chunk]) extends Heap[SetBackedH
 
 /* TODO: Why is this implementation mutable while all others aren't? */
 class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPathConditions] {
-	import collection.mutable.{Stack, HashSet}
+	import collection.mutable.Stack
 
 	private val stack: Stack[Term] = Stack()
-	private val set: HashSet[Term] = HashSet()
+	private val set: MSet[Term] = MSet()
 	private val scopeMarker: Term = null
 
 	def empty = new MutableSetBackedPathConditions()
 
-	def values = set.collect{case t: Term if t != null => t}.toSet
+	def values = toSet(set.collect{case t: Term if t != null => t})
 	def contains(t: Term) = if (t == null) false else set.contains(t)
 
 	def push(t: Term) = {

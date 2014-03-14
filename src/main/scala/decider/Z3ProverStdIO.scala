@@ -163,7 +163,8 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
       repeat = !line.endsWith(")")
     } while (repeat)
-    stats
+
+    toMap(stats)
   }
 
 	def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
