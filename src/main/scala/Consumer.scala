@@ -61,8 +61,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
 
-    consume2(σ, σ.h, p, φ, pve, c0, tv)((h1, t, dcs, c1) =>
-      Q(σ \ h1, t, dcs, c1))
+    consume2(σ, σ.h, p, φ, pve, c0, tv)((h1, t, dcs, c1) => {
+      val c2 = c1.copy(reserveEvalHeap = c.reserveEvalHeap)
+      Q(σ \ h1, t, dcs, c2)})
   }
 
   def consumes(σ: S,
