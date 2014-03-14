@@ -111,8 +111,10 @@ trait DefaultProducer[ST <: Store[ST],
                              (Q: (H, C) => VerificationResult)
                              : VerificationResult = {
 
-    logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
-		logger.debug(stateFormatter.format(σ))
+    if (!φ.isInstanceOf[ast.And]) {
+      logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
+      logger.debug(stateFormatter.format(σ))
+    }
 
     val produced = φ match {
       case ast.InhaleExhaleExp(a0, _) =>
