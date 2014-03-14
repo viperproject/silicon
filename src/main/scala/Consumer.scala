@@ -96,13 +96,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     })
   }
 
-	private def internalConsume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
-			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                        : VerificationResult = {
+  private def internalConsume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+                             (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                             : VerificationResult = {
 
-    logger.debug(s"\CONSUME ${φ.pos}: ${φ}")
-    logger.debug(stateFormatter.format(σ))
-		logger.debug("h = " + stateFormatter.format(h))
+    if (!φ.isInstanceOf[ast.And]) {
+      logger.debug(s"\nCONSUME ${φ.pos}: ${φ}")
+      logger.debug(stateFormatter.format(σ))
+      logger.debug("hE = " + stateFormatter.format(h))
+    }
 
 		val consumed = φ match {
       case ast.InhaleExhaleExp(_, a1) =>
