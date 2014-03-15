@@ -4,35 +4,38 @@ package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.DependencyNotFoundError
-import interfaces.decider.{Decider, Prover, Unsat}
-import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, PathConditionsFactory,
-    Chunk}
-import interfaces.reporting.Context
-import semper.silicon.state.{DirectChunk, SymbolConvert}
+import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
+import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import interfaces.decider.{/*PermissionAssertions,*/ Decider, Prover, Unsat}
+import interfaces.{Success, Failure, VerificationResult}
+import interfaces.state._
+import interfaces.reporting.{TraceView, Context}
+import ast.{Field, LocationAccess}
+import state.{DirectChunk, DirectFieldChunk, FieldChunkIdentifier, QuantifiedChunk, SymbolConvert}
 import state.terms._
+import state.terms.utils._
+import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
-import silicon.state.terms.utils.BigAnd
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S],
-                     C <: Context[C, ST, H, S]]
-		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+                     C <: Context[C, ST, H, S],
+                     TV <: TraceView[TV, ST, H, S]]
+		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV]
 		   with Logging {
 
-  private type P = DefaultFractionalPermissions
+  protected type P = DefaultFractionalPermissions
 
 	private var z3: Z3ProverStdIO = null
 
-  private var pathConditionsFactory: PathConditionsFactory[PC] = null
-  private var config: Config = null
-  private var bookkeeper: Bookkeeper = null
-	private var pathConditions: PC = null.asInstanceOf[PC]
-	private var symbolConverter: SymbolConvert = null
-//	private var performSmokeChecks: Boolean = false
+  protected var pathConditionsFactory: PathConditionsFactory[PC] = null
+  protected var config: Config = null
+  protected var bookkeeper: Bookkeeper = null
+  protected var pathConditions: PC = null.asInstanceOf[PC]
+  protected var symbolConverter: SymbolConvert = null
 
   private sealed trait State
 
@@ -58,7 +61,6 @@ class DefaultDecider[ST <: Store[ST],
     this.pathConditionsFactory = pathConditionsFactory
     this.config = config
     this.bookkeeper = bookkeeper
-
     this.state = State.Initialised
   }
 
@@ -88,9 +90,6 @@ class DefaultDecider[ST <: Store[ST],
 
     pathConditions = pathConditionsFactory.Π()
     symbolConverter = new silicon.state.DefaultSymbolConvert()
-//    performSmokeChecks = config.performSmokeChecks
-
-//    pushPreamble()
 
     None
   }
@@ -102,11 +101,7 @@ class DefaultDecider[ST <: Store[ST],
                                         .getOrElse("z3" + (if (isWindows) ".exe" else "")))
   }
 
-//	def enableSmokeChecks(enable: Boolean) {
-//    performSmokeChecks = enable
-//  }
-//
-	def checkSmoke = prover.check() == Unsat
+	def checkSmoke() = prover.check() == Unsat
 
   lazy val paLog =
     common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
@@ -117,6 +112,8 @@ class DefaultDecider[ST <: Store[ST],
   def stop() {
     if (prover != null) prover.stop()
   }
+
+  /* Assumption scope handling */
 
   def pushScope() {
     pathConditions.pushScope()
@@ -136,9 +133,41 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-	def assert(t: Term) = assert(t, null)
+  /* Assuming facts */
 
-	def assert(t: Term, logSink: java.io.PrintWriter = null) = {
+  def assume(t: Term) {
+    assume(Set(t))
+  }
+
+  /* TODO: CRITICAL!
+   * pathConditions are used as if they are guaranteed to be mutable, e.g.
+   *   pathConditions.pushScope()
+   * instead of
+   *   pathConditions = pathConditions.pushScope()
+   * but the interface does NOT guarantee mutability!
+   */
+
+  def assume(_terms: Set[Term]) {
+    val terms = _terms filterNot isKnownToBeTrue
+    if (!terms.isEmpty) assumeWithoutSmokeChecks(terms)
+  }
+
+  private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
+    terms foreach pathConditions.push
+    /* Add terms to Syxc-managed path conditions */
+    terms foreach prover.assume
+    /* Add terms to the prover's assumptions */
+    None
+  }
+
+  /* Asserting facts */
+
+  def check(σ: S, t: Term) = assert(σ, t, null)
+
+	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) =
+    Q(assert(σ, t, null))
+
+	protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
 		val asserted = isKnownToBeTrue(t)
 
 		asserted || π.exists(_ == t) || proverAssert(t, logSink)
@@ -152,7 +181,7 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
-  private def proverAssert(t: Term, logSink: java.io.PrintWriter = null) = {
+  private def proverAssert(t: Term, logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
 
@@ -164,167 +193,83 @@ class DefaultDecider[ST <: Store[ST],
     result
   }
 
-  /* ATTENTION: Caching the values of permission expression assertions is only
-   * sound as long as the value does not change over time, i.e., by adding new
-   * assumptions. This is not at all guaranteed for arbitrary assertions, but
-   * for permission expressions it should be fine since - I think - they are fully
-   * determined up front, that is, we never learn anything new about permission
-   * variables such as methodRd etc, or permissions expressions in general.
-   *
-   * HOWEVER: We must make sure that the cache is reset after each branch
-   * or method! I'll deactivate the cache for now, it has not been benchmarked
-   * anyway.
-   */
-//  private val permAssertCache = scala.collection.mutable.Map[Term, Boolean]()
+  /* Chunk handling */
 
-  def permAssert(t: Term) = {
-//    if (permAssertCache.contains(t)) {
-//      permAssertCache(t)
-//    } else {
-      val r = assert(t, paLog)
-      // permAssertCache.update(t, r)
-      r
-//    }
-  }
+  def withChunk[CH <: Chunk : NotNothing : Manifest]
+               (σ: S,
+                h: H,
+                id: ChunkIdentifier,
+                locacc: ast.LocationAccess,
+                pve: PartialVerificationError,
+                c: C,
+                tv: TV)
+               (Q: CH => VerificationResult)
+               : VerificationResult =
 
-  /* Is perm as permissive as other?
-   * As in "Is what we hold at least as permissive as what is required?".
-   */
-  def isAsPermissive(perm: P, other: P) = (
-       perm == other
-    || permAssert(Or(perm === other, other < perm)))
+    getChunk[CH](σ, h, id) match {
+      case Some(chunk) =>
+        Q(chunk)
 
-	def assertReadAccess(perm: P) = {
-//    prover.logComment("[assertReadAccess]")
-//    prover.logComment("perm.combined = " + perm.combined)
-    perm match {
-//      case PermissionsTuple(_: ConcretePerm, _) => true
-      case FullPerm() => true
-      case NoPerm() => false
-      case _ =>
-//        prover.logComment("*** " + (NoPerm() < perm.combined) + " ***")
-        permAssert(NoPerm() < perm)
+      case None =>
+        if (checkSmoke())
+          Success[C, ST, H, S](c) /* TODO: Mark branch as dead? */
+        else
+          Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
     }
+
+  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
+               (σ: S,
+                h: H,
+                id: ChunkIdentifier,
+                p: P,
+                locacc: ast.LocationAccess,
+                pve: PartialVerificationError,
+                c: C,
+                tv: TV)
+               (Q: CH => VerificationResult)
+               : VerificationResult =
+
+    withChunk[CH](σ, h, id, locacc, pve, c, tv)(ch => {
+      assert(σ, IsAsPermissive(ch.perm, p)){
+        case true =>
+          Q(ch)
+        case false => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+      }})
+
+	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
+    val chunks = h.values collect {
+      case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]}
+
+    getChunk(σ, chunks, id)
   }
 
-	def assertNoAccess(perm: P) = perm match {
-    case _: NoPerm => true
+	private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
+		findChunk(σ, chunks, id)
 
-    /* ATTENTION: This is only sound if both plus operands and the left minus
-     *            operand are positive!
-     * */
-    case  _: PermPlus
-        | PermMinus(_, _: WildcardPerm) => false
+	private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
+					 findChunkLiterally(chunks, id)
+		orElse findChunkWithProver(σ, chunks, id))
 
-    case _ => permAssert(Or(perm === NoPerm(), perm < NoPerm()))
-  }
+	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+		chunks find (ch => ch.args == id.args)
 
-	def assertWriteAccess(perm: P) = perm match {
-    case _: FullPerm => true
-    case _: NoPerm => false
-    case _ => permAssert(Or(perm === FullPerm(), FullPerm() < perm))
-  }
+  lazy val fcwpLog =
+    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
-	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean =
-    getChunk[DirectChunk](h, id).exists(ch => assertReadAccess(ch.perm))
+  /**
+    * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
+    */
+	private def findChunkWithProver[CH <: Chunk: NotNothing]
+                                 (σ: S, chunks: Iterable[CH], id: ChunkIdentifier)
+                                 : Option[CH] = {
 
-	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean =
-    getChunk[DirectChunk](h, id).exists(ch => assertWriteAccess(ch.perm))
+    fcwpLog.println(id)
+		val chunk = chunks find (ch => check(σ, BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 
-	def isPositive(perm: P, strict: Boolean = true) = perm match {
-    case  _: FullPerm
-        | _: WildcardPerm => true
-
-    case _ =>
-      if (strict) permAssert(NoPerm() < perm)
-      else isAsPermissive(perm, NoPerm())
-  }
-
-//	def isValidFraction(perm: P, permSrc: ast.Expression) =
-//    if (!isNonNegativeFraction(perm))
-//      Some(NonPositivePermission(permSrc))
-////    else if (!assertAtMostWriteAccess(perm))
-////    else if (!assert(Or(TermEq(perm, FullPerms()), perm < FullPerms())))
-////      Some(FractionMightBeGT100)
-//    else
-//      None
-
-//	private def prover_assume(term: Term) {
-//    prover.assume(term)
-//  }
-
-  def assume(t: Term) {
-    assume(Set(t))
-  }
-
-//	def assume(term: Term, c: C)(Q: C => VerificationResult) =
-//		assume(Set(term), c)(Q)
-
-	/* TODO: CRITICAL!
-	 * pathConditions are used as if they are guaranteed to be mutable, e.g.
-	 *   pathConditions.pushScope()
-	 * instead of
-	 *   pathConditions = pathConditions.pushScope()
-	 * but the interface does NOT guarantee mutability!
-	 */
-
-	def assume(_terms: Set[Term]) {
-    val terms = _terms filterNot isKnownToBeTrue
-//		var terms: Set[Term] = _terms
-//		terms = terms.filterNot(_ == True)    /* Remove True() */
-//		terms = terms.filterNot(π contains _) /* Remove known assumptions */
-
-		if (!terms.isEmpty) {
-//      pushScope()
-
-//      if (performSmokeChecks)
-//        sys.error("Not yet implemented: smoke checks.")
-//      else
-        assumeWithoutSmokeChecks(terms)
-
-//      popScope()
-		}
+		chunk
 	}
 
-	private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
-//    val terms = _terms filterNot isRedundantAssumption
-
-		terms foreach pathConditions.push
-			/* Add terms to Syxc-managed path conditions */
-		terms foreach prover.assume // prover_assume
-			/* Add terms to the prover's assumptions */
-		None
-	}
-
-//	private def assumeWithSmokeChecks(_terms: Set[Term], c: C) = {
-//		var r: Option[VerificationResult] = None
-//    val terms = _terms.filterNot(isTrivialTerm)
-//		val it = terms.iterator
-//
-//		while (r == None && it.hasNext) {
-//			val t = it.next()
-//
-//			pathConditions.push(t)
-//			prover_assume(t)
-//
-//			if (checkSmoke) {
-//				val warning = Warning(SmokeDetected withDetails(t) at t.srcPos, c)
-//				logger.error("\n" + warning.message.format)
-//				logger.error("srcNode = " + t.srcNode)
-//				logger.error("srcPos = " + t.srcPos + "\n")
-//				// logger.error("π = " + π)
-//				r = Some(warning)
-//			}
-//		}
-//
-//		r
-//	}
-
-//	def emitFunctionDeclaration(f: ast.Function) {
-//    prover.declare(f)
-//  }
-//
-//  def emit(str: String)
+  /* Fresh symbols */
 
   def fresh(s: Sort) = prover_fresh("$t", s)
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
@@ -340,81 +285,7 @@ class DefaultDecider[ST <: Store[ST],
     v
   }
 
-//  class WithIsA[A](o: A) {
-//    def isA[B: Manifest] = manifest[B].erasure.isInstance(o)
-//  }
-//
-//  implicit def any2WithIsA(o: Any): WithIsA[Any] = new WithIsA(o)
-
-	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH] =
-//    getChunk(h.values collect {case c if c.isA[CH] && c.id == id => c.asInstanceOf[CH]}, rcvr)
-  		getChunk(
-        h.values collect {case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name =>
-                            ch.asInstanceOf[CH]},
-        id)
-
-
-	/* The difference between caching and not caching runs in terms of the number
-	 * of prover assertions seems to be marginal and probably is not worth
-	 * the overhead.
-	 *  - chalice/iterator 1144 vs 1147
-	 *  - chalice/iterator2 88 vs 75
-	 *  - syxc/linked_list 314 vs 314
-	 *  - chalice/producer-consumer 116 vs 114
-	 *  - chalice/dining-philosophers 151 vs 151
-	 */
-
-	/* ATTENTION:
-	 *
-	 * Caching does currently not work in all cases!
-	 * Problems occur when executing if-statements, specifically when
-	 * executing the else-branch after backtracking from the if-branch.
-	 *
-	 * The problem is as follows:
-	 *  - let cache c after if-branch be such that c(t') == t, because
-	 *    while executing the if-branch t == t' in π and t.x -> tx in h
-	 *  - while executing the else-branch t == t' is NOT in π and t'.x -> tx is in h
-	 *    if c has not been reset, finding t'.x in h will fail since c(t') == t
-	 *    but t.x is not in h
-	 *
-	 * Solution: Cache entries must also be pushed/popped
-	 */
-
-	// private var cache: Map[Term, Term] = Map()
-
-	/* Caching version */
-	// private def getChunk[C <: Chunk](h: H, chunks: Iterable[C], rcvr: Term) = {
-		// val result = findChunk(h, chunks, cache.getOrElse(rcvr, rcvr))
-		// if (result.isDefined) cache = cache.updated(rcvr, result.get.rcvr)
-		// result
-	// }
-
-	/* Non-caching version */
-	private def getChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
-		findChunk(chunks, id)
-
-	private def findChunk[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) = (
-					 findChunkLiterally(chunks, id)
-		orElse findChunkWithProver(chunks, id))
-
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
-		chunks find (ch => ch.args == id.args)
-
-  lazy val fcwpLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
-
-    /**
-     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
-     */
-	private def findChunkWithProver[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] = {
-    fcwpLog.println(id)
-		// prover.logComment("Chunk lookup ...")
-		// prover.enableLoggingComments(false)
-		val chunk = chunks find (ch => assert(BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
-		// prover.enableLoggingComments(true)
-
-		chunk
-	}
+  /* Misc */
 
   def getStatistics = prover.getStatistics
 }
