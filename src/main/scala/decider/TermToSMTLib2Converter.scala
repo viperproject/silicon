@@ -117,7 +117,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
     case WildcardPerm(v) => convert(v)
-//    case EpsilonPerm() => "$Perm.Eps"
     case TermPerm(t) => convert2real(t)
     case FractionPerm(n, d) => "(/ %s %s)".format(convert2real(n), convert2real(d))
 
@@ -145,9 +144,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case PermMin(t0, t1) =>
       "($Perm.min %s %s)".format(convert(t0), convert(t1))
     /* Sequences */
-
-//    case SeqEq(t0, t1) =>
-//      "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
 
     case SeqRanged(t0, t1) =>
       "($Seq.rng " + convert(t0) + " " + convert(t1) + ")"
@@ -188,7 +184,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Multisets */
 
-//    case SetAdd(t0, t1) => "($Set.add " + convert(t0) + " " + convert(t1) + ")"
     case MultisetCardinality(t0) => "($Multiset.card " + convert(t0) + ")"
     case MultisetDifference(t0, t1) => "($Multiset.difference " + convert(t0) + " " + convert(t1) + ")"
     case MultisetIntersection(t0, t1) => "($Multiset.intersection " + convert(t0) + " " + convert(t1) + ")"
@@ -209,9 +204,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Other terms */
 
-//    case SnapEq(t0, t1) =>
-//      "($Snap.snapEq " + convert(t0) + " " + convert(t1) + ")"
-
     case First(t) => "($Snap.first " + convert(t) + ")"
     case Second(t) => "($Snap.second " + convert(t) + ")"
 
@@ -225,14 +217,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(distinct %s)".format(symbols map(convert) mkString(" "))
   }
 
-  def sanitizeSymbol(str: String) = (
+  def sanitizeSymbol(str: String) =
     str.replace('#', '_')
-      .replace("τ", "$tau")
-      .replace('[', '<')
-      .replace(']', '>')
-      .replace("::", ".")
-      .replace(',', '~'))
-      .replace(" ", "")
+       .replace("τ", "$tau")
+       .replace('[', '<')
+       .replace(']', '>')
+       .replace("::", ".")
+       .replace(',', '~')
+       .replace(" ", "")
 
   private def convert(q: Quantifier) = q match {
     case Forall => "forall"

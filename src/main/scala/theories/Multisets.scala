@@ -39,7 +39,7 @@ class DefaultMultisetsEmitter(prover: Prover,
     program visit {
       case t: sil.ast.Typed => t.typ match {
         case s: ast.types.Multiset => multisetTypes += s
-        // sequences have a dependency on multisets
+        /* Sequences depend on multisets */
         case s: ast.types.Seq => multisetTypes += ast.types.Multiset(s.elementType)
         case _ => /* Ignore other types */
       }
