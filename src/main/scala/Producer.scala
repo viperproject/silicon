@@ -4,11 +4,10 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
-import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
@@ -35,12 +34,10 @@ trait DefaultProducer[ST <: Store[ST],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-  protected val heapMerger: HeapMerger[ST, H, S]
-  import heapMerger.merge
-
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
+  protected val heapCompressor: HeapCompressor[ST, H, S]
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
@@ -57,12 +54,11 @@ trait DefaultProducer[ST <: Store[ST],
               c: C,
               tv: TV)
              (Q: (S, C) => VerificationResult)
-  : VerificationResult =
+             : VerificationResult =
 
     produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
-        val (mh, mts) = merge(σ, Ø, h)
-        assume(mts)
-        Q(σ \ mh, c1)})
+      val h1 = heapCompressor.compress(σ, h)
+      Q(σ \ h1, c1)})
 
   def produces(σ: S,
                sf: Sort => Term,
@@ -72,7 +68,8 @@ trait DefaultProducer[ST <: Store[ST],
                c: C,
                tv: TV)
               (Q: (S, C) => VerificationResult)
-  : VerificationResult =
+              : VerificationResult =
+
     if (φs.isEmpty)
       Q(σ, c)
     else
@@ -87,7 +84,7 @@ trait DefaultProducer[ST <: Store[ST],
                        c: C,
                        tv: TV)
                       (Q: (H, C) => VerificationResult)
-  : VerificationResult = {
+                      : VerificationResult = {
 
     val tv1 = tv.stepInto(c, Producing[ST, H, S](σ, p, φ))
 
@@ -105,7 +102,7 @@ trait DefaultProducer[ST <: Store[ST],
                               c: C,
                               tv: TV)
                              (Q: (H, C) => VerificationResult)
-  : VerificationResult = {
+                             : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
       logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
@@ -160,9 +157,8 @@ trait DefaultProducer[ST <: Store[ST],
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             /*if (!isConditional(gain))*/ assume(NoPerm() < pGain)
-            val (mh, mts) = merge(σ, σ.h, H(ch :: Nil))
-            assume(mts)
-            Q(mh, c2)})})
+            val h = heapCompressor.compress(σ, σ.h + ch)
+            Q(h, c2)})})
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
@@ -171,9 +167,8 @@ trait DefaultProducer[ST <: Store[ST],
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             /*if (!isConditional(gain))*/ assume(NoPerm() < pGain)
-            val (mh, mts) = merge(σ, σ.h, H(ch :: Nil))
-            assume(mts)
-            Q(mh, c2)}))
+            val h = heapCompressor.compress(σ, σ.h + ch)
+            Q(h, c2)}))
 
       /* Quantified field access predicate */
       case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>

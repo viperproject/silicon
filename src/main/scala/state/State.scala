@@ -4,7 +4,7 @@ package state
 
 import com.weiglewilczek.slf4s.Logging
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, Chunk, StateFormatter,
-    HeapMerger, StateFactory}
+    HeapCompressor, StateFactory}
 import interfaces.reporting.{TraceView, Context}
 import interfaces.decider.Decider
 import ast.Variable
@@ -131,30 +131,25 @@ class DefaultHeapMerger[ST <: Store[ST],
 		 val bookkeeper: Bookkeeper,
 		 val stateFormatter: StateFormatter[ST, H, S, String],
      val stateFactory: StateFactory[ST, H, S])
-		extends HeapMerger[ST, H, S] with Logging {
+		extends HeapCompressor[ST, H, S] with Logging {
 
   import stateFactory.H
 
-	/**
-	 * h1: existing heap which should NOT contain duplicated field chunks, i.e.
-	 *     several chunks t1.f |-> x1 # p1, t1.f |-> x2 # p2
-	 * h2: newly produced heap which can contain duplicated field chunks
-	 * resulting H: merged heap where each t.f occurs only once
-	 * resulting List[Term]: additional path conditions resulting from the merging
-	 */
-	def merge(σ: S, h1in: H, h2in: H): (H, Set[Term]) = {
+	def compress(σ: S, h: H): H = {
 		var fcs: List[DirectFieldChunk] = Nil
 		var rfcs: List[DirectFieldChunk] = Nil
 
 		var tSnaps = Set[Term]()
 		var rts = Set[Term]()
 
-    val (h1PermissionChunks, h1Others) = h1in.values.partition(_.isInstanceOf[DirectChunk])
-    val (h2PermissionChunks, h2Others) = h2in.values.partition(_.isInstanceOf[DirectChunk])
+//    val (h1PermissionChunks, h1Others) = h1in.values.partition(_.isInstanceOf[DirectChunk])
+//    val (h2PermissionChunks, h2Others) = h2in.values.partition(_.isInstanceOf[DirectChunk])
+
+    val (permissionChunks, otherChunk) = h.values.partition(_.isInstanceOf[DirectChunk])
 
 		var rh: H = null.asInstanceOf[H]
-		var h1 = H(h1PermissionChunks) /* h1in */
-		var h2 = H(h2PermissionChunks) /* h2in */
+		var h1 = H()
+		var h2 = H(permissionChunks)
 
 		/* TODO: Possible improvements
 		 *  - Pushing path conditions directly via prover.assume means that they are not
@@ -178,14 +173,16 @@ class DefaultHeapMerger[ST <: Store[ST],
 
 			fcs = fcs ::: rfcs
 			tSnaps = tSnaps ++ rts
-			h1 = h1.empty
+			h1 = H()
 			h2 = rh
 		} while(rts.nonEmpty)
 		decider.popScope()
 
 		val tDists = deriveObjectDistinctness(σ, rh, fcs)
 
-		(rh + H(h1Others) + H(h2Others), tSnaps ++ tDists)
+    decider.assume(tSnaps ++ tDists)
+
+		rh + H(otherChunk)
 	}
 
 	private def singleMerge(σ: S, h1: H, h2: H): (H, List[DirectFieldChunk], Set[Term]) = {

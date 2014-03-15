@@ -70,6 +70,6 @@ trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
 	def format(π: Set[Term]): F
 }
 
-trait HeapMerger[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
-	def merge(σ: S, h1: H, h2: H): (H, Set[Term])
+trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
+	def compress(σ: S, h: H): H
 }

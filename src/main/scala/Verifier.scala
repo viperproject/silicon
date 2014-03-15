@@ -7,7 +7,7 @@ import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Intern
     PredicateNotWellformed}
 import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import interfaces.reporting.{ContextFactory, TraceView, TraceViewFactory}
 import state.{terms, SymbolConvert, DirectChunk}
@@ -153,7 +153,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
 			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapMerger: HeapMerger[ST, H, S],
+			val heapCompressor: HeapCompressor[ST, H, S],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
 			val bookkeeper: Bookkeeper,
@@ -185,7 +185,7 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              multisetsEmitter: MultisetsEmitter,
              domainsEmitter: DomainsEmitter,
              stateFormatter: StateFormatter[ST, H, S, String],
-             heapMerger: HeapMerger[ST, H, S],
+             heapCompressor: HeapCompressor[ST, H, S],
              quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              bookkeeper: Bookkeeper,
@@ -338,7 +338,7 @@ class DefaultVerifierFactory[ST <: Store[ST],
              multisetsEmitter: MultisetsEmitter,
              domainsEmitter: DomainsEmitter,
              stateFormatter: StateFormatter[ST, H, S, String],
-             heapMerger: HeapMerger[ST, H, S],
+             heapCompressor: HeapCompressor[ST, H, S],
              quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              bookkeeper: Bookkeeper,
@@ -346,8 +346,8 @@ class DefaultVerifierFactory[ST <: Store[ST],
 
     new DefaultVerifier[ST, H, PC, S, TV](
                         config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
-                        multisetsEmitter, domainsEmitter, /*chunkFinder,*/ stateFormatter, heapMerger, quantifiedChunkHelper, stateUtils,
-                        bookkeeper, traceviewFactory)
+                        multisetsEmitter, domainsEmitter, stateFormatter, heapCompressor, quantifiedChunkHelper,
+                        stateUtils, bookkeeper, traceviewFactory)
 
 }
 
@@ -366,7 +366,7 @@ class DefaultVerifier[ST <: Store[ST],
       val multisetsEmitter: MultisetsEmitter,
 			val domainsEmitter: DomainsEmitter,
 			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapMerger: HeapMerger[ST, H, S],
+			val heapCompressor: HeapCompressor[ST, H, S],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
 			val bookkeeper: Bookkeeper,
@@ -376,6 +376,6 @@ class DefaultVerifier[ST <: Store[ST],
 
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
-	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, /*chunkFinder,*/ stateFormatter,
-                                      heapMerger, quantifiedChunkHelper, stateUtils, bookkeeper, contextFactory, traceviewFactory)
+	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
+                                      quantifiedChunkHelper, stateUtils, bookkeeper, contextFactory, traceviewFactory)
 }

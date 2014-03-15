@@ -8,8 +8,7 @@ import sil.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
 import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter,
-    HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
@@ -43,12 +42,10 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val heapMerger: HeapMerger[ST, H, S]
-  import heapMerger.merge
-
   protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
   import stateUtils.freshARP
 
+  protected val heapCompressor: HeapCompressor[ST, H, S]
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
@@ -273,9 +270,8 @@ trait DefaultExecutor[ST <: Store[ST],
         a match {
           /* "assert true" triggers a heap compression. */
           case _: ast.True =>
-            val (mh, mts) = merge(σ, Ø, σ.h)
-            assume(mts)
-            Q(σ \ mh, c)
+            val h = heapCompressor.compress(σ, σ.h)
+            Q(σ \ h, c)
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>
