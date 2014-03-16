@@ -5,13 +5,12 @@ package decider
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
-import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
-import interfaces.decider.{/*PermissionAssertions,*/ Decider, Prover, Unsat}
+import sil.verifier.reasons.InsufficientPermission
+import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import interfaces.reporting.{TraceView, Context}
-import ast.{Field, LocationAccess}
-import state.{DirectChunk, DirectFieldChunk, FieldChunkIdentifier, QuantifiedChunk, SymbolConvert}
+import state.{DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
 import state.terms.perms.IsAsPermissive
@@ -36,6 +35,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var bookkeeper: Bookkeeper = null
   protected var pathConditions: PC = null.asInstanceOf[PC]
   protected var symbolConverter: SymbolConvert = null
+  protected var heapCompressor: HeapCompressor[ST, H, S] = null
 
   private sealed trait State
 
@@ -55,10 +55,12 @@ class DefaultDecider[ST <: Store[ST],
   def π = pathConditions.values
 
   def init(pathConditionsFactory: PathConditionsFactory[PC],
+           heapCompressor: HeapCompressor[ST, H, S],
            config: Config,
            bookkeeper: Bookkeeper) {
 
     this.pathConditionsFactory = pathConditionsFactory
+    this.heapCompressor = heapCompressor
     this.config = config
     this.bookkeeper = bookkeeper
     this.state = State.Initialised
@@ -162,21 +164,32 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
+  def tryOrFail[R](block: (R => VerificationResult) => VerificationResult)
+                  (Q: R => VerificationResult)
+                  : VerificationResult = ???
+
   def check(σ: S, t: Term) = assert(σ, t, null)
 
-	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) =
-    Q(assert(σ, t, null))
+	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
+    var success = assert(σ, t, null)
+
+//    if (!success) {
+//      val h = heapCompressor.compress(σ, σ.h)
+//      success = assert(σ \ h, t, null) /* TODO: Destructively replace σ.h with h */
+//    }
+
+    Q(success)
+  }
 
 	protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
 		val asserted = isKnownToBeTrue(t)
 
-		asserted || π.exists(_ == t) || proverAssert(t, logSink)
+		asserted || proverAssert(t, logSink)
 	}
 
-  /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
-    case eq: Eq => eq.p0 == eq.p1
+    case eq: Eq => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
     case _ => false
   }

@@ -16,7 +16,7 @@ import sil.frontend.SilFrontendConfig
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
-import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
+import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
 DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
@@ -146,10 +146,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val dlb = FullPerm()
 
-    val heapMerger = new DefaultHeapMerger[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
-    decider.init(pathConditionFactory, config, bookkeeper)
+    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
@@ -159,8 +159,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
-                           setsEmitter, multisetsEmitter, domainsEmitter, /*chunkFinder,*/ stateFormatter, heapMerger, quantifiedChunkHelper,
-                           stateUtils, bookkeeper, traceviewFactory)
+                           setsEmitter, multisetsEmitter, domainsEmitter, stateFormatter, heapCompressor,
+                           quantifiedChunkHelper, stateUtils, bookkeeper, traceviewFactory)
 	}
 
 	private def runVerifier(program: ast.Program): List[Failure] = {

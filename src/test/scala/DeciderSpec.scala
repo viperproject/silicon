@@ -65,7 +65,10 @@ class DeciderSpec extends FlatSpec {
     config.initialize{case _ =>}
 
     val decider = new DefaultDecider[ST, H, PC, S, C, TV]()
-    decider.init(pathConditionsFactory, config, bookkeeper)
+    val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
+    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, FullPerm(), bookkeeper, stateFormatter, stateFactory)
+
+    decider.init(pathConditionsFactory, heapCompressor, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err))
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])

@@ -33,6 +33,10 @@ trait Decider[P <: FractionalPermissions[P],
   def assume(t: Term)
   def assume(ts: Set[Term])
 
+  def tryOrFail[R](block: (R => VerificationResult) => VerificationResult)
+                  (Q: R => VerificationResult)
+                  : VerificationResult
+
   def check(σ: S, t: Term): Boolean
   def assert(σ: S, t: Term)(Q: Boolean => VerificationResult): VerificationResult
 

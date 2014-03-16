@@ -120,17 +120,17 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
  * Utils
  */
 
-class DefaultHeapMerger[ST <: Store[ST],
-                        H <: Heap[H],
-												PC <: PathConditions[PC],
-                        S <: State[ST, H, S],
-												C <: Context[C, ST, H, S],
-                        TV <: TraceView[TV, ST, H, S]]
-		(val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV],
-		 val distinctnessLowerBound: DefaultFractionalPermissions,
-		 val bookkeeper: Bookkeeper,
-		 val stateFormatter: StateFormatter[ST, H, S, String],
-     val stateFactory: StateFactory[ST, H, S])
+class DefaultHeapCompressor[ST <: Store[ST],
+                            H <: Heap[H],
+											     	PC <: PathConditions[PC],
+                            S <: State[ST, H, S],
+											     	C <: Context[C, ST, H, S],
+                            TV <: TraceView[TV, ST, H, S]]
+                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV],
+                            val distinctnessLowerBound: DefaultFractionalPermissions,
+                            val bookkeeper: Bookkeeper,
+                            val stateFormatter: StateFormatter[ST, H, S, String],
+                            val stateFactory: StateFactory[ST, H, S])
 		extends HeapCompressor[ST, H, S] with Logging {
 
   import stateFactory.H
@@ -141,9 +141,6 @@ class DefaultHeapMerger[ST <: Store[ST],
 
 		var tSnaps = Set[Term]()
 		var rts = Set[Term]()
-
-//    val (h1PermissionChunks, h1Others) = h1in.values.partition(_.isInstanceOf[DirectChunk])
-//    val (h2PermissionChunks, h2Others) = h2in.values.partition(_.isInstanceOf[DirectChunk])
 
     val (permissionChunks, otherChunk) = h.values.partition(_.isInstanceOf[DirectChunk])
 

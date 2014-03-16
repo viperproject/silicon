@@ -49,7 +49,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult =
 
-    consume2(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
+    consume(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
       Q(σ \ h1, t, dcs, c1))
 
   def consumes(σ: S,
@@ -61,9 +61,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
               : VerificationResult =
 
-    consumes2(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
+    consumes(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
 
-  private def consumes2(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
+  private def consumes(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
                        (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
 
@@ -71,17 +71,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       Q(σ \ h, ts.reverse, dcs.reverse, c)
     else
       consume(σ, h, p, φs.head, pvef(φs.head), c, tv)((h1, t, dcs1, c1) =>
-        consumes2(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
+        consumes(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
 
-	protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+//	protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+//			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+//                       : VerificationResult =
+//
+//		consume2(σ, h, p, φ, pve, c, tv)(Q)
+
+  protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                       : VerificationResult =
-
-		consume2(σ, h, p, φ, pve, c, tv)(Q)
-
-  protected def consume2(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
-			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                        : VerificationResult = {
+                       : VerificationResult = {
 
     val tv1 = tv.stepInto(c, Consuming[ST, H, S](σ, h, p, φ))
 
@@ -181,14 +181,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			 * not in the partially consumed heap (h).
 			 */
       case _ =>
-        eval(σ, φ, pve, c, tv)((t, c) =>
-          decider.assert(σ, t){
-            case true =>
-              assume(t)
-              Q(h, Unit, Nil, c)
-            case false =>
-              Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
-          })
+        decider.tryOrFail[(H, Term, List[DirectChunk], C)](Q => {
+          eval(σ, φ, pve, c, tv)((t, c) =>
+            decider.assert(σ, t) {
+              case true =>
+                assume(t)
+                Q((h, Unit, Nil, c))
+              case false =>
+                Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
+            })
+        })(Q.tupled)
 		}
 
 		consumed
