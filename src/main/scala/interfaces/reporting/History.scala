@@ -303,7 +303,6 @@ object VerificationStatus {
   def apply(r: VerificationResult): VerificationStatus = r match {
     case Success(_) => SuccessStatus
     case Failure(_, _, _) => FailureStatus
-//    case Warning(_, _, _) => SuccessStatus
     case Unreachable(_) => UnreachableStatus
   }
   

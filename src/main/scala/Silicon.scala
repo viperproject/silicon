@@ -16,7 +16,7 @@ import sil.frontend.SilFrontendConfig
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
-import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
+import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
 DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
@@ -134,7 +134,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     bookkeeper.branches = 1
     bookkeeper.startTime = System.currentTimeMillis()
 
-	  val decider = new DefaultDecider[ST, H, PC, S, C]()
+	  val decider = new DefaultDecider[ST, H, PC, S, C, TV]()
     shutDownHooks = shutDownHooks + (() => decider.stop())
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
@@ -142,16 +142,14 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
-    val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
-    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
+    val stateUtils = new StateUtils[ST, H, PC, S, C, TV](decider)
 
     val dlb = FullPerm()
 
-    val heapMerger =
-			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
-    decider.init(pathConditionFactory, config, bookkeeper)
+    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
@@ -161,8 +159,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
-                           setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, quantifiedChunkHelper,
-                           stateUtils, bookkeeper, traceviewFactory)
+                           setsEmitter, multisetsEmitter, domainsEmitter, stateFormatter, heapCompressor,
+                           quantifiedChunkHelper, stateUtils, bookkeeper, traceviewFactory)
 	}
 
 	private def runVerifier(program: ast.Program): List[Failure] = {
@@ -202,10 +200,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
                 else (ss + r.message.readableMessage, r :: rs)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
-
-//    val failures = results.collect{
-//      case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f
-//    }
 
 		if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.getStatistics

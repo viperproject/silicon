@@ -4,7 +4,7 @@ package reporting
 
 import interfaces.state.{ Store, Heap, State}
 import interfaces.reporting.{ Context, ContextFactory, Branch, BranchingStep}
-import state.terms.{Var}
+import state.terms.Var
 
 class DefaultContextFactory[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     extends ContextFactory[DefaultContext[ST, H, S], ST, H, S] {

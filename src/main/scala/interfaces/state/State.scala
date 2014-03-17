@@ -25,10 +25,10 @@ trait Store[S <: Store[S]] {
 trait Heap[S <: Heap[S]] {
 	def empty: S
 	def values: Iterable[Chunk]
+  def replace(values: Iterable[Chunk])
 	def +(chunk: Chunk): S
 	def +(other: S): S
 	def -(chunk: Chunk): S
-	def -(id: ChunkIdentifier): S
 }
 
 trait PathConditions[S <: PathConditions[S]] {
@@ -70,6 +70,6 @@ trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
 	def format(π: Set[Term]): F
 }
 
-trait HeapMerger[H <: Heap[H]] {
-	def merge(h1: H, h2: H): (H, Set[Term])
+trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
+	def compress(σ: S, h: H)
 }

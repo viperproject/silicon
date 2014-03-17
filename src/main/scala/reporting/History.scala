@@ -2,8 +2,8 @@ package semper
 package silicon
 package reporting
 
-import interfaces.state.{Heap, PathConditions, Store, State}
-import interfaces.{VerificationResult,FatalResult,NonFatalResult, Success, Failure}
+import interfaces.state.{Heap,  Store, State}
+import interfaces.{VerificationResult, Failure}
 import interfaces.reporting._
 import state.terms.{Term, DefaultFractionalPermissions}
 import state.terms.utils.¬
@@ -187,13 +187,12 @@ abstract class AbstractBranch
 
   def print(indent: String) = {
     println(indent + this)
-    //println(indent + "-" + _result)
     println(indent + "s=" + status)
 
-    localBranches foreach (_ match {
+    localBranches foreach {
       case LocalTwinBranching(tB, fB) => tB.print(indent + "--"); fB.print(indent + "--")
       case LocalSingleBranching(b) => b.print(indent + "--")
-    })
+    }
 
     subBranches match {
       case None =>
@@ -308,7 +307,6 @@ trait DefaultStep
 
   def results = _results.filter{
     case f:Failure[_,_,_,_,_] => true
-//    case w: Warning[_,_,_,_,_] => true
     case _ => false
   }
 

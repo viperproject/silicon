@@ -16,6 +16,7 @@ import interfaces.reporting.TraceView
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
+import state.terms.perms.IsPositive
 import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
@@ -32,7 +33,7 @@ trait DefaultEvaluator[
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C]
+	protected val decider: Decider[P, ST, H, PC, S, C, TV]
 	import decider.{fresh, assume}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -41,11 +42,7 @@ trait DefaultEvaluator[
 	protected val symbolConverter: SymbolConvert
 	import symbolConverter.toSort
 
-	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
-	import chunkFinder.withChunk
-
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-
+  protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -163,7 +160,7 @@ trait DefaultEvaluator[
 
       case ast.FractionalPerm(e0, e1) =>
         evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c, tv)((tFP, c1) =>
-          failIfDivByZero(tFP, e1, tFP.d, TermPerm(0), pve, c1, tv)(Q))
+          failIfDivByZero(σ, tFP, e1, tFP.d, TermPerm(0), pve, c1, tv)(Q))
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = stateUtils.freshARP()
@@ -172,11 +169,10 @@ trait DefaultEvaluator[
 
       case _: ast.EpsilonPerm =>
         sys.error(s"Found unexpected expression $e (${e.getClass.getName}})")
-//        Q(EpsilonPerm(), c)
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
-          decider.getChunk[DirectChunk](σ.h, id) match {
+          decider.getChunk[DirectChunk](σ, σ.h, id) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
@@ -184,13 +180,13 @@ trait DefaultEvaluator[
       /* Field access if the heap is quantified for that field */
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
-          quantifiedChunkHelper.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
+          quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
             Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
-      withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-        withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
-          Q(ch.value, c1)))
+        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
+          decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1, tv)(ch =>
+            Q(ch.value, c1)))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -229,7 +225,7 @@ trait DefaultEvaluator[
           *       that it is more a continue-if-no-contradiction thing.
           */
           val r =
-            branchLocally(t0.get, c1, tv, LocalAndBranching(e0, t0.get),
+            branchLocally(σ, t0.get, c1, tv, LocalAndBranching(e0, t0.get),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
                   localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
@@ -271,7 +267,7 @@ trait DefaultEvaluator[
           /* TODO: See comment to short-circuiting evaluation of AND */
           val t0Neg = Not(t0.get)
           val r =
-            branchLocally(t0Neg, c1, tv, LocalOrBranching(e0, t0Neg),
+            branchLocally(σ, t0Neg, c1, tv, LocalOrBranching(e0, t0Neg),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
                   assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
@@ -319,7 +315,7 @@ trait DefaultEvaluator[
             πIf = πDiff
             tEvaluatedIf = t0
 
-            branchLocally(t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
+            branchLocally(σ, t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
                   localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
@@ -366,12 +362,11 @@ trait DefaultEvaluator[
             πIf = Some(πDiff)
             tActualIf = Some(t0)
 
-            branchLocally(t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
+            branchLocally(σ, t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
               (c2: C, tv1: TV) => {
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
                   localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success[C, ST, H, S](c3)})},
-
               (c2: C, tv1: TV) => {
                 eval(σ, e2, pve, c2, tv1)((t2, c3) => {
                   localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
@@ -422,11 +417,11 @@ trait DefaultEvaluator[
 
       case ast.IntDiv(e0, e1) =>
         evalBinOp(σ, e0, e1, Div, pve, c, tv)((tDiv, c1) =>
-          failIfDivByZero(tDiv, e1, tDiv.p1, 0, pve, c1, tv)(Q))
+          failIfDivByZero(σ, tDiv, e1, tDiv.p1, 0, pve, c1, tv)(Q))
 
       case ast.IntMod(e0, e1) =>
         evalBinOp(σ, e0, e1, Mod, pve, c, tv)((tMod, c1) =>
-          failIfDivByZero(tMod, e1, tMod.p1, 0, pve, c1, tv)(Q))
+          failIfDivByZero(σ, tMod, e1, tMod.p1, 0, pve, c1, tv)(Q))
 
       case ast.IntLE(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
@@ -631,18 +626,19 @@ trait DefaultEvaluator[
               assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
               tPerm = Some(_tPerm)
               πPre = decider.π
-              if (decider.isPositive(_tPerm))
-                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
-                  consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
-                      val c4a = c4.decCycleCounter(predicate)
-                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                      eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
-                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
-                        Success[C, ST, H, S](c3)})})}))
-              else
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
+              decider.assert(σ, IsPositive(_tPerm)){
+                case true =>
+                  evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
+                    consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                      produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
+                        val c4a = c4.decCycleCounter(predicate)
+                        val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                        eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
+                          localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
+                          Success[C, ST, H, S](c3)})})}))
+                case false =>
+                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)}})
 
           r && {
             val tActualInVar = fresh("actualIn", toSort(eIn.typ))
@@ -752,13 +748,13 @@ trait DefaultEvaluator[
     e match {
       case ast.Implies(e0, e1) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
+          branch(σ, t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
             (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => Q(True(), c2)))
 
       case ast.Ite(e0, e1, e2) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(t0, c1, tv, IfBranching[ST, H, S](e0, t0),
+          branch(σ, t0, c1, tv, IfBranching[ST, H, S](e0, t0),
             (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => eval(σ, e2, pve, c2, tv1)(Q)))
 
@@ -768,17 +764,18 @@ trait DefaultEvaluator[
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
           evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
-            if (decider.isPositive(tPerm))
-              evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
-                consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  /* Unfolding only effects the current heap */
-                  produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
-                    val c4a = c4.decCycleCounter(predicate)
-                    val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                    eval(σ3, eIn, pve, c4a, tv)(Q)})}))
-            else
-              Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv))}
+            decider.assert(σ, IsPositive(tPerm)){
+              case true =>
+                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
+                  consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                    /* Unfolding only effects the current heap */
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
+                      val c4a = c4.decCycleCounter(predicate)
+                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                      eval(σ3, eIn, pve, c4a, tv)(Q)})}))
+              case false =>
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})}
         else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
@@ -827,10 +824,9 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           if (assertRcvrNonNull)
-            if (decider.assert(Or(NullTrigger(tRcvr), tRcvr !== Null())))
-              Q(FieldChunkIdentifier(tRcvr, field.name), c1)
-            else
-              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)
+            decider.assert(σ, Or(NullTrigger(tRcvr), tRcvr !== Null())){
+              case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
+              case false => Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)}
           else
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
@@ -855,7 +851,8 @@ trait DefaultEvaluator[
 				Q(termOp(t0, t1), c2)))
   }
 
-  private def failIfDivByZero(t: Term,
+  private def failIfDivByZero(σ: S,
+                              t: Term,
                               eDivisor: ast.Expression,
                               tDivisor: Term,
                               tZero: Term,
@@ -865,10 +862,10 @@ trait DefaultEvaluator[
                              (Q: (Term, C) => VerificationResult)
                              : VerificationResult = {
 
-    if (decider.assert(tDivisor !== tZero))
-      Q(t, c)
-    else
-      Failure[C, ST, H, S, TV](pve dueTo DivisionByZero(eDivisor), c, tv)
+    decider.assert(σ, tDivisor !== tZero){
+      case true => Q(t, c)
+      case false => Failure[C, ST, H, S, TV](pve dueTo DivisionByZero(eDivisor), c, tv)
+    }
   }
 
   private def evalPermOp[PO <: P]
