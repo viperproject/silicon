@@ -524,19 +524,14 @@ trait DefaultEvaluator[
                * to not pollute the path conditions.
                *
                * Actually, only path conditions in which the quantified variable
-               * occurrs are waste, others, especially $combine-terms, are actually
+               * occurs are waste, others, especially $combine-terms, are actually
                * of interest and should be in the path conditions to avoid the
                * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
                * which is currently overcome by caching fapp-terms.
                */
               Success[C, ST, H, S](c2)}))
 
-        decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
-
-        println("\n[eval/quants]")
-        println(s"  |localResults| = ${localResults.length}")
-        localResults foreach (lr => println(s"    lr: ${lr.πGuards}  |  ${lr.auxiliaryTerms}  |  ${lr.actualResult}"))
 
         r && {
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
