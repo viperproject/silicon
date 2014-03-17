@@ -108,11 +108,13 @@ case class Failure[C <: Context[C, ST, H, S],
                    H <: Heap[H],
                    S <: State[ST, H, S],
                    TV <: TraceView[TV, ST, H, S]]
-                  (val message: VerificationError,
-                   val context: C,
+                  (message: VerificationError,
+                   context: C,
                    tv: TV)
 		extends FatalResult
        with ContextAwareResult[C, ST, H, S] {
 
   tv.addResult(context.currentBranch, this)
+
+  override lazy val toString = message.readableMessage
 }
