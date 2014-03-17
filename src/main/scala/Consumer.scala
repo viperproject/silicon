@@ -13,7 +13,7 @@ import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert
 import state.terms._
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import heap.QuantifiedChunkHelper
-import sil.ast.{LocalVar}
+import sil.ast.LocalVar
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -101,7 +101,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                              : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      logger.debug(s"\nCONSUME ${φ.pos}: ${φ}")
+      logger.debug(s"\nCONSUME ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))
       logger.debug("hE = " + stateFormatter.format(h))
     }
@@ -129,13 +129,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 
       /* Quantified field access predicate */
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) => {
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) =>
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
         val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
 
         eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
           // we cheat a bit and syntactically rewrite the range
-          // this should not be needed if the axiomatization supports it
+          // this should not be needed if the axiomatisation supports it
           val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
           if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
           else {
@@ -155,10 +155,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             )
           }
         })
-      }
 
       /* Field access predicates for quantified fields */
-      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) =>
+      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
             quantifiedChunkHelper.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {

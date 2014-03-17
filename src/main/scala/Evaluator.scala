@@ -182,19 +182,15 @@ trait DefaultEvaluator[
           })
 
       /* Field access if the heap is quantified for that field */
-      case fa: ast.FieldAccess if (quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name)) => {
+      case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
           quantifiedChunkHelper.value(σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
-            Q(t, c1)
-          })
-        )
-      }
+            Q(t, c1)}))
 
-      case fa: ast.FieldAccess => {
+      case fa: ast.FieldAccess =>
       withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
         withChunk[FieldChunk](σ.h, id, fa, pve, c1, tv)(ch =>
           Q(ch.value, c1)))
-      }
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -482,7 +478,7 @@ trait DefaultEvaluator[
           val fi = symbolConverter.toFunction(func, inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      /* TODO: Implement a non-local evaluation of quantifiers. */
+      case _: ast.Quantified if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case quant: ast.Quantified =>
         val body = quant.exp
@@ -542,6 +538,10 @@ trait DefaultEvaluator[
 
         decider.prover.logComment(s"END EVAL QUANT $quant")
         decider.popScope()
+
+        println("\n[eval/quants]")
+        println(s"  |localResults| = ${localResults.length}")
+        localResults foreach (lr => println(s"    lr: ${lr.πGuards}  |  ${lr.auxiliaryTerms}  |  ${lr.actualResult}"))
 
         r && {
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
@@ -739,8 +739,8 @@ trait DefaultEvaluator[
     resultTerm
 	}
 
-  /* The non-local evaluations are only intended for benchmarking and
-   * debugging reasons, because they can result in incompletenesses.
+  /* The non-local evaluations are intended for benchmarking and debugging
+   * only, because they can result in incompletenesses.
    */
   private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
                           (Q: (Term, C) => VerificationResult)
@@ -782,9 +782,33 @@ trait DefaultEvaluator[
         else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported in Syxc. It should be  possible to wrap 'unfolding next.P in e' " +
+            "supported in Silicon. It should be  possible to wrap 'unfolding next.P in e' " +
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
+
+      case quant: ast.Quantified if config.disableLocalEvaluations() =>
+        val body = quant.exp
+        val vars = quant.variables map (_.localVar)
+
+        val (tQuantOp, silTriggers) = quant match {
+          case fa: ast.Forall => (Forall, fa.autoTrigger.triggers)
+          case _: ast.Exists => (Exists, Seq())
+        }
+
+        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+        val γVars = Γ(vars zip tVars)
+        val σQuant = σ \+ γVars
+
+        val πPre: Set[Term] = decider.π
+        evalTriggers(σQuant, silTriggers, pve, c, tv)((triggers, c1) =>
+          eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
+            val (tActual: Term, tAux: Set[Term]) =
+              combine(LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2) :: Nil)
+            val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
+            val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
+            assume(tQuantAux)
+            Q(tQuant, c2)
+          }))
 
       case _ => sys.error(s"Cannot non-locally evaluate $e (${e.getClass.getName})")
     }
@@ -874,7 +898,7 @@ trait DefaultEvaluator[
 
     val (t1: Term, tAux: Set[Term]) =
       localResults.map {lr =>
-        val newGuards = lr.πGuards filterNot decider.π.contains
+        val newGuards = lr.πGuards
 
         val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
