@@ -96,7 +96,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                              : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      logger.debug(s"\nCONSUME ${φ.pos}: ${φ}")
+      logger.debug(s"\nCONSUME ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))
       logger.debug("hE = " + stateFormatter.format(h))
     }
@@ -106,9 +106,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         consume(σ, h, p, a1, pve, c, tv)(Q)
 
       case ast.And(a1, a2) if !φ.isPure =>
-				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
-						Q(h2, Combine(s1.convert(sorts.Snap), s2.convert(sorts.Snap)), dcs1 ::: dcs2, c2)))
+				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) => {
+          logger.debug("h1 = " + stateFormatter.format(h1))
+					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) => {
+            logger.debug("h2 = " + stateFormatter.format(h2))
+						Q(h2, Combine(s1.convert(sorts.Snap), s2.convert(sorts.Snap)), dcs1 ::: dcs2, c2)})})
 
       case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -181,14 +183,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			 * not in the partially consumed heap (h).
 			 */
       case _ =>
-        decider.tryOrFail[(H, Term, List[DirectChunk], C)](Q => {
-          eval(σ, φ, pve, c, tv)((t, c) =>
-            decider.assert(σ, t) {
+        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+          eval(σ1, φ, pve, c, tv)((t, c) =>
+            decider.assert(σ1, t) {
               case true =>
                 assume(t)
-                Q((h, Unit, Nil, c))
+                QS((h, Unit, Nil, c))
               case false =>
-                Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv)
+                QF(Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
             })
         })(Q.tupled)
 		}

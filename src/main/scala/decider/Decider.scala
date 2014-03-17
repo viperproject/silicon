@@ -164,18 +164,86 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
-  def tryOrFail[R](block: (R => VerificationResult) => VerificationResult)
+//  var cnt = 0
+
+  def tryOrFail[R](σ: S)
+                  (block:    (S, R => VerificationResult, Failure[C, ST, H, S, TV] => VerificationResult)
+                          => VerificationResult)
                   (Q: R => VerificationResult)
-                  : VerificationResult = ???
+                  : VerificationResult = {
+
+    val chunks = σ.h.values
+    var failure: Option[Failure[C, ST, H, S, TV]] = None
+//    cnt += 1
+//    val mycnt = cnt
+//    prover.logComment(s"[decider/tryOrFail-$mycnt]")
+
+    var r =
+      block(
+        σ,
+        r => {
+//          prover.logComment(s"tryOrFail-$mycnt succeeded")
+          Q(r)},
+        f => {
+//          prover.logComment(s"tryOrFail-$mycnt failed with $f")
+          Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
+          failure = Some(f)
+          f})
+
+    r =
+      if (failure.isEmpty)
+        r
+      else {
+        heapCompressor.compress(σ, σ.h)
+//        prover.logComment(s"retrying block of tryOrFail-$mycnt")
+        block(σ, r => Q(r), f => f)
+      }
+
+    if (failure.nonEmpty) {
+      /* TODO: The current way of having HeapCompressor change h is convenient
+       *       because it makes the compression transparent to the user, and
+       *       also, because a compression that is performed while evaluating
+       *       an expression has a lasting effect even after the evaluation,
+       *       although eval doesn't return a heap.
+       *       HOWEVER, it violates the assumption that the heap is immutable,
+       *       which is likely to cause problems, next next paragraph.
+       *       It would probably be better to have methods that potentially
+       *       compress heaps explicitly pass on a new heap.
+       *       If tryOrFail would do that, then every method using it would
+       *       have to do so as well, e.g., withChunk.
+       *       Moreover, eval might have to return a heap as well.
+       */
+       /*
+       * Restore the chunks as they existed before compressing the heap.
+       * The is done to avoid problems with the DefaultBrancher, where
+       * the effects of compressing the heap in one branch leak into the
+       * other branch.
+       * Consider the following method specs:
+       *   requires acc(x.f, k) && acc(y.f, k)
+       *   ensures x == y ? acc(x.f, 2 * k) : acc(x.f, k) && acc(y.f, k)
+       * Compressing the heap inside the if-branch updates the same h
+       * that is passed to the else-branch, which then might not verify,
+       * because now x != y but the heap only contains acc(x.f, 2 * k)
+       * (or acc(y.f, 2 * k)).
+       */
+      σ.h.replace(chunks)
+    }
+
+//    prover.logComment(s"[/tryOrFail-$mycnt] $r")
+//    cnt -= 1
+
+    r
+  }
 
   def check(σ: S, t: Term) = assert(σ, t, null)
 
 	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
-    var success = assert(σ, t, null)
+    val success = assert(σ, t, null)
 
+    /* Heuristics could also be invoked whenever an assertion fails. */
 //    if (!success) {
-//      val h = heapCompressor.compress(σ, σ.h)
-//      success = assert(σ \ h, t, null) /* TODO: Destructively replace σ.h with h */
+//      heapCompressor.compress(σ, σ.h)
+//      success = assert(σ, t, null)
 //    }
 
     Q(success)
@@ -217,18 +285,20 @@ class DefaultDecider[ST <: Store[ST],
                 c: C,
                 tv: TV)
                (Q: CH => VerificationResult)
-               : VerificationResult =
+               : VerificationResult = {
 
-    getChunk[CH](σ, h, id) match {
+    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
+      getChunk[CH](σ1, σ1.h, id) match {
       case Some(chunk) =>
-        Q(chunk)
+        QS(chunk)
 
       case None =>
         if (checkSmoke())
           Success[C, ST, H, S](c) /* TODO: Mark branch as dead? */
         else
-          Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-    }
+          QF(Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv))}
+    )(Q)
+  }
 
   def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (σ: S,
@@ -242,12 +312,14 @@ class DefaultDecider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult =
 
-    withChunk[CH](σ, h, id, locacc, pve, c, tv)(ch => {
-      assert(σ, IsAsPermissive(ch.perm, p)){
-        case true =>
-          Q(ch)
-        case false => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
-      }})
+    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
+      withChunk[CH](σ1, σ1.h, id, locacc, pve, c, tv)(ch => {
+        assert(σ1, IsAsPermissive(ch.perm, p)){
+          case true =>
+            QS(ch)
+          case false =>
+            QF(Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv))}})
+    )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
     val chunks = h.values collect {

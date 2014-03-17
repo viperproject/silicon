@@ -4,7 +4,7 @@ package interfaces.decider
 
 import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import interfaces.VerificationResult
+import interfaces.{Failure, VerificationResult}
 import interfaces.reporting.{TraceView, Context}
 import state.terms.{Term, Var, FractionalPermissions, Sort}
 import state.DirectChunk
@@ -23,8 +23,8 @@ trait Decider[P <: FractionalPermissions[P],
 
 	def checkSmoke(): Boolean
 
-  /*@deprecated*/ def pushScope()
-  /*@deprecated*/ def popScope()
+  def pushScope()
+  def popScope()
   def inScope[R](block: => R): R
 
   /* TODO: Should these take continuations to make it explicit that the state
@@ -33,7 +33,9 @@ trait Decider[P <: FractionalPermissions[P],
   def assume(t: Term)
   def assume(ts: Set[Term])
 
-  def tryOrFail[R](block: (R => VerificationResult) => VerificationResult)
+  def tryOrFail[R](σ: S)
+                  (block:    (S, R => VerificationResult, Failure[C, ST, H, S, TV] => VerificationResult)
+                          => VerificationResult)
                   (Q: R => VerificationResult)
                   : VerificationResult
 

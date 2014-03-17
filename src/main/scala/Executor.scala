@@ -270,8 +270,8 @@ trait DefaultExecutor[ST <: Store[ST],
         a match {
           /* "assert true" triggers a heap compression. */
           case _: ast.True =>
-            val h = heapCompressor.compress(σ, σ.h)
-            Q(σ \ h, c)
+            heapCompressor.compress(σ, σ.h)
+            Q(σ, c)
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>

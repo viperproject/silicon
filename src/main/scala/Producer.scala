@@ -4,7 +4,7 @@ package silicon
 import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
@@ -37,7 +37,6 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val heapCompressor: HeapCompressor[ST, H, S]
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
@@ -56,10 +55,8 @@ trait DefaultProducer[ST <: Store[ST],
              (Q: (S, C) => VerificationResult)
              : VerificationResult =
 
-    produce2(σ, sf, p, φ, pve, c, tv)((h, c1) => {
-//      val h1 = heapCompressor.compress(σ, h)
-//      Q(σ \ h1, c1)})
-      Q(σ \ h, c1)})
+    produce2(σ, sf, p, φ, pve, c, tv)((h, c1) =>
+      Q(σ \ h, c1))
 
   def produces(σ: S,
                sf: Sort => Term,
@@ -106,7 +103,7 @@ trait DefaultProducer[ST <: Store[ST],
                              : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      logger.debug(s"\nPRODUCE ${φ.pos}: ${φ}")
+      logger.debug(s"\nPRODUCE ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))
     }
 
@@ -147,7 +144,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain)
-            /*if (!isConditional(gain))*/ assume(NoPerm() < pGain)
+            assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)})})
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
@@ -157,9 +154,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            /*if (!isConditional(gain))*/ assume(NoPerm() < pGain)
-//            val h = heapCompressor.compress(σ, σ.h + ch)
-//            Q(h, c2)})})
+            assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)})})
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
@@ -168,9 +163,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(sorts.Snap)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            /*if (!isConditional(gain))*/ assume(NoPerm() < pGain)
-//            val h = heapCompressor.compress(σ, σ.h + ch)
-//            Q(h, c2)}))
+            assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)}))
 
       /* Quantified field access predicate */

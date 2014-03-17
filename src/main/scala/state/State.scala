@@ -3,8 +3,7 @@ package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, Chunk, StateFormatter,
-    HeapCompressor, StateFactory}
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor, StateFactory}
 import interfaces.reporting.{TraceView, Context}
 import interfaces.decider.Decider
 import ast.Variable
@@ -35,21 +34,29 @@ case class MapBackedStore(private val map: Map[Variable, Term])
 	def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
 
-case class SetBackedHeap(/*private*/ var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
+case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
 	def this() = this(Set[Chunk]())
 	def this(h: SetBackedHeap) = this(h.chunks)
 	def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
 
-	val values = chunks /* Make sure that chunks is not modified! */
+  @inline
+	def values = chunks
+
+  /** Attention: This is a destructive operation that replaces the chunks in
+    * this heap by `chunks`. Only use this operation if you think that you know
+    * what you are doing! Consider creating a new heap via `this(chunks)`
+    * instead.
+    */
+  def replace(chunks: Iterable[Chunk]) {
+    this.chunks = toSet(chunks)
+  }
+
 	def empty = new SetBackedHeap()
 
 	def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
 	def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
 
 	def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
-
-  def -(id: ChunkIdentifier) =
-    new SetBackedHeap(chunks.filterNot(ch => ch.name == id.name && ch.args == id.args))
 }
 
 class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPathConditions] {
@@ -135,7 +142,11 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
   import stateFactory.H
 
-	def compress(σ: S, h: H): H = {
+  /** Attention: Compressing the heap modifies `h`, that is, its internal
+    * representation! After compressing the heap, `h` is updated via
+    * calling `h.replace(...)`.
+    */
+	def compress(σ: S, h: H) {
 		var fcs: List[DirectFieldChunk] = Nil
 		var rfcs: List[DirectFieldChunk] = Nil
 
@@ -159,6 +170,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		 *    Not sure if that turns out to be sufficient, though.
 		 */
 
+    /* TODO: Don't use heaps during compression, just work on Iterable[Chunk] or Set[Chunk] */
+
 		decider.pushScope()
 		do {
 			val result = singleMerge(σ, h1, h2)
@@ -179,7 +192,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
     decider.assume(tSnaps ++ tDists)
 
-		rh + H(otherChunk)
+    h.replace(rh.values ++ otherChunk)
 	}
 
 	private def singleMerge(σ: S, h1: H, h2: H): (H, List[DirectFieldChunk], Set[Term]) = {
