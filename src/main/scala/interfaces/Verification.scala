@@ -88,6 +88,7 @@ case class Success[C <: Context[C, ST, H, S],
   context.currentBranch.addResult(this)
 
 	val message = null /* TODO: Make an Option[Message] */
+  override val toString = "Success"
 }
 
 case class Unreachable[C <: Context[C, ST, H, S],
@@ -101,6 +102,7 @@ case class Unreachable[C <: Context[C, ST, H, S],
   context.currentBranch.addResult(this)
 
   val message = null /* TODO: Make an Option[Message] */
+  override val toString = "Unreachable"
 }
 
 case class Failure[C <: Context[C, ST, H, S],
