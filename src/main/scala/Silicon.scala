@@ -36,9 +36,9 @@ import heap.DefaultQuantifiedChunkHelper
 
 trait SiliconConstants {
   val name = brandingData.sbtProjectName
-  val version = brandingData.sbtProjectVersion
+  val version = s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2013"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2014"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val expectedZ3Version = "4.3.0"
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
