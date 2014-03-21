@@ -2,42 +2,81 @@ package semper
 package silicon
 package interfaces.decider
 
-import sil.verifier.{DependencyNotFoundError}
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk, ChunkIdentifier}
-import interfaces.reporting.{Context}
+import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
+import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
+import interfaces.{Failure, VerificationResult}
+import interfaces.reporting.{TraceView, Context}
 import state.terms.{Term, Var, FractionalPermissions, Sort}
-import silicon.utils.notNothing._
+import state.DirectChunk
+import utils.notNothing._
 
-trait Decider[P <: FractionalPermissions[P], ST <: Store[ST], H <: Heap[H],
-						PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S]] {
+trait Decider[P <: FractionalPermissions[P],
+              ST <: Store[ST],
+              H <: Heap[H],
+						  PC <: PathConditions[PC],
+              S <: State[ST, H, S],
+              C <: Context[C, ST, H, S],
+              TV <: TraceView[TV, ST, H, S]] {
 
 	def prover: Prover
 	def π: Set[Term]
 
-//	def enableSmokeChecks(enable: Boolean)
-	def checkSmoke: Boolean
+	def checkSmoke(): Boolean
 
-  def assert(φ: Term): Boolean
   def pushScope()
   def popScope()
   def inScope[R](block: => R): R
-	def assume(φ: Term)
-	def assume(φ: Set[Term])
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](h: H, id: ChunkIdentifier): Option[CH]
+  /* TODO: Should these take continuations to make it explicit that the state
+   *       is changed?
+   */
+  def assume(t: Term)
+  def assume(ts: Set[Term])
 
-	def assertNoAccess(p: P): Boolean
-	def assertReadAccess(p: P): Boolean
-	def assertReadAccess(h: H, id: ChunkIdentifier): Boolean
-	def assertWriteAccess(p: P): Boolean
-	def assertWriteAccess(h: H, id: ChunkIdentifier): Boolean
+  def tryOrFail[R](σ: S)
+                  (block:    (S, R => VerificationResult, Failure[C, ST, H, S, TV] => VerificationResult)
+                          => VerificationResult)
+                  (Q: R => VerificationResult)
+                  : VerificationResult
 
-	def isPositive(p: P, strict: Boolean = true): Boolean
-	def isAsPermissive(perm: P, other: P): Boolean
+  def check(σ: S, t: Term): Boolean
+  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult): VerificationResult
 
-  def fresh(s: Sort): Var
+  /** Try to find a chunk identified by `id`. If not present, a failure is
+    * returned, otherwise, `Q` is invoked with the found chunk.
+    */
+  def withChunk[CH <: Chunk : NotNothing : Manifest]
+               (σ: S,
+                h: H,
+                id: ChunkIdentifier,
+                locacc: ast.LocationAccess,
+                pve: PartialVerificationError,
+                c: C,
+                tv: TV)
+               (Q: CH => VerificationResult)
+               : VerificationResult
+
+  /** Try to find a chunk identified by `id`. If not present, or if it comes
+    * with less than `p` permissions, then a failure is returned, otherwise,
+    * `Q` is invoked with the found chunk.
+    */
+  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
+               (σ: S,
+                h: H,
+                id: ChunkIdentifier,
+                p: P,
+                locacc: ast.LocationAccess,
+                pve: PartialVerificationError,
+                c: C,
+                tv: TV)
+               (Q: CH => VerificationResult)
+               : VerificationResult
+
+  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH]
+
   def fresh(id: String, s: Sort): Var
-	def fresh(v: ast.Variable): Var
+  def fresh(s: Sort): Var
+  def fresh(v: ast.Variable): Var
 
   def start(): Option[DependencyNotFoundError]
   def stop()

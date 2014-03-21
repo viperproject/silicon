@@ -88,8 +88,5 @@ class Bookkeeper {
       |  "silicon_assertionCounter": %d,
       |  "silicon_freshSymbols": %d""" + (if (proverStatistics.size == 0) "\n" else ",\n")
     + placeholderLines + "\n}").trim.stripMargin
-//    """
-//      |}
-//    """).trim.stripMargin
   }
 }

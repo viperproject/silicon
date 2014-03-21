@@ -1,4 +1,4 @@
-; Requires Z3 4.x
+; Requires Z3 4.3.0
 
 ; ATTENTION: Continuing multi-line statements must be indented with at least
 ;            one tab or two spaces. All other lines must not start with tabs

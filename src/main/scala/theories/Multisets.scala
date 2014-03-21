@@ -19,7 +19,7 @@ class DefaultMultisetsEmitter(prover: Prover,
 
   private var collectedSorts = Set[terms.sorts.Multiset]()
 
-  def sorts = collectedSorts.toSet[terms.Sort]
+  def sorts = toSet(collectedSorts)
 
   /**
    * The symbols are take from a file and it is currently not possible to retrieve a list of
@@ -39,7 +39,7 @@ class DefaultMultisetsEmitter(prover: Prover,
     program visit {
       case t: sil.ast.Typed => t.typ match {
         case s: ast.types.Multiset => multisetTypes += s
-        // sequences have a dependency on multisets
+        /* Sequences depend on multisets */
         case s: ast.types.Seq => multisetTypes += ast.types.Multiset(s.elementType)
         case _ => /* Ignore other types */
       }

@@ -19,7 +19,7 @@ class DefaultSetsEmitter(prover: Prover,
 
   private var collectedSorts = Set[terms.sorts.Set]()
 
-  def sorts = collectedSorts.toSet[terms.Sort]
+  def sorts = toSet(collectedSorts)
 
   /**
    * The symbols are take from a file and it is currently not possible to retrieve a list of
@@ -39,9 +39,9 @@ class DefaultSetsEmitter(prover: Prover,
     program visit {
       case t: sil.ast.Typed => t.typ match {
         case s: ast.types.Set => setTypes += s
-        // multisets have a dependency on sets
+        /* Multisets depend on sets */
         case s: ast.types.Multiset => setTypes += ast.types.Set(s.elementType)
-        // sequences have a dependency on multisets, which have a dependency on sets
+        /* Sequences depend on multisets, which in turn depend on sets */
         case s: ast.types.Seq => setTypes += ast.types.Set(s.elementType)
         case _ => /* Ignore other types */
       }

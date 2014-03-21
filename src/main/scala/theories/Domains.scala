@@ -2,14 +2,13 @@ package semper
 package silicon
 package theories
 
-import scala.language.postfixOps
-import collection.mutable.{HashMap => MHashMap, MultiMap => MMultiMap, Set => MSet}
 import interfaces.decider.Prover
 import interfaces.PreambleEmitter
 import state.terms
 import state.terms.Term
-import state.terms.implicits._
 import state.SymbolConvert
+import state.terms.implicits._
+import implicits._
 
 trait DomainsEmitter extends PreambleEmitter {
   def emitUniquenessAssumptions()
@@ -126,16 +125,19 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
 
   def declareSortWrappers() = ???
 
-
   def emitUniquenessAssumptions() {
     prover.assume(terms.Distinct(uniqueSymbols))
   }
 
-  private def domainMembers(domain: ast.Domain): Map[ast.DomainMember, ast.Domain] =
-    (domain.functions.map((_, domain)) ++ domain.axioms.map((_, domain))).toMap
+  private def domainMembers(domain: ast.Domain): Map[ast.DomainMember, ast.Domain] = {
+    val fcts: Seq[(ast.DomainMember, ast.Domain)] = domain.functions.map((_, domain))
+    val axms: Seq[(ast.DomainMember, ast.Domain)] = domain.axioms.map((_, domain))
+
+    Map[ast.DomainMember, ast.Domain](fcts ++ axms :_*)
+  }
 
   private def domainMembers(program: ast.Program): Map[ast.DomainMember, ast.Domain] =
-    program.domains.flatMap(domainMembers).toMap
+    Map(program.domains.flatMap(domainMembers) :_*)
 
   /**
    * Returns the set of concrete domain types that are used in the given program.
@@ -244,7 +246,13 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
       insert(instances, newInstances)
     }
 
-    (instances mapValues { _.toSet }).toMap[ast.Domain, Set[DomainMemberInstance]]
+    val instancesConvertedInnerSets: MMap[ast.Domain, Set[DomainMemberInstance]] =
+      instances map {case (k, v) => (k, Set.empty ++ v)}
+
+    val instancesConvertedOuterMaps: Map[ast.Domain, Set[DomainMemberInstance]] =
+      Map.empty ++ instancesConvertedInnerSets
+
+    instancesConvertedOuterMaps
   }
 
   private def collectConcreteDomainMemberInstances(node: ast.Node,
@@ -295,11 +303,11 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     extends DomainMemberInstance
 
   private type InstanceCollection =
-    MHashMap[ast.Domain, MSet[DomainMemberInstance]] with MMultiMap[ast.Domain, DomainMemberInstance]
+    MMap[ast.Domain, MSet[DomainMemberInstance]] with MMultiMap[ast.Domain, DomainMemberInstance]
 
   private object InstanceCollection {
     def empty: InstanceCollection =
-      new MHashMap[ast.Domain, MSet[DomainMemberInstance]] with MMultiMap[ast.Domain, DomainMemberInstance]
+      new MMap[ast.Domain, MSet[DomainMemberInstance]] with MMultiMap[ast.Domain, DomainMemberInstance]
   }
 
   private def insert(into: InstanceCollection, from: Iterable[(ast.Domain, Iterable[DomainMemberInstance])]) {
@@ -418,7 +426,6 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case _: ast.FullPerm => terms.FullPerm()
       case _: ast.NoPerm => terms.NoPerm()
       case ast.FractionalPerm(e0, e1) => terms.FractionPerm(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
-//      case _: ast.EpsilonPerm => terms.EpsilonPerm()
 
       case _: ast.WildcardPerm => ???
       /* TODO: Would it be sufficient to define a perm-typed 0 < v < write in the preamble and use that here?

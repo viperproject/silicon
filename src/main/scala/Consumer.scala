@@ -4,16 +4,16 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{NonPositivePermission, AssertionFalse}
-import sil.ast.utility.Permissions.isConditional
+import sil.ast.LocalVar
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
+import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
-import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
+import state.terms.perms.{IsPositive, IsNoAccess}
 import heap.QuantifiedChunkHelper
-import sil.ast.{LocalVar}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S],
@@ -25,21 +25,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C]
+	protected val decider: Decider[P, ST, H, PC, S, C, TV]
 	import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-	protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
-	import chunkFinder.withChunk
-
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
-
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
@@ -54,7 +49,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult =
 
-    consume2(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
+    consume(σ, σ.h, p, φ, pve, c, tv)((h1, t, dcs, c1) =>
       Q(σ \ h1, t, dcs, c1))
 
   def consumes(σ: S,
@@ -66,9 +61,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
               : VerificationResult =
 
-    consumes2(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
+    consumes(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
 
-  private def consumes2(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
+  private def consumes(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
                        (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
 
@@ -76,17 +71,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       Q(σ \ h, ts.reverse, dcs.reverse, c)
     else
       consume(σ, h, p, φs.head, pvef(φs.head), c, tv)((h1, t, dcs1, c1) =>
-        consumes2(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
+        consumes(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1, tv)(Q))
 
-	protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+
+  protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
 			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                       : VerificationResult =
-
-		consume2(σ, h, p, φ, pve, c, tv)(Q)
-
-  protected def consume2(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
-			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                        : VerificationResult = {
+                       : VerificationResult = {
 
     val tv1 = tv.stepInto(c, Consuming[ST, H, S](σ, h, p, φ))
 
@@ -96,13 +86,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     })
   }
 
-	private def internalConsume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
-			                  (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                        : VerificationResult = {
+  private def internalConsume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+                             (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                             : VerificationResult = {
 
-    logger.debug(s"\CONSUME ${φ.pos}: ${φ}")
-    logger.debug(stateFormatter.format(σ))
-		logger.debug("h = " + stateFormatter.format(h))
+    if (!φ.isInstanceOf[ast.And]) {
+      logger.debug(s"\nCONSUME ${φ.pos}: $φ")
+      logger.debug(stateFormatter.format(σ))
+      logger.debug("hE = " + stateFormatter.format(h))
+    }
 
 		val consumed = φ match {
       case ast.InhaleExhaleExp(_, a1) =>
@@ -115,89 +107,85 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>
-					branch(t0, c, tv, ImplBranching[ST, H, S](e0, t0),
+					branch(σ, t0, c, tv, ImplBranching[ST, H, S](e0, t0),
 						(c2: C, tv1: TV) => consume(σ, h, p, a0, pve, c2, tv1)(Q),
 						(c2: C, tv1: TV) => Q(h, Unit, Nil, c2)))
 
       case ast.Ite(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(t0, c, tv, IfBranching[ST, H, S](e0, t0),
+          branch(σ, t0, c, tv, IfBranching[ST, H, S](e0, t0),
             (c2: C, tv1: TV) => consume(σ, h, p, a1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => consume(σ, h, p, a2, pve, c2, tv1)(Q)))
 
 
       /* Quantified field access predicate */
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc@ast.FieldAccess(eRcvr, f), loss))) => {
+      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc @ ast.FieldAccess(eRcvr, f), loss))) =>
         val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+        val γVars = Γ((vars map (v => LocalVar(v.name)(v.typ))) zip tVars)
+        val σ0 = σ \+ γVars
 
-        eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) => {
-          // we cheat a bit and syntactically rewrite the range
-          // this should not be needed if the axiomatization supports it
+        eval(σ0, cond, pve, c, tv)((tCond, c1) => {
+          /* We cheat a bit and syntactically rewrite the range; this should
+           * not be needed if the axiomatisation supported it.
+           */
           val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
-          if (decider.assert(semper.silicon.state.terms.Not(rewrittenCond))) Q(h, Unit, Nil, c1)
+          if (decider.check(σ0, Not(rewrittenCond)))
+            Q(h, Unit, Nil, c1)
           else {
             decider.assume(rewrittenCond)
-            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) =>
-              evalp(σ \+ γVars, loss, pve, c2, tv)((tPerm, c3) => {
-                val h2 = if(quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
-                quantifiedChunkHelper.value(h2, tRcvr, f, pve, locacc, c3, tv)(t => {
+            eval(σ0, eRcvr, pve, c1, tv)((tRcvr, c2) =>
+              evalp(σ0, loss, pve, c2, tv)((tPerm, c3) => {
+                val h2 = if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ0.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
+                quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3, tv)(t => {
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
-                  quantifiedChunkHelper.consume(h2, ch, pve, locacc, c3, tv)(h3 =>
-                    {
-                      Q(h3, t, Nil, c3)
-                    }
-                  )
-                })
-              })
-            )
-          }
-        })
-      }
+                  quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3, tv)(h3 => {
+                      Q(h3, t, Nil, c3)})})}))}})
 
       /* Field access predicates for quantified fields */
-      case ast.AccessPredicate(locacc@ast.FieldAccess(eRcvr, field), perm) if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) =>
+      case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm) if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-            quantifiedChunkHelper.value(h, tRcvr, field, pve, locacc, c2, tv)(t => {
+            quantifiedChunkHelper.value(σ, h, tRcvr, field, pve, locacc, c2, tv)(t => {
               val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, null, tPerm)
-              quantifiedChunkHelper.consume(h, ch, pve, locacc, c2, tv)(h2 =>
-                Q(h2, t, Nil, c2)
-              )
-            })))
+              quantifiedChunkHelper.consume(σ, h, ch, pve, locacc, c2, tv)(h2 =>
+                Q(h2, t, Nil, c2))})))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
-              evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
-                if (decider.isPositive(tPerm, !isConditional(perm)))
-                  consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
-                    ch match {
-                      case fc: DirectFieldChunk =>
-                          val snap = fc.value.convert(sorts.Snap)
-                          Q(h1, snap, fc :: Nil, c3)
+          evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
+            decider.assert(σ, IsPositive(tPerm)){
+              case true =>
+                consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
+                  ch match {
+                    case fc: DirectFieldChunk =>
+                        val snap = fc.value.convert(sorts.Snap)
+                        Q(h1, snap, fc :: Nil, c3)
 
-                      case pc: DirectPredicateChunk =>
-                        val h2 =
-                          if (results.consumedCompletely)
-                            pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
-                          else
-                            h1
-                        Q(h2, pc.snap, pc :: Nil, c3)})
-                else
-                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)))
+                    case pc: DirectPredicateChunk =>
+                      val h2 =
+                        if (results.consumedCompletely)
+                          pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
+                        else
+                          h1
+                      Q(h2, pc.snap, pc :: Nil, c3)})
+              case false =>
+                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)}))
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
 			 * not in the partially consumed heap (h).
 			 */
       case _ =>
-        // assert(σ, h, φ, m, ExpressionMightEvaluateToFalse, Q)
-        eval(σ, φ, pve, c, tv)((t, c) =>
-          if (decider.assert(t)) {
-            assume(t)
-            Q(h, Unit, Nil, c)
-          } else
-            Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
+        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+          eval(σ1, φ, pve, c, tv)((t, c) =>
+            decider.assert(σ1, t) {
+              case true =>
+                assume(t)
+                QS((h, Unit, Nil, c))
+              case false =>
+                QF(Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
+            })
+        })(Q.tupled)
 		}
 
 		consumed
@@ -207,7 +195,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                  h: H,
                                  id: ChunkIdentifier,
                                  pLoss: P,
-                                 // tRcvr: Term,
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C,
@@ -219,13 +206,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     /* TODO: assert that pLoss > 0 */
 
     if (consumeExactRead(pLoss, c)) {
-      withChunk[DirectChunk](h, id, pLoss, locacc, pve, c, tv)(ch => {
-        if (decider.assertNoAccess(ch.perm - pLoss)) {
+      decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c, tv)(ch => {
+        if (decider.check(σ, IsNoAccess(ch.perm - pLoss))) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      withChunk[DirectChunk](h, id, locacc, pve, c, tv)(ch => {
+      decider.withChunk[DirectChunk](σ, h, id, locacc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }

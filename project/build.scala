@@ -35,6 +35,8 @@ object SiliconBuild extends Build {
 			  ++ assemblySettings
         ++ Seq(
               name := "Silicon",
+              mainClass in assembly := Some("semper.silicon.Silicon"),
+              jarName in assembly := "silicon.jar",
               traceLevel := 10,
               maxErrors := 6,
               fork := true,

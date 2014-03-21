@@ -14,3 +14,4 @@ stats/
 bin/**
 tmp_*
 tmp/
+utils/assembly/silicon.jar
