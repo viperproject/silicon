@@ -100,7 +100,12 @@ trait DefaultProducer[ST <: Store[ST],
     }
 
     φ match {
-      case _ if φ.isPure => Unit
+      case _ if φ.isPure =>
+        Unit
+          /* Unit is only sound as a snapshot if it is used for producing pure
+           * expressions because they don't require snapshots, i.e., Unit
+           * is essentially never used.
+           */
 
       case ast.AccessPredicate(locacc, _) => locacc.typ match {
         case ast.types.Pred => fresh(sorts.Snap)
@@ -118,6 +123,10 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.Ite(_, φ1, φ2) =>
         /* At least one of φ1, φ2 must be impure, otherwise ... */
         mkSnapFromPair(φ1, φ2)
+
+      case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
+        /* TODO: See Silicon issue 59. Returning a fresh term here is just a temporary work-around. */
+        fresh(toSort(f.typ))
     }
   }
 
@@ -211,7 +220,9 @@ trait DefaultProducer[ST <: Store[ST],
                 val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, app, pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
-                val h = if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
+                val h =
+                  if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
+                  else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
                 decider.assume(Quantification(Forall, List(v), Implies(Less(NoPerm(), ch.perm.replace(*(), v)), v !== Null()), List(Trigger(List(NullTrigger(v))))))
                 Q(h + ch, c3)})}))
 
