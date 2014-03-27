@@ -217,8 +217,8 @@ trait DefaultProducer[ST <: Store[ST],
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
                 /* TODO https://bitbucket.org/semperproject/silicon/issue/59/create-sortwrappers-for-functions */
                 val s = /* sf(sorts.Arrow(sorts.Ref, toSort(f.typ))) */ decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-                val app = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val ch = quantifiedChunkHelper.transform(tRcvr, f, app, pGain * p, tCond)
+                val value = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val ch = quantifiedChunkHelper.transform(tRcvr, f, value, pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
                 val h =
                   if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h

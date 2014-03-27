@@ -39,7 +39,7 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
   /**
    * Transform permissions under quantifiers to their axiomatization equivalents
    */
-  def transform(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
+  def transform(rcvr: Term, f: Field, value: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk
 
   /**
    * Returns a symbolic sum which is equivalent to the permissions for the given receiver/field combination
@@ -134,7 +134,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if ch.name == f => transformElement(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
 
   /* TODO: dont emit the Seq[Int] axiomatization just because there's a ranged in forall */
-  def transform(rcvr: Term, f: Field, tv: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
+  def transform(rcvr: Term, f: Field, value: Term, talpha: DefaultFractionalPermissions, cond: Term): QuantifiedChunk = {
     val count = rcvr match {
       case SeqAt(s, i) =>
         cond match {
@@ -144,7 +144,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
       case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
       case _ => sys.error("Unknown type of receiver, cannot rewrite.")
     }
-    QuantifiedChunk(f.name, tv, PermTimes(TermPerm(count), talpha))
+    QuantifiedChunk(f.name, value, PermTimes(TermPerm(count), talpha))
   }
 
 
