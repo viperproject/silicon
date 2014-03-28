@@ -13,5 +13,5 @@ trait PreambleEmitter {
   def declareSymbols()
   def emitAxioms()
   def reset()
-  def declareSortWrappers()
+//  def declareSortWrappers()
 }

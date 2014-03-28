@@ -46,8 +46,6 @@ case class DirectPredicateChunk(name: String,
                                 nested: List[NestedChunk] = Nil)
     extends PredicateChunk with DirectChunk {
 
-  terms.utils.assertSort(snap, "snapshot", terms.sorts.Snap)
-
   val id = PredicateChunkIdentifier(name, args)
 
 	def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)

@@ -284,9 +284,11 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
-    sequencesEmitter.declareSortWrappers()
-    setsEmitter.declareSortWrappers()
-    multisetsEmitter.declareSortWrappers()
+    emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
+    emitSortWrappers(sequencesEmitter.sorts)
+    emitSortWrappers(setsEmitter.sorts)
+    emitSortWrappers(multisetsEmitter.sorts)
+    emitSortWrappers(domainsEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -310,6 +312,8 @@ trait AbstractVerifier[ST <: Store[ST],
 
       decider.prover.declare(toSnapWrapper)
       decider.prover.declare(fromSnapWrapper)
+
+      preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
     })
   }
 

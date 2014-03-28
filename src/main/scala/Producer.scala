@@ -92,44 +92,6 @@ trait DefaultProducer[ST <: Store[ST],
     })
   }
 
-  def mkSnap(φ: ast.Expression): Term = {
-    def mkSnapFromPair(φ1: ast.Expression, φ2: ast.Expression) = {
-      if (φ1.isPure && !φ2.isPure) mkSnap(φ2)
-      else if (!φ1.isPure && φ2.isPure) mkSnap(φ1)
-      else fresh(sorts.Snap)
-    }
-
-    φ match {
-      case _ if φ.isPure =>
-        Unit
-          /* Unit is only sound as a snapshot if it is used for producing pure
-           * expressions because they don't require snapshots, i.e., Unit
-           * is essentially never used.
-           */
-
-      case ast.AccessPredicate(locacc, _) => locacc.typ match {
-        case ast.types.Pred => fresh(sorts.Snap)
-        case _ => fresh(toSort(locacc.typ))
-      }
-
-      case ast.Implies(e0, φ1) =>
-        /* φ1 must be impure, otherwise the first case would have applied. */
-        mkSnap(φ1)
-
-      case ast.And(φ1, φ2) =>
-        /* At least one of φ1, φ2 must be impure, otherwise ... */
-        mkSnapFromPair(φ1, φ2)
-
-      case ast.Ite(_, φ1, φ2) =>
-        /* At least one of φ1, φ2 must be impure, otherwise ... */
-        mkSnapFromPair(φ1, φ2)
-
-      case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-        /* TODO: See Silicon issue 59. Returning a fresh term here is just a temporary work-around. */
-        fresh(toSort(f.typ))
-    }
-  }
-
   private def internalProduce(σ: S,
                               sf: Sort => Term,
                               p: P,
@@ -198,7 +160,7 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
-            val s = sf(sorts.Snap)
+            val s = sf(getOptimalSnapshotSort(predicate.body)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
@@ -234,6 +196,62 @@ trait DefaultProducer[ST <: Store[ST],
     }
 
     produced
+  }
+
+  private def getOptimalSnapshotSort(φ: ast.Expression): (Sort, Boolean) = φ match {
+    case _ if φ.isPure =>
+      (sorts.Snap, true)
+
+    case ast.AccessPredicate(locacc, _) => locacc match {
+      case fa: ast.FieldAccess => (toSort(fa.field.typ), false)
+      case pa: ast.PredicateAccess => getOptimalSnapshotSort(pa.predicate.body)
+      /* TODO: Most likely won't terminate for a predicate that only contains
+       *       itself in its body, e.g., predicate P(x) {P(x)}.
+       */
+    }
+
+    case ast.Implies(e0, φ1) =>
+      /* φ1 must be impure, otherwise the first case would have applied. */
+      getOptimalSnapshotSort(φ1)
+
+    case ast.And(φ1, φ2) =>
+      /* At least one of φ1, φ2 must be impure, otherwise ... */
+      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false))
+
+    case ast.Ite(_, φ1, φ2) =>
+      /* At least one of φ1, φ2 must be impure, otherwise ... */
+
+      def findCommonSort() = {
+        val (s1, isPure1) = getOptimalSnapshotSort(φ1)
+        val (s2, isPure2) = getOptimalSnapshotSort(φ2)
+        val s = if (s1 == s2) s1 else sorts.Snap
+        val isPure = isPure1 && isPure2
+        (s, isPure)
+      }
+
+      getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort)
+
+    case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
+      /* TODO: See Silicon issue 59. Returning a fresh term here is just a temporary work-around. */
+      (toSort(f.typ), false)
+
+    case _ =>
+      (sorts.Snap, false)
+  }
+
+  private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
+                                             φ2: ast.Expression,
+                                             fIfBothPure: () => (Sort, Boolean))
+                                            : (Sort, Boolean) = {
+
+    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2)
+    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1)
+    else fIfBothPure()
+  }
+
+  private def mkSnap(φ: ast.Expression): Term = getOptimalSnapshotSort(φ) match {
+    case (sorts.Snap, true) => Unit
+    case (sort, _) => fresh(sort)
   }
 
   override def pushLocalState() {

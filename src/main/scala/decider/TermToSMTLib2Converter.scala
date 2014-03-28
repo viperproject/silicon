@@ -17,7 +17,11 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Multiset(elementSort) => "$Multiset<" + convert(elementSort) + ">"
     case sorts.UserSort(id) => sanitizeSymbol(id)
     case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
-    case sorts.Unit => ""
+    case sorts.Unit =>
+      /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
+       * domain sort of nullary functions.
+       */
+      ""
   }
 
   def convert(decl: Decl): String = decl match {
@@ -25,11 +29,16 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(declare-sort %s)".format(convert(sort))
 
     case FunctionDecl(Function(id, sort)) =>
-      "(declare-fun %s (%s) %s)".format(sanitizeSymbol(id), sort.inSorts.map(convert).mkString(" "), convert(sort.outSort))
+      val idStr = sanitizeSymbol(id)
+      val inSortStr = sort.inSorts.map(convert).mkString(" ")
+      val outSortStr = convert(sort.outSort)
+
+      s"(declare-fun $idStr ($inSortStr) $outSortStr)"
 
     case SortWrapperDecl(from, to) =>
       val symbol = sortWrapperSymbol(from, to)
-      convert(FunctionDecl(Function(symbol, from :: Nil, to)))
+      val fct = FunctionDecl(Function(symbol, from :: Nil, to))
+      convert(fct)
   }
 
   def convert(term: Term): String = term match {
@@ -74,12 +83,29 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Iff(t0, t1) =>
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
-    case Eq(t0, t1) => t0.sort match {
-      case sorts.Snap => "($Snap.eq " + convert(t0) + " " + convert(t1) + ")"
-      case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
-      case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
-      case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
-    }
+    case Eq(t0, t1, specialise) =>
+      /* Design choice: Either have a single Eq term, and based on its sort,
+       * different equalities are generated on the SMTLib2 level. This is
+       * currently done, but has the disadvantage, that the additional
+       * specialise flag is needed to indicate when to generate user-defined
+       * equality, e.g., $Snap.eq, or built-in equality, i.e., "=".
+       * Another possible design is to have equality terms for each sort, e.g.,
+       * SnapEq and SeqEq, and a general one, e.g., Eq, that always translates
+       * to built-in equality. This approach has the disadvantage, that
+       * an additional case distinction is necessary when SIL equalities are
+       * translated to Silicon terms.
+       */
+
+      if (specialise)
+        t0.sort match {
+          case sorts.Snap => "(= " + convert(t0) + " " + convert(t1) + ")"
+          case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
+          case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
+          case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
+        }
+      else
+        "(= " + convert(t0) + " " + convert(t1) + ")"
+
 
     /* Arithmetic */
 

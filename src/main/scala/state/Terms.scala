@@ -102,7 +102,7 @@ sealed trait Term {
         case *() => *()
         case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
         case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Eq(t1, t2) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Eq(t1, t2, specialize) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm), specialize)
         case v: Var => v
         case f: FractionPerm => f
         case f: FullPerm => f
@@ -438,7 +438,7 @@ object Ite extends Function3[Term, Term, Term, Term] {
 
 sealed trait ComparisonTerm extends BooleanTerm
 
-case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
+case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends ComparisonTerm with commonnodes.Eq[Term] {
   assert(p0.sort == p1.sort,
       "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
         .format(p0.sort, p0, p1.sort, p1))
@@ -1091,8 +1091,8 @@ case class Second(t: Term) extends SnapshotTerm {
 }
 
 class SortWrapper(val t: Term, val to: Sort) extends Term {
-  assert(!(t.sort == sorts.Ref && to == sorts.Int),
-    "Unexpected sort wrapping from %s to %s".format(t.sort, to))
+  assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
+         s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
   override val toString = s"$t"
   override val sort = to
@@ -1185,7 +1185,7 @@ object utils {
 
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, Or, True())
-    
+
   def BigPermSum(it: Iterable[DefaultFractionalPermissions],
                  f: DefaultFractionalPermissions => DefaultFractionalPermissions = t => t)
                 : DefaultFractionalPermissions =

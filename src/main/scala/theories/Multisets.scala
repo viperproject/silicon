@@ -65,12 +65,4 @@ class DefaultMultisetsEmitter(prover: Prover,
       preambleFileEmitter.emitSortParametricAssertions("/multisets_axioms_dafny.smt2", s.elementsSort)
     }
   }
-
-  def declareSortWrappers() {
-    collectedSorts foreach {
-      s =>
-        prover.logComment(s"/sortwrappers.smt2 Multiset[${s.elementsSort}}]")
-        preambleFileEmitter.emitSortParametricAssertions("/sortwrappers.smt2", s)
-    }
-  }
 }

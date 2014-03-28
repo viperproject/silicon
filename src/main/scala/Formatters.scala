@@ -42,7 +42,7 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 			"π" + (π.filterNot {
 				case c: Eq if    c.p0.isInstanceOf[Combine]
 														|| c.p1.isInstanceOf[Combine] => true
-				case Not(Eq(_, Null())) => true
+				case Not(Eq(_, Null(), _)) => true
 				case _ => false
 			}).mkString("(", ", ", ")")
 	}
