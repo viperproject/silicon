@@ -82,7 +82,8 @@ object SiliconBuild extends Build {
                                val tags = "%s"
                             """.format(hgid.version, hgid.id, hgid.branch, hgid.tags))
               },
-              sourceGenerators in Compile <+= BrandKeys.generateDataFile))
+              sourceGenerators in Compile <+= BrandKeys.generateDataFile)
+              /* ,addCommandAlias("tn", "test-only -- -n ") // requires sbt 0.13.x */)
     ).dependsOn(common)
 
     for (dep <- internalDep) {
