@@ -141,7 +141,11 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
           case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
           case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
         }
-      case v: Var => Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+      case v: Var =>
+        val ite = Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+//        println(s"  cond.replace(rcvr, *()) = ${cond.replace(rcvr, *())}  (${cond.replace(rcvr, *()).getClass.getName})")
+//        println(s"  ite = $ite")
+        ite
       case _ => sys.error("Unknown type of receiver, cannot rewrite.")
     }
     QuantifiedChunk(f.name, value, PermTimes(TermPerm(count), talpha))

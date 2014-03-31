@@ -139,7 +139,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3, tv)(t => {
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
                   quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3, tv)(h3 => {
-                      Q(h3, t, Nil, c3)})})}))}})
+//                    println("\n[consumer/forall]")
+//                    println(s"  t = $t")
+                    Q(h3, t, Nil, c3)})})}))}})
 
       /* Field access predicates for quantified fields */
       case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm) if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>

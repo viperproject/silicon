@@ -906,7 +906,7 @@ object SetDifference extends ((Term, Term) => SetTerm) {
 }
 
 class SetIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
-  override val op = "∈"
+  override val op = "in"
 }
 
 object SetIn extends ((Term, Term) => BooleanTerm) {

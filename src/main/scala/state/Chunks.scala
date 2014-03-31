@@ -32,7 +32,7 @@ case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPer
   def +(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm - perm)
 
-  override def toString = "∀ %s -> %s # %s".format(name, value, perm)
+  override def toString = "FA %s -> %s # %s".format(name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {
@@ -48,10 +48,10 @@ case class DirectPredicateChunk(name: String,
 
   val id = PredicateChunkIdentifier(name, args)
 
-	def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
-	def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
+  def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
+  def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
 
-	override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
+  override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
 }
 
 
