@@ -181,7 +181,10 @@ package object ast {
 
   type SeqRanged = sil.ast.RangeSeq
   val SeqRanged = sil.ast.RangeSeq
-
+  type SeqIn = sil.ast.SeqContains
+  val SeqIn = sil.ast.SeqContains
+  type SeqAt = sil.ast.SeqIndex
+  val SeqAt = sil.ast.SeqIndex
 
   object types {
     type DomainType = sil.ast.DomainType

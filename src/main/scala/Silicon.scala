@@ -10,9 +10,9 @@ import semper.sil.verifier.{
     Verifier => SilVerifier,
     VerificationResult => SilVerificationResult,
     Success => SilSuccess,
-    Failure => SilError,
+    Failure => SilFailure,
     DefaultDependency => SilDefaultDependency}
-import sil.frontend.SilFrontendConfig
+import sil.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
@@ -24,6 +24,7 @@ import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 import heap.DefaultQuantifiedChunkHelper
+import semper.silicon.ast.Consistency
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -102,21 +103,27 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     shutDownHooks = Set()
     setLogLevel(config.logLevel())
 
-		logger.info("%s started %s".format(name, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())))
+		logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    var result: sil.verifier.VerificationResult = null
+    val consistencyErrors = Consistency.check(program)
 
-    try {
-      val failures = runVerifier(program)
-      result = convertFailures(failures)
-    } catch {
-      case DependencyNotFoundException(err) => result = SilError(err :: Nil)
-    } finally {
-      shutDownHooks.foreach(_())
+    if (consistencyErrors.nonEmpty) {
+      SilFailure(consistencyErrors)
+    } else {
+      var result: Option[SilVerificationResult] = None
+
+      try {
+        val failures = runVerifier(program)
+        result = Some(convertFailures(failures))
+      } catch {
+        case DependencyNotFoundException(err) => result = Some(SilFailure(err :: Nil))
+      } finally {
+        shutDownHooks.foreach(_())
+      }
+
+      assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately.")
+      result.get
     }
-
-    assert(result != null, "The result of the verification run wasn't stored appropriately.")
-    result
 	}
 
   /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
@@ -165,7 +172,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
 	private def runVerifier(program: ast.Program): List[Failure] = {
 	  val verifierFactory = new DefaultVerifierFactory[ST, H, PC, S, BranchingOnlyTraceView[ST, H, S]]
-	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()    
+	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()
 
 	  val verifier = createVerifier(verifierFactory, traceviewFactory)
 
@@ -234,7 +241,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private def convertFailures(failures: List[Failure]): SilVerificationResult = {
     failures match {
       case Seq() => SilSuccess
-      case _ => SilError(failures map (_.message))
+      case _ => SilFailure(failures map (_.message))
     }
   }
 
@@ -390,7 +397,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 }
 
 
-object SiliconRunner extends App with sil.frontend.SilFrontend {
+object SiliconRunner extends App with SilFrontend {
   private var siliconInstance: Silicon = _
 
   execute(args)
