@@ -217,14 +217,14 @@ trait AbstractVerifier[ST <: Store[ST],
     emitPreamble(program)
 
     val members = program.members.filterNot(m => filter(m.name)).iterator
-
-    /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
+
+    /* Verification could be parallelised by forking DefaultMemberVerifiers. */
 
     if (config.stopOnFirstError()) {
       /* Stops on first error */
       while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = ev.verify(members.next) :: results
+        results = ev.verify(members.next()) :: results
       }
 
       results = results.reverse
@@ -233,7 +233,7 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results = members.map(ev.verify _).toList
+      results = members.map(ev.verify).toList
     }
 
     results
