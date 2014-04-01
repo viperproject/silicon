@@ -650,16 +650,16 @@ trait DefaultEvaluator[
 
       /* Sequences */
 
-      case sil.ast.SeqContains(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c, tv)(Q)
+      case ast.SeqIn(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c, tv)(Q)
         /* Note the reversed order of the arguments! */
 
       case sil.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c, tv)(Q)
       case sil.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c, tv)(Q)
       case sil.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c, tv)(Q)
-      case sil.ast.SeqIndex(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c, tv)(Q)
+      case ast.SeqAt(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c, tv)(Q)
       case sil.ast.SeqLength(e0) => eval(σ, e0, pve, c, tv)((t0, c1) => Q(SeqLength(t0), c1))
       case sil.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
-      case sil.ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c, tv)(Q)
+      case ast.SeqRanged(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c, tv)(Q)
 
       case sil.ast.SeqUpdate(e0, e1, e2) =>
         evals2(σ, List(e0, e1, e2), Nil, pve, c, tv)((ts, c1) =>

@@ -120,7 +120,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
                   case _ => Trigger(List())}
 
                 decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
-                  === pf.value.replace(*(), x)), List(Trigger(List(fApp.replace(*(), x))), valtrigger)))
+                  === pf.value.replace(*(), x))/*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/))
 
               case pf if pf.name == f.name =>
                 sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))

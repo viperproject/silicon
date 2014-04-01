@@ -179,29 +179,29 @@ trait DefaultProducer[ST <: Store[ST],
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
                 /* TODO https://bitbucket.org/semperproject/silicon/issue/59/create-sortwrappers-for-functions */
 //                println("\n[produce/forall]")
-                val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+//                val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
 //                println(s"  s = $s")
 //                val sREAL = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-//                val sREAL = sf(toSort(f.typ))
+                val sREAL = sf(toSort(f.typ))
 //                println(s"  sREAL = $sREAL  (${sREAL.getClass.getName}})")
-                val value = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-//                val value = sREAL // DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+//                val value = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val value = sREAL // DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
 //                println(s"  value = $value")
 //                println(s"  pGain * p = ${pGain * p}")
 //                println(s"  tCond * p = $tCond")
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, value, pGain * p, tCond)
 //                println(s"  ch = $ch")
                 val v = Var("nonnull", sorts.Ref)
-//                val auxQuant =
-//                  Quantification(
-//                    Forall,
-//                    List(v),
-//                    Implies(
-//                      Less(NoPerm(), ch.perm.replace(*(), v)),
-//                      v !== Null()),
-//                    List(Trigger(List(NullTrigger(v)))))
+                val auxQuant =
+                  Quantification(
+                    Forall,
+                    List(v),
+                    Implies(
+                      Less(NoPerm(), ch.perm.replace(*(), v)),
+                      v !== Null()),
+                    List(Trigger(List(NullTrigger(v)))))
 //                println(s"  auxQuant = $auxQuant")
-//                decider.assume(auxQuant)
+                decider.assume(auxQuant)
                 val h =
                   if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
                   else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
