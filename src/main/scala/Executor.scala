@@ -202,7 +202,7 @@ trait DefaultExecutor[ST <: Store[ST],
     stmt match {
       case _: sil.ast.Seqn =>
       case _ =>
-        logger.debug(s"\nEXECUTE ${stmt.pos}: ${stmt}")
+        logger.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
         logger.debug(stateFormatter.format(σ))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString)
