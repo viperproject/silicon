@@ -37,6 +37,7 @@ object SiliconBuild extends Build {
               name := "Silicon",
               mainClass in assembly := Some("semper.silicon.Silicon"),
               jarName in assembly := "silicon.jar",
+              // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
               traceLevel := 10,
               maxErrors := 6,
               fork := true,
@@ -97,19 +98,22 @@ object SiliconBuild extends Build {
     id = "common",
     base = file("common"),
     settings = (
-      baseSettings
-        ++ Seq(name := "Silicon-Common",
-               javacOptions ++= Seq("-source", "1.7", "-target", "1.7"))))
+         baseSettings
+      ++ Seq(name := "Silicon-Common",
+             javacOptions ++= Seq("-source", "1.7", "-target", "1.7"))))
 
-  // On the build-server, we cannot have all project in the same directory, and thus we use the publish-local mechanism for dependencies.
-  def isBuildServer = sys.env.contains("BUILD_TAG") // should only be defined on the build server
+  /* On the build-server, we cannot have all project in the same directory, and
+   * thus we use the publish-local mechanism for dependencies.
+   */
+
+  def isBuildServer = sys.env.contains("BUILD_TAG") /* Should only be defined on the build server */
 
   def internalDep = if (isBuildServer) Nil else Seq(dependencies.silSrc % "compile->compile;test->test")
 
-  def externalDep = {
-    dependencies.logging ++ Seq(dependencies.scallop) ++
-    (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil)
-  }
+  def externalDep = (
+       dependencies.logging
+    ++ Seq(dependencies.scallop)
+    ++ (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil))
 
   /* Dependencies */
 
