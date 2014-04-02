@@ -167,9 +167,6 @@ trait DefaultEvaluator[
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
 
-      case _: ast.EpsilonPerm =>
-        sys.error(s"Found unexpected expression $e (${e.getClass.getName}})")
-
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
           decider.getChunk[DirectChunk](σ, σ.h, id) match {
@@ -558,11 +555,11 @@ trait DefaultEvaluator[
               Q(tFA, c3)
             } else {
               val σ3 = σ2 \+ (func.result, tFA)
+              val πPre = decider.π
+              val post = ast.utils.BigAnd(func.posts)
               /* Break recursive cycles */
               if (c3.cycles(func) < config.unrollFunctions()) {
                 val c3a = c3.incCycleCounter(func)
-                val πPre = decider.π
-                val post = ast.utils.BigAnd(func.posts)
                 bookkeeper.functionBodyEvaluations += 1
                 eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
                   eval(σ3, post, pve, c4, tv)((tPost, c5) => {
@@ -571,28 +568,13 @@ trait DefaultEvaluator[
                     if (!config.disableFunctionApplicationCaching())
                       fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                     assume(Set(tFAEqFB, tPost))
-                    Q(tFA, c5a)
-                  }))
-
+                    Q(tFA, c5a)}))
               } else {
                 /* Unfolded the function often enough already. We still need to
                  * evaluate the postcondition, though, because Z3 might
                  * otherwise not know enough about the recursive call.
                  * For example, that the length of a list is always positive.
                  */
-                val post = ast.utils.BigAnd(func.posts)
-
-                /* TODO: Probably doesn't detect mutual recursion. */
-                val badPostcondition =
-                  post existsDefined {
-                    case ast.FuncApp(someFunc, _) if func.name == someFunc.name =>
-                  }
-
-                if (badPostcondition)
-                  sys.error(  "Silicon cannot handle function postconditions that mention the function itself. "
-                            + "Try to replace the function application by 'result', if possible.")
-
-                val πPre = decider.π
                 eval(σ3, post, pve, c3, tv)((tPost, c4) => {
                   if (!config.disableFunctionApplicationCaching())
                     fappCache += (tFA -> (decider.π -- πPre + tPost))
@@ -642,11 +624,7 @@ trait DefaultEvaluator[
             assume(tAuxIn + tActualIn)
             Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
         } else
-          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
-            "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported. It should be  possible to wrap 'unfolding next.P in e' " +
-            "in a function, which is then invoked from the predicate body.\n" +
-            "Offending node: " + e)
+          Failure[C, ST, H, S, TV](ast.Consistency.reportUnsupportedPredicateRecursion(e), c, tv)
 
       /* Sequences */
 
@@ -772,11 +750,7 @@ trait DefaultEvaluator[
               case false =>
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})}
         else
-          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
-            "P {... && next != null ==> unfolding next.P in e} is currently not " +
-            "supported in Silicon. It should be  possible to wrap 'unfolding next.P in e' " +
-            "in a function, which is then invoked from the predicate body.\n" +
-            "Offending node: " + e)
+          Failure[C, ST, H, S, TV](ast.Consistency.reportUnsupportedPredicateRecursion(e), c, tv)
 
       case quant: ast.Quantified if config.disableLocalEvaluations() =>
         val body = quant.exp
