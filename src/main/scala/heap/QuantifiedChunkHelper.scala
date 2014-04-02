@@ -2,7 +2,6 @@ package semper
 package silicon
 package heap
 
-
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{ChunkIdentifier, Chunk, Store, Heap, PathConditions, State, StateFactory}
 import interfaces.reporting.{Context, TraceView}
@@ -14,7 +13,6 @@ import ast.Field
 import sil.ast.LocationAccess
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
-
 
 /**
  * Helper functions to handle quantified chunks
@@ -119,6 +117,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
                   case DomainFApp(f, s) => Trigger(List(pf.value.replace(*(), x)))
                   case _ => Trigger(List())}
 
+                /* TODO: Commenting the triggers is (probably) just a temporary work-around to cope with problems related to quantified permissions. */
                 decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
                   === pf.value.replace(*(), x))/*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/))
 
@@ -142,11 +141,9 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
           case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
         }
       case v: Var =>
-        val ite = Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
-//        println(s"  cond.replace(rcvr, *()) = ${cond.replace(rcvr, *())}  (${cond.replace(rcvr, *()).getClass.getName})")
-//        println(s"  ite = $ite")
-        ite
-      case _ => sys.error("Unknown type of receiver, cannot rewrite.")
+        Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+      case _ =>
+        sys.error("Unknown type of receiver, cannot rewrite.")
     }
     QuantifiedChunk(f.name, value, PermTimes(TermPerm(count), talpha))
   }

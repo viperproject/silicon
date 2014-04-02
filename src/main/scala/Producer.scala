@@ -177,20 +177,8 @@ trait DefaultProducer[ST <: Store[ST],
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
               decider.prover.logComment("End produce set access predicate " + fa)
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
-                /* TODO https://bitbucket.org/semperproject/silicon/issue/59/create-sortwrappers-for-functions */
-//                println("\n[produce/forall]")
-//                val s = decider.fresh(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-//                println(s"  s = $s")
-//                val sREAL = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-                val sREAL = sf(toSort(f.typ))
-//                println(s"  sREAL = $sREAL  (${sREAL.getClass.getName}})")
-//                val value = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val value = sREAL // DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-//                println(s"  value = $value")
-//                println(s"  pGain * p = ${pGain * p}")
-//                println(s"  tCond * p = $tCond")
-                val ch = quantifiedChunkHelper.transform(tRcvr, f, value, pGain * p, tCond)
-//                println(s"  ch = $ch")
+                /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
+                val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
                 val auxQuant =
                   Quantification(
@@ -200,7 +188,6 @@ trait DefaultProducer[ST <: Store[ST],
                       Less(NoPerm(), ch.perm.replace(*(), v)),
                       v !== Null()),
                     List(Trigger(List(NullTrigger(v)))))
-//                println(s"  auxQuant = $auxQuant")
                 decider.assume(auxQuant)
                 val h =
                   if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
@@ -251,7 +238,7 @@ trait DefaultProducer[ST <: Store[ST],
       getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort)
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-      /* TODO: See Silicon issue 59. Returning a fresh term here is just a temporary work-around. */
+      /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
       (toSort(f.typ), false)
 
     case _ =>
