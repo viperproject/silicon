@@ -81,7 +81,12 @@ class DefaultDecider[ST <: Store[ST],
     } catch {
       case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
         state = State.Erroneous
-        return Some(DependencyNotFoundError("Z3 could not be started. " + e.getMessage))
+        val message = (
+            s"Could not execute Z3 at $z3Exe. Either place z3 in the path, or set "
+          + s"the environment variable ${Silicon.z3ExeEnvironmentVariable}, or run "
+          + s"Silicon with option --${config.z3Exe.humanName}")
+
+        return Some(DependencyNotFoundError(message))
     }
 
     val z3Version = z3.z3Version()
