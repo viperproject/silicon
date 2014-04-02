@@ -1,0 +1,11 @@
+var f: Int
+
+method test01(xs: Set[Ref], a: Ref, b: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f, write)
+  requires a in xs && b in xs
+  ensures forall x: Ref :: x in xs ==> acc(x.f, write)
+  ensures a != b ==> b.f < a.f //: a.f == b.f
+//  ensures a != b ? b.f < a.f : a.f == b.f
+{
+  a.f := b.f + 1
+}
