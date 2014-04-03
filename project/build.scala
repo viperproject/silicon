@@ -55,7 +55,7 @@ object SiliconBuild extends Build {
                  * Not sure what to do if Silicon really required so much
                  * stack at some point.
                  */
-               javaOptions in run += "-Xss128M",
+               javaOptions in run ++= Seq("-Xss128M", "-Dfile.encoding=UTF-8"),
                javaOptions in Test += "-Xss128M",
                 /* Options passed to JVMs forked by test-related Sbt command.
                  * See http://www.scala-sbt.org/0.12.4/docs/Detailed-Topics/Forking.html

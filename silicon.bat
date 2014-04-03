@@ -1,6 +1,8 @@
 @echo off
 SetLocal EnableDelayedExpansion
 
+chcp 65001 > NUL
+
 REM TODO: It is bad that all verion numbers are hard coded, as is the list of
 REM       dependencies.
 REM       We should hook into Sbt's 'package' task in order to create this batch
@@ -81,7 +83,7 @@ for /f "tokens=2* delims=.=" %%A in ('set __CP.') do (
 	)
 )
 
-set JVM_OPTS=-Dlog4j.configuration=file:%BASE_DIR%\src\test\resources\log4j.properties -Xss16m
+set JVM_OPTS=-Dlog4j.configuration=file:%BASE_DIR%\src\test\resources\log4j.properties -Xss16m -Dfile.encoding=UTF-8
 
 REM ======== Assembling final command  ========
 
