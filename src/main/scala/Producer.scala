@@ -114,7 +114,11 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.And(a0, a1) if !φ.isPure =>
         val s0 = mkSnap(a0)
         val s1 = mkSnap(a1)
-        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
+
+        val s0a = s0.sort match {case _: sorts.Arrow => App(s0, *()) case _ => s0}
+        val s1a = s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
+
+        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
@@ -179,10 +183,12 @@ trait DefaultProducer[ST <: Store[ST],
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
                 /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
                 val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-                println(s"  s == $s  (${s.sort}})")
+//                val s = sf(toSort(f.typ))
+                println("\n[produce/forall]")
+                println(s"  s == $s  (${s.sort}, ${s.getClass.getSimpleName}})")
                 // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
                 val fs = App(s, *())
-                println(s"  fs == $fs  (${fs.sort}})")
+//                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
                 println(s"  ch == $ch")
                 val v = Var("nonnull", sorts.Ref)
@@ -246,8 +252,7 @@ trait DefaultProducer[ST <: Store[ST],
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
       /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
 //      (toSort(f.typ), false)
-//      (toSort(f.typ), false)
-      ???
+      (sorts.Arrow(sorts.Ref, toSort(f.typ)), false)
 
     case _ =>
       (sorts.Snap, false)
@@ -265,6 +270,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def mkSnap(φ: ast.Expression): Term = getOptimalSnapshotSort(φ) match {
     case (sorts.Snap, true) => Unit
+//    case (arrow: sorts.Arrow, _) => App(fresh(arrow), *())
     case (sort, _) => fresh(sort)
   }
 

@@ -243,7 +243,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(distinct %s)".format(symbols map convert  mkString " ")
 
     case App(t0, t1) =>
-      s"($t0 $t1)"
+      s"(${convert(t0)} ${convert(t1)})"
   }
 
   def sanitizeSymbol(str: String) =

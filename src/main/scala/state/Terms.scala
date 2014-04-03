@@ -245,7 +245,7 @@ case class Trigger(ts: Seq[Term])
 
 /* Placeholder */
 case class *() extends Symbol {
-  val id = "*"
+  val id = "x"
   val sort = sorts.Ref
 
   override val toString = "*"

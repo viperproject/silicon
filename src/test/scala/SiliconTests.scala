@@ -8,7 +8,7 @@ import sil.frontend.{Frontend, SilFrontend}
 
 class SiliconTests extends DefaultSilSuite {
   private val siliconTestDirectories: Seq[String] = List("consistency", "qp")
-  private val silTestDirectories: Seq[String] = List("all", "quantifiedpermissions")
+  private val silTestDirectories: Seq[String] = List(/*"all", */"quantifiedpermissions")
 
   override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories
 

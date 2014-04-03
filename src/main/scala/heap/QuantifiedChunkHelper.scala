@@ -20,7 +20,7 @@ import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
 trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
   def isQuantifiedFor(h: H, field: String): Boolean
 
-  def value(σ: S, h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult
+  def value(σ: S, h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: App => VerificationResult) : VerificationResult
 
   /**
    * Converts all field chunks for the given field to their quantified equivalents
@@ -96,7 +96,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
     }
   }
 
-  def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
+  def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: App => VerificationResult): VerificationResult = {
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
         Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
@@ -108,8 +108,10 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
           case true =>
             decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
             val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
-            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+//            val fApp = App(valueT, *())
+//            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
             val x = Var("x", sorts.Ref)
+            val fApp = App(valueT, x)
 
             h.values.foreach {
               case pf: QuantifiedChunk if pf.name == f.name =>
@@ -118,7 +120,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
                   case _ => Trigger(List())}
 
                 /* TODO: Commenting the triggers is (probably) just a temporary work-around to cope with problems related to quantified permissions. */
-                decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp.replace(*(), x)
+                decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp/*.replace(*(), x)*/
                   === pf.value.replace(*(), x))/*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/))
 
               case pf if pf.name == f.name =>
@@ -127,7 +129,8 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
               case _ =>
             }
 
-            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
+            Q(App(valueT, rcvr))}}
+//            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
   }
 
   def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if ch.name == f => transformElement(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
