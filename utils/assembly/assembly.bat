@@ -12,7 +12,7 @@ popd
 
 copy %BASE_DIR%\target\scala-2.10\silicon.jar %THIS_DIR%\.
 
-%THIS_DIR%\silicon.bat
+call %THIS_DIR%\silicon.bat
 
 popd
 exit /B 0
