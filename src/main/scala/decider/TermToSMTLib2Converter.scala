@@ -240,7 +240,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(%s %s)".format(sortWrapperSymbol(t.sort, to), convert(t))
 
     case Distinct(symbols) =>
-      "(distinct %s)".format(symbols map(convert) mkString(" "))
+      "(distinct %s)".format(symbols map convert  mkString " ")
+
+    case App(t0, t1) =>
+      s"($t0 $t1)"
   }
 
   def sanitizeSymbol(str: String) =

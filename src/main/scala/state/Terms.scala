@@ -96,10 +96,13 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 sealed trait Term {
   def sort: Sort
 
-  def replace(term:Term, withTerm:Term):Term = {
-    if (this==term) withTerm else
+  def replace(term: Term, withTerm: Term): Term = {
+    if (this == term)
+      withTerm
+    else
       this match {
         case *() => *()
+        case App(t0, t1) => App(t0.replace(term, withTerm), t1.replace(term, withTerm))
         case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
         case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Eq(t1, t2, specialize) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm), specialize)
@@ -148,6 +151,8 @@ sealed trait Term {
         case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
+
+          /* TODO: Remove catch-all case since it prevents exhaustiveness warnings. */
         case _ => sys.error("Cannot replace for term. Implement me!")
       }
   }
@@ -440,12 +445,17 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends ComparisonTerm with commonnodes.Eq[Term] {
   assert(p0.sort == p1.sort,
-      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-        .format(p0.sort, p0, p1.sort, p1))
+         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+         .format(p0.sort, p0, p1.sort, p1))
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term] {
+
+  assert(p0.sort == p1.sort,
+         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+         .format(p0.sort, p0, p1.sort, p1))
+}
 
 object Less extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
@@ -523,7 +533,7 @@ case class FullPerm() extends DefaultFractionalPermissions { override val toStri
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 
-case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
+case class TermPerm(t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
   override val toString = t.toString
@@ -615,7 +625,7 @@ class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPe
        with commonnodes.Less[DefaultFractionalPermissions]
        with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions] {
 
-  override val toString = "%s < %s".format(p0, p1)
+  override val toString = "(%s) < (%s)".format(p0, p1)
 }
 
 object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => BooleanTerm) {
@@ -627,11 +637,11 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
-case class PermMin(val p1: Term, val p2: Term) extends DefaultFractionalPermissions {
-  utils.assertSort(p1, "Permission 1st", sorts.Perm)
-  utils.assertSort(p2, "Permission 2nd", sorts.Perm)
+case class PermMin(p0: Term, p1: Term) extends DefaultFractionalPermissions {
+  utils.assertSort(p0, "first operand", sorts.Perm)
+  utils.assertSort(p1, "second operand", sorts.Perm)
 
-  override val toString = s"min ($p1, $p2)"
+  override val toString = s"min ($p0, $p1)"
 }
 
 /* Functions */
@@ -1088,6 +1098,20 @@ case class First(t: Term) extends SnapshotTerm {
 
 case class Second(t: Term) extends SnapshotTerm {
   utils.assertSort(t, "term", sorts.Snap)
+}
+
+/* Nasty internals */
+
+case class App(t0: Term, t1: Term) extends Term {
+  private val fctSort: sorts.Arrow = t0.sort match {
+    case arrow: sorts.Arrow => arrow
+    case other => sys.error(s"Expected first operand $t0 to be of sort Arrow, but found $other.")
+  }
+
+  utils.assertSort(t1, "second operand", fctSort.from)
+
+  val sort = fctSort.to
+  override val toString = s"$t0($t1)"
 }
 
 class SortWrapper(val t: Term, val to: Sort) extends Term {

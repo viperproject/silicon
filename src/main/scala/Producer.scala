@@ -178,7 +178,13 @@ trait DefaultProducer[ST <: Store[ST],
               decider.prover.logComment("End produce set access predicate " + fa)
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
                 /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-                val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond)
+                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+                println(s"  s == $s  (${s.sort}})")
+                // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val fs = App(s, *())
+                println(s"  fs == $fs  (${fs.sort}})")
+                val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
+                println(s"  ch == $ch")
                 val v = Var("nonnull", sorts.Ref)
                 val auxQuant =
                   Quantification(
@@ -239,7 +245,9 @@ trait DefaultProducer[ST <: Store[ST],
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
       /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-      (toSort(f.typ), false)
+//      (toSort(f.typ), false)
+//      (toSort(f.typ), false)
+      ???
 
     case _ =>
       (sorts.Snap, false)

@@ -114,7 +114,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             h.values.foreach {
               case pf: QuantifiedChunk if pf.name == f.name =>
                 val valtrigger = pf.value match {
-                  case DomainFApp(f, s) => Trigger(List(pf.value.replace(*(), x)))
+                  case DomainFApp(`f`, s) => Trigger(List(pf.value.replace(*(), x)))
                   case _ => Trigger(List())}
 
                 /* TODO: Commenting the triggers is (probably) just a temporary work-around to cope with problems related to quantified permissions. */
@@ -141,7 +141,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
           case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
         }
       case v: Var =>
-        Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
+        Ite(cond.replace(rcvr, *()), FullPerm(), NoPerm())
       case _ =>
         sys.error("Unknown type of receiver, cannot rewrite.")
     }

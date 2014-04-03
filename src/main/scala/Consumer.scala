@@ -139,8 +139,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3, tv)(t => {
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
                   quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3, tv)(h3 => {
-//                    println("\n[consumer/forall]")
-//                    println(s"  t = $t")
+                    println("\n[consumer/forall]")
+                    println(s"  t = $t")
                     Q(h3, t, Nil, c3)})})}))}})
 
       /* Field access predicates for quantified fields */
@@ -160,8 +160,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                   ch match {
                     case fc: DirectFieldChunk =>
-                        val snap = fc.value.convert(sorts.Snap)
-                        Q(h1, snap, fc :: Nil, c3)
+                      val snap = fc.value.convert(sorts.Snap)
+                      Q(h1, snap, fc :: Nil, c3)
 
                     case pc: DirectPredicateChunk =>
                       val h2 =
