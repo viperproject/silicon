@@ -49,15 +49,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
 
     case FApp(f, s, tArgs) =>
-      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))
+      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString " ")
 
     case Quantification(quant, vars, body, triggers) =>
-      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
+      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString " "
       val strBody = convert(body)
       val strQuant = convert(quant)
 
       val strTriggers: String =
-        triggers.map(trigger => trigger.ts map convert mkString(" "))
+        triggers.map(trigger => trigger.ts map convert mkString " ")
                 .map(s => s":pattern ($s)")
                 .mkString(" ")
 
@@ -98,13 +98,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
       if (specialise)
         t0.sort match {
-          case sorts.Snap => "(= " + convert(t0) + " " + convert(t1) + ")"
+          case sorts.Snap => convertBuiltinEq(t0, t1) // "(= " + convert(t0) + " " + convert(t1) + ")"
           case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
           case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
           case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
         }
       else
-        "(= " + convert(t0) + " " + convert(t1) + ")"
+        convertBuiltinEq(t0, t1)
+//        "(= " + convert(t0) + " " + convert(t1) + ")"
 
 
     /* Arithmetic */
@@ -233,7 +234,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case First(t) => "($Snap.first " + convert(t) + ")"
     case Second(t) => "($Snap.second " + convert(t) + ")"
 
-    case Combine(t0, t1) =>
+    case combine @ Combine(t0, t1) =>
       "($Snap.combine " + convert(t0) + " " + convert(t1) + ")"
 
     case SortWrapper(t, to) =>
@@ -262,8 +263,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
   private def literalToString(literal: Literal) = literal match {
     case IntLiteral(n) =>
-      if (n >= 0) n.toString
-      else "(- 0 %s)".format((-n).toString)
+      if (n >= 0) n.toString()
+      else "(- 0 %s)".format((-n).toString())
 
     case Unit => "$Snap.unit"
     case True() => "true"
@@ -281,4 +282,16 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
   private def sortWrapperSymbol(from: Sort, to: Sort) =
     "$SortWrappers.%sTo%s".format(convert(from), convert(to))
+
+  private def convertBuiltinEq(t0: Term, t1: Term): String = {
+    val hasStar = (t0 existsDefined { case *() => }) || (t1 existsDefined { case *() => })
+
+    if (hasStar) {
+      val x = Var("x", sorts.Ref)
+      val t0a = t0.replace(*(), x)
+      val t1a = t1.replace(*(), x)
+      s"(forall ((x $$Ref)) (= ${convert(t0a)} ${convert(t1a)}))"
+    } else
+      s"(= ${convert(t0)} ${convert(t1)})"
+  }
 }

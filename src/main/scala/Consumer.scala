@@ -102,8 +102,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
-						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)))
+					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) => {
+            println("\n[consumer/and]")
+            println(s"  φ = $φ")
+            println(s"  s1 = $s1}  (${s1.sort}, ${s1.getClass.getSimpleName}})")
+            println(s"  s2 = $s2}  (${s2.sort}, ${s2.getClass.getSimpleName}})")
+            val s1a = s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
+            println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
+            val s2a = s2.sort match {case _: sorts.Arrow => App(s2, *()) case _ => s2}
+            println(s"  s2a = $s2a  (${s2a.sort}, ${s2a.getClass.getSimpleName}})")
+						Q(h2, Combine(s1a, s2a), dcs1 ::: dcs2, c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -158,6 +166,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 Q(h2, t, Nil, c2))})))
 
       case ast.AccessPredicate(locacc, perm) =>
+        println("\n[consumer/acc]")
+        println(s"  φ = $φ")
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
             decider.assert(σ, IsPositive(tPerm)){
@@ -174,6 +184,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                         else
                           h1
+                      println(s"  pc = $pc")
+                      println(s"  pc.snap = ${pc.snap}  (${pc.snap.sort}, ${pc.snap.getClass.getSimpleName}})")
                       Q(h2, pc.snap, pc :: Nil, c3)})
               case false =>
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)}))

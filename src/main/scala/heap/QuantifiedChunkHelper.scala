@@ -112,23 +112,24 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
 //            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
             val x = Var("x", sorts.Ref)
             val fApp = App(valueT, x)
-
             h.values.foreach {
               case pf: QuantifiedChunk if pf.name == f.name =>
                 val valtrigger = pf.value match {
                   case DomainFApp(`f`, s) => Trigger(List(pf.value.replace(*(), x)))
                   case _ => Trigger(List())}
-
-                /* TODO: Commenting the triggers is (probably) just a temporary work-around to cope with problems related to quantified permissions. */
-                decider.assume(Quantification(Forall, List(x), Implies(pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(), fApp/*.replace(*(), x)*/
-                  === pf.value.replace(*(), x))/*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/))
-
+                val quant =
+                  Quantification(
+                    Forall,
+                    List(x),
+                    Implies(
+                      pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(),
+                      fApp/*.replace(*(), x)*/ === pf.value.replace(*(), x)),
+                    List(Trigger(List(fApp.replace(*(), x))), valtrigger))
+                decider.assume(quant)
               case pf if pf.name == f.name =>
                 sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
-
               case _ =>
             }
-
             Q(App(valueT, rcvr))}}
 //            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
   }

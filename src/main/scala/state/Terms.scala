@@ -3,6 +3,7 @@ package silicon
 package state.terms
 
 import ast.commonnodes
+import sil.ast.utility.Visitor
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -40,15 +41,15 @@ object sorts {
   object Perm extends Sort { override val toString = "Perm" }
   object Unit extends Sort { override val toString = "()" }
 
-  case class Seq(val elementsSort: Sort) extends Sort {
+  case class Seq(elementsSort: Sort) extends Sort {
     override val toString = "Seq[%s]".format(elementsSort)
   }
 
-  case class Set(val elementsSort: Sort) extends Sort {
+  case class Set(elementsSort: Sort) extends Sort {
     override val toString = "Set[%s]".format(elementsSort)
   }
 
-  case class Multiset(val elementsSort: Sort) extends Sort {
+  case class Multiset(elementsSort: Sort) extends Sort {
     override val toString = "Multiset[%s]".format(elementsSort)
   }
 
@@ -93,8 +94,16 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
  * Basic terms
  */
 
-sealed trait Term {
+/* TODO: Should extend semper.sil.ast.Node in order to share all the
+ *       visitor-related methods.
+ *       To do this, Node has to be made parametric in the type of concrete
+ *       Nodes that the visitors operate on. Also, the 'subnodes/subterms'
+ *       function must be customizable.
+ */
+sealed trait Term /*extends Traversable[Term]*/ {
   def sort: Sort
+
+//  def foreach[A](f: Term => A) = Visitor.visit(this, state.utils.subterms) { case a: Term => f(a) }
 
   def replace(term: Term, withTerm: Term): Term = {
     if (this == term)
@@ -138,7 +147,7 @@ sealed trait Term {
         case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
-        case e:EmptySet => e
+        case e: EmptySet => e
         case MultisetIn(t1, t2) => MultisetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case MultisetCount(t1, t2) => MultisetCount(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SeqIn(t1, t2) => SeqIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
@@ -151,15 +160,32 @@ sealed trait Term {
         case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
+        case Combine(t0, t1) => Combine(t0.replace(term, withTerm), t1.replace(term, withTerm))
+        case Unit => Unit
 
           /* TODO: Remove catch-all case since it prevents exhaustiveness warnings. */
-        case _ => sys.error("Cannot replace for term. Implement me!")
+        case _ => sys.error(s"Cannot replace inside $this (${this.getClass.getSimpleName}}). Implement me!")
       }
   }
 
   def ===(t: Term): Term = Eq(this, t)
+
   def !==(t: Term): Term = Not(Eq(this, t))
+
   def convert(to: Sort): Term = SortWrapper(this, to)
+
+  def visit[A](f: PartialFunction[Term, A]) =
+    Visitor.visit(this, state.utils.subterms)(f)
+
+  def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
+               (recursive: Term => Boolean = !pre.isDefinedAt(_),
+                post: PartialFunction[Term, Term] = PartialFunction.empty)
+               : this.type =
+
+    state.utils.transform[this.type](this, pre)(recursive, post)
+
+  def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
+    Visitor.existsDefined(this, state.utils.subterms, f)
 }
 
 /* Symbols */
@@ -637,7 +663,10 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
-case class PermMin(p0: Term, p1: Term) extends DefaultFractionalPermissions {
+case class PermMin(p0: Term, p1: Term)
+  extends DefaultFractionalPermissions
+     with commonnodes.StructuralEqualityBinaryOp[Term] {
+
   utils.assertSort(p0, "first operand", sorts.Perm)
   utils.assertSort(p1, "second operand", sorts.Perm)
 
@@ -1037,13 +1066,13 @@ object MultisetCardinality {
   def unapply(mc: MultisetCardinality) = Some((mc.p))
 }
 
-class MultisetCount(val p0:Term, val p1:Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
+class MultisetCount(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
   val sort = sorts.Int
   override val toString = s"cnt($p0,$p1)"
 }
 
 object MultisetCount extends {
-  def apply(e:Term, t:Term) = {
+  def apply(e: Term, t: Term) = {
     utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
     utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
 
@@ -1053,7 +1082,7 @@ object MultisetCount extends {
   def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
 }
 
-class MultisetFromSeq(val p:Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+class MultisetFromSeq(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
   val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Multiset(elementsSort)
 }

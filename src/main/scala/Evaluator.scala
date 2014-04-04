@@ -547,9 +547,12 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
+            println("\n[eval/fapp]")
+            println(s"  fapp = $fapp")
+            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
+            println(s"  tFA = $tFA")
             if (fappCache.contains(tFA)) {
-              logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
               assume(piFB)
               Q(tFA, c3)
@@ -563,8 +566,11 @@ trait DefaultEvaluator[
                 bookkeeper.functionBodyEvaluations += 1
                 eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
                   eval(σ3, post, pve, c4, tv)((tPost, c5) => {
+                    println(s"  tFB = $tFB")
                     val c5a = c5.decCycleCounter(func)
                     val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
+                    println(s"  tFAEqFB = $tFAEqFB")
+                    println(s"  tPost = $tPost")
                     if (!config.disableFunctionApplicationCaching())
                       fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                     assume(Set(tFAEqFB, tPost))

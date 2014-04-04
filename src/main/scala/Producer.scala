@@ -112,18 +112,26 @@ trait DefaultProducer[ST <: Store[ST],
         produce2(σ, sf, p, a0, pve, c, tv)(Q)
 
       case ast.And(a0, a1) if !φ.isPure =>
+        println("\n[producer/and]")
+        println(s"  φ = $φ")
         val s0 = mkSnap(a0)
         val s1 = mkSnap(a1)
 
         val s0a = s0.sort match {case _: sorts.Arrow => App(s0, *()) case _ => s0}
+        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
         val s1a = s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
+        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
 
         val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))
+        println(s"  tSnapEq = $tSnapEq")
 
         val sf0 = (sort: Sort) => s0.convert(sort)
+        println(s"  sf0 = $sf0")
         val sf1 = (sort: Sort) => s1.convert(sort)
+        println(s"  sf1 = $sf1")
 
         assume(tSnapEq)
+        println(s"  assumed tSnapEq")
         produce2(σ, sf0, p, a0, pve, c, tv)((h1, c1) =>
           produce2(σ \ h1, sf1, p, a1, pve, c1, tv)((h2, c2) =>
             Q(h2, c2)))
@@ -164,7 +172,10 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+            println("\n[producer/pred]")
+            println(s"  φ = $φ")
             val s = sf(getOptimalSnapshotSort(predicate.body)._1)
+            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
@@ -185,12 +196,12 @@ trait DefaultProducer[ST <: Store[ST],
                 val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
 //                val s = sf(toSort(f.typ))
                 println("\n[produce/forall]")
-                println(s"  s == $s  (${s.sort}, ${s.getClass.getSimpleName}})")
+                println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
                 // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
                 val fs = App(s, *())
 //                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
-                println(s"  ch == $ch")
+                println(s"  ch = $ch")
                 val v = Var("nonnull", sorts.Ref)
                 val auxQuant =
                   Quantification(
@@ -234,7 +245,8 @@ trait DefaultProducer[ST <: Store[ST],
 
     case ast.And(φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
-      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false))
+      (sorts.Snap, false)
+//      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false))
 
     case ast.Ite(_, φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
@@ -260,18 +272,31 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
-                                             fIfBothPure: () => (Sort, Boolean))
+                                             fIfBothImpure: () => (Sort, Boolean))
                                             : (Sort, Boolean) = {
 
-    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2)
-    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1)
-    else fIfBothPure()
+    def followImpureIfNotAnd(φ: ast.Expression): (Sort, Boolean) = φ match {
+      case _: ast.And => (sorts.Snap, false)
+      case _ => getOptimalSnapshotSort(φ)
+    }
+
+    if (φ1.isPure && !φ2.isPure) followImpureIfNotAnd(φ2)
+    else if (!φ1.isPure && φ2.isPure) followImpureIfNotAnd(φ1)
+    else fIfBothImpure()
   }
 
-  private def mkSnap(φ: ast.Expression): Term = getOptimalSnapshotSort(φ) match {
-    case (sorts.Snap, true) => Unit
-//    case (arrow: sorts.Arrow, _) => App(fresh(arrow), *())
-    case (sort, _) => fresh(sort)
+  private def mkSnap(φ: ast.Expression): Term = {
+    val oss = getOptimalSnapshotSort(φ)
+    println("\n[mkSnap]")
+    println(s"  φ = $φ")
+    println(s"  oss = $oss  (${oss.getClass.getSimpleName}})")
+    val t = oss match {
+      case (sorts.Snap, true) => Unit
+      //    case (arrow: sorts.Arrow, _) => App(fresh(arrow), *())
+      case (sort, _) => fresh(sort)
+    }
+    println(s"  t = $t  (${t.sort}, ${t.getClass.getSimpleName}})")
+    t
   }
 
   override def pushLocalState() {
