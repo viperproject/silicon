@@ -1,11 +1,11 @@
 var f: Int
 
 predicate P01(xs: Set[Ref]) {
-  forall x: Ref :: x in xs ==> acc(x.f, write)
+  forall x: Ref :: x in xs ==> acc(x.f)
 }
 
 method test01(xs: Set[Ref], a: Ref)
-  requires forall x: Ref :: x in xs ==> acc(x.f, write)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
   requires a in xs
 {
   var oa: Int := a.f
@@ -21,9 +21,9 @@ method test01(xs: Set[Ref], a: Ref)
 }
 
 method test02(xs: Set[Ref], a: Ref, b: Ref)
-  requires forall x: Ref :: x in xs ==> acc(x.f, write)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
   requires a in xs && b in xs
-  ensures forall x: Ref :: x in xs ==> acc(x.f, write)
+  ensures forall x: Ref :: x in xs ==> acc(x.f)
   ensures a != b ? b.f < a.f : a.f == b.f
 {
   a.f := b.f + 1
@@ -35,5 +35,68 @@ method test02(xs: Set[Ref], a: Ref, b: Ref)
 }
 
 predicate P02(xs: Set[Ref], a: Ref) {
-  (forall x: Ref :: x in xs ==> acc(x.f, write)) && a in xs
+  (forall x: Ref :: x in xs ==> acc(x.f)) && a in xs
+}
+
+method test03(y: Ref, xs: Set[Ref]) {
+  inhale !(null in xs)
+  inhale y in xs
+  inhale forall x: Ref :: x in xs ==> acc(x.parent)
+  inhale forall x: Ref :: x in xs ==> x.parent in xs
+
+  assert acc(y.parent)
+  assert forall x: Ref :: x in xs ==> x.parent in xs
+  assert y.parent in xs
+  assert y.parent != null
+}
+
+var nodes: Set[Ref]
+var parent: Ref
+
+predicate inv(this: Ref) {
+     acc(this.nodes)
+  && !(null in this.nodes)
+  && (forall n : Ref :: n in this.nodes ==> acc(n.parent))
+  && (forall q : Ref :: q in this.nodes ==> q.parent in this.nodes)
+}
+
+method test04(this: Ref, struct: Ref)
+  requires acc(this.parent) //&& this.parent == null
+  requires struct != null
+  requires
+       acc(struct.nodes)
+    && !(null in struct.nodes)
+    && (forall n : Ref :: n in struct.nodes ==> acc(n.parent))
+    && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+//  requires acc(inv(struct))
+  requires !(this in struct.nodes)
+//  requires !(this.parent in struct.nodes)
+    /* Without this precondition folding inv(struct) fails.
+     * It follows from this.parent != null together with null not in struct.nodes,
+     * which is part of inv(struct)'s body.
+     */
+{
+//  unfold acc(inv(struct))
+  
+  this.parent := this
+  struct.nodes := struct.nodes union Set(this)
+
+  fold acc(inv(struct))
+  unfold acc(inv(struct))
+
+  assert this.parent == this
+}
+
+function getParent(this: Ref, struct: Ref): Ref
+  requires acc(inv(struct))
+  requires unfolding acc(inv(struct)) in this in struct.nodes
+{ unfolding acc(inv(struct)) in this.parent }
+
+method test05(this: Ref, struct: Ref)
+  requires acc(inv(struct))
+  requires unfolding acc(inv(struct)) in this in struct.nodes
+  requires getParent(this, struct) == null
+{
+  unfold acc(inv(struct))
+  assert this.parent == null
 }

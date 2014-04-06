@@ -9,7 +9,7 @@ import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import state.terms._
-import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import semper.silicon.state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
 import heap.QuantifiedChunkHelper
 import sil.ast.LocalVar
@@ -112,26 +112,27 @@ trait DefaultProducer[ST <: Store[ST],
         produce2(σ, sf, p, a0, pve, c, tv)(Q)
 
       case ast.And(a0, a1) if !φ.isPure =>
-        println("\n[producer/and]")
-        println(s"  φ = $φ")
+//        println("\n[producer/and]")
+//        println(s"  φ = $φ")
         val s0 = mkSnap(a0)
         val s1 = mkSnap(a1)
 
-        val s0a = s0.sort match {case _: sorts.Arrow => App(s0, *()) case _ => s0}
-        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
-        val s1a = s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
-        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
+        val s0a = s0 // s0.sort match {case _: sorts.Arrow => App(s0, *()) case _ => s0}
+//        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
+        val s1a = s1 // s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
+//        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
 
         val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))
-        println(s"  tSnapEq = $tSnapEq")
+//        println(s"  tSnapEq = $tSnapEq")
 
         val sf0 = (sort: Sort) => s0.convert(sort)
-        println(s"  sf0 = $sf0")
+//        println(s"  sf0 = $sf0")
         val sf1 = (sort: Sort) => s1.convert(sort)
-        println(s"  sf1 = $sf1")
+//        println(s"  sf1 = $sf1")
 
         assume(tSnapEq)
-        println(s"  assumed tSnapEq")
+//        assume(SnapshotHelper.discoverEqualities(decider.π))
+//        println(s"  assumed tSnapEq")
         produce2(σ, sf0, p, a0, pve, c, tv)((h1, c1) =>
           produce2(σ \ h1, sf1, p, a1, pve, c1, tv)((h2, c2) =>
             Q(h2, c2)))
@@ -193,12 +194,14 @@ trait DefaultProducer[ST <: Store[ST],
               decider.prover.logComment("End produce set access predicate " + fa)
               evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
                 /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+//                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
+                val s = sf(sorts.Array(sorts.Ref, toSort(f.typ)))
 //                val s = sf(toSort(f.typ))
                 println("\n[produce/forall]")
                 println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
                 // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-                val fs = App(s, *())
+//                val fs = App(s, *())
+                val fs = Select(s, *())
 //                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
                 println(s"  ch = $ch")
@@ -264,7 +267,8 @@ trait DefaultProducer[ST <: Store[ST],
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
       /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
 //      (toSort(f.typ), false)
-      (sorts.Arrow(sorts.Ref, toSort(f.typ)), false)
+//      (sorts.Arrow(sorts.Ref, toSort(f.typ)), false)
+      (sorts.Array(sorts.Ref, toSort(f.typ)), false)
 
     case _ =>
       (sorts.Snap, false)
@@ -287,15 +291,15 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def mkSnap(φ: ast.Expression): Term = {
     val oss = getOptimalSnapshotSort(φ)
-    println("\n[mkSnap]")
-    println(s"  φ = $φ")
-    println(s"  oss = $oss  (${oss.getClass.getSimpleName}})")
+//    println("\n[mkSnap]")
+//    println(s"  φ = $φ")
+//    println(s"  oss = $oss  (${oss.getClass.getSimpleName}})")
     val t = oss match {
       case (sorts.Snap, true) => Unit
       //    case (arrow: sorts.Arrow, _) => App(fresh(arrow), *())
       case (sort, _) => fresh(sort)
     }
-    println(s"  t = $t  (${t.sort}, ${t.getClass.getSimpleName}})")
+//    println(s"  t = $t  (${t.sort}, ${t.getClass.getSimpleName}})")
     t
   }
 

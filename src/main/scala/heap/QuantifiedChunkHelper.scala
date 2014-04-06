@@ -20,7 +20,7 @@ import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
 trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
   def isQuantifiedFor(h: H, field: String): Boolean
 
-  def value(σ: S, h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: App => VerificationResult) : VerificationResult
+  def value(σ: S, h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Select => VerificationResult) : VerificationResult
 
   /**
    * Converts all field chunks for the given field to their quantified equivalents
@@ -96,7 +96,9 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
     }
   }
 
-  def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: App => VerificationResult): VerificationResult = {
+  def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Select => VerificationResult): VerificationResult = {
+    println("\n[qch/value]")
+    println(s"  field = $rcvr.${f.name}")
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
         Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
@@ -106,17 +108,20 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
             Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
           case true =>
-            decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
-            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
+            decider.prover.logComment(s"Creating function to represent $rcvr.${f.name}; relevant heap chunks: ${h.values.filter(ch => ch.name == f.name)}")
+//            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
+            val valueT = decider.fresh(f.name, sorts.Array(sorts.Ref, toSort(f.typ)))
 //            val fApp = App(valueT, *())
 //            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
             val x = Var("x", sorts.Ref)
-            val fApp = App(valueT, x)
+            val fApp = Select(valueT, x)
             h.values.foreach {
               case pf: QuantifiedChunk if pf.name == f.name =>
-                val valtrigger = pf.value match {
-                  case DomainFApp(`f`, s) => Trigger(List(pf.value.replace(*(), x)))
-                  case _ => Trigger(List())}
+//                val valtrigger = pf.value match {
+//                  case DomainFApp(`f`, s) => Trigger(List(pf.value.replace(*(), x)))
+//                  case _ => Trigger(List())}
+                val valtrigger =
+                  if (pf.value.existsDefined{case *() =>}) Trigger(List(pf.value.replace(*(), x))) else Trigger(List())
                 val quant =
                   Quantification(
                     Forall,
@@ -125,12 +130,14 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
                       pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(),
                       fApp/*.replace(*(), x)*/ === pf.value.replace(*(), x)),
                     List(Trigger(List(fApp.replace(*(), x))), valtrigger))
+                println(s"  quant = $quant")
                 decider.assume(quant)
               case pf if pf.name == f.name =>
                 sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
               case _ =>
             }
-            Q(App(valueT, rcvr))}}
+            println(s"  value = ${Select(valueT, rcvr)}")
+            Q(Select(valueT, rcvr))}}
 //            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
   }
 

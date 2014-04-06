@@ -289,6 +289,7 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(setsEmitter.sorts)
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
+    emitSortWrappers(Set(sorts.Array(sorts.Ref, sorts.Ref), sorts.Array(sorts.Ref, sorts.Int)))
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)

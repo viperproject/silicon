@@ -10,7 +10,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import interfaces.reporting.{TraceView, Context}
-import state.{DirectChunk, SymbolConvert}
+import semper.silicon.state.{SnapshotHelper, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
 import state.terms.perms.IsAsPermissive
@@ -160,10 +160,12 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
-    terms foreach pathConditions.push
     /* Add terms to Syxc-managed path conditions */
-    terms foreach prover.assume
+    terms foreach pathConditions.push
+
     /* Add terms to the prover's assumptions */
+    terms foreach prover.assume
+
     None
   }
 
@@ -200,6 +202,7 @@ class DefaultDecider[ST <: Store[ST],
         r
       else {
         heapCompressor.compress(σ, σ.h)
+        assume(SnapshotHelper.discoverEqualities(π))
 //        prover.logComment(s"retrying block of tryOrFail-$mycnt")
         block(σ, r => Q(r), f => f)
       }

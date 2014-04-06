@@ -73,6 +73,11 @@
 ; Sort wrappers are no longer part of the static preamble. Instead, they are
 ; emitted as part of the program-specific preamble.
 
+; --- Arrays ---
+
+(define-sort Array$Ref$Ref () (Array $Ref $Ref))
+(define-sort Array$RefInt () (Array $Ref Int))
+
 ; --- Math ---
 
 ;function Math#min(a: int, b: int): int;

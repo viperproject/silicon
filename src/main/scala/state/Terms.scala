@@ -75,6 +75,10 @@ object sorts {
     override val toString = s"$from -> $to"
   }
 
+  case class Array(from: Sort, to: Sort) extends Sort {
+    override val toString = s"$from -> $to"
+  }
+
   case class UserSort(id: String) extends Sort {
     override val toString = id
   }
@@ -111,7 +115,7 @@ sealed trait Term /*extends Traversable[Term]*/ {
     else
       this match {
         case *() => *()
-        case App(t0, t1) => App(t0.replace(term, withTerm), t1.replace(term, withTerm))
+        case Select(t0, t1) => Select(t0.replace(term, withTerm), t1.replace(term, withTerm))
         case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
         case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
         case Eq(t1, t2, specialize) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm), specialize)
@@ -1131,15 +1135,15 @@ case class Second(t: Term) extends SnapshotTerm {
 
 /* Nasty internals */
 
-case class App(t0: Term, t1: Term) extends Term {
-  private val fctSort: sorts.Arrow = t0.sort match {
-    case arrow: sorts.Arrow => arrow
-    case other => sys.error(s"Expected first operand $t0 to be of sort Arrow, but found $other.")
+case class Select(t0: Term, t1: Term) extends Term {
+  private val arraySort: sorts.Array = t0.sort match {
+    case array: sorts.Array => array
+    case other => sys.error(s"Expected first operand $t0 to be of sort Array, but found $other.")
   }
 
-  utils.assertSort(t1, "second operand", fctSort.from)
+  utils.assertSort(t1, "second operand", arraySort.from)
 
-  val sort = fctSort.to
+  val sort = arraySort.to
   override val toString = s"$t0($t1)"
 }
 

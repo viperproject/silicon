@@ -17,6 +17,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Multiset(elementSort) => "$Multiset<" + convert(elementSort) + ">"
     case sorts.UserSort(id) => sanitizeSymbol(id)
     case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
+//    case a: sorts.Array => s"(Array ${convert(a.from)} ${convert(a.to)})"
+    case a: sorts.Array => s"Array${convert(a.from)}${convert(a.to)}"
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
        * domain sort of nullary functions.
@@ -243,8 +245,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Distinct(symbols) =>
       "(distinct %s)".format(symbols map convert  mkString " ")
 
-    case App(t0, t1) =>
-      s"(${convert(t0)} ${convert(t1)})"
+    case Select(t0, t1) =>
+      s"(select ${convert(t0)} ${convert(t1)})"
   }
 
   def sanitizeSymbol(str: String) =
@@ -282,6 +284,12 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
   private def sortWrapperSymbol(from: Sort, to: Sort) =
     "$SortWrappers.%sTo%s".format(convert(from), convert(to))
+//    s"$$SortWrappers.${sortWrapperSortSymbol(from)}To${sortWrapperSortSymbol(to)}"
+
+//  private def sortWrapperSortSymbol(sort: Sort): String = sort match {
+//    case sorts.Array(from, to) => s"Array<${sortWrapperSortSymbol(from)}~${sortWrapperSortSymbol(to)}>"
+//    case _ => convert(sort)
+//  }
 
   private def convertBuiltinEq(t0: Term, t1: Term): String = {
     val hasStar = (t0 existsDefined { case *() => }) || (t1 existsDefined { case *() => })

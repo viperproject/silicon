@@ -13,7 +13,7 @@ import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, St
     FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import semper.silicon.state.{SnapshotHelper, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsPositive
