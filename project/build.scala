@@ -37,7 +37,7 @@ object SiliconBuild extends Build {
               name := "Silicon",
               mainClass in assembly := Some("semper.silicon.Silicon"),
               jarName in assembly := "silicon.jar",
-              test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
+              // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
               traceLevel := 10,
               maxErrors := 6,
               fork := true,
