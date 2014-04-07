@@ -202,7 +202,7 @@ class DefaultDecider[ST <: Store[ST],
         r
       else {
         heapCompressor.compress(σ, σ.h)
-//        assume(SnapshotHelper.discoverEqualities(π)) /* [SNAP-EQ] */
+        assume(SnapshotHelper.discoverEqualities(π)) /* [SNAP-EQ] */
 //        prover.logComment(s"retrying block of tryOrFail-$mycnt")
         block(σ, r => Q(r), f => f)
       }

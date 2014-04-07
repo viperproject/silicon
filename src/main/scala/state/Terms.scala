@@ -76,11 +76,11 @@ object sorts {
   }
 
   /* [SNAP-EQ] */
-  case class Array(from: Sort, to: Sort) extends Sort {
-    override val toString = s"$from -> $to"
-  }
-//  type Array = Arrow
-//  val Array = Arrow
+//  case class Array(from: Sort, to: Sort) extends Sort {
+//    override val toString = s"$from -> $to"
+//  }
+  type Array = Arrow
+  val Array = Arrow
 
   case class UserSort(id: String) extends Sort {
     override val toString = id
