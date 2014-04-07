@@ -117,9 +117,9 @@ trait DefaultProducer[ST <: Store[ST],
         val s0 = mkSnap(a0)
         val s1 = mkSnap(a1)
 
-        val s0a = /*s0*/ s0.sort match {case _: sorts.Arrow => Select(s0, *()) case _ => s0} /* [SNAP-EQ] */
+        val s0a = s0 // s0.sort match {case _: sorts.Arrow => Select(s0, *()) case _ => s0} /* [SNAP-EQ] */
 //        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
-        val s1a = /*s1*/ s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
+        val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
 //        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
 
         val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))

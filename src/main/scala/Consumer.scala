@@ -107,9 +107,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //            println(s"  φ = $φ")
 //            println(s"  s1 = $s1}  (${s1.sort}, ${s1.getClass.getSimpleName}})")
 //            println(s"  s2 = $s2}  (${s2.sort}, ${s2.getClass.getSimpleName}})")
-            val s1a = /*s1*/ s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
+            val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
 //            println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
-            val s2a = /*s2*/ s2.sort match {case _: sorts.Arrow => Select(s2, *()) case _ => s2} /* [SNAP-EQ] */
+            val s2a = s2 // s2.sort match {case _: sorts.Arrow => Select(s2, *()) case _ => s2} /* [SNAP-EQ] */
 //            println(s"  s2a = $s2a  (${s2a.sort}, ${s2a.getClass.getSimpleName}})")
 						Q(h2, Combine(s1a, s2a), dcs1 ::: dcs2, c2)}))
 

@@ -24,8 +24,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       ""
 
     /* [SNAP-EQ] */
-//    case a: sorts.Array => s"(Array ${convert(a.from)} ${convert(a.to)})"
-//    case a: sorts.Array => s"Array<${convert(a.from)}~${convert(a.to)}>"
+    case a: sorts.Array => s"Array<${convert(a.from)}~${convert(a.to)}>"
   }
 
   def convert(decl: Decl): String = decl match {
@@ -249,8 +248,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* [SNAP-EQ] */
     case Select(t0, t1) =>
-//      s"(select ${convert(t0)} ${convert(t1)})"
-      s"(${convert(t0)} ${convert(t1)})"
+      s"(select ${convert(t0)} ${convert(t1)})"
+//      s"(${convert(t0)} ${convert(t1)})"
   }
 
   def sanitizeSymbol(str: String) =

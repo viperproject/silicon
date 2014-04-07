@@ -96,6 +96,8 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
     }
   }
 
+  private val valueCache = MMap[(H, Term, Field), (Set[Term], Select)]()
+
   def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Select => VerificationResult): VerificationResult = {
 //    println("\n[qch/value]")
 //    println(s"  field = $rcvr.${f.name}")
@@ -108,38 +110,53 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
             Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
           case true =>
-            decider.prover.logComment(s"Creating function to represent $rcvr.${f.name}; relevant heap chunks: ${h.values.filter(ch => ch.name == f.name)}")
-//            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
-            val valueT = decider.fresh(f.name, sorts.Array(sorts.Ref, toSort(f.typ)))
-//            val fApp = App(valueT, *())
-//            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-            val x = Var("x", sorts.Ref)
-            val fApp = Select(valueT, x)
-            h.values.foreach {
-              case pf: QuantifiedChunk if pf.name == f.name =>
-//                val valtrigger = pf.value match {
-//                  case DomainFApp(`f`, s) => Trigger(List(pf.value.replace(*(), x)))
-//                  case _ => Trigger(List())}
-                val valtrigger =
-                  if (pf.value.existsDefined{case *() =>}) Trigger(List(pf.value.replace(*(), x))) else Trigger(List())
-                val quant =
-                  Quantification(
-                    Forall,
-                    List(x),
-                    Implies(
-                      pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(),
-                      fApp/*.replace(*(), x)*/ === pf.value.replace(*(), x)),
-                    List(Trigger(List(fApp.replace(*(), x))), valtrigger))
-//                println(s"  quant = $quant")
-                decider.assume(quant)
-              case pf if pf.name == f.name =>
-                sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
-              case _ =>
+            valueCache.get((h, rcvr, f)) match {
+              case None =>
+                var quants = Set[Term]()
+                decider.prover.logComment(s"Creating function to represent $rcvr.${f.name}; relevant heap chunks: ${h.values.filter(ch => ch.name == f.name)}")
+                //            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
+                val valueT = decider.fresh(f.name, sorts.Array(sorts.Ref, toSort(f.typ)))
+                //            val fApp = App(valueT, *())
+                //            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val x = Var("x", sorts.Ref)
+                val fApp = Select(valueT, x)
+                h.values.foreach {
+                  case pf: QuantifiedChunk if pf.name == f.name =>
+                    //                val valtrigger = pf.value match {
+                    //                  case DomainFApp(`f`, s) => Trigger(List(pf.value.replace(*(), x)))
+                    //                  case _ => Trigger(List())}
+                    val valtrigger =
+                      if (pf.value.existsDefined {
+                        case *() =>
+                      }) Trigger(List(pf.value.replace(*(), x)))
+                      else Trigger(List())
+                    val quant =
+                      Quantification(
+                        Forall,
+                        List(x),
+                        Implies(
+                          pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(),
+                          fApp /*.replace(*(), x)*/ === pf.value.replace(*(), x)),
+                        List(Trigger(List(fApp.replace(*(), x))), valtrigger))
+                    //                println(s"  quant = $quant")
+                    decider.assume(quant)
+                    quants += quant
+                  case pf if pf.name == f.name =>
+                    sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
+                  case _ =>
+                }
+                //            println(s"  value = ${Select(valueT, rcvr)}")
+                val value = Select(valueT, rcvr)
+                valueCache += (h, rcvr, f) -> (quants, value)
+                Q(value)
+              case Some((qt, rt)) =>
+                decider.assume(qt)
+                Q(rt)
             }
-//            println(s"  value = ${Select(valueT, rcvr)}")
-            Q(Select(valueT, rcvr))}}
-//            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
-  }
+        }
+      //            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
+      }
+    }
 
   def quantifyChunksForField(h:H, f:String) = H(h.values.map{case ch:DirectFieldChunk if ch.name == f => transformElement(ch.id.rcvr, f, ch.value, ch.perm) case ch => ch})
 

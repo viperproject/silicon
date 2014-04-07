@@ -76,11 +76,11 @@ object sorts {
   }
 
   /* [SNAP-EQ] */
-//  case class Array(from: Sort, to: Sort) extends Sort {
-//    override val toString = s"$from -> $to"
-//  }
-  type Array = Arrow
-  val Array = Arrow
+  case class Array(from: Sort, to: Sort) extends Sort {
+    override val toString = s"$from -> $to"
+  }
+//  type Array = Arrow
+//  val Array = Arrow
 
   case class UserSort(id: String) extends Sort {
     override val toString = id
@@ -1153,6 +1153,14 @@ case class Select(t0: Term, t1: Term) extends Term {
 class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
+
+  override val hashCode = silicon.utils.generateHashCode(t, to)
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case sw: SortWrapper => this.t == sw.t && this.to == sw.to
+      case _ => false
+    })
 
   override val toString = s"$t"
   override val sort = to
