@@ -117,9 +117,9 @@ trait DefaultProducer[ST <: Store[ST],
         val s0 = mkSnap(a0)
         val s1 = mkSnap(a1)
 
-        val s0a = s0 // s0.sort match {case _: sorts.Arrow => App(s0, *()) case _ => s0}
+        val s0a = s0 // s0.sort match {case _: sorts.Arrow => Select(s0, *()) case _ => s0} /* [SNAP-EQ] */
 //        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
-        val s1a = s1 // s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
+        val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
 //        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
 
         val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))
@@ -173,10 +173,10 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
-            println("\n[producer/pred]")
-            println(s"  φ = $φ")
+//            println("\n[producer/pred]")
+//            println(s"  φ = $φ")
             val s = sf(getOptimalSnapshotSort(predicate.body)._1)
-            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
+//            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
@@ -197,14 +197,14 @@ trait DefaultProducer[ST <: Store[ST],
 //                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
                 val s = sf(sorts.Array(sorts.Ref, toSort(f.typ)))
 //                val s = sf(toSort(f.typ))
-                println("\n[produce/forall]")
-                println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
+//                println("\n[produce/forall]")
+//                println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
                 // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
 //                val fs = App(s, *())
                 val fs = Select(s, *())
 //                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
-                println(s"  ch = $ch")
+//                println(s"  ch = $ch")
                 val v = Var("nonnull", sorts.Ref)
                 val auxQuant =
                   Quantification(

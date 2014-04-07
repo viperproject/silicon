@@ -6,7 +6,7 @@ import interfaces.decider.TermConverter
 import state.terms._
 
 class TermToSMTLib2Converter extends TermConverter[String, String, String] {
-  def convert(sort: Sort) = sort match {
+  def convert(sort: Sort): String = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
@@ -17,13 +17,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Multiset(elementSort) => "$Multiset<" + convert(elementSort) + ">"
     case sorts.UserSort(id) => sanitizeSymbol(id)
     case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
-//    case a: sorts.Array => s"(Array ${convert(a.from)} ${convert(a.to)})"
-    case a: sorts.Array => s"Array${convert(a.from)}${convert(a.to)}"
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
        * domain sort of nullary functions.
        */
       ""
+
+    /* [SNAP-EQ] */
+//    case a: sorts.Array => s"(Array ${convert(a.from)} ${convert(a.to)})"
+    case a: sorts.Array => s"Array<${convert(a.from)}~${convert(a.to)}>"
   }
 
   def convert(decl: Decl): String = decl match {
@@ -245,8 +247,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Distinct(symbols) =>
       "(distinct %s)".format(symbols map convert  mkString " ")
 
+    /* [SNAP-EQ] */
     case Select(t0, t1) =>
       s"(select ${convert(t0)} ${convert(t1)})"
+//      s"(${convert(t0)} ${convert(t1)})"
   }
 
   def sanitizeSymbol(str: String) =
@@ -282,6 +286,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     else
       convert(t)
 
+  /* [SNAP-EQ] */
   private def sortWrapperSymbol(from: Sort, to: Sort) =
     "$SortWrappers.%sTo%s".format(convert(from), convert(to))
 //    s"$$SortWrappers.${sortWrapperSortSymbol(from)}To${sortWrapperSortSymbol(to)}"

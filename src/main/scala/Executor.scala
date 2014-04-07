@@ -361,7 +361,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 case true =>
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                   consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
-                    println(s"[exec] s = $snap")
+//                    println(s"[exec] s = $snap")
                     produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) =>
                       Q(σ2 \ σ.γ, c4))})
                 case false =>

@@ -75,8 +75,9 @@
 
 ; --- Arrays ---
 
-(define-sort Array$Ref$Ref () (Array $Ref $Ref))
-(define-sort Array$RefInt () (Array $Ref Int))
+(define-sort Array<$Ref~$Ref> () (Array $Ref $Ref))
+(define-sort Array<$Ref~Int> () (Array $Ref Int))
+(define-sort Array<$Ref~Bool> () (Array $Ref Bool))
 
 ; --- Math ---
 

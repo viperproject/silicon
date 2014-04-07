@@ -107,9 +107,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //            println(s"  φ = $φ")
 //            println(s"  s1 = $s1}  (${s1.sort}, ${s1.getClass.getSimpleName}})")
 //            println(s"  s2 = $s2}  (${s2.sort}, ${s2.getClass.getSimpleName}})")
-            val s1a = s1 // s1.sort match {case _: sorts.Arrow => App(s1, *()) case _ => s1}
+            val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
 //            println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
-            val s2a = s2 // s2.sort match {case _: sorts.Arrow => App(s2, *()) case _ => s2}
+            val s2a = s2 // s2.sort match {case _: sorts.Arrow => Select(s2, *()) case _ => s2} /* [SNAP-EQ] */
 //            println(s"  s2a = $s2a  (${s2a.sort}, ${s2a.getClass.getSimpleName}})")
 						Q(h2, Combine(s1a, s2a), dcs1 ::: dcs2, c2)}))
 
@@ -145,14 +145,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               evalp(σ0, loss, pve, c2, tv)((tPerm, c3) => {
                 val h2 = if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ0.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
                 quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3, tv)(v => {
-                  println("\n[consumer/forall]")
-                  println(s"  tRcvr = $tRcvr")
-                  println(s"  tCond = $tCond")
-                  println(s"  v = $v  (${v.sort}, ${v.getClass.getSimpleName}})")
+//                  println("\n[consumer/forall]")
+//                  println(s"  tRcvr = $tRcvr")
+//                  println(s"  tCond = $tCond")
+//                  println(s"  v = $v  (${v.sort}, ${v.getClass.getSimpleName}})")
                   val t = v.t0
                   /* TODO: Passing 'null' is probably not a good idea ... */
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
-                  println(s"  ch = $ch")
+//                  println(s"  ch = $ch")
                   quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3, tv)(h3 => {
                     Q(h3, t, Nil, c3)})})}))}})
 
@@ -166,8 +166,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 Q(h2, t, Nil, c2))})))
 
       case ast.AccessPredicate(locacc, perm) =>
-        println("\n[consumer/acc]")
-        println(s"  φ = $φ")
+//        println("\n[consumer/acc]")
+//        println(s"  φ = $φ")
         withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
             decider.assert(σ, IsPositive(tPerm)){
@@ -184,8 +184,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                         else
                           h1
-                      println(s"  pc = $pc")
-                      println(s"  pc.snap = ${pc.snap}  (${pc.snap.sort}, ${pc.snap.getClass.getSimpleName}})")
+//                      println(s"  pc = $pc")
+//                      println(s"  pc.snap = ${pc.snap}  (${pc.snap.sort}, ${pc.snap.getClass.getSimpleName}})")
                       Q(h2, pc.snap, pc :: Nil, c3)})
               case false =>
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)}))
@@ -197,9 +197,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
           eval(σ1, φ, pve, c, tv)((t, c) => {
-            println("\n[consume/pure]")
-            println(s"  φ = $φ")
-            println(s"  t = $t")
+//            println("\n[consume/pure]")
+//            println(s"  φ = $φ")
+//            println(s"  t = $t")
             decider.assert(σ1, t) {
               case true =>
                 assume(t)

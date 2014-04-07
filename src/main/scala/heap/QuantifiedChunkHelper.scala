@@ -97,8 +97,8 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   }
 
   def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Select => VerificationResult): VerificationResult = {
-    println("\n[qch/value]")
-    println(s"  field = $rcvr.${f.name}")
+//    println("\n[qch/value]")
+//    println(s"  field = $rcvr.${f.name}")
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
         Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
@@ -130,13 +130,13 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
                       pf.perm.replace(*(), x).asInstanceOf[DefaultFractionalPermissions] > NoPerm(),
                       fApp/*.replace(*(), x)*/ === pf.value.replace(*(), x)),
                     List(Trigger(List(fApp.replace(*(), x))), valtrigger))
-                println(s"  quant = $quant")
+//                println(s"  quant = $quant")
                 decider.assume(quant)
               case pf if pf.name == f.name =>
                 sys.error("I did not expect non-quantified chunks on the heap for field " + pf + " " + isQuantifiedFor(h, pf.name))
               case _ =>
             }
-            println(s"  value = ${Select(valueT, rcvr)}")
+//            println(s"  value = ${Select(valueT, rcvr)}")
             Q(Select(valueT, rcvr))}}
 //            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
   }

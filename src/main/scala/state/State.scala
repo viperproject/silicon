@@ -264,9 +264,9 @@ object SnapshotHelper {
   import terms._
 
   def discoverEqualities(ts: Set[Term]): Set[Term] = {
-    println("\n[discoverEqualities]")
+//    println("\n[discoverEqualities]")
     val eqs: MSet[Term] = MSet() ++ ts collect {case eq: Eq if eq.p0.sort == sorts.Snap => eq}
-    println(s"  eqs = $eqs")
+//    println(s"  eqs = $eqs")
 
     val newEqs = MSet[Term]()
     val discoveredEqs = MSet[Term]()
@@ -279,9 +279,9 @@ object SnapshotHelper {
         case _ =>
       }
 
-      println(s"\n  newEqs|1 = $newEqs")
+//      println(s"\n  newEqs|1 = $newEqs")
 
-      println("  [transitive closure loop]")
+//      println("  [transitive closure loop]")
       for(Eq(t0, t1, _) <- eqs; Eq(t2, t3, _) <- eqs) {
 //        println(s"    ($t0, $t1) ? ($t2, $t3)")
         if (t0 == t2 && t1 != t3) newEqs += t1 === t3
@@ -296,12 +296,12 @@ object SnapshotHelper {
       eqs ++= newEqs
       discoveredEqs ++= newEqs
 
-      println(s"  newEqs|2 = $newEqs")
+//      println(s"  newEqs|2 = $newEqs")
 
       newEqs.clear()
     }
 
-    println(s"  discoveredEqs = $discoveredEqs")
+//    println(s"  discoveredEqs = $discoveredEqs")
 
     toSet(discoveredEqs)
   }
