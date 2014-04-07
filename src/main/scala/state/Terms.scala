@@ -110,71 +110,6 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 sealed trait Term /*extends Traversable[Term]*/ {
   def sort: Sort
 
-//  def foreach[A](f: Term => A) = Visitor.visit(this, state.utils.subterms) { case a: Term => f(a) }
-
-  def replace(term: Term, withTerm: Term): Term = {
-    if (this == term)
-      withTerm
-    else
-      this match {
-        case *() => *()
-        case Select(t0, t1) => Select(t0.replace(term, withTerm), t1.replace(term, withTerm))
-        case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
-        case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Eq(t1, t2, specialize) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm), specialize)
-        case v: Var => v
-        case f: FractionPerm => f
-        case f: FullPerm => f
-        case p: NoPerm => p
-        case PermMinus(t1,t2) => PermMinus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-        case PermPlus(t1,t2) => PermPlus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-        case PermTimes(t1, t2) => PermTimes(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-        case TermPerm(t) => TermPerm(t.replace(term, withTerm))
-        case And(t1, t2) => And(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Or(t1, t2) => Or(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case PermMin(t1,t2) => PermMin(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetDifference(t1,t2) => SetDifference(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetUnion(t1, t2) => SetUnion(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetIntersection(t1, t2) => SetIntersection(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetAdd(t1, t2) => SetAdd(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SingletonSet(t1) => SingletonSet(t1.replace(term, withTerm))
-        case False() => False()
-        case True() => True()
-        case Not(t) => Not(t.replace(term, withTerm))
-        case s: SortWrapper => s
-        case Implies(t1, t2) => Implies(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case DomainFApp(function, tArgs) => DomainFApp(function, tArgs map {t => t.replace(term, withTerm) })
-        case n: Null => n
-        case w: WildcardPerm => w
-        case Quantification(quant, vars, body, triggers) => Quantification(quant, vars, body.replace(term, withTerm), triggers)
-        case Plus(t1, t2) => Plus(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case i:IntLiteral => i
-        case AtLeast(t1, t2) => AtLeast(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Less(t1, t2) => Less(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
-        case e: EmptySet => e
-        case MultisetIn(t1, t2) => MultisetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case MultisetCount(t1, t2) => MultisetCount(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqIn(t1, t2) => SeqIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqTake(t1, t2) => SeqTake(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqDrop(t1, t2) => SeqDrop(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqAt(t1, t2) => SeqAt(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case MultisetFromSeq(t1) => MultisetFromSeq(t1.replace(term, withTerm))
-        case SeqLength(t) => SeqLength(t.replace(term, withTerm))
-        case Minus(t1, t2) => Minus(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Combine(t0, t1) => Combine(t0.replace(term, withTerm), t1.replace(term, withTerm))
-        case Unit => Unit
-
-          /* TODO: Remove catch-all case since it prevents exhaustiveness warnings. */
-        case _ => sys.error(s"Cannot replace inside $this (${this.getClass.getSimpleName}}). Implement me!")
-      }
-  }
-
   def ===(t: Term): Term = Eq(this, t)
 
   def !==(t: Term): Term = Not(Eq(this, t))
@@ -193,6 +128,9 @@ sealed trait Term /*extends Traversable[Term]*/ {
 
   def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
     Visitor.existsDefined(this, state.utils.subterms, f)
+
+  def replace(original: Term, replacement: Term) =
+    this.transform{case `original` => replacement}()
 }
 
 /* Symbols */
