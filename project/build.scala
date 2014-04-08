@@ -72,7 +72,10 @@ object SiliconBuild extends Build {
               BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
               BrandKeys.data <+= name(Val("sbtProjectName", _)),
               BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
-              BrandKeys.data <+= HgIdKeys.projectId { hgid =>
+              BrandKeys.data <+= HgIdKeys.projectId { idOrException =>
+                val hgid =
+                  idOrException.fold(Predef.identity,
+                  _ => de.oakgrove.SbtHgId.Id("<unknown", "<unknown", "<unknown", "<unknown"))
                 BrandObject("hgid",
                             """val version = "%s"
                                val id = "%s"
