@@ -11,8 +11,8 @@ object SiliconBuild extends Build {
 
   lazy val baseSettings = (
        Defaults.defaultSettings
-	  ++ hgIdSettings
-	  ++ brandSettings
+    ++ hgIdSettings
+    ++ brandSettings
     ++ Seq(
           organization := "semper",
           version := "0.1-SNAPSHOT",
@@ -26,13 +26,13 @@ object SiliconBuild extends Build {
 
   /* Projects */
 
-	lazy val silicon = {
+  lazy val silicon = {
     var p = Project(
       id = "silicon",
       base = file("."),
       settings = (
            baseSettings
-			  ++ assemblySettings
+        ++ assemblySettings
         ++ Seq(
               name := "Silicon",
               mainClass in assembly := Some("semper.silicon.Silicon"),
@@ -123,7 +123,7 @@ object SiliconBuild extends Build {
   object dependencies {
     lazy val logging = Seq(slf4s, slf4j)
     lazy val slf4s = "com.weiglewilczek.slf4s" % "slf4s_2.9.1" % "1.0.7"
-    lazy val slf4j = "org.slf4j" % "slf4j-log4j12" %	"1.6.4"
+    lazy val slf4j = "org.slf4j" % "slf4j-log4j12" % "1.6.4"
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
 
