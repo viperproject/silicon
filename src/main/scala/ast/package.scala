@@ -117,8 +117,6 @@ package object ast {
   val Unfolding = sil.ast.Unfolding
   type IntegerLiteral = sil.ast.IntLit
   val IntegerLiteral = sil.ast.IntLit
-//  type FieldRead = sil.ast.FieldAccess
-//  val FieldRead = sil.ast.FieldAccess
   type FuncApp = sil.ast.FuncApp
   val FuncApp = sil.ast.FuncApp
 
@@ -183,7 +181,10 @@ package object ast {
 
   type SeqRanged = sil.ast.RangeSeq
   val SeqRanged = sil.ast.RangeSeq
-
+  type SeqIn = sil.ast.SeqContains
+  val SeqIn = sil.ast.SeqContains
+  type SeqAt = sil.ast.SeqIndex
+  val SeqAt = sil.ast.SeqIndex
 
   object types {
     type DomainType = sil.ast.DomainType
@@ -198,5 +199,6 @@ package object ast {
     val Set = semper.sil.ast.SetType
     type Multiset = semper.sil.ast.MultisetType
     val Multiset = semper.sil.ast.MultisetType
+    val Pred = sil.ast.Pred
   }
 }

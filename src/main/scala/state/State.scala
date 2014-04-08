@@ -3,12 +3,14 @@ package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
-import semper.silicon.interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapMerger, PermissionChunk, StateFactory}
-import interfaces.reporting.Context
+import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor, StateFactory}
+import interfaces.reporting.{TraceView, Context}
 import interfaces.decider.Decider
 import ast.Variable
 import terms.{Term, DefaultFractionalPermissions}
+import terms.perms.IsAsPermissive
 import reporting.Bookkeeper
+import collection.mutable
 
 /*
  * Immutable implementation of the necessary state interfaces
@@ -32,55 +34,39 @@ case class MapBackedStore(private val map: Map[Variable, Term])
 	def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
 
-case class SetBackedHeap(private val chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
+case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
 	def this() = this(Set[Chunk]())
 	def this(h: SetBackedHeap) = this(h.chunks)
-	def this(chunks: Iterable[Chunk]) = this(chunks.toSet)
+	def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
 
-	val values = chunks /* Make sure that chunks is not modified! */
+  @inline
+	def values = chunks
+
+  /** Attention: This is a destructive operation that replaces the chunks in
+    * this heap by `chunks`. Only use this operation if you think that you know
+    * what you are doing! Consider creating a new heap via `this(chunks)`
+    * instead.
+    */
+  def replace(chunks: Iterable[Chunk]) {
+    this.chunks = toSet(chunks)
+  }
+
 	def empty = new SetBackedHeap()
 
 	def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
 	def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
 
 	def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
-
-  def -(id: ChunkIdentifier) =
-    new SetBackedHeap(chunks.filterNot(ch => ch.name == id.name && ch.args == id.args))
 }
 
-/* NOTE: The current map-based heap only works if (receiver, field)-pairs
- * are unique, that is, if there can never be multiple chunks with the same
- * such pair. This might not be guaranteed anymore when secondary chunks
- * are stored in the heap as well.
- */
-//case class MapBackedHeap(private val chunks: Map[(Term, String), Chunk])
-//  extends Heap[MapBackedHeap] {
-//
-//  def this() = this(Map[(Term, String), Chunk]())
-//  def this(h: MapBackedHeap) = this(h.chunks)
-//  def this(chunks: Iterable[Chunk]) =
-//    this(chunks.map(c => ((c.rcvr, c.id) -> c)).toMap)
-//
-//  val values = chunks.values /* Incorrect if chunks is modified anywhere */
-//  def empty = new MapBackedHeap()
-//
-//  def +(c: Chunk) = new MapBackedHeap(chunks + ((c.rcvr, c.id) -> c))
-//  def +(h: MapBackedHeap) = new MapBackedHeap(chunks ++ h.chunks)
-//  def -(c: Chunk) = new MapBackedHeap(chunks - ((c.rcvr, c.id)))
-//}
-
-/* TODO: Why is this implementation mutable while all others aren't? */
 class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPathConditions] {
-	import collection.mutable.{Stack, HashSet}
-
-	private val stack: Stack[Term] = Stack()
-	private val set: HashSet[Term] = HashSet()
+	private val stack = mutable.Stack[Term]()
+	private val set  = MSet[Term]()
 	private val scopeMarker: Term = null
 
 	def empty = new MutableSetBackedPathConditions()
 
-	def values = set.collect{case t: Term if t != null => t}.toSet
+	def values = toSet(set.collect{case t: Term if t != null => t})
 	def contains(t: Term) = if (t == null) false else set.contains(t)
 
 	def push(t: Term) = {
@@ -101,7 +87,7 @@ class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPa
 	}
 
 	def popScope() = {
-		var t: Term = null;
+		var t: Term = null
 
 		while ({t = stack.pop(); t != null}) {
 			set.remove(t)
@@ -116,10 +102,10 @@ class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPa
  */
 
 case class DefaultState[ST <: Store[ST], H <: Heap[H]]
-		(	val γ: ST,
-			val h: H,
-			val g: H,
-			val getPathConditions: () => Set[Term])
+                       (γ: ST,
+                        h: H,
+                        g: H,
+                        getPathConditions: () => Set[Term])
 		extends State[ST, H, DefaultState[ST, H]] {
 
 	def \(γ: ST) = this.copy(γ = γ)
@@ -141,38 +127,37 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
  * Utils
  */
 
-class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
-												PC <: PathConditions[PC], S <: State[ST, H, S],
-												C <: Context[C, ST, H, S]]
-		(val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
-		 val distinctnessLowerBound: DefaultFractionalPermissions,
-		 val bookkeeper: Bookkeeper,
-		 val stateFormatter: StateFormatter[ST, H, S, String],
-     val stateFactory: StateFactory[ST, H, S])
-		extends HeapMerger[H] with Logging {
+class DefaultHeapCompressor[ST <: Store[ST],
+                            H <: Heap[H],
+											     	PC <: PathConditions[PC],
+                            S <: State[ST, H, S],
+											     	C <: Context[C, ST, H, S],
+                            TV <: TraceView[TV, ST, H, S]]
+                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV],
+                            val distinctnessLowerBound: DefaultFractionalPermissions,
+                            val bookkeeper: Bookkeeper,
+                            val stateFormatter: StateFormatter[ST, H, S, String],
+                            val stateFactory: StateFactory[ST, H, S])
+		extends HeapCompressor[ST, H, S] with Logging {
 
   import stateFactory.H
 
-	/**
-	 * h1: existing heap which should NOT contain duplicated field chunks, i.e.
-	 *     several chunks t1.f |-> x1 # p1, t1.f |-> x2 # p2
-	 * h2: newly produced heap which can contain duplicated field chunks
-	 * resulting H: merged heap where each t.f occurs only once
-	 * resulting List[Term]: additional path conditions resulting from the merging
-	 */
-	def merge(h1in: H, h2in: H): (H, Set[Term]) = {
+  /** Attention: Compressing the heap modifies `h`, that is, its internal
+    * representation! After compressing the heap, `h` is updated via
+    * calling `h.replace(...)`.
+    */
+	def compress(σ: S, h: H) {
 		var fcs: List[DirectFieldChunk] = Nil
 		var rfcs: List[DirectFieldChunk] = Nil
 
 		var tSnaps = Set[Term]()
 		var rts = Set[Term]()
 
-    val (h1PermissionChunks, h1Others) = h1in.values.partition(_.isInstanceOf[DirectChunk])
-    val (h2PermissionChunks, h2Others) = h2in.values.partition(_.isInstanceOf[DirectChunk])
+    val (permissionChunks, otherChunk) = h.values.partition(_.isInstanceOf[DirectChunk])
 
 		var rh: H = null.asInstanceOf[H]
-		var h1 = H(h1PermissionChunks) // h1in
-		var h2 = H(h2PermissionChunks) // h2in
+		var h1 = H()
+		var h2 = H(permissionChunks)
 
 		/* TODO: Possible improvements
 		 *  - Pushing path conditions directly via prover.assume means that they are not
@@ -185,9 +170,11 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 		 *    Not sure if that turns out to be sufficient, though.
 		 */
 
+    /* TODO: Don't use heaps during compression, just work on Iterable[Chunk] or Set[Chunk] */
+
 		decider.pushScope()
 		do {
-			val result = singleMerge(h1, h2)
+			val result = singleMerge(σ, h1, h2)
 			rh = result._1
 			rfcs = result._2
 			rts = result._3
@@ -196,17 +183,19 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 
 			fcs = fcs ::: rfcs
 			tSnaps = tSnaps ++ rts
-			h1 = h1.empty
+			h1 = H()
 			h2 = rh
 		} while(rts.nonEmpty)
 		decider.popScope()
 
-		val tDists = deriveObjectDistinctness(rh, fcs)
+		val tDists = deriveObjectDistinctness(σ, rh, fcs)
 
-		(rh + H(h1Others) + H(h2Others), tSnaps ++ tDists)
+    decider.assume(tSnaps ++ tDists)
+
+    h.replace(rh.values ++ otherChunk)
 	}
 
-	private def singleMerge(h1: H, h2: H): (H, List[DirectFieldChunk], Set[Term]) = {
+	private def singleMerge(σ: S, h1: H, h2: H): (H, List[DirectFieldChunk], Set[Term]) = {
 		bookkeeper.heapMergeIterations += 1
 
 		val (rh, fcs, tSnaps) = {
@@ -222,7 +211,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 				 * ats: accumulating path conditions
 				 * c2: current chunk of the new heap h2
 				 */
-				(decider.getChunk[Chunk](ah, c2.id), c2) match {
+				(decider.getChunk[Chunk](σ, ah, c2.id), c2) match {
 					case (Some(c1: DirectFieldChunk), c2: DirectFieldChunk) =>
 						val c3 = c1 + c2.perm
 						val t1 = if (c1.value == c2.value) terms.True()
@@ -246,7 +235,7 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 		(rh, fcs, tSnaps)
 	}
 
-	private def deriveObjectDistinctness(h: H, fcs: List[DirectFieldChunk]): List[Term] = {
+	private def deriveObjectDistinctness(σ: S, h: H, fcs: List[DirectFieldChunk]): List[Term] = {
 		bookkeeper.objectDistinctnessComputations += 1
 
 		/* Compute which objects must be distinct by considering field chunks and
@@ -260,8 +249,9 @@ class DefaultHeapMerger[ST <: Store[ST], H <: Heap[H],
 		val gs = fields groupBy(_.name)
 
 		val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
-			if (  c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-            && !decider.isAsPermissive(distinctnessLowerBound, c1.perm + c2.perm))
+			if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
+          && !decider.check(σ, IsAsPermissive(distinctnessLowerBound, c1.perm + c2.perm)))
+
 				c1.rcvr !== c2.rcvr
 			else
 				terms.True()))

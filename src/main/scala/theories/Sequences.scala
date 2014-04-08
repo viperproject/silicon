@@ -17,7 +17,7 @@ class DefaultSequencesEmitter(prover: Prover,
 
   private var collectedSorts = Set[terms.sorts.Seq]()
 
-  def sorts = collectedSorts.toSet[terms.Sort]
+  def sorts = toSet(collectedSorts)
 
   /**
    * The symbols are take from a file and it is currently not possible to retrieve a list of
@@ -69,14 +69,6 @@ class DefaultSequencesEmitter(prover: Prover,
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
       prover.logComment("/sequences_int_axioms_dafny.smt2")
       preambleFileEmitter.emitSortParametricAssertions("/sequences_int_axioms_dafny.smt2", terms.sorts.Int)
-    }
-  }
-
-  def declareSortWrappers() {
-    collectedSorts foreach {
-      s =>
-      prover.logComment(s"/sortwrappers.smt2 Seq[${s.elementsSort}}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sortwrappers.smt2", s)
     }
   }
 }

@@ -163,7 +163,8 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
       repeat = !line.endsWith(")")
     } while (repeat)
-    stats
+
+    toMap(stats)
   }
 
 	def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
@@ -241,7 +242,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   }
 
 	private def log(str: String) {
-		if (logfile != null) logfile.println(str);
+		if (logfile != null) logfile.println(str)
 	}
 
   private def writeLine(out: String) = {
