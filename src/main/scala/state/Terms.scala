@@ -608,12 +608,9 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
-case class PermMin(p0: Term, p1: Term)
-  extends DefaultFractionalPermissions
-     with commonnodes.StructuralEqualityBinaryOp[Term] {
-
-  utils.assertSort(p0, "first operand", sorts.Perm)
-  utils.assertSort(p1, "second operand", sorts.Perm)
+case class PermMin(p0: Term, p1: Term) extends DefaultFractionalPermissions with commonnodes.BinaryOp[Term] {
+  utils.assertSort(p0, "Permission 1st", sorts.Perm)
+  utils.assertSort(p1, "Permission 2nd", sorts.Perm)
 
   override val toString = s"min ($p0, $p1)"
 }
