@@ -16,7 +16,7 @@ xcopy /S %SIL_DIR%\src\test\resources\all examples
 xcopy /S /I %SIL_DIR%\src\test\resources\quantifiedpermissions examples\quantifiedpermissions
 
 REM http://www.info-zip.org/Zip.html
-zip -r silicon.zip silicon.jar silicon.bat examples
+zip -r silicon.zip silicon.jar silicon.bat silicon.sh examples
 
 del silicon.jar
 rmdir /S /Q examples
