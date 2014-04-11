@@ -77,6 +77,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
 
+  def this() = this(Nil)
+
   def parseCommandLine(args: Seq[String]) {
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon may only be configured once.")
     lifetimeState = LifetimeState.Configured
@@ -99,6 +101,18 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
      */
     assert(lifetimeState == LifetimeState.Configured, "Silicon.verify may only be invoked once.")
     lifetimeState = LifetimeState.Started
+
+    _config.initialize{case _ =>}
+      /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
+       *       that initialises the verifier's configuration. However, this
+       *       requires the verifier to inherit from SilFrontend, which is
+       *       not really meaningful.
+       *       The configuration logic should thus be refactored such that
+       *       a Verifier can be used without extending SilFrontend, while
+       *       still ensuring that, e.g., a config is not initialised twice,
+       *       and that a reasonable default handling of --version, --help
+       *       or --dependencies is can be shared.
+       */
 
     shutDownHooks = Set()
     setLogLevel(config.logLevel())
