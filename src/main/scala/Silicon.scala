@@ -260,7 +260,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
 	private def logFailure(failure: Failure, log: String => Unit) {
-		log("\n" + failure.message.readableMessage(true))
+		log("\n" + failure.message.readableMessage(true, true))
 
 		if (config.showBranches() && failure.context.branchings.nonEmpty) {
 			logger.error("    Branches taken:")
