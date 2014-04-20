@@ -1,12 +1,13 @@
-package semper.silicon
+package semper
+package silicon
 
 import java.nio.file.Path
-import semper.sil.testing.DefaultSilSuite
-import semper.sil.verifier.Verifier
-import semper.sil.frontend.{Frontend, SilFrontend}
+import sil.testing.DefaultSilSuite
+import sil.verifier.Verifier
+import sil.frontend.{Frontend, SilFrontend}
 
 class SiliconTests extends DefaultSilSuite {
-  private val siliconTestDirectories: Seq[String] = List("wands")
+  private val siliconTestDirectories: Seq[String] = List("consistency", "wands")
   private val silTestDirectories: Seq[String] = List("all", "quantifiedpermissions")
 
   override def testDirectories: Seq[String] = siliconTestDirectories ++ silTestDirectories

@@ -123,8 +123,6 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     collectedAxioms foreach prover.assume
   }
 
-  def declareSortWrappers() = ???
-
   def emitUniquenessAssumptions() {
     prover.assume(terms.Distinct(uniqueSymbols))
   }
@@ -426,7 +424,6 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case _: ast.FullPerm => terms.FullPerm()
       case _: ast.NoPerm => terms.NoPerm()
       case ast.FractionalPerm(e0, e1) => terms.FractionPerm(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
-//      case _: ast.EpsilonPerm => terms.EpsilonPerm()
 
       case _: ast.WildcardPerm => ???
       /* TODO: Would it be sufficient to define a perm-typed 0 < v < write in the preamble and use that here?

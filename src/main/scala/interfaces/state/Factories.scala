@@ -3,7 +3,7 @@ package silicon
 package interfaces.state
 
 import scala.language.implicitConversions
-import silicon.state.terms.{Term}
+import silicon.state.terms.Term
 
 object factoryUtils {
 	trait Ø

@@ -9,7 +9,7 @@ import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Intern
     PredicateNotWellformed, MagicWandNotWellformed}
 import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Executor, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import interfaces.reporting.{ContextFactory, TraceView, TraceViewFactory}
 import state.{terms, SymbolConvert, DirectChunk}
@@ -33,7 +33,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
 	/*protected*/ val config: Config
 
-  /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+  /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV]
 	import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
@@ -210,14 +210,13 @@ class DefaultElementVerifier[ST <: Store[ST],
                              S <: State[ST, H, S],
                              TV <: TraceView[TV, ST, H, S]]
 		(	val config: Config,
-		  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
+		  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
-			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapMerger: HeapMerger[H],
+			val heapCompressor: HeapCompressor[ST, H, S],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
 			val bookkeeper: Bookkeeper,
 			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
@@ -240,7 +239,7 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
                       S <: State[ST, H, S]] {
 
   def create(config: Config,
-             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
+             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
              stateFactory: StateFactory[ST, H, S],
              symbolConverter: SymbolConvert,
              preambleEmitter: PreambleFileEmitter[_],
@@ -248,11 +247,10 @@ trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
              setsEmitter: SetsEmitter,
              multisetsEmitter: MultisetsEmitter,
              domainsEmitter: DomainsEmitter,
-             chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
-             heapMerger: HeapMerger[H],
+             heapCompressor: HeapCompressor[ST, H, S],
              quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
              bookkeeper: Bookkeeper,
              traceviewFactory: TraceViewFactory[TV, ST, H, S]): V
@@ -265,7 +263,7 @@ trait AbstractVerifier[ST <: Store[ST],
                        TV <: TraceView[TV, ST, H, S]]
       extends Logging {
 
-  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]]
+  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
@@ -283,14 +281,14 @@ trait AbstractVerifier[ST <: Store[ST],
     emitPreamble(program)
 
     val members = program.members.filterNot(m => filter(m.name)).iterator
-
-    /* Verification can be parallelised by forking DefaultMemberVerifiers. */
     var results: List[VerificationResult] = Nil
+
+    /* Verification could be parallelised by forking DefaultMemberVerifiers. */
 
     if (config.stopOnFirstError()) {
       /* Stops on first error */
       while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = ev.verify(members.next) :: results
+        results = ev.verify(members.next()) :: results
       }
 
       results = results.reverse
@@ -299,7 +297,7 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results = members.map(ev.verify _).toList
+      results = members.map(ev.verify).toList
     }
 
     results
@@ -335,8 +333,10 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
 
-    // sequences are dependent on multisets ($Multiset.fromSeq, which is additionally axiomatised in the sequences axioms)
-    // multisets are dependent on sets ($Multiset.fromSet)
+    /* Sequences depend on multisets ($Multiset.fromSeq, which is
+     * additionally axiomatised in the sequences axioms).
+     * Multisets depend on sets ($Multiset.fromSet).
+     */
     setsEmitter.declareSymbols()
     multisetsEmitter.declareSymbols()
     sequencesEmitter.declareSymbols()
@@ -348,11 +348,11 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
 
-    sequencesEmitter.declareSortWrappers()
-    setsEmitter.declareSortWrappers()
-    multisetsEmitter.declareSortWrappers()
-    // TODO: not sure what to do here
-    // domainEmitter.declareSortWrappers()
+    emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
+    emitSortWrappers(sequencesEmitter.sorts)
+    emitSortWrappers(setsEmitter.sorts)
+    emitSortWrappers(multisetsEmitter.sorts)
+    emitSortWrappers(domainsEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -376,6 +376,8 @@ trait AbstractVerifier[ST <: Store[ST],
 
       decider.prover.declare(toSnapWrapper)
       decider.prover.declare(fromSnapWrapper)
+
+      preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
     })
   }
 
@@ -395,7 +397,7 @@ class DefaultVerifierFactory[ST <: Store[ST],
     extends VerifierFactory[DefaultVerifier[ST, H, PC, S, TV], TV, ST, H, PC, S] {
 
   def create(config: Config,
-             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
+             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
              stateFactory: StateFactory[ST, H, S],
              symbolConverter: SymbolConvert,
              preambleEmitter: PreambleFileEmitter[_],
@@ -403,27 +405,28 @@ class DefaultVerifierFactory[ST <: Store[ST],
              setsEmitter: SetsEmitter,
              multisetsEmitter: MultisetsEmitter,
              domainsEmitter: DomainsEmitter,
-             chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
              stateFormatter: StateFormatter[ST, H, S, String],
-             heapMerger: HeapMerger[H],
+             heapCompressor: HeapCompressor[ST, H, S],
              quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
              magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
              bookkeeper: Bookkeeper,
              traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
 
     new DefaultVerifier[ST, H, PC, S, TV](
                         config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
-                        multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, quantifiedChunkHelper, stateUtils,
-                        magicWandSupporter, bookkeeper, traceviewFactory)
+                        multisetsEmitter, domainsEmitter, stateFormatter, heapCompressor, quantifiedChunkHelper,
+                        magicWandSupporter, stateUtils, bookkeeper, traceviewFactory)
 
 }
 
-class DefaultVerifier[ST <: Store[ST], H <: Heap[H] : Manifest, PC <: PathConditions[PC],
+class DefaultVerifier[ST <: Store[ST],
+                      H <: Heap[H],
+                      PC <: PathConditions[PC],
 											S <: State[ST, H, S],
 											TV <: TraceView[TV, ST, H, S]]
 		(	val config: Config,
-			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S]],
+			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
       val preambleEmitter: PreambleFileEmitter[_],
@@ -431,11 +434,10 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H] : Manifest, PC <: PathCondit
       val setsEmitter: SetsEmitter,
       val multisetsEmitter: MultisetsEmitter,
 			val domainsEmitter: DomainsEmitter,
-			val chunkFinder: ChunkFinder[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV],
 			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapMerger: HeapMerger[H],
+			val heapCompressor: HeapCompressor[ST, H, S],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S]],
+      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
 			val bookkeeper: Bookkeeper,
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
@@ -444,8 +446,8 @@ class DefaultVerifier[ST <: Store[ST], H <: Heap[H] : Manifest, PC <: PathCondit
 
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
-	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, chunkFinder, stateFormatter,
-                                      heapMerger, quantifiedChunkHelper, stateUtils, magicWandSupporter, bookkeeper,
-                                      contextFactory, traceviewFactory)
+	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
+                                      quantifiedChunkHelper, magicWandSupporter, stateUtils, bookkeeper, contextFactory)
+                                      traceviewFactory)
                                      (manifest[H])
 }

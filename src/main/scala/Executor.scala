@@ -9,9 +9,8 @@ import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermissio
     AssertionFalse, MagicWandChunkNotFound}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapMerger}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.reporting.TraceView
-
 import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk,
@@ -20,6 +19,7 @@ import reporting.{DefaultContext, Executing, IfBranching, Description, Branching
     ScopeChangingDescription}
 import supporters.MagicWandSupporter
 import heap.QuantifiedChunkHelper
+import state.terms.perms.IsPositive
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -28,16 +28,15 @@ trait DefaultExecutor[ST <: Store[ST],
 											TV <: TraceView[TV, ST, H, S]]
 		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV]
 		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-									 with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-									 with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-									 with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
-  protected implicit val manifestH: Manifest[H]
+	protected val decider: Decider[P, ST, H, PC, S, C, TV]
 
-	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.{fresh, assume, inScope}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -46,21 +45,14 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val heapMerger: HeapMerger[H]
-  import heapMerger.merge
-
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
-
-  protected val chunkFinder: ChunkFinder[P, ST, H, S, C, TV]
-	import chunkFinder.withChunk
-
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
+  protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
   import stateUtils.freshARP
 
+  protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
   protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
-
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
-	protected val config: Config
+  protected val config: Config
 
   var program: ast.Program
 
@@ -72,7 +64,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case ce: sil.ast.ConditionalEdge =>
         eval(σ, ce.cond, Internal(ce.cond), c, tv)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
-          branch(tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
+          branch(σ, tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
             (c2: C, tv1: TV) => exec(σ, ce.dest, c2, tv1)(Q),
             (c2: C, tv1: TV) => Success[C, ST, H, S](c2)))
 
@@ -112,8 +104,6 @@ trait DefaultExecutor[ST <: Store[ST],
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
-//    logger.debug("\n[exec] " + block.label)
-
     block match {
       case block @ sil.ast.StatementBlock(stmt, _) =>
         exec(σ, stmt, c, tv)((σ1, c1) =>
@@ -150,7 +140,7 @@ trait DefaultExecutor[ST <: Store[ST],
            *       Should no longer be necessary once we have an on-demand handling of merging and
            *       false-checking.
            */
-            if (decider.assert(False()))
+            if (decider.checkSmoke())
               Success[C, ST, H, S](c1) /* TODO: Mark branch as dead? */
             else
               exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
@@ -170,7 +160,7 @@ trait DefaultExecutor[ST <: Store[ST],
                *       Should no longer be necessary once we have an on-demand handling of merging and
                *       false-checking.
                */
-                if (decider.assert(False()))
+                if (decider.checkSmoke())
                   Success[C, ST, H, S](c2) /* TODO: Mark branch as dead? */
                 else
                   leave(σ3, lb, c2, tv)(Q))})})
@@ -218,7 +208,7 @@ trait DefaultExecutor[ST <: Store[ST],
     stmt match {
       case _: sil.ast.Seqn =>
       case _ =>
-        logger.debug(s"\nEXECUTE ${stmt.pos}: ${stmt}")
+        logger.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
         logger.debug(stateFormatter.format(σ))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString)
@@ -252,29 +242,29 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
             decider.assume(NullTrigger(tRcvr))
-            if (!decider.assert(tRcvr !== Null()))
-              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
-            else if (!decider.assert(AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())))
-              Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
-            else {
-              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
-              quantifiedChunkHelper.consume(σ.h, ch, pve, fl, c2, tv)(h =>
-                Q((σ \ h) \+ ch, c2)
-              )
-            }
-          })
-        )
+            decider.assert(σ, tRcvr !== Null()){
+              case false =>
+                Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
+              case true =>
+                decider.assert(σ, AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())){
+                  case false =>
+                    Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
+                  case true =>
+                    val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
+                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2, tv)(h =>
+                      Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          if (decider.assert(tRcvr !== Null()))
-            eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
-              val id = FieldChunkIdentifier(tRcvr, field.name)
-              withChunk[DirectChunk](σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
-                Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
-          else
-            Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv))
+          decider.assert(σ, tRcvr !== Null()){
+            case true =>
+              eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+                val id = FieldChunkIdentifier(tRcvr, field.name)
+                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
+                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
+            case false =>
+              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv)})
 
       case ast.New(v) =>
         val t = fresh(v)
@@ -300,13 +290,12 @@ trait DefaultExecutor[ST <: Store[ST],
         a match {
           /* "assert true" triggers a heap compression. */
           case _: ast.True =>
-            val (mh, mts) = merge(Ø, σ.h)
-            assume(mts)
-            Q(σ \ mh, c)
+            heapCompressor.compress(σ, σ.h)
+            Q(σ, c)
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>
-            if (decider.checkSmoke)
+            if (decider.checkSmoke())
               Success[C, ST, H, S](c)
             else
               Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(a), c, tv)
@@ -346,56 +335,57 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
-              if (decider.isPositive(tPerm)) {
-                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
+              decider.assert(σ, IsPositive(tPerm)){
+                case true =>
+                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                  consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
                   val ncs = dcs flatMap {
                     case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
                     case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
-                    case _: MagicWandChunk[H] => None
-                  }
+                    case _: MagicWandChunk[H] => None}
 
-                  /* Producing Access is unfortunately not an option here
-                  * since the following would fail due to productions
-                  * starting in an empty heap:
-                  *
-                  *   predicate V { acc(x) }
-                  *
-                  *   function f(a: int): int
-                  *	   requires rd(x)
-                  * 	 { x + a }
-                  *
-                  *   method test(a: int)
-                  *     requires ... ensures ...
-                  *   { fold acc(V, f(a)) }
-                  *
-                  * Fold would fail since acc(V, f(a)) is produced in an
-                  * empty and thus f(a) fails due to missing permissions to
-                  * read x.
-                  *
-                  * TODO: Use heap merge function here!
-                  */
-                  val id = PredicateChunkIdentifier(predicate.name, tArgs)
-                  val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ1.h, id) match {
-                    case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
-                    case None => (σ1.h, True(), tPerm)}
-                  assume(t)
-                  val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
-                  Q(σ \ h1, c3)})}
-              else
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
+                    /* Producing Access is unfortunately not an option here
+                    * since the following would fail due to productions
+                    * starting in an empty heap:
+                    *
+                    *   predicate V { acc(x) }
+                    *
+                    *   function f(a: int): int
+                    *	   requires rd(x)
+                    * 	 { x + a }
+                    *
+                    *   method test(a: int)
+                    *     requires ... ensures ...
+                    *   { fold acc(V, f(a)) }
+                    *
+                    * Fold would fail since acc(V, f(a)) is produced in an
+                    * empty and thus f(a) fails due to missing permissions to
+                    * read x.
+                    *
+                    * TODO: Use heap merge function here!
+                    */
+                    val id = PredicateChunkIdentifier(predicate.name, tArgs)
+                    val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id) match {
+                      case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
+                      case None => (σ1.h, True(), tPerm)}
+                    assume(t)
+                    val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
+                    Q(σ \ h1, c3)})
+                case false =>
+                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)}))
 
       case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
-              if (decider.isPositive(tPerm)) {
-                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) => {
-                  produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) => {
-                    Q(σ2 \ σ.γ, c4)})})}
-              else
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)))
+              decider.assert(σ, IsPositive(tPerm)){
+                case true =>
+                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                  consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) =>
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) =>
+                      Q(σ2 \ σ.γ, c4)))
+                case false =>
+                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)}))
 
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)

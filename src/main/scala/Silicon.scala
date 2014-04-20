@@ -10,13 +10,13 @@ import semper.sil.verifier.{
     Verifier => SilVerifier,
     VerificationResult => SilVerificationResult,
     Success => SilSuccess,
-    Failure => SilError,
+    Failure => SilFailure,
     DefaultDependency => SilDefaultDependency}
-import sil.frontend.SilFrontendConfig
+import sil.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
-import state.{MapBackedStore, DefaultHeapMerger, SetBackedHeap, MutableSetBackedPathConditions,
+import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
 DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
@@ -25,6 +25,7 @@ import supporters.MagicWandSupporter
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 import heap.DefaultQuantifiedChunkHelper
+import semper.silicon.ast.Consistency
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -37,9 +38,9 @@ import heap.DefaultQuantifiedChunkHelper
 
 trait SiliconConstants {
   val name = brandingData.sbtProjectName
-  val version = brandingData.sbtProjectVersion
+  val version = s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2013"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2014"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val expectedZ3Version = "4.3.0"
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
@@ -79,6 +80,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
 
+  def this() = this(Nil)
+
   def parseCommandLine(args: Seq[String]) {
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon may only be configured once.")
     lifetimeState = LifetimeState.Configured
@@ -102,24 +105,42 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     assert(lifetimeState == LifetimeState.Configured, "Silicon.verify may only be invoked once.")
     lifetimeState = LifetimeState.Started
 
+    _config.initialize{case _ =>}
+      /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
+       *       that initialises the verifier's configuration. However, this
+       *       requires the verifier to inherit from SilFrontend, which is
+       *       not really meaningful.
+       *       The configuration logic should thus be refactored such that
+       *       a Verifier can be used without extending SilFrontend, while
+       *       still ensuring that, e.g., a config is not initialised twice,
+       *       and that a reasonable default handling of --version, --help
+       *       or --dependencies is can be shared.
+       */
+
     shutDownHooks = Set()
     setLogLevel(config.logLevel())
 
-		logger.info("%s started %s".format(name, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())))
+		logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    var result: sil.verifier.VerificationResult = null
+    val consistencyErrors = Consistency.check(program)
 
-    try {
-      val failures = runVerifier(program)
-      result = convertFailures(failures)
-    } catch {
-      case DependencyNotFoundException(err) => result = SilError(err :: Nil)
-    } finally {
-      shutDownHooks.foreach(_())
+    if (consistencyErrors.nonEmpty) {
+      SilFailure(consistencyErrors)
+    } else {
+      var result: Option[SilVerificationResult] = None
+
+      try {
+        val failures = runVerifier(program)
+        result = Some(convertFailures(failures))
+      } catch {
+        case DependencyNotFoundException(err) => result = Some(SilFailure(err :: Nil))
+      } finally {
+        shutDownHooks.foreach(_())
+      }
+
+      assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately.")
+      result.get
     }
-
-    assert(result != null, "The result of the verification run wasn't stored appropriately.")
-    result
 	}
 
   /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
@@ -137,7 +158,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     bookkeeper.branches = 1
     bookkeeper.startTime = System.currentTimeMillis()
 
-	  val decider = new DefaultDecider[ST, H, PC, S, C]()
+	  val decider = new DefaultDecider[ST, H, PC, S, C, TV]()
     shutDownHooks = shutDownHooks + (() => decider.stop())
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
@@ -145,17 +166,15 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
-    val chunkFinder = new DefaultChunkFinder[ST, H, PC, S, C, TV](decider, stateFormatter)
-    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
+    val stateUtils = new StateUtils[ST, H, PC, S, C, TV](decider)
     val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]]()
 
     val dlb = FullPerm()
 
-    val heapMerger =
-			new DefaultHeapMerger[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
-    decider.init(pathConditionFactory, config, bookkeeper)
+    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
     decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
@@ -165,13 +184,13 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     verifierFactory.create(config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter,
-                           setsEmitter, multisetsEmitter, domainsEmitter, chunkFinder, stateFormatter, heapMerger, quantifiedChunkHelper,
-                           stateUtils, magicWandSupporter, bookkeeper, traceviewFactory)
+                           setsEmitter, multisetsEmitter, domainsEmitter, stateFormatter, heapCompressor,
+                           quantifiedChunkHelper, stateUtils, magicWandSupporter, bookkeeper, traceviewFactory)
 	}
 
 	private def runVerifier(program: ast.Program): List[Failure] = {
 	  val verifierFactory = new DefaultVerifierFactory[ST, H, PC, S, BranchingOnlyTraceView[ST, H, S]]
-	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()    
+	  val traceviewFactory = new BranchingOnlyTraceViewFactory[ST, H, S]()
 
 	  val verifier = createVerifier(verifierFactory, traceviewFactory)
 
@@ -207,10 +226,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
 
-//    val failures = results.collect{
-//      case f: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, _] => f
-//    }
-
 		if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.getStatistics
 
@@ -244,12 +259,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private def convertFailures(failures: List[Failure]): SilVerificationResult = {
     failures match {
       case Seq() => SilSuccess
-      case _ => SilError(failures map (_.message))
+      case _ => SilFailure(failures map (_.message))
     }
   }
 
 	private def logFailure(failure: Failure, log: String => Unit) {
-		log("\n" + failure.message.readableMessage(true))
+		log("\n" + failure.message.readableMessage(true, true))
 
 		if (config.showBranches() && failure.context.branchings.nonEmpty) {
 			logger.error("    Branches taken:")
@@ -412,7 +427,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 }
 
 
-object SiliconRunner extends App with sil.frontend.SilFrontend {
+object SiliconRunner extends App with SilFrontend {
   private var siliconInstance: Silicon = _
 
   execute(args)

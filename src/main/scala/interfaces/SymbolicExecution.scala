@@ -2,7 +2,7 @@ package semper
 package silicon
 package interfaces
 
-import sil.verifier.{ PartialVerificationError}
+import sil.verifier.PartialVerificationError
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
 import reporting.{Context, TraceView}
 import silicon.state.terms.{Sort, Term, FractionalPermissions}

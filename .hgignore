@@ -14,3 +14,5 @@ stats/
 bin/**
 tmp_*
 tmp/
+utils/assembly/silicon.jar
+utils/scripts/z3_tidy.jar

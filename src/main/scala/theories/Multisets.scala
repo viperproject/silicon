@@ -39,7 +39,7 @@ class DefaultMultisetsEmitter(prover: Prover,
     program visit {
       case t: sil.ast.Typed => t.typ match {
         case s: ast.types.Multiset => multisetTypes += s
-        // sequences have a dependency on multisets
+        /* Sequences depend on multisets */
         case s: ast.types.Seq => multisetTypes += ast.types.Multiset(s.elementType)
         case _ => /* Ignore other types */
       }
@@ -63,14 +63,6 @@ class DefaultMultisetsEmitter(prover: Prover,
     collectedSorts foreach {s =>
       prover.logComment(s"/multisets_axioms_dafny.smt2 [${s.elementsSort}]")
       preambleFileEmitter.emitSortParametricAssertions("/multisets_axioms_dafny.smt2", s.elementsSort)
-    }
-  }
-
-  def declareSortWrappers() {
-    collectedSorts foreach {
-      s =>
-        prover.logComment(s"/sortwrappers.smt2 Multiset[${s.elementsSort}}]")
-        preambleFileEmitter.emitSortParametricAssertions("/sortwrappers.smt2", s)
     }
   }
 }

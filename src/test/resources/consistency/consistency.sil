@@ -1,0 +1,23 @@
+var f: Int
+var r: Ref
+
+function recfun(x: Int): Int
+  requires x > 0
+  //:: ExpectedOutput(internal:feature.unsupported)
+  ensures recfun(x) < 0
+{ -x }
+
+method epstest(x: Ref)
+  //:: ExpectedOutput(internal:feature.unsupported)
+  requires acc(x.f, epsilon)
+{}
+
+predicate recpred(x: Ref) {
+  acc(x.f) && acc(x.r) && (x.r != null ==> acc(recpred(x.r)) && unfolding acc(recpred(x.r)) in x.r.f != 0)
+}
+
+method use_recpred(x: Ref)
+  requires acc(recpred(x))
+{
+  var v: Int := unfolding acc(recpred(x)) in x.f
+}

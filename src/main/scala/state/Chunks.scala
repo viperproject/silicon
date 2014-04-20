@@ -26,14 +26,14 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class QuantifiedChunk(name: String, value:Term, perm: DefaultFractionalPermissions) extends Chunk {
+case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions) extends Chunk {
   val args = *() :: Nil   /* to make sure it does not match other chunks */
   val id = FieldChunkIdentifier(*(), name)
 
   def +(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm - perm)
 
-  override def toString = "∀ %s -> %s # %s".format(name, value, perm)
+  override def toString = "FA %s -> %s # %s".format(name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {
@@ -47,15 +47,13 @@ case class DirectPredicateChunk(name: String,
                                 nested: List[NestedChunk] = Nil)
     extends PredicateChunk with DirectChunk {
 
-  terms.utils.assertSort(snap, "snapshot", terms.sorts.Snap)
-
   val id = PredicateChunkIdentifier(name, args)
 
-	def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
-	def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
+  def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
+  def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
   def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
 
-	override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
+  override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
 }
 
 

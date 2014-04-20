@@ -3,11 +3,10 @@ package silicon
 package state.terms
 
 import ast.commonnodes
-import semper.silicon.state.MagicWandChunk
-import semper.silicon.interfaces.state.Heap
+import sil.ast.utility.Visitor
+import state.MagicWandChunk
+import interfaces.state.Heap
 
-//import ast.commonnodes.{BinaryOp}
-//import interfaces.state.{Heap}
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -98,68 +97,36 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
  * Basic terms
  */
 
-sealed trait Term {
+/* TODO: Should extend semper.sil.ast.Node in order to share all the
+ *       visitor-related methods.
+ *       To do this, Node has to be made parametric in the type of concrete
+ *       Nodes that the visitors operate on. Also, the 'subnodes/subterms'
+ *       function must be customizable.
+ */
+sealed trait Term /*extends Traversable[Term]*/ {
   def sort: Sort
 
-  def replace(term:Term, withTerm:Term):Term = {
-    if (this==term) withTerm else
-      this match {
-        case *() => *()
-        case Ite(t1, t2, t3) => Ite(t1.replace(term, withTerm), t2.replace(term, withTerm), t3.replace(term, withTerm))
-        case SetIn(t1, t2) => SetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Eq(t1, t2) => Eq(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case v: Var => v
-        case f: FractionPerm => f
-        case f: FullPerm => f
-        case p: NoPerm => p
-        case PermMinus(t1,t2) => PermMinus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-        case PermPlus(t1,t2) => PermPlus(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-        case PermTimes(t1, t2) => PermTimes(t1.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions], t2.replace(term, withTerm).asInstanceOf[DefaultFractionalPermissions])
-        case TermPerm(t) => TermPerm(t.replace(term, withTerm))
-        case And(t1, t2) => And(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Or(t1, t2) => Or(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case PermMin(t1,t2) => PermMin(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetDifference(t1,t2) => SetDifference(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetUnion(t1, t2) => SetUnion(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetIntersection(t1, t2) => SetIntersection(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SetAdd(t1, t2) => SetAdd(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SingletonSet(t1) => SingletonSet(t1.replace(term, withTerm))
-        case False() => False()
-        case True() => True()
-        case Not(t) => Not(t.replace(term, withTerm))
-        case s: SortWrapper => s
-        case Implies(t1, t2) => Implies(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case DomainFApp(function, tArgs) => DomainFApp(function, tArgs map {t => t.replace(term, withTerm) })
-        case n: Null => n
-        case w: WildcardPerm => w
-        case Quantification(quant, vars, body, triggers) => Quantification(quant, vars, body.replace(term, withTerm), triggers)
-        case Plus(t1, t2) => Plus(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case i:IntLiteral => i
-        case AtLeast(t1, t2) => AtLeast(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Less(t1, t2) => Less(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Greater(t1, t2) => Greater(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Times(t1, t2) => Times(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case FApp(f, snap, tArgs) => FApp(f, snap, tArgs.map(t => t.replace(term, withTerm)))
-        case e:EmptySet => e
-        case MultisetIn(t1, t2) => MultisetIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case MultisetCount(t1, t2) => MultisetCount(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqIn(t1, t2) => SeqIn(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqTake(t1, t2) => SeqTake(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqDrop(t1, t2) => SeqDrop(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqAt(t1, t2) => SeqAt(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case MultisetFromSeq(t1) => MultisetFromSeq(t1.replace(term, withTerm))
-        case SeqLength(t) => SeqLength(t.replace(term, withTerm))
-        case Minus(t1, t2) => Minus(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case AtMost(t1, t2) => AtMost(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case Div(t1, t2) => Div(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case SeqRanged(t1, t2) => SeqRanged(t1.replace(term, withTerm), t2.replace(term, withTerm))
-        case _ => sys.error("Cannot replace for term. Implement me!")
-      }
-  }
-
   def ===(t: Term): Term = Eq(this, t)
+
   def !==(t: Term): Term = Not(Eq(this, t))
+
   def convert(to: Sort): Term = SortWrapper(this, to)
+
+  def visit[A](f: PartialFunction[Term, A]) =
+    Visitor.visit(this, state.utils.subterms)(f)
+
+  def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
+               (recursive: Term => Boolean = !pre.isDefinedAt(_),
+                post: PartialFunction[Term, Term] = PartialFunction.empty)
+  : this.type =
+
+    state.utils.transform[this.type](this, pre)(recursive, post)
+
+  def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
+    Visitor.existsDefined(this, state.utils.subterms, f)
+
+  def replace(original: Term, replacement: Term) =
+    this.transform{case `original` => replacement}()
 }
 
 /* Symbols */
@@ -243,7 +210,7 @@ object Exists extends Quantifier { override val toString = "∃ " }
 
 case class Trigger(ts: Seq[Term])
 
-// Placeholder
+/* Placeholder */
 case class *() extends Symbol {
   val id = "*"
   val sort = sorts.Ref
@@ -443,18 +410,7 @@ object Ite extends Function3[Term, Term, Term, Term] {
 
 sealed trait ComparisonTerm extends BooleanTerm
 
-///* TODO: Make more specific by using a generic T <: Term, so that e.g. equality
-// *       on sequences can range over SeqTerms.
-// */
-//sealed trait Eq extends ComparisonTerm with commonnodes.Eq[Term] {
-//  assert(p0.sort == p1.sort,
-//         ("Expected both operands to be of the same sort, but found %s (%s) " +
-//          "and %s (%s).").format(p0.sort, p0, p1.sort, p1))
-//}
-
-//case class TermEq(p0: Term, p1: Term) extends Eq
-
-case class Eq(p0: Term, p1: Term) extends ComparisonTerm with commonnodes.Eq[Term] {
+case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends ComparisonTerm with commonnodes.Eq[Term] {
   assert(p0.sort == p1.sort,
       "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
         .format(p0.sort, p0, p1.sort, p1))
@@ -516,16 +472,6 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ Function2[
  * Permissions
  */
 
-//sealed trait PermissionsTerm[P <: PermissionsTerm[P]] extends Term {
-//  override val sort = sorts.Perm
-//
-//  def +(other: P): P
-//  def -(other: P): P
-//  def *(other: P): P
-//  def <(other: P): BooleanTerm
-//  def >(other: P): BooleanTerm
-//}
-
 sealed trait FractionalPermissions[P <: FractionalPermissions[P]] extends Term {
   def +(other: P): P
   def -(other: P): P
@@ -544,23 +490,10 @@ sealed abstract class DefaultFractionalPermissions extends FractionalPermissions
   def >(other: DefaultFractionalPermissions) = PermLess(other, this)
 }
 
-//sealed trait NonPotentiallyWriteFractionalPermissions extends FractionalPermissions {
-//  val isPotentiallyWrite = PotentiallyWriteStatus.False
-//}
-//
-//sealed trait PotentiallyWriteFractionalPermissions extends FractionalPermissions  {
-//  val isPotentiallyWrite = PotentiallyWriteStatus.True
-//}
-//
-//sealed trait FractionalPermissionsExpression extends FractionalPermissions  {
-//  val isPotentiallyWrite: PotentiallyWriteStatus = PotentiallyWriteStatus.Unknown
-//}
-
 case class NoPerm() extends DefaultFractionalPermissions { override val toString = "Z" }
 case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
-//case class EpsilonPerm() extends DefaultFractionalPermissions { override val toString = "ε" }
 
 case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
@@ -587,7 +520,6 @@ object PermTimes extends ((DefaultFractionalPermissions, DefaultFractionalPermis
     case (t, FullPerm()) => t
     case (NoPerm(), _) => NoPerm()
     case (_, NoPerm()) => NoPerm()
-//    case (PercPerm(n), PercPerm(m)) => PercPerm(n * m)
     case (_, _) => new PermTimes(t0, t1)
   }
 
@@ -605,7 +537,6 @@ object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFrac
   def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
-    //    case (PercPerm(n), PercPerm(m)) => PercPerm(n * m)
     case (_, _) => new IntPermTimes(t0, t1)
   }
 
@@ -621,8 +552,6 @@ object PermPlus extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (NoPerm(), _) => t1
     case (_, NoPerm()) => t0
-//    case (PercPerm(n), PercPerm(m)) => if (n == -m) NoPerm() else PercPerm(n + m)
-//    case (ConcretePerm(n1, d1), ConcretePerm(n2, d2)) => ConcretePerm(n1 * d2 + n2 * d1, d1 * d2)
     case (_, _) => new PermPlus(t0, t1)
   }
 
@@ -670,16 +599,15 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
-case class PermMin(val p1: Term, val p2: Term) extends DefaultFractionalPermissions {
-  utils.assertSort(p1, "Permission 1st", sorts.Perm)
-  utils.assertSort(p2, "Permission 2nd", sorts.Perm)
+case class PermMin(p0: Term, p1: Term) extends DefaultFractionalPermissions with commonnodes.BinaryOp[Term] {
+  utils.assertSort(p0, "Permission 1st", sorts.Perm)
+  utils.assertSort(p1, "Permission 2nd", sorts.Perm)
 
-  override val toString = s"min ($p1, $p2)"
+  override val toString = s"min ($p0, $p1)"
 }
 
 /* Functions */
 
-//case class FApp(f: ast.Function, s: Term, tArgs: Seq[Term], sort: Sort) extends Term {
 case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Term {
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
@@ -699,22 +627,9 @@ sealed trait SeqTerm extends Term {
   val sort: sorts.Seq
 }
 
-//case class SeqEq(p0: Term, p1: Term) extends /*SeqTerm with*/ Eq {
-//  utils.assertSameSeqSorts(p0, p1)
-//
-////  val elementsSort = p0.sort.sortParameters.head
-//}
-
 case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
   utils.assertSort(p0, "first operand", sorts.Int)
   utils.assertSort(p1, "second operand", sorts.Int)
-
-  //  utils.assertValidBinSeqOpSort(p0, p1)
-  //  println("\n[SeqRanged]")
-  //  println("  p0 = " + p0)
-  //  println("  p0.sort = " + p0.sort)
-  //  println("  p1 = " + p1)
-  //  println("  p1.sort = " + p1.sort)
 
   val elementsSort = sorts.Int
   val sort = sorts.Seq(elementsSort)
@@ -728,18 +643,13 @@ case class SeqNil(elementsSort: Sort) extends SeqTerm with Literal {
 }
 
 case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ {
-  val elementsSort = p.sort //.sortParameters.head
+  val elementsSort = p.sort
   val sort = sorts.Seq(elementsSort)
 
   override val toString = "[" + p + "]"
 }
 
-/*case*/ class SeqAppend(val p0: Term, val p1: Term)
-      extends SeqTerm
-      with    commonnodes.StructuralEqualityBinaryOp[Term] {
-
-//  utils.assertSameSeqSorts(p0, p1)
-
+class SeqAppend(val p0: Term, val p1: Term) extends SeqTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
@@ -749,21 +659,13 @@ case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ {
 object SeqAppend extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
     utils.assertSameSeqSorts(t0, t1)
-//    val (seq0, seq1) = utils.asSameSeqSorts(t0, t1)
     new SeqAppend(t0, t1)
   }
 
   def unapply(sa: SeqAppend) = Some((sa.p0, sa.p1))
 }
 
-/*case*/ class SeqDrop(val p0: Term, val p1: Term)
-    extends SeqTerm
-    with    commonnodes.StructuralEqualityBinaryOp[Term] {
-
-//  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-//  utils.assertSort(p1, "second operand", sorts.Int)
-  //  utils.assertSameSeqSorts(p0, p1)
-
+class SeqDrop(val p0: Term, val p1: Term) extends SeqTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
@@ -772,7 +674,6 @@ object SeqAppend extends ((Term, Term) => SeqTerm) {
 
 object SeqDrop extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-//    val seq = utils.asSeqTerm(t0, "first operand")
     utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", sorts.Int)
     new SeqDrop(t0, t1)
@@ -781,13 +682,7 @@ object SeqDrop extends ((Term, Term) => SeqTerm) {
   def unapply(sd: SeqDrop) = Some((sd.p0, sd.p1))
 }
 
-/*case*/ class SeqTake(val p0: Term, val p1: Term)
-    extends SeqTerm
-    with    commonnodes.StructuralEqualityBinaryOp[Term] {
-
-//  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-//  utils.assertSort(p1, "second operand", sorts.Int)
-
+class SeqTake(val p0: Term, val p1: Term) extends SeqTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
@@ -796,7 +691,6 @@ object SeqDrop extends ((Term, Term) => SeqTerm) {
 
 object SeqTake extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-//    val seq = utils.asSeqTerm(t0, "first operand")
     utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", sorts.Int)
     new SeqTake(t0, t1)
@@ -805,16 +699,13 @@ object SeqTake extends ((Term, Term) => SeqTerm) {
   def unapply(st: SeqTake) = Some((st.p0, st.p1))
 }
 
-/*case*/ class SeqLength(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
-//  utils.assertSort(p, "term", "Seq", _.isInstanceOf[sorts.Seq])
-
+class SeqLength(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
   val sort = sorts.Int
   override val toString = "|" + p + "|"
 }
 
 object SeqLength {
   def apply(t: Term) = {
-//    val seq = utils.asSeqTerm(t, "first operand")
     utils.assertSort(t, "term", "Seq", _.isInstanceOf[sorts.Seq])
     new SeqLength(t)
   }
@@ -822,12 +713,7 @@ object SeqLength {
   def unapply(sl: SeqLength) = Some((sl.p))
 }
 
-/*case*/ class SeqAt(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
-//  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-//  utils.assertSort(p1, "second operand", sorts.Int)
-
-  //  val elementsSort = p0.sort.sortParameters.head
-  //  val sort = sorts.Seq(elementsSort)
+class SeqAt(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
   val sort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
 
   override val toString = p0 + "[" + p1 + "]"
@@ -835,7 +721,6 @@ object SeqLength {
 
 object SeqAt extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = {
-//    val seq = utils.asSeqTerm(t0, "first operand")
     utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", sorts.Int)
     new SeqAt(t0, t1)
@@ -844,16 +729,12 @@ object SeqAt extends ((Term, Term) => Term) {
   def unapply(sa: SeqAt) = Some((sa.p0, sa.p1))
 }
 
-/*case*/ class SeqIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
-//  utils.assertSort(p0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-//  utils.assertSort(p1, "second operand", p0.sort.sortParameters.head)
-
+class SeqIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
   override val toString = "%s in %s".format(p1, p0)
 }
 
 object SeqIn extends ((Term, Term) => BooleanTerm) {
   def apply(t0: Term, t1: Term) = {
-//    val seq = utils.asSeqTerm(t0, "first operand")
     utils.assertSort(t0, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
     utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Seq].elementsSort)
     new SeqIn(t0, t1)
@@ -862,7 +743,7 @@ object SeqIn extends ((Term, Term) => BooleanTerm) {
   def unapply(si: SeqIn) = Some((si.p0, si.p1))
 }
 
-/*case*/ class SeqUpdate(val t0: Term, val t1: Term, val t2: Term) extends SeqTerm {
+class SeqUpdate(val t0: Term, val t1: Term, val t2: Term) extends SeqTerm {
   val sort = t0.sort.asInstanceOf[sorts.Seq]
   val elementsSort = sort.elementsSort
 
@@ -901,28 +782,19 @@ sealed trait BinarySetOp extends SetTerm with commonnodes.StructuralEqualityBina
   val sort = sorts.Set(elementsSort)
 }
 
-//case class SetEq(p0: Term, p1: Term) extends Eq {
-//  utils.assertSameSetSorts(p0, p1)
-//}
-
 case class EmptySet(elementsSort: Sort) extends SetTerm with Literal {
   val sort = sorts.Set(elementsSort)
   override val toString = "Ø"
 }
 
 case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ {
-  val elementsSort = p.sort //.sortParameters.head
+  val elementsSort = p.sort
   val sort = sorts.Set(elementsSort)
 
   override val toString = "{" + p + "}"
 }
 
-/*case*/ class SetAdd(val p0: Term, val p1: Term)
-  extends SetTerm
-  with    commonnodes.StructuralEqualityBinaryOp[Term] {
-
-  //  utils.assertSameSeqSorts(p0, p1)
-
+class SetAdd(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
   val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
   val sort = sorts.Set(elementsSort)
 
@@ -940,11 +812,7 @@ object SetAdd extends ((Term, Term) => SetTerm) {
   def unapply(sa: SetAdd) = Some((sa.p0, sa.p1))
 }
 
-//class SetUnion(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
 class SetUnion(val p0: Term, val p1: Term) extends BinarySetOp {
-//  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
-//  val sort = sorts.Seq(elementsSort)
-
   override val op = "∪"
 }
 
@@ -957,11 +825,7 @@ object SetUnion extends ((Term, Term) => SetTerm) {
   def unapply(su: SetUnion) = Some((su.p0, su.p1))
 }
 
-//class SetIntersection(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
 class SetIntersection(val p0: Term, val p1: Term) extends BinarySetOp {
-//  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
-//  val sort = sorts.Seq(elementsSort)
-
   override val op = "∩"
 }
 
@@ -974,11 +838,7 @@ object SetIntersection extends ((Term, Term) => SetTerm) {
   def unapply(si: SetIntersection) = Some((si.p0, si.p1))
 }
 
-//class SetSubset(val p0: Term, val p1: Term) extends SetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
 class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
-  //  val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
-  //  val sort = sorts.Seq(elementsSort)
-
   override val op = "⊂"
 }
 
@@ -1018,7 +878,7 @@ object SetDifference extends ((Term, Term) => SetTerm) {
 }
 
 class SetIn(val p0: Term, val p1: Term) extends BooleanTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
-  override val op = "∈"
+  override val op = "in"
 }
 
 object SetIn extends ((Term, Term) => BooleanTerm) {
@@ -1172,26 +1032,26 @@ object MultisetFromSeq {
 
 /* Domains */
 
-//case class DomainFApp(function: Function, snapshot: Term, tArgs: Seq[Term]/*, sort: Sort*/) extends Term {
 case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term {
   val sort = function.sort.outSort
   override val toString = function.id + tArgs.mkString("(", ", ", ")")
 }
 
-/* Snapshots (in various senses) */
+/* Snapshots */
 
 sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 
-//case class SnapEq(p0: Term, p1: Term) extends Eq {
-//  utils.assertSort(p0, "first operand", sorts.Snap)
-//  utils.assertSort(p1, "second operand", sorts.Snap)
-//}
+class Combine(val p0: Term, val p1: Term) extends SnapshotTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  utils.assertSort(p0, "first operand", sorts.Snap)
+  utils.assertSort(p1, "second operand", sorts.Snap)
 
-case class Combine(t0: Term, t1: Term) extends SnapshotTerm {
-  utils.assertSort(t0, "first operand", sorts.Snap)
-  utils.assertSort(t1, "second operand", sorts.Snap)
+  override val toString = s"($p0, $p1)"
+}
 
-  override val toString = s"($t0, $t1)"
+object Combine {
+  def apply(t0: Term, t1: Term) = new Combine(t0.convert(sorts.Snap), t1.convert(sorts.Snap))
+
+  def unapply(c: Combine) = Some((c.p0, c.p1))
 }
 
 case class First(t: Term) extends SnapshotTerm {
@@ -1203,8 +1063,8 @@ case class Second(t: Term) extends SnapshotTerm {
 }
 
 class SortWrapper(val t: Term, val to: Sort) extends Term {
-  assert(!(t.sort == sorts.Ref && to == sorts.Int),
-    "Unexpected sort wrapping from %s to %s".format(t.sort, to))
+  assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
+         s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
   override val toString = s"$t"
   override val sort = to
@@ -1266,6 +1126,32 @@ object NullTrigger {
   def unapply(n:NullTrigger) = Some(n.t)
 }
 
+/* Convenience functions */
+
+object perms {
+  def IsNonNegative(p: DefaultFractionalPermissions) = p match {
+    case _: NoPerm | _: FullPerm | _: WildcardPerm => True()
+    case _ => Or(p === NoPerm(), NoPerm() < p)
+  }
+
+  def IsPositive(p: DefaultFractionalPermissions) = p match {
+    case _: NoPerm => False() /* TODO: This "false" should not be checked; asserting it should just return false/no */
+    case _: FullPerm | _: WildcardPerm => True()
+    case _ => NoPerm() < p
+  }
+
+  def IsAsPermissive(p1: DefaultFractionalPermissions, p2: DefaultFractionalPermissions) =
+    if (p1 == p2) True()
+    else Or(p1 === p2, p2 < p1)
+
+  def IsNoAccess(p: DefaultFractionalPermissions) = p match {
+    case _: NoPerm => True()
+    case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False() /* TODO: This "false" should not be checked; asserting it should just return false/no */
+      /* ATTENTION: This is only sound if both plus operands and the left minus operand are positive! */
+    case _ => Or(p === NoPerm(), p < NoPerm())
+  }
+}
+
 /* Utility functions */
 
 object utils {
@@ -1276,9 +1162,12 @@ object utils {
 
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, Or, True())
-    
-  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
-    silicon.utils.mapReduceLeft(it, f, Plus, NoPerm())
+
+  def BigPermSum(it: Iterable[DefaultFractionalPermissions],
+                 f: DefaultFractionalPermissions => DefaultFractionalPermissions = t => t)
+                : DefaultFractionalPermissions =
+
+    silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def assertSort(t: Term, desc: String, s: Sort) {

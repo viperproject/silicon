@@ -42,16 +42,6 @@
     $Snap $Snap.unit
     ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
-(declare-fun $Snap.eq ($Snap $Snap) Bool)
-
-(assert (forall ((x $Snap) (y $Snap)) (!
-	(implies
-		($Snap.eq x y)
-		(and (= x y)))
-	:qid |$Snap.eq|
-	:pattern (($Snap.eq x y))
-	)))
-
 ; --- References ---
 
 (declare-sort $Ref)
@@ -79,41 +69,8 @@
 
 ; --- Sort wrappers ---
 
-(declare-fun $SortWrappers.$SnapToInt ($Snap) Int)
-(declare-fun $SortWrappers.IntTo$Snap (Int) $Snap)
-
-(assert (forall ((x Int))
-	(= x ($SortWrappers.$SnapToInt($SortWrappers.IntTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($SortWrappers.IntTo$Snap($SortWrappers.$SnapToInt x)))))
-
-(declare-fun $SortWrappers.$SnapToBool ($Snap) Bool)
-(declare-fun $SortWrappers.BoolTo$Snap (Bool) $Snap)
-
-(assert (forall ((x Bool))
-	(= x ($SortWrappers.$SnapToBool($SortWrappers.BoolTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($SortWrappers.BoolTo$Snap($SortWrappers.$SnapToBool x)))))
-
-(declare-fun $SortWrappers.$SnapTo$Ref ($Snap) $Ref)
-(declare-fun $SortWrappers.$RefTo$Snap ($Ref) $Snap)
-
-(assert (forall ((x $Ref))
-	(= x ($SortWrappers.$SnapTo$Ref($SortWrappers.$RefTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($SortWrappers.$RefTo$Snap($SortWrappers.$SnapTo$Ref x)))))
-
-(declare-fun $SortWrappers.$SnapTo$Perm ($Snap) $Perm)
-(declare-fun $SortWrappers.$PermTo$Snap ($Perm) $Snap)
-
-(assert (forall ((x $Perm))
-	(= x ($SortWrappers.$SnapTo$Perm($SortWrappers.$PermTo$Snap x)))))
-
-(assert (forall ((x $Snap))
-	(= x ($SortWrappers.$PermTo$Snap($SortWrappers.$SnapTo$Perm x)))))
+; Sort wrappers are no longer part of the static preamble. Instead, they are
+; emitted as part of the program-specific preamble.
 
 ; --- Math ---
 
@@ -128,7 +85,7 @@
 ; --- End static preamble ---
 
 ; (get-proof "stdout")
-; (get-info statistics)
+; (get-info :all-statistics)
 
 ; (push)
 ; (check-sat)
