@@ -10,9 +10,9 @@ import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
-import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
+import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk}
 import state.terms._
-import state.terms.perms.{IsPositive, IsNoAccess}
+import state.terms.perms.{IsPositive, IsNoAccess, IsAsPermissive}
 import supporters.MagicWandSupporter
 import heap.QuantifiedChunkHelper
 
@@ -29,7 +29,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   protected implicit val manifestH: Manifest[H]
 
-  protected val decider: Decider[P, ST, H, PC, S, C]
+  protected val decider: Decider[P, ST, H, PC, S, C, TV]
   import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
@@ -38,7 +38,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
+  protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
   protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
@@ -59,7 +59,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
 
-    consume2(σ, σ.h, p, φ, pve, c0, tv)((h1, t, dcs, c1) => {
+    consume(σ, σ.h, p, φ, pve, c0, tv)((h1, t, dcs, c1) => {
       val c2 = c1.copy(reserveEvalHeap = c.reserveEvalHeap)
       Q(σ \ h1, t, dcs, c2)})
   }
@@ -217,19 +217,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val eSame = ast.utils.BigAnd(eqs)
             /* Check the generated equalities. */
             eval(σ0, eSame, pve, c.copy(poldHeap = Some(ch.hPO)), tv)((tSame, c1) =>
-              if (decider.assert(tSame))
-                Q(c1.copy(poldHeap = c.poldHeap))
-              else
-                Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), c1, tv))}}
+              decider.assert(σ, tSame) {
+                case true =>
+                  Q(c1.copy(poldHeap = c.poldHeap))
+                case false =>
+                  Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), c1, tv)})}}
 
         /* TODO: Getting id by first creating a chunk is not elegant. */
         val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
-        decider.getChunk[MagicWandChunk[H]](h, id) match {
+        decider.getChunk[MagicWandChunk[H]](σ0, h, id) match {
           case Some(ch) =>
             reinterpret(ch, c, tv)(c2 =>
               Q(h - ch, decider.fresh(sorts.Snap), List(ch), c2))
           case None if c.reserveHeap.nonEmpty =>
-            decider.getChunk[MagicWandChunk[H]](c.reserveHeap.get, id) match {
+            decider.getChunk[MagicWandChunk[H]](σ0, c.reserveHeap.get, id) match {
               case Some(ch) =>
                 reinterpret(ch, c, tv)(c2 => {
                   val c3 = c2.copy(reserveHeap = Some(c.reserveHeap.get - ch))
@@ -298,13 +299,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                          (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
                                          : VerificationResult = {
 
-    val (h1, optCh1, pLoss1, c1) = consumeMaxPermissions(h, id, pLoss, c, tv)
+    val (h1, optCh1, pLoss1, c1) = consumeMaxPermissions(σ, h, id, pLoss, c, tv)
 
-    if (decider.assertNoAccess(pLoss1)) {
+    if (decider.check(σ, IsNoAccess(pLoss1))) {
       Q(h1, optCh1.get, c1, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
     } else {
-      val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(c1.reserveHeap.get, id, pLoss1, c1, tv)
-      if (decider.assertNoAccess(pLoss2)) {
+      val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(σ, c1.reserveHeap.get, id, pLoss1, c1, tv)
+      if (decider.check(σ, IsNoAccess(pLoss2))) {
         val tVal = (optCh1, optCh2) match {
           case (Some(fc1: DirectFieldChunk), Some(fc2: DirectFieldChunk)) => fc1.value === fc2.value
           case (Some(pc1: DirectPredicateChunk), Some(pc2: DirectPredicateChunk)) => pc1.snap === pc2.snap
@@ -318,20 +319,21 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
   }
 
-  private def consumeMaxPermissions(h: H,
+  private def consumeMaxPermissions(σ: S,
+                                    h: H,
                                     id: ChunkIdentifier,
                                     pLoss: P,
                                     c: C,
                                     tv: TV)
                                    : (H, Option[DirectChunk], P, C) = {
 
-    decider.getChunk[DirectChunk](h, id) match {
+    decider.getChunk[DirectChunk](σ, h, id) match {
       case result @ Some(ch) =>
         val (pToConsume, pKeep) =
-          if (decider.isAsPermissive(ch.perm, pLoss)) (NoPerm(), ch.perm - pLoss)
+          if (decider.check(σ, IsAsPermissive(ch.perm, pLoss))) (NoPerm(), ch.perm - pLoss)
           else (pLoss - ch.perm, NoPerm())
         val h1 =
-          if (decider.assertNoAccess(pKeep)) h - ch
+          if (decider.check(σ, IsNoAccess(pKeep))) h - ch
           else h - ch + (ch \ pKeep)
         (h1, result, pToConsume, c)
 

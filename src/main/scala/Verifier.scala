@@ -20,24 +20,24 @@ import reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeCh
 import heap.QuantifiedChunkHelper
 
 trait AbstractElementVerifier[ST <: Store[ST],
-														 H <: Heap[H], PC <: PathConditions[PC],
-														 S <: State[ST, H, S],
-														 TV <: TraceView[TV, ST, H, S]]
-		extends Logging
-		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV] {
+                              H <: Heap[H], PC <: PathConditions[PC],
+                              S <: State[ST, H, S],
+                              TV <: TraceView[TV, ST, H, S]]
+    extends Logging
+       with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+       with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+       with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
+       with Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV] {
 
   private type C = DefaultContext[ST, H, S]
 
-	/*protected*/ val config: Config
+  /*protected*/ val config: Config
 
   /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV]
-	import decider.{fresh, inScope}
+  import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  import stateFactory._
 
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
@@ -111,7 +111,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     result
   }
 
-	def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
+  def verify(method: ast.Method, c: C, tv: TV): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
@@ -130,12 +130,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
     val postViolated = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, method)
 
-		/* Combined the well-formedness check and the execution of the body, which are two separate
-		 * rules in Smans' paper.
-		 */
+    /* Combined the well-formedness check and the execution of the body, which are two separate
+     * rules in Smans' paper.
+     */
     inScope {
-			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
-				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
+      produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) => {
+        val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
            (/*inScope {
               val (c2a, tv2a) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
               /* TODO: Checking self-framingness here fails if pold(e) reads a location
@@ -150,7 +150,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
               exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
                 consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
                   Success[C, ST, H, S](c4)))})})}
-	}
+  }
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
@@ -206,23 +206,23 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
 class DefaultElementVerifier[ST <: Store[ST],
                              H <: Heap[H],
-														 PC <: PathConditions[PC],
+                             PC <: PathConditions[PC],
                              S <: State[ST, H, S],
                              TV <: TraceView[TV, ST, H, S]]
-		(	val config: Config,
-		  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
-			val stateFactory: StateFactory[ST, H, S],
-			val symbolConverter: SymbolConvert,
-			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-      val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
-			val bookkeeper: Bookkeeper,
-			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
-      val traceviewFactory: TraceViewFactory[TV, ST, H, S])
+    (val config: Config,
+     val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
+     val stateFactory: StateFactory[ST, H, S],
+     val symbolConverter: SymbolConvert,
+     val stateFormatter: StateFormatter[ST, H, S, String],
+     val heapCompressor: HeapCompressor[ST, H, S],
+     val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
+     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
+     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
+     val bookkeeper: Bookkeeper,
+     val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
+     val traceviewFactory: TraceViewFactory[TV, ST, H, S])
     (protected implicit val manifestH: Manifest[H])
-		extends AbstractElementVerifier[ST, H, PC, S, TV]
+    extends AbstractElementVerifier[ST, H, PC, S, TV]
        with Logging
        with DefaultEvaluator[ST, H, PC, S, TV]
        with DefaultProducer[ST, H, PC, S, TV]
@@ -421,33 +421,33 @@ class DefaultVerifierFactory[ST <: Store[ST],
 }
 
 class DefaultVerifier[ST <: Store[ST],
-                      H <: Heap[H],
+                      H <: Heap[H] : Manifest,
                       PC <: PathConditions[PC],
-											S <: State[ST, H, S],
-											TV <: TraceView[TV, ST, H, S]]
-		(	val config: Config,
-			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
-			val stateFactory: StateFactory[ST, H, S],
-			val symbolConverter: SymbolConvert,
-      val preambleEmitter: PreambleFileEmitter[_],
-      val sequencesEmitter: SequencesEmitter,
-      val setsEmitter: SetsEmitter,
-      val multisetsEmitter: MultisetsEmitter,
-			val domainsEmitter: DomainsEmitter,
-			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-      val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
-			val bookkeeper: Bookkeeper,
-      val traceviewFactory: TraceViewFactory[TV, ST, H, S])
-		extends AbstractVerifier[ST, H, PC, S, TV]
-			 with Logging {
+                      S <: State[ST, H, S],
+                      TV <: TraceView[TV, ST, H, S]]
+    (val config: Config,
+     val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
+     val stateFactory: StateFactory[ST, H, S],
+     val symbolConverter: SymbolConvert,
+     val preambleEmitter: PreambleFileEmitter[_],
+     val sequencesEmitter: SequencesEmitter,
+     val setsEmitter: SetsEmitter,
+     val multisetsEmitter: MultisetsEmitter,
+     val domainsEmitter: DomainsEmitter,
+     val stateFormatter: StateFormatter[ST, H, S, String],
+     val heapCompressor: HeapCompressor[ST, H, S],
+     val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
+     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
+     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
+     val bookkeeper: Bookkeeper,
+     val traceviewFactory: TraceViewFactory[TV, ST, H, S])
+    extends AbstractVerifier[ST, H, PC, S, TV]
+       with Logging {
 
   val contextFactory = new DefaultContextFactory[ST, H, S]
 
-	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkHelper, magicWandSupporter, stateUtils, bookkeeper, contextFactory)
-                                      traceviewFactory)
+  val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
+                                      quantifiedChunkHelper, magicWandSupporter, stateUtils, bookkeeper,
+                                      contextFactory, traceviewFactory)
                                      (manifest[H])
 }

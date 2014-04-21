@@ -2,9 +2,9 @@ package semper
 package silicon
 package state
 
-import semper.silicon.interfaces.state.{FieldChunk, Heap, Store, State}
+import interfaces.state.{FieldChunk, Heap, Store, State}
+import ast.commonnodes
 import terms._
-import semper.silicon.ast.commonnodes
 
 package object utils {
   def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
@@ -19,7 +19,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal | _: NullTrigger  => Nil
+    case _: Symbol | _: Literal | _: NullTrigger | _: WandChunkRef[_] => Nil
     case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: commonnodes.UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -57,7 +57,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: NullTrigger | _: * => term
+      case _: Var | _: Function | _: Literal | _: NullTrigger | _: * | _: WandChunkRef[_] => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))

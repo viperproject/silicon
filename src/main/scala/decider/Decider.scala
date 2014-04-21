@@ -267,14 +267,15 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
+  @inline
   private def proverAssert(t: Term, logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
 
-    val startTime = System.currentTimeMillis()
+//    val startTime = System.currentTimeMillis()
     val result = prover.assert(t)
-    val endTime = System.currentTimeMillis()
-    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
+//    val endTime = System.currentTimeMillis()
+//    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
 
     result
   }
@@ -354,7 +355,7 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 
-    fcwpLog.println(id)
+//    fcwpLog.println(id)
 		val chunk = chunks find (ch => check(σ, BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 
 		chunk

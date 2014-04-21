@@ -186,11 +186,11 @@ trait DefaultEvaluator[
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) => {
-          decider.getChunk[FieldChunk](σ.h, id) match {
+          decider.getChunk[FieldChunk](σ, σ.h, id) match {
             case Some(ch) =>
               Q(ch.value, c)
             case None if c.reserveEvalHeap.nonEmpty =>
-              decider.getChunk[FieldChunk](c.reserveEvalHeap.get, id) match {
+              decider.getChunk[FieldChunk](σ, c.reserveEvalHeap.get, id) match {
                 case Some(ch) => Q(ch.value, c)
                 case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)}
             case None =>
@@ -670,7 +670,7 @@ trait DefaultEvaluator[
               assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
               tPerm = Some(_tPerm)
               πPre = decider.π // TODO: Why here? Why not after evals(eArgs)?
-              if (decider.isPositive(_tPerm))
+              if (decider.check(σ, IsPositive(_tPerm)))
                 evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                   consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, chs, c3) => { // TODO: What to do with the consumed chunks?

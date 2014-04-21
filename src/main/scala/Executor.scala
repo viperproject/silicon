@@ -35,8 +35,9 @@ trait DefaultExecutor[ST <: Store[ST],
   private type C = DefaultContext[ST, H, S]
   private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C, TV]
+  protected implicit val manifestH: Manifest[H]
 
+	protected val decider: Decider[P, ST, H, PC, S, C, TV]
 	import decider.{fresh, assume, inScope}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -225,7 +226,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val wand = rhs.asInstanceOf[ast.MagicWand]
             /* TODO: Inefficient! Create ChunkIdentifier w/o creating a chunk. */
             val id = magicWandSupporter.createChunk(σ.γ, σ.h, wand).id
-            decider.getChunk[MagicWandChunk[H]](σ.h, id) match {
+            decider.getChunk[MagicWandChunk[H]](σ, σ.h, id) match {
               case Some(ch) =>
                 Q(σ \+ (v, WandChunkRef(ch)), c)
               case None =>
