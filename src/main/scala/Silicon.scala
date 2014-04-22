@@ -3,15 +3,17 @@ package silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
+import java.util.concurrent.{ExecutionException, Callable, Executors, ExecutorService, Future, TimeUnit, TimeoutException}
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import semper.sil.verifier.{
-    Verifier => SilVerifier,
-    VerificationResult => SilVerificationResult,
-    Success => SilSuccess,
-    Failure => SilFailure,
-    DefaultDependency => SilDefaultDependency}
+import sil.verifier.{
+  Verifier => SilVerifier,
+  VerificationResult => SilVerificationResult,
+  Success => SilSuccess,
+  Failure => SilFailure,
+  DefaultDependency => SilDefaultDependency,
+  TimeoutOccurred => SilTimeoutOccurred}
 import sil.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
@@ -125,14 +127,36 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       SilFailure(consistencyErrors)
     } else {
       var result: Option[SilVerificationResult] = None
+      val executor = Executors.newSingleThreadExecutor()
+
+      val future = executor.submit(new Callable[List[Failure]] {
+        def call() = {
+          runVerifier(program)
+        }
+      })
 
       try {
-        val failures = runVerifier(program)
+        val failures =
+          if (config.timeout.get.getOrElse(0) == 0)
+            future.get()
+          else
+           future.get(config.timeout(), TimeUnit.SECONDS)
+
         result = Some(convertFailures(failures))
       } catch {
-        case DependencyNotFoundException(err) => result = Some(SilFailure(err :: Nil))
+        case DependencyNotFoundException(err) =>
+          result = Some(SilFailure(err :: Nil))
+        case te: TimeoutException =>
+          result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
+        case ee: ExecutionException =>
+          if (ee.getCause != null) throw ee.getCause
+          else throw ee
       } finally {
         shutDownHooks.foreach(_())
+
+        /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
+        executor.shutdown()
+        executor.shutdownNow()
       }
 
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately.")
@@ -387,6 +411,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val timeout = opt[Int]("timeout",
+    descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
+            + "not per method or proof obligation (default: 0, i.e., no timeout)."),
+    default = Some(0),
+    noshort = true
+  )
+
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: tmp_<timestamp>)",
     default = Some("./tmp"),
@@ -405,6 +436,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(DefaultValue("logfile.smt2")),
     noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  validateOpt(timeout){
+    case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
+    case _ => Right(Unit)
+  }
 
   lazy val effectiveZ3LogFile: String =
     z3LogFile().orElse(new File(tempDirectory(), _).getPath)
