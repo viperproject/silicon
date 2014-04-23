@@ -5,14 +5,13 @@ import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
 import state.terms._
 import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
 import heap.QuantifiedChunkHelper
-import sil.ast.LocalVar
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -55,7 +54,7 @@ trait DefaultProducer[ST <: Store[ST],
              (Q: (S, C) => VerificationResult)
              : VerificationResult =
 
-    produce2(σ, sf, p, φ, pve, c, tv)((h, c1) =>
+    produce2(σ, sf, p, φ.whenInhaling, pve, c, tv)((h, c1) =>
       Q(σ \ h, c1))
 
   def produces(σ: S,
@@ -70,9 +69,11 @@ trait DefaultProducer[ST <: Store[ST],
 
     if (φs.isEmpty)
       Q(σ, c)
-    else
-      produce(σ, sf, p, φs.head, pvef(φs.head), c, tv)((σ1, c1) =>
+    else {
+      val φ = φs.head.whenInhaling
+      produce(σ, sf, p, φ, pvef(φ), c, tv)((σ1, c1) =>
         produces(σ1, sf, p, φs.tail, pvef, c1, tv)(Q))
+    }
 
   private def produce2(σ: S,
                        sf: Sort => Term,
@@ -108,9 +109,6 @@ trait DefaultProducer[ST <: Store[ST],
     }
 
     val produced = φ match {
-      case ast.InhaleExhaleExp(a0, _) =>
-        produce2(σ, sf, p, a0, pve, c, tv)(Q)
-
       case ast.And(a0, a1) if !φ.isPure =>
         val s0 = mkSnap(a0)
         val s1 = mkSnap(a1)
@@ -171,7 +169,7 @@ trait DefaultProducer[ST <: Store[ST],
         decider.prover.logComment("Producing set access predicate " + fa)
 
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-          val γVars = Γ(((vars map (v => LocalVar(v.name)(v.typ))) zip tVars).asInstanceOf[Iterable[(ast.Variable, Term)]] /* won't let me do it without a cast */)
+          val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
 
           eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
             eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
@@ -193,6 +191,9 @@ trait DefaultProducer[ST <: Store[ST],
                   if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
                   else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name)
                 Q(h + ch, c3)})}))
+
+      case _: ast.InhaleExhale =>
+        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), c, tv)
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

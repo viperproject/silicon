@@ -8,6 +8,7 @@ import state.terms
 import state.terms.Term
 import state.SymbolConvert
 import state.terms.implicits._
+import reporting.VerificationException
 import implicits._
 
 trait DomainsEmitter extends PreambleEmitter {
@@ -425,11 +426,6 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case _: ast.NoPerm => terms.NoPerm()
       case ast.FractionalPerm(e0, e1) => terms.FractionPerm(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
 
-      case _: ast.WildcardPerm => ???
-      /* TODO: Would it be sufficient to define a perm-typed 0 < v < write in the preamble and use that here?
-       *       It in general doesn't seem to be very useful to use wildcards in domains, but who knows.
-       */
-
       case ast.PermPlus(e0, e1) => terms.PermPlus(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
       case ast.PermMinus(e0, e1) => terms.PermMinus(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
       case ast.PermTimes(e0, e1) => terms.PermTimes(terms.TermPerm(f(e0)), terms.TermPerm(f(e1)))
@@ -453,14 +449,12 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
         es.tail.foldLeft[terms.SeqTerm](terms.SeqSingleton(f(es.head)))((tSeq, e) =>
             terms.SeqAppend(terms.SeqSingleton(f(e)), tSeq))
 
-      case _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet =>
-        sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
-
       case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
-           | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateAccess
-           | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm =>
+           | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhale | _: ast.PredicateAccess
+           | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.WildcardPerm
+           | _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet =>
 
-        sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
+        throw VerificationException(ast.Consistency.createUnexpectedNodeDuringDomainTranslationError(exp))
     }
   }
 }

@@ -3,7 +3,7 @@ package silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
-import java.util.concurrent.{ExecutionException, Callable, Executors, ExecutorService, Future, TimeUnit, TimeoutException}
+import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
@@ -19,14 +19,14 @@ import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFai
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
-DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
+    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
-import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
+import reporting.{VerificationException, DefaultContext, Bookkeeper, BranchingOnlyTraceView,
+    BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 import heap.DefaultQuantifiedChunkHelper
-import semper.silicon.ast.Consistency
+import ast.Consistency
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -144,11 +144,16 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
         result = Some(convertFailures(failures))
       } catch {
-        case DependencyNotFoundException(err) =>
-          result = Some(SilFailure(err :: Nil))
+        case VerificationException(error) =>
+          result = Some(SilFailure(error :: Nil))
+
         case te: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
+
         case ee: ExecutionException =>
+          /* If possible, report the real exception that has been wrapped in
+           * the ExecutionException. The wrapping is due to using a future.
+           */
           if (ee.getCause != null) throw ee.getCause
           else throw ee
       } finally {
@@ -195,7 +200,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
-    decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
+    decider.start().map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
     val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
@@ -263,7 +268,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case Some(("file", path)) =>
           silicon.common.io.toFile(verifier.bookkeeper.toJson, new File(path))
 
-        case _ => ???
+        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }
 		}
 
@@ -352,6 +357,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = None,
     noshort = true
   )(statisticsSinkConverter)
+  /* TODO: Validate arguments to showStatistics */
 
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
