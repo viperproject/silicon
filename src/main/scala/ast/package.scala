@@ -136,8 +136,8 @@ package object ast {
   type Exhaling = sil.ast.Exhaling
   val Exhaling = sil.ast.Exhaling
 
-  type InhaleExhaleExp = sil.ast.InhaleExhaleExp
-  val InhaleExhaleExp = sil.ast.InhaleExhaleExp
+  type InhaleExhale = sil.ast.InhaleExhaleExp
+  val InhaleExhale = sil.ast.InhaleExhaleExp
 
   type Quantified = sil.ast.QuantifiedExp
   val Quantified = sil.ast.QuantifiedExp

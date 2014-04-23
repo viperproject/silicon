@@ -649,7 +649,7 @@ trait DefaultEvaluator[
             assume(tAuxIn + tActualIn)
             Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
         } else
-          Failure[C, ST, H, S, TV](ast.Consistency.reportUnsupportedPredicateRecursion(e), c, tv)
+          Failure[C, ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), c, tv)
 
       case _: ast.Folding if config.disableLocalEvaluations() =>
         sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
@@ -808,6 +808,9 @@ trait DefaultEvaluator[
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
+
+      case _: ast.InhaleExhale =>
+        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e), c, tv)
 		}
 
     resultTerm
@@ -855,7 +858,7 @@ trait DefaultEvaluator[
               case false =>
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})}
         else
-          Failure[C, ST, H, S, TV](ast.Consistency.reportUnsupportedPredicateRecursion(e), c, tv)
+          Failure[C, ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), c, tv)
 
       case quant: ast.Quantified if config.disableLocalEvaluations() =>
         val body = quant.exp

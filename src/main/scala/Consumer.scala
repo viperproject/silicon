@@ -4,7 +4,6 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse, MagicWandChunkNotFound}
-import sil.ast.LocalVar
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
@@ -59,7 +58,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
 
-    consume(σ, σ.h, p, φ, pve, c0, tv)((h1, t, dcs, c1) => {
+    consume(σ, σ.h, p, φ.whenExhaling, pve, c0, tv)((h1, t, dcs, c1) => {
       val c2 = c1.copy(reserveEvalHeap = c.reserveEvalHeap)
       Q(σ \ h1, t, dcs, c2)})
   }
@@ -73,7 +72,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
               : VerificationResult =
 
-    consumes(σ, σ.h, p, φs, Nil, Nil, pvef, c, tv)(Q)
+    consumes(σ, σ.h, p, φs map (_.whenExhaling), Nil, Nil, pvef, c, tv)(Q)
 
   private def consumes(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C, tv: TV)
                        (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
@@ -113,9 +112,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
 
 		val consumed = φ match {
-      case ast.InhaleExhaleExp(_, a1) =>
-        consume(σ, h, p, a1, pve, c, tv)(Q)
-
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c, tv)((h1, s1, dcs1, c1) =>
 					consume(σ, h1, p, a2, pve, c1, tv)((h2, s2, dcs2, c2) =>
@@ -188,6 +184,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     case _ => sys.error(s"Unexpected chunk after consuming $φ: $ch")})
               case false =>
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)}))
+
+      case _: ast.InhaleExhale =>
+        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), c, tv)
 
       /* TODO: Needs to consider both heaps. Try to merge this code with consumeIncludingReserveHeap. */
       case _ if φ.typ == ast.types.Wand =>

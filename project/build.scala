@@ -22,7 +22,9 @@ object SiliconBuild extends Build {
             "-unchecked",
             "-feature"
             /*"-Xfatal-warnings"*/),
-          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/"))
+          resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/",
+          traceLevel := 10,
+          maxErrors := 6))
 
   /* Projects */
 
@@ -38,8 +40,6 @@ object SiliconBuild extends Build {
               mainClass in assembly := Some("semper.silicon.Silicon"),
               jarName in assembly := "silicon.jar",
               // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
-              traceLevel := 10,
-              maxErrors := 6,
               fork := true,
                 /* Fork Silicon when run and tested. Avoids problems with file
                  * handlers on Windows 7 that remain open until Sbt is closed,
