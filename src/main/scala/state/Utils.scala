@@ -29,6 +29,7 @@ package object utils {
     case tp: TermPerm => List(tp.t)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
+    case app: Apply => List(app.func) ++ app.args
     case fapp: FApp => List(fapp.function, fapp.snapshot) ++ fapp.tArgs
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
@@ -87,6 +88,7 @@ package object utils {
       case PermMinus(p0, p1) => PermMinus(go(p0), go(p1))
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
+      case Apply(f, ts) =>  Apply(go(f), ts map go)
       case FApp(f, s, ts) => FApp(f, go(s), ts map go)
       case SeqRanged(t0, t1) => SeqRanged(go(t0), go(t1))
       case SeqSingleton(t) => SeqSingleton(go(t))

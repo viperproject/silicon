@@ -49,9 +49,9 @@ trait DefaultEvaluator[
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
-
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
+  private var quantifiedVars: Stack[Term] = Stack()
 
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
 			     (Q: (List[Term], C) => VerificationResult)
@@ -377,8 +377,12 @@ trait DefaultEvaluator[
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
-          val tActualThenVar = fresh("actualThen", toSort(e1.typ))
-          val tActualElseVar = fresh("actualElse", toSort(e2.typ))
+          val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+          val actualThenFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e1.typ))
+          val actualElseFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e2.typ))
+
+          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), quantifiedVars)
+          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), quantifiedVars)
 
           /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
            *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
@@ -393,8 +397,10 @@ trait DefaultEvaluator[
           /* Ite with the actual results of the evaluation */
           val tActualIte =
             Ite(tActualIf.getOrElse(False()),
-                if (localResultsThen.nonEmpty) tActualThenVar else fresh("$deadThen", toSort(e1.typ)),
-                if (localResultsElse.nonEmpty) tActualElseVar else fresh("$deadElse", toSort(e2.typ)))
+                if (localResultsThen.nonEmpty) tActualThenVar
+                else Apply(fresh("$deadThen", actualThenFuncSort), quantifiedVars),
+                if (localResultsElse.nonEmpty) tActualElseVar
+                else Apply(fresh("$deadElse", actualElseFuncSort), quantifiedVars))
 
           val actualTerms = And(tActualThen, tActualElse)
 
@@ -502,11 +508,12 @@ trait DefaultEvaluator[
         var localResults: List[LocalEvaluationResult] = Nil
         var triggers: List[Trigger] = Nil
 
-        decider.pushScope()
-
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
+
+        decider.pushScope()
+        quantifiedVars = quantifiedVars.pushAll(tVars)
 
         val r =
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
@@ -528,6 +535,7 @@ trait DefaultEvaluator[
                */
               Success[C, ST, H, S](c2)}))
 
+        quantifiedVars = quantifiedVars.drop(tVars.length)
         decider.popScope()
 
         r && {
@@ -618,7 +626,9 @@ trait DefaultEvaluator[
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)}})
 
           r && {
-            val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+            val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+            val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
+            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), quantifiedVars)
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)

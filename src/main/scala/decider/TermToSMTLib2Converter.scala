@@ -16,7 +16,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case sorts.Set(elementSort) => "$Set<" + convert(elementSort) + ">"
     case sorts.Multiset(elementSort) => "$Multiset<" + convert(elementSort) + ">"
     case sorts.UserSort(id) => sanitizeSymbol(id)
-    case a: sorts.Arrow => "(%s) %s".format(a.inSorts.map(convert).mkString("(", " ", ")"), convert(a.outSort))
+
+    case a: sorts.Arrow =>
+      val inStr = a.from match {
+        case Seq(sorts.Unit) => ""
+        case ss => ss.map(convert).mkString("(", " ", ")")
+      }
+
+      s"($inStr) ${convert(a.to)}"
+
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
        * domain sort of nullary functions.
@@ -28,10 +36,13 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case SortDecl(sort: Sort) =>
       "(declare-sort %s)".format(convert(sort))
 
+    case VarDecl(v: Var) =>
+      "(declare-const %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
+
     case FunctionDecl(Function(id, sort)) =>
       val idStr = sanitizeSymbol(id)
-      val inSortStr = sort.inSorts.map(convert).mkString(" ")
-      val outSortStr = convert(sort.outSort)
+      val inSortStr = sort.from.map(convert).mkString(" ")
+      val outSortStr = convert(sort.to)
 
       s"(declare-fun $idStr ($inSortStr) $outSortStr)"
 
@@ -47,6 +58,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     case Ite(t0, t1, t2) =>
       "(ite " + convert(t0) + " " + convert(t1) + " " + convert(t2) + ")"
+
+    case app @ Apply(f, args) =>
+      val strF = convert(f)
+
+      app.funcSort.from match {
+        case Seq(sorts.Unit) => strF
+        case _ => s"($strF ${args map convert mkString " "})"
+      }
 
     case FApp(f, s, tArgs) =>
       "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))

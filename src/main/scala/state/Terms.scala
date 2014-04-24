@@ -31,48 +31,63 @@ import sil.ast.utility.Visitor
  * Sorts
  */
 
-sealed trait Sort
+sealed trait Sort extends Symbol
 
 object sorts {
-  object Snap extends Sort { override val toString = "Snap" }
-  object Int extends Sort { override val toString = "Int" }
-  object Bool extends Sort { override val toString = "Bool" }
-  object Ref extends Sort { override val toString = "Ref" }
-  object Perm extends Sort { override val toString = "Perm" }
-  object Unit extends Sort { override val toString = "()" }
+  import scala.collection.{Seq => SISeq}
 
-  case class Seq(val elementsSort: Sort) extends Sort {
-    override val toString = "Seq[%s]".format(elementsSort)
+  object Snap extends Sort { val id = "Snap"; override val toString = id }
+  object Int extends Sort { val id = "Int"; override val toString = id }
+  object Bool extends Sort { val id = "Bool"; override val toString = id }
+  object Ref extends Sort { val id = "Ref"; override val toString = id }
+  object Perm extends Sort { val id = "Perm"; override val toString = id }
+  object Unit extends Sort { val id = "()"; override val toString = "()" }
+
+  case class Seq(elementsSort: Sort) extends Sort {
+    val id = "Seq[%s]".format(elementsSort)
+    override val toString = id
   }
 
-  case class Set(val elementsSort: Sort) extends Sort {
-    override val toString = "Set[%s]".format(elementsSort)
+  case class Set(elementsSort: Sort) extends Sort {
+    val id = "Set[%s]".format(elementsSort)
+    override val toString = id
   }
 
-  case class Multiset(val elementsSort: Sort) extends Sort {
-    override val toString = "Multiset[%s]".format(elementsSort)
+  case class Multiset(elementsSort: Sort) extends Sort {
+    val id = "Multiset[%s]".format(elementsSort)
+    override val toString = id
   }
 
-  case class Arrow(from: Sort, to: Sort) extends Sort {
-    private def decompose(a: Arrow, ss: scala.collection.immutable.Seq[Sort])
-                         : (scala.collection.immutable.Seq[Sort], Sort) = {
+  class Arrow private (val from: SISeq[Sort], val to: Sort) extends Sort {
+    val id = s"${from mkString " x "} -> $to"
 
-      val ss1 =
-        if (a.from == sorts.Unit) ss
-        else ss :+ a.from
+    override val hashCode = silicon.utils.generateHashCode(from, to)
 
-      a.to match {
-        case a1: Arrow => decompose(a1, ss1)
-        case _ => (ss1, a.to)
+    override def equals(other: Any) =
+      this.eq(other.asInstanceOf[AnyRef]) || (other match {
+        case a: Arrow => this.from == a.from && this.to == a.to
+        case _ => false
+      })
+
+    override val toString = id
+  }
+
+  object Arrow extends ((SISeq[Sort], Sort) => Sort) {
+    def apply(from: SISeq[Sort], to: Sort) = {
+      val actualFrom = from match {
+        case SISeq() => SISeq(sorts.Unit)
+        case SISeq(sorts.Unit) => from
+        case other =>
+          Predef.assert(!other.exists(_ == sorts.Unit), "")
+          other
       }
+
+      new Arrow(actualFrom, to)
     }
 
-    private lazy val decomposedSorts = decompose(this, Nil)
+    def apply(from: Sort, to: Sort) = new Arrow(List(from), to)
 
-    lazy val inSorts = decomposedSorts._1
-    lazy val outSort = decomposedSorts._2
-
-    override val toString = s"$from -> $to"
+    def unapply(arrow: Arrow) = Some((arrow.from, arrow.to))
   }
 
   case class UserSort(id: String) extends Sort {
@@ -86,8 +101,9 @@ object sorts {
 
 sealed trait Decl
 
+case class VarDecl(v: Var) extends Decl
 case class SortDecl(sort: Sort) extends Decl
-case class FunctionDecl(function: Function) extends Decl
+case class FunctionDecl(func: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 
 /*
@@ -128,15 +144,15 @@ sealed trait Term /*extends Traversable[Term]*/ {
 
 /* Symbols */
 
-sealed trait Symbol extends Term {
+sealed trait Symbol {
   def id: String
 }
 
-case class Var(id: String, sort: Sort) extends Symbol {
+case class Var(id: String, sort: Sort) extends Symbol with Term {
   override val toString = id
 }
 
-class Function(val id: String, val sort: sorts.Arrow) extends Symbol {
+class Function(val id: String, val sort: sorts.Arrow) extends Symbol with Term {
   override val hashCode = silicon.utils.generateHashCode(id, sort)
 
   override def equals(other: Any) =
@@ -151,10 +167,8 @@ class Function(val id: String, val sort: sorts.Arrow) extends Symbol {
 object Function {
   def apply(id: String, sort: sorts.Arrow) = new Function(id, sort)
 
-  def apply(id: String, argSorts: Seq[Sort], sort: Sort) = {
-    val symbolSort =
-      if (argSorts.isEmpty) sorts.Arrow(sorts.Unit, sort)
-      else ((argSorts :+ sort) reduceRight sorts.Arrow).asInstanceOf[sorts.Arrow]
+  def apply(id: String, argSorts: Seq[Sort], toSort: Sort) = {
+    val symbolSort = sorts.Arrow(argSorts, toSort)
 
     new Function(id, symbolSort)
   }
@@ -208,7 +222,7 @@ object Exists extends Quantifier { override val toString = "∃ " }
 case class Trigger(ts: Seq[Term])
 
 /* Placeholder */
-case class *() extends Symbol {
+case class *() extends Symbol with Term {
   val id = "*"
   val sort = sorts.Ref
 
@@ -605,10 +619,21 @@ case class PermMin(p0: Term, p1: Term) extends DefaultFractionalPermissions with
 
 /* Functions */
 
+case class Apply(func: Term, args: Seq[Term]) extends Term {
+  val funcSort = func.sort match {
+    case a: sorts.Arrow => a
+    case other => sys.error(s"Cannot apply $func of sort $other to $args")
+  }
+
+  val sort = funcSort.to
+
+  override val toString = s"$func(${args.mkString(",")})"
+}
+
 case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Term {
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
-  val sort = function.sort.outSort
+  val sort = function.sort.to
   override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
 }
 
@@ -1030,7 +1055,7 @@ object MultisetFromSeq {
 /* Domains */
 
 case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term {
-  val sort = function.sort.outSort
+  val sort = function.sort.to
   override val toString = function.id + tArgs.mkString("(", ", ", ")")
 }
 
