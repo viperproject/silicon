@@ -532,7 +532,7 @@ trait DefaultEvaluator[
 
         r && {
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
-          /* TODO: Translate triggers as well */
+          /* TODO: Translate SIL triggers as well */
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
@@ -712,7 +712,8 @@ trait DefaultEvaluator[
 	}
 
   /* The non-local evaluations are intended for benchmarking and debugging
-   * only, because they can result in incompletenesses.
+   * only, because they can result in incompletenesses (and probably also
+   * in unsoundnesses because they are not constantly tested).
    */
   private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
                           (Q: (Term, C) => VerificationResult)
