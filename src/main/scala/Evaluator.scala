@@ -49,9 +49,9 @@ trait DefaultEvaluator[
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
-
 	private var fappCache: Map[Term, Set[Term]] = Map()
 	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
+  private var quantifiedVars: Stack[Term] = Stack()
 
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
 			     (Q: (List[Term], C) => VerificationResult)
@@ -377,8 +377,12 @@ trait DefaultEvaluator[
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
-          val tActualThenVar = fresh("actualThen", toSort(e1.typ))
-          val tActualElseVar = fresh("actualElse", toSort(e2.typ))
+          val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+          val actualThenFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e1.typ))
+          val actualElseFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e2.typ))
+
+          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), quantifiedVars)
+          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), quantifiedVars)
 
           /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
            *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
@@ -393,8 +397,10 @@ trait DefaultEvaluator[
           /* Ite with the actual results of the evaluation */
           val tActualIte =
             Ite(tActualIf.getOrElse(False()),
-                if (localResultsThen.nonEmpty) tActualThenVar else fresh("$deadThen", toSort(e1.typ)),
-                if (localResultsElse.nonEmpty) tActualElseVar else fresh("$deadElse", toSort(e2.typ)))
+                if (localResultsThen.nonEmpty) tActualThenVar
+                else Apply(fresh("$deadThen", actualThenFuncSort), quantifiedVars),
+                if (localResultsElse.nonEmpty) tActualElseVar
+                else Apply(fresh("$deadElse", actualElseFuncSort), quantifiedVars))
 
           val actualTerms = And(tActualThen, tActualElse)
 
@@ -502,11 +508,12 @@ trait DefaultEvaluator[
         var localResults: List[LocalEvaluationResult] = Nil
         var triggers: List[Trigger] = Nil
 
-        decider.pushScope()
-
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
+
+        decider.pushScope()
+        quantifiedVars = quantifiedVars.pushAll(tVars)
 
         val r =
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
@@ -528,11 +535,12 @@ trait DefaultEvaluator[
                */
               Success[C, ST, H, S](c2)}))
 
+        quantifiedVars = quantifiedVars.drop(tVars.length)
         decider.popScope()
 
         r && {
           val (tActual: Term, tAux: Set[Term]) = combine(localResults)
-          /* TODO: Translate triggers as well */
+          /* TODO: Translate SIL triggers as well */
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
@@ -624,13 +632,15 @@ trait DefaultEvaluator[
                   Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)}})
 
           r && {
-            val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+            val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+            val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
+            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), quantifiedVars)
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
             Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
         } else
-          Failure[C, ST, H, S, TV](ast.Consistency.reportUnsupportedPredicateRecursion(e), c, tv)
+          Failure[C, ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), c, tv)
 
       /* Sequences */
 
@@ -709,13 +719,17 @@ trait DefaultEvaluator[
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
+
+      case _: ast.InhaleExhale =>
+        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e), c, tv)
 		}
 
     resultTerm
 	}
 
   /* The non-local evaluations are intended for benchmarking and debugging
-   * only, because they can result in incompletenesses.
+   * only, because they can result in incompletenesses (and probably also
+   * in unsoundnesses because they are not constantly tested).
    */
   private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
                           (Q: (Term, C) => VerificationResult)
@@ -756,7 +770,7 @@ trait DefaultEvaluator[
               case false =>
                 Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})}
         else
-          Failure[C, ST, H, S, TV](ast.Consistency.reportUnsupportedPredicateRecursion(e), c, tv)
+          Failure[C, ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), c, tv)
 
       case quant: ast.Quantified if config.disableLocalEvaluations() =>
         val body = quant.exp
@@ -870,8 +884,7 @@ trait DefaultEvaluator[
 
     val (t1: Term, tAux: Set[Term]) =
       localResults.map {lr =>
-        val newGuards = lr.πGuards
-
+        val newGuards = lr.πGuards filterNot decider.π.contains
         val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))

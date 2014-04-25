@@ -3,28 +3,30 @@ package silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
+import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import semper.sil.verifier.{
-    Verifier => SilVerifier,
-    VerificationResult => SilVerificationResult,
-    Success => SilSuccess,
-    Failure => SilFailure,
-    DefaultDependency => SilDefaultDependency}
+import sil.verifier.{
+  Verifier => SilVerifier,
+  VerificationResult => SilVerificationResult,
+  Success => SilSuccess,
+  Failure => SilFailure,
+  DefaultDependency => SilDefaultDependency,
+  TimeoutOccurred => SilTimeoutOccurred}
 import sil.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
-DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
+    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{DefaultContext, Bookkeeper, DependencyNotFoundException}
-import reporting.{BranchingOnlyTraceView, BranchingOnlyTraceViewFactory}
+import reporting.{VerificationException, DefaultContext, Bookkeeper, BranchingOnlyTraceView,
+    BranchingOnlyTraceViewFactory}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 import heap.DefaultQuantifiedChunkHelper
-import semper.silicon.ast.Consistency
+import ast.Consistency
 
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
@@ -77,6 +79,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
 
+  def this() = this(Nil)
+
   def parseCommandLine(args: Seq[String]) {
     assert(lifetimeState == LifetimeState.Instantiated, "Silicon may only be configured once.")
     lifetimeState = LifetimeState.Configured
@@ -100,6 +104,18 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     assert(lifetimeState == LifetimeState.Configured, "Silicon.verify may only be invoked once.")
     lifetimeState = LifetimeState.Started
 
+    _config.initialize{case _ =>}
+      /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
+       *       that initialises the verifier's configuration. However, this
+       *       requires the verifier to inherit from SilFrontend, which is
+       *       not really meaningful.
+       *       The configuration logic should thus be refactored such that
+       *       a Verifier can be used without extending SilFrontend, while
+       *       still ensuring that, e.g., a config is not initialised twice,
+       *       and that a reasonable default handling of --version, --help
+       *       or --dependencies is can be shared.
+       */
+
     shutDownHooks = Set()
     setLogLevel(config.logLevel())
 
@@ -111,14 +127,41 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       SilFailure(consistencyErrors)
     } else {
       var result: Option[SilVerificationResult] = None
+      val executor = Executors.newSingleThreadExecutor()
+
+      val future = executor.submit(new Callable[List[Failure]] {
+        def call() = {
+          runVerifier(program)
+        }
+      })
 
       try {
-        val failures = runVerifier(program)
+        val failures =
+          if (config.timeout.get.getOrElse(0) == 0)
+            future.get()
+          else
+           future.get(config.timeout(), TimeUnit.SECONDS)
+
         result = Some(convertFailures(failures))
       } catch {
-        case DependencyNotFoundException(err) => result = Some(SilFailure(err :: Nil))
+        case VerificationException(error) =>
+          result = Some(SilFailure(error :: Nil))
+
+        case te: TimeoutException =>
+          result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
+
+        case ee: ExecutionException =>
+          /* If possible, report the real exception that has been wrapped in
+           * the ExecutionException. The wrapping is due to using a future.
+           */
+          if (ee.getCause != null) throw ee.getCause
+          else throw ee
       } finally {
         shutDownHooks.foreach(_())
+
+        /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
+        executor.shutdown()
+        executor.shutdownNow()
       }
 
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately.")
@@ -157,7 +200,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
-    decider.start().map(err => throw new DependencyNotFoundException(err)) /* TODO: Hack! See comment above. */
+    decider.start().map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
     val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
@@ -225,7 +268,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case Some(("file", path)) =>
           silicon.common.io.toFile(verifier.bookkeeper.toJson, new File(path))
 
-        case _ => ???
+        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }
 		}
 
@@ -246,7 +289,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
 	private def logFailure(failure: Failure, log: String => Unit) {
-		log("\n" + failure.message.readableMessage(true))
+		log("\n" + failure.message.readableMessage(true, true))
 
 		if (config.showBranches() && failure.context.branchings.nonEmpty) {
 			logger.error("    Branches taken:")
@@ -314,6 +357,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = None,
     noshort = true
   )(statisticsSinkConverter)
+  /* TODO: Validate arguments to showStatistics */
 
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
@@ -373,6 +417,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true
   )
 
+  val timeout = opt[Int]("timeout",
+    descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
+            + "not per method or proof obligation (default: 0, i.e., no timeout)."),
+    default = Some(0),
+    noshort = true
+  )
+
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: tmp_<timestamp>)",
     default = Some("./tmp"),
@@ -391,6 +442,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(DefaultValue("logfile.smt2")),
     noshort = true
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  validateOpt(timeout){
+    case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
+    case _ => Right(Unit)
+  }
 
   lazy val effectiveZ3LogFile: String =
     z3LogFile().orElse(new File(tempDirectory(), _).getPath)

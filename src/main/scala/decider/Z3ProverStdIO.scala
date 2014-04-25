@@ -182,16 +182,20 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
   /* TODO: Could we decouple fresh from Var, e.g. return the used freshId, without
    *       losing conciseness at call-site?
+   *       It is also slightly fishy that fresh returns a Var although it
+   *       declared a new Function.
    */
-  def fresh(id: String, sort: Sort) = {
-    val v = Var(freshId(id), sort)
-    val decl = sort match {
-      case sorts.Arrow(_,_) => "(declare-fun %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
-      case _ =>  "(declare-const %s %s)".format(sanitizeSymbol(v.id), convert(v.sort))
-    }
-    write(decl)
+  def fresh(idPrefix: String, sort: Sort) = {
+    val id = freshId(idPrefix)
 
-    v
+    val decl = sort match {
+      case arrow: sorts.Arrow => FunctionDecl(Function(id, arrow))
+      case _ => VarDecl(Var(id, sort))
+    }
+
+    write(convert(decl))
+
+    Var(id, sort)
   }
 
   def sanitizeSymbol(symbol: String) = termConverter.sanitizeSymbol(symbol)

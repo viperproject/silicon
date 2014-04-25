@@ -16,6 +16,8 @@ package object ast {
   type Field = sil.ast.Field
   type Variable = sil.ast.AbstractLocalVar
   val Variable = sil.ast.AbstractLocalVar
+  type LocalVariable = sil.ast.LocalVar
+  val LocalVariable = sil.ast.LocalVar
   type Typed = sil.ast.Typed
   type Expression = sil.ast.Exp
   type PermissionExpression = sil.ast.PermExp
@@ -120,8 +122,8 @@ package object ast {
   type FuncApp = sil.ast.FuncApp
   val FuncApp = sil.ast.FuncApp
 
-  type InhaleExhaleExp = sil.ast.InhaleExhaleExp
-  val InhaleExhaleExp = sil.ast.InhaleExhaleExp
+  type InhaleExhale = sil.ast.InhaleExhaleExp
+  val InhaleExhale = sil.ast.InhaleExhaleExp
 
   type Quantified = sil.ast.QuantifiedExp
   val Quantified = sil.ast.QuantifiedExp
