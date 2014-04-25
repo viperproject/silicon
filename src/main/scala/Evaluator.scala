@@ -878,8 +878,7 @@ trait DefaultEvaluator[
 
     val (t1: Term, tAux: Set[Term]) =
       localResults.map {lr =>
-        val newGuards = lr.πGuards
-
+        val newGuards = lr.πGuards filterNot decider.π.contains
         val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
