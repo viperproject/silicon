@@ -235,7 +235,7 @@ trait DefaultEvaluator[
             val (t1: Term, tAux: Set[Term]) = combine(localResults)
             val tAnd = And(t0.get, t1)
             assume(tAux)
-            Q(tAnd, localResults.headOption.map(_.context).getOrElse(c1))}})
+            Q(tAnd, localResults.headOption.fold(c1)(_.context))}})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -335,7 +335,7 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, localResults.headOption.map(_.context).getOrElse(c))}
+          Q(tImplies, localResults.headOption.fold(c)(_.context))}
 
       case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
@@ -405,7 +405,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, localResults.headOption.map(_.context).getOrElse(c))}
+          Q(tActualIte, localResults.headOption.fold(c)(_.context))}
 
       /* Integers */
 
@@ -544,7 +544,7 @@ trait DefaultEvaluator[
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-          Q(tQuant, localResults.headOption.map(_.context).getOrElse(c))}
+          Q(tQuant, localResults.headOption.fold(c)(_.context))}
 
       case fapp @ ast.FuncApp(func, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
