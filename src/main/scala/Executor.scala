@@ -159,16 +159,11 @@ trait DefaultExecutor[ST <: Store[ST],
                 else
                   leave(σ3, lb, c2, tv)(Q))})})
 
-        case frp @ sil.ast.FreshReadPermBlock(vars, body, succ) =>
-          val (arps, arpConstraints) =
-            vars.map(v => (v, freshARP()))
-                .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
-                .unzip
-          val γ1 = Γ(σ.γ.values ++ arps)
-          val c1 = c.setConstrainable(arps map (_._2), true)
-          assume(toSet(arpConstraints))
-          exec(σ \ γ1, body, c1, tv)((σ1, c2) =>
-            leave(σ1, frp, c2.setConstrainable(arps map (_._2), false), tv)(Q))
+        case frp @ sil.ast.ConstrainingBlock(vars, body, succ) =>
+          val arps = vars map σ.γ.apply
+          val c1 = c.setConstrainable(arps, true)
+          exec(σ, body, c1, tv)((σ1, c2) =>
+            leave(σ1, frp, c2.setConstrainable(arps, false), tv)(Q))
     }
   }
 
@@ -254,6 +249,19 @@ trait DefaultExecutor[ST <: Store[ST],
         val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - t
         assume(state.terms.utils.BigAnd(refs map (_ !== t)))
         Q(σ1, c)
+
+      case ast.Fresh(vars) =>
+        val (arps, arpConstraints) =
+          vars.map(v => (v, freshARP()))
+              .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
+              .unzip
+        val γ1 = Γ(σ.γ.values ++ arps)
+          /* It is crucial that the (var -> term) mappings in arps override
+           * already existing bindings for the same vars when they are added
+           * (via ++).
+           */
+        assume(toSet(arpConstraints))
+        Q(σ \ γ1, c)
 
       case inhale @ ast.Inhale(a) =>
         produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
@@ -371,7 +379,7 @@ trait DefaultExecutor[ST <: Store[ST],
            | _: sil.ast.If
            | _: sil.ast.Label
            | _: sil.ast.Seqn
-           | _: sil.ast.FreshReadPerm
+           | _: sil.ast.Constraining
            | _: sil.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
 		}
 
