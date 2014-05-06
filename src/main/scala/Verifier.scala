@@ -40,9 +40,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  /* Must be set when a program verification is started! */
-  var program: ast.Program = null
-
   def contextFactory: ContextFactory[C, ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 
@@ -212,8 +209,6 @@ trait AbstractVerifier[ST <: Store[ST],
   import ev.symbolConverter
 
   def verify(program: ast.Program): List[VerificationResult] = {
-    ev.program = program
-
     emitPreamble(program)
 
     val members = program.members.filterNot(m => filter(m.name)).iterator

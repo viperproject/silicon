@@ -50,8 +50,6 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
-  var program: ast.Program
-
   private def follow(σ: S, edge: ast.CFGEdge, c: C, tv: TV)
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
@@ -241,10 +239,10 @@ trait DefaultExecutor[ST <: Store[ST],
             case false =>
               Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv)})
 
-      case ast.New(v) =>
+      case ast.New(v, fields) =>
         val t = fresh(v)
         assume(t !== Null())
-        val newh = H(program.fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
+        val newh = H(fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
         val σ1 = σ \+ (v, t) \+ newh
         val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - t
         assume(state.terms.utils.BigAnd(refs map (_ !== t)))
