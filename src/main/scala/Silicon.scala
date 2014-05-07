@@ -47,7 +47,9 @@ trait SiliconConstants {
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
 
-object Silicon extends SiliconConstants
+object Silicon extends SiliconConstants {
+  val hideInternalOptions = true
+}
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
@@ -327,13 +329,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val showBranches = opt[Boolean]("showBranches",
     descr = "In case of errors show the branches taken during the execution",
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val stopOnFirstError = opt[Boolean]("stopOnFirstError",
     descr = "Execute only until the first error is found",
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   private val statisticsSinkConverter = new ValueConverter[(String, String)] {
@@ -355,92 +359,106 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = (  "Show some statistics about the verification. Options are "
              + "'stdio' and 'file=<path\\to\\statistics.json>'"),
     default = None,
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )(statisticsSinkConverter)
   /* TODO: Validate arguments to showStatistics */
 
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
     default  = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val includeMembers = opt[String]("includeMembers",
     descr = "Include members in verification (default: '*'). Wildcard characters are '?' and '*'. ",
     default = Some(".*"),
-    noshort = true
+    noshort = true,
+    hidden = false
   )(singleArgConverter[String](s => silicon.common.config.wildcardToRegex(s)))
 
   val excludeMembers = opt[String]("excludeMembers",
     descr = "Exclude members from verification (default: ''). Is applied after the include pattern.",
     default = Some(""),
-    noshort = true
+    noshort = true,
+    hidden = false
   )
 
   val unrollFunctions = opt[Int]("unrollFunctions",
     descr = "Unroll function definitions at most n times (default: 1)",
     default = Some(1),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
     descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
              + "Caching results in incompletenesses, but is usually faster."),
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
     descr = (  "Disable caching of snapshot symbols. "
              + "Caching reduces the number of symbols the prover has to work with."),
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val disableLocalEvaluations = opt[Boolean]("disableLocalEvaluations",
     descr = (  "Disable local evaluation of pure conditionals, function applications, unfoldings etc. "
              + "WARNING: Disabling it is unsound unsound and incomplete, intended for debugging only!"),
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
              + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val logLevel = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
     default = Some("OFF"),
-    noshort = true
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   val timeout = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e., no timeout)."),
     default = Some(0),
-    noshort = true
+    noshort = true,
+    hidden = false
   )
 
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: tmp_<timestamp>)",
     default = Some("./tmp"),
-    noshort = true
+    noshort = true,
+    hidden = false
   )
 
   val z3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
              + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
     default = None,
-    noshort = true
+    noshort = true,
+    hidden = false
   )
 
   val z3LogFile = opt[ConfigValue[String]]("z3LogFile",
     descr = "Log file containing the interaction with Z3 (default: <tempDirectory>/logfile.smt2)",
     default = Some(DefaultValue("logfile.smt2")),
-    noshort = true
+    noshort = true,
+    hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
   validateOpt(timeout){
