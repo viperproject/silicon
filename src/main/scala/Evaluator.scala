@@ -226,8 +226,8 @@ trait DefaultEvaluator[
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
                   localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
-                  Success[C, ST, H, S](c3)}),
-              (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
+                  Success()}),
+              (c2: C, tv1: TV) => Success())
 
           decider.popScope()
 
@@ -270,8 +270,8 @@ trait DefaultEvaluator[
                   assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
                   t1 = Some(_t1)
                   πt1 = decider.π -- (πPre + t0Neg) /* Removing t0Neg from πt1 is crucial! */
-                  Success[C, ST, H, S](c3)}),
-              (c2: C, tv1: TV) => Success[C, ST, H, S](c2))
+                  Success()}),
+              (c2: C, tv1: TV) => Success())
           decider.popScope()
 
           r && {
@@ -316,8 +316,8 @@ trait DefaultEvaluator[
               (c2: C, tv1: TV) =>
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
                   localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
-                  Success[C, ST, H, S](c3)}),
-              (c2: C, _) => Success[C, ST, H, S](c2))})
+                  Success()}),
+              (c2: C, _) => Success())})
 
         decider.popScope()
 
@@ -363,11 +363,11 @@ trait DefaultEvaluator[
               (c2: C, tv1: TV) => {
                 eval(σ, e1, pve, c2, tv1)((t1, c3) => {
                   localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
-                  Success[C, ST, H, S](c3)})},
+                  Success()})},
               (c2: C, tv1: TV) => {
                 eval(σ, e2, pve, c2, tv1)((t2, c3) => {
                   localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
-                  Success[C, ST, H, S](c3)})})})
+                  Success()})})})
 
         decider.popScope()
 
@@ -533,7 +533,7 @@ trait DefaultEvaluator[
                * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
                * which is currently overcome by caching fapp-terms.
                */
-              Success[C, ST, H, S](c2)}))
+              Success()}))
 
         quantifiedVars = quantifiedVars.drop(tVars.length)
         decider.popScope()
@@ -621,9 +621,9 @@ trait DefaultEvaluator[
                         val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                         eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
                           localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
-                          Success[C, ST, H, S](c3)})})}))
+                          Success()})})}))
                 case false =>
-                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)}})
+                  Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}})
 
           r && {
             val quantifiedVarsSorts = quantifiedVars.map(_.sort)
@@ -632,9 +632,9 @@ trait DefaultEvaluator[
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
+            Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
         } else
-          Failure[C, ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), c, tv)
+          Failure[ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), tv)
 
       /* Sequences */
 
@@ -715,7 +715,7 @@ trait DefaultEvaluator[
       }
 
       case _: ast.InhaleExhale =>
-        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e), c, tv)
+        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e), tv)
 		}
 
     resultTerm
@@ -762,9 +762,9 @@ trait DefaultEvaluator[
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                       eval(σ3, eIn, pve, c4a, tv)(Q)})}))
               case false =>
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})}
+                Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)})}
         else
-          Failure[C, ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), c, tv)
+          Failure[ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), tv)
 
       case quant: ast.Quantified if config.disableLocalEvaluations() =>
         val body = quant.exp
@@ -809,7 +809,7 @@ trait DefaultEvaluator[
           if (assertRcvrNonNull)
             decider.assert(σ, Or(NullTrigger(tRcvr), tRcvr !== Null())){
               case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
-              case false => Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c1, tv)}
+              case false => Failure[ST, H, S, TV](pve dueTo ReceiverNull(locacc), tv)}
           else
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
@@ -847,7 +847,7 @@ trait DefaultEvaluator[
 
     decider.assert(σ, tDivisor !== tZero){
       case true => Q(t, c)
-      case false => Failure[C, ST, H, S, TV](pve dueTo DivisionByZero(eDivisor), c, tv)
+      case false => Failure[ST, H, S, TV](pve dueTo DivisionByZero(eDivisor), tv)
     }
   }
 

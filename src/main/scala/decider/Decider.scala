@@ -172,13 +172,13 @@ class DefaultDecider[ST <: Store[ST],
 //  var cnt = 0
 
   def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[C, ST, H, S, TV] => VerificationResult)
+                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
                   : VerificationResult = {
 
     val chunks = σ.h.values
-    var failure: Option[Failure[C, ST, H, S, TV]] = None
+    var failure: Option[Failure[ST, H, S, TV]] = None
 //    cnt += 1
 //    val mycnt = cnt
 //    prover.logComment(s"[decider/tryOrFail-$mycnt]")
@@ -299,9 +299,9 @@ class DefaultDecider[ST <: Store[ST],
 
       case None =>
         if (checkSmoke())
-          Success[C, ST, H, S](c) /* TODO: Mark branch as dead? */
+          Success() /* TODO: Mark branch as dead? */
         else
-          QF(Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv))}
+          QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}
     )(Q)
   }
 
@@ -323,7 +323,7 @@ class DefaultDecider[ST <: Store[ST],
           case true =>
             QS(ch)
           case false =>
-            QF(Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv))}})
+            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}})
     )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {

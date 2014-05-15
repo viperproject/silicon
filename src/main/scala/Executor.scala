@@ -60,7 +60,7 @@ trait DefaultExecutor[ST <: Store[ST],
         /* TODO: Use FollowEdge instead of IfBranching */
           branch(σ, tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
             (c2: C, tv1: TV) => exec(σ, ce.dest, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Success[C, ST, H, S](c2)))
+            (c2: C, tv1: TV) => Success()))
 
       case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c, tv)(Q)
     }
@@ -81,7 +81,7 @@ trait DefaultExecutor[ST <: Store[ST],
                       : VerificationResult = {
 
     if (edges.isEmpty) {
-      Success[C, ST, H, S](c)
+      Success()
     } else {
       follow(σ, edges.head, c, tv)(Q) && follows2(σ, edges.tail, c, tv)(Q)
     }
@@ -133,11 +133,11 @@ trait DefaultExecutor[ST <: Store[ST],
            *       false-checking.
            */
             if (decider.checkSmoke())
-              Success[C, ST, H, S](c1) /* TODO: Mark branch as dead? */
+              Success() /* TODO: Mark branch as dead? */
             else
               exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
                 consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2, tv0)((σ3, _, _, c3) =>
-                  Success[C, ST, H, S](c3))))}
+                  Success())))}
             &&
           inScope {
             /* Verify call-site */
@@ -153,7 +153,7 @@ trait DefaultExecutor[ST <: Store[ST],
                *       false-checking.
                */
                 if (decider.checkSmoke())
-                  Success[C, ST, H, S](c2) /* TODO: Mark branch as dead? */
+                  Success() /* TODO: Mark branch as dead? */
                 else
                   leave(σ3, lb, c2, tv)(Q))})})
 
@@ -217,11 +217,11 @@ trait DefaultExecutor[ST <: Store[ST],
             decider.assume(NullTrigger(tRcvr))
             decider.assert(σ, tRcvr !== Null()){
               case false =>
-                Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c2, tv)
+                Failure[ST, H, S, TV](pve dueTo ReceiverNull(fl), tv)
               case true =>
                 decider.assert(σ, AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())){
                   case false =>
-                    Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fl), c, tv)
+                    Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fl), tv)
                   case true =>
                     val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
                     quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2, tv)(h =>
@@ -237,7 +237,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             case false =>
-              Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(fl), c1, tv)})
+              Failure[ST, H, S, TV](pve dueTo ReceiverNull(fl), tv)})
 
       case ast.New(v, fields) =>
         val t = fresh(v)
@@ -282,15 +282,15 @@ trait DefaultExecutor[ST <: Store[ST],
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>
             if (decider.checkSmoke())
-              Success[C, ST, H, S](c)
+              Success()
             else
-              Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(a), c, tv)
+              Failure[ST, H, S, TV](pve dueTo AssertionFalse(a), tv)
 
           case _ =>
             if (config.disableSubsumption()) {
               val r =
                 consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
-                  Success[C, ST, H, S](c1))
+                  Success())
               r && Q(σ,c)
             } else
               consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
@@ -357,7 +357,7 @@ trait DefaultExecutor[ST <: Store[ST],
                     val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
                     Q(σ \ h1, c3)})
                 case false =>
-                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)}))
+                  Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}))
 
       case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
         val pve = UnfoldFailed(unfold)
@@ -370,7 +370,7 @@ trait DefaultExecutor[ST <: Store[ST],
                     produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) =>
                       Q(σ2 \ σ.γ, c4)))
                 case false =>
-                  Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c2, tv)}))
+                  Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}))
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto

@@ -15,7 +15,7 @@ import sil.verifier.{
   DefaultDependency => SilDefaultDependency,
   TimeoutOccurred => SilTimeoutOccurred}
 import sil.frontend.{SilFrontend, SilFrontendConfig}
-import interfaces.{VerificationResult, ContextAwareResult, Failure => SiliconFailure}
+import interfaces.{VerificationResult, Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
@@ -64,7 +64,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type C = DefaultContext[ST, H, S]
   private type TV = BranchingOnlyTraceView[ST, H, S]
   private type V = DefaultVerifier[ST, H, PC, S, TV]
-  private type Failure = SiliconFailure[C, ST, H, S, TV]
+  private type Failure = SiliconFailure[ST, H, S, TV]
 
   private var shutDownHooks: Set[() => Unit] = _
 
@@ -246,10 +246,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
      */
     failures = failures.reverse
            .foldLeft((Set[String](), List[Failure]())){
-              case ((ss, rs), r: ContextAwareResult[_, _, _, _]) =>
-                if (r.message == null) (ss, r :: rs)
-                else if (ss.contains(r.message.readableMessage)) (ss, rs)
-                else (ss + r.message.readableMessage, r :: rs)
+              case ((ss, rs), f: Failure) =>
+                if (ss.contains(f.message.readableMessage)) (ss, rs)
+                else (ss + f.message.readableMessage, f :: rs)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
 
@@ -292,16 +291,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
 	private def logFailure(failure: Failure, log: String => Unit) {
 		log("\n" + failure.message.readableMessage(true, true))
-
-		if (config.showBranches() && failure.context.branchings.nonEmpty) {
-			logger.error("    Branches taken:")
-
-      failure.context.branchings.reverse foreach (b =>
-				logger.error("      " + b.format))
-
-      logger.error("")
-      failure.context.currentBranch.print("")
-		}
 	}
 
 	private def setLogLevel(level: String) {
@@ -326,13 +315,6 @@ case class DefaultValue[T](value: T) extends ConfigValue[T]
 case class UserValue[T](value: T) extends ConfigValue[T]
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
-  val showBranches = opt[Boolean]("showBranches",
-    descr = "In case of errors show the branches taken during the execution",
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
   val stopOnFirstError = opt[Boolean]("stopOnFirstError",
     descr = "Execute only until the first error is found",
     default = Some(false),

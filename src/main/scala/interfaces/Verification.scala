@@ -3,8 +3,7 @@ package silicon
 package interfaces
 
 import sil.verifier.VerificationError
-import reporting.Context
-import reporting.{Context, TraceView}
+import reporting.TraceView
 import state.{Store, Heap, State}
 
 /*
@@ -14,13 +13,6 @@ import state.{Store, Heap, State}
 /* TODO: Extract appropriate interfaces and then move the implementations
  *       outside of the interfaces package.
  */
-
-sealed trait Mode
-
-object modes {
-  case object Producing extends Mode
-  case object Consuming extends Mode
-}
 
 /* TODO: Make VerificationResult immutable */
 abstract class VerificationResult {
@@ -67,56 +59,27 @@ abstract class NonFatalResult extends VerificationResult {
 	}
 }
 
-trait ContextAwareResult[C <: Context[C, ST, H, S],
-                         ST <: Store[ST],
-                         H <: Heap[H],
-                         S <: State[ST, H, S]]
-      extends VerificationResult {
+case class Success() extends NonFatalResult {
+//  context.currentBranch.addResult(this)
 
-	def message: VerificationError
-	def context: C
-}
-
-case class Success[C <: Context[C, ST, H, S],
-                   ST <: Store[ST],
-                   H <: Heap[H],
-                   S <: State[ST, H, S]]
-                  (context: C)
-		extends NonFatalResult
-       with ContextAwareResult[C, ST, H, S] {
-
-  context.currentBranch.addResult(this)
-
-	val message = null /* TODO: Make an Option[Message] */
   override val toString = "Success"
 }
 
-case class Unreachable[C <: Context[C, ST, H, S],
-                       ST <: Store[ST],
-                       H <: Heap[H],
-                       S <: State[ST, H, S]]
-                      (context: C)
-    extends NonFatalResult
-       with ContextAwareResult[C, ST, H, S] {
+case class Unreachable() extends NonFatalResult {
+//  context.currentBranch.addResult(this)
 
-  context.currentBranch.addResult(this)
-
-  val message = null /* TODO: Make an Option[Message] */
   override val toString = "Unreachable"
 }
 
-case class Failure[C <: Context[C, ST, H, S],
-                   ST <: Store[ST],
+case class Failure[ST <: Store[ST],
                    H <: Heap[H],
                    S <: State[ST, H, S],
                    TV <: TraceView[TV, ST, H, S]]
                   (message: VerificationError,
-                   context: C,
                    tv: TV)
-		extends FatalResult
-       with ContextAwareResult[C, ST, H, S] {
+		extends FatalResult {
 
-  tv.addResult(context.currentBranch, this)
+//  tv.addResult(context.currentBranch, this)
 
   override lazy val toString = message.readableMessage
 }

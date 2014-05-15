@@ -193,7 +193,7 @@ trait DefaultProducer[ST <: Store[ST],
                 Q(h + ch, c3)})}))
 
       case _: ast.InhaleExhale =>
-        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), c, tv)
+        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

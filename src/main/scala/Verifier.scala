@@ -52,8 +52,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
       case m: ast.Method => verify(m, c, tv)
       case f: ast.ProgramFunction => verify(f, c, tv)
       case p: ast.Predicate => verify(p, c, tv)
-      case _: ast.Domain | _: ast.Field =>
-        Success[C, ST, H, S](c)
+      case _: ast.Domain | _: ast.Field => Success()
     }
   }
 
@@ -85,12 +84,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
          produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
-           Success[C, ST, H, S](c3))}
+           Success())}
 					&&
         inScope {
           exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success[C, ST, H, S](c4)))})})}
+              Success()))})})}
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
@@ -116,13 +115,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
       val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
       (inScope {
         produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
-          Success[C, ST, H, S](c2))}
+          Success())}
         &&
         inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
             eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
               consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success[C, ST, H, S](c4))))})}
+                Success())))})}
   }
 
   def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {
@@ -136,7 +135,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
     inScope {
       produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
-        Success[C, ST, H, S](c1))}
+        Success())}
   }
 }
 
