@@ -2,11 +2,11 @@ package semper
 package silicon
 
 import java.nio.file.Path
-import sil.testing.DefaultSilSuite
+import sil.testing.SilSuite
 import sil.verifier.Verifier
 import sil.frontend.{Frontend, SilFrontend}
 
-class SiliconTests extends DefaultSilSuite {
+class SiliconTests extends SilSuite {
   private val siliconTestDirectories: Seq[String] = List("consistency")
   private val silTestDirectories: Seq[String] = List("all", "quantifiedpermissions")
 
@@ -20,13 +20,12 @@ class SiliconTests extends DefaultSilSuite {
     fe
   }
 
-  def verifiers = List(createSiliconInstance())
-
+  val verifiers = List(createSiliconInstance())
 
   private def createSiliconInstance() = {
     val silicon = new Silicon(Seq(("startedBy", "semper.silicon.SiliconTests")))
 
-    val args = optionsFromScalaTestConfigMap(configMap) ++ Seq("dummy.sil")
+    val args = optionsFromScalaTestConfigMap() ++ Seq("dummy.sil")
 
     silicon.parseCommandLine(args)
     silicon.config.initialize {case _ =>}
@@ -34,13 +33,15 @@ class SiliconTests extends DefaultSilSuite {
     silicon
   }
 
-  private def optionsFromScalaTestConfigMap(configMap: Predef.Map[String, Any]): Seq[String] = {
+  private def optionsFromScalaTestConfigMap(): Seq[String] = {
     val prefix = "silicon:"
 
-    configMap.flatMap {
-      case (k, v) if k.startsWith(prefix) => Seq("--" + k.substring(prefix.length), v.toString)
-      case _ => Seq()
-    }.toSeq
+    prefixSpecificConfigMap.get(prefix) match {
+      case None => Seq()
+      case Some(optionMap) => optionMap.flatMap{
+        case (k, v) => Seq(s"--$k", v.toString)
+      }.toSeq
+    }
   }
 }
 
