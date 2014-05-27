@@ -27,9 +27,16 @@ class DefaultSequencesEmitter(prover: Prover,
    */
   def symbols = None
 
+  /* Lifetime */
+
   def reset() {
     collectedSorts = collectedSorts.empty
   }
+
+  def start() {}
+  def stop() {}
+
+  /* Functionality */
 
   def analyze(program: ast.Program) {
     var sequenceTypes = Set[ast.types.Seq]()

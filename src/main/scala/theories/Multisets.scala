@@ -29,9 +29,16 @@ class DefaultMultisetsEmitter(prover: Prover,
    */
   def symbols = None
 
+  /* Lifetime */
+
   def reset() {
     collectedSorts = collectedSorts.empty
   }
+
+  def start() {}
+  def stop() {}
+
+  /* Functionality */
 
   def analyze(program: ast.Program) {
     var multisetTypes = Set[ast.types.Multiset]()

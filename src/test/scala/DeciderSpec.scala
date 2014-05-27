@@ -69,7 +69,9 @@ class DeciderSpec extends FlatSpec {
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, FullPerm(), bookkeeper, stateFormatter, stateFactory)
 
     decider.init(pathConditionsFactory, heapCompressor, config, bookkeeper)
-    decider.start().map(err => throw VerificationException(err))
+           .map(err => throw VerificationException(err))
+
+    decider.start()
 
     val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[semper.silicon.decider.Z3ProverStdIO])
     decider.prover.logComment("\n; /preamble.smt2")

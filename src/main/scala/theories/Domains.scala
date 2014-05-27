@@ -30,6 +30,11 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
      * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
      */
 
+  def sorts = collectedSorts
+  def symbols = Some(collectedSymbols)
+
+  /* Lifetime */
+
   def reset() {
     collectedSorts = collectedSorts.empty
     collectedSymbols = collectedSymbols.empty
@@ -37,8 +42,10 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     uniqueSymbols = uniqueSymbols.empty
   }
 
-  def sorts = collectedSorts
-  def symbols = Some(collectedSymbols)
+  def start() {}
+  def stop() {}
+
+  /* Functionality */
 
   def analyze(program: ast.Program) {
     val concreteDomainTypes = collectConcreteDomainTypes(program)
