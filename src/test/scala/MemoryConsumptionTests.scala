@@ -2,7 +2,7 @@ package semper
 package silicon
 package tests
 
-import org.scalatest.FlatSpec
+import org.scalatest.{Tag, FlatSpec}
 import semper.sil.frontend.SilFrontend
 import java.nio.file.Paths
 
@@ -17,7 +17,7 @@ import java.nio.file.Paths
   * to time to get a feeling of how much memory Silicon consumes.
   */
 class MemoryTests extends FlatSpec {
-  ignore should "not leak memory when verifying multiple files" in {
+  ignore should "not leak memory when verifying multiple files" taggedAs Tag("silicon.MemoryTests") in {
     val rt = Runtime.getRuntime
 
     val silicon = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
