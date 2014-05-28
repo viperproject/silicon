@@ -1,5 +1,6 @@
 package semper
 package silicon
+package tests
 
 import java.nio.file.Path
 import sil.testing.SilSuite
