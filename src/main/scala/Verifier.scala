@@ -9,11 +9,11 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import interfaces.reporting.{ContextFactory, TraceView, TraceViewFactory}
+import interfaces.reporting.{TraceView, TraceViewFactory}
 import semper.silicon.state.{terms, SymbolConvert, DirectChunk}
 import semper.silicon.state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import semper.silicon.reporting.{DefaultContext, DefaultContextFactory, Bookkeeper}
+import semper.silicon.reporting.{DefaultContext, Bookkeeper}
 import semper.silicon.reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription}
 import heap.QuantifiedChunkHelper
 import semper.silicon.decider.PreambleFileEmitter
@@ -41,12 +41,11 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  def contextFactory: ContextFactory[C, ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 
-  def verify(member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
+  def verify(program: ast.Program, member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
     val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree)
+    val c = DefaultContext(program, history.tree)
     val tv = traceviewFactory.create(history)
 
     member match {
@@ -154,7 +153,6 @@ class DefaultElementVerifier[ST <: Store[ST],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
 			val bookkeeper: Bookkeeper,
-			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
 		extends AbstractElementVerifier[ST, H, PC, S, TV]
        with DefaultEvaluator[ST, H, PC, S, TV]
@@ -214,7 +212,7 @@ trait AbstractVerifier[ST <: Store[ST],
     if (config.stopOnFirstError()) {
       /* Stops on first error */
       while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = ev.verify(members.next()) :: results
+        results = ev.verify(program, members.next()) :: results
       }
 
       results = results.reverse
@@ -223,7 +221,7 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results = members.map(ev.verify).toList
+      results = members.map(m => ev.verify(program, m)).toList
     }
 
     results
@@ -331,8 +329,6 @@ class DefaultVerifier[ST <: Store[ST],
 		extends AbstractVerifier[ST, H, PC, S, TV]
 			 with Logging {
 
-  val contextFactory = new DefaultContextFactory[ST, H, S]
-
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkHelper, stateUtils, bookkeeper, contextFactory, traceviewFactory)
+                                      quantifiedChunkHelper, stateUtils, bookkeeper, traceviewFactory)
 }
