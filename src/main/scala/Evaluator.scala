@@ -469,11 +469,11 @@ trait DefaultEvaluator[
       /* Others */
 
       /* Domains not handled directly */
-      case dfa @ ast.DomainFuncApp(func, eArgs, _) =>
+      case dfa @ ast.DomainFuncApp(funcName, eArgs, _) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
-          val fi = symbolConverter.toFunction(func, inSorts :+ outSort)
+          val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
       case _: ast.Quantified if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
@@ -546,8 +546,9 @@ trait DefaultEvaluator[
           assume(tQuantAux)
           Q(tQuant, localResults.headOption.fold(c)(_.context))}
 
-      case fapp @ ast.FuncApp(func, eArgs) =>
+      case fapp @ ast.FuncApp(funcName, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
+        val func = c.program.findFunction(funcName)
 
         evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
@@ -592,8 +593,10 @@ trait DefaultEvaluator[
       case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
 
       case ast.Unfolding(
-                acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
+                acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                 eIn) =>
+
+        val predicate = c.program.findPredicate(predicateName)
 
         /* Unfolding only has a temporary effect on the current heap because
          * the resulting heap is not forwarded to the final continuation.
@@ -745,8 +748,8 @@ trait DefaultEvaluator[
             (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
             (c2: C, tv1: TV) => eval(σ, e2, pve, c2, tv1)(Q)))
 
-      case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm), eIn) =>
-        val body = predicate.body
+      case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm), eIn) =>
+        val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
@@ -757,7 +760,7 @@ trait DefaultEvaluator[
                   consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                     /* Unfolding only effects the current heap */
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, body, pve, c3, tv)((σ2, c4) => {
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                       eval(σ3, eIn, pve, c4a, tv)(Q)})}))
@@ -813,9 +816,9 @@ trait DefaultEvaluator[
           else
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
-      case ast.PredicateAccess(eArgs, predicate) =>
+      case ast.PredicateAccess(eArgs, predicateName) =>
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
-          Q(PredicateChunkIdentifier(predicate.name, tArgs), c1))
+          Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
     }
 
 	private def evalBinOp[T <: Term]

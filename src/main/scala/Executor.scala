@@ -297,7 +297,8 @@ trait DefaultExecutor[ST <: Store[ST],
                 Q(σ, c1))
         }
 
-      case call @ ast.Call(meth, eArgs, lhs) =>
+      case call @ ast.Call(methodName, eArgs, lhs) =>
+        val meth = c.program.findMethod(methodName)
         val pve = PreconditionInCallFalse(call)
           /* TODO: Used to be MethodCallFailed. Is also passed on to producing the postcondition, during which
            *       it is passed on to calls to eval, but it could also be thrown by produce itself (probably
@@ -317,7 +318,8 @@ trait DefaultExecutor[ST <: Store[ST],
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
 
-      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
+      case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
+        val predicate = c.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
@@ -359,7 +361,8 @@ trait DefaultExecutor[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}))
 
-      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm)) =>
+      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
+        val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
             evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>

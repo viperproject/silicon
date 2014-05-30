@@ -156,7 +156,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     var newDomains: Set[ast.types.DomainType] = Set()
 
     var ds: Iterable[ast.types.DomainType] =
-      program.domains filter (_.typVars.isEmpty) map (ast.types.DomainType(_, Map.empty))
+      program.domains filter (_.typVars.isEmpty) map (ast.types.DomainType(_, Map.empty[ast.TypeVar, ast.Type]))
 
     domains ++= ds
 
@@ -167,7 +167,8 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     var continue = newDomains.nonEmpty
 
     while (continue) {
-      newDomains = newDomains flatMap (dt => collectConcreteDomainTypes(dt.domain, dt.typVarsMap))
+      newDomains =
+        newDomains flatMap (dt => collectConcreteDomainTypes(program.findDomain(dt.domainName), dt.typVarsMap))
 
       newDomains = newDomains -- domains
       continue = newDomains.nonEmpty
@@ -208,12 +209,13 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     insert(
       instances,
       concreteDomainTypes map {case dt =>
+        val domain = program.findDomain(dt.domainName)
         val members: MSet[DomainMemberInstance] =
-          MSet((dt.domain.functions.map(DomainFunctionInstance(_, dt.typVarsMap))
-                ++ dt.domain.axioms.map(DomainAxiomInstance(_, dt.typVarsMap))
+          MSet((domain.functions.map(DomainFunctionInstance(_, dt.typVarsMap))
+                ++ domain.axioms.map(DomainAxiomInstance(_, dt.typVarsMap))
                ):_*)
 
-        (dt.domain, members)})
+        (domain, members)})
 
     /* Get member instances from the program. Since the passed type variable mapping is empty,
      * this will only collect domain functions from domain function applications in which all
@@ -223,7 +225,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
      * for domain function applications that occur inside domain declarations.
      */
     insert(newInstances,
-           collectConcreteDomainMemberInstances(program, Map[ast.TypeVar, ast.Type](), membersWithSource))
+           collectConcreteDomainMemberInstances(program, program, Map[ast.TypeVar, ast.Type](), membersWithSource))
 
     insert(instances, newInstances)
 
@@ -235,7 +237,8 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
       newInstances foreach {case (domain, memberInstances) =>
         memberInstances foreach {instance =>
           val ms =
-            collectConcreteDomainMemberInstances(membersWithSource(instance.member),
+            collectConcreteDomainMemberInstances(program,
+                                                 membersWithSource(instance.member),
                                                  instance.typeVarsMap,
                                                  membersWithSource)
 
@@ -261,7 +264,8 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     instancesConvertedOuterMaps
   }
 
-  private def collectConcreteDomainMemberInstances(node: ast.Node,
+  private def collectConcreteDomainMemberInstances(program: ast.Program,
+                                                   node: ast.Node,
                                                    typeVarsMap: Map[ast.TypeVar, ast.Type],
                                                    membersWithSource: Map[ast.DomainMember, ast.Domain])
                                                   : InstanceCollection = {
@@ -272,10 +276,11 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
 
     node visit {
       case dfa: ast.DomainFuncApp =>
+        val func = dfa.func(program)
         val combinedTypeVarsMap = typeVarsMap ++ dfa.typVarMap
 
-        if (dfa.func.freeTypeVariables forall (v => combinedTypeVarsMap.contains(v) && combinedTypeVarsMap(v).isConcrete)) {
-          instances.addBinding(membersWithSource(dfa.func), DomainFunctionInstance(dfa.func, combinedTypeVarsMap))
+        if (func.freeTypeVariables forall (v => combinedTypeVarsMap.contains(v) && combinedTypeVarsMap(v).isConcrete)) {
+          instances.addBinding(membersWithSource(func), DomainFunctionInstance(func, combinedTypeVarsMap))
         }
 
       case df: ast.DomainFunction if df.freeTypeVariables forall typeVarsMap.contains =>
@@ -344,8 +349,8 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
 object DomainPrettyPrinter {
   def show(d: ast.Domain) = d.name + d.typVars.mkString("[",",","]")
 
-  def show(dt: ast.types.DomainType) =
-    dt.domain.name + dt.domain.typVars.mkString("[",",","]") + " where " + dt.typVarsMap
+  def show(dt: ast.types.DomainType, program: ast.Program) =
+    dt.domainName + program.findDomain(dt.domainName).typVars.mkString("[",",","]") + " where " + dt.typVarsMap
 }
 
 trait DomainsTranslator[R] {
@@ -421,11 +426,11 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
 
       case v: ast.Variable => terms.Var(v.name, toSort(v.typ, Map()))
 
-      case ast.DomainFuncApp(func, args, typeVarMap) =>
+      case ast.DomainFuncApp(functionName, args, typeVarMap) =>
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(exp.typ, typeVarMap)
-        val id = symbolConverter.toSortSpecificId(func.name, inSorts :+ outSort)
+        val id = symbolConverter.toSortSpecificId(functionName, inSorts :+ outSort)
         val df = terms.Function(id, inSorts, outSort)
         terms.DomainFApp(df, tArgs)
 
