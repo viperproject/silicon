@@ -14,7 +14,7 @@ import sil.verifier.{
   Failure => SilFailure,
   DefaultDependency => SilDefaultDependency,
   TimeoutOccurred => SilTimeoutOccurred}
-import sil.frontend.{SilFrontend, SilFrontendConfig}
+import sil.frontend.{SilFrontend, SilFrontendConfig, Phase}
 import interfaces.{Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
@@ -467,6 +467,12 @@ object SiliconRunner extends App with SilFrontend {
 
   execute(args)
 
+  override def execute(args: Seq[String]) {
+    super.execute(args)
+
+    siliconInstance.stop()
+  }
+
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq(("startedBy", "semper.silicon.SiliconRunner")))
 
@@ -475,6 +481,7 @@ object SiliconRunner extends App with SilFrontend {
 
   def configureVerifier(args: Seq[String]) = {
     siliconInstance.parseCommandLine(args)
+    siliconInstance.start()
 
     siliconInstance.config
   }
