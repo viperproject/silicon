@@ -43,14 +43,18 @@ class DefaultSetsEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var setTypes = Set[ast.types.Set]()
 
-    program visit {
-      case t: sil.ast.Typed => t.typ match {
-        case s: ast.types.Set => setTypes += s
-        /* Multisets depend on sets */
-        case s: ast.types.Multiset => setTypes += ast.types.Set(s.elementType)
-        /* Sequences depend on multisets, which in turn depend on sets */
-        case s: ast.types.Seq => setTypes += ast.types.Set(s.elementType)
-        case _ => /* Ignore other types */
+    program visit { case t: sil.ast.Typed =>
+      t.typ :: sil.ast.utility.Types.typeConstituents(t.typ) foreach {
+        case s: ast.types.Set =>
+          setTypes += s
+        case s: ast.types.Multiset =>
+          /* Multisets depend on sets */
+          setTypes += ast.types.Set(s.elementType)
+        case s: ast.types.Seq =>
+          /* Sequences depend on multisets, which in turn depend on sets */
+          setTypes += ast.types.Set(s.elementType)
+        case _ =>
+        /* Ignore other types */
       }
     }
 
