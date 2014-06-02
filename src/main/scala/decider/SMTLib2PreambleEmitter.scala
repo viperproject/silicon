@@ -3,9 +3,10 @@ package silicon
 package decider
 
 import scala.io.Source
+import sil.components.StatefulComponent
 import state.terms.Sort
 
-trait PreambleFileEmitter[R] {
+trait PreambleFileEmitter[R] extends StatefulComponent {
   def readPreamble(resource: String): R
   def emitPreamble(resource: String)
 
@@ -15,7 +16,19 @@ trait PreambleFileEmitter[R] {
   def emitPreamble(preamble: R)
 }
 
+/* TODO: Decouple from prover. Ideally, only the decider should have a reference to the prover.
+ *       Could closures be passed in that forward the work to the prover?
+ */
 class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[List[String]] {
+
+  /* Lifetime  */
+
+  def start() {}
+  def reset() { /* ATTENTION: Assumes that the prover is reset elsewhere, e.g., by the decider */ }
+  def stop() {}
+
+  /* Functionality  */
+
   def readPreamble(resource: String): List[String] = {
     val in = getClass.getResourceAsStream(resource)
 

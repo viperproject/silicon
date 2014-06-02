@@ -1,5 +1,5 @@
-var f: Int
-var r: Ref
+field f: Int
+field r: Ref
 
 function recfun(x: Int): Int
   requires x > 0

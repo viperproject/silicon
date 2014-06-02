@@ -164,7 +164,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			result
 		} else {
       decider.prover.logComment(s"[dead then-branch $cnt] $guardsTrue")
-      Unreachable[C, ST, H, S](cTrue)
+      Unreachable()
     })
 			&&
 		(if (exploreFalseBranch) {
@@ -184,7 +184,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			result
 		} else {
       decider.prover.logComment(s"[dead else-branch $cnt] $guardsFalse")
-      Unreachable[C, ST, H, S](cFalse)
+      Unreachable()
     }))
 	}
 }

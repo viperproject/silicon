@@ -29,19 +29,29 @@ class DefaultMultisetsEmitter(prover: Prover,
    */
   def symbols = None
 
+  /* Lifetime */
+
   def reset() {
     collectedSorts = collectedSorts.empty
   }
 
+  def start() {}
+  def stop() {}
+
+  /* Functionality */
+
   def analyze(program: ast.Program) {
     var multisetTypes = Set[ast.types.Multiset]()
 
-    program visit {
-      case t: sil.ast.Typed => t.typ match {
-        case s: ast.types.Multiset => multisetTypes += s
-        /* Sequences depend on multisets */
-        case s: ast.types.Seq => multisetTypes += ast.types.Multiset(s.elementType)
-        case _ => /* Ignore other types */
+    program visit { case t: sil.ast.Typed =>
+      t.typ :: sil.ast.utility.Types.typeConstituents(t.typ) foreach {
+        case s: ast.types.Multiset =>
+          multisetTypes += s
+        case s: ast.types.Seq =>
+          /* Sequences depend on multisets */
+          multisetTypes += ast.types.Multiset(s.elementType)
+        case _ =>
+          /* Ignore other types */
       }
     }
 

@@ -112,8 +112,8 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
-        val s0 = mkSnap(a0)
-        val s1 = mkSnap(a1)
+        val s0 = mkSnap(a0, c)
+        val s1 = mkSnap(a1, c)
         val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
@@ -167,10 +167,11 @@ trait DefaultProducer[ST <: Store[ST],
               assume(NoPerm() < pGain)
               Q(σ.h + ch, c2)})})
 
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), gain) =>
+      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
+        val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
           evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
-            val s = sf(getOptimalSnapshotSort(predicate.body)._1)
+            val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
@@ -209,7 +210,7 @@ trait DefaultProducer[ST <: Store[ST],
                 Q(h + ch, c3)})}))
 
       case _: ast.InhaleExhale =>
-        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), c, tv)
+        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
@@ -221,13 +222,13 @@ trait DefaultProducer[ST <: Store[ST],
     produced
   }
 
-  private def getOptimalSnapshotSort(φ: ast.Expression): (Sort, Boolean) = φ match {
+  private def getOptimalSnapshotSort(φ: ast.Expression, c: C): (Sort, Boolean) = φ match {
     case _ if φ.isPure =>
       (sorts.Snap, true)
 
     case ast.AccessPredicate(locacc, _) => locacc match {
       case fa: ast.FieldAccess => (toSort(fa.field.typ), false)
-      case pa: ast.PredicateAccess => getOptimalSnapshotSort(pa.predicate.body)
+      case pa: ast.PredicateAccess => getOptimalSnapshotSort(c.program.findPredicate(pa.predicateName).body, c)
       /* TODO: Most likely won't terminate for a predicate that only contains
        *       itself in its body, e.g., predicate P(x) {P(x)}.
        */
@@ -235,24 +236,24 @@ trait DefaultProducer[ST <: Store[ST],
 
     case ast.Implies(e0, φ1) =>
       /* φ1 must be impure, otherwise the first case would have applied. */
-      getOptimalSnapshotSort(φ1)
+      getOptimalSnapshotSort(φ1, c)
 
     case ast.And(φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
-      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false))
+      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), c)
 
     case ast.Ite(_, φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
 
       def findCommonSort() = {
-        val (s1, isPure1) = getOptimalSnapshotSort(φ1)
-        val (s2, isPure2) = getOptimalSnapshotSort(φ2)
+        val (s1, isPure1) = getOptimalSnapshotSort(φ1, c)
+        val (s2, isPure2) = getOptimalSnapshotSort(φ2, c)
         val s = if (s1 == s2) s1 else sorts.Snap
         val isPure = isPure1 && isPure2
         (s, isPure)
       }
 
-      getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort)
+      getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, c)
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
       /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
@@ -264,15 +265,16 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
-                                             fIfBothPure: () => (Sort, Boolean))
+                                             fIfBothPure: () => (Sort, Boolean),
+                                             c: C)
                                             : (Sort, Boolean) = {
 
-    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2)
-    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1)
+    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, c)
+    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, c)
     else fIfBothPure()
   }
 
-  private def mkSnap(φ: ast.Expression): Term = getOptimalSnapshotSort(φ) match {
+  private def mkSnap(φ: ast.Expression, c: C): Term = getOptimalSnapshotSort(φ, c) match {
     case (sorts.Snap, true) => Unit
     case (sort, _) => fresh(sort)
   }

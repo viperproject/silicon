@@ -99,12 +99,12 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
-        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
+        Failure[ST, H, S, TV](pve dueTo ReceiverNull(locacc), tv)
       case true =>
         decider.assert(σ, Less(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, f.name)))) {
           case false =>
             decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
-            Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+            Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
           case true =>
             decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
             val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
@@ -197,7 +197,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   def consume(σ: S, h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
     val k = exhalePermissions2(σ, h, ch)
     if(!k._3)
-      Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+      Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
     else Q(k._2)
   }
 

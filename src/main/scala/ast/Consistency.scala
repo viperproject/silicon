@@ -61,7 +61,7 @@ object Consistency {
   def checkFunctionPostconditionNotRecursive(function: ProgramFunction): Seq[VerificationError] =
     /* TODO: Most likely doesn't detect mutual recursion. */
     function.posts.flatMap(_.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-      case fapp @ FuncApp(someFunc, _) if function.name == someFunc.name =>
+      case fapp @ FuncApp(functionName, _) if function.name == functionName =>
         createUnsupportedRecursiveFunctionPostconditionError(fapp) +: errors.flatten
 
       case _ => errors.flatten

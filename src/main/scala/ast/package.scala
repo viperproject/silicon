@@ -167,8 +167,10 @@ package object ast {
   val Unfold = sil.ast.Unfold
   type New = sil.ast.NewStmt
   val New = sil.ast.NewStmt
-  type ConstrainFreshARP = sil.ast.FreshReadPerm
-  val ConstrainFreshARP = sil.ast.FreshReadPerm
+  type Fresh = sil.ast.Fresh
+  val Fresh = sil.ast.Fresh
+  type Constraining = sil.ast.Constraining
+  val Constraining = sil.ast.Constraining
   type While = sil.ast.While
   val While = sil.ast.While
   type Package = sil.ast.Package

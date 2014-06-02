@@ -1,0 +1,42 @@
+field v: Int
+field n: Ref
+
+predicate list(x: Ref) {
+  acc(x.n) && acc(x.v) && (x.n != null ==> acc(list(x.n)))
+}
+
+function size(x: Ref): Int
+  requires x != null ==> acc(list(x))
+  ensures result >= 0
+{ x == null ? 0 : unfolding acc(list(x)) in 1 + size(x.n) }
+
+function at(x: Ref, i: Int): Int
+  requires acc(list(x))
+  requires i >= 0 && i < size(x)
+{ unfolding acc(list(x)) in i == 0 ? x.v : at(x.n, i - 1) }
+
+method test1() {
+  var n1: Ref
+  n1 := new(v, n)
+  n1.v := 1
+  n1.n := null
+  fold acc(list(n1))
+  assert size(n1) == 1 && at(n1, 0) == 1
+
+  var n2: Ref
+  n2 := new(v, n)
+  n2.v := 2
+  n2.n := n1
+  fold acc(list(n2))
+  assert size(n2) == 2 && at(n2, 0) == 2 && at(n2, 1) == 1
+}
+
+method test2(x: Ref)
+  requires acc(list(x))
+  requires forall i: Int :: 0 <= i && i < size(x) ==> at(x, i) == i
+{
+  if (size(x) > 0) { assert at(x, 0) == 0 }
+  if (size(x) > 1) { assert at(x, 1) == 1 }
+  if (size(x) > 2) { assert at(x, 2) == 2 }
+  if (size(x) > 3) { assert at(x, 3) == 3 }
+}

@@ -183,10 +183,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       Q(h2, pc.snap, pc :: Nil, c3)
                     case _ => sys.error(s"Unexpected chunk after consuming $φ: $ch")})
               case false =>
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)}))
+                Failure[ST, H, S, TV](pve dueTo NonPositivePermission(perm), tv)}))
 
       case _: ast.InhaleExhale =>
-        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), c, tv)
+        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
       /* TODO: Needs to consider both heaps. Try to merge this code with consumeIncludingReserveHeap. */
       case _ if φ.typ == ast.types.Wand =>
@@ -251,7 +251,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 assume(t)
                 QS((h, Unit, Nil, c))
               case false =>
-                QF(Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
+                QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
             })
         })(Q.tupled)
 		}

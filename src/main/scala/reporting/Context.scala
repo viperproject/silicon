@@ -3,22 +3,17 @@ package silicon
 package reporting
 
 import interfaces.state.{ Store, Heap, State}
-import interfaces.reporting.{ Context, ContextFactory, Branch, BranchingStep}
-import state.terms.Var
-
-class DefaultContextFactory[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-    extends ContextFactory[DefaultContext[ST, H, S], ST, H, S] {
-
-  def create(currentBranch: Branch[ST, H, S]) = new DefaultContext[ST, H, S](currentBranch)
-}
+import interfaces.reporting.{ Context, Branch, BranchingStep}
+import state.terms.Term
 
 /* TODO: Use MultiSet[Member] instead of List[Member] */
 case class DefaultContext[ST <: Store[ST],
                           H <: Heap[H],
                           S <: State[ST, H, S]]
-                         (currentBranch: Branch[ST, H, S],
+                         (program: ast.Program,
+                          currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
-                          constrainableARPs: Set[Var] = Set(),
+                          constrainableARPs: Set[Term] = Set())
                           reserveHeap: Option[H] = None,
                           reserveEvalHeap: Option[H] = None,
                           poldHeap: Option[H] = None,
@@ -40,7 +35,7 @@ case class DefaultContext[ST <: Store[ST],
 
   def cycles(m: ast.Member) = visited.count(_ == m)
 
-  def setConstrainable(arps: Seq[Var], constrainable: Boolean) = {
+  def setConstrainable(arps: Seq[Term], constrainable: Boolean) = {
     val newConstrainableARPs =
       if (constrainable) constrainableARPs ++ arps
       else constrainableARPs -- arps

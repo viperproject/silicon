@@ -27,15 +27,22 @@ class DefaultSequencesEmitter(prover: Prover,
    */
   def symbols = None
 
+  /* Lifetime */
+
   def reset() {
     collectedSorts = collectedSorts.empty
   }
 
+  def start() {}
+  def stop() {}
+
+  /* Functionality */
+
   def analyze(program: ast.Program) {
     var sequenceTypes = Set[ast.types.Seq]()
 
-    program visit {
-      case t: sil.ast.Typed => t.typ match {
+    program visit { case t: sil.ast.Typed =>
+      t.typ :: sil.ast.utility.Types.typeConstituents(t.typ) foreach {
         case s: ast.types.Seq => sequenceTypes += s
         case _ => /* Ignore other types */
       }

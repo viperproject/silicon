@@ -306,7 +306,7 @@ trait DefaultStep
   def addResult (r: VerificationResult) = _results = r :: _results
 
   def results = _results.filter{
-    case f:Failure[_,_,_,_,_] => true
+    case f:Failure[_,_,_,_] => true
     case _ => false
   }
 

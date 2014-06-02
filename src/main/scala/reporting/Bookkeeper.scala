@@ -10,8 +10,9 @@ package reporting
  */
 
 import java.text.SimpleDateFormat
+import sil.components.StatefulComponent
 
-class Bookkeeper {
+class Bookkeeper extends StatefulComponent {
 	var branches: Long = 0
 	var heapMergeIterations: Long = 0
 	var objectDistinctnessComputations: Long = 0
@@ -23,14 +24,32 @@ class Bookkeeper {
   var startTime: Long = 0
   var elapsedMillis: Long = 0
   var errors: Long = 0
+  var proverStatistics = Map[String, String]()
+
+  def start() { /* Nothing to do here */ }
+
+  def reset() {
+    branches = 0
+    heapMergeIterations = 0
+    objectDistinctnessComputations = 0
+    functionApplications= 0
+    functionBodyEvaluations = 0
+    assumptionCounter = 0
+    assertionCounter = 0
+    freshSymbols = 0
+    startTime = 0
+    elapsedMillis = 0
+    errors = 0
+    proverStatistics = Map[String, String]()
+  }
+
+  def stop() { /* Nothing to do here */ }
 
   def formattedStartTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(startTime)
 
-  var proverStatistics = Map[String, String]()
+  def toJson = formatOutput(createJsonOutput)
 
   override def toString = formatOutput(createStringOutput)
-
-  def toJson = formatOutput(createJsonOutput)
 
   private def formatOutput(output: String) = {
     var args = List[Any](
