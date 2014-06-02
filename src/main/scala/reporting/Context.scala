@@ -13,7 +13,7 @@ case class DefaultContext[ST <: Store[ST],
                          (program: ast.Program,
                           currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
-                          constrainableARPs: Set[Term] = Set())
+                          constrainableARPs: Set[Term] = Set(),
                           reserveHeap: Option[H] = None,
                           reserveEvalHeap: Option[H] = None,
                           poldHeap: Option[H] = None,

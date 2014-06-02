@@ -150,9 +150,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     new DefaultVerifier[ST, H, PC, S, TV](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils,
-      bookkeeper, traceviewFactory)
+                                          sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+                                          stateFormatter, heapCompressor, quantifiedChunkHelper, magicWandSupporter,
+                                          stateUtils, bookkeeper, traceviewFactory)
   }
 
   private def reset() {

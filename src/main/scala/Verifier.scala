@@ -2,23 +2,23 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import supporters.MagicWandSupporter
 import util.control.Breaks._
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed, MagicWandNotWellformed}
 import sil.components.StatefulComponent
-import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
+import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import interfaces.reporting.{TraceView, TraceViewFactory}
-import semper.silicon.state.{terms, SymbolConvert, DirectChunk}
-import semper.silicon.state.terms.{sorts, Sort, DefaultFractionalPermissions}
+import state.{terms, SymbolConvert, DirectChunk}
+import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import semper.silicon.reporting.{DefaultContext, Bookkeeper}
-import semper.silicon.reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription}
+import reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription, DefaultContext,
+    Bookkeeper}
 import heap.QuantifiedChunkHelper
-import semper.silicon.decider.PreambleFileEmitter
+import decider.PreambleFileEmitter
+import supporters.MagicWandSupporter
 
 trait AbstractElementVerifier[ST <: Store[ST],
                               H <: Heap[H], PC <: PathConditions[PC],
@@ -74,7 +74,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     })
 
 //    val σ = Σ(γ, Ø, g)
-    var result: VerificationResult = Success[C, ST, H, S](c)
+    var result: VerificationResult = Success()
 
     breakable {
       wands foreach {case (wand, vs) =>
@@ -91,15 +91,15 @@ trait AbstractElementVerifier[ST <: Store[ST],
               val c3 = c2.copy(givenHeap = Some(σ2.h))
               val σ3 = σ1
               produce(σ3, fresh, terms.FullPerm(), right, err, c3, tv)((_, c4) =>
-                Success[C, ST, H, S](c4))})}
+                Success())})}
 
         result match {
-          case failure: Failure[C@unchecked, ST@unchecked, H@unchecked, S@unchecked, TV@unchecked] =>
+          case failure: Failure[ST@unchecked, H@unchecked, S@unchecked, TV@unchecked] =>
             /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
-            result = failure.copy[C, ST, H, S, TV](message = MagicWandNotWellformed(wand, failure.message.reason))
+            result = failure.copy[ST, H, S, TV](message = MagicWandNotWellformed(wand, failure.message.reason))
             break()
 
-          case _: Success[C@unchecked, ST@unchecked, H@unchecked, S@unchecked] => /* Nothing needs to be done*/
+          case _: Success => /* Nothing needs to be done*/
         }
       }
     }
@@ -141,11 +141,11 @@ trait AbstractElementVerifier[ST <: Store[ST],
         &&*/ inScope {
               val (c2b, tv2b) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
               produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2b, tv2b)((_, c3) =>
-                Success[C, ST, H, S](c3))}
+                Success())}
         &&  inScope {
               exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
                 consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success()))})})}
+                  Success()))})})}
   }
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
@@ -170,7 +170,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
        (inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
-          Success())}
+            Success())}
     && inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
                inScope {
@@ -179,7 +179,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
             && inScope {
                  eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
                     consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success())))})}
+                      Success()))})})
   }
 
   def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {
@@ -193,10 +193,10 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
        (inScope {
           val (c2a, tv2a) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check wand self-framingness"))
-            checkWandsAreSelfFraming(σ, predicate, c2a, tv2a)}
+          checkWandsAreSelfFraming(σ, predicate, c2a, tv2a)}
     && inScope {
           produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
-        Success())}
+            Success())})
   }
 }
 

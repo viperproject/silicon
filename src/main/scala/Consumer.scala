@@ -220,7 +220,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 case true =>
                   Q(c1.copy(poldHeap = c.poldHeap))
                 case false =>
-                  Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), c1, tv)})}}
+                  Failure[ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), tv)})}}
 
         /* TODO: Getting id by first creating a chunk is not elegant. */
         val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
@@ -235,9 +235,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   val c3 = c2.copy(reserveHeap = Some(c.reserveHeap.get - ch))
                   Q(h, decider.fresh(sorts.Snap), List(ch), c3)})
               case None =>
-                Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
+                Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
           case None =>
-            Failure[C, ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), c, tv)}
+            Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and
@@ -313,7 +313,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val c3 = c2.copy(reserveHeap = Some(h2))
         Q(h1, optCh2.get, c3, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
       } else {
-        Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c2, tv)
+        Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
       }
     }
   }

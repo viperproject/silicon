@@ -157,7 +157,7 @@ trait DefaultProducer[ST <: Store[ST],
            * for the term before calling Z3.
            */
           if (decider.check(σ, tRcvr === Null())) /* TODO: Benchmark performance impact */
-            Success[C, ST, H, S](c1)
+            Success()
           else {
             assume(tRcvr !== Null())
             evalp(σ, gain, pve, c1, tv)((pGain, c2) => {

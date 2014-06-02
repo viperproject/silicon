@@ -223,7 +223,7 @@ trait DefaultExecutor[ST <: Store[ST],
               case Some(ch) =>
                 Q(σ \+ (v, WandChunkRef(ch)), c)
               case None =>
-                Failure[C, ST, H, S, TV](LetWandFailed(ass) dueTo MagicWandChunkNotFound(wand), c, tv)}
+                Failure[ST, H, S, TV](LetWandFailed(ass) dueTo MagicWandChunkNotFound(wand), tv)}
 
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>

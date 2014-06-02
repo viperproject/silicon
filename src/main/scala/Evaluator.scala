@@ -192,10 +192,10 @@ trait DefaultEvaluator[
             case None if c.reserveEvalHeap.nonEmpty =>
               decider.getChunk[FieldChunk](σ, c.reserveEvalHeap.get, id) match {
                 case Some(ch) => Q(ch.value, c)
-                case None => Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)}
+                case None => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}
             case None =>
-              Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(fa), c, tv)}})
-      
+              Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}})
+
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>
@@ -668,8 +668,14 @@ trait DefaultEvaluator[
         sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
 
       case ast.Folding(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicate), ePerm),
+              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
+
+        val predicate = c.program.findPredicate(predicateName)
+
+        /* Folding only has a temporary effect on the current heap because
+         * the resulting heap is not forwarded to the final continuation.
+         */
 
         var πPre: Set[Term] = Set()
         var tPerm: Option[Term] = None
@@ -692,9 +698,9 @@ trait DefaultEvaluator[
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
                       eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
                         localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
-                        Success[C, ST, H, S](c3)})})})})
+                        Success()})})})})
               else
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), c1, tv)})
+                Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)})
 
           r && {
             checkReserveHeaps(localResults)
@@ -702,7 +708,7 @@ trait DefaultEvaluator[
             val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
             /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
+            Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> folding next.P in e} is currently not " +
@@ -725,7 +731,7 @@ trait DefaultEvaluator[
                 val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
                 eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
-                  Success[C, ST, H, S](c4)})}))})
+                  Success()})}))})
 
         r && {
           checkReserveHeaps(localResults)
@@ -733,7 +739,7 @@ trait DefaultEvaluator[
           val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
           /* TODO: See comment about performance in case ast.Ite */
           assume(tAuxIn + tActualIn)
-          Q(tActualInVar, localResults.headOption.map(_.context).getOrElse(c))}
+          Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
 
       /* TODO: We need to think more about exhaling and what its semantics should be.
        *       For example, what should the result of evaluating an exhaling be?

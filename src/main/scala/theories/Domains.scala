@@ -464,7 +464,8 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case   _: ast.LocationAccess | _: ast.AccessPredicate | _: sil.ast.OldExp | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhale | _: ast.PredicateAccess
            | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.WildcardPerm
-           | _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet =>
+           | _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet
+           | _: ast.Applying | _: ast.Exhaling | _: ast.Folding | _: ast.MagicWand =>
 
         throw VerificationException(ast.Consistency.createUnexpectedNodeDuringDomainTranslationError(exp))
     }
