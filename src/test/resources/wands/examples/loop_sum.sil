@@ -4,8 +4,8 @@
  * permissions in the loop.
  */
 
-var val: Int
-var next: Ref
+field val: Int
+field next: Ref
 
 /* Linked-list abstract predicate. Contains access to the fields of the current
  * node ys, and transitively, to the fields of all nodes in the tail.

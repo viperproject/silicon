@@ -1,5 +1,5 @@
-var f: Int
-var g: Int
+field f: Int
+field g: Int
 
 method test06(x: Ref) {
   package acc(x.f, write) --* acc(x.f, write)

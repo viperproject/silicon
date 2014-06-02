@@ -1,5 +1,5 @@
-var f: Int
-var g: Int
+field f: Int
+field g: Int
 
 predicate Pair(this: Ref) {
   acc(this.f, write) && acc(this.g, write)

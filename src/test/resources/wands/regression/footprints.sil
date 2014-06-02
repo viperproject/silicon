@@ -1,5 +1,5 @@
-var v: Bool
-var l: Ref
+field v: Bool
+field l: Ref
 
 method test1(x: Ref)
   requires acc(x.l) && acc(x.l.v)

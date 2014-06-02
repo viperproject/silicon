@@ -1,5 +1,5 @@
-var f: Int
-var g: Int
+field f: Int
+field g: Int
 
 predicate Pair(this: Ref) {
   acc(this.f, write) && acc(this.g, write)
@@ -13,7 +13,7 @@ function sum(p: Ref): Int
 
 method test06() {
   var p: Ref
-  p := new()
+  p := new(f, g)
 
   p.g := 0;
 
@@ -26,7 +26,7 @@ method test06() {
 
 method test01() {
   var p: Ref
-  p := new()
+  p := new(f, g)
 
   p.g := 0;
 
@@ -43,7 +43,7 @@ method test01() {
 method test02()
 {
   var p: Ref
-  p := new()
+  p := new(f, g)
 
   p.g := -1;
 
@@ -56,7 +56,7 @@ method test02()
 
 method test03() {
   var p: Ref
-  p := new()
+  p := new(f, g)
 
   exhale acc(p.g, 1/2)
 
@@ -81,7 +81,7 @@ method test04(p: Ref)
 
 method test05() {
   var p: Ref
-  p := new()
+  p := new(f, g)
 
   p.g := 0;
 

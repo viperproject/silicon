@@ -1,11 +1,11 @@
 /* See loop_sum.sil for the running example of our FM'14 paper (currently
- * under submission). 
+ * under submission).
  * This example is effectively the same, but without comments and use of
  * short-hands.
  */
 
-var val: Int
-var next: Ref
+field val: Int
+field next: Ref
 
 predicate List(ys: Ref) {
   acc(ys.val) && acc(ys.next) && (ys.next != null ==> acc(List(ys.next)))

@@ -1,5 +1,5 @@
-var v: Int
-var n: Ref
+field v: Int
+field n: Ref
 
 predicate List(this: Ref) {
 	acc(this.v) && acc(this.n) && (this.n != null ==> acc(List(this.n)))

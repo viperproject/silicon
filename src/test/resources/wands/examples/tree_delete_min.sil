@@ -1,6 +1,6 @@
-var v: Int
-var l: Ref
-var r: Ref
+field v: Int
+field l: Ref
+field r: Ref
 
 predicate Tree(x: Ref) {
   x == null

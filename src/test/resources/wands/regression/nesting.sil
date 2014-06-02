@@ -1,6 +1,6 @@
-var f: Int
-var g: Int
-var h: Int
+field f: Int
+field g: Int
+field h: Int
 
 method test01(x: Ref)
   requires acc(x.f, write) && acc(x.g, write) && acc(x.h, write)

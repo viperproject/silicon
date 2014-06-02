@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 predicate c1_pre(x: Ref) { true }
 predicate c1_post(x: Ref) { true }
@@ -29,7 +29,7 @@ method triple_not_nested(x: Ref)
 
 method call_triple_not_nested() {
   var x: Ref
-  x := new()
+  x := new(f)
 
   x.f := 1
 
@@ -69,7 +69,7 @@ method triple_nested(x: Ref)
 
 method call_triple_nested() {
   var x: Ref
-  x := new()
+  x := new(f)
 
   x.f := 1
 

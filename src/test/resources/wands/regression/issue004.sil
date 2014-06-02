@@ -1,4 +1,4 @@
-var f: Bool
+field f: Bool
 
 predicate P() { true }
 

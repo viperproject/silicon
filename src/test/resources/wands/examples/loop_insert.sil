@@ -18,8 +18,8 @@
  *    currently handling of pure functions.
  */
 
-var val: Int
-var next: Ref
+field val: Int
+field next: Ref
 
 /* The usual linked-list predicate. */
 predicate List(xs: Ref) {
@@ -45,55 +45,55 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   ensures acc(List(xs))
   ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..] /* POST2 */
 {
-  var curr: Ref
-  var next: Ref
+  var crt: Ref
+  var nxt: Ref
   i := 0
 
-  define A acc(List(curr))
-  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ lhs(elems(curr))
+  define A acc(List(crt))
+  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ lhs(elems(crt))
 
   unfold List(xs)
-  curr := xs
-  next := xs.next
+  crt := xs
+  nxt := xs.next
 
   package A --* B
 
 	/* Find the appropriate position for x in the linked-list. After the loop,
-	 * curr points to the first node in the list s.t. curr.next is either null,
-	 * or curr.next.val >= x. next is always equal to curr.next.
+	 * crt points to the first node in the list s.t. crt.next is either null,
+	 * or crt.next.val >= x. nxt is always equal to crt.next.
 	 */
-  while (next != null && head(next) < x)
+  while (nxt != null && head(nxt) < x)
     invariant 0 <= i && i < |old(elems(xs))|
-    invariant next == null ==> i == |old(elems(xs))| - 1 /* INV2*/
-    invariant acc(curr.val) && acc(curr.next)
-    invariant next == curr.next
-    invariant curr.val == old(elems(xs))[i] /* INV5 */
-    invariant next != null ==> (acc(List(next)) && elems(next) == old(elems(xs))[i+1..])
+    invariant nxt == null ==> i == |old(elems(xs))| - 1 /* INV2*/
+    invariant acc(crt.val) && acc(crt.next)
+    invariant nxt == crt.next
+    invariant crt.val == old(elems(xs))[i] /* INV5 */
+    invariant nxt != null ==> (acc(List(nxt)) && elems(nxt) == old(elems(xs))[i+1..])
     invariant A --* B
   {
-    assert old(elems(xs))[i+1] == elems(next)[0]
+    assert old(elems(xs))[i+1] == elems(nxt)[0]
       /* Silicon function unrolling? Required to show INV5 */
-//    assume old(elems(xs))[i+1] == unfolding List(next) in next.val
+//    assume old(elems(xs))[i+1] == unfolding List(nxt) in nxt.val
       /* Required by Silicon to show INV5? Was at least in here while we wrote the paper */
 
     wand w := A --* B
 
-    var prev: Ref := curr
-    unfold List(next)
-    curr := next
-    next := next.next
+    var prev: Ref := crt
+    unfold List(nxt)
+    crt := nxt
+    nxt := nxt.next
     i := i + 1
 
-//    assert curr.val == old(elems(xs))[i] /* INV5 */
+//    assert crt.val == old(elems(xs))[i] /* INV5 */
 
     package A --* folding List(prev) in applying w in B
   }
 
-	/* Create a new node with value x and append the list tail starting at next to it. */
+	/* Create a new node with value x and append the list tail starting at nxt to it. */
   var node: Ref
-  node := new()
+  node := new(val, next)
   node.val := x
-  node.next := next
+  node.next := nxt
 
   fold List(node)
 
@@ -101,10 +101,10 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     /* Silicon function unrolling? Required to show POST2, requires INV2 */
 
 	/* Append the new node (and its tail) to the current node. */
-  curr.next := node
-  fold List(curr)
+  crt.next := node
+  fold List(crt)
 
-	/* Give up the sublist starting at curr and get back the original list *with*
+	/* Give up the sublist starting at crt and get back the original list *with*
 	 * the newly inserted value.
 	 */
   apply A --* B

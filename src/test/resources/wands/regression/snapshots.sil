@@ -1,6 +1,6 @@
-var f: Int
-var g: Int
-var h: Bool
+field f: Int
+field g: Int
+field h: Bool
 
 predicate P(x: Ref) {
   (acc(x.f, write) && x.f > 0) --* (acc(x.f, write) && acc(x.g, write) && ((x.f) + (x.g) > 0))
