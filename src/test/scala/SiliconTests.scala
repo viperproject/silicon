@@ -21,11 +21,10 @@ class SiliconTests extends SilSuite {
     fe
   }
 
-  val verifiers = List(createSiliconInstance())
+  lazy val verifiers = List(createSiliconInstance())
 
   private def createSiliconInstance() = {
     val silicon = new Silicon(Seq(("startedBy", "semper.silicon.SiliconTests")))
-
     val args = optionsFromScalaTestConfigMap() ++ Seq("dummy.sil")
 
     silicon.parseCommandLine(args)
@@ -35,7 +34,7 @@ class SiliconTests extends SilSuite {
   }
 
   private def optionsFromScalaTestConfigMap(): Seq[String] = {
-    val prefix = "silicon:"
+    val prefix = "silicon"
 
     prefixSpecificConfigMap.get(prefix) match {
       case None => Seq()
