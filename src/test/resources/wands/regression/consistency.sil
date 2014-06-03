@@ -1,41 +1,54 @@
-/* TODO: Implement error annotations for parser and type-checker errors. */
+/* Consistency checks (performed on the real Silver AST, not the parser AST) */
 
-//var f: Int
-//var g: Int
-//
-//predicate Pair(this: Ref) {
-//  acc(this.f, write) && acc(this.g, write)
-//}
-//
-///* Wands outside of package-statements should be ghost-operation-free */
-//method test01(p: Ref)
-//  requires acc(p.f, write) --* folding acc(Pair(p), write) in true // ERROR
-//{}
-//
-///* Wands outside of package-statements should be ghost-operation-free */
-//method test04(p: Ref)
-//  requires acc(p.f, write) --* acc(Pair(p), write)
-//{
-//  exhale
-//    acc(p.f, write)
-//      --*
-//    (applying (acc(p.f, write) --* acc(Pair(p), write)) in true) // ERROR
-//}
-//
-///* Ghost operations outside of package statements must be pure */
-//method test02(p: Ref)
-//  requires acc(Pair(p), write)
-//  requires unfolding acc(Pair(p), write) in acc(p.f, write) // ERROR
-//{}
-//
-///* Ghost operations outside of package statements must be pure */
-//method test03() {
-//  var p: Ref
-//  p := new()
-//
-//  assert folding acc(Pair(p), write) in acc(Pair(p), write) // ERROR
-//}
-//
-//method test05(p: Ref) {
-//  apply folding acc(Pair(p), write) in true --* true // ERROR
-//}
+field f: Int
+field g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f, write) && acc(this.g, write)
+}
+
+method test01(p: Ref)
+  //:: ExpectedOutput(typechecker.error)
+  requires acc(p.f, write) --* folding acc(Pair(p), write) in true
+    /* Wands outside of package-statements should be ghost-operation-free */
+{}
+
+method test04(p: Ref)
+  requires acc(p.f, write) --* acc(Pair(p), write)
+{
+  exhale
+    acc(p.f, write)
+      --*
+    //:: ExpectedOutput(typechecker.error)
+    (applying (acc(p.f, write) --* acc(Pair(p), write)) in true)
+      /* Wands outside of package-statements should be ghost-operation-free */
+}
+
+method test02(p: Ref)
+  requires acc(Pair(p), write)
+  //:: ExpectedOutput(typechecker.error)
+  requires unfolding acc(Pair(p), write) in acc(p.f, write)
+    /* Ghost operations that occur in (potential) inhale positions must be pure */
+{}
+
+method test03() {
+  var p: Ref
+  p := new()
+
+  assert folding acc(Pair(p), write) in acc(Pair(p), write)
+    /* Ghost operations that occur in exhale positions may be impure */
+}
+
+method test05(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  apply (folding acc(Pair(p), write) in true) --* true
+    /* Wands outside of package-statements should be ghost-operation-free */
+}
+
+method test08(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  package (folding acc(Pair(p), write) in true) --* true
+    /* Ghost operations on the left of a wand are not supported (and not
+     * necessary, they could be performed outside of the wand)
+     */
+}
