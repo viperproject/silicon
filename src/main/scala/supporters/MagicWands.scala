@@ -152,42 +152,9 @@ class MagicWandSupporter[ST <: Store[ST],
     }()
   }
 
-  //  private def consumeIncludingReserveHeap(σ: S,
-  //                                          h: H,
-  //                                          id: ChunkIdentifier,
-  //                                          pLoss: P,
-  //                                          locacc: ast.LocationAccess,
-  //                                          pve: PartialVerificationError,
-  //                                          c: C,
-  //                                          tv: TV)
-  //                                         (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
-  //                                         : VerificationResult = {
-  //
-  //    val (h1, optCh1, pLoss1, c1) = consumeMaxPermissions(σ, h, id, pLoss, c, tv)
-  //
-  //    if (decider.check(σ, IsNoAccess(pLoss1))) {
-  //      /* All permissions were provided by the current heap */
-  //      Q(h1, optCh1.get, c1, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
-  //    } else {
-  //      /* Additional permissions are required. Try to take them from the stack of reserve heaps */
-  //      val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(σ, c1.reserveHeap.get, id, pLoss1, c1, tv)
-  //
-  //      if (decider.check(σ, IsNoAccess(pLoss2))) {
-  //        val tVal = (optCh1, optCh2) match {
-  //          case (Some(fc1: DirectFieldChunk), Some(fc2: DirectFieldChunk)) => fc1.value === fc2.value
-  //          case (Some(pc1: DirectPredicateChunk), Some(pc2: DirectPredicateChunk)) => pc1.snap === pc2.snap
-  //          case _ => True()}
-  //
-  //        assume(tVal)
-  //
-  //        val c3 = c2.copy(reserveHeap = Some(h2))
-  //
-  //        Q(h1, optCh2.get, c3, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
-  //      } else {
-  //        Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
-  //      }
-  //    }
-  //  }
+  /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
+   *       structure. Try to merge the two.
+   */
 
   def doWithMultipleHeaps[R](σ: S,
                              hs: Stack[H],

@@ -99,20 +99,20 @@ method test08(x: Ref)
 
 method test10(b: Bool, x: Ref)
   requires x != null
-  requires b ==> acc(x.f)
+  requires acc(x.f)
 {
-  package (b ==> (acc(x.f) && x.f > now(x.f))) --* true
-  exhale (b ==> (acc(x.f) && x.f > now(x.f))) --* true
+  package acc(x.f) && x.f > now(x.f) --* true
+  exhale acc(x.f) && x.f > now(x.f) --* true
 
   x.f := 1
-  package (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
-  exhale (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
+  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
+  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
 
   x.f := 1
-  package (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
+  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
   x.f := 10
   //:: ExpectedOutput(exhale.failed:wand.outdated)
-  exhale (b ==> (acc(x.f) && x.f == now(x.f) - 1)) --* acc(x.f) && x.f == 0
+  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
 }
 
 method test11(b: Bool, x: Ref)

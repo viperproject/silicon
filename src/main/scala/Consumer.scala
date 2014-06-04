@@ -191,75 +191,61 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
-        println("\n[Consumer/Wand]")
-        println(s"  phi = $φ")
         /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
         val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
-        println(s"  wand = $wand")
-        println(s"  wandValues = $wandValues")
         val σ0 = σ \+ Γ(wandValues)
 
-        /* If necessary, reinterprets the wand chunk. */
+        /* Checks that the value of package-old expressions hasn't changed
+         * w.r.t. the state in which the wand was produced.
+         *
+         * TODO: It would be nice if this method could be moved into the MagicWandSupporter,
+         *       but it is not obvious how to call eval(...) from there.
+         *       This would be possible if MagicWandSupporter were a trait whose self-type
+         *       required it to be mixed into an Evaluator.
+         */
         def reinterpret(ch: MagicWandChunk[H], c: C, tv: TV)
-               (Q: C => VerificationResult)
-               : VerificationResult = {
+                       (Q: C => VerificationResult)
+                       : VerificationResult = {
 
-          if (!c.reinterpretWand)
-            Q(c)
-          else {
-            /* Collect pold-expressions together with conditional guards they are nested in.
-             * For example, b ==> pold(e) will be returned as (b, pold(e)).
-             */
-            val pathConditionedPOlds = magicWandSupporter.pathConditionedPOlds(wand)
-            /* Extract e from pold(e) and turn the list of pairs (b, pold(e)) into a list
-             * of terms of the shape b && e == pold(e).
-             */
-            val eqs = pathConditionedPOlds.map{case (pc, po) =>
-              val eq = ast.Equals(po.exp, po)(po.pos, po.info)
-              ast.Implies(pc, eq)(pc.pos, pc.info)
-            }
-            val eSame = ast.utils.BigAnd(eqs)
-            /* Check the generated equalities. */
-            eval(σ0, eSame, pve, c.copy(poldHeap = Some(ch.hPO)), tv)((tSame, c1) =>
-              decider.assert(σ, tSame) {
-                case true =>
-                  Q(c1.copy(poldHeap = c.poldHeap))
-                case false =>
-                  Failure[ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), tv)})}}
+          /* Collect pold-expressions together with conditional guards they are nested in.
+           * For example, b ==> pold(e) will be returned as (b, pold(e)).
+           */
+          val pathConditionedPOlds = magicWandSupporter.pathConditionedPOlds(wand)
+          /* Extract e from pold(e) and turn the list of pairs (b, pold(e)) into a list
+           * of terms of the shape b && e == pold(e).
+           */
+          val eqs = pathConditionedPOlds.map{case (pc, po) =>
+            val eq = ast.Equals(po.exp, po)(po.pos, po.info)
+            ast.Implies(pc, eq)(pc.pos, pc.info)
+          }
+          val eSame = ast.utils.BigAnd(eqs)
+          /* Check the generated equalities. */
+          eval(σ0, eSame, pve, c.copy(poldHeap = Some(ch.hPO)), tv)((tSame, c1) =>
+            decider.assert(σ, tSame) {
+              case true =>
+                Q(c1.copy(poldHeap = c.poldHeap))
+              case false =>
+                Failure[ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), tv)})
+        }
 
         /* TODO: Getting id by first creating a chunk is not elegant. */
         val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
-        println(s"  id = $id")
 
         magicWandSupporter.doWithMultipleHeaps(σ0, h :: c.reserveHeaps, c)((σ1, h1, c1) =>
           decider.getChunk[MagicWandChunk[H]](σ1, h1, id) match {
-            case s @ Some(ch) =>
-              /* TODO: reinterpret wand */
-              (s, h - ch, c1)
-            case _ => (None, h, c1)
+            case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
+            case _ => (None, h1, c1)
           }
         ){
           case (Some(ch), hs, c1) =>
-            val c2 = c1.copy(reserveHeaps = hs.tail)
-            Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2)
+            if (!c.reinterpretWand)
+              Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
+            else
+              reinterpret(ch, c1.copy(reserveHeaps = hs.tail), tv)(c2 =>
+                Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
           case _ =>
             Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
         }
-
-//        decider.getChunk[MagicWandChunk[H]](σ0, h, id) match {
-//          case Some(ch) =>
-//            reinterpret(ch, c, tv)(c2 =>
-//              Q(h - ch, decider.fresh(sorts.Snap), List(ch), c2))
-//          case None if c.reserveHeap.nonEmpty =>
-//            decider.getChunk[MagicWandChunk[H]](σ0, c.reserveHeap.get, id) match {
-//              case Some(ch) =>
-//                reinterpret(ch, c, tv)(c2 => {
-//                  val c3 = c2.copy(reserveHeap = Some(c.reserveHeap.get - ch))
-//                  Q(h, decider.fresh(sorts.Snap), List(ch), c3)})
-//              case None =>
-//                Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
-//          case None =>
-//            Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and

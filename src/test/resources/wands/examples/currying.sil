@@ -39,55 +39,27 @@ method curry() {
   assert false /* Never trust your own implementation */
 }
 
-//method nearly_sound_curry(x: Ref)
-//  requires (acc(A()) && acc(B())) --* acc(C())
-//  ensures acc(A()) --* (acc(B()) --* acc(C()))
-//{
-//  inhale acc(A()) && acc(B()) /* inhaling A in applying ... in packaging ... in packaging ... */
-//
-//  apply (acc(A()) && acc(B())) --* acc(C())
-//  package acc(B()) --* acc(C())
-//  package acc(A()) --* (acc(B()) --* acc(C()))
-//}
-//
-//method nearly_sound_uncurry(x: Ref)
-//  requires acc(A()) --* (acc(B()) --* acc(C()))
-//  ensures (acc(A()) && acc(B())) --* acc(C())
-//{
-//  inhale acc(A()) && acc(B()) /* inhaling A in applying ... in applying ... in packaging ... */
-//
-//  apply acc(A()) --* (acc(B()) --* acc(C()))
-//  apply acc(B()) --* acc(C())
-//  package (acc(A()) && acc(B())) --* acc(C())
-//}
-//
-///* Regression tests */
-//
-//method wrong_curry01(x: Ref)
-//  requires (acc(A()) && acc(B())) --* acc(C())
-//  ensures acc(A()) --* (acc(B()) --* acc(C()))
-//{
-//  inhale acc(A())
-//
-//  //:: ExpectedOutput(apply.failed:insufficient.permission)
-//  apply (acc(A()) && acc(B())) --* acc(C())
-//  package acc(B()) --* acc(C())
-//
-//  exhale acc(A())
-//
-//  package acc(A()) --* (acc(B()) --* acc(C()))
-//}
-//
-//method wrong_curry02(x: Ref)
-//  requires (acc(A()) && acc(B())) --* acc(C())
-//  ensures acc(A()) --* (acc(B()) --* acc(C()))
-//{
-//  inhale acc(A())
-//
-//  package acc(B()) --* (applying ((acc(A()) && acc(B())) --* acc(C())) in acc(C()))
-//
-//  //:: ExpectedOutput(exhale.failed:insufficient.permission)
-//  exhale acc(A())
-//
-//  package acc(A()) --* (acc(B()) --* acc(C()))
-//}
+
+/* Regression tests */
+
+method wrong_curry01(x: Ref)
+  requires (acc(P()) && acc(Q())) --* acc(R())
+  ensures acc(P()) --* (acc(Q()) --* acc(R()))
+{
+  inhale acc(P())
+
+  //:: ExpectedOutput(apply.failed:insufficient.permission)
+  apply (acc(P()) && acc(Q())) --* acc(R())
+}
+
+method wrong_curry02(x: Ref)
+  requires (acc(P()) && acc(Q())) --* acc(R())
+  ensures acc(P()) --* (acc(Q()) --* acc(R()))
+{
+  inhale acc(P())
+
+  package acc(Q()) --* (applying ((acc(P()) && acc(Q())) --* acc(R())) in acc(R()))
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(P())
+}
