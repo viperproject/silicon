@@ -2,7 +2,6 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import scala.collection.immutable.Stack
 import sil.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
@@ -38,7 +37,7 @@ trait DefaultProducer[ST <: Store[ST],
   import symbolConverter.toSort
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -280,13 +279,13 @@ trait DefaultProducer[ST <: Store[ST],
   }
 
   override def pushLocalState() {
-    snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)
+    snapshotCacheFrames = snapshotCache :: snapshotCacheFrames
     super.pushLocalState()
   }
 
   override def popLocalState() {
-    snapshotCache = snapshotCacheFrames.top
-    snapshotCacheFrames = snapshotCacheFrames.pop
+    snapshotCache = snapshotCacheFrames.head
+    snapshotCacheFrames = snapshotCacheFrames.tail
     super.popLocalState()
   }
 }

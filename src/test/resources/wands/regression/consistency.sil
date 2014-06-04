@@ -4,30 +4,30 @@ field f: Int
 field g: Int
 
 predicate Pair(this: Ref) {
-  acc(this.f, write) && acc(this.g, write)
+  acc(this.f) && acc(this.g)
 }
 
 method test01(p: Ref)
   //:: ExpectedOutput(typechecker.error)
-  requires acc(p.f, write) --* folding acc(Pair(p), write) in true
+  requires acc(p.f) --* folding Pair(p) in true
     /* Wands outside of package-statements should be ghost-operation-free */
 {}
 
 method test04(p: Ref)
-  requires acc(p.f, write) --* acc(Pair(p), write)
+  requires acc(p.f) --* acc(Pair(p))
 {
   exhale
-    acc(p.f, write)
+    acc(p.f)
       --*
     //:: ExpectedOutput(typechecker.error)
-    (applying (acc(p.f, write) --* acc(Pair(p), write)) in true)
+    (applying (acc(p.f) --* acc(Pair(p))) in true)
       /* Wands outside of package-statements should be ghost-operation-free */
 }
 
 method test02(p: Ref)
-  requires acc(Pair(p), write)
+  requires acc(Pair(p))
   //:: ExpectedOutput(typechecker.error)
-  requires unfolding acc(Pair(p), write) in acc(p.f, write)
+  requires unfolding Pair(p) in acc(p.f)
     /* Ghost operations that occur in (potential) inhale positions must be pure */
 {}
 
@@ -35,19 +35,33 @@ method test03() {
   var p: Ref
   p := new()
 
-  assert folding acc(Pair(p), write) in acc(Pair(p), write)
+  assert folding Pair(p) in acc(Pair(p))
     /* Ghost operations that occur in exhale positions may be impure */
 }
 
 method test05(p: Ref) {
   //:: ExpectedOutput(typechecker.error)
-  apply (folding acc(Pair(p), write) in true) --* true
+  apply (folding Pair(p) in true) --* true
     /* Wands outside of package-statements should be ghost-operation-free */
 }
 
 method test08(p: Ref) {
   //:: ExpectedOutput(typechecker.error)
-  package (folding acc(Pair(p), write) in true) --* true
+  package (folding Pair(p) in true) --* true
+    /* Ghost operations on the left of a wand are not supported (and not
+     * necessary, they could be performed outside of the wand)
+     */
+}
+
+method test10(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  assert applying ((folding Pair(p) in true) --* true) in true
+    /* Wands outside of packaging-expressions should be ghost-operation-free */
+}
+
+method test11(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  assert packaging ((folding Pair(p) in true) --* true) in true
     /* Ghost operations on the left of a wand are not supported (and not
      * necessary, they could be performed outside of the wand)
      */

@@ -2,8 +2,8 @@ package semper
 package silicon
 package reporting
 
-import interfaces.state.{ Store, Heap, State}
-import interfaces.reporting.{ Context, Branch, BranchingStep}
+import interfaces.state.{Store, Heap, State}
+import interfaces.reporting.{Context, Branch, BranchingStep}
 import state.terms.Term
 
 /* TODO: Use MultiSet[Member] instead of List[Member] */
@@ -14,10 +14,10 @@ case class DefaultContext[ST <: Store[ST],
                           currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
                           constrainableARPs: Set[Term] = Set(),
-                          reserveHeap: Option[H] = None,
-                          reserveEvalHeap: Option[H] = None,
-                          poldHeap: Option[H] = None,
-                          givenHeap: Option[H] = None,
+                          reserveHeaps: Stack[H] = Nil,
+                          reserveEvalHeaps: Stack[H] = Nil,
+                          poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
+                          givenHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
                           reinterpretWand: Boolean = true)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
 

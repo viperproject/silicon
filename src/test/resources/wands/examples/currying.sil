@@ -1,0 +1,93 @@
+predicate P() { true }
+predicate Q() { true }
+predicate R() { true }
+
+/* A --* B --* C  ==>  A * B --* C */
+method uncurry() {
+
+  /* Define shorthands for the sake of readability (global shorthands are currently not implemented) */
+  define A acc(P())
+  define B acc(Q())
+  define C acc(R())
+
+  inhale A --* (B --* C) /* requires */
+
+  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+
+  exhale A && B --* C /* ensures */
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false /* Never trust your own implementation */
+}
+
+/* A * B --* C  ==>  A --* B --* C */
+method curry() {
+
+  /* Define shorthands for the sake of readability (global shorthands are currently not implemented) */
+  define A acc(P())
+  define B acc(Q())
+  define C acc(R())
+
+  inhale A && B --* C /* requires */
+
+//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+
+  exhale A --* (B --* C) /* ensures */
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false /* Never trust your own implementation */
+}
+
+//method nearly_sound_curry(x: Ref)
+//  requires (acc(A()) && acc(B())) --* acc(C())
+//  ensures acc(A()) --* (acc(B()) --* acc(C()))
+//{
+//  inhale acc(A()) && acc(B()) /* inhaling A in applying ... in packaging ... in packaging ... */
+//
+//  apply (acc(A()) && acc(B())) --* acc(C())
+//  package acc(B()) --* acc(C())
+//  package acc(A()) --* (acc(B()) --* acc(C()))
+//}
+//
+//method nearly_sound_uncurry(x: Ref)
+//  requires acc(A()) --* (acc(B()) --* acc(C()))
+//  ensures (acc(A()) && acc(B())) --* acc(C())
+//{
+//  inhale acc(A()) && acc(B()) /* inhaling A in applying ... in applying ... in packaging ... */
+//
+//  apply acc(A()) --* (acc(B()) --* acc(C()))
+//  apply acc(B()) --* acc(C())
+//  package (acc(A()) && acc(B())) --* acc(C())
+//}
+//
+///* Regression tests */
+//
+//method wrong_curry01(x: Ref)
+//  requires (acc(A()) && acc(B())) --* acc(C())
+//  ensures acc(A()) --* (acc(B()) --* acc(C()))
+//{
+//  inhale acc(A())
+//
+//  //:: ExpectedOutput(apply.failed:insufficient.permission)
+//  apply (acc(A()) && acc(B())) --* acc(C())
+//  package acc(B()) --* acc(C())
+//
+//  exhale acc(A())
+//
+//  package acc(A()) --* (acc(B()) --* acc(C()))
+//}
+//
+//method wrong_curry02(x: Ref)
+//  requires (acc(A()) && acc(B())) --* acc(C())
+//  ensures acc(A()) --* (acc(B()) --* acc(C()))
+//{
+//  inhale acc(A())
+//
+//  package acc(B()) --* (applying ((acc(A()) && acc(B())) --* acc(C())) in acc(C()))
+//
+//  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+//  exhale acc(A())
+//
+//  package acc(A()) --* (acc(B()) --* acc(C()))
+//}

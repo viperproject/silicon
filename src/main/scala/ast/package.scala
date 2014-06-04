@@ -133,6 +133,8 @@ package object ast {
   val Folding = sil.ast.Folding
   type Applying = sil.ast.Applying
   val Applying = sil.ast.Applying
+  type Packaging = sil.ast.Packaging
+  val Packaging = sil.ast.Packaging
   type Exhaling = sil.ast.Exhaling
   val Exhaling = sil.ast.Exhaling
 

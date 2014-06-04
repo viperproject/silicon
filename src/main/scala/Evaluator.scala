@@ -1,24 +1,24 @@
 package semper
 package silicon
 
-import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
 import sil.verifier.reasons.{InsufficientPermission, DivisionByZero, ReceiverNull, NonPositivePermission}
-import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
-    ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
 import interfaces.decider.Decider
 import interfaces.reporting.TraceView
+import interfaces.state.factoryUtils.Ø
 import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.perms.IsPositive
 import state.terms.implicits._
-import supporters.MagicWandSupporter
+import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
+  ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching, Description}
 import heap.QuantifiedChunkHelper
+import supporters.MagicWandSupporter
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -44,7 +44,7 @@ trait DefaultEvaluator[
 	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -124,8 +124,8 @@ trait DefaultEvaluator[
 			case _ =>
         logger.debug(s"\nEVAL ${e.pos}: $e")
 				logger.debug(stateFormatter.format(σ))
-        if (c.reserveHeap.nonEmpty)
-          logger.debug("hR = " + stateFormatter.format(c.reserveHeap.get))
+        if (c.reserveHeaps.nonEmpty)
+          logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
         decider.prover.logComment(s"[eval] $e")
 		}
 
@@ -185,16 +185,27 @@ trait DefaultEvaluator[
             Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) => {
-          decider.getChunk[FieldChunk](σ, σ.h, id) match {
-            case Some(ch) =>
-              Q(ch.value, c)
-            case None if c.reserveEvalHeap.nonEmpty =>
-              decider.getChunk[FieldChunk](σ, c.reserveEvalHeap.get, id) match {
-                case Some(ch) => Q(ch.value, c)
-                case None => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}
-            case None =>
-              Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}})
+        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c0) =>
+          magicWandSupporter.doWithMultipleHeaps(σ, σ.h :: c0.reserveEvalHeaps, c)((σ1, h1, c1) =>
+            decider.getChunk[FieldChunk](σ1, h1, id) match {
+              case Some(ch) => (Some(ch.value), h1, c1)
+              case _ => (None, h1, c1)
+            }
+          ){
+            case (Some(t), _, c1) => Q(t, c1)
+            case _ => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)
+          })
+
+//          decider.getChunk[FieldChunk](σ, σ.h, id) match {
+//            case Some(ch) =>
+//              Q(ch.value, c)
+//            case None if c.reserveEvalHeap.nonEmpty =>
+//              decider.getChunk[FieldChunk](σ, c.reserveEvalHeap.get, id) match {
+//                case Some(ch) => Q(ch.value, c)
+//                case None => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}
+//            case None =>
+//              Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}
+//        })
 
 
       case ast.Not(e0) =>
@@ -532,7 +543,7 @@ trait DefaultEvaluator[
         val σQuant = σ \+ γVars
 
         decider.pushScope()
-        quantifiedVars = quantifiedVars.pushAll(tVars)
+        quantifiedVars = tVars ++: quantifiedVars
 
         val r =
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
@@ -716,6 +727,28 @@ trait DefaultEvaluator[
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + e)
 
+      case pckg @ ast.Packaging(eWand, eIn) =>
+//        val pve = PackagingFailed(pckg)
+            /* TODO: Creating a new error reason here will probably yield confusing error
+             *       messages if packaging fails as part of exhaling a method's precondition
+             *       during a method call.
+             *       I expected the error message to be "Packaging ... failed because ... (line N)",
+             *       where N denotes the line in which the method precondition can be found.
+             *       The message should be "Method ... failed because packaging failed ... because ...
+             */
+        val σ0 = Σ(σ.γ, Ø, σ.g)
+        val c0 = c.copy(poldHeap = Some(σ.h))
+        produce(σ0, fresh, FullPerm(), eWand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps, givenHeap = Some(σLhs.h), reinterpretWand = false)
+          val rhs = magicWandSupporter.injectExhalingExp(eWand.right)
+          consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
+            val σ2 = σ \ c3.reserveHeaps.head
+            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail, poldHeap = None, givenHeap = None, reinterpretWand = true)
+            /* Producing the wand is not an option because we need to pass in σ.h */
+            val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, eWand)
+            eval(σ2 \+ ch, eIn, pve, c4, tv)((tIn, c5) =>
+              Q(tIn, c5))})})
+
       case ast.Applying(eWand, eIn) =>
         val πPre = decider.π
         var localResults: List[LocalEvaluationResult] = Nil
@@ -733,6 +766,9 @@ trait DefaultEvaluator[
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
                   Success()})}))})
 
+        if (localResults.length != 1)
+          logger.info(s"Evaluating an applying-expression yielded ${localResults.length} local results")
+
         r && {
           checkReserveHeaps(localResults)
           val tActualInVar = fresh("actualIn", toSort(eIn.typ))
@@ -741,10 +777,11 @@ trait DefaultEvaluator[
           assume(tAuxIn + tActualIn)
           Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
 
-      /* TODO: We need to think more about exhaling and what its semantics should be.
-       *       For example, what should the result of evaluating an exhaling be?
-       *
-       * TODO: Implement consistency checks (and parsing rules?) for Exhaling.
+      /* TODO: The exhaling-construct is used to tell Silicon to consume the
+       *       body of an impure (un)folding expression, or those of
+       *       applying/packaging expressions.
+       *       An alternative would be to handle impure (un)folding expressions
+       *       in the consumer right away.
        */
       case ast.Exhaling(exp) =>
         consume(σ, FullPerm(), exp, pve, c, tv)((_, _, _, c1) =>
@@ -998,15 +1035,15 @@ trait DefaultEvaluator[
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
 
         (tAct, tAux)
-      }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, tAux)) =>
-        (And(tActAcc, tAct), tAuxAcc + tAux)
+      }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, _tAux)) =>
+        (And(tActAcc, tAct), tAuxAcc + _tAux)
       }
 
     (t1, tAux)
   }
 
   private def checkReserveHeaps(localResults: Seq[LocalEvaluationResult]) {
-    val heaps = localResults.flatMap(_.context.reserveHeap).toSet
+    val heaps = localResults.flatMap(_.context.reserveHeaps).toSet
 
     assert(heaps.size <= 1,
            "Unexpectedly found multiple different reserve heaps after a local evaluation.")
@@ -1062,15 +1099,14 @@ trait DefaultEvaluator[
       Q(Trigger(ts), c1))
   }
 
-
 	override def pushLocalState() {
-		fappCacheFrames = fappCacheFrames.push(fappCache)
+		fappCacheFrames = fappCache :: fappCacheFrames
 		super.pushLocalState()
 	}
 
 	override def popLocalState() {
-		fappCache = fappCacheFrames.top
-		fappCacheFrames = fappCacheFrames.pop
+		fappCache = fappCacheFrames.head
+		fappCacheFrames = fappCacheFrames.tail
 		super.popLocalState()
 	}
 }

@@ -3,7 +3,8 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse, MagicWandChunkNotFound}
+import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse,
+    MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
@@ -38,7 +39,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -56,10 +57,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     /* TODO: What should the result of current-perms(x.f) be when it occurs on the rhs of a magic wand? */
 
-    val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
+//    val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
+    val c0 = c.copy(reserveEvalHeaps = c.reserveHeaps)
 
     consume(σ, σ.h, p, φ.whenExhaling, pve, c0, tv)((h1, t, dcs, c1) => {
-      val c2 = c1.copy(reserveEvalHeap = c.reserveEvalHeap)
+      val c2 = c1.copy(reserveEvalHeaps = c.reserveEvalHeaps)
       Q(σ \ h1, t, dcs, c2)})
   }
 
@@ -105,9 +107,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug(s"\nCONSUME ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))
       logger.debug("hE = " + stateFormatter.format(h))
-      if (c.reserveHeap.nonEmpty) {
-        logger.debug("hR = " + stateFormatter.format(c.reserveHeap.get))
-        logger.debug("hRE = " + stateFormatter.format(c.reserveEvalHeap.get))
+      if (c.reserveHeaps.nonEmpty) {
+        logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        logger.debug("hRE = " + c.reserveEvalHeaps.map(stateFormatter.format).mkString("", ",\n      ", ""))
       }
     }
 
@@ -188,10 +190,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _: ast.InhaleExhale =>
         Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
-      /* TODO: Needs to consider both heaps. Try to merge this code with consumeIncludingReserveHeap. */
-      case _ if φ.typ == ast.types.Wand =>
+      case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
+        println("\n[Consumer/Wand]")
+        println(s"  phi = $φ")
         /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
         val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
+        println(s"  wand = $wand")
+        println(s"  wandValues = $wandValues")
         val σ0 = σ \+ Γ(wandValues)
 
         /* If necessary, reinterprets the wand chunk. */
@@ -224,20 +229,37 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
         /* TODO: Getting id by first creating a chunk is not elegant. */
         val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
-        decider.getChunk[MagicWandChunk[H]](σ0, h, id) match {
-          case Some(ch) =>
-            reinterpret(ch, c, tv)(c2 =>
-              Q(h - ch, decider.fresh(sorts.Snap), List(ch), c2))
-          case None if c.reserveHeap.nonEmpty =>
-            decider.getChunk[MagicWandChunk[H]](σ0, c.reserveHeap.get, id) match {
-              case Some(ch) =>
-                reinterpret(ch, c, tv)(c2 => {
-                  val c3 = c2.copy(reserveHeap = Some(c.reserveHeap.get - ch))
-                  Q(h, decider.fresh(sorts.Snap), List(ch), c3)})
-              case None =>
-                Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
-          case None =>
-            Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
+        println(s"  id = $id")
+
+        magicWandSupporter.doWithMultipleHeaps(σ0, h :: c.reserveHeaps, c)((σ1, h1, c1) =>
+          decider.getChunk[MagicWandChunk[H]](σ1, h1, id) match {
+            case s @ Some(ch) =>
+              /* TODO: reinterpret wand */
+              (s, h - ch, c1)
+            case _ => (None, h, c1)
+          }
+        ){
+          case (Some(ch), hs, c1) =>
+            val c2 = c1.copy(reserveHeaps = hs.tail)
+            Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2)
+          case _ =>
+            Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
+        }
+
+//        decider.getChunk[MagicWandChunk[H]](σ0, h, id) match {
+//          case Some(ch) =>
+//            reinterpret(ch, c, tv)(c2 =>
+//              Q(h - ch, decider.fresh(sorts.Snap), List(ch), c2))
+//          case None if c.reserveHeap.nonEmpty =>
+//            decider.getChunk[MagicWandChunk[H]](σ0, c.reserveHeap.get, id) match {
+//              case Some(ch) =>
+//                reinterpret(ch, c, tv)(c2 => {
+//                  val c3 = c2.copy(reserveHeap = Some(c.reserveHeap.get - ch))
+//                  Q(h, decider.fresh(sorts.Snap), List(ch), c3)})
+//              case None =>
+//                Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
+//          case None =>
+//            Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and
@@ -270,9 +292,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                 (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
                                 : VerificationResult = {
 
-    // TODO: Integrate into regular (non-)exact consumption!
-    if (c.reserveHeap.nonEmpty)
-      return consumeIncludingReserveHeap(σ, h, id, pLoss, locacc, pve, c, tv)(Q)
+    /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
+    if (c.reserveHeaps.nonEmpty)
+//      return consumeIncludingReserveHeap(σ, h, id, pLoss, locacc, pve, c, tv)(Q)
+      return magicWandSupporter.consumeFromMultipleHeaps(σ, h :: c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, cs, c1/*, pcr*/) => {
+        val c2 = c1.copy(reserveHeaps = hs.tail)
+        val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
+        Q(hs.head, cs.head, c2, pcr)})
 
     if (consumeExactRead(pLoss, c)) {
       decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c, tv)(ch => {
@@ -284,59 +310,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       decider.withChunk[DirectChunk](σ, h, id, locacc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
-    }
-  }
-
-  private def consumeIncludingReserveHeap(σ: S,
-                                          h: H,
-                                          id: ChunkIdentifier,
-                                          pLoss: P,
-                                          locacc: ast.LocationAccess,
-                                          pve: PartialVerificationError,
-                                          c: C,
-                                          tv: TV)
-                                         (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
-                                         : VerificationResult = {
-
-    val (h1, optCh1, pLoss1, c1) = consumeMaxPermissions(σ, h, id, pLoss, c, tv)
-
-    if (decider.check(σ, IsNoAccess(pLoss1))) {
-      Q(h1, optCh1.get, c1, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
-    } else {
-      val (h2, optCh2, pLoss2, c2) = consumeMaxPermissions(σ, c1.reserveHeap.get, id, pLoss1, c1, tv)
-      if (decider.check(σ, IsNoAccess(pLoss2))) {
-        val tVal = (optCh1, optCh2) match {
-          case (Some(fc1: DirectFieldChunk), Some(fc2: DirectFieldChunk)) => fc1.value === fc2.value
-          case (Some(pc1: DirectPredicateChunk), Some(pc2: DirectPredicateChunk)) => pc1.snap === pc2.snap
-          case _ => True()}
-        assume(tVal)
-        val c3 = c2.copy(reserveHeap = Some(h2))
-        Q(h1, optCh2.get, c3, PermissionsConsumptionResult(false)) // TODO: PermissionsConsumptionResult is bogus!
-      } else {
-        Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
-      }
-    }
-  }
-
-  private def consumeMaxPermissions(σ: S,
-                                    h: H,
-                                    id: ChunkIdentifier,
-                                    pLoss: P,
-                                    c: C,
-                                    tv: TV)
-                                   : (H, Option[DirectChunk], P, C) = {
-
-    decider.getChunk[DirectChunk](σ, h, id) match {
-      case result @ Some(ch) =>
-        val (pToConsume, pKeep) =
-          if (decider.check(σ, IsAsPermissive(ch.perm, pLoss))) (NoPerm(), ch.perm - pLoss)
-          else (pLoss - ch.perm, NoPerm())
-        val h1 =
-          if (decider.check(σ, IsNoAccess(pKeep))) h - ch
-          else h - ch + (ch \ pKeep)
-        (h1, result, pToConsume, c)
-
-      case None => (h, None, pLoss, c)
     }
   }
 

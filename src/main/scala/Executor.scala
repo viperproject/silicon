@@ -51,7 +51,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -402,11 +402,11 @@ trait DefaultExecutor[ST <: Store[ST],
         val σ0 = Σ(σ.γ, Ø, σ.g)
         val c0 = c.copy(poldHeap = Some(σ.h))
         produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeap = Some(σ.h), givenHeap = Some(σLhs.h), reinterpretWand = false)
-          val rhs = injectExhalingExp(wand.right)
+          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps, givenHeap = Some(σLhs.h), reinterpretWand = false)
+          val rhs = magicWandSupporter.injectExhalingExp(wand.right)
           consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
-            val σ2 = σ \ c3.reserveHeap.get
-            val c4 = c3.copy(reserveHeap = None, poldHeap = None, givenHeap = None, reinterpretWand = true)
+            val σ2 = σ \ c3.reserveHeaps.head
+            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail, poldHeap = None, givenHeap = None, reinterpretWand = true)
             /* Producing the wand is not an option because we need to pass in σ.h */
             val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, wand)
             Q(σ2 \+ ch, c4)})})
@@ -442,25 +442,4 @@ trait DefaultExecutor[ST <: Store[ST],
 
 		executed
 	}
-
-  private def injectExhalingExp(exp: ast.Expression): ast.Expression = {
-    /* TODO: Only works if exp is a direct nesting of ghost operations, i.e., not something such as
-     *       folding acc(x.P) in (acc(x.Q) &&  applying ...)
-     *       This structure is currently not guaranteed by consistency checks.
-     */
-
-    exp.transform {
-      case gop: ast.GhostOperation if (   !gop.body.isInstanceOf[ast.GhostOperation]
-                                       && !gop.body.isPure) =>
-
-        val exh = ast.Exhaling(gop.body)(gop.body.pos, gop.body.info)
-
-        gop match {
-          case e: ast.Folding => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Unfolding => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Applying => e.copy(body = exh)(e.pos, e.info)
-          case _ => sys.error(s"Unexpected ghost operation $gop (${gop.getClass.getName})")
-        }
-    }()
-  }
 }
