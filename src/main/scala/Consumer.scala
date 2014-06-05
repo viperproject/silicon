@@ -235,21 +235,38 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         /* TODO: Getting id by first creating a chunk is not elegant. */
         val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
 
-        magicWandSupporter.doWithMultipleHeaps(σ0, h :: c.reserveHeaps, c)((σ1, h1, c1) =>
-          decider.getChunk[MagicWandChunk[H]](σ1, h1, id) match {
-            case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
-            case _ => (None, h1, c1)
-          }
-        ){
-          case (Some(ch), hs, c1) =>
-            if (!c.reinterpretWand)
-              Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
-            else
-              reinterpret(ch, c1.copy(reserveHeaps = hs.tail), tv)(c2 =>
-                Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
-          case _ =>
-            Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
-        }
+        
+        try {
+        
+          block: ... =>
+              magicWandSupporter.doWithMultipleHeaps(σ0, h :: c.reserveHeaps, c)((σ1, h1, c1) =>
+                decider.getChunk[MagicWandChunk[H]](σ1, h1, id) match {
+                  case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
+                  case _ => (None, h1, c1)
+                }
+              ){
+                case (Some(ch), hs, c1) =>
+                  if (!c.reinterpretWand)
+                    QS((hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail)))
+                    // Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
+                  else
+                    reinterpret(ch, c1.copy(reserveHeaps = hs.tail), tv)(c2 =>
+                      QS((hs.head, decider.fresh(sorts.Snap), List(ch), c2)))
+                      // Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
+                case _ =>
+                  QF(Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv))
+                  // Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
+              }
+        
+          reaction: ... =>
+              // We are here if block failed, i.e., if no matching wand was found
+              // Goal: Package the wand (packaging)
+              
+              val exp = ast.Packaging(wand, ast.True())()
+              eval(σ99, exp, pve, c99, tv99)((t100, c100) =>
+                QB((c100))
+              
+        }(Q.tupled)
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and
