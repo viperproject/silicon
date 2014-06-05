@@ -190,6 +190,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _: ast.InhaleExhale =>
         Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
+      /* Handle wands or wand-typed variables, but not general wand-typed
+       * expressions. The latter are magic wands wrapped in ghost operations
+       * such as packaging, which are handled in the evaluator.
+       */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
         val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
