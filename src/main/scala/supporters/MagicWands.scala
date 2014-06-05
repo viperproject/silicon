@@ -101,7 +101,7 @@ class MagicWandSupporter[ST <: Store[ST],
    */
   def createChunk(γ: ST, hPO: H, wand: ast.MagicWand) = {
     /* Remove all ghost operations and keep only the real rhs of the wand */
-    val ghostFreeWand = wand.copy(right = ast.expressions.getInnermostExpr(wand.right))(wand.pos, wand.info)
+    val ghostFreeWand = ast.expressions.eraseGhostOperations(wand).asInstanceOf[ast.MagicWand]
 
     var vs = mutable.ListBuffer[ast.LocalVariable]()
     var ts = mutable.ListBuffer[Term]()
@@ -131,8 +131,9 @@ class MagicWandSupporter[ST <: Store[ST],
   }
 
   def injectExhalingExp(exp: ast.Expression): ast.Expression = {
-    /* TODO: Only works if exp is a direct nesting of ghost operations, i.e., not something such as
-     *       folding acc(x.P) in (acc(x.Q) &&  applying ...)
+    /* TODO: Only works if exp is a direct nesting of ghost operations, i.e.,
+     *       not something such as
+     *         folding acc(x.P) in (acc(x.Q) && applying ...)
      *       This structure is currently not guaranteed by consistency checks.
      */
 

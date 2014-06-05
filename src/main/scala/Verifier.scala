@@ -80,7 +80,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
       wands foreach {case (wand, vs) =>
         val err = MagicWandNotWellformed(wand)
         val left = wand.left
-        val right = ast.expressions.getInnermostExpr(wand.right)
+        val right = ast.expressions.eraseGhostOperations(wand.right)
         val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable)
         val σ1 = σ \+ γ1
         val c1 = c.copy(poldHeap = Some(σ.h))
