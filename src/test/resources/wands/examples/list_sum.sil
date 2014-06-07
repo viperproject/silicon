@@ -1,6 +1,6 @@
-/* This is the running example from our FM'14 paper (under submission).
- * It encodes and specifies an interative computation of the sum
- * of a recursively defined linked-list. Magic wands are used to bookkeep
+/* This is the running example from our APLAS'14 paper (under submission).
+ * It encodes and specifies an iterative computation of the sum
+ * of a recursively defined linked-list. Magic wands are used to book-keep
  * permissions in the loop.
  */
 

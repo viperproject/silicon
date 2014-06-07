@@ -1,11 +1,15 @@
-/* See loop_sum.sil for the running example of our FM'14 paper (currently
+/* See loop_sum.sil for the running example of our APLAS'14 paper (currently
  * under submission).
  *
- * The example encodes and specifies an iterative implementation of inserting
- * a value into a linked-list. A magic wand is used to bookkeep permissions.
+ * This example encodes and specifies an iterative implementation of inserting
+ * a value into a linked list. A magic wand is used to book-keep permissions.
  *
  * Notes:
- *  - It takes Silicon quite a while to verify this example. We claim that this
+ *  - It currently takes Silicon quite a while to verify this example, caused
+ *    by a problem with our sequence axiomatisation that significantly slows
+ *    down Z3.
+ *
+ *
  *    is not due to using magic wands (w.r.t. their shape and number of
  *    occurrences there is not a big difference to our running example
  *    loop_sum.sil), but due to the use of mathematical sequences and

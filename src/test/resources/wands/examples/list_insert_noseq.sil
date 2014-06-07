@@ -1,21 +1,10 @@
-/* See loop_sum.sil for the running example of our FM'14 paper (currently
+/* See loop_sum.sil for the running example of our APLAS'14 paper (currently
  * under submission).
  *
- * The example encodes and specifies an iterative implementation of inserting
- * a value into a linked-list. A magic wand is used to bookkeep permissions.
- *
- * Notes:
- *  - It takes Silicon quite a while to verify this example. We claim that this
- *    is not due to using magic wands (w.r.t. their shape and number of
- *    occurrences there is not a big difference to our running example
- *    loop_sum.sil), but due to the use of mathematical sequences and
- *    pure functions, which both entail more work for the underlying
- *    prover. Moreover, Silicon's current treatment of pure functions is
- *    not ideal and leads to even more work for the prover.
- *  - The additional three asserts and the one assume are currently necessary,
- *    Silicon otherwise fails to get the verification through. We believe that
- *    this is due to a combination of the sequence axioms we use and Silicon's
- *    currently handling of pure functions.
+ * This example is a version of list_insert.sil from which all specifications
+ * using sequences have been erased in order to give evidence that sequences
+ * (or rather, our sequence axiomatisation) is the reason for why it takes
+ * Silicon relatively long to verify the original list_insert.sil.
  */
 
 field val: Int

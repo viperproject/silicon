@@ -1,7 +1,8 @@
-/* See loop_sum.sil for the running example of our FM'14 paper (currently
+/* See list_sum.sil for the running example of our APLAS'14 paper (currently
  * under submission).
+ *
  * This example is effectively the same, but without comments and use of
- * short-hands.
+ * assertion short-hands.
  */
 
 field val: Int

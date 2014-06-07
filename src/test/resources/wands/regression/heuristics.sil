@@ -1,6 +1,0 @@
-field f: Ref
-field g: Ref
-
-method test01() {
-  exhale true --* true
-}
