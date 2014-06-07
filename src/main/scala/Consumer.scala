@@ -260,6 +260,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         
           reaction: ... =>
               // We are here if block failed, i.e., if no matching wand was found
+              //
+              // We can arrive here multiple times, e.g., if the first heuristic
+              // operation itself succeeded, but didn't make block succeed.
+              //
               // Goal: Package the wand (packaging)
               
               val exp = ast.Packaging(wand, ast.True())()

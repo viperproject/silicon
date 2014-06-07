@@ -1,0 +1,6 @@
+field f: Ref
+field g: Int
+
+method test01() {
+  exhale true --* true
+}
