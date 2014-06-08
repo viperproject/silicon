@@ -36,44 +36,44 @@ trait Decider[P <: FractionalPermissions[P],
   def assume(t: Term)
   def assume(ts: Set[Term])
 
-  def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
-                          => VerificationResult)
-                  (Q: R => VerificationResult)
-                  : VerificationResult
+//  def tryOrFail[R](σ: S)
+//                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
+//                          => VerificationResult)
+//                  (Q: R => VerificationResult)
+//                  : VerificationResult
 
   def check(σ: S, t: Term): Boolean
   def assert(σ: S, t: Term)(Q: Boolean => VerificationResult): VerificationResult
 
-  /** Try to find a chunk identified by `id`. If not present, a failure is
-    * returned, otherwise, `Q` is invoked with the found chunk.
-    */
-  def withChunk[CH <: Chunk : NotNothing : Manifest]
-               (σ: S,
-                h: H,
-                id: ChunkIdentifier,
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                c: C,
-                tv: TV)
-               (Q: CH => VerificationResult)
-               : VerificationResult
-
-  /** Try to find a chunk identified by `id`. If not present, or if it comes
-    * with less than `p` permissions, then a failure is returned, otherwise,
-    * `Q` is invoked with the found chunk.
-    */
-  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
-               (σ: S,
-                h: H,
-                id: ChunkIdentifier,
-                p: P,
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                c: C,
-                tv: TV)
-               (Q: CH => VerificationResult)
-               : VerificationResult
+//  /** Try to find a chunk identified by `id`. If not present, a failure is
+//    * returned, otherwise, `Q` is invoked with the found chunk.
+//    */
+//  def withChunk[CH <: Chunk : NotNothing : Manifest]
+//               (σ: S,
+//                h: H,
+//                id: ChunkIdentifier,
+//                locacc: ast.LocationAccess,
+//                pve: PartialVerificationError,
+//                c: C,
+//                tv: TV)
+//               (Q: CH => VerificationResult)
+//               : VerificationResult
+//
+//  /** Try to find a chunk identified by `id`. If not present, or if it comes
+//    * with less than `p` permissions, then a failure is returned, otherwise,
+//    * `Q` is invoked with the found chunk.
+//    */
+//  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
+//               (σ: S,
+//                h: H,
+//                id: ChunkIdentifier,
+//                p: P,
+//                locacc: ast.LocationAccess,
+//                pve: PartialVerificationError,
+//                c: C,
+//                tv: TV)
+//               (Q: CH => VerificationResult)
+//               : VerificationResult
 
   def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH]
 

@@ -138,7 +138,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
     val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
 
-    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
+    decider.init(pathConditionFactory, /*heapCompressor,*/ config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
 
     decider.start()
@@ -453,6 +453,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  val disableHeuristics = opt[Boolean]("disableHeuristics",
+    descr = "Disable heuristics for ghost operations (default: true)",
+    default = Some(true),
+    noshort = true,
+    hidden = false
+  )
 
   validateOpt(timeout){
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")

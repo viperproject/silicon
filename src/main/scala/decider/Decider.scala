@@ -10,7 +10,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import interfaces.reporting.{TraceView, Context}
-import state.{DirectChunk, SymbolConvert}
+import semper.silicon.state.{MagicWandChunk, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
 import state.terms.perms.IsAsPermissive
@@ -35,7 +35,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var bookkeeper: Bookkeeper = _
   protected var pathConditions: PC = _
   protected var symbolConverter: SymbolConvert = _
-  protected var heapCompressor: HeapCompressor[ST, H, S] = _
+//  protected var heapCompressor: HeapCompressor[ST, H, S] = _
 
   private sealed trait State
 
@@ -67,13 +67,13 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   def init(pathConditionsFactory: PathConditionsFactory[PC],
-           heapCompressor: HeapCompressor[ST, H, S],
+//           heapCompressor: HeapCompressor[ST, H, S],
            config: Config,
            bookkeeper: Bookkeeper)
           : Option[DependencyNotFoundError] = {
 
     this.pathConditionsFactory = pathConditionsFactory
-    this.heapCompressor = heapCompressor
+//    this.heapCompressor = heapCompressor
     this.config = config
     this.bookkeeper = bookkeeper
     this.symbolConverter = new silicon.state.DefaultSymbolConvert()
@@ -188,65 +188,106 @@ class DefaultDecider[ST <: Store[ST],
 
   def checkSmoke() = prover.check() == Unsat
 
-  def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
-                          => VerificationResult)
-                  (Q: R => VerificationResult)
-                  : VerificationResult = {
-
-    val chunks = σ.h.values
-    var failure: Option[Failure[ST, H, S, TV]] = None
-
-    var r =
-      block(
-        σ,
-        r => Q(r),
-        f => {
-          Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
-          failure = Some(f)
-          f})
-
-    r =
-      if (failure.isEmpty)
-        r
-      else {
-        println("\n[tryOrFail]")
-        heapCompressor.compress(σ, σ.h)
-        block(σ, r => Q(r), f => f)
-      }
-
-    if (failure.nonEmpty) {
-      /* TODO: The current way of having HeapCompressor change h is convenient
-       *       because it makes the compression transparent to the user, and
-       *       also, because a compression that is performed while evaluating
-       *       an expression has a lasting effect even after the evaluation,
-       *       although eval doesn't return a heap.
-       *       HOWEVER, it violates the assumption that the heap is immutable,
-       *       which is likely to cause problems, see next paragraph.
-       *       It would probably be better to have methods that potentially
-       *       compress heaps explicitly pass on a new heap.
-       *       If tryOrFail would do that, then every method using it would
-       *       have to do so as well, e.g., withChunk.
-       *       Moreover, eval might have to return a heap as well.
-       */
-       /*
-       * Restore the chunks as they existed before compressing the heap.
-       * The is done to avoid problems with the DefaultBrancher, where
-       * the effects of compressing the heap in one branch leak into the
-       * other branch.
-       * Consider the following method specs:
-       *   requires acc(x.f, k) && acc(y.f, k)
-       *   ensures x == y ? acc(x.f, 2 * k) : acc(x.f, k) && acc(y.f, k)
-       * Compressing the heap inside the if-branch updates the same h
-       * that is passed to the else-branch, which then might not verify,
-       * because now x != y but the heap only contains acc(x.f, 2 * k)
-       * (or acc(y.f, 2 * k)).
-       */
-      σ.h.replace(chunks)
-    }
-
-    r
-  }
+//  def tryOrFail2[R, A](a: A)
+//                      (block: (A, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult) => VerificationResult)
+//                      (reaction: (A, Int, (A, Int) => VerificationResult) => VerificationResult)
+//                      (Q: R => VerificationResult)
+//                      : VerificationResult = {
+//
+//    var blockFailure: Option[Failure[ST, H, S, TV]] = None
+//    var cntr = 0
+//
+//    var result =
+//      block(
+//        a,
+//        success => Q(success),
+//        failure => {
+//          Predef.assert(blockFailure.isEmpty, s"Expected $failure to be the first failure, but already have $blockFailure")
+//          blockFailure = Some(failure)
+//          failure})
+//
+//    result =
+//      if (blockFailure.isEmpty)
+//        result
+//      else {
+//        println("\n[tryOrFail2]")
+//        reaction(a, cntr, (a1, cntr1) => block(a1, r => Q(r), f => f))
+//      }
+//
+//    result
+//  }
+//
+//  def applyWandHeuristics(σ: S) {
+//    println("[Decider/applyWandHeuristics]")
+//    println(s" `s.h = ${σ.h}")
+//
+//    σ.h.values.foreach {
+//      case mwch: MagicWandChunk[H] =>
+//        println(s"  candidate: $mwch")
+//      case _=>
+//    }
+//  }
+//
+//  def tryOrFail[R](σ: S)
+//                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
+//                          => VerificationResult)
+//                  (Q: R => VerificationResult)
+//                  : VerificationResult = {
+//
+//    val chunks = σ.h.values
+//    var failure: Option[Failure[ST, H, S, TV]] = None
+//
+//    var r =
+//      block(
+//        σ,
+//        r => Q(r),
+//        f => {
+//          Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
+//          failure = Some(f)
+//          f})
+//
+//    r =
+//      if (failure.isEmpty)
+//        r
+//      else {
+//        println("\n[tryOrFail]")
+//        heapCompressor.compress(σ, σ.h)
+////        applyWandHeuristics(σ)
+//        block(σ, r => Q(r), f => f)
+//      }
+//
+//    if (failure.nonEmpty) {
+//      /* TODO: The current way of having HeapCompressor change h is convenient
+//       *       because it makes the compression transparent to the user, and
+//       *       also, because a compression that is performed while evaluating
+//       *       an expression has a lasting effect even after the evaluation,
+//       *       although eval doesn't return a heap.
+//       *       HOWEVER, it violates the assumption that the heap is immutable,
+//       *       which is likely to cause problems, see next paragraph.
+//       *       It would probably be better to have methods that potentially
+//       *       compress heaps explicitly pass on a new heap.
+//       *       If tryOrFail would do that, then every method using it would
+//       *       have to do so as well, e.g., withChunk.
+//       *       Moreover, eval might have to return a heap as well.
+//       */
+//       /*
+//       * Restore the chunks as they existed before compressing the heap.
+//       * The is done to avoid problems with the DefaultBrancher, where
+//       * the effects of compressing the heap in one branch leak into the
+//       * other branch.
+//       * Consider the following method specs:
+//       *   requires acc(x.f, k) && acc(y.f, k)
+//       *   ensures x == y ? acc(x.f, 2 * k) : acc(x.f, k) && acc(y.f, k)
+//       * Compressing the heap inside the if-branch updates the same h
+//       * that is passed to the else-branch, which then might not verify,
+//       * because now x != y but the heap only contains acc(x.f, 2 * k)
+//       * (or acc(y.f, 2 * k)).
+//       */
+//      σ.h.replace(chunks)
+//    }
+//
+//    r
+//  }
 
   def check(σ: S, t: Term) = assert(σ, t, null)
 
@@ -290,50 +331,50 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Chunk handling */
 
-  def withChunk[CH <: Chunk : NotNothing : Manifest]
-               (σ: S,
-                h: H,
-                id: ChunkIdentifier,
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                c: C,
-                tv: TV)
-               (Q: CH => VerificationResult)
-               : VerificationResult = {
-
-    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
-      getChunk[CH](σ1, σ1.h, id) match {
-        case Some(chunk) =>
-          QS(chunk)
-
-        case None =>
-          if (checkSmoke())
-            Success() /* TODO: Mark branch as dead? */
-          else
-            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}
-    )(Q)
-  }
-
-  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
-               (σ: S,
-                h: H,
-                id: ChunkIdentifier,
-                p: P,
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                c: C,
-                tv: TV)
-               (Q: CH => VerificationResult)
-               : VerificationResult =
-
-    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
-      withChunk[CH](σ1, σ1.h, id, locacc, pve, c, tv)(ch => {
-        assert(σ1, IsAsPermissive(ch.perm, p)){
-          case true =>
-            QS(ch)
-          case false =>
-            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}})
-    )(Q)
+//  def withChunk[CH <: Chunk : NotNothing : Manifest]
+//               (σ: S,
+//                h: H,
+//                id: ChunkIdentifier,
+//                locacc: ast.LocationAccess,
+//                pve: PartialVerificationError,
+//                c: C,
+//                tv: TV)
+//               (Q: CH => VerificationResult)
+//               : VerificationResult = {
+//
+//    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
+//      getChunk[CH](σ1, σ1.h, id) match {
+//        case Some(chunk) =>
+//          QS(chunk)
+//
+//        case None =>
+//          if (checkSmoke())
+//            Success() /* TODO: Mark branch as dead? */
+//          else
+//            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}
+//    )(Q)
+//  }
+//
+//  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
+//               (σ: S,
+//                h: H,
+//                id: ChunkIdentifier,
+//                p: P,
+//                locacc: ast.LocationAccess,
+//                pve: PartialVerificationError,
+//                c: C,
+//                tv: TV)
+//               (Q: CH => VerificationResult)
+//               : VerificationResult =
+//
+//    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
+//      withChunk[CH](σ1, σ1.h, id, locacc, pve, c, tv)(ch => {
+//        assert(σ1, IsAsPermissive(ch.perm, p)){
+//          case true =>
+//            QS(ch)
+//          case false =>
+//            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}})
+//    )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
     val chunks = h.values collect {

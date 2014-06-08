@@ -1,6 +1,150 @@
+//:: IgnoreFile(/silicon/issue/00/)
+
+field enableHeuristics: Bool
+
 field f: Ref
 field g: Int
+field h: Int
+
+/* Packaging wands */
 
 method test01() {
   exhale true --* true
+}
+
+method test02(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.f) && acc(x.f) --* acc(x.g)
+{}
+
+method test03(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.f) --* acc(x.g)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures acc(x.g)
+{}
+
+method test04(x: Ref)
+  requires acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures true --* acc(x.g)
+{}
+
+method test05(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.g) --* acc(x.f) && acc(x.g)
+{}
+
+method test06(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.f) --* (acc(x.g) --* acc(x.f) && acc(x.g))
+  ensures acc(x.f) && acc(x.g)
+{}
+
+method test07(x: Ref)
+  ensures acc(x.f) --* (acc(x.g) --* acc(x.f) && acc(x.g))
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  ensures acc(x.f) && acc(x.g)
+{}
+
+method test08(x: Ref)
+  requires acc(x.g)
+  ensures acc(x.f, 1/2) --* acc(x.f, 1/2) && acc(x.g, 1/2)
+  ensures acc(x.f, 1/2) --* acc(x.f, 1/2) && acc(x.g, 1/2)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures false
+{}
+
+method test09(x: Ref)
+  requires acc(x.g)
+  ensures acc(x.f) --*
+               (acc(x.f, 1/2) --* acc(x.f, 1/2) && acc(x.g, 1/2))
+            && (acc(x.f, 1/2) --* acc(x.f, 1/2) && acc(x.g, 1/2))
+{}
+
+method test10(x: Ref)
+  requires acc(x.f) && acc(x.g)
+{
+  exhale true --* true
+  exhale true --* acc(x.f, 1/2) /* Consumes acc(x.f, 1/2)*/
+  assert acc(x.f, 1/2) && acc(x.g)
+
+  assert acc(x.f, 1/2) --* acc(x.g, 1/2) /* Temporarily consumes acc(x.g, 1/2) */
+  assert acc(x.f, 1/2) && acc(x.g)
+
+  exhale acc(x.f, 1/2) --* acc(x.g, 1/2)
+  assert acc(x.g, 1/2) && acc(x.f, 1/2)
+
+  package true --* acc(x.f, 1/2) && acc(x.g, 1/2) /* Consumes acc(x.f, 1/2) && acc(x.g, 1/2) */
+  exhale true --* acc(x.f, 1/2) && acc(x.g, 1/2)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(x.f, 1/2)
+}
+
+/* Applying wands */
+
+method test20(x: Ref, y: Ref)
+  requires true --* x == y
+{
+  exhale x == y
+  exhale true --* x == y /* Packaging-heuristics should take care of this */
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test21(x: Ref)
+  requires x != null
+    /* TODO: Should not be necessary because it is implied by acc(x.f) from the
+     *       wand's RHS. With an explicit 'apply true --* acc(x.f)' in the
+     *       method body, the additional precondition is indeed not necessary.
+     *       However, in the absence of the additional precondition, the post-
+     *       condition will fail with "receiver might be null", which won't
+     *       trigger the heuristics of applying wands.
+     */
+
+  requires true --* acc(x.f)
+  ensures acc(x.f)
+{}
+
+method test22(x: Ref)
+  requires x != null
+  requires acc(x.f) --* acc(x.g) --* acc(x.h)
+  requires acc(x.f) && acc(x.g)
+{
+//  apply acc(x.f) --* acc(x.g) --* acc(x.h)
+//  apply acc(x.g) --* acc(x.h)
+
+  exhale acc(x.h)
+}
+
+/* Currying-Uncurrying Example */
+
+predicate P() { true }
+predicate Q() { true }
+predicate R() { true }
+
+/* A * B --* C  ==>  A --* B --* C */
+method curry() {
+  define A acc(P()); define B acc(Q()); define C acc(R())
+  inhale A && B --* C
+
+  // package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+
+  exhale A --* (B --* C)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false /* Never trust your own implementation */
+}
+
+method uncurry(x: Ref) {
+  define A acc(P()); define B acc(Q()); define C acc(R())
+  inhale A --* (B --* C)
+
+//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+
+  package A && B --* C
+//  exhale A && B --* C
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false /* Never trust your own implementation */
 }

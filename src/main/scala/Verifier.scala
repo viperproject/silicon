@@ -47,7 +47,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   def verify(program: ast.Program, member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
     val history = new DefaultHistory[ST, H, S]()
-    val c = DefaultContext(program, history.tree)
+    val disableHeuristics = (   !program.fields.exists(_.name == "enableHeuristics")
+                             && config.disableHeuristics())
+//    println(s"program.fields = ${program.fields}")
+//    println(program.fields.exists(_.name == "enableHeuristics"))
+//    println(s"disableHeuristics = $disableHeuristics")
+//    sys.error("")
+    val c = DefaultContext(program, history.tree, disableHeuristics = disableHeuristics)
     val tv = traceviewFactory.create(history)
 
     member match {
@@ -223,7 +229,12 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultConsumer[ST, H, PC, S, TV]
        with DefaultExecutor[ST, H, PC, S, TV]
        with DefaultBrancher[ST, H, PC, S, DefaultContext[ST, H, S], TV]
+       with HeuristicsSupport[ST, H, PC, S, TV]
        with Logging
+{
+  override protected type C = DefaultContext[ST, H, S]
+  override protected type P = DefaultFractionalPermissions
+}
 
 trait AbstractVerifier[ST <: Store[ST],
                        H <: Heap[H],

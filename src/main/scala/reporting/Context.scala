@@ -2,6 +2,7 @@ package semper
 package silicon
 package reporting
 
+import interfaces.VerificationResult
 import interfaces.state.{Store, Heap, State}
 import interfaces.reporting.{Context, Branch, BranchingStep}
 import state.terms.Term
@@ -18,7 +19,9 @@ case class DefaultContext[ST <: Store[ST],
                           reserveEvalHeaps: Stack[H] = Nil,
                           poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
                           givenHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
-                          reinterpretWand: Boolean = true)
+                          reinterpretWand: Boolean = true,
+                          escapeEval: Option[(S, DefaultContext[ST, H, S]) => VerificationResult] = None,
+                          disableHeuristics: Boolean = true)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
 
   def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] =

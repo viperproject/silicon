@@ -31,8 +31,8 @@ trait DefaultEvaluator[
 										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
 										with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
-  private type C = DefaultContext[ST, H, S]
-  private type P = DefaultFractionalPermissions
+  protected type C = DefaultContext[ST, H, S]
+  protected type P = DefaultFractionalPermissions
 
 	protected val decider: Decider[P, ST, H, PC, S, C, TV]
 	import decider.{fresh, assume}
@@ -728,6 +728,7 @@ trait DefaultEvaluator[
             "Offending node: " + e)
 
       case pckg @ ast.Packaging(eWand, eIn) =>
+        println("[Evaluator/Packaging]")
 //        val pve = PackagingFailed(pckg)
             /* TODO: Creating a new error reason here will probably yield confusing error
              *       messages if packaging fails as part of exhaling a method's precondition
@@ -746,36 +747,67 @@ trait DefaultEvaluator[
             val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail, poldHeap = None, givenHeap = None, reinterpretWand = true)
             /* Producing the wand is not an option because we need to pass in σ.h */
             val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, eWand)
-            eval(σ2 \+ ch, eIn, pve, c4, tv)((tIn, c5) =>
-              Q(tIn, c5))})})
+            val σ3 = σ2 \+ ch
+            if (c4.escapeEval.nonEmpty) {
+              println(s"  [eval/packaging] escaping")
+              c4.escapeEval.get(σ3, c4)
+            } else {
+              println(s"  [eval/packaging] Q")
+              eval(σ3, eIn, pve, c4, tv)((tIn, c5) =>
+                Q(tIn, c5))}})})
 
       case ast.Applying(eWand, eIn) =>
-        val πPre = decider.π
-        var localResults: List[LocalEvaluationResult] = Nil
+        println("[Evaluator/Applying]")
         val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
+        consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
+          assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
+          val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
+          val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = c.reinterpretWand) /* TODO: See comment in exec/apply about givenHeap */
+          consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
+            produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
+              val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+              if (c3a.escapeEval.nonEmpty) {
+                println(s"  [eval/applying] escaping")
+                println(s"  `s3.h = ${stateFormatter.format(σ3.h)}")
+                c3a.escapeEval.get(σ3, c3a)
+              } else {
+                println(s"  [eval/applying] Q")
+                eval(σ3, eIn, pve, c3a, tv)((tIn, c4) =>
+                  Q(tIn, c4))}}))})
 
-        val r =
-          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
-            assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
-            val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
-            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = c.reinterpretWand) /* TODO: See comment in exec/apply about givenHeap */
-            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
-              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
-                val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
-                eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
-                  localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
-                  Success()})}))})
+        /* TODO: Local evaluation conflicts with heuristics */
 
-        if (localResults.length != 1)
-          logger.info(s"Evaluating an applying-expression yielded ${localResults.length} local results")
-
-        r && {
-          checkReserveHeaps(localResults)
-          val tActualInVar = fresh("actualIn", toSort(eIn.typ))
-          val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
-          /* TODO: See comment about performance in case ast.Ite */
-          assume(tAuxIn + tActualIn)
-          Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
+//        val πPre = decider.π
+//        var localResults: List[LocalEvaluationResult] = Nil
+//        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
+//
+//        val r =
+//          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
+//            assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
+//            val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
+//            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = c.reinterpretWand) /* TODO: See comment in exec/apply about givenHeap */
+//            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
+//              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
+//                val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+//                if (c3a.escapeEval.nonEmpty) {
+//                  println(s"  [eval/applying] escaping")
+//                  c3a.escapeEval.get(σ3, c3a)
+//                } else {
+//                  println(s"  [eval/applying] Q")
+//                  eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
+//                    localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
+//                    Success()})}}))})
+//
+//        if (localResults.length != 1)
+//          logger.info(s"Evaluating an applying-expression yielded ${localResults.length} local results")
+//
+//        r && {
+//          checkReserveHeaps(localResults)
+//          val tActualInVar = fresh("actualIn", toSort(eIn.typ))
+//          val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+//          /* TODO: See comment about performance in case ast.Ite */
+//          assume(tAuxIn + tActualIn)
+//          Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
 
       /* TODO: The exhaling-construct is used to tell Silicon to consume the
        *       body of an impure (un)folding expression, or those of

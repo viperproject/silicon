@@ -30,10 +30,11 @@ trait DefaultExecutor[ST <: Store[ST],
 		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
 									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV]
+                    with HeuristicsSupport[ST, H, PC, S, TV] =>
 
-  private type C = DefaultContext[ST, H, S]
-  private type P = DefaultFractionalPermissions
+  protected type C = DefaultContext[ST, H, S]
+  protected type P = DefaultFractionalPermissions
 
   protected implicit val manifestH: Manifest[H]
 
@@ -255,7 +256,7 @@ trait DefaultExecutor[ST <: Store[ST],
             case true =>
               eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
+                withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             case false =>
               Failure[ST, H, S, TV](pve dueTo ReceiverNull(fl), tv)})

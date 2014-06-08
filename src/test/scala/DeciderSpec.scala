@@ -68,7 +68,7 @@ class DeciderSpec extends FlatSpec {
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, FullPerm(), bookkeeper, stateFormatter, stateFactory)
 
-    decider.init(pathConditionsFactory, heapCompressor, config, bookkeeper)
+    decider.init(pathConditionsFactory, /*heapCompressor,*/ config, bookkeeper)
            .map(err => throw VerificationException(err))
 
     decider.start()

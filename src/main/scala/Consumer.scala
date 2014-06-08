@@ -6,7 +6,7 @@ import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse,
     MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
+import semper.silicon.interfaces.{Success, Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
@@ -22,10 +22,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		extends Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
 		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
                     with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV]
+                    with HeuristicsSupport[ST, H, PC, S, TV] =>
 
-  private type C = DefaultContext[ST, H, S]
-  private type P = DefaultFractionalPermissions
+  protected type C = DefaultContext[ST, H, S]
+  protected type P = DefaultFractionalPermissions
 
   protected implicit val manifestH: Manifest[H]
 
@@ -195,9 +196,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
        * such as packaging, which are handled in the evaluator.
        */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
+        println("\n[Consumer/Wand]")
+        println(s"  phi = $φ")
+
         /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
         val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
         val σ0 = σ \+ Γ(wandValues)
+
+        println(s"  wand = $wand")
 
         /* Checks that the value of package-old expressions hasn't changed
          * w.r.t. the state in which the wand was produced.
@@ -235,49 +241,78 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         /* TODO: Getting id by first creating a chunk is not elegant. */
         val id = magicWandSupporter.createChunk(σ0.γ, σ0.h, wand).id
 
-        
-        try {
-        
-          block: ... =>
-              magicWandSupporter.doWithMultipleHeaps(σ0, h :: c.reserveHeaps, c)((σ1, h1, c1) =>
-                decider.getChunk[MagicWandChunk[H]](σ1, h1, id) match {
-                  case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
-                  case _ => (None, h1, c1)
-                }
-              ){
-                case (Some(ch), hs, c1) =>
-                  if (!c.reinterpretWand)
-                    QS((hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail)))
-                    // Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
-                  else
-                    reinterpret(ch, c1.copy(reserveHeaps = hs.tail), tv)(c2 =>
-                      QS((hs.head, decider.fresh(sorts.Snap), List(ch), c2)))
-                      // Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
-                case _ =>
-                  QF(Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv))
-                  // Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
-              }
-        
-          reaction: ... =>
-              // We are here if block failed, i.e., if no matching wand was found
-              //
-              // We can arrive here multiple times, e.g., if the first heuristic
-              // operation itself succeeded, but didn't make block succeed.
-              //
-              // Goal: Package the wand (packaging)
-              
-              val exp = ast.Packaging(wand, ast.True())()
-              eval(σ99, exp, pve, c99, tv99)((t100, c100) =>
-                QB((c100))
-              
-        }(Q.tupled)
+//        decider.asInstanceOf[silicon.decider.DefaultDecider[ST, H, PC, S, C, TV]]
+       tryOrFail2[(H, Term, List[DirectChunk], C), (S, H, C)]((σ0, h, c))
+                {case ((σ1, h1, c1), _QS, _QF) =>
+//                    println(s"\n[Consumer/Wand/Block]")
+//                    println(s"  trying to find $id belonging to $wand")
+//                    println(s"  `s1.h = ${stateFormatter.format(σ1.h)}")
+//                    println(s"  h1 = ${stateFormatter.format(h1)}")
+                    magicWandSupporter.doWithMultipleHeaps(σ1, h1 :: c1.reserveHeaps, c1)((σ2, h2, c2) =>
+                      decider.getChunk[MagicWandChunk[H]](σ2, h2, id) match {
+                        case someChunk @ Some(ch) => (someChunk, h2 - ch, c2)
+                        case _ => (None, h2, c2)
+                      }
+                    ){
+                      case (Some(ch), hs, c3) =>
+                        if (!c.reinterpretWand)
+                          _QS((hs.head, decider.fresh(sorts.Snap), List(ch), c3.copy(reserveHeaps = hs.tail)))
+                          // Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
+                        else
+                          reinterpret(ch, c3.copy(reserveHeaps = hs.tail), tv)(c4 =>
+                            _QS((hs.head, decider.fresh(sorts.Snap), List(ch), c4)))
+                            // Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
+                      case _ =>
+                        _QF(Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv))
+                        // Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
+                    }}
+                {case ((σ1, h1, c1), cntr, _QB) =>
+                    if (c.disableHeuristics)
+                      return _QB((σ1, h1, c1), cntr + 1)
+//                    println(s"\n[Consumer/Wand/Reaction] cntr = $cntr")
+                    // We are here if block failed, i.e., if no matching wand was found
+                    // Failing to reinterpret a wand should not trigger packaging it
+                    //
+                    // We can arrive here multiple times, e.g., if the first heuristic
+                    // operation itself succeeded, but didn't make block succeed.
+                    //
+                    // Goal: Package the wand (packaging)
+
+                    val exp = ast.Packaging(wand, ast.True()())()
+                    val σ2 = σ1 \ h1 /* TODO: Probably need to push σ1.h as a eval heap into the context */
+                    val c2 = c1.copy(escapeEval = Some[(S, C) => VerificationResult](
+                      (σX, cX) => {
+//                        println(s"  executed $exp as reaction to failed consumption of $wand")
+//                        println(s"  `s1.h = ${stateFormatter.format(σ1.h)}")
+//                        println(s"  h1 = ${stateFormatter.format(h1)}")
+//                        println(s"  `sX.h = ${stateFormatter.format(σX.h)}")
+                        _QB((σX \ σ1.h, σX.h, cX.copy(escapeEval = c1.escapeEval)), cntr + 1)
+                      }
+                    ))
+                    eval(σ2, exp, pve, c2, tv)((tIn, c3) => {
+                      // eval might fail --> should trigger "wrapping" heuristics
+//                      println(s"  reached Q of heuristics eval for $exp")
+//                      println(s"  tIn = $tIn")
+//                      if (c.reserveHeaps.nonEmpty) {
+//                        println("  hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+//                        println("  hRE = " + c.reserveEvalHeaps.map(stateFormatter.format).mkString("", ",\n      ", ""))
+//                      }
+                      sys.error("Should never get here")
+//                      Success()
+                    })
+                    // Retry block with newly packaged wand
+                    // Block fails again
+                    //   ==> heuristics itself succeeded, but wasn't helpful
+                    //   ==> either try another (undo previous? after previous?)
+                    //       or fail with block failure
+              }(Q.tupled)
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and
 			 * not in the partially consumed heap(s) (h, c.reserveHeap).
 			 */
       case _ =>
-        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+        tryOrFail[(H, Term, List[DirectChunk], C)](σ, pve, c, tv)((σ1, QS, QF) => {
           eval(σ1, φ, pve, c, tv)((t, c) =>
             decider.assert(σ1, t) {
               case true =>
@@ -304,21 +339,26 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                 : VerificationResult = {
 
     /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
-    if (c.reserveHeaps.nonEmpty)
-//      return consumeIncludingReserveHeap(σ, h, id, pLoss, locacc, pve, c, tv)(Q)
-      return magicWandSupporter.consumeFromMultipleHeaps(σ, h :: c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, cs, c1/*, pcr*/) => {
+    if (c.reserveHeaps.nonEmpty) {
+      println("[Consumer/consumePermissions/magicWandSupporter]")
+      //      return consumeIncludingReserveHeap(σ, h, id, pLoss, locacc, pve, c, tv)(Q)
+      return magicWandSupporter.consumeFromMultipleHeaps(σ, h :: c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, cs, c1 /*, pcr*/) => {
         val c2 = c1.copy(reserveHeaps = hs.tail)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
-        Q(hs.head, cs.head, c2, pcr)})
+        Q(hs.head, cs.head, c2, pcr)
+      })
+    }
+
+    println("[Consumer/consumePermissions/regular]")
 
     if (consumeExactRead(pLoss, c)) {
-      decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c, tv)(ch => {
+      withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c, tv)(ch => {
         if (decider.check(σ, IsNoAccess(ch.perm - pLoss))) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      decider.withChunk[DirectChunk](σ, h, id, locacc, pve, c, tv)(ch => {
+      withChunk[DirectChunk](σ, h, id, locacc, pve, c, tv)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }

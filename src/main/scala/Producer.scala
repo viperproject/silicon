@@ -24,8 +24,8 @@ trait DefaultProducer[ST <: Store[ST],
                     with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
                     with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
 
-  private type C = DefaultContext[ST, H, S]
-  private type P = DefaultFractionalPermissions
+  protected type C = DefaultContext[ST, H, S]
+  protected type P = DefaultFractionalPermissions
 
   protected val decider: Decider[P, ST, H, PC, S, C, TV]
   import decider.{fresh, assume}
