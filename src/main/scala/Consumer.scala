@@ -184,10 +184,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //                      println(s"  pc.snap = ${pc.snap}  (${pc.snap.sort}, ${pc.snap.getClass.getSimpleName}})")
                       Q(h2, pc.snap, pc :: Nil, c3)})
               case false =>
-                Failure[C, ST, H, S, TV](pve dueTo NonPositivePermission(perm), c2, tv)}))
+                Failure[ST, H, S, TV](pve dueTo NonPositivePermission(perm), tv)}))
 
       case _: ast.InhaleExhale =>
-        Failure[C, ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), c, tv)
+        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
@@ -204,7 +204,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 assume(t)
                 QS((h, Unit, Nil, c))
               case false =>
-                QF(Failure[C, ST, H, S, TV](pve dueTo AssertionFalse(φ), c, tv))
+                QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
             }})
         })(Q.tupled)
 		}

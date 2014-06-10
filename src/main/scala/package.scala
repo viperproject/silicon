@@ -26,6 +26,9 @@ package object silicon {
   type MMap[K, V] = collection.mutable.LinkedHashMap[K, V]
   val MMap = collection.mutable.LinkedHashMap
 
+  type MStack[A] = collection.mutable.Stack[A]
+  val MStack = collection.mutable.Stack
+
   /** Copy of scala.collection.mutable.MultiMap where all internally used
     * sets and maps have been replaced by those that guarantee a deterministic
     * traversal order.

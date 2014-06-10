@@ -23,7 +23,7 @@ REM ======== Path-independent configuration ========
 REM SVER = significant version (Scala versions might not be byte-code compatible)
 REM RVER = revision version (should be byte-code compatible)
 set SCALA_SVER=2.10
-set SCALA_RVER=%SCALA_SVER%.1
+set SCALA_RVER=%SCALA_SVER%.3
 set SILICON_VERSION=0.1-SNAPSHOT
 set SILICON_MAIN=semper.silicon.SiliconRunner
 

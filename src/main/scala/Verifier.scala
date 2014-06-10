@@ -2,20 +2,21 @@ package semper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import semper.silicon.decider.PreambleFileEmitter
 import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
-import interfaces.{VerificationResult, Success, Producer, Consumer, Executor, Evaluator}
+import sil.components.StatefulComponent
+import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import interfaces.reporting.{ContextFactory, TraceView, TraceViewFactory}
-import state.{terms, SymbolConvert, DirectChunk}
-import state.terms.{sorts, Sort, DefaultFractionalPermissions}
+import interfaces.reporting.{TraceView, TraceViewFactory}
+import semper.silicon.state.{terms, SymbolConvert, DirectChunk}
+import semper.silicon.state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import reporting.{DefaultContext, DefaultContextFactory, Bookkeeper}
-import reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription}
+import semper.silicon.reporting.{DefaultContext, Bookkeeper}
+import semper.silicon.reporting.{DefaultHistory, Description, BranchingDescriptionStep, ScopeChangingDescription}
 import heap.QuantifiedChunkHelper
+import semper.silicon.decider.PreambleFileEmitter
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
@@ -40,23 +41,18 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  /* Must be set when a program verification is started! */
-  var program: ast.Program = null
-
-  def contextFactory: ContextFactory[C, ST, H, S]
   def traceviewFactory: TraceViewFactory[TV, ST, H, S]
 
-  def verify(member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
+  def verify(program: ast.Program, member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
     val history = new DefaultHistory[ST, H, S]()
-    val c = contextFactory.create(history.tree)
+    val c = DefaultContext(program, history.tree)
     val tv = traceviewFactory.create(history)
 
     member match {
       case m: ast.Method => verify(m, c, tv)
       case f: ast.ProgramFunction => verify(f, c, tv)
       case p: ast.Predicate => verify(p, c, tv)
-      case _: ast.Domain | _: ast.Field =>
-        Success[C, ST, H, S](c)
+      case _: ast.Domain | _: ast.Field => Success()
     }
   }
 
@@ -88,12 +84,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
 				val (c2a, tv0) = tv.splitOffLocally(c2, BranchingDescriptionStep[ST, H, S]("Check Postcondition well-formedness"))
 			 (inScope {
          produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2a, tv0)((_, c3) =>
-           Success[C, ST, H, S](c3))}
+           Success())}
 					&&
         inScope {
           exec(σ1 \ (g = σ1.h), body, c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((σ2, c3) =>
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((σ3, _, _, c4) =>
-              Success[C, ST, H, S](c4)))})})}
+              Success()))})})}
 	}
 
   def verify(function: ast.ProgramFunction, c: C, tv: TV): VerificationResult = {
@@ -119,13 +115,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
       val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Check Precondition & Postcondition well-formedness"))
       (inScope {
         produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c0, tv0)((_, c2) =>
-          Success[C, ST, H, S](c2))}
+          Success())}
         &&
         inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c, tv.stepInto(c, Description[ST, H, S]("Produce Precondition")))((σ1, c2) =>
             eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
               consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                Success[C, ST, H, S](c4))))})}
+                Success())))})}
   }
 
   def verify(predicate: ast.Predicate, c: C, tv: TV): VerificationResult = {
@@ -139,7 +135,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
     inScope {
       produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
-        Success[C, ST, H, S](c1))}
+        Success())}
   }
 }
 
@@ -157,47 +153,22 @@ class DefaultElementVerifier[ST <: Store[ST],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
 			val bookkeeper: Bookkeeper,
-			val contextFactory: ContextFactory[DefaultContext[ST, H, S], ST, H, S],
       val traceviewFactory: TraceViewFactory[TV, ST, H, S])
 		extends AbstractElementVerifier[ST, H, PC, S, TV]
-       with Logging
        with DefaultEvaluator[ST, H, PC, S, TV]
        with DefaultProducer[ST, H, PC, S, TV]
        with DefaultConsumer[ST, H, PC, S, TV]
        with DefaultExecutor[ST, H, PC, S, TV]
        with DefaultBrancher[ST, H, PC, S, DefaultContext[ST, H, S], TV]
-
-
-trait VerifierFactory[V <: AbstractVerifier[ST, H, PC, S, TV],
-                      TV <: TraceView[TV, ST, H, S],
-                      ST <: Store[ST],
-                      H <: Heap[H],
-                      PC <: PathConditions[PC],
-                      S <: State[ST, H, S]] {
-
-  def create(config: Config,
-             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             stateFactory: StateFactory[ST, H, S],
-             symbolConverter: SymbolConvert,
-             preambleEmitter: PreambleFileEmitter[_],
-             sequencesEmitter: SequencesEmitter,
-             setsEmitter: SetsEmitter,
-             multisetsEmitter: MultisetsEmitter,
-             domainsEmitter: DomainsEmitter,
-             stateFormatter: StateFormatter[ST, H, S, String],
-             heapCompressor: HeapCompressor[ST, H, S],
-             quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             bookkeeper: Bookkeeper,
-             traceviewFactory: TraceViewFactory[TV, ST, H, S]): V
-}
+       with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S],
                        TV <: TraceView[TV, ST, H, S]]
-      extends Logging {
+    extends StatefulComponent
+       with Logging {
 
   /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV]
   /*protected*/ def config: Config
@@ -211,9 +182,26 @@ trait AbstractVerifier[ST <: Store[ST],
   val ev: AbstractElementVerifier[ST, H, PC, S, TV]
   import ev.symbolConverter
 
-  def verify(program: ast.Program): List[VerificationResult] = {
-    ev.program = program
+  private val statefulSubcomponents = List[StatefulComponent](
+    bookkeeper,
+    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    decider)
 
+  /* Lifetime */
+
+  def start() { /* Nothing to be done here */ }
+
+  def reset() {
+    statefulSubcomponents foreach (_.reset())
+  }
+
+  def stop() {
+    statefulSubcomponents foreach (_.stop())
+  }
+
+  /* Functionality */
+
+  def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
 
     val members = program.members.filterNot(m => filter(m.name)).iterator
@@ -224,7 +212,7 @@ trait AbstractVerifier[ST <: Store[ST],
     if (config.stopOnFirstError()) {
       /* Stops on first error */
       while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = ev.verify(members.next()) :: results
+        results = ev.verify(program, members.next()) :: results
       }
 
       results = results.reverse
@@ -233,7 +221,7 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results = members.map(ev.verify).toList
+      results = members.map(m => ev.verify(program, m)).toList
     }
 
     results
@@ -250,16 +238,9 @@ trait AbstractVerifier[ST <: Store[ST],
     decider.prover.logComment("-" * 60)
     decider.prover.logComment("Preamble start")
 
-    sequencesEmitter.reset()
     sequencesEmitter.analyze(program)
-
-    setsEmitter.reset()
     setsEmitter.analyze(program)
-
-    multisetsEmitter.reset()
     multisetsEmitter.analyze(program)
-
-    domainsEmitter.reset()
     domainsEmitter.analyze(program)
 
     emitStaticPreamble()
@@ -329,36 +310,6 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 }
 
-class DefaultVerifierFactory[ST <: Store[ST],
-                             H <: Heap[H],
-                             PC <: PathConditions[PC],
-                             S <: State[ST, H, S],
-                             TV <: TraceView[TV, ST, H, S]]
-    extends VerifierFactory[DefaultVerifier[ST, H, PC, S, TV], TV, ST, H, PC, S] {
-
-  def create(config: Config,
-             decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             stateFactory: StateFactory[ST, H, S],
-             symbolConverter: SymbolConvert,
-             preambleEmitter: PreambleFileEmitter[_],
-             sequencesEmitter: SequencesEmitter,
-             setsEmitter: SetsEmitter,
-             multisetsEmitter: MultisetsEmitter,
-             domainsEmitter: DomainsEmitter,
-             stateFormatter: StateFormatter[ST, H, S, String],
-             heapCompressor: HeapCompressor[ST, H, S],
-             quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             stateUtils: StateUtils[ST, H, PC, S, DefaultContext[ST, H, S], TV],
-             bookkeeper: Bookkeeper,
-             traceviewFactory: TraceViewFactory[TV, ST, H, S]) =
-
-    new DefaultVerifier[ST, H, PC, S, TV](
-                        config, decider, stateFactory, symbolConverter, preambleEmitter, sequencesEmitter, setsEmitter,
-                        multisetsEmitter, domainsEmitter, stateFormatter, heapCompressor, quantifiedChunkHelper,
-                        stateUtils, bookkeeper, traceviewFactory)
-
-}
-
 class DefaultVerifier[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
@@ -382,8 +333,6 @@ class DefaultVerifier[ST <: Store[ST],
 		extends AbstractVerifier[ST, H, PC, S, TV]
 			 with Logging {
 
-  val contextFactory = new DefaultContextFactory[ST, H, S]
-
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkHelper, stateUtils, bookkeeper, contextFactory, traceviewFactory)
+                                      quantifiedChunkHelper, stateUtils, bookkeeper, traceviewFactory)
 }

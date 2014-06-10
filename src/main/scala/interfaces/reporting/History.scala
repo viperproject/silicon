@@ -301,9 +301,9 @@ abstract class VerificationStatus {
 object VerificationStatus {
   /** Converts a VerificationResult into a VerificationStatus */
   def apply(r: VerificationResult): VerificationStatus = r match {
-    case Success(_) => SuccessStatus
-    case Failure(_, _, _) => FailureStatus
-    case Unreachable(_) => UnreachableStatus
+    case Success() => SuccessStatus
+    case Failure(_, _) => FailureStatus
+    case Unreachable() => UnreachableStatus
   }
   
   /** Converts a list of VerificationResult into a VerificationStatus */

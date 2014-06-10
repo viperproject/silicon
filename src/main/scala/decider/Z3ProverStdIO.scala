@@ -3,7 +3,6 @@ package silicon
 package decider
 
 import java.io.{PrintWriter, BufferedWriter, File, InputStreamReader, BufferedReader, OutputStreamWriter}
-import scala.collection.mutable.{HashMap, Stack}
 import com.weiglewilczek.slf4s.Logging
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
@@ -15,38 +14,12 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 	import termConverter._
 
 	private var scopeCounter = 0
-	private val scopeLabels = new HashMap[String, Stack[Int]]()
-
+	private val scopeLabels = new MMap[String, MStack[Int]]()
 	private var isLoggingCommentsEnabled: Boolean = true
-
-  private val logfile =
-		if (logpath != null) common.io.PrintWriter(new File(logpath))
-		else null
-
-  /* TODO: Get Z3's version and log a warning if the version doesn't match the expected version. */
-  private val z3 = {
-    logger.info(s"Starting Z3 at $z3path")
-
-    val builder = new ProcessBuilder(z3path, "-smt2", "-in")
-		builder.redirectErrorStream(true)
-
-    val process = builder.start()
-
-		Runtime.getRuntime().addShutdownHook(new Thread {
-			override def run() {
-				process.destroy()
-			}
-		})
-
-    process
-  }
-
-  private val input =
-		new BufferedReader(new InputStreamReader(z3.getInputStream()))
-
-  private val output =
-		new PrintWriter(
-			new BufferedWriter(new OutputStreamWriter(z3.getOutputStream())), true)
+  private var logfile: PrintWriter = _
+  private var z3: Process = _
+  private var input: BufferedReader = _
+  private var output: PrintWriter = _
 
   def z3Version() = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -63,9 +36,50 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     }
   }
 
+  def start() {
+    logfile =
+      if (logpath != null) common.io.PrintWriter(new File(logpath))
+      else null
+
+    scopeLabels.clear()
+    z3 = createZ3Instance()
+    input = new BufferedReader(new InputStreamReader(z3.getInputStream))
+    output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
+  }
+
+  private def createZ3Instance() = {
+    logger.info(s"Starting Z3 at $z3path")
+
+    val builder = new ProcessBuilder(z3path, "-smt2", "-in")
+    builder.redirectErrorStream(true)
+
+    val process = builder.start()
+
+    Runtime.getRuntime.addShutdownHook(new Thread {
+      override def run() {
+        process.destroy()
+      }
+    })
+
+    process
+  }
+
+  def reset() {
+    stop()
+    start()
+  }
+
   def stop() {
     this.synchronized {
+      logfile.flush()
+      output.flush()
+
+      logfile.close()
+      input.close()
+      output.close()
+
       z3.destroy()
+//      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
     }
   }
 
@@ -73,7 +87,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		val stack =
 			scopeLabels.getOrElse(
 				label,
-				{val s = new Stack[Int](); scopeLabels(label) = s; s})
+				{val s = new MStack[Int](); scopeLabels(label) = s; s})
 
 		stack.push(scopeCounter)
 		push()
@@ -90,19 +104,19 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		scopeCounter += n
 		val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + scopeCounter
     writeLine(cmd)
-		readSuccess
+		readSuccess()
 	}
 
   def pop(n: Int = 1) {
 		val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + scopeCounter
 		scopeCounter -= n
     writeLine(cmd)
-		readSuccess
+		readSuccess()
   }
 
 	def write(content: String) {
     writeLine(content)
-		readSuccess
+		readSuccess()
 	}
 
   def assume(term: Term) = assume(convert(term))
@@ -111,7 +125,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		bookkeeper.assumptionCounter += 1
 
 		writeLine("(assert " + term + ")")
-		readSuccess
+		readSuccess()
   }
 
   def assert(goal: Term) = assert(convert(goal))
@@ -121,9 +135,9 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
 		push()
 		writeLine("(assert (not " + goal + "))")
-		readSuccess
+		readSuccess()
 		writeLine("(check-sat)")
-		val r = readUnsat
+		val r = readUnsat()
 		pop()
 
 		r
@@ -132,14 +146,14 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 	def check() = {
 		writeLine("(check-sat)")
 
-		readLine match {
+		readLine() match {
 			case "sat" => Sat
 			case "unsat" => Unsat
 			case "unknown" => Unknown
 		}
 	}
 
-  def getStatistics(): Map[String, String]= {
+  def statistics(): Map[String, String]= {
     var repeat = true
     var line = ""
     var stats = scala.collection.immutable.SortedMap[String, String]()

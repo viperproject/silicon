@@ -28,25 +28,30 @@ class DefaultDecider[ST <: Store[ST],
 
   protected type P = DefaultFractionalPermissions
 
-	private var z3: Z3ProverStdIO = null
+	private var z3: Z3ProverStdIO = _
 
-  protected var pathConditionsFactory: PathConditionsFactory[PC] = null
-  protected var config: Config = null
-  protected var bookkeeper: Bookkeeper = null
-  protected var pathConditions: PC = null.asInstanceOf[PC]
-  protected var symbolConverter: SymbolConvert = null
-  protected var heapCompressor: HeapCompressor[ST, H, S] = null
+  protected var pathConditionsFactory: PathConditionsFactory[PC] = _
+  protected var config: Config = _
+  protected var bookkeeper: Bookkeeper = _
+  protected var pathConditions: PC = _
+  protected var symbolConverter: SymbolConvert = _
+  protected var heapCompressor: HeapCompressor[ST, H, S] = _
 
   private sealed trait State
 
   private object State {
     case object Created extends State
     case object Initialised extends State
-    case object Started extends State
+    case object Running extends State
+    case object Stopped extends State
     case object Erroneous extends State
   }
 
   private var state: State = State.Created
+
+//  val paLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
+//  val proverAssertionTimingsLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
+//  lazy val fcwpLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
   @inline
   def prover: Prover = z3
@@ -54,37 +59,47 @@ class DefaultDecider[ST <: Store[ST],
   @inline
   def π = pathConditions.values
 
+  private lazy val z3Exe: String = {
+    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+
+    config.z3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
+                               .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+  }
+
   def init(pathConditionsFactory: PathConditionsFactory[PC],
            heapCompressor: HeapCompressor[ST, H, S],
            config: Config,
-           bookkeeper: Bookkeeper) {
+           bookkeeper: Bookkeeper)
+          : Option[DependencyNotFoundError] = {
 
     this.pathConditionsFactory = pathConditionsFactory
     this.heapCompressor = heapCompressor
     this.config = config
     this.bookkeeper = bookkeeper
-    this.state = State.Initialised
-  }
+    this.symbolConverter = new silicon.state.DefaultSymbolConvert()
+    this.pathConditions = pathConditionsFactory.Π()
 
-  def start(): Option[DependencyNotFoundError] = {
-    state match {
-      case State.Initialised => /* OK */
-      case State.Created => sys.error("DefaultDecider hasn't been initialised yet, call init() first.")
-      case State.Started => sys.error("DefaultDecider has already been started.")
-      case State.Erroneous => sys.error("DefaultDecider is in an erroneous state and cannot be started.")
+    val optProverError = createProver()
+
+    optProverError match {
+      case None => this.state = State.Initialised
+      case _ => this.state = State.Erroneous
     }
 
-    state = State.Started
+    optProverError
+  }
 
+  private def createProver(): Option[DependencyNotFoundError] = {
     try {
       z3 = new Z3ProverStdIO(z3Exe, config.effectiveZ3LogFile, bookkeeper)
+      z3.start() /* Cannot query Z3 version otherwise */
     } catch {
       case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
         state = State.Erroneous
         val message = (
-            s"Could not execute Z3 at $z3Exe. Either place z3 in the path, or set "
-          + s"the environment variable ${Silicon.z3ExeEnvironmentVariable}, or run "
-          + s"Silicon with option --${config.z3Exe.humanName}")
+          s"Could not execute Z3 at $z3Exe. Either place z3 in the path, or set "
+            + s"the environment variable ${Silicon.z3ExeEnvironmentVariable}, or run "
+            + s"Silicon with option --${config.z3Exe.humanName}")
 
         return Some(DependencyNotFoundError(message))
     }
@@ -95,29 +110,31 @@ class DefaultDecider[ST <: Store[ST],
     if (z3Version != Silicon.expectedZ3Version)
       logger.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")
 
-    pathConditions = pathConditionsFactory.Π()
-    symbolConverter = new silicon.state.DefaultSymbolConvert()
-
     None
   }
 
-  private lazy val z3Exe: String = {
-    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+  def start() {
+    /* Doesn't do much other than checking and setting the expected lifetime state.
+     * All initialisation happens in method `init`.
+     */
 
-    config.z3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
-                                        .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+    state match {
+      case State.Created => sys.error("DefaultDecider hasn't been initialised yet, call init() first")
+      case State.Initialised  => /* OK */
+      case State.Running => sys.error("DefaultDecider has already been started")
+      case State.Stopped => sys.error("DefaultDecider has already been stopped and cannot be restarted")
+      case State.Erroneous => sys.error("DefaultDecider is in an erroneous state and cannot be started")
+    }
   }
 
-	def checkSmoke() = prover.check() == Unsat
-
-  lazy val paLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
-
-  lazy val proverAssertionTimingsLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
+  def reset() {
+    z3.reset()
+    pathConditions = pathConditions.empty
+  }
 
   def stop() {
-    if (prover != null) prover.stop()
+    if (z3 != null) z3.stop()
+    state = State.Stopped
   }
 
   /* Assumption scope handling */
@@ -171,28 +188,22 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
-//  var cnt = 0
+  def checkSmoke() = prover.check() == Unsat
 
   def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[C, ST, H, S, TV] => VerificationResult)
+                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
                   : VerificationResult = {
 
     val chunks = σ.h.values
-    var failure: Option[Failure[C, ST, H, S, TV]] = None
-//    cnt += 1
-//    val mycnt = cnt
-//    prover.logComment(s"[decider/tryOrFail-$mycnt]")
+    var failure: Option[Failure[ST, H, S, TV]] = None
 
     var r =
       block(
         σ,
-        r => {
-//          prover.logComment(s"tryOrFail-$mycnt succeeded")
-          Q(r)},
+        r => Q(r),
         f => {
-//          prover.logComment(s"tryOrFail-$mycnt failed with $f")
           Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
           failure = Some(f)
           f})
@@ -203,7 +214,6 @@ class DefaultDecider[ST <: Store[ST],
       else {
         heapCompressor.compress(σ, σ.h)
 //        assume(SnapshotHelper.discoverEqualities(π)) /* [SNAP-EQ] */
-//        prover.logComment(s"retrying block of tryOrFail-$mycnt")
         block(σ, r => Q(r), f => f)
       }
 
@@ -236,9 +246,6 @@ class DefaultDecider[ST <: Store[ST],
        */
       σ.h.replace(chunks)
     }
-
-//    prover.logComment(s"[/tryOrFail-$mycnt] $r")
-//    cnt -= 1
 
     r
   }
@@ -274,10 +281,10 @@ class DefaultDecider[ST <: Store[ST],
     if (logSink != null)
       logSink.println(t)
 
-    val startTime = System.currentTimeMillis()
+//    val startTime = System.currentTimeMillis()
     val result = prover.assert(t)
-    val endTime = System.currentTimeMillis()
-    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
+//    val endTime = System.currentTimeMillis()
+//    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
 
     result
   }
@@ -302,9 +309,9 @@ class DefaultDecider[ST <: Store[ST],
 
       case None =>
         if (checkSmoke())
-          Success[C, ST, H, S](c) /* TODO: Mark branch as dead? */
+          Success() /* TODO: Mark branch as dead? */
         else
-          QF(Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv))}
+          QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}
     )(Q)
   }
 
@@ -326,7 +333,7 @@ class DefaultDecider[ST <: Store[ST],
           case true =>
             QS(ch)
           case false =>
-            QF(Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv))}})
+            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}})
     )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
@@ -346,9 +353,6 @@ class DefaultDecider[ST <: Store[ST],
 	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
 		chunks find (ch => ch.args == id.args)
 
-  lazy val fcwpLog =
-    common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
-
   /**
     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
     */
@@ -356,7 +360,7 @@ class DefaultDecider[ST <: Store[ST],
                                  (σ: S, chunks: Iterable[CH], id: ChunkIdentifier)
                                  : Option[CH] = {
 
-    fcwpLog.println(id)
+//    fcwpLog.println(id)
 		val chunk = chunks find (ch => check(σ, BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
 
 		chunk
@@ -380,5 +384,5 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Misc */
 
-  def getStatistics = prover.getStatistics
+  def statistics() = prover.statistics()
 }

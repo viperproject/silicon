@@ -3,6 +3,7 @@ package silicon
 package interfaces.decider
 
 import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
+import sil.components.StatefulComponent
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
 import interfaces.{Failure, VerificationResult}
 import interfaces.reporting.{TraceView, Context}
@@ -16,7 +17,9 @@ trait Decider[P <: FractionalPermissions[P],
 						  PC <: PathConditions[PC],
               S <: State[ST, H, S],
               C <: Context[C, ST, H, S],
-              TV <: TraceView[TV, ST, H, S]] {
+              TV <: TraceView[TV, ST, H, S]]
+
+    extends StatefulComponent {
 
 	def prover: Prover
 	def π: Set[Term]
@@ -34,7 +37,7 @@ trait Decider[P <: FractionalPermissions[P],
   def assume(ts: Set[Term])
 
   def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[C, ST, H, S, TV] => VerificationResult)
+                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
                   : VerificationResult
@@ -78,8 +81,5 @@ trait Decider[P <: FractionalPermissions[P],
   def fresh(s: Sort): Var
   def fresh(v: ast.Variable): Var
 
-  def start(): Option[DependencyNotFoundError]
-  def stop()
-
-  def getStatistics: Map[String, String]
+  def statistics(): Map[String, String]
 }

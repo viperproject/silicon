@@ -103,12 +103,12 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
 //    println(s"  field = $rcvr.${f.name}")
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
-        Failure[C, ST, H, S, TV](pve dueTo ReceiverNull(locacc), c, tv)
+        Failure[ST, H, S, TV](pve dueTo ReceiverNull(locacc), tv)
       case true =>
         decider.assert(σ, Less(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, f.name)))) {
           case false =>
             decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
-            Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+            Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
           case true =>
             valueCache.get((h, rcvr, f)) match {
               case None =>
@@ -225,7 +225,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   def consume(σ: S, h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
     val k = exhalePermissions2(σ, h, ch)
     if(!k._3)
-      Failure[C, ST, H, S, TV](pve dueTo InsufficientPermission(locacc), c, tv)
+      Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
     else Q(k._2)
   }
 
