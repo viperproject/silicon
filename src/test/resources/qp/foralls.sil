@@ -1,6 +1,6 @@
 /* Misc */
 
-var f: Int
+field f: Int
 
 predicate P01(xs: Set[Ref]) {
   forall x: Ref :: x in xs ==> acc(x.f)
@@ -42,8 +42,8 @@ predicate P02(xs: Set[Ref], a: Ref) {
 
 /* Distilled from union-find example */
 
-var nodes: Set[Ref]
-var parent: Ref
+field nodes: Set[Ref]
+field parent: Ref
 
 method test03(y: Ref, xs: Set[Ref]) {
   inhale !(null in xs)
@@ -107,50 +107,50 @@ method test05(this: Ref, struct: Ref)
 
 /* Distilled from composite example */
 
-var value: Int
-var left: Ref
-//var right: Ref
-var parentStruct: Ref
+field value: Int
+field left: Ref
+//field right: Ref
+field parentStruct: Ref
 
 predicate inv2(this: Ref) {
-     acc(this.nodes, write)
+     acc(this.nodes)
   && !(null in (this.nodes))
-  && (forall x: Ref :: x in (this.nodes) ==> acc(x.parent, write))
+  && (forall x: Ref :: x in (this.nodes) ==> acc(x.parent))
 //  && (forall o: Ref :: o in (this.all) ==> acc(o.parentStruct, wildcard))
-  && (forall x: Ref :: x in (this.nodes) ==> acc(x.left, write)) /* 1/2 */
+  && (forall x: Ref :: x in (this.nodes) ==> acc(x.left)) /* 1/2 */
 //  && (forall t: Ref :: t in (this.all) && t.left != null && visit(t) ==> t.left in this.all)
 //  && (forall s: Ref :: (s in (this.all) && s.left == null) ==> acc(s.left, 1/2))
 //  && (forall v: Ref :: v in (this.all) ==> acc(v.right, 1/2))
 //  && (forall t1: Ref :: t1 in (this.all) && t1.right != null && visit(t1) ==> t1.right in this.all)
 //  && (forall y: Ref :: (y in (this.all) && y.right == null) ==> acc(y.right, 1/2))
-  && (forall x: Ref :: x in (this.nodes) ==> acc(x.value, write))
+  && (forall x: Ref :: x in (this.nodes) ==> acc(x.value))
 //  && forall y: Ref :: y in this.all && visit(y) ==> y.value == ((y.left==null ? 0 : y.left.value) + (y.right==null ? 0 : y.right.value))  + 1
 }
 
 function getAllNodes(this: Ref): Set[Ref]
-  requires acc(inv2(this), write)
+  requires acc(inv2(this))
 {
- unfolding acc(inv2(this), write) in this.nodes
+ unfolding acc(inv2(this)) in this.nodes
 }
 
 function getLeft(this: Ref): Ref
-  requires acc(this.parentStruct, write)
-  requires acc(inv2(this.parentStruct), write)
+  requires acc(this.parentStruct)
+  requires acc(inv2(this.parentStruct))
   requires this in getAllNodes(this.parentStruct)
 {
- unfolding acc(inv2(this.parentStruct), write) in this.left
+ unfolding acc(inv2(this.parentStruct)) in this.left
 }
 
 method test07(this: Ref, newParent: Ref, isLeft: Bool)
-  requires acc(newParent.parentStruct, write)
-  requires acc(inv2(newParent.parentStruct, write))
+  requires acc(newParent.parentStruct)
+  requires acc(inv2(newParent.parentStruct))
   requires newParent in getAllNodes(newParent.parentStruct)
   requires isLeft == true
   requires isLeft ==> getLeft(newParent) == null // : getRight(newParent)==null
 {
 //  this.value := 1
 //  this.parent := newParent
-  unfold acc(inv2(newParent.parentStruct), write)
+  unfold acc(inv2(newParent.parentStruct))
 
   // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert isLeft ==> newParent.left == null // : newParent.right == null

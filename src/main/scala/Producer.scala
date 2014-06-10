@@ -112,8 +112,8 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.And(a0, a1) if !φ.isPure =>
 //        println("\n[producer/and]")
 //        println(s"  φ = $φ")
-        val s0 = mkSnap(a0)
-        val s1 = mkSnap(a1)
+        val s0 = mkSnap(a0, c)
+        val s1 = mkSnap(a1, c)
 
         val s0a = s0 // s0.sort match {case _: sorts.Arrow => Select(s0, *()) case _ => s0} /* [SNAP-EQ] */
 //        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
@@ -278,13 +278,13 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
-                                             fIfBothImpure: () => (Sort, Boolean))
+                                             fIfBothImpure: () => (Sort, Boolean),
                                              c: C)
                                             : (Sort, Boolean) = {
 
     def followImpureIfNotAnd(φ: ast.Expression): (Sort, Boolean) = φ match {
       case _: ast.And => (sorts.Snap, false)
-      case _ => getOptimalSnapshotSort(φ)
+      case _ => getOptimalSnapshotSort(φ, c)
     }
 
     if (φ1.isPure && !φ2.isPure) followImpureIfNotAnd(φ2)
@@ -292,8 +292,8 @@ trait DefaultProducer[ST <: Store[ST],
     else fIfBothImpure()
   }
 
-  private def mkSnap(φ: ast.Expression): Term = {
-    val oss = getOptimalSnapshotSort(φ)
+  private def mkSnap(φ: ast.Expression, c: C): Term = {
+    val oss = getOptimalSnapshotSort(φ, c)
 //    println("\n[mkSnap]")
 //    println(s"  φ = $φ")
 //    println(s"  oss = $oss  (${oss.getClass.getSimpleName}})")
