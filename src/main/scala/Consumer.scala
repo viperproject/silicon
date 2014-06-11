@@ -142,16 +142,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 val h2 =
                   if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) h
                   else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
-//                  println(s"  tRcvr = $tRcvr")
-//                  println(s"  tCond = $tCond")
-//                  println(s"  v = $v  (${v.sort}, ${v.getClass.getSimpleName}})")
+                quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3, tv)(v => {
+                  //                  println("\n[consumer/forall]")
+                  //                  println(s"  tRcvr = $tRcvr")
+                  //                  println(s"  tCond = $tCond")
+                  //                  println(s"  v = $v  (${v.sort}, ${v.getClass.getSimpleName}})")
                   val t = v.t0
                   /* TODO: Passing 'null' is probably not a good idea ... */
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
-//                  println(s"  ch = $ch")
+                  //                  println(s"  ch = $ch")
                   quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3, tv)(h3 => {
-//                    println("\n[consumer/forall]")
-//                    println(s"  t = $t")
                     Q(h3, t, Nil, c3)})})}))}})
 
       /* Field access predicates for quantified fields */
