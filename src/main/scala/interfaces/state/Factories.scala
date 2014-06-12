@@ -11,7 +11,7 @@ object factoryUtils {
 }
 
 trait StoreFactory[ST <: Store[ST]] {
-	implicit def ØToEmptyStore(ø: factoryUtils.Ø) = Γ()
+	implicit def ØToEmptyStore(ø: factoryUtils.Ø): ST = Γ()
 
 	def Γ(): ST
 	def Γ(store: Map[ast.Variable, Term]): ST
@@ -20,7 +20,7 @@ trait StoreFactory[ST <: Store[ST]] {
 }
 
 trait PathConditionsFactory[PC <: PathConditions[PC]] {
-	implicit def ØToEmptyPathConditions(ø: factoryUtils.Ø) = Π()
+	implicit def ØToEmptyPathConditions(ø: factoryUtils.Ø): PC = Π()
 
 	def Π(): PC
 	def Π(terms: Term): PC
@@ -28,7 +28,7 @@ trait PathConditionsFactory[PC <: PathConditions[PC]] {
 }
 
 trait HeapFactory[H <: Heap[H]] {
-	implicit def ØToEmptyHeap(ø: factoryUtils.Ø) = H()
+	implicit def ØToEmptyHeap(ø: factoryUtils.Ø): H = H()
 
 	def H(): H
 	def H(h: H): H
@@ -38,7 +38,7 @@ trait HeapFactory[H <: Heap[H]] {
 trait StateFactory[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 		extends StoreFactory[ST] with HeapFactory[H] {
 
-	implicit def ØToEmptyState(ø: factoryUtils.Ø) = Σ()
+	implicit def ØToEmptyState(ø: factoryUtils.Ø): S = Σ()
 
 	def Σ(): S
 	def Σ(γ: ST, h: H, g: H): S
