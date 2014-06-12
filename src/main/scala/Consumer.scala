@@ -106,7 +106,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     if (!φ.isInstanceOf[ast.And]) {
       logger.debug(s"\nCONSUME ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))
-      logger.debug("hE = " + stateFormatter.format(h))
+      logger.debug("h = " + stateFormatter.format(h))
       if (c.reserveHeaps.nonEmpty) {
         logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
         logger.debug("hRE = " + c.reserveEvalHeaps.map(stateFormatter.format).mkString("", ",\n      ", ""))
@@ -149,7 +149,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             decider.assume(rewrittenCond)
             eval(σ0, eRcvr, pve, c1, tv)((tRcvr, c2) =>
               evalp(σ0, loss, pve, c2, tv)((tPerm, c3) => {
-                val h2 = if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) σ0.h else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
+                val h2 =
+                  if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) h
+                  else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
                 quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3, tv)(t => {
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
                   quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3, tv)(h3 => {
