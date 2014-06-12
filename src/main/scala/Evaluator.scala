@@ -92,7 +92,7 @@ trait DefaultEvaluator[
           : VerificationResult = {
 
 		eval2(σ, e, pve, c, tv)((t, c1) =>
-			Q(t, c1))
+      Q(t, c1))
   }
 
   protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
@@ -185,16 +185,23 @@ trait DefaultEvaluator[
             Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c0) =>
-          magicWandSupporter.doWithMultipleHeaps(σ, σ.h :: c0.reserveEvalHeaps, c)((σ1, h1, c1) =>
-            decider.getChunk[FieldChunk](σ1, h1, id) match {
-              case Some(ch) => (Some(ch.value), h1, c1)
-              case _ => (None, h1, c1)
-            }
-          ){
-            case (Some(t), _, c1) => Q(t, c1)
-            case _ => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)
-          })
+        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c0) => {
+          val h = c.footprintHeap match {
+            case None => σ.h
+            case Some(hFoot) => σ.h + hFoot
+          }
+          decider.withChunk[FieldChunk](σ, h, id, fa, pve, c, tv)(ch =>
+            Q(ch.value, c))})
+//        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c0) =>
+//          magicWandSupporter.doWithMultipleHeaps(σ, σ.h :: c0.reserveEvalHeaps, c)((σ1, h1, c1) =>
+//            decider.getChunk[FieldChunk](σ1, h1, id) match {
+//              case Some(ch) => (Some(ch.value), h1, c1)
+//              case _ => (None, h1, c1)
+//            }
+//          ){
+//            case (Some(t), _, c1) => Q(t, c1)
+//            case _ => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)
+//          })
 
 //          decider.getChunk[FieldChunk](σ, σ.h, id) match {
 //            case Some(ch) =>
@@ -739,15 +746,20 @@ trait DefaultEvaluator[
         val σ0 = Σ(σ.γ, Ø, σ.g)
         val c0 = c.copy(poldHeap = Some(σ.h))
         produce(σ0, fresh, FullPerm(), eWand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps, givenHeap = Some(σLhs.h), reinterpretWand = false)
+          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps,
+                           givenHeap = Some(σLhs.h),
+                           insideGOP = true,
+                           reinterpretWand = false)
           val rhs = magicWandSupporter.injectExhalingExp(eWand.right)
           consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
             val σ2 = σ \ c3.reserveHeaps.head
             val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail, poldHeap = None, givenHeap = None, reinterpretWand = true)
             /* Producing the wand is not an option because we need to pass in σ.h */
             val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, eWand)
-            eval(σ2 \+ ch, eIn, pve, c4, tv)((tIn, c5) =>
-              Q(tIn, c5))})})
+            eval(σ2 \+ ch, eIn, pve, c4, tv)((tIn, c5) => {
+              println(s"postPackagingReserveHeap is ${c5.postPackagingReserveHeap}")
+              println(s"setting postPackagingReserveHeap to ${c3.reserveHeaps.head}")
+              Q(tIn, c5.copy(postPackagingReserveHeap = Some(c3.reserveHeaps.head), insideGOP = c1.insideGOP))})})})
 
       case ast.Applying(eWand, eIn) =>
         val πPre = decider.π
@@ -762,6 +774,9 @@ trait DefaultEvaluator[
             consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
               produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
                 val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+                println(s"evaluating $eIn as part of $e")
+                println(s"  sigma3.h = ${σ3.h}")
+                println(s"  c3.reserveHeaps = ${c3.reserveHeaps}")
                 eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
                   localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
                   Success()})}))})
@@ -770,6 +785,7 @@ trait DefaultEvaluator[
           logger.info(s"Evaluating an applying-expression yielded ${localResults.length} local results")
 
         r && {
+          println("END Applying")
           checkReserveHeaps(localResults)
           val tActualInVar = fresh("actualIn", toSort(eIn.typ))
           val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
@@ -784,8 +800,14 @@ trait DefaultEvaluator[
        *       in the consumer right away.
        */
       case ast.Exhaling(exp) =>
-        consume(σ, FullPerm(), exp, pve, c, tv)((_, _, _, c1) =>
-          Q(True(), c1))
+        println("Evaluator/Exhaling")
+        println(s"  sigma.h = ${σ.h}")
+        println(s"  c.reserveHeaps = ${c.reserveHeaps}")
+        consume(σ, FullPerm(), exp, pve, c, tv)((σ1, _, _, c1) => {
+          println(s"  after consuming $exp as part of Exhaling(it)")
+          println(s"  sigma1.h = ${σ1.h}")
+          println(s"  c1.reserveHeaps = ${c1.reserveHeaps}")
+          Q(True(), c1)})
 
       /* Sequences */
 

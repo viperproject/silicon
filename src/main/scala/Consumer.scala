@@ -6,7 +6,7 @@ import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{MagicWandChunkOutdated, InsufficientPermission, NonPositivePermission, AssertionFalse,
     MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
+import interfaces.{Success, Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
 import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
@@ -33,7 +33,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory.Γ
+  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -58,10 +58,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     /* TODO: What should the result of current-perms(x.f) be when it occurs on the rhs of a magic wand? */
 
 //    val c0 = c.copy(reserveEvalHeap = c.reserveHeap)
-    val c0 = c.copy(reserveEvalHeaps = c.reserveHeaps)
+    val c0 = c // c.copy(reserveEvalHeaps = c.reserveHeaps)
 
     consume(σ, σ.h, p, φ.whenExhaling, pve, c0, tv)((h1, t, dcs, c1) => {
-      val c2 = c1.copy(reserveEvalHeaps = c.reserveEvalHeaps)
+      val c2 = c1 // c1.copy(reserveEvalHeaps = c.reserveEvalHeaps)
       Q(σ \ h1, t, dcs, c2)})
   }
 
@@ -109,7 +109,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
       if (c.reserveHeaps.nonEmpty) {
         logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
-        logger.debug("hRE = " + c.reserveEvalHeaps.map(stateFormatter.format).mkString("", ",\n      ", ""))
+//        logger.debug("hRE = " + c.reserveEvalHeaps.map(stateFormatter.format).mkString("", ",\n      ", ""))
       }
     }
 
@@ -176,6 +176,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                   ch match {
                     case fc: DirectFieldChunk =>
+                        println(s"Consumed DFC $fc")
+                        println(s"  h1 = $h1")
                         val snap = fc.value.convert(sorts.Snap)
                         Q(h1, snap, fc :: Nil, c3)
                     case pc: DirectPredicateChunk =>
@@ -258,16 +260,90 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			 * not in the partially consumed heap(s) (h, c.reserveHeap).
 			 */
       case _ =>
-        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
-          eval(σ1, φ, pve, c, tv)((t, c) =>
-            decider.assert(σ1, t) {
-              case true =>
-                assume(t)
-                QS((h, Unit, Nil, c))
-              case false =>
-                QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
-            })
-        })(Q.tupled)
+        def tryOrFail(σ: S) =
+          decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+            println(s"Asserting $φ in heap ${stateFormatter.format(σ1.h)}")
+            eval(σ1, φ, pve, c, tv)((t, c1) => {
+              println(s"in wand mode? ${φ.isInstanceOf[ast.GhostOperation] && c.footprintHeap.isDefined}")
+              println(s"  phi = $φ (${φ.pos}})")
+//              decider.prover.logComment(s"Asserting $φ in heap ${stateFormatter.format(σ1.h)}")
+//              if (φ.isInstanceOf[ast.GhostOperation] && c.footprintHeap.isDefined)
+              if (false)
+                QS((h, Unit, Nil, c1))
+              else {
+                println(s"  asserting t = $t")
+                decider.assert(σ1, t) {
+                  case true =>
+                    assume(t)
+                    QS((h, Unit, Nil, c1))
+                  case false =>
+                    QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
+                }}})
+          }) _
+
+        c.footprintHeap match {
+          case Some(hFoot) =>
+            logger.debug(s"tryOrFail'ing to assert $φ in sigma.h + hFoot ${stateFormatter.format(σ.h + hFoot)}")
+            var hNew = h
+            var cInner = c
+            decider.inScope {
+              /* TODO: This should probably be σ \ (h + hFoot), because ghost
+               *       operations inside φ might try to take permissions from σ.h
+               *       which have already been removed by earlier operations, and
+               *       are therefore no longer in h.
+               *       However, if φ is just a boolean assertion, then it has to
+               *       be evaluated in σ.h + hFoot.
+               *       Another reason for not dealing with impure ghost
+               *       operations in the evaluator, but in the consumer instead!
+               */
+              tryOrFail(σ \+ hFoot){case (hX, tX, dcsX, cX) =>
+//              tryOrFail(σ \ (h + hFoot)){case (hX, tX, dcsX, cX) =>
+                println(s"tryOrFail succeeded for $φ")
+                println(s"  hX = ${stateFormatter.format(hX)}")
+                println(s"  tX = $tX")
+                println(s"  dcsX = $dcsX")
+                println(s"  cX.footprintHeap = ${cX.footprintHeap.map(stateFormatter.format)}")
+//                println(s"  cX.reserveHeaps = ${cX.reserveHeaps foreach stateFormatter.format}")
+                println("  cX.reserveHeaps = " + cX.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+                println(s"  cX.pPRH = ${cX.postPackagingReserveHeap.map(stateFormatter.format)}")
+                hNew = cX.postPackagingReserveHeap.getOrElse(h)
+                  /* TODO: This should probably always be set (and gotten), since every
+                   *       ghost operation inside a package/packaging can consume permissions.
+                   *
+                   * TODO: Should probably forward cX as well
+                   */
+                cInner = cX
+                Success()
+              }
+            } && {
+              println(s"moving on after $φ")
+              println(s"  h = ${stateFormatter.format(h)}")
+              println(s"  c.footprintHeap = ${stateFormatter.format(c.footprintHeap.getOrElse(H()))}")
+              println(s"  c.reserveHeaps.size = ${c.reserveHeaps.size}")
+              println("  c.reserveHeaps = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+              println(s"  c.pPRH = ${c.postPackagingReserveHeap.map(stateFormatter.format)}")
+              println("will use")
+              println(s"  hNew = ${stateFormatter.format(hNew)}")
+              //              println(s"               c = $c")
+//              sys.error("!!!")
+              val c1 =
+                if (cInner.insideGOP) c.copy(reserveHeaps = hNew :: c.reserveHeaps.tail)
+                else c
+              Q(hNew, Unit, Nil, c1)
+            }
+          case None =>
+            tryOrFail(σ)(Q.tupled)
+          //            decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+          //              eval(σ1, φ, pve, c, tv)((t, c) =>
+          //                decider.assert(σ1, t) {
+          //                  case true =>
+          //                    assume(t)
+          //                    QS((h, Unit, Nil, c))
+          //                  case false =>
+          //                    QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
+          //                })
+          //            })(Q.tupled)}
+        }
 		}
 
 		consumed
@@ -285,12 +361,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                 : VerificationResult = {
 
     /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
-    if (c.reserveHeaps.nonEmpty)
-//      return consumeIncludingReserveHeap(σ, h, id, pLoss, locacc, pve, c, tv)(Q)
-      return magicWandSupporter.consumeFromMultipleHeaps(σ, h :: c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, cs, c1/*, pcr*/) => {
+    if (c.footprintHeap.nonEmpty)
+      return magicWandSupporter.consumeFromMultipleHeaps(σ, h :: c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, chs, c1/*, pcr*/) => {
         val c2 = c1.copy(reserveHeaps = hs.tail)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
-        Q(hs.head, cs.head, c2, pcr)})
+        chs foreach {case (chX, hX) => println(s"took $chX from ${stateFormatter.format(hX)}")}
+        val chunksFromReserveHeaps = chs.collect{case pair if pair._2 != h => pair._1}
+        println(s"putting into footprint: $chunksFromReserveHeaps")
+//        Q(hs.head, chs.head, c2.copy(footprintHeap = c2.footprintHeap.map(_ + H(chs))), pcr)})
+        Q(hs.head, chs.head._1, c2.copy(footprintHeap = c2.footprintHeap.map(_ + H(chunksFromReserveHeaps))), pcr)})
 
     if (consumeExactRead(pLoss, c)) {
       decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c, tv)(ch => {

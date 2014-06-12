@@ -302,10 +302,12 @@ trait DefaultExecutor[ST <: Store[ST],
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>
-            if (decider.checkSmoke())
-              Success()
-            else
-              Failure[ST, H, S, TV](pve dueTo AssertionFalse(a), tv)
+            decider.tryOrFail[(S, C)](σ)((σ1, QS, QF) => {
+              if (decider.checkSmoke())
+                QS(σ1, c)
+              else
+                QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(a), tv))
+            })(_ => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
@@ -402,11 +404,23 @@ trait DefaultExecutor[ST <: Store[ST],
         val σ0 = Σ(σ.γ, Ø, σ.g)
         val c0 = c.copy(poldHeap = Some(σ.h))
         produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps, givenHeap = Some(σLhs.h), reinterpretWand = false)
+          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps,
+                           givenHeap = Some(σLhs.h),
+                           footprintHeap = Some(H()),
+                           reinterpretWand = false)
           val rhs = magicWandSupporter.injectExhalingExp(wand.right)
+          println(s"\nConsuming RHS of $pckg")
           consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
+            println("\nFinished exec/package")
+            println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
+            println(s"c3.reserveHeaps.tail = ${c3.reserveHeaps.tail}")
             val σ2 = σ \ c3.reserveHeaps.head
-            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail, poldHeap = None, givenHeap = None, reinterpretWand = true)
+            println(s"sigma2 = ${stateFormatter.format(σ2)}")
+            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail,
+                             poldHeap = None,
+                             givenHeap = None,
+                             footprintHeap = None,
+                             reinterpretWand = true)
             /* Producing the wand is not an option because we need to pass in σ.h */
             val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, wand)
             Q(σ2 \+ ch, c4)})})

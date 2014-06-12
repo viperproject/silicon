@@ -7,7 +7,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatt
 import interfaces.reporting.{TraceView, Context}
 import interfaces.decider.Decider
 import ast.Variable
-import terms.{Term, DefaultFractionalPermissions}
+import terms.{PermLess, Term, DefaultFractionalPermissions}
 import terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import collection.mutable
@@ -188,7 +188,11 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		} while(rts.nonEmpty)
 		decider.popScope()
 
-		val tDists = deriveObjectDistinctness(σ, rh, fcs)
+    assumeValidPermissionAmounts(rh)
+    val tDists = deriveObjectDistinctness(σ, rh, fcs)
+
+//    println(s"rh = ${stateFormatter.format(rh)}")
+//    println(s"fcs = ${stateFormatter.format(H(fcs))}")
 
     decider.assume(tSnaps ++ tDists)
 
@@ -245,8 +249,12 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		 * We only consider the changeset fcs and compare each chunk in it to
 		 * all chunks in h having the same field id.
 		 */
-		val fields = h.values collect {case c: DirectFieldChunk => c}
-		val gs = fields groupBy(_.name)
+		val fieldChunks = h.values collect {case c: DirectFieldChunk => c}
+		val gs = fieldChunks groupBy(_.name)
+
+//    println("\n[deriveObjectDistinctness]")
+//    println(s"  h = $h")
+//    println(s"  fcs = $fcs")
 
 		val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
 			if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
@@ -258,4 +266,12 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
 		tDists
 	}
+
+  private def assumeValidPermissionAmounts(h: H) {
+//    decider.prover.logComment("[assumeValidPermissionAmounts]")
+    h.values foreach {
+      case fc: DirectFieldChunk => decider.assume(IsAsPermissive(distinctnessLowerBound, fc.perm))
+      case _=>
+    }
+  }
 }

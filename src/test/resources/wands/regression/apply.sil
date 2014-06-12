@@ -32,7 +32,6 @@ method test01(x: Ref)
 {
   x.f := 0
   package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
-
   test02(x)
 }
 

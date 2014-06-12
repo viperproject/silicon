@@ -139,7 +139,7 @@ class MagicWandSupporter[ST <: Store[ST],
 
     exp.transform {
       case gop: ast.GhostOperation if (   !gop.body.isInstanceOf[ast.GhostOperation]
-        && !gop.body.isPure) =>
+        /*&& !gop.body.isPure*/) =>
 
         val exh = ast.Exhaling(gop.body)(gop.body.pos, gop.body.info)
 
@@ -190,13 +190,13 @@ class MagicWandSupporter[ST <: Store[ST],
                                pve: PartialVerificationError,
                                c: C,
                                tv: TV)
-                              (Q: (Stack[H], List[DirectChunk], C) => VerificationResult)
+                              (Q: (Stack[H], List[(DirectChunk, H)], C) => VerificationResult)
                               : VerificationResult = {
 
     var toLose = pLoss
     var heapsToVisit = hs
     var visitedHeaps: List[H] = Nil
-    var chunks: List[DirectChunk] = Nil
+    var chunks: List[(DirectChunk, H)] = Nil
     var cCurr = c
 
     while (heapsToVisit.nonEmpty && !decider.check(σ, IsNoAccess(toLose))) {
@@ -205,7 +205,11 @@ class MagicWandSupporter[ST <: Store[ST],
 
       val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, id, toLose, cCurr, tv)
       visitedHeaps = h1 :: visitedHeaps
-      chunks = optCh1 ++: chunks
+      chunks =
+        optCh1 match {
+          case None => chunks
+          case Some(ch) => (ch, h) :: chunks
+        }
       toLose = toLose1
       cCurr = c1
     }
@@ -213,8 +217,8 @@ class MagicWandSupporter[ST <: Store[ST],
     if (decider.check(σ, IsNoAccess(toLose))) {
       val tEqs =
         chunks.sliding(2).map {
-          case List(fc1: DirectFieldChunk, fc2: DirectFieldChunk) => fc1.value === fc2.value
-          case List(pc1: DirectPredicateChunk, pc2: DirectPredicateChunk) => pc1.snap === pc2.snap
+          case List((fc1: DirectFieldChunk, _), (fc2: DirectFieldChunk, _)) => fc1.value === fc2.value
+          case List((pc1: DirectPredicateChunk, _), (pc2: DirectPredicateChunk, _)) => pc1.snap === pc2.snap
           case _ => True()
         }
 
@@ -238,7 +242,7 @@ class MagicWandSupporter[ST <: Store[ST],
                                     pLoss: P,
                                     c: C,
                                     tv: TV)
-  : (H, Option[DirectChunk], P, C) = {
+                                   : (H, Option[DirectChunk], P, C) = {
 
     decider.getChunk[DirectChunk](σ, h, id) match {
       case result @ Some(ch) =>
@@ -248,7 +252,8 @@ class MagicWandSupporter[ST <: Store[ST],
         val h1 =
           if (decider.check(σ, IsNoAccess(pKeep))) h - ch
           else h - ch + (ch \ pKeep)
-        (h1, result, pToConsume, c)
+        val consumedChunk = ch \ pLoss
+        (h1, Some(consumedChunk), pToConsume, c)
 
       case None => (h, None, pLoss, c)
     }
