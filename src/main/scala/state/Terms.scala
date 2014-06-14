@@ -1107,7 +1107,7 @@ object SortWrapper {
 
 case class WandChunkRef[H <: Heap[H]](ch: MagicWandChunk[H]) extends Term {
   override val sort = sorts.Unit
-  override val toString = s"WandChunkRef(${ch.name}})"
+  override val toString = s"WandChunkRef(${ch.name})"
 }
 
 /* Other terms */
