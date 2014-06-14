@@ -9,7 +9,8 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Chu
 import interfaces.{Success, Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.reporting.TraceView
 import interfaces.decider.Decider
-import reporting.{DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
+import interfaces.state.factoryUtils.Ø
+import reporting.{Description, DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk}
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess, IsAsPermissive}
@@ -176,8 +177,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2, tv)((h1, ch, c3, results) =>
                   ch match {
                     case fc: DirectFieldChunk =>
-                        println(s"Consumed DFC $fc")
-                        println(s"  h1 = $h1")
                         val snap = fc.value.convert(sorts.Snap)
                         Q(h1, snap, fc :: Nil, c3)
                     case pc: DirectPredicateChunk =>
@@ -255,94 +254,112 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             Failure[ST, H, S, TV](pve dueTo MagicWandChunkNotFound(wand), tv)
         }
 
+      case pckg @ ast.Packaging(eWand, eIn) =>
+        //        val pve = PackagingFailed(pckg)
+        /* TODO: Creating a new error reason here will probably yield confusing error
+         *       messages if packaging fails as part of exhaling a method's precondition
+         *       during a method call.
+         *       I expected the error message to be "Packaging ... failed because ... (line N)",
+         *       where N denotes the line in which the method precondition can be found.
+         *       The message should be "Method ... failed because packaging failed ... because ...
+         */
+        val σ0 = Σ(σ.γ, Ø, σ.g)
+        val c0 = c.copy(poldHeap = Some(σ.h))
+        produce(σ0, decider.fresh, FullPerm(), eWand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+          val c2 = c1.copy(reserveHeaps = h :: c1.reserveHeaps,
+                           givenHeap = Some(σLhs.h),
+                           footprintHeap = Some(H()),
+                           reinterpretWand = false)
+          val rhs = magicWandSupporter.injectExhalingExp(eWand.right)
+          val tv2 = tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs"))
+          consume(σ, σLhs.h, FullPerm(), rhs, pve, c2, tv2)((hLhs2, _, _, c3) => {
+            val h2 = c3.reserveHeaps.head
+            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail,
+                             poldHeap = c1.poldHeap,
+                             givenHeap = c1.givenHeap,
+                             footprintHeap = c1.footprintHeap,
+                             reinterpretWand = c1.reinterpretWand)
+            /* ??? Producing the wand is not an option because we need to pass in σ.h */
+            val ch = magicWandSupporter.createChunk(σ.γ, h, eWand)
+            consume(σ, h2 + ch, FullPerm(), eIn, pve, c4, tv)((h3, _, _, c5) =>
+              Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})
+
+      case ast.Applying(eWand, eIn) =>
+        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
+
+        val σWV = σ \+ Γ(wandValues)
+        consume(σWV, h, FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((h1, _, chs, c1) => {
+          assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
+          val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
+          /* TODO: See comment in exec/apply about givenHeap */
+          val c1a = c1.copy(poldHeap = Some(ch.hPO),
+                            givenHeap = Some(σ.h /* h ?*/),
+                            reinterpretWand = c.reinterpretWand)
+          consume(σWV, h1, FullPerm(), wand.left, pve, c1a, tv)((h2, _, _, c2) => {
+            produce(σWV \ h2, decider.fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
+              val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
+              decider.prover.logComment(s"in consume/apply after producing RHS ${wand.right}}, before consuming $eIn")
+              consume(σ, σ3.h, FullPerm(), eIn, pve, c3a, tv)((h4, _, _, c4) => {
+                Q(h4, decider.fresh(sorts.Snap), Nil, c4)})})})})
+
+      case ast.Folding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
+                       eIn) =>
+
+        val predicate = c.program.findPredicate(predicateName)
+        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+          val c0a = c.incCycleCounter(predicate)
+          evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
+            if (decider.check(σ, IsPositive(_tPerm)))
+              evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
+                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                consume(σ \ insγ, h, FullPerm(), predicate.body, pve, c2, tv)((h1, snap, chs, c3) => { // TODO: What to do with the consumed chunks?
+                  produce(σ \ h1, s => snap.convert(s), _tPerm, acc, pve, c3, tv)((σ2, c4) => {
+                    val c4a = c4.decCycleCounter(predicate)
+                    consume(σ2, σ2.h, FullPerm(), eIn, pve, c4a, tv)((h3, _, _, c5) => {
+                      Q(h3, decider.fresh(sorts.Snap), Nil, c5)})})})})
+            else
+              Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)})
+        } else
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+            "P {... && next != null ==> folding next.P in e} is currently not " +
+            "supported. It should be  possible to wrap 'folding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + φ)
+
+      case ast.Exhaling(a) =>
+        consume(σ \ h, h, FullPerm(), a, pve, c.copy(footprintHeap = Some(H())), tv)((h1, _, _, c1) =>
+          Q(h1, decider.fresh(sorts.Snap), Nil, c1.copy(footprintHeap = c.footprintHeap)))
+
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expressions need to be evaluated in the initial heap(s) (σ.h, c.reserveEvalHeap) and
 			 * not in the partially consumed heap(s) (h, c.reserveHeap).
 			 */
       case _ =>
         def tryOrFail(σ: S) =
-          decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
-            println(s"Asserting $φ in heap ${stateFormatter.format(σ1.h)}")
-            eval(σ1, φ, pve, c, tv)((t, c1) => {
-              println(s"in wand mode? ${φ.isInstanceOf[ast.GhostOperation] && c.footprintHeap.isDefined}")
-              println(s"  phi = $φ (${φ.pos}})")
-//              decider.prover.logComment(s"Asserting $φ in heap ${stateFormatter.format(σ1.h)}")
-//              if (φ.isInstanceOf[ast.GhostOperation] && c.footprintHeap.isDefined)
-              if (false)
-                QS((h, Unit, Nil, c1))
-              else {
-                println(s"  asserting t = $t")
-                decider.assert(σ1, t) {
-                  case true =>
-                    assume(t)
-                    QS((h, Unit, Nil, c1))
-                  case false =>
-                    QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
-                }}})
-          }) _
+          decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) =>
+            eval(σ1, φ, pve, c, tv)((t, c1) =>
+              decider.assert(σ1, t) {
+                case true =>
+                  assume(t)
+                  QS((h, Unit, Nil, c1))
+                case false =>
+                  QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
+              })) _
 
         c.footprintHeap match {
           case Some(hFoot) =>
-            logger.debug(s"tryOrFail'ing to assert $φ in sigma.h + hFoot ${stateFormatter.format(σ.h + hFoot)}")
-            var hNew = h
-            var cInner = c
+            val hCombined = σ.h + hFoot
+//            var hNew = h
+//            var cInner = c
             decider.inScope {
-              /* TODO: This should probably be σ \ (h + hFoot), because ghost
-               *       operations inside φ might try to take permissions from σ.h
-               *       which have already been removed by earlier operations, and
-               *       are therefore no longer in h.
-               *       However, if φ is just a boolean assertion, then it has to
-               *       be evaluated in σ.h + hFoot.
-               *       Another reason for not dealing with impure ghost
-               *       operations in the evaluator, but in the consumer instead!
-               */
-              tryOrFail(σ \+ hFoot){case (hX, tX, dcsX, cX) =>
-//              tryOrFail(σ \ (h + hFoot)){case (hX, tX, dcsX, cX) =>
-                println(s"tryOrFail succeeded for $φ")
-                println(s"  hX = ${stateFormatter.format(hX)}")
-                println(s"  tX = $tX")
-                println(s"  dcsX = $dcsX")
-                println(s"  cX.footprintHeap = ${cX.footprintHeap.map(stateFormatter.format)}")
-//                println(s"  cX.reserveHeaps = ${cX.reserveHeaps foreach stateFormatter.format}")
-                println("  cX.reserveHeaps = " + cX.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
-                println(s"  cX.pPRH = ${cX.postPackagingReserveHeap.map(stateFormatter.format)}")
-                hNew = cX.postPackagingReserveHeap.getOrElse(h)
-                  /* TODO: This should probably always be set (and gotten), since every
-                   *       ghost operation inside a package/packaging can consume permissions.
-                   *
-                   * TODO: Should probably forward cX as well
-                   */
-                cInner = cX
-                Success()
-              }
+              tryOrFail(σ \ hCombined){case (hX, tX, dcsX, cX) =>
+//                cInner = cX
+                Success()}
             } && {
-              println(s"moving on after $φ")
-              println(s"  h = ${stateFormatter.format(h)}")
-              println(s"  c.footprintHeap = ${stateFormatter.format(c.footprintHeap.getOrElse(H()))}")
-              println(s"  c.reserveHeaps.size = ${c.reserveHeaps.size}")
-              println("  c.reserveHeaps = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
-              println(s"  c.pPRH = ${c.postPackagingReserveHeap.map(stateFormatter.format)}")
-              println("will use")
-              println(s"  hNew = ${stateFormatter.format(hNew)}")
-              //              println(s"               c = $c")
-//              sys.error("!!!")
-              val c1 =
-                if (cInner.insideGOP) c.copy(reserveHeaps = hNew :: c.reserveHeaps.tail)
-                else c
-              Q(hNew, Unit, Nil, c1)
+              Q(h /*hNew*/, Unit, Nil, c)
             }
           case None =>
             tryOrFail(σ)(Q.tupled)
-          //            decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
-          //              eval(σ1, φ, pve, c, tv)((t, c) =>
-          //                decider.assert(σ1, t) {
-          //                  case true =>
-          //                    assume(t)
-          //                    QS((h, Unit, Nil, c))
-          //                  case false =>
-          //                    QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(φ), tv))
-          //                })
-          //            })(Q.tupled)}
         }
 		}
 
@@ -365,10 +382,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       return magicWandSupporter.consumeFromMultipleHeaps(σ, h :: c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, chs, c1/*, pcr*/) => {
         val c2 = c1.copy(reserveHeaps = hs.tail)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
-        chs foreach {case (chX, hX) => println(s"took $chX from ${stateFormatter.format(hX)}")}
-        val chunksFromReserveHeaps = chs.collect{case pair if pair._2 != h => pair._1}
-        println(s"putting into footprint: $chunksFromReserveHeaps")
-//        Q(hs.head, chs.head, c2.copy(footprintHeap = c2.footprintHeap.map(_ + H(chs))), pcr)})
+        val chunksFromReserveHeaps = chs.collect{case pair if pair._2 != 0 => pair._1}
         Q(hs.head, chs.head._1, c2.copy(footprintHeap = c2.footprintHeap.map(_ + H(chunksFromReserveHeaps))), pcr)})
 
     if (consumeExactRead(pLoss, c)) {

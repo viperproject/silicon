@@ -15,12 +15,9 @@ case class DefaultContext[ST <: Store[ST],
                           visited: List[ast.Member] = Nil,
                           constrainableARPs: Set[Term] = Set(),
                           reserveHeaps: Stack[H] = Nil,
-//                          reserveEvalHeaps: Stack[H] = Nil,
                           poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
                           givenHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
                           footprintHeap: Option[H] = None,
-                          postPackagingReserveHeap: Option[H] = None,
-                          insideGOP: Boolean = false,
                           reinterpretWand: Boolean = true)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
 

@@ -403,27 +403,24 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = PackageFailed(pckg)
         val σ0 = Σ(σ.γ, Ø, σ.g)
         val c0 = c.copy(poldHeap = Some(σ.h))
-        produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps,
-                           givenHeap = Some(σLhs.h),
-                           footprintHeap = Some(H()),
-                           reinterpretWand = false)
-          val rhs = magicWandSupporter.injectExhalingExp(wand.right)
-          println(s"\nConsuming RHS of $pckg")
-          consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
-            println("\nFinished exec/package")
-            println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
-            println(s"c3.reserveHeaps.tail = ${c3.reserveHeaps.tail}")
-            val σ2 = σ \ c3.reserveHeaps.head
-            println(s"sigma2 = ${stateFormatter.format(σ2)}")
-            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail,
-                             poldHeap = None,
-                             givenHeap = None,
-                             footprintHeap = None,
-                             reinterpretWand = true)
-            /* Producing the wand is not an option because we need to pass in σ.h */
-            val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, wand)
-            Q(σ2 \+ ch, c4)})})
+
+        var ch: Option[MagicWandChunk[H]] = None
+        var h: Option[H] = None
+
+        decider.inScope {
+          produce(σ0, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+            val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps,
+              givenHeap = Some(σLhs.h),
+              footprintHeap = Some(H()),
+              reinterpretWand = false)
+            val rhs = magicWandSupporter.injectExhalingExp(wand.right)
+            consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
+              /* Producing the wand is not an option because we need to pass in σ.h */
+              assert(ch.isEmpty, "Found unexpected packaged wand")
+              ch = Some(magicWandSupporter.createChunk(σ.γ, σ.h, wand))
+              h = Some(c3.reserveHeaps.head)
+              Success()})})
+        } && Q(σ \ (h.get + ch.get), c) /* TODO:  Forward inner-most context c3? */
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)

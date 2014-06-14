@@ -2,38 +2,65 @@ field f: Int
 field g: Int
 
 predicate Pair(this: Ref) {
-  acc(this.f, write) && acc(this.g, write)
+  acc(this.f) && acc(this.g)
 }
 
 function sum(p: Ref): Int
-  requires acc(Pair(p), write)
+  requires acc(Pair(p))
 {
-  unfolding acc(Pair(p), write) in (p.f) + (p.g)
+  unfolding acc(Pair(p)) in (p.f) + (p.g)
+}
+
+method test02(p: Ref)
+  requires true --* acc(p.f) && p.f > 0
+{
+  package true --* applying (true --* acc(p.f) && p.f > 0) in acc(p.f) && p.f > 0
+  assert true --* acc(p.f) && p.f > 0
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test03(p: Ref)
+  requires acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)
+  requires acc(p.g)
+{
+    //:: ExpectedOutput(package.failed:assertion.false)
+  package acc(p.f) --* applying (acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)) in acc(p.f) && acc(p.g) && false
+}
+
+method test04(p: Ref)
+  requires acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)
+  requires acc(p.g)
+{
+  package acc(p.f) --* applying (acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)) in acc(p.f) && acc(p.g)
+  assert acc(p.f) --* acc(p.f) && acc(p.g)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(p.g)
 }
 
 method test01(p: Ref)
-  requires acc(p.f, 1/2) --* (acc(p.f, write) && p.f > 0)
+  requires acc(p.f, 1/2) --* (acc(p.f) && p.f > 0)
   requires acc(p.f, 1/2)
-  requires acc(p.g, write)
+  requires acc(p.g)
 {
   p.g := 1;
 
-  // assert applying (acc(p.f, 1/2) --* (acc(p.f, write) && p.f > 0)) in p.f > 0
-
   package
-    (acc(p.g, 1/2) && p.g > 0 && acc(p.f, 1/2)) /* Do we actually need p.g > 0 here? */
+    (acc(p.g, 1/2) && acc(p.f, 1/2))
       --*
     (applying
-      (acc(p.f, 1/2) --* (acc(p.f, write) && p.f > 0))
+      (acc(p.f, 1/2) --* (acc(p.f) && p.f > 0))
      in
-      (acc(p.f, write) && acc(p.g, write) && ((p.f) + (p.g) > 0)))
+      (acc(p.f) && acc(p.g) && ((p.f) + (p.g) > 0)))
 
   apply
-    (acc(p.g, 1/2) && p.g > 0 && acc(p.f, 1/2))
+    (acc(p.g, 1/2) && acc(p.f, 1/2))
       --*
-    (acc(p.f, write) && acc(p.g, write) && ((p.f) + (p.g) > 0))
+    (acc(p.f) && acc(p.g) && ((p.f) + (p.g) > 0))
 
-  fold acc(Pair(p), write)
+  fold acc(Pair(p))
   assert sum(p) > 0
 
   //:: ExpectedOutput(assert.failed:assertion.false)

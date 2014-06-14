@@ -34,13 +34,38 @@ case class MapBackedStore(private val map: Map[Variable, Term])
 	def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
 
-case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
-	def this() = this(Set[Chunk]())
-	def this(h: SetBackedHeap) = this(h.chunks)
-	def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
+//case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
+//  def this() = this(Set[Chunk]())
+//  def this(h: SetBackedHeap) = this(h.chunks)
+//  def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
+//
+//  @inline
+//  def values = chunks
+//
+//  /** Attention: This is a destructive operation that replaces the chunks in
+//    * this heap by `chunks`. Only use this operation if you think that you know
+//    * what you are doing! Consider creating a new heap via `this(chunks)`
+//    * instead.
+//    */
+//  def replace(chunks: Iterable[Chunk]) {
+//    this.chunks = toSet(chunks)
+//  }
+//
+//  def empty = new SetBackedHeap()
+//
+//  def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
+//  def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
+//
+//  def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
+//}
+
+case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBackedHeap] {
+  def this() = this(Nil)
+  def this(h: ListBackedHeap) = this(h.chunks)
+  def this(chunks: Iterable[Chunk]) = this(chunks.toList)
 
   @inline
-	def values = chunks
+  def values = chunks
 
   /** Attention: This is a destructive operation that replaces the chunks in
     * this heap by `chunks`. Only use this operation if you think that you know
@@ -48,15 +73,15 @@ case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedH
     * instead.
     */
   def replace(chunks: Iterable[Chunk]) {
-    this.chunks = toSet(chunks)
+    this.chunks = chunks.toList
   }
 
-	def empty = new SetBackedHeap()
+  def empty = new ListBackedHeap()
 
-	def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
-	def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
+  def +(ch: Chunk) = new ListBackedHeap(ch :: chunks)
+  def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ::: chunks)
 
-	def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
+  def -(ch: Chunk) = new ListBackedHeap(chunks.filterNot(_ == ch))
 }
 
 class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPathConditions] {
@@ -191,9 +216,6 @@ class DefaultHeapCompressor[ST <: Store[ST],
     assumeValidPermissionAmounts(rh)
     val tDists = deriveObjectDistinctness(σ, rh, fcs)
 
-//    println(s"rh = ${stateFormatter.format(rh)}")
-//    println(s"fcs = ${stateFormatter.format(H(fcs))}")
-
     decider.assume(tSnaps ++ tDists)
 
     h.replace(rh.values ++ otherChunk)
@@ -252,10 +274,6 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		val fieldChunks = h.values collect {case c: DirectFieldChunk => c}
 		val gs = fieldChunks groupBy(_.name)
 
-//    println("\n[deriveObjectDistinctness]")
-//    println(s"  h = $h")
-//    println(s"  fcs = $fcs")
-
 		val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
 			if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
           && !decider.check(σ, IsAsPermissive(distinctnessLowerBound, c1.perm + c2.perm)))
@@ -268,7 +286,6 @@ class DefaultHeapCompressor[ST <: Store[ST],
 	}
 
   private def assumeValidPermissionAmounts(h: H) {
-//    decider.prover.logComment("[assumeValidPermissionAmounts]")
     h.values foreach {
       case fc: DirectFieldChunk => decider.assume(IsAsPermissive(distinctnessLowerBound, fc.perm))
       case _=>

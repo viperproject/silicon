@@ -1,41 +1,41 @@
 field v: Bool
 field l: Ref
 
-//method test1(x: Ref)
-//  requires acc(x.l) && acc(x.l.v)
-//{
-//  assert x.l != null
-//
-//  //:: ExpectedOutput(package.failed:receiver.null)
-//  package acc(x.l) --* acc(x.l) && acc(x.l.v)
-//    /* The x.l from the LHS might no longer be non-null */
-//}
-//
-//method test2(x: Ref)
-//  requires acc(x.l) && acc(x.l.v) && x.l.v
-//{
-//  assert x.l != null
-//
-//  //:: ExpectedOutput(package.failed:insufficient.permission)
-//  package acc(x.l) && x.l != null --* acc(x.l) && acc(x.l.v)
-//    /* The x.l from the LHS might point to a different object, so even though
-//     * acc(x.l.v) (for the *current* object x.l points to) goes into the
-//     * footprint, the RHS cannot guarantee acc(x.l.v).
-//     */
-//}
-//
-//method test3(x: Ref)
-//  requires acc(x.v)
-//{
-//  x.v := true
-//  //:: ExpectedOutput(package.failed:insufficient.permission)
-//  package true --* x.v
-//
-//  /* Preceding package previously succeeded, which allowed the following to succeed as well */
-////  x.v := false
-////  apply true --* x.v
-////  assert false
-//}
+method test1(x: Ref)
+  requires acc(x.l) && acc(x.l.v)
+{
+  assert x.l != null
+
+  //:: ExpectedOutput(package.failed:receiver.null)
+  package acc(x.l) --* acc(x.l) && acc(x.l.v)
+    /* The x.l from the LHS might no longer be non-null */
+}
+
+method test2(x: Ref)
+  requires acc(x.l) && acc(x.l.v) && x.l.v
+{
+  assert x.l != null
+
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package acc(x.l) && x.l != null --* acc(x.l) && acc(x.l.v)
+    /* The x.l from the LHS might point to a different object, so even though
+     * acc(x.l.v) (for the *current* object x.l points to) goes into the
+     * footprint, the RHS cannot guarantee acc(x.l.v).
+     */
+}
+
+method test3(x: Ref)
+  requires acc(x.v)
+{
+  x.v := true
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package true --* x.v
+
+  /* Preceding package previously succeeded, which allowed the following to succeed as well */
+//  x.v := false
+//  apply true --* x.v
+//  assert false
+}
 
 method test4a(x: Ref)
   requires acc(x.v)
@@ -45,6 +45,12 @@ method test4a(x: Ref)
             --*
           (packaging (acc(x.v) --* acc(x.v) && acc(x.v) && false)
            in false)
+}
+
+method test4x(x: Ref) {
+  package acc(x.v) && acc(x.v) --* false
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
 }
 
 method test4b(x: Ref)

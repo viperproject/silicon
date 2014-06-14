@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/00/)
+
 field f: Bool
 
 predicate P() { true }

@@ -66,3 +66,20 @@ method test11(p: Ref) {
      * necessary, they could be performed outside of the wand)
      */
 }
+
+// TODO: Applying inside a function is not supported
+//function fun(x: Ref): Bool
+//  requires (acc(x.h, write) --* acc(x.h, write))
+//  requires acc(x.h, write)
+//{ applying (acc(x.h, write) --* acc(x.h, write)) in x.h }
+//
+//method test02(x: Ref)
+//  requires acc(x.h, write)
+//{
+//  package acc(x.h, write) --* acc(x.h, write)
+//  var b: Bool
+//  b := fun(x)
+//  // wands-silicon issue 1
+//  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/1/)
+//  assert b == fun(x)
+//}

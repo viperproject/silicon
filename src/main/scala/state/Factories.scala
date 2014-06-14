@@ -13,20 +13,20 @@ trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
 	def Γ(store: Map[ast.Variable, Term]) = MapBackedStore(store)
 }
 
-trait DefaultHeapFactory extends HeapFactory[SetBackedHeap] {
-	def H() = new SetBackedHeap()
-	def H(h: SetBackedHeap) = new SetBackedHeap(h)
-	def H(chunks: Iterable[Chunk]) = new SetBackedHeap(chunks)
+trait DefaultHeapFactory extends HeapFactory[ListBackedHeap] {
+	def H() = new ListBackedHeap()
+	def H(h: ListBackedHeap) = new ListBackedHeap(h)
+	def H(chunks: Iterable[Chunk]) = new ListBackedHeap(chunks)
 }
 
 class DefaultStateFactory
 		(private val π: () => Set[Term])
-		extends StateFactory[MapBackedStore, SetBackedHeap, DefaultState[MapBackedStore, SetBackedHeap]]
+		extends StateFactory[MapBackedStore, ListBackedHeap, DefaultState[MapBackedStore, ListBackedHeap]]
 		with DefaultStoreFactory
 		with DefaultHeapFactory {
 
 	def Σ() = Σ(Ø, Ø, Ø)
-	def Σ(γ: MapBackedStore, h: SetBackedHeap, g: SetBackedHeap) = DefaultState(γ, h, g, π)
+	def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g, π)
 }
 
 class DefaultPathConditionsFactory

@@ -18,7 +18,7 @@ import sil.frontend.{SilFrontend, SilFrontendConfig, Phase}
 import interfaces.{Failure => SiliconFailure}
 import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
-import state.{MapBackedStore, DefaultHeapCompressor, SetBackedHeap, MutableSetBackedPathConditions,
+import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, DefaultContext, Bookkeeper, BranchingOnlyTraceView,
@@ -59,7 +59,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   private type P = DefaultFractionalPermissions
   private type ST = MapBackedStore
-  private type H = SetBackedHeap
+  private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]

@@ -241,12 +241,9 @@ class DefaultDecider[ST <: Store[ST],
        * because now x != y but the heap only contains acc(x.f, 2 * k)
        * (or acc(y.f, 2 * k)).
        */
-      println("RESET HEAP")
-      println(s"  r = $r")
       σ.h.replace(chunks)
     }
 
-//    println("tryOrFail TERMINATED")
     r
   }
 

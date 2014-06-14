@@ -51,9 +51,9 @@ trait DefaultEvaluator[
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
-	private var fappCache: Map[Term, Set[Term]] = Map()
-	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
-  private var quantifiedVars: Stack[Term] = Stack()
+	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
+	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
+  /*private*/ var quantifiedVars: Stack[Term] = Stack()
 
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
 			     (Q: (List[Term], C) => VerificationResult)
@@ -684,130 +684,6 @@ trait DefaultEvaluator[
 
       case _: ast.Folding if config.disableLocalEvaluations() =>
         sys.error("Non-local evaluation hasn't yet been implemented for folding-expressions")
-
-      case ast.Folding(
-              acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
-              eIn) =>
-
-        val predicate = c.program.findPredicate(predicateName)
-
-        /* Folding only has a temporary effect on the current heap because
-         * the resulting heap is not forwarded to the final continuation.
-         */
-
-        var πPre: Set[Term] = Set()
-        var tPerm: Option[Term] = None
-        var localResults: List[LocalEvaluationResult] = Nil
-
-        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
-          val c0a = c.incCycleCounter(predicate)
-
-          val r =
-            evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
-              assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
-              tPerm = Some(_tPerm)
-              πPre = decider.π // TODO: Why here? Why not after evals(eArgs)?
-              if (decider.check(σ, IsPositive(_tPerm)))
-                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) => {
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ \ insγ, FullPerm(), predicate.body, pve, c2, tv)((σ1, snap, chs, c3) => { // TODO: What to do with the consumed chunks?
-                    produce(σ1 \ σ.γ, s => snap.convert(s), _tPerm, acc, pve, c3, tv)((σ2, c4) => {
-                      val c4a = c4.decCycleCounter(predicate)
-                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ) // TODO: Why g = σ.g? Was in 'unfolding' already.
-                      eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
-                        localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
-                        Success()})})})})
-              else
-                Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)})
-
-          r && {
-            checkReserveHeaps(localResults)
-            val tActualInVar = fresh("actualIn", toSort(eIn.typ))
-            val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
-            /* TODO: See comment about performance in case ast.Ite */
-            assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
-        } else
-          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
-            "P {... && next != null ==> folding next.P in e} is currently not " +
-            "supported. It should be  possible to wrap 'folding next.P in e' " +
-            "in a function, which is then invoked from the predicate body.\n" +
-            "Offending node: " + e)
-
-      case pckg @ ast.Packaging(eWand, eIn) =>
-//        val pve = PackagingFailed(pckg)
-            /* TODO: Creating a new error reason here will probably yield confusing error
-             *       messages if packaging fails as part of exhaling a method's precondition
-             *       during a method call.
-             *       I expected the error message to be "Packaging ... failed because ... (line N)",
-             *       where N denotes the line in which the method precondition can be found.
-             *       The message should be "Method ... failed because packaging failed ... because ...
-             */
-        val σ0 = Σ(σ.γ, Ø, σ.g)
-        val c0 = c.copy(poldHeap = Some(σ.h))
-        produce(σ0, fresh, FullPerm(), eWand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeaps = σ.h :: c1.reserveHeaps,
-                           givenHeap = Some(σLhs.h),
-                           insideGOP = true,
-                           reinterpretWand = false)
-          val rhs = magicWandSupporter.injectExhalingExp(eWand.right)
-          consume(σLhs, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((σ1, _, _, c3) => {
-            val σ2 = σ \ c3.reserveHeaps.head
-            val c4 = c3.copy(reserveHeaps = c3.reserveHeaps.tail, poldHeap = None, givenHeap = None, reinterpretWand = true)
-            /* Producing the wand is not an option because we need to pass in σ.h */
-            val ch = magicWandSupporter.createChunk(σ2.γ, σ.h, eWand)
-            eval(σ2 \+ ch, eIn, pve, c4, tv)((tIn, c5) => {
-              println(s"postPackagingReserveHeap is ${c5.postPackagingReserveHeap}")
-              println(s"setting postPackagingReserveHeap to ${c3.reserveHeaps.head}")
-              Q(tIn, c5.copy(postPackagingReserveHeap = Some(c3.reserveHeaps.head), insideGOP = c1.insideGOP))})})})
-
-      case ast.Applying(eWand, eIn) =>
-        val πPre = decider.π
-        var localResults: List[LocalEvaluationResult] = Nil
-        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
-
-        val r =
-          consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c.copy(reinterpretWand = false), tv)((σ1, _, chs, c1) => {
-            assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
-            val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
-            val c1a = c1.copy(poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = c.reinterpretWand) /* TODO: See comment in exec/apply about givenHeap */
-            consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
-              produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
-                val c3a = c3.copy(poldHeap = c1.poldHeap, givenHeap = c1.givenHeap)
-                println(s"evaluating $eIn as part of $e")
-                println(s"  sigma3.h = ${σ3.h}")
-                println(s"  c3.reserveHeaps = ${c3.reserveHeaps}")
-                eval(σ3, eIn, pve, c3a, tv)((tIn, c4) => {
-                  localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c4)
-                  Success()})}))})
-
-        if (localResults.length != 1)
-          logger.info(s"Evaluating an applying-expression yielded ${localResults.length} local results")
-
-        r && {
-          println("END Applying")
-          checkReserveHeaps(localResults)
-          val tActualInVar = fresh("actualIn", toSort(eIn.typ))
-          val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
-          /* TODO: See comment about performance in case ast.Ite */
-          assume(tAuxIn + tActualIn)
-          Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
-
-      /* TODO: The exhaling-construct is used to tell Silicon to consume the
-       *       body of an impure (un)folding expression, or those of
-       *       applying/packaging expressions.
-       *       An alternative would be to handle impure (un)folding expressions
-       *       in the consumer right away.
-       */
-      case ast.Exhaling(exp) =>
-        println("Evaluator/Exhaling")
-        println(s"  sigma.h = ${σ.h}")
-        println(s"  c.reserveHeaps = ${c.reserveHeaps}")
-        consume(σ, FullPerm(), exp, pve, c, tv)((σ1, _, _, c1) => {
-          println(s"  after consuming $exp as part of Exhaling(it)")
-          println(s"  sigma1.h = ${σ1.h}")
-          println(s"  c1.reserveHeaps = ${c1.reserveHeaps}")
-          Q(True(), c1)})
 
       /* Sequences */
 

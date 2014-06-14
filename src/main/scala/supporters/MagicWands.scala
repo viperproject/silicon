@@ -190,13 +190,13 @@ class MagicWandSupporter[ST <: Store[ST],
                                pve: PartialVerificationError,
                                c: C,
                                tv: TV)
-                              (Q: (Stack[H], List[(DirectChunk, H)], C) => VerificationResult)
+                              (Q: (Stack[H], List[(DirectChunk, Int)], C) => VerificationResult)
                               : VerificationResult = {
 
     var toLose = pLoss
     var heapsToVisit = hs
     var visitedHeaps: List[H] = Nil
-    var chunks: List[(DirectChunk, H)] = Nil
+    var chunks: List[(DirectChunk, Int)] = Nil
     var cCurr = c
 
     while (heapsToVisit.nonEmpty && !decider.check(σ, IsNoAccess(toLose))) {
@@ -208,7 +208,7 @@ class MagicWandSupporter[ST <: Store[ST],
       chunks =
         optCh1 match {
           case None => chunks
-          case Some(ch) => (ch, h) :: chunks
+          case Some(ch) => (ch, visitedHeaps.length  - 1) :: chunks
         }
       toLose = toLose1
       cCurr = c1

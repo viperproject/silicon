@@ -41,7 +41,6 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
       if (logpath != null) common.io.PrintWriter(new File(logpath))
       else null
 
-    scopeLabels.clear()
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
@@ -66,6 +65,9 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
   def reset() {
     stop()
+    scopeLabels.clear()
+    scopeCounter = 0
+    counter.reset()
     start()
   }
 
@@ -275,5 +277,9 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 			value = value + 1
 			value
 		}
+
+    def reset() {
+      value = 0
+    }
 	}
 }

@@ -255,6 +255,7 @@ trait AbstractVerifier[ST <: Store[ST],
   def start() { /* Nothing to be done here */ }
 
   def reset() {
+    utils.counter.reset()
     statefulSubcomponents foreach (_.reset())
   }
 
@@ -397,4 +398,11 @@ class DefaultVerifier[ST <: Store[ST],
                                       quantifiedChunkHelper, magicWandSupporter, stateUtils, bookkeeper,
                                       traceviewFactory)
                                      (manifest[H])
+
+  override def reset() {
+    super.reset()
+    ev.quantifiedVars = Stack()
+    ev.fappCache = Map()
+    ev.fappCacheFrames = Stack()
+  }
 }
