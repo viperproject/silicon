@@ -78,7 +78,7 @@ case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBack
 
   def empty = new ListBackedHeap()
 
-  def +(ch: Chunk) = new ListBackedHeap(ch :: chunks)
+  def +(ch: Chunk) = ListBackedHeap(chunks :+ ch)
   def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ::: chunks)
 
   def -(ch: Chunk) = new ListBackedHeap(chunks.filterNot(_ == ch))
