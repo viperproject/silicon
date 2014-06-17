@@ -25,26 +25,3 @@ method test03(x: Ref)
   //:: ExpectedOutput(apply.failed:insufficient.permission)
   apply acc(x.f) --* acc(x.f)
 }
-
-method test04(x: Ref)
-  requires acc(x.f) && acc(x.g) && acc(x.h)
-{
-  package acc(x.f)
-            --*
-             (acc(x.f)
-          && (packaging
-                (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h))
-              in
-                acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)))
-
-  assert acc(x.f) && acc(x.g)
-  assert acc(x.f) --* (acc(x.f) && (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)))
-
-  apply acc(x.f) --* acc(x.f) && (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h))
-  apply acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)
-
-  assert acc(x.f) && acc(x.g) && acc(x.h)
-
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
-}
