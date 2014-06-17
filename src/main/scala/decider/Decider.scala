@@ -274,7 +274,6 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
-  @inline
   private def proverAssert(t: Term, logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
