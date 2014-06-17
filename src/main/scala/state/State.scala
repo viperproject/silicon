@@ -7,7 +7,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatt
 import interfaces.reporting.{TraceView, Context}
 import interfaces.decider.Decider
 import ast.Variable
-import terms.{PermLess, Term, DefaultFractionalPermissions}
+import terms.{Term, DefaultFractionalPermissions}
 import terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import collection.mutable
@@ -33,31 +33,6 @@ case class MapBackedStore(private val map: Map[Variable, Term])
 	def +(entry: (Variable, Term)) = MapBackedStore(map + entry)
 	def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
-
-//case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
-//  def this() = this(Set[Chunk]())
-//  def this(h: SetBackedHeap) = this(h.chunks)
-//  def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
-//
-//  @inline
-//  def values = chunks
-//
-//  /** Attention: This is a destructive operation that replaces the chunks in
-//    * this heap by `chunks`. Only use this operation if you think that you know
-//    * what you are doing! Consider creating a new heap via `this(chunks)`
-//    * instead.
-//    */
-//  def replace(chunks: Iterable[Chunk]) {
-//    this.chunks = toSet(chunks)
-//  }
-//
-//  def empty = new SetBackedHeap()
-//
-//  def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
-//  def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
-//
-//  def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
-//}
 
 case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBackedHeap] {
   def this() = this(Nil)
