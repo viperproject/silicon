@@ -1,0 +1,35 @@
+field f: Int;
+
+method test01(x: Ref)
+  requires acc(x.f)
+{
+  x.f := 3
+
+  /* TODO: Non-self-framing wand should be detected */
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package true --* x.f == 3
+  x.f := x.f + 1
+  apply true --* x.f == 3
+  assert false
+}
+
+method test02(x: Ref)
+  requires acc(x.f)
+{
+  /* TODO: Non-self-framing wand should be detected */
+  package acc(x.f) && x.f == 0 --* x.f == 0
+  x.f := 0
+
+  test03(x)
+}
+
+method test03(x: Ref)
+  requires acc(x.f) && x.f == 0
+  /* TODO: Non-self-framing wand should be detected */
+  requires acc(x.f) && x.f == 0 --* x.f == 0
+{
+  /* Apply fails, because x.f on the RHS cannot be dereferenced */
+  /* TODO: Non-self-framing wand should be detected */
+  //:: ExpectedOutput(apply.failed:insufficient.permission)
+  apply acc(x.f) && x.f == 0 --* x.f == 0
+}
