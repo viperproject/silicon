@@ -81,12 +81,3 @@ method test4c(x: Ref)
   //:: ExpectedOutput(apply.failed:insufficient.permission)
   apply acc(x.v) --* false
 }
-
-//field f: Int
-//
-//method test(x: Ref)
-//  requires acc(x.f)
-//  requires acc(x.f)
-//{
-//  assert false
-//}

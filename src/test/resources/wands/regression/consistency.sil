@@ -35,8 +35,8 @@ method test03() {
   var p: Ref
   p := new()
 
+  //:: ExpectedOutput(typechecker.error)
   assert folding Pair(p) in acc(Pair(p))
-    /* Ghost operations that occur in exhale positions may be impure */
 }
 
 method test05(p: Ref) {
@@ -67,19 +67,48 @@ method test11(p: Ref) {
      */
 }
 
-// TODO: Applying inside a function is not supported
-//function fun(x: Ref): Bool
-//  requires (acc(x.h, write) --* acc(x.h, write))
-//  requires acc(x.h, write)
-//{ applying (acc(x.h, write) --* acc(x.h, write)) in x.h }
-//
-//method test02(x: Ref)
-//  requires acc(x.h, write)
-//{
-//  package acc(x.h, write) --* acc(x.h, write)
-//  var b: Bool
-//  b := fun(x)
-//  // wands-silicon issue 1
-//  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/1/)
-//  assert b == fun(x)
-//}
+function fun(x: Ref): Int
+  requires true --* acc(x.f)
+{
+  //:: ExpectedOutput(typechecker.error)
+  applying (true --* acc(x.f)) in x.f
+}
+
+method test12(x: Ref)
+  requires acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* acc(x.f) && applying (true --* acc(x.g)) in true
+}
+
+method test13(x: Ref)
+  requires acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* (applying (true --* acc(x.g)) in true) && acc(x.f)
+}
+
+method test14(x: Ref)
+  requires true --* acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* (applying (true --* acc(x.f)) in acc(x.f)) && (applying (true --* acc(x.g)) in acc(x.g))
+}
+
+method test15(x: Ref, b: Bool)
+  requires true --* acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* b ? (applying (true --* acc(x.g)) in acc(x.g)) : (applying (true --* acc(x.f)) in acc(x.f))
+}
+
+method test16(x: Ref, b: Bool)
+  requires true --* acc(x.f)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* b ==> (applying (true --* acc(x.f)) in acc(x.f))
+}
