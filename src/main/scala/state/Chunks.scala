@@ -21,6 +21,7 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 
 	def +(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm + perm)
 	def -(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm - perm)
+  def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
 
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
@@ -50,6 +51,7 @@ case class DirectPredicateChunk(name: String,
 
   def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
+  def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
 
   override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
 }

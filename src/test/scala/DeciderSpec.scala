@@ -42,7 +42,7 @@ class DeciderSpec extends FlatSpec {
 
   private type P = DefaultFractionalPermissions
   private type ST = MapBackedStore
-  private type H = SetBackedHeap
+  private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
   private type C = DefaultContext[ST, H, S]
@@ -118,7 +118,7 @@ class DeciderSpec extends FlatSpec {
     val (quantifiedChunkHelper, decider) = createHeapManager
 
     val x = decider.fresh(sorts.Ref)
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm()), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(x, "f", null, FullPerm()), "f")
 
     assert(decider.check(Ø, quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")) === FullPerm()))
   }
@@ -128,7 +128,7 @@ class DeciderSpec extends FlatSpec {
 
 
     val x = decider.fresh(sorts.Ref)
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(x, "f", null, NoPerm()), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(x, "f", null, NoPerm()), "f")
 
     assert(!decider.check(Ø, quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")) === FullPerm()))
   }
@@ -136,7 +136,7 @@ class DeciderSpec extends FlatSpec {
   it should "say that we have enough permissions for exhaling 'acc(x.f, 0.5) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5 π: {(x==y || x==z)}" in {
     val (quantifiedChunkHelper, decider) = createHeapManager
     val x, y, z = decider.fresh(sorts.Ref)
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
@@ -146,7 +146,7 @@ class DeciderSpec extends FlatSpec {
   it should "say that we have not enough permissions for exhaling 'acc(x.f, 1) in case h: y.f -> _ # 0.5, z.f -> _ # 0.5 π: {}" in {
     val (quantifiedChunkHelper, decider) = createHeapManager
     val x, y, z = decider.fresh(sorts.Ref)
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     assert(!decider.check(Ø, AtMost(FullPerm(), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
@@ -158,7 +158,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Or(Eq(x, y), Eq(x, z)))
     decider.assume(Not(Eq(y, z)))
 
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     assert(!decider.check(Ø, AtMost(FullPerm(), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
@@ -169,7 +169,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     assert(decider.check(Ø, AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
@@ -180,7 +180,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     assert(decider.check(Ø, AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
 
@@ -200,7 +200,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(And(Eq(x, y), Eq(x, z)))
 
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     assert(decider.check(Ø, AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
 
@@ -218,7 +218,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(Or(Eq(x, y), Eq(x, z)))
 
-    val heap = quantifiedChunkHelper.quantifyChunksForField(new SetBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
+    val heap = quantifiedChunkHelper.quantifyChunksForField(new ListBackedHeap() + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(z, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))), "f")
 
     assert(decider.check(Ø, AtMost(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
 
@@ -247,7 +247,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(SetIn(x, S))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FullPerm(), NoPerm())))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap) match {
@@ -263,7 +263,7 @@ class DeciderSpec extends FlatSpec {
     val x = decider.fresh(sorts.Ref)
     val S = decider.fresh(sorts.Set(sorts.Ref))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(*() === x, FullPerm(), NoPerm())))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap) match {
@@ -280,7 +280,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(SetSubset(U, SetIntersection(S, T)))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm()))) + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm())))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm()))) + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), NoPerm())))
 
 
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm())))
@@ -303,7 +303,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(Eq(S, SetUnion(SingletonSet(x), SingletonSet(y))))
 
-    val heap = new SetBackedHeap + DirectFieldChunk(x, "f", null, FullPerm()) + DirectFieldChunk(y, "f", null, FullPerm())
+    val heap = new ListBackedHeap + DirectFieldChunk(x, "f", null, FullPerm()) + DirectFieldChunk(y, "f", null, FullPerm())
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap) match {
@@ -321,7 +321,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(Eq(S, SetUnion(SingletonSet(x), SingletonSet(y))))
 
-    val heap = new SetBackedHeap + DirectFieldChunk(x, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))))
+    val heap = new ListBackedHeap + DirectFieldChunk(x, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2)))) + DirectFieldChunk(y, "f", null, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))))
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap) match {
@@ -339,7 +339,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(SetSubset(T, S))
     decider.assume(SetSubset(U, S))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FullPerm(), NoPerm())))
     val exhaleHeap2 = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm())))
 
@@ -362,7 +362,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(SetSubset(U, S))
     decider.assume(SetDisjoint(T, U))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
     val exhaleHeap = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), T), FullPerm(), NoPerm())))
     val exhaleHeap2 = QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), U), FullPerm(), NoPerm())))
 
@@ -384,7 +384,7 @@ class DeciderSpec extends FlatSpec {
 
     decider.assume(MultisetSubset(S, T))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null /* we dont care about the value */ , PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), T))))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null /* we dont care about the value */ , PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), T))))
     val exhaleHeap = QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(8))), TermPerm(MultisetCount(*(), S))))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap) match {
@@ -411,7 +411,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Less(k, end))
 
     val ch = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
-    val heap = new SetBackedHeap() + ch
+    val heap = new ListBackedHeap() + ch
     val exhaleHeap1 = QuantifiedChunk("f", null, TermPerm(Ite(Eq(*(), SeqAt(S, k)), FullPerm(), NoPerm())))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap1) match {
@@ -430,7 +430,7 @@ class DeciderSpec extends FlatSpec {
     val x = decider.fresh(sorts.Ref)
     val S = decider.fresh(sorts.Set(sorts.Ref))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm())))
 
     assert(!decider.check(Ø, AtMost(FullPerm(), quantifiedChunkHelper.permission(heap, FieldChunkIdentifier(x, "f")))))
   }
@@ -447,7 +447,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(MultisetIn(t, T))
     decider.assume(Not(MultisetIn(t, S)))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null /* we dont care about the value */ , PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), T))))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null /* we dont care about the value */ , PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), T))))
     val exhaleHeap1 = QuantifiedChunk("f", null, TermPerm(Ite(*() === t, FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), NoPerm())))
     val exhaleHeap2 = QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(16))), TermPerm(MultisetCount(*(), S))))
 
@@ -469,7 +469,7 @@ class DeciderSpec extends FlatSpec {
 
     val idx = Var("idx", sorts.Ref)
     val indirectionChunk = QuantifiedChunk("f", null, TermPerm(Ite(Quantification(Exists, List(idx), Eq(DomainFApp(Function(Svalue.id, sorts.Arrow(sorts.Ref, sorts.Ref)), List(idx)), *())), FullPerm(), NoPerm())))
-    val heap = new SetBackedHeap() + QuantifiedChunk("a", Svalue, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm()))) + indirectionChunk
+    val heap = new ListBackedHeap() + QuantifiedChunk("a", Svalue, TermPerm(Ite(SetIn(*(), S), FullPerm(), NoPerm()))) + indirectionChunk
 
     quantifiedChunkHelper.exhaleTest(heap, indirectionChunk) match {
       case None => fail("exhale should succeed!")
@@ -492,7 +492,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(AtLeast(k, start))
     decider.assume(AtMost(k, end))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, end), start))))))
 
     val S1 = SeqDrop(SeqTake(S, k), start)
     val S2 = SeqDrop(SeqTake(S, end), k)
@@ -523,7 +523,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(Not(Less(l, IntLiteral(0))))
     decider.assume(k !== l)
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, SeqLength(S)), IntLiteral(0)))))))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, SeqLength(S)), IntLiteral(0)))))))
     val exhaleHeap1 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, Plus(k, IntLiteral(1))), k))))))
     val exhaleHeap2 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, Plus(l, IntLiteral(1))), l))))))
 
@@ -550,7 +550,7 @@ class DeciderSpec extends FlatSpec {
     decider.assume(AtLeast(k, IntLiteral(0)))
     decider.assume(Less(k, SeqLength(S)))
 
-    val heap = new SetBackedHeap() + QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, SeqLength(S)), IntLiteral(0))))))) + QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(T, SeqLength(T)), IntLiteral(0)))))))
+    val heap = new ListBackedHeap() + QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, SeqLength(S)), IntLiteral(0))))))) + QuantifiedChunk("f", null, PermTimes(FractionPerm(TermPerm(IntLiteral(1)), TermPerm(IntLiteral(2))), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(T, SeqLength(T)), IntLiteral(0)))))))
     val exhaleHeap1 = QuantifiedChunk("f", null, PermTimes(FullPerm(), TermPerm(MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(S, Plus(k, IntLiteral(1))), k))))))
 
     quantifiedChunkHelper.exhaleTest(heap, exhaleHeap1) match {

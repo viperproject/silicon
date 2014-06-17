@@ -4,13 +4,14 @@ import scala.language.implicitConversions
 
 package object silicon {
 
-  /* Immutable set and map with a deterministic iteration order */
+  /* Immutable collections with a deterministic iteration order */
 
   type Set[A] = scala.collection.immutable.ListSet[A]
   val Set = scala.collection.immutable.ListSet
 
   @inline
   def toSet[A](it: Iterable[A]): Set[A] = Set.empty ++ it
+  def toSet[A](it: Iterator[A]): Set[A] = Set.empty ++ it
 
   type Map[K, V] = scala.collection.immutable.ListMap[K, V]
   val Map = scala.collection.immutable.ListMap
@@ -18,7 +19,10 @@ package object silicon {
   @inline
   def toMap[K, V](it: Iterable[(K, V)]): Map[K, V] = Map.empty ++ it
 
-  /* Mutable set and map with a deterministic iteration order */
+  type Stack[E] = List[E]
+  val Stack = List
+
+  /* Mutable collections with a deterministic iteration order */
 
   type MSet[A] = collection.mutable.LinkedHashSet[A]
   val MSet = collection.mutable.LinkedHashSet

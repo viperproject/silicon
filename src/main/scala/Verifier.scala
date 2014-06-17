@@ -192,6 +192,7 @@ trait AbstractVerifier[ST <: Store[ST],
   def start() { /* Nothing to be done here */ }
 
   def reset() {
+    utils.counter.reset()
     statefulSubcomponents foreach (_.reset())
   }
 
@@ -331,4 +332,11 @@ class DefaultVerifier[ST <: Store[ST],
 
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
                                       quantifiedChunkHelper, stateUtils, bookkeeper, traceviewFactory)
+  
+  override def reset() {
+    super.reset()
+    ev.quantifiedVars = Stack()
+    ev.fappCache = Map()
+    ev.fappCacheFrames = Stack()
+  }
 }

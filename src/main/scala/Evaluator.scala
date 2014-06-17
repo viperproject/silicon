@@ -1,7 +1,6 @@
 package semper
 package silicon
 
-import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
@@ -49,9 +48,9 @@ trait DefaultEvaluator[
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
 
-	private var fappCache: Map[Term, Set[Term]] = Map()
-	private var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
-  private var quantifiedVars: Stack[Term] = Stack()
+	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
+	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
+  /*private*/ var quantifiedVars: Stack[Term] = Stack()
 
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
 			     (Q: (List[Term], C) => VerificationResult)
@@ -513,7 +512,7 @@ trait DefaultEvaluator[
         val σQuant = σ \+ γVars
 
         decider.pushScope()
-        quantifiedVars = quantifiedVars.pushAll(tVars)
+        quantifiedVars = tVars ++: quantifiedVars
 
         val r =
           evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
@@ -887,8 +886,8 @@ trait DefaultEvaluator[
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
 
         (tAct, tAux)
-      }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, tAux)) =>
-        (And(tActAcc, tAct), tAuxAcc + tAux)
+      }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, _tAux)) =>
+        (And(tActAcc, tAct), tAuxAcc + _tAux)
       }
 
     (t1, tAux)
@@ -946,13 +945,13 @@ trait DefaultEvaluator[
 
 
 	override def pushLocalState() {
-		fappCacheFrames = fappCacheFrames.push(fappCache)
+		fappCacheFrames = fappCache :: fappCacheFrames
 		super.pushLocalState()
 	}
 
 	override def popLocalState() {
-		fappCache = fappCacheFrames.top
-		fappCacheFrames = fappCacheFrames.pop
+		fappCache = fappCacheFrames.head
+		fappCacheFrames = fappCacheFrames.tail
 		super.popLocalState()
 	}
 }

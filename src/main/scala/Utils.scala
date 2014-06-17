@@ -38,5 +38,9 @@ package object utils {
       value = value + 1
       value
     }
+
+    def reset() {
+      value = 0
+    }
   }
 }

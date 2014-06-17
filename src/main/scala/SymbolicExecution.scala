@@ -1,7 +1,6 @@
 package semper
 package silicon
 
-import scala.collection.immutable.Stack
 import semper.silicon.interfaces.{VerificationResult, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.{Context, TraceView, TwinBranchingStep, LocalTwinBranchingStep,
@@ -149,7 +148,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
 		((if (exploreTrueBranch) {
 			pushLocalState()
-      currentGuards = currentGuards.push(guardsTrue)
+      currentGuards = guardsTrue :: currentGuards
 
       val result =
         decider.inScope {
@@ -158,7 +157,7 @@ trait DefaultBrancher[ST <: Store[ST],
           fTrue(cTrue, tvTrue)
         }
 
-      currentGuards = currentGuards.pop
+      currentGuards = currentGuards.tail
       popLocalState()
 
 			result
@@ -169,7 +168,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			&&
 		(if (exploreFalseBranch) {
 			pushLocalState()
-      currentGuards = currentGuards.push(guardsFalse)
+      currentGuards = guardsFalse :: currentGuards
 
       val result =
         decider.inScope {
@@ -178,7 +177,7 @@ trait DefaultBrancher[ST <: Store[ST],
           fFalse(cFalse, tvFalse)
         }
 
-      currentGuards = currentGuards.pop
+      currentGuards = currentGuards.tail
       popLocalState()
 
 			result

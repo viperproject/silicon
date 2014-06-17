@@ -1,7 +1,6 @@
 package semper
 package silicon
 
-import scala.collection.immutable.Stack
 import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
@@ -264,13 +263,13 @@ trait DefaultProducer[ST <: Store[ST],
   }
 
   override def pushLocalState() {
-    snapshotCacheFrames = snapshotCacheFrames.push(snapshotCache)
+    snapshotCacheFrames = snapshotCache :: snapshotCacheFrames
     super.pushLocalState()
   }
 
   override def popLocalState() {
-    snapshotCache = snapshotCacheFrames.top
-    snapshotCacheFrames = snapshotCacheFrames.pop
+    snapshotCache = snapshotCacheFrames.head
+    snapshotCacheFrames = snapshotCacheFrames.tail
     super.popLocalState()
   }
 }

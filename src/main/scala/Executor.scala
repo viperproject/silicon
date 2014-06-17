@@ -281,10 +281,12 @@ trait DefaultExecutor[ST <: Store[ST],
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>
+            decider.tryOrFail[(S, C)](σ)((σ1, QS, QF) => {
             if (decider.checkSmoke())
-              Success()
+                QS(σ1, c)
             else
-              Failure[ST, H, S, TV](pve dueTo AssertionFalse(a), tv)
+                QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(a), tv))
+            })(_ => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
