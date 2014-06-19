@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/9/)
+
 field f: Int
 field g: Int
 

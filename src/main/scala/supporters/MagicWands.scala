@@ -99,7 +99,7 @@ class MagicWandSupporter[ST <: Store[ST],
   /* TODO: Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
    *       that term?
    */
-  def createChunk(γ: ST, hPO: H, wand: ast.MagicWand) = {
+  def createChunk(γ: ST/*, hPO: H*/, wand: ast.MagicWand) = {
     /* Remove all ghost operations and keep only the real rhs of the wand */
     val ghostFreeWand = ast.expressions.eraseGhostOperations(wand).asInstanceOf[ast.MagicWand]
 
@@ -127,31 +127,31 @@ class MagicWandSupporter[ST <: Store[ST],
     /* Keeping the list of local variables is not necessary, it could be computed
      * from ghostFreeWand when needed.
      */
-    MagicWandChunk(ghostFreeWand, renamedWand, vs, ts, hPO)
+    MagicWandChunk[H](ghostFreeWand, renamedWand, vs, ts/*, hPO*/)
   }
 
-  def injectExhalingExp(exp: ast.Expression): ast.Expression = {
-    /* TODO: Only works if exp is a direct nesting of ghost operations, i.e.,
-     *       not something such as
-     *         folding acc(x.P) in (acc(x.Q) && applying ...)
-     *       This structure is currently not guaranteed by consistency checks.
-     */
-
-    exp.transform {
-      case gop: ast.GhostOperation if (   !gop.body.isInstanceOf[ast.GhostOperation]
-        /*&& !gop.body.isPure*/) =>
-
-        val exh = ast.Exhaling(gop.body)(gop.body.pos, gop.body.info)
-
-        gop match {
-          case e: ast.Folding => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Unfolding => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Applying => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Packaging => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Exhaling => sys.error("Should never occur since Exhaling is not a source language node")
-        }
-    }()
-  }
+//  def injectExhalingExp(exp: ast.Expression): ast.Expression = {
+//    /* TODO: Only works if exp is a direct nesting of ghost operations, i.e.,
+//     *       not something such as
+//     *         folding acc(x.P) in (acc(x.Q) && applying ...)
+//     *       This structure is currently not guaranteed by consistency checks.
+//     */
+//
+//    exp.transform {
+//      case gop: ast.GhostOperation if (   !gop.body.isInstanceOf[ast.GhostOperation]
+//        /*&& !gop.body.isPure*/) =>
+//
+//        val exh = ast.Exhaling(gop.body)(gop.body.pos, gop.body.info)
+//
+//        gop match {
+//          case e: ast.Folding => e.copy(body = exh)(e.pos, e.info)
+//          case e: ast.Unfolding => e.copy(body = exh)(e.pos, e.info)
+//          case e: ast.Applying => e.copy(body = exh)(e.pos, e.info)
+//          case e: ast.Packaging => e.copy(body = exh)(e.pos, e.info)
+//          case e: ast.Exhaling => sys.error("Should never occur since Exhaling is not a source language node")
+//        }
+//    }()
+//  }
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
    *       structure. Try to merge the two.
@@ -190,35 +190,55 @@ class MagicWandSupporter[ST <: Store[ST],
                                pve: PartialVerificationError,
                                c: C,
                                tv: TV)
-                              (Q: (Stack[H], List[(DirectChunk, Int)], C) => VerificationResult)
+//                              (Q: (Stack[H], List[(DirectChunk, Int)], C) => VerificationResult)
+                              (Q: (Stack[H], List[DirectChunk], C) => VerificationResult)
                               : VerificationResult = {
 
     var toLose = pLoss
     var heapsToVisit = hs
     var visitedHeaps: List[H] = Nil
-    var chunks: List[(DirectChunk, Int)] = Nil
+//    var chunks: List[(DirectChunk, Int)] = Nil
+    var chunks: List[DirectChunk] = Nil
     var cCurr = c
+
+//    println("\n[consumeFromMultipleHeaps]")
+//    println(s"  toLose = $toLose")
+//    println(s"  heapsToVisit = $heapsToVisit")
+//    println(s"  visitedHeaps = $visitedHeaps")
+//    println(s"  chunks = $chunks")
 
     while (heapsToVisit.nonEmpty && !decider.check(σ, IsNoAccess(toLose))) {
       val h = heapsToVisit.head
       heapsToVisit = heapsToVisit.tail
 
+//      println(s"\n  h = $h")
       val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, id, toLose, cCurr, tv)
+//      println(s"  h1 = $h1")
+//      println(s"  optCh1 = $optCh1")
+//      println(s"  toLose1 = $toLose1")
       visitedHeaps = h1 :: visitedHeaps
       chunks =
         optCh1 match {
           case None => chunks
-          case Some(ch) => (ch, visitedHeaps.length  - 1) :: chunks
+//          case Some(ch) => (ch, visitedHeaps.length  - 1) :: chunks
+          case Some(ch) => ch :: chunks
         }
       toLose = toLose1
       cCurr = c1
     }
 
+//    println(s"\n  X toLose = $toLose")
+//    println(s"  X heapsToVisit = $heapsToVisit")
+//    println(s"  X visitedHeaps = $visitedHeaps")
+//    println(s"  X chunks = $chunks")
+
     if (decider.check(σ, IsNoAccess(toLose))) {
       val tEqs =
         chunks.sliding(2).map {
-          case List((fc1: DirectFieldChunk, _), (fc2: DirectFieldChunk, _)) => fc1.value === fc2.value
-          case List((pc1: DirectPredicateChunk, _), (pc2: DirectPredicateChunk, _)) => pc1.snap === pc2.snap
+//          case List((fc1: DirectFieldChunk, _), (fc2: DirectFieldChunk, _)) => fc1.value === fc2.value
+          case List(fc1: DirectFieldChunk, fc2: DirectFieldChunk) => fc1.value === fc2.value
+//          case List((pc1: DirectPredicateChunk, _), (pc2: DirectPredicateChunk, _)) => pc1.snap === pc2.snap
+          case List(pc1: DirectPredicateChunk, pc2: DirectPredicateChunk) => pc1.snap === pc2.snap
           case _ => True()
         }
 
@@ -246,13 +266,20 @@ class MagicWandSupporter[ST <: Store[ST],
 
     decider.getChunk[DirectChunk](σ, h, id) match {
       case result @ Some(ch) =>
-        val (pToConsume, pKeep) =
-          if (decider.check(σ, IsAsPermissive(ch.perm, pLoss))) (NoPerm(), ch.perm - pLoss)
-          else (pLoss - ch.perm, NoPerm())
+        val (pLost, pKeep, pToConsume) =
+          if (decider.check(σ, IsAsPermissive(ch.perm, pLoss)))
+            (pLoss, ch.perm - pLoss, NoPerm())
+          else
+            (ch.perm, NoPerm(), pLoss - ch.perm)
+//        println("  [consumeMaxPermissions]")
+//        println(s"    ch.perm = ${ch.perm}")
+//        println(s"    pLost = $pLost")
+//        println(s"    pKeep = $pKeep")
+//        println(s"    pToConsume = $pToConsume")
         val h1 =
           if (decider.check(σ, IsNoAccess(pKeep))) h - ch
           else h - ch + (ch \ pKeep)
-        val consumedChunk = ch \ pLoss
+        val consumedChunk = ch \ pLost
         (h1, Some(consumedChunk), pToConsume, c)
 
       case None => (h, None, pLoss, c)

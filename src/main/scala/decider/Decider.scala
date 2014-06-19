@@ -157,6 +157,18 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
+  def inScope[IR](block: => (IR => VerificationResult) => VerificationResult)
+                 (Q: IR => VerificationResult)
+                 : VerificationResult = {
+
+    pushScope()
+    var ir: IR = null.asInstanceOf[IR]
+    val r: VerificationResult = block(_ir  => {ir = _ir; Success()})
+    popScope()
+
+    r && Q(ir)
+  }
+
   /* Assuming facts */
 
   def assume(t: Term) {

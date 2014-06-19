@@ -83,12 +83,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
         val right = ast.expressions.eraseGhostOperations(wand.right)
         val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable)
         val σ1 = σ \+ γ1
-        val c1 = c.copy(poldHeap = Some(σ.h))
+        val c1 = c/*.copy(poldHeap = Some(σ.h))*/
 
         result =
           inScope {
             produce(σ1, fresh, terms.FullPerm(), left, err, c1, tv)((σ2, c2) => {
-              val c3 = c2.copy(givenHeap = Some(σ2.h))
+              val c3 = c2/*.copy(givenHeap = Some(σ2.h))*/
               val σ3 = σ1
               produce(σ3, fresh, terms.FullPerm(), right, err, c3, tv)((_, c4) =>
                 Success())})}

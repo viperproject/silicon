@@ -78,14 +78,18 @@ method test05(x: Ref, y: Ref)
   package true --* folding acc(Pair(x)) in acc(y.f)
 }
 
+// /silicon/issue/9/
+/*
+
 method test06(x: Ref, y: Ref)
   requires acc(Pair(x))
   requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
 {
-  //:: ExpectedOutput(package.failed:insufficient.permission)
+  // :: ExpectedOutput(package.failed:insufficient.permission)
   package
     (acc(Pair(x)) && sum(x) == now(sum(x)))
       --*
       applying ((acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)) in
         (acc(y.f) && acc(y.g)) // No access to y.g
 }
+*/

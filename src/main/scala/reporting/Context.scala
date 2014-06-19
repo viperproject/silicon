@@ -14,11 +14,11 @@ case class DefaultContext[ST <: Store[ST],
                           currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
                           constrainableARPs: Set[Term] = Set(),
-                          reserveHeaps: Stack[H] = Nil,
-                          poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
-                          givenHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
-                          footprintHeap: Option[H] = None,
-                          reinterpretWand: Boolean = true)
+                          reserveHeaps: Stack[H] = Nil
+//                          poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
+//                          givenHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
+//                          footprintHeap: Option[H] = None,
+                          /*reinterpretWand: Boolean = true*/)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
 
   def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] =

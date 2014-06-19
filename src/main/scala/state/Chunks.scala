@@ -89,8 +89,8 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 case class MagicWandChunk[H <: Heap[H]](ghostFreeWand: ast.MagicWand,
                                         renamedWand: ast.MagicWand,
                                         localVariables: Seq[ast.LocalVariable],
-                                        localVariableValues: Seq[Term],
-                                        hPO: H)
+                                        localVariableValues: Seq[Term]
+                                        /*hPO: H*/)
     extends DirectChunk {
 
   /* TODO: Big ugly hack! DirectChunk is extended so that DefaultConsumer can return a consumed
@@ -106,7 +106,7 @@ case class MagicWandChunk[H <: Heap[H]](ghostFreeWand: ast.MagicWand,
   val args = localVariableValues
   def id = MagicWandChunkIdentifier(renamedWand, localVariableValues)
 
-  override val toString = s"$name(${renamedWand.pos}, ${args.mkString("[", ", ", "]")}, $hPO)"
+  override val toString = s"$name(${renamedWand.pos}, ${args.mkString("[", ", ", "]")})" //, $hPO)"
 }
 
 case class MagicWandChunkIdentifier(renamedWand: ast.MagicWand, localVariableValues: Seq[Term]) extends ChunkIdentifier {

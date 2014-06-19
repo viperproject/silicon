@@ -177,7 +177,7 @@ trait DefaultProducer[ST <: Store[ST],
             Q(σ.h + ch, c2)}))
 
       case wand: ast.MagicWand =>
-        val ch = magicWandSupporter.createChunk(σ.γ, σ.h, wand)
+        val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
         Q(σ.h + ch, c)
 
       /* Quantified field access predicate */
