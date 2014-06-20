@@ -332,11 +332,12 @@ class DefaultVerifier[ST <: Store[ST],
 
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
                                       quantifiedChunkHelper, stateUtils, bookkeeper, traceviewFactory)
-  
+
   override def reset() {
     super.reset()
     ev.quantifiedVars = Stack()
     ev.fappCache = Map()
     ev.fappCacheFrames = Stack()
+    ev.currentGuards = Stack()
   }
 }
