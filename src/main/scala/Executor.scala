@@ -412,7 +412,9 @@ trait DefaultExecutor[ST <: Store[ST],
 
         decider.inScope {
           produce(σEmp, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
-            val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil/*, reinterpretWand = false*/)
+            val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
+                             exhaleExt = true,
+                             lhsHeap = Some(σLhs.h) /*, reinterpretWand = false*/)
 //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
             val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
             consume(σEmp, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((_, _, _, c3) => {
@@ -424,7 +426,7 @@ trait DefaultExecutor[ST <: Store[ST],
               cInner = c3
               Success()})})
         } && {
-          val c1 = cInner.copy(reserveHeaps = Nil/*, reinterpretWand = true*/)
+          val c1 = cInner.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
           Q(σ \ (hInner + chWand), c1)
         }
 
@@ -442,11 +444,12 @@ trait DefaultExecutor[ST <: Store[ST],
            *       the given-heap while checking self-framingness of the wand is the heap
            *       described by the left-hand side.
            */
-          val c1a = c1.copy(/*poldHeap = Some(ch.hPO), givenHeap = Some(σ.h), reinterpretWand = true*/)
-          consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) =>
-            produce(σ2, fresh, FullPerm(), wand.right, pve, c2, tv)((σ3, c3) => {
-              val c4 = c3/*.copy(poldHeap = None, givenHeap = None)*/
-              Q(σ3 \ σ.γ, c4)}))}) /* TODO: Remove wandValues from γ instead of using old σ.γ */
+          val c1a = c1/*poldHeap = Some(ch.hPO), reinterpretWand = true*/
+          consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) => {
+            val c2a = c2.copy(lhsHeap = Some(σ1.h))
+            produce(σ2, fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) => {
+              val c4 = c3.copy(lhsHeap = None/*, poldHeap = None*/)
+              Q(σ3 \ σ.γ, c4)})})}) /* TODO: Remove wandValues from γ instead of using old σ.γ */
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto

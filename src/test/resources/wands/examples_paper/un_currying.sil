@@ -36,7 +36,7 @@ predicate R() { true }
 method uncurry() {
 
   /* Define short-hands for the sake of readability (global short-hands are
-   * currently not implemented)
+   * currently not supported)
    */
   define A acc(P())
   define B acc(Q())
@@ -53,7 +53,7 @@ method uncurry() {
 method curry() {
 
   /* Define short-hands for the sake of readability (global short-hands are
-   * currently not implemented)
+   * currently not supported)
    */
   define A acc(P())
   define B acc(Q())

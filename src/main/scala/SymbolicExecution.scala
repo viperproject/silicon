@@ -74,7 +74,7 @@ trait DefaultBrancher[ST <: Store[ST],
 	val bookkeeper: Bookkeeper
 
 
-  private var currentGuards: Stack[Term] = Stack()
+  /*private*/ var currentGuards: Stack[Term] = Stack()
   /* TODO: Use a set that preserves insertion order, should be faster than
    *       calling Stack.distinct over and over again.
    */

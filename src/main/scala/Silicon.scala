@@ -39,9 +39,9 @@ import ast.Consistency
  */
 
 trait SiliconConstants {
-  val name = "Silicon" // brandingData.sbtProjectName
-  val version = "0.1" // s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
-  val buildVersion = "0.1-snapshot" // s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
+  val name = brandingData.sbtProjectName
+  val version = s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
+  val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
   val copyright = "(c) Copyright ETH Zurich 2012 - 2014"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val expectedZ3Version = "4.3.0"

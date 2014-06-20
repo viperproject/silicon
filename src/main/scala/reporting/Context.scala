@@ -14,12 +14,15 @@ case class DefaultContext[ST <: Store[ST],
                           currentBranch: Branch[ST, H, S],
                           visited: List[ast.Member] = Nil,
                           constrainableARPs: Set[Term] = Set(),
-                          reserveHeaps: Stack[H] = Nil
+                          reserveHeaps: Stack[H] = Nil,
+                          exhaleExt: Boolean = false,
 //                          poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
-//                          givenHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
+                          lhsHeap: Option[H] = None /* Used to interpret e in ApplyOld(e) */
 //                          footprintHeap: Option[H] = None,
                           /*reinterpretWand: Boolean = true*/)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
+
+  assert(!exhaleExt || reserveHeaps.size >= 3, "Invariant exhaleExt ==> reserveHeaps.size >= 3 violated")
 
   def replaceCurrentBranch(currentBranch: Branch[ST, H, S]): DefaultContext[ST, H, S] =
     copy(currentBranch = currentBranch)

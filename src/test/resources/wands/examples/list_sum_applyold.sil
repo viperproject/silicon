@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/9/)
+//:: IgnoreFile(/silicon-wands/issue/9/)
 
 /* This is the running example from our APLAS'14 paper (under submission).
  * It encodes and specifies an iterative computation of the sum

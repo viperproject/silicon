@@ -91,13 +91,14 @@ trait DefaultEvaluator[
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-    val hCombined = c.reserveHeaps match {
-      case Stack() => σ.h
-      case hs => σ.h + hs.head}
+//    val hCombined = c.reserveHeaps match {
+//      case Stack() => σ.h
+//      case hs => σ.h + hs.head}
+//
+//    println(s"hCombined = ${stateFormatter.format(hCombined)}")
 
-    println(s"hCombined = ${stateFormatter.format(hCombined)}")
-
-		eval2(σ \ hCombined, e, pve, c, tv)((t, c1) =>
+//		eval2(σ \ hCombined, e, pve, c, tv)((t, c1) =>
+		eval2(σ, e, pve, c, tv)((t, c1) =>
       Q(t, c1))
   }
 
@@ -132,6 +133,7 @@ trait DefaultEvaluator[
 				logger.debug(stateFormatter.format(σ))
         if (c.reserveHeaps.nonEmpty)
           logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        c.lhsHeap.map(h => logger.debug("hLHS = " + stateFormatter.format(h)))
         decider.prover.logComment(s"[eval] $e")
 		}
 
@@ -245,7 +247,7 @@ trait DefaultEvaluator[
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
       case ast.PackageOld(e0) => ??? // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
-      case ast.ApplyOld(e0) => ??? // eval(σ \ c.givenHeap.get, e0, pve, c, tv)(Q)
+      case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c, tv)(Q)
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>

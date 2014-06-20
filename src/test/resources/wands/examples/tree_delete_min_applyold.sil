@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/9/)
+//:: IgnoreFile(/silicon-wands/issue/9/)
 
 /* This example shows how magic wands can be used to specify the imperative
  * version of challenge 3 from the VerifyThis@FM2012 verification competition.

@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/00/)
+//:: IgnoreFile(/silicon-wands/issue/00/)
 
 field enableHeuristics: Bool
 

@@ -5,18 +5,17 @@ method test01(x: Ref)
 {
   x.f := 3
 
-  /* TODO: Non-self-framing wand should be detected */
-  //:: ExpectedOutput(package.failed:insufficient.permission)
+  //:: ExpectedOutput(wand.not.wellformed)
   package true --* x.f == 3
   x.f := x.f + 1
-  apply true --* x.f == 3
+  apply true --* x.f == 3 // Malformed as well
   assert false
 }
 
 method test02(x: Ref)
   requires acc(x.f)
 {
-  /* TODO: Non-self-framing wand should be detected */
+  //:: ExpectedOutput(wand.not.wellformed)
   package acc(x.f) && x.f == 0 --* x.f == 0
   x.f := 0
 
@@ -25,11 +24,8 @@ method test02(x: Ref)
 
 method test03(x: Ref)
   requires acc(x.f) && x.f == 0
-  /* TODO: Non-self-framing wand should be detected */
+  //:: ExpectedOutput(wand.not.wellformed)
   requires acc(x.f) && x.f == 0 --* x.f == 0
 {
-  /* Apply fails, because x.f on the RHS cannot be dereferenced */
-  /* TODO: Non-self-framing wand should be detected */
-  //:: ExpectedOutput(apply.failed:insufficient.permission)
-  apply acc(x.f) && x.f == 0 --* x.f == 0
+  apply acc(x.f) && x.f == 0 --* x.f == 0 // Malformed as well
 }

@@ -32,7 +32,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   requires acc(List(xs))
   requires head(xs) < x
   ensures acc(List(xs))
-  // ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..] /* POST2 */
+  // ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..]
 {
   var crt: Ref
   var nxt: Ref
@@ -48,22 +48,19 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   package A --* B
 
 	/* Find the appropriate position for x in the linked-list. After the loop,
-	 * crt points to the first node in the list s.t. crt.next is either null,
-	 * or crt.next.val >= x. nxt is always equal to crt.next.
+	 * crt points to the first node in the list for which crt.next is either null,
+	 * or crt.next.val >= x. The variable nxt is always equal to crt.next.
 	 */
   while (nxt != null && head(nxt) < x)
     // invariant 0 <= i && i < |old(elems(xs))|
-    // invariant nxt == null ==> i == |old(elems(xs))| - 1 /* INV2*/
+    // invariant nxt == null ==> i == |old(elems(xs))| - 1
     invariant acc(crt.val) && acc(crt.next)
     invariant nxt == crt.next
-    // invariant crt.val == old(elems(xs))[i] /* INV5 */
+    // invariant crt.val == old(elems(xs))[i]
     invariant nxt != null ==> (acc(List(nxt))) // && elems(nxt) == old(elems(xs))[i+1..])
     invariant A --* B
   {
     // assert old(elems(xs))[i+1] == elems(nxt)[0]
-      /* Silicon function unrolling? Required to show INV5 */
-//    assume old(elems(xs))[i+1] == unfolding List(nxt) in nxt.val
-      /* Required by Silicon to show INV5? Was at least in here while we wrote the paper */
 
     wand w := A --* B
 
@@ -72,8 +69,6 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     crt := nxt
     nxt := nxt.next
     i := i + 1
-
-//    assert crt.val == old(elems(xs))[i] /* INV5 */
 
     package A --* folding List(prev) in applying w in B
   }
@@ -87,7 +82,6 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   fold List(node)
 
   // assert elems(node) == Seq(x) ++ old(elems(xs))[i+1..]
-    /* Silicon function unrolling? Required to show POST2, requires INV2 */
 
 	/* Append the new node (and its tail) to the current node. */
   crt.next := node

@@ -6,10 +6,10 @@
  * Method tree_delete_min below is an iterative implementation of the removal
  * of the minimal element in a binary search tree.
  *
- * The example contains two assertions that help overcoming a technical
- * limitations of the current implementation of our verifier (Silicon)
- * that is related to unrolling recursive functions.
- * This issue is completely unrelated to our work on magic wands, though.
+ * The example contains two assertions (marked with "TODO") that help overcoming
+ * a technical limitation of the current implementation of our verifier (Silicon)
+ * that is related to unrolling recursive function definitions.
+ * This issue is unrelated to our work on magic wands.
  */
 
 field v: Int

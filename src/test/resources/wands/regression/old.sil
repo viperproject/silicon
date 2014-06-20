@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/9/)
+//:: IgnoreFile(/silicon-wands/issue/9/)
 
 field f: Int
 field g: Int
@@ -11,23 +11,23 @@ function sum(p: Ref): Int
   requires acc(Pair(p))
 { unfolding acc(Pair(p)) in (p.f) + (p.g) }
 
-method test01(x: Ref, v: Int)
-  requires acc(x.f) && x.f == v
-  ensures acc(x.f) && x.f == v
-{
-  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-}
+//method test01(x: Ref, v: Int)
+//  requires acc(x.f) && x.f == v
+//  ensures acc(x.f) && x.f == v
+//{
+//  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//}
 
-method test02(x: Ref, v: Int)
-  requires acc(x.f) && x.f == v
-  ensures acc(x.f) && x.f == v
-{
-  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-  x.f := 0
-  //:: ExpectedOutput(apply.failed:assertion.false)
-  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-}
+//method test02(x: Ref, v: Int)
+//  requires acc(x.f) && x.f == v
+//  ensures acc(x.f) && x.f == v
+//{
+//  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//  x.f := 0
+//  //:: ExpectedOutput(apply.failed:assertion.false)
+//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//}
 
 method test03(x: Ref, v: Int)
   requires acc(x.f) && x.f == v

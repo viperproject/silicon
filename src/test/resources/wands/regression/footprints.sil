@@ -28,7 +28,7 @@ method test3(x: Ref)
   requires acc(x.v)
 {
   x.v := true
-  //:: ExpectedOutput(package.failed:insufficient.permission)
+  //:: ExpectedOutput(wand.not.wellformed)
   package true --* x.v
 
   /* Preceding package previously succeeded, which allowed the following to succeed as well */
@@ -48,7 +48,22 @@ method test4a(x: Ref)
 }
 
 method test4x(x: Ref) {
+  //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/00/)
   package acc(x.v) && acc(x.v) --* false
+  // :: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test4d(x: Ref)
+  requires acc(x.v)
+{
+  /* yields acc(x.v) --* true */
+  package acc(x.v)
+            --*
+          (packaging (acc(x.v) --* acc(x.v) && acc(x.v) && false)
+           in true)
+
+  assert acc(x.v) --* true
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }

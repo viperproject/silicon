@@ -157,12 +157,12 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def inScope[IR](block: => (IR => VerificationResult) => VerificationResult)
-                 (Q: IR => VerificationResult)
-                 : VerificationResult = {
+  def locally[R](block: (R => VerificationResult) => VerificationResult)
+                (Q: R => VerificationResult)
+                : VerificationResult = {
 
     pushScope()
-    var ir: IR = null.asInstanceOf[IR]
+    var ir: R = null.asInstanceOf[R]
     val r: VerificationResult = block(_ir  => {ir = _ir; Success()})
     popScope()
 
@@ -222,7 +222,11 @@ class DefaultDecider[ST <: Store[ST],
       if (failure.isEmpty)
         r
       else {
+//        println("BEFORE COMPRESSION")
+//        println(s"  σ.h = ${σ.h}")
         heapCompressor.compress(σ, σ.h)
+//        println("AFTER COMPRESSION")
+//        println(s"  σ.h = ${σ.h}")
         block(σ, r => Q(r), f => f)
       }
 

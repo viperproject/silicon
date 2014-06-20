@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon-wands/issue/00/)
+
 /* See loop_sum.sil for the running example of our APLAS'14 paper (currently
  * under submission).
  *
@@ -5,11 +7,9 @@
  * a value into a linked list. A magic wand is used to book-keep permissions.
  *
  * Notes:
- *  - In previous versions, it took Silicon quite a while to verify this example, 
- *    which is due to a problem with our sequence axiomatisation that can sometimes 
- *    down Z3 considerably. However, a version of this example without the 
- *    sequence-related specifications (but with the same use of magic wands) is
- *    provided in list_insert_noseq.sil, which consistently verifies quickly.
+ *  - It might take Silicon quite a while to verify this example, which is due
+ *    to a problem with our sequence axiomatisation that can slow down Z3 quite
+ *    a bit.
  *  - The additional two asserts are currently necessary because of a known
  *    incompleteness of Silicon related to recursive functions.
  *  - See list_insert_noseq.sil for a version from which all sequences have
@@ -44,12 +44,14 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   ensures elems(xs) == old(elems(xs))[0..i+1] ++ Seq(x) ++ old(elems(xs))[i+1..]
 {
   var crt: Ref
+  /* LHS */ var crtElems: Seq[Int]
   var nxt: Ref
   i := 0
 
-  define A acc(List(crt))
-  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ lhs(elems(crt))
+  define A acc(List(crt)) /* LHS */ && elems(crt) == Seq(x) ++ crtElems
+  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ /* LHS */ (Seq(x) ++ crtElems) // lhs(elems(crt))
 
+  /* LHS */ crtElems := elems(xs)
   unfold List(xs)
   crt := xs
   nxt := xs.next
@@ -62,17 +64,21 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 	 */
   while (nxt != null && head(nxt) < x)
     invariant 0 <= i && i < |old(elems(xs))|
-    invariant nxt == null ==> i == |old(elems(xs))| - 1
+    invariant nxt == null ==> i == |old(elems(xs))| - 1 /* INV2*/
     invariant acc(crt.val) && acc(crt.next)
     invariant nxt == crt.next
-    invariant crt.val == old(elems(xs))[i]
+    invariant crt.val == old(elems(xs))[i] /* INV5 */
     invariant nxt != null ==> (acc(List(nxt)) && elems(nxt) == old(elems(xs))[i+1..])
     invariant A --* B
+    invariant crtElems == Seq(crt.val) ++ (crt.next == null ? Seq[Int]() : elems(crt.next))
   {
     assert old(elems(xs))[i+1] == elems(nxt)[0]
 
     wand w := A --* B
     var prev: Ref := crt
+
+    /* LHS */ crtElems := elems(nxt)
+
     unfold List(nxt)
     crt := nxt
     nxt := nxt.next
@@ -80,6 +86,11 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 
     package A --* folding List(prev) in applying w in B
   }
+
+  assert
+    acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+      --*
+    acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */
   var node: Ref
@@ -89,14 +100,34 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 
   fold List(node)
 
+//  assert old(elems(xs))[i+1..] == Seq[Int]()
+
+//  assSeq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next))
+
   assert elems(node) == Seq(x) ++ old(elems(xs))[i+1..]
+//  assert elems(node) == Seq(x) ++ Seq[Int]()
 
 	/* Append the new node (and its tail) to the current node. */
   crt.next := node
   fold List(crt)
 
+//  assert crtElems ++ Seq(x)
+
 	/* Give up the sublist starting at crt and get back the original list *with*
 	 * the newly inserted value.
 	 */
-  apply A --* B
+//  apply A --* B
+//  crtElems := elems(crt)
+
+  assert
+    acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+      --*
+    acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
+
+  assert acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+
+  apply
+    acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
+      --*
+    acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
 }
