@@ -374,6 +374,36 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             "in a function, which is then invoked from the predicate body.\n" +
             "Offending node: " + φ)
 
+      case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
+                       eIn) if c.exhaleExt =>
+        /* TODO: Substitute args in body */
+        val predicate = c.program.findPredicate(predicateName)
+        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+          val c0 = c.incCycleCounter(predicate)
+          val σC = combine(σ, h, c0)
+          val σEmp = Σ(σ.γ, Ø, σ.g)
+          evalp(σC, ePerm, pve, c0, tv)((tPerm, c1) =>
+            if (decider.check(σC, IsPositive(tPerm)))
+              evals(σC, eArgs, pve, c1, tv)((tArgs, c2) =>
+                consume(σEmp, h, FullPerm(), acc, pve, c2, tv)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
+                  consume(σ \ h1, h1, FullPerm(), acc, pve, c2, tv)((h2, snap, _, c3b) => { /* σUsed'.unfold */
+                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b, tv)((σ2, c4) => { /* σ2.h = σUsed'' */
+                      val c4a = c4.decCycleCounter(predicate)
+                                  .copy(reserveHeaps = (c3.reserveHeaps.head + σ2.h) :: c3.reserveHeaps.tail,
+                                        exhaleExt = c3.exhaleExt)
+                      consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a, tv)((h3, _, _, c5) =>
+                        Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})}))
+            else
+              Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv))
+        } else
+          sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
+            "P {... && next != null ==> unfolding next.P in e} is currently not " +
+            "supported. It should be  possible to wrap 'unfolding next.P in e' " +
+            "in a function, which is then invoked from the predicate body.\n" +
+            "Offending node: " + φ)
+
       case ast.Exhaling(a) => ???
 //        consume(σ \ h, h, FullPerm(), a, pve, c/*.copy(footprintHeap = Some(H()))*/, tv)((h1, _, _, c1) =>
 //          Q(h1, decider.fresh(sorts.Snap), Nil, c1/*.copy(footprintHeap = c.footprintHeap)*/))
