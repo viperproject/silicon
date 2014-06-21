@@ -28,6 +28,7 @@ object expressions {
      * would not be applied (per se).
      */
     e.transform()(post = {
-      case gop: ast.GhostOperation if !gop.isPure => gop.body
+      case u: ast.Unfolding if !u.isPure => u.body
+      case gop: ast.GhostOperation if !gop.isInstanceOf[ast.Unfolding] => gop.body
     })
 }
