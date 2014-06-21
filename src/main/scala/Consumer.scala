@@ -375,8 +375,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             "Offending node: " + φ)
 
       case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
-                       eIn) if c.exhaleExt =>
-        /* TODO: Substitute args in body */
+                       eIn) if c.exhaleExt && !φ.isPure =>
+
         val predicate = c.program.findPredicate(predicateName)
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0 = c.incCycleCounter(predicate)
@@ -389,7 +389,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
                   consume(σ \ h1, h1, FullPerm(), acc, pve, c2, tv)((h2, snap, _, c3b) => { /* σUsed'.unfold */
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b, tv)((σ2, c4) => { /* σ2.h = σUsed'' */
+                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b, tv)((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
                       val c4a = c4.decCycleCounter(predicate)
                                   .copy(reserveHeaps = (c3.reserveHeaps.head + σ2.h) :: c3.reserveHeaps.tail,
                                         exhaleExt = c3.exhaleExt)

@@ -48,7 +48,7 @@ method test01() {
   package
     (acc(Pair(p)) && sum(p) == 10)
       --*
-    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g) && p.f + p.g == 10 // rhs is not self-framing
+    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g) && p.f + p.g == 10
 
   apply acc(Pair(p)) && sum(p) == 10 --* acc(p.f) && acc(p.g) && p.f + p.g == 10
   fold acc(Pair(p))
@@ -58,58 +58,19 @@ method test01() {
   assert false
 }
 
-method test02()
-{
-  var p: Ref
-  p := new(f, g)
+method test02(p: Ref) {
+  inhale acc(Pair(p), 1/2)
 
-  p.g := -1;
-
-  //:: ExpectedOutput(package.failed:assertion.false)
   package
-    (acc(p.f) && p.f > 0)
+    acc(Pair(p), 1/2)
       --*
-    folding acc(Pair(p)) in (acc(Pair(p)) && sum(p) > 0)
+    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g)
 }
 
-//method test03() {
-//  var p: Ref
-//  p := new(f, g)
-//
-//  exhale acc(p.g, 1/2)
-//
-//  //:: ExpectedOutput(package.failed:insufficient.permission)
-//  package
-//    (acc(p.f) && p.f > 0)
-//      --*
-//    folding acc(Pair(p)) in (acc(Pair(p)) && sum(p) > 0)
-//}
-//
-//method test04(p: Ref)
-//  requires (acc(p.f) && p.f > 0) --* (acc(Pair(p)) && sum(p) > 0)
-//  requires acc(p.f)
-//{
-//  p.f := 1
-//  apply (acc(p.f) && p.f > 0) --* (acc(Pair(p)) && sum(p) > 0)
-//
-//  assert acc(Pair(p)) && sum(p) > 0
-//  //:: ExpectedOutput(assert.failed:insufficient.permission)
-//  assert acc(p.f)
-//}
-//
-//method test05() {
-//  var p: Ref
-//  p := new(f, g)
-//
-//  p.g := 0;
-//
-//  package
-//    (acc(p.f) && p.f > 0)
-//      --*
-//    folding acc(Pair(p)) in (acc(Pair(p)) && sum(p) > 0)
-//
-//  test04(p)
-//
-//  //:: ExpectedOutput(assert.failed:wand.not.found)
-//  assert (acc(p.f) && p.f > 0) --* (acc(Pair(p)) && sum(p) > 0)
-//}
+method test03(p: Ref) {
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package
+    acc(Pair(p), 1/2)
+      --*
+    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g)
+}
