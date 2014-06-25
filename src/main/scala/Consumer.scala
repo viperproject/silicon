@@ -146,7 +146,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1, tv)((tPerm, c2) =>
             quantifiedChunkHelper.value(σ, h, tRcvr, field, pve, locacc, c2, tv)(t => {
-              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, null, tPerm)
+              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, t, tPerm)
               quantifiedChunkHelper.consume(σ, h, ch, pve, locacc, c2, tv)(h2 =>
                 Q(h2, t, Nil, c2))})))
 
