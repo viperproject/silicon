@@ -15,31 +15,28 @@ import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermissio
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
-import interfaces.reporting.TraceView
 import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
     DirectChunk, NestedFieldChunk, NestedPredicateChunk}
-import reporting.{DefaultContext, Executing, IfBranching, Description, BranchingDescriptionStep,
-    ScopeChangingDescription}
+import reporting.DefaultContext
 import heap.QuantifiedChunkHelper
 import state.terms.perms.IsPositive
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
 											PC <: PathConditions[PC],
-                      S <: State[ST, H, S],
-											TV <: TraceView[TV, ST, H, S]]
-		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[ST, H, S], TV]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-									  with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+                      S <: State[ST, H, S]]
+		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+									  with Brancher[ST, H, S, DefaultContext] =>
 
-  private type C = DefaultContext[ST, H, S]
+  private type C = DefaultContext
   private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C, TV]
+	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.{fresh, assume, inScope}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -48,66 +45,66 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
+  protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
-  private def follow(σ: S, edge: ast.CFGEdge, c: C, tv: TV)
+  private def follow(σ: S, edge: ast.CFGEdge, c: C)
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
 
     edge match {
       case ce: sil.ast.ConditionalEdge =>
-        eval(σ, ce.cond, Internal(ce.cond), c, tv)((tCond, c1) =>
+        eval(σ, ce.cond, Internal(ce.cond), c)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
-          branch(σ, tCond, c1, tv, IfBranching[ST, H, S](ce.cond, tCond),
-            (c2: C, tv1: TV) => exec(σ, ce.dest, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Success()))
+          branch(σ, tCond, c1,
+            (c2: C) => exec(σ, ce.dest, c2)(Q),
+            (c2: C) => Success()))
 
-      case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c, tv)(Q)
+      case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
     }
   }
 
-  private def follows(σ: S, edges: Seq[ast.CFGEdge], c: C, tv: TV)
+  private def follows(σ: S, edges: Seq[ast.CFGEdge], c: C)
                      (Q: (S, C) => VerificationResult)
                      : VerificationResult = {
 
     if (edges.isEmpty) {
       Q(σ, c)
     } else
-      follows2(σ, edges, c, tv)(Q)
+      follows2(σ, edges, c)(Q)
   }
 
-  private def follows2(σ: S, edges: Seq[ast.CFGEdge], c: C, tv: TV)
+  private def follows2(σ: S, edges: Seq[ast.CFGEdge], c: C)
                       (Q: (S, C) => VerificationResult)
                       : VerificationResult = {
 
     if (edges.isEmpty) {
       Success()
     } else {
-      follow(σ, edges.head, c, tv)(Q) && follows2(σ, edges.tail, c, tv)(Q)
+      follow(σ, edges.head, c)(Q) && follows2(σ, edges.tail, c)(Q)
     }
   }
 
-  private def leave(σ: S, block: ast.CFGBlock, c: C, tv: TV)
+  private def leave(σ: S, block: ast.CFGBlock, c: C)
                    (Q: (S, C) => VerificationResult)
                    : VerificationResult = {
 
-    follows(σ, block.succs, c, tv)(Q)
+    follows(σ, block.succs, c)(Q)
   }
 
-  def exec(σ: S, block: ast.CFGBlock, c: C, tv: TV)
+  def exec(σ: S, block: ast.CFGBlock, c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
     block match {
       case block @ sil.ast.StatementBlock(stmt, _) =>
-        exec(σ, stmt, c, tv)((σ1, c1) =>
-          leave(σ1, block, c1, tv)(Q))
+        exec(σ, stmt, c)((σ1, c1) =>
+          leave(σ1, block, c1)(Q))
 
       case lb: sil.ast.LoopBlock =>
         decider.prover.logComment(s"loop at ${lb.pos}")
@@ -132,8 +129,7 @@ trait DefaultExecutor[ST <: Store[ST],
         (inScope {
           /* Verify loop body (including well-formedness check) */
           decider.prover.logComment("Verify loop body")
-          val (c0, tv0) = tv.splitOffLocally(c, BranchingDescriptionStep[ST, H, S]("Loop Invariant Preservation"))
-          produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(loopStmt), c0, tv0)((σ1, c1) =>
+          produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(loopStmt), c)((σ1, c1) =>
           /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
            *       Should no longer be necessary once we have an on-demand handling of merging and
            *       false-checking.
@@ -141,19 +137,17 @@ trait DefaultExecutor[ST <: Store[ST],
             if (decider.checkSmoke())
               Success() /* TODO: Mark branch as dead? */
             else
-              exec(σ1, lb.body, c1, tv0)((σ2, c2) =>
-                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2, tv0)((σ3, _, _, c3) =>
+              exec(σ1, lb.body, c1)((σ2, c2) =>
+                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, _, c3) =>
                   Success())))}
             &&
           inScope {
             /* Verify call-site */
             decider.prover.logComment("Establish loop invariant")
-            val tv0 = tv.stepInto(c, Description[ST, H, S]("Loop Invariant Establishment"))
-            val c0 = c
-            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c0, tv0)((σ1, _, _, c1) => {
+            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, _, c1) => {
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1, tv0)((σ3, c2) =>
+              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1)((σ3, c2) =>
               /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
                *       Should no longer be necessary once we have an on-demand handling of merging and
                *       false-checking.
@@ -161,39 +155,36 @@ trait DefaultExecutor[ST <: Store[ST],
                 if (decider.checkSmoke())
                   Success() /* TODO: Mark branch as dead? */
                 else
-                  leave(σ3, lb, c2, tv)(Q))})})
+                  leave(σ3, lb, c2)(Q))})})
 
         case frp @ sil.ast.ConstrainingBlock(vars, body, succ) =>
           val arps = vars map σ.γ.apply
           val c1 = c.setConstrainable(arps, true)
-          exec(σ, body, c1, tv)((σ1, c2) =>
-            leave(σ1, frp, c2.setConstrainable(arps, false), tv)(Q))
+          exec(σ, body, c1)((σ1, c2) =>
+            leave(σ1, frp, c2.setConstrainable(arps, false))(Q))
     }
   }
 
-  private def exec(σ: S, stmts: Seq[ast.Statement], c: C, tv: TV)
+  private def exec(σ: S, stmts: Seq[ast.Statement], c: C)
                   (Q: (S, C) => VerificationResult)
                   : VerificationResult =
 
     if(stmts.nonEmpty)
-      exec(σ, stmts.head, c, tv)((σ1, c1) =>
-        exec(σ1, stmts.tail, c1, tv)(Q))
+      exec(σ, stmts.head, c)((σ1, c1) =>
+        exec(σ1, stmts.tail, c1)(Q))
     else
       Q(σ, c)
 
-  private def exec(σ: S, stmt: ast.Statement, c: C, tv: TV)
+  private def exec(σ: S, stmt: ast.Statement, c: C)
                   (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
 
-    val tv1 = tv.stepInto(c, Executing[ST, H, S](σ, stmt))
-
-    actualExec(σ, stmt, c, tv1)((σ1, c1) => {
-      tv1.currentStep.σPost = σ1
+    actualExec(σ, stmt, c)((σ1, c1) => {
       Q(σ1, c1)
     })
   }
 
-	private def actualExec(σ: S, stmt: ast.Statement, c: C, tv: TV)
+	private def actualExec(σ: S, stmt: ast.Statement, c: C)
 			    (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
@@ -209,41 +200,41 @@ trait DefaultExecutor[ST <: Store[ST],
 
 		val executed = stmt match {
       case sil.ast.Seqn(stmts) =>
-        exec(σ, stmts, c, tv)(Q)
+        exec(σ, stmts, c)(Q)
 
       case ass @ ast.Assignment(v, rhs) =>
-        eval(σ, rhs, AssignmentFailed(ass), c, tv)((tRhs, c1) =>
+        eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
       /* Assignment for a field that contains quantified chunks */
       case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
         val pve = AssignmentFailed(ass)
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
-          eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+          eval(σ, rhs, pve, c1)((tRhs, c2) => {
             decider.assume(NullTrigger(tRcvr))
             decider.assert(σ, tRcvr !== Null()){
               case false =>
-                Failure[ST, H, S, TV](pve dueTo ReceiverNull(fl), tv)
+                Failure[ST, H, S](pve dueTo ReceiverNull(fl))
               case true =>
                 decider.assert(σ, AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())){
                   case false =>
-                    Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fl), tv)
+                    Failure[ST, H, S](pve dueTo InsufficientPermission(fl))
                   case true =>
                     val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
-                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2, tv)(h =>
+                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2)(h =>
                       Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           decider.assert(σ, tRcvr !== Null()){
             case true =>
-              eval(σ, rhs, pve, c1, tv)((tRhs, c2) => {
+              eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2, tv)(fc =>
+                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2)(fc =>
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             case false =>
-              Failure[ST, H, S, TV](pve dueTo ReceiverNull(fl), tv)})
+              Failure[ST, H, S](pve dueTo ReceiverNull(fl))})
 
       case ast.New(v, fields) =>
         val t = fresh(v)
@@ -268,12 +259,12 @@ trait DefaultExecutor[ST <: Store[ST],
         Q(σ \ γ1, c)
 
       case inhale @ ast.Inhale(a) =>
-        produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c, tv.stepInto(c, Description[ST, H, S]("Inhale Assertion")))((σ1, c1) =>
+        produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c)((σ1, c1) =>
           Q(σ1, c1))
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
+        consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
           Q(σ1, c1))
 
       case assert @ ast.Assert(a) =>
@@ -291,17 +282,17 @@ trait DefaultExecutor[ST <: Store[ST],
             if (decider.checkSmoke())
                 QS(σ1, c)
             else
-                QF(Failure[ST, H, S, TV](pve dueTo AssertionFalse(a), tv))
+                QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
             })(_ => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
+                consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
                   Success())
               r && Q(σ,c)
             } else
-              consume(σ, FullPerm(), a, pve, c, tv)((σ1, _, _, c1) =>
+              consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
                 Q(σ, c1))
         }
 
@@ -313,15 +304,15 @@ trait DefaultExecutor[ST <: Store[ST],
            *       only while checking well-formedness).
            */
 
-        evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Arguments")))((tArgs, c1) => {
+        evals(σ, eArgs, pve, c)((tArgs, c1) => {
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = ast.utils.BigAnd(meth.pres)
-          consume(σ \ insγ, FullPerm(), pre, pve, c1, tv.stepInto(c1, ScopeChangingDescription[ST, H, S]("Consume Precondition")))((σ1, _, _, c3) => {
+          consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
             val post = ast.utils.BigAnd(meth.posts)
-            produce(σ2, fresh, FullPerm(), post, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Postcondition")))((σ3, c4) => {
+            produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
@@ -329,12 +320,12 @@ trait DefaultExecutor[ST <: Store[ST],
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
-        evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
-            evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
+        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+            evalp(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)){
                 case true =>
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ \ insγ, tPerm, predicate.body, pve, c2, tv.stepInto(c2, ScopeChangingDescription[ST, H, S]("Consume Predicate Body")))((σ1, snap, dcs, c3) => {
+                  consume(σ \ insγ, tPerm, predicate.body, pve, c2)((σ1, snap, dcs, c3) => {
                     val ncs = dcs.map {
                       case fc: DirectFieldChunk => new NestedFieldChunk(fc)
                       case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
@@ -367,21 +358,21 @@ trait DefaultExecutor[ST <: Store[ST],
                     val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
                     Q(σ \ h1, c3)})
                 case false =>
-                  Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}))
+                  Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
 
       case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(σ, eArgs, pve, c, tv.stepInto(c, Description[ST, H, S]("Evaluate Receiver")))((tArgs, c1) =>
-            evalp(σ, ePerm, pve, c1, tv.stepInto(c1, Description[ST, H, S]("Evaluate Permissions")))((tPerm, c2) =>
+        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+            evalp(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)){
                 case true =>
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ, FullPerm(), acc, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume Predicate Chunk")))((σ1, snap, _, c3) =>
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Produce Predicate Body")))((σ2, c4) =>
+                  consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) =>
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) =>
                       Q(σ2 \ σ.γ, c4)))
                 case false =>
-                  Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}))
+                  Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: sil.ast.Goto

@@ -22,13 +22,11 @@ import sil.verifier.{
   TimeoutOccurred => SilTimeoutOccurred}
 import sil.frontend.{SilFrontend, SilFrontendConfig, Phase}
 import interfaces.{Failure => SiliconFailure}
-import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{VerificationException, DefaultContext, Bookkeeper, BranchingOnlyTraceView,
-    BranchingOnlyTraceViewFactory}
+import reporting.{VerificationException, DefaultContext, Bookkeeper}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 import heap.DefaultQuantifiedChunkHelper
@@ -67,10 +65,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
-  private type C = DefaultContext[ST, H, S]
-  private type TV = BranchingOnlyTraceView[ST, H, S]
-  private type V = DefaultVerifier[ST, H, PC, S, TV]
-  private type Failure = SiliconFailure[ST, H, S, TV]
+  private type C = DefaultContext
+  private type V = DefaultVerifier[ST, H, PC, S]
+  private type Failure = SiliconFailure[ST, H, S]
 
   private var _config: Config = _
   final def config = _config
@@ -85,7 +82,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: AbstractVerifier[ST, H, PC, S, TV] = null
+  private var verifier: AbstractVerifier[ST, H, PC, S] = null
 
   def this() = this(Nil)
 
@@ -117,30 +114,29 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
      */
 
     setLogLevel(config.logLevel())
-    verifier = createVerifier(new BranchingOnlyTraceViewFactory[ST, H, S]())
+    verifier = createVerifier()
   }
 
   /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
     * to verify elements of a SIL AST such as procedures or functions.
     *
-    * @param traceviewFactory The `TraceViewFactory` to be used.
     * @return A fully set up verifier, ready to be used.
     */
-  private def createVerifier(traceviewFactory: TraceViewFactory[TV, ST, H, S]): V = {
+  private def createVerifier(): V = {
     val bookkeeper = new Bookkeeper()
-    val decider = new DefaultDecider[ST, H, PC, S, C, TV]()
+    val decider = new DefaultDecider[ST, H, PC, S, C]()
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
-    val stateUtils = new StateUtils[ST, H, PC, S, C, TV](decider)
+    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
 
     val dlb = FullPerm()
 
-    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-    val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
+    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C](decider, symbolConverter, stateFactory)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -153,10 +149,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
-    new DefaultVerifier[ST, H, PC, S, TV](config, decider, stateFactory, symbolConverter, preambleEmitter,
+    new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
       stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils,
-      bookkeeper, traceviewFactory)
+      bookkeeper)
   }
 
   private def reset() {

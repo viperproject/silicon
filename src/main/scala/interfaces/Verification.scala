@@ -9,7 +9,6 @@ package silicon
 package interfaces
 
 import sil.verifier.VerificationError
-import reporting.TraceView
 import state.{Store, Heap, State}
 
 /*
@@ -79,10 +78,8 @@ case class Unreachable() extends NonFatalResult {
 
 case class Failure[ST <: Store[ST],
                    H <: Heap[H],
-                   S <: State[ST, H, S],
-                   TV <: TraceView[TV, ST, H, S]]
-                  (message: VerificationError,
-                   tv: TV)
+                   S <: State[ST, H, S]]
+                  (message: VerificationError)
 		extends FatalResult {
 
 //  tv.addResult(context.currentBranch, this)

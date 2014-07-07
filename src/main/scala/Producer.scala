@@ -12,27 +12,25 @@ import sil.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.reporting.TraceView
 import state.terms._
 import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
-import reporting.{DefaultContext, Producing, ImplBranching, IfBranching, Bookkeeper}
+import reporting.{DefaultContext, Bookkeeper}
 import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
-                      S <: State[ST, H, S],
-                      TV <: TraceView[TV, ST, H, S]]
-    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+                      S <: State[ST, H, S]]
+    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
         with HasLocalState
-    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-                    with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+                    with Brancher[ST, H, S, DefaultContext] =>
 
-  private type C = DefaultContext[ST, H, S]
+  private type C = DefaultContext
   private type P = DefaultFractionalPermissions
 
-  protected val decider: Decider[P, ST, H, PC, S, C, TV]
+  protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
 
   protected val stateFactory: StateFactory[ST, H, S]
@@ -41,7 +39,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -54,12 +52,11 @@ trait DefaultProducer[ST <: Store[ST],
               p: P,
               φ: ast.Expression,
               pve: PartialVerificationError,
-              c: C,
-              tv: TV)
+              c: C)
              (Q: (S, C) => VerificationResult)
              : VerificationResult =
 
-    produce2(σ, sf, p, φ.whenInhaling, pve, c, tv)((h, c1) =>
+    produce2(σ, sf, p, φ.whenInhaling, pve, c)((h, c1) =>
       Q(σ \ h, c1))
 
   def produces(σ: S,
@@ -67,8 +64,7 @@ trait DefaultProducer[ST <: Store[ST],
                p: P,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
-               c: C,
-               tv: TV)
+               c: C)
               (Q: (S, C) => VerificationResult)
               : VerificationResult =
 
@@ -76,8 +72,8 @@ trait DefaultProducer[ST <: Store[ST],
       Q(σ, c)
     else {
       val φ = φs.head.whenInhaling
-      produce(σ, sf, p, φ, pvef(φ), c, tv)((σ1, c1) =>
-        produces(σ1, sf, p, φs.tail, pvef, c1, tv)(Q))
+      produce(σ, sf, p, φ, pvef(φ), c)((σ1, c1) =>
+        produces(σ1, sf, p, φs.tail, pvef, c1)(Q))
     }
 
   private def produce2(σ: S,
@@ -85,15 +81,11 @@ trait DefaultProducer[ST <: Store[ST],
                        p: P,
                        φ: ast.Expression,
                        pve: PartialVerificationError,
-                       c: C,
-                       tv: TV)
+                       c: C)
                       (Q: (H, C) => VerificationResult)
                       : VerificationResult = {
 
-    val tv1 = tv.stepInto(c, Producing[ST, H, S](σ, p, φ))
-
-    internalProduce(σ, sf, p, φ, pve, c, tv1)((h, c1) => {
-      tv1.currentStep.σPost = σ \ h
+    internalProduce(σ, sf, p, φ, pve, c)((h, c1) => {
       Q(h, c1)
     })
   }
@@ -103,8 +95,7 @@ trait DefaultProducer[ST <: Store[ST],
                               p: P,
                               φ: ast.Expression,
                               pve: PartialVerificationError,
-                              c: C,
-                              tv: TV)
+                              c: C)
                              (Q: (H, C) => VerificationResult)
                              : VerificationResult = {
 
@@ -123,27 +114,27 @@ trait DefaultProducer[ST <: Store[ST],
         val sf1 = (sort: Sort) => s1.convert(sort)
 
         assume(tSnapEq)
-        produce2(σ, sf0, p, a0, pve, c, tv)((h1, c1) =>
-          produce2(σ \ h1, sf1, p, a1, pve, c1, tv)((h2, c2) =>
+        produce2(σ, sf0, p, a0, pve, c)((h1, c1) =>
+          produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
             Q(h2, c2)))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(σ, t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
-            (c2: C, tv1: TV) => produce2(σ, sf, p, a0, pve, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Q(σ.h, c2)))
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c1,
+            (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
+            (c2: C) => Q(σ.h, c2)))
 
       case ast.Ite(e0, a1, a2) if !φ.isPure =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(σ, t0, c1, tv, IfBranching[ST, H, S](e0, t0),
-            (c2: C, tv1: TV) => produce2(σ, sf, p, a1, pve, c2, tv1)(Q),
-            (c2: C, tv1: TV) => produce2(σ, sf, p, a2, pve, c2, tv1)(Q)))
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c1,
+            (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
+            (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       /* Produce a field access if the heap is quantified for that field */
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+          evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain)
@@ -151,9 +142,9 @@ trait DefaultProducer[ST <: Store[ST],
             Q(σ.h + ch, c2)})})
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) => {
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+          evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
@@ -162,8 +153,8 @@ trait DefaultProducer[ST <: Store[ST],
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
-        evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
-          evalp(σ, gain, pve, c1, tv)((pGain, c2) => {
+        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+          evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
@@ -177,10 +168,10 @@ trait DefaultProducer[ST <: Store[ST],
           val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
           val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
 
-          eval(σ \+ γVars, cond, pve, c, tv)((tCond, c1) =>
-            eval(σ \+ γVars, eRcvr, pve, c1, tv)((tRcvr, c2) => {
+          eval(σ \+ γVars, cond, pve, c)((tCond, c1) =>
+            eval(σ \+ γVars, eRcvr, pve, c1)((tRcvr, c2) => {
               decider.prover.logComment("End produce set access predicate " + fa)
-              evalp(σ \+ γVars, gain, pve, c2, tv)((pGain, c3) => {
+              evalp(σ \+ γVars, gain, pve, c2)((pGain, c3) => {
                 /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
                 val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond)
                 val v = Var("nonnull", sorts.Ref)
@@ -199,11 +190,11 @@ trait DefaultProducer[ST <: Store[ST],
                 Q(h + ch, c3)})}))
 
       case _: ast.InhaleExhale =>
-        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ), tv)
+        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
-        eval(σ, φ, pve, c, tv)((t, c1) => {
+        eval(σ, φ, pve, c)((t, c1) => {
           assume(t)
           Q(σ.h, c1)})
     }

@@ -11,13 +11,11 @@ import com.weiglewilczek.slf4s.Logging
 import sil.verifier.PartialVerificationError
 import sil.verifier.errors.PreconditionInAppFalse
 import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
-import reporting.{LocalIfBranching, Bookkeeper, Evaluating, DefaultContext, LocalAndBranching,
-    ImplBranching, IfBranching, LocalImplBranching, LocalOrBranching}
+import reporting.{Bookkeeper, DefaultContext}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
 import interfaces.decider.Decider
-import interfaces.reporting.TraceView
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
@@ -28,17 +26,16 @@ trait DefaultEvaluator[
                        ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
-											 S <: State[ST, H, S],
-											 TV <: TraceView[TV, ST, H, S]]
-		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV] with HasLocalState
-		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[ST, H, S], TV]
-										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
-										with Brancher[ST, H, S, DefaultContext[ST, H, S], TV] =>
+											 S <: State[ST, H, S]]
+		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext] with HasLocalState
+		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+										with Brancher[ST, H, S, DefaultContext] =>
 
-  private type C = DefaultContext[ST, H, S]
+  private type C = DefaultContext
   private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C, TV]
+	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.{fresh, assume}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -47,29 +44,29 @@ trait DefaultEvaluator[
 	protected val symbolConverter: SymbolConvert
 	import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
+  protected val stateUtils: StateUtils[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C, TV]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
   /*private*/ var quantifiedVars: Stack[Term] = Stack()
 
-	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
+	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C)
 			     (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
 
-		evals2(σ, es, Nil, pve, c, tv)((ts, c1) =>
+		evals2(σ, es, Nil, pve, c)((ts, c1) =>
 			Q(ts, c1))
 
-	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C)
 			     (Q: (P, C) => VerificationResult)
            : VerificationResult = {
 
-    eval(σ, p, pve, c, tv)((tp, c1) => tp match {
+    eval(σ, p, pve, c)((tp, c1) => tp match {
       case fp: DefaultFractionalPermissions => Q(fp, c1)
       case _ => Q(TermPerm(tp), c1)})
   }
@@ -78,43 +75,39 @@ trait DefaultEvaluator[
                      es: Seq[ast.Expression],
                      ts: List[Term],
                      pve: PartialVerificationError,
-                     c: C,
-                     tv: TV)
+                     c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
 
 		if (es.isEmpty)
 			Q(ts.reverse, c)
 		else
-			eval(σ, es.head, pve, c, tv)((t, c1) =>
-				evals2(σ, es.tail, t :: ts, pve, c1, tv)(Q))
+			eval(σ, es.head, pve, c)((t, c1) =>
+				evals2(σ, es.tail, t :: ts, pve, c1)(Q))
 	}
 
-	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-		eval2(σ, e, pve, c, tv)((t, c1) =>
+		eval2(σ, e, pve, c)((t, c1) =>
 			Q(t, c1))
   }
 
-  protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+  protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
 
-    val tv1 = tv.stepInto(c, Evaluating[ST, H, S](σ, e))
-
-    internalEval(σ, e, pve, c, tv1)((t, c1) => {
-      tv1.currentStep.σPost = σ
+    internalEval(σ, e, pve, c)((t, c1) => {
       Q(t, c1)
     })
   }
 
-	/* Attention: Only use eval(σ, e, m, c, tv)(Q) inside of internalEval, because
+	/* Attention: Only use eval(σ, e, m, c)(Q) inside of internalEval, because
 	 *   - eval adds an "Evaluating" operation to the context
 	 *   - eval sets the source node of the resulting term
 	 */
-	private def internalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	private def internalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
                           (Q: (Term, C) => VerificationResult)
                           : VerificationResult = {
 
@@ -155,8 +148,8 @@ trait DefaultEvaluator[
       case ast.NullLiteral() => Q(Null(), c)
       case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval), c)
 
-      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Eq(p0, p1, true), pve, c, tv)(Q)
-      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c, tv)(Q)
+      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Eq(p0, p1, true), pve, c)(Q)
+      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c)(Q)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -164,8 +157,8 @@ trait DefaultEvaluator[
       case _: ast.NoPerm => Q(NoPerm(), c)
 
       case ast.FractionalPerm(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c, tv)((tFP, c1) =>
-          failIfDivByZero(σ, tFP, e1, tFP.d, TermPerm(0), pve, c1, tv)(Q))
+        evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c)((tFP, c1) =>
+          failIfDivByZero(σ, tFP, e1, tFP.d, TermPerm(0), pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = stateUtils.freshARP()
@@ -173,7 +166,7 @@ trait DefaultEvaluator[
         Q(WildcardPerm(tVar), c)
 
       case ast.CurrentPerm(locacc) =>
-        withChunkIdentifier(σ, locacc, true, pve, c, tv)((id, c1) =>
+        withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           decider.getChunk[DirectChunk](σ, σ.h, id) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
@@ -181,28 +174,28 @@ trait DefaultEvaluator[
 
       /* Field access if the heap is quantified for that field */
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
-        eval(σ, fa.rcv, pve, c, tv)((tRcvr, c1) =>
-          quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, pve, fa, c, tv)((t) => {
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
+          quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, pve, fa, c)((t) => {
             Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
-          decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1, tv)(ch =>
+        withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
+          decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch =>
             Q(ch.value, c1)))
 
       case ast.Not(e0) =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
           Q(Not(t0), c1))
 
       case ast.IntNeg(e0) =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
           Q(Minus(0, t0), c1))
 
-      case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c, tv)(Q)
+      case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
-        evalBinOp(σ, e0, e1, And, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, And, pve, c)(Q)
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
@@ -215,7 +208,7 @@ trait DefaultEvaluator[
         var t0: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
 
-        eval(σ, e0, pve, c, tv)((_t0, c1) => {
+        eval(σ, e0, pve, c)((_t0, c1) => {
           assert(t0.isEmpty || t0.get == _t0, s"Unexpected difference: $t0 vs ${_t0}")
 
           t0 = Some(_t0)
@@ -227,12 +220,12 @@ trait DefaultEvaluator[
           *       that it is more a continue-if-no-contradiction thing.
           */
           val r =
-            branchLocally(σ, t0.get, c1, tv, LocalAndBranching(e0, t0.get),
-              (c2: C, tv1: TV) =>
-                eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
+            branch(σ, t0.get, c1,
+              (c2: C) =>
+                eval(σ, e1, pve, c2)((_t1, c3) => {
                   localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
                   Success()}),
-              (c2: C, tv1: TV) => Success())
+              (c2: C) => Success())
 
           decider.popScope()
 
@@ -244,7 +237,7 @@ trait DefaultEvaluator[
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
-        evalBinOp(σ, e0, e1, Or, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Or, pve, c)(Q)
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
@@ -260,7 +253,7 @@ trait DefaultEvaluator[
         var t1: Option[Term] = None
         var πt1: Set[Term] = Set()
 
-        eval(σ, e0, pve, c, tv)((_t0, c1) => {
+        eval(σ, e0, pve, c)((_t0, c1) => {
           assert(t0.isEmpty, s"Unexpected branching occurred while locally evaluating $e0")
           t0 = Some(_t0)
           πPre = decider.π
@@ -269,14 +262,14 @@ trait DefaultEvaluator[
           /* TODO: See comment to short-circuiting evaluation of AND */
           val t0Neg = Not(t0.get)
           val r =
-            branchLocally(σ, t0Neg, c1, tv, LocalOrBranching(e0, t0Neg),
-              (c2: C, tv1: TV) =>
-                eval(σ, e1, pve, c2, tv1)((_t1, c3) => {
+            branch(σ, t0Neg, c1,
+              (c2: C) =>
+                eval(σ, e1, pve, c2)((_t1, c3) => {
                   assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
                   t1 = Some(_t1)
                   πt1 = decider.π -- (πPre + t0Neg) /* Removing t0Neg from πt1 is crucial! */
                   Success()}),
-              (c2: C, tv1: TV) => Success())
+              (c2: C) => Success())
           decider.popScope()
 
           r && {
@@ -285,7 +278,7 @@ trait DefaultEvaluator[
             assume(tAux)
             Q(tOr, c1)}})
 
-      case _: ast.Implies if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Implies if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       case impl @ ast.Implies(e0, e1) =>
         /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
@@ -308,7 +301,7 @@ trait DefaultEvaluator[
 
         decider.pushScope()
         val r =
-          eval(σ, e0, pve, c, tv)((t0, c1) => {
+          eval(σ, e0, pve, c)((t0, c1) => {
             val πDiff = decider.π -- πPre
 
             assert(tEvaluatedIf == False() || tEvaluatedIf == t0, s"Unexpected difference: $tEvaluatedIf vs $t0")
@@ -317,12 +310,12 @@ trait DefaultEvaluator[
             πIf = πDiff
             tEvaluatedIf = t0
 
-            branchLocally(σ, t0, c1, tv, LocalImplBranching[ST, H, S](e0, t0),
-              (c2: C, tv1: TV) =>
-                eval(σ, e1, pve, c2, tv1)((t1, c3) => {
+            branch(σ, t0, c1,
+              (c2: C) =>
+                eval(σ, e1, pve, c2)((t1, c3) => {
                   localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
                   Success()}),
-              (c2: C, _) => Success())})
+              (c2: C) => Success())})
 
         decider.popScope()
 
@@ -342,7 +335,7 @@ trait DefaultEvaluator[
           assume(Set(tAuxIf, tAuxImplies))
           Q(tImplies, localResults.headOption.fold(c)(_.context))}
 
-      case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       case ite @ ast.Ite(e0, e1, e2) =>
         val πPre: Set[Term] = decider.π
@@ -355,7 +348,7 @@ trait DefaultEvaluator[
         decider.pushScope()
 
         val r =
-          eval(σ, e0, pve, c, tv)((t0, c1) => {
+          eval(σ, e0, pve, c)((t0, c1) => {
             val πDiff = decider.π -- πPre
 
             assert(tActualIf.isEmpty || tActualIf.get == t0, s"Unexpected difference: $tActualIf vs $t0")
@@ -364,13 +357,13 @@ trait DefaultEvaluator[
             πIf = Some(πDiff)
             tActualIf = Some(t0)
 
-            branchLocally(σ, t0, c1, tv, LocalIfBranching[ST, H, S](e0, t0),
-              (c2: C, tv1: TV) => {
-                eval(σ, e1, pve, c2, tv1)((t1, c3) => {
+            branch(σ, t0, c1,
+              (c2: C) => {
+                eval(σ, e1, pve, c2)((t1, c3) => {
                   localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success()})},
-              (c2: C, tv1: TV) => {
-                eval(σ, e2, pve, c2, tv1)((t2, c3) => {
+              (c2: C) => {
+                eval(σ, e2, pve, c2)((t2, c3) => {
                   localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
                   Success()})})})
 
@@ -415,73 +408,73 @@ trait DefaultEvaluator[
       /* Integers */
 
       case ast.IntPlus(e0, e1) =>
-        evalBinOp(σ, e0, e1, Plus, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Plus, pve, c)(Q)
 
       case ast.IntMinus(e0, e1) =>
-        evalBinOp(σ, e0, e1, Minus, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Minus, pve, c)(Q)
 
       case ast.IntTimes(e0, e1) =>
-        evalBinOp(σ, e0, e1, Times, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Times, pve, c)(Q)
 
       case ast.IntDiv(e0, e1) =>
-        evalBinOp(σ, e0, e1, Div, pve, c, tv)((tDiv, c1) =>
-          failIfDivByZero(σ, tDiv, e1, tDiv.p1, 0, pve, c1, tv)(Q))
+        evalBinOp(σ, e0, e1, Div, pve, c)((tDiv, c1) =>
+          failIfDivByZero(σ, tDiv, e1, tDiv.p1, 0, pve, c1)(Q))
 
       case ast.IntMod(e0, e1) =>
-        evalBinOp(σ, e0, e1, Mod, pve, c, tv)((tMod, c1) =>
-          failIfDivByZero(σ, tMod, e1, tMod.p1, 0, pve, c1, tv)(Q))
+        evalBinOp(σ, e0, e1, Mod, pve, c)((tMod, c1) =>
+          failIfDivByZero(σ, tMod, e1, tMod.p1, 0, pve, c1)(Q))
 
       case ast.IntLE(e0, e1) =>
-        evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, AtMost, pve, c)(Q)
 
       case ast.IntLT(e0, e1) =>
-        evalBinOp(σ, e0, e1, Less, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Less, pve, c)(Q)
 
       case ast.IntGE(e0, e1) =>
-        evalBinOp(σ, e0, e1, AtLeast, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, AtLeast, pve, c)(Q)
 
       case ast.IntGT(e0, e1) =>
-        evalBinOp(σ, e0, e1, Greater, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Greater, pve, c)(Q)
 
       /* Permissions */
 
       case ast.PermPlus(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c, tv)(Q)
+        evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c)(Q)
 
       case ast.PermMinus(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => t0 - t1, pve, c, tv)(Q)
+        evalPermOp(σ, e0, e1, (t0, t1) => t0 - t1, pve, c)(Q)
 
       case ast.PermTimes(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => t0 * t1, pve, c, tv)(Q)
+        evalPermOp(σ, e0, e1, (t0, t1) => t0 * t1, pve, c)(Q)
 
       case ast.IntPermTimes(e0, e1) =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          evalp(σ, e1, pve, c1, tv)((t1, c2) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
+          evalp(σ, e1, pve, c1)((t1, c2) =>
             Q(IntPermTimes(t0, t1), c2)))
 
       case ast.PermLE(e0, e1) =>
-        evalBinOp(σ, e0, e1, AtMost, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, AtMost, pve, c)(Q)
 
       case ast.PermLT(e0, e1) =>
-        evalBinOp(σ, e0, e1, Less, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Less, pve, c)(Q)
 
       case ast.PermGE(e0, e1) =>
-        evalBinOp(σ, e0, e1, AtLeast, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, AtLeast, pve, c)(Q)
 
       case ast.PermGT(e0, e1) =>
-        evalBinOp(σ, e0, e1, Greater, pve, c, tv)(Q)
+        evalBinOp(σ, e0, e1, Greater, pve, c)(Q)
 
       /* Others */
 
       /* Domains not handled directly */
       case dfa @ ast.DomainFuncApp(funcName, eArgs, _) =>
-        evals(σ, eArgs, pve, c, tv)((tArgs, c1) => {
+        evals(σ, eArgs, pve, c)((tArgs, c1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      case _: ast.Quantified if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Quantified if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       case quant: ast.Quantified =>
         val body = quant.exp
@@ -521,8 +514,8 @@ trait DefaultEvaluator[
         quantifiedVars = tVars ++: quantifiedVars
 
         val r =
-          evalTriggers(σQuant, silTriggers, pve, c, tv)((_triggers, c1) =>
-            eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
+          evalTriggers(σQuant, silTriggers, pve, c)((_triggers, c1) =>
+            eval(σQuant, body, pve, c1)((tBody, c2) => {
               triggers = _triggers
               localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2)
 
@@ -555,12 +548,12 @@ trait DefaultEvaluator[
         val err = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 
-        evals2(σ, eArgs, Nil, pve, c, tv)((tArgs, c2) => {
+        evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
           val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
-          consume(σ2, FullPerm(), pre, err, c2, tv)((_, s, _, c3) => {
+          consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
               logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
@@ -575,8 +568,8 @@ trait DefaultEvaluator[
               if (c3.cycles(func) < config.unrollFunctions()) {
                 val c3a = c3.incCycleCounter(func)
                 bookkeeper.functionBodyEvaluations += 1
-                eval(σ3, func.exp, pve, c3a, tv)((tFB, c4) =>
-                  eval(σ3, post, pve, c4, tv)((tPost, c5) => {
+                eval(σ3, func.exp, pve, c3a)((tFB, c4) =>
+                  eval(σ3, post, pve, c4)((tPost, c5) => {
                     val c5a = c5.decCycleCounter(func)
                     val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
                     if (!config.disableFunctionApplicationCaching())
@@ -589,13 +582,13 @@ trait DefaultEvaluator[
                  * otherwise not know enough about the recursive call.
                  * For example, that the length of a list is always positive.
                  */
-                eval(σ3, post, pve, c3, tv)((tPost, c4) => {
+                eval(σ3, post, pve, c3)((tPost, c4) => {
                   if (!config.disableFunctionApplicationCaching())
                     fappCache += (tFA -> (decider.π -- πPre + tPost))
                   assume(tPost)
                   Q(tFA, c4)})}}})})
 
-      case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       case ast.Unfolding(
                 acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -615,23 +608,23 @@ trait DefaultEvaluator[
           val c0a = c.incCycleCounter(predicate)
 
           val r =
-            evalp(σ, ePerm, pve, c0a, tv)((_tPerm, c1) => {
+            evalp(σ, ePerm, pve, c0a)((_tPerm, c1) => {
               assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
               tPerm = Some(_tPerm)
               πPre = decider.π
               decider.assert(σ, IsPositive(_tPerm)){
                 case true =>
-                  evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
-                    consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                  evals(σ, eArgs, pve, c1)((tArgs, c2) =>
+                    consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) => {
                       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
+                      produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
                         val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                        eval(σ3, eIn, pve, c4a, tv)((tIn, c5) => {
+                        eval(σ3, eIn, pve, c4a)((tIn, c5) => {
                           localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                           Success()})})}))
                 case false =>
-                  Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)}})
+                  Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
 
           r && {
             val quantifiedVarsSorts = quantifiedVars.map(_.sort)
@@ -642,27 +635,27 @@ trait DefaultEvaluator[
             assume(tAuxIn + tActualIn)
             Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
         } else
-          Failure[ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), tv)
+          Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
 
       /* Sequences */
 
-      case ast.SeqIn(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c, tv)(Q)
+      case ast.SeqIn(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c)(Q)
         /* Note the reversed order of the arguments! */
 
-      case sil.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c, tv)(Q)
-      case sil.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c, tv)(Q)
-      case sil.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c, tv)(Q)
-      case ast.SeqAt(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c, tv)(Q)
-      case sil.ast.SeqLength(e0) => eval(σ, e0, pve, c, tv)((t0, c1) => Q(SeqLength(t0), c1))
+      case sil.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c)(Q)
+      case sil.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c)(Q)
+      case sil.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c)(Q)
+      case ast.SeqAt(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c)(Q)
+      case sil.ast.SeqLength(e0) => eval(σ, e0, pve, c)((t0, c1) => Q(SeqLength(t0), c1))
       case sil.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
-      case ast.SeqRanged(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c, tv)(Q)
+      case ast.SeqRanged(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c)(Q)
 
       case sil.ast.SeqUpdate(e0, e1, e2) =>
-        evals2(σ, List(e0, e1, e2), Nil, pve, c, tv)((ts, c1) =>
+        evals2(σ, List(e0, e1, e2), Nil, pve, c)((ts, c1) =>
           Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
 
       case sil.ast.ExplicitSeq(es) =>
-        evals2(σ, es.reverse, Nil, pve, c, tv)((tEs, c1) => {
+        evals2(σ, es.reverse, Nil, pve, c)((tEs, c1) => {
           val tSeq =
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
               SeqAppend(SeqSingleton(te), tSeq))
@@ -674,56 +667,56 @@ trait DefaultEvaluator[
       case sil.ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
 
       case sil.ast.ExplicitSet(es) =>
-        evals2(σ, es, Nil, pve, c, tv)((tEs, c1) => {
+        evals2(σ, es, Nil, pve, c)((tEs, c1) => {
           val tSet =
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
           Q(tSet, c1)})
 
       case sil.ast.AnySetUnion(e0, e1) => e.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetUnion, pve, c, tv)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetUnion, pve, c, tv)(Q)
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetUnion, pve, c)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetUnion, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
       case sil.ast.AnySetIntersection(e0, e1) => e.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIntersection, pve, c, tv)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c, tv)(Q)
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIntersection, pve, c)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
       case sil.ast.AnySetSubset(e0, e1) => e0.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c, tv)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c, tv)(Q)
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
       case sil.ast.AnySetMinus(e0, e1) => e.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetDifference, pve, c, tv)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, SetDifference, pve, c, tv)(Q)
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
       case sil.ast.AnySetContains(e0, e1) => e1.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIn, pve, c, tv)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIn, pve, c, tv)(Q)
+        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
       case sil.ast.AnySetCardinality(e0) => e0.typ match {
-        case _: ast.types.Set => eval(σ, e0, pve, c, tv)((t0, c1) => Q(SetCardinality(t0), c1))
-        case _: ast.types.Multiset => eval(σ, e0, pve, c, tv)((t0, c1) => Q(MultisetCardinality(t0), c1))
+        case _: ast.types.Set => eval(σ, e0, pve, c)((t0, c1) => Q(SetCardinality(t0), c1))
+        case _: ast.types.Multiset => eval(σ, e0, pve, c)((t0, c1) => Q(MultisetCardinality(t0), c1))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
 
       case _: ast.InhaleExhale =>
-        Failure[ST, H, S, TV](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e), tv)
+        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e))
 		}
 
     resultTerm
@@ -733,7 +726,7 @@ trait DefaultEvaluator[
    * only, because they can result in incompletenesses (and probably also
    * in unsoundnesses because they are not constantly tested).
    */
-  private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+  private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
                           (Q: (Term, C) => VerificationResult)
                           : VerificationResult = {
 
@@ -742,37 +735,37 @@ trait DefaultEvaluator[
 
     e match {
       case ast.Implies(e0, e1) =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(σ, t0, c1, tv, ImplBranching[ST, H, S](e0, t0),
-            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
-            (c2: C, tv1: TV) => Q(True(), c2)))
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c1,
+            (c2: C) => eval(σ, e1, pve, c2)(Q),
+            (c2: C) => Q(True(), c2)))
 
       case ast.Ite(e0, e1, e2) =>
-        eval(σ, e0, pve, c, tv)((t0, c1) =>
-          branch(σ, t0, c1, tv, IfBranching[ST, H, S](e0, t0),
-            (c2: C, tv1: TV) => eval(σ, e1, pve, c2, tv1)(Q),
-            (c2: C, tv1: TV) => eval(σ, e2, pve, c2, tv1)(Q)))
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c1,
+            (c2: C) => eval(σ, e1, pve, c2)(Q),
+            (c2: C) => eval(σ, e2, pve, c2)(Q)))
 
       case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm), eIn) =>
         val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
-          evalp(σ, ePerm, pve, c0a, tv)((tPerm, c1) =>
+          evalp(σ, ePerm, pve, c0a)((tPerm, c1) =>
             decider.assert(σ, IsPositive(tPerm)){
               case true =>
-                evals(σ, eArgs, pve, c1, tv)((tArgs, c2) =>
-                  consume(σ, FullPerm(), acc, pve, c2, tv)((σ1, snap, _, c3) => {
+                evals(σ, eArgs, pve, c1)((tArgs, c2) =>
+                  consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) => {
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                     /* Unfolding only effects the current heap */
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3, tv)((σ2, c4) => {
+                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) => {
                       val c4a = c4.decCycleCounter(predicate)
                       val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                      eval(σ3, eIn, pve, c4a, tv)(Q)})}))
+                      eval(σ3, eIn, pve, c4a)(Q)})}))
               case false =>
-                Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)})}
+                Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))})}
         else
-          Failure[ST, H, S, TV](ast.Consistency.createUnsupportedPredicateRecursionError(e), tv)
+          Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
 
       case quant: ast.Quantified if config.disableLocalEvaluations() =>
         val body = quant.exp
@@ -788,8 +781,8 @@ trait DefaultEvaluator[
         val σQuant = σ \+ γVars
 
         val πPre: Set[Term] = decider.π
-        evalTriggers(σQuant, silTriggers, pve, c, tv)((triggers, c1) =>
-          eval(σQuant, body, pve, c1, tv)((tBody, c2) => {
+        evalTriggers(σQuant, silTriggers, pve, c)((triggers, c1) =>
+          eval(σQuant, body, pve, c1)((tBody, c2) => {
             val (tActual: Term, tAux: Set[Term]) =
               combine(LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2) :: Nil)
             val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
@@ -806,23 +799,22 @@ trait DefaultEvaluator[
                           locacc: ast.LocationAccess,
                           assertRcvrNonNull: Boolean,
                           pve: PartialVerificationError,
-                          c: C,
-                          tv: TV)
+                          c: C)
                          (Q: (ChunkIdentifier, C) => VerificationResult)
                          : VerificationResult =
 
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
-        eval(σ, eRcvr, pve, c, tv)((tRcvr, c1) =>
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           if (assertRcvrNonNull)
             decider.assert(σ, Or(NullTrigger(tRcvr), tRcvr !== Null())){
               case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
-              case false => Failure[ST, H, S, TV](pve dueTo ReceiverNull(locacc), tv)}
+              case false => Failure[ST, H, S](pve dueTo ReceiverNull(locacc))}
           else
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
       case ast.PredicateAccess(eArgs, predicateName) =>
-        evals(σ, eArgs, pve, c, tv)((tArgs, c1) =>
+        evals(σ, eArgs, pve, c)((tArgs, c1) =>
           Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
     }
 
@@ -832,13 +824,12 @@ trait DefaultEvaluator[
                         e1: ast.Expression,
                         termOp: (Term, Term) => T,
                         pve: PartialVerificationError,
-			                  c: C,
-                        tv: TV)
+			                  c: C)
                        (Q: (T, C) => VerificationResult)
                        : VerificationResult = {
 
-		eval(σ, e0, pve, c, tv)((t0, c1) =>
-			eval(σ, e1, pve, c1, tv)((t1, c2) =>
+		eval(σ, e0, pve, c)((t0, c1) =>
+			eval(σ, e1, pve, c1)((t1, c2) =>
 				Q(termOp(t0, t1), c2)))
   }
 
@@ -848,14 +839,13 @@ trait DefaultEvaluator[
                               tDivisor: Term,
                               tZero: Term,
                               pve: PartialVerificationError,
-                              c: C,
-                              tv: TV)
+                              c: C)
                              (Q: (Term, C) => VerificationResult)
                              : VerificationResult = {
 
     decider.assert(σ, tDivisor !== tZero){
       case true => Q(t, c)
-      case false => Failure[ST, H, S, TV](pve dueTo DivisionByZero(eDivisor), tv)
+      case false => Failure[ST, H, S](pve dueTo DivisionByZero(eDivisor))
     }
   }
 
@@ -865,13 +855,12 @@ trait DefaultEvaluator[
                          e1: ast.Expression,
                          permOp: (P, P) => PO,
                          pve: PartialVerificationError,
-                         c: C,
-                         tv: TV)
+                         c: C)
                         (Q: (PO, C) => VerificationResult)
                         : VerificationResult = {
 
-    evalp(σ, e0, pve, c, tv)((t0, c1) =>
-      evalp(σ, e1, pve, c1, tv)((t1, c2) =>
+    evalp(σ, e0, pve, c)((t0, c1) =>
+      evalp(σ, e1, pve, c1)((t1, c2) =>
         Q(permOp(t0, t1), c2)))
   }
 
@@ -907,26 +896,25 @@ trait DefaultEvaluator[
    *       having to implement that pattern over and over again.
    *
    */
-  private def evalTriggers(σ: S, silTriggers: Seq[ast.Trigger], pve: PartialVerificationError, c: C, tv: TV)
+  private def evalTriggers(σ: S, silTriggers: Seq[ast.Trigger], pve: PartialVerificationError, c: C)
                           (Q: (List[Trigger], C) => VerificationResult)
                           : VerificationResult =
 
-    evalTriggers(σ, silTriggers, Nil, pve, c, tv)(Q)
+    evalTriggers(σ, silTriggers, Nil, pve, c)(Q)
 
   private def evalTriggers(σ: S,
                            silTriggers: Seq[ast.Trigger],
                            triggers: List[Trigger],
                            pve: PartialVerificationError,
-                           c: C,
-                           tv: TV)
+                           c: C)
                           (Q: (List[Trigger], C) => VerificationResult)
                           : VerificationResult = {
 
     if (silTriggers.isEmpty)
       Q(triggers.reverse, c)
     else
-      evalTrigger(σ, silTriggers.head, pve, c, tv)((t, c1) =>
-        evalTriggers(σ, silTriggers.tail, t :: triggers, pve, c1, tv)(Q))
+      evalTrigger(σ, silTriggers.head, pve, c)((t, c1) =>
+        evalTriggers(σ, silTriggers.tail, t :: triggers, pve, c1)(Q))
   }
 
   /* TODO: Support applications of user-provided functions as triggers as well.
@@ -938,14 +926,14 @@ trait DefaultEvaluator[
    *       probably not worth to address this problem before function
    *       axiomatisation has been implemented (or discarded as an idea).
    */
-  private def evalTrigger(σ: S, trigger: ast.Trigger, pve: PartialVerificationError, c: C, tv: TV)
+  private def evalTrigger(σ: S, trigger: ast.Trigger, pve: PartialVerificationError, c: C)
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
     val es = trigger.exps collect {case f: ast.DomainFuncApp => f}
     if (es.length != trigger.exps.length)
       logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
-    evals2(σ, es, Nil, pve, c, tv)((ts, c1) =>
+    evals2(σ, es, Nil, pve, c)((ts, c1) =>
       Q(Trigger(ts), c1))
   }
 

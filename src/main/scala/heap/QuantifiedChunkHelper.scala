@@ -10,7 +10,7 @@ package heap
 
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{ChunkIdentifier, Chunk, Store, Heap, PathConditions, State, StateFactory}
-import interfaces.reporting.{Context, TraceView}
+import interfaces.reporting.Context
 import interfaces.decider.Decider
 import state.terms._
 import silicon.state.terms.utils.BigPermSum
@@ -23,10 +23,10 @@ import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
 /**
  * Helper functions to handle quantified chunks
  */
-trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C, ST, H, S], TV <: TraceView[TV, ST, H, S]] {
+trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C]] {
   def isQuantifiedFor(h: H, field: String): Boolean
 
-  def value(σ: S, h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C, tv:TV)(Q: Term => VerificationResult) : VerificationResult
+  def value(σ: S, h: H, ofReceiver: Term, withField: Field, pve:PartialVerificationError, locacc:LocationAccess, c:C)(Q: Term => VerificationResult) : VerificationResult
 
   /**
    * Converts all field chunks for the given field to their quantified equivalents
@@ -53,19 +53,18 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
   /**
    * Consumes the given chunk in the heap
    */
-  def consume(σ: S, h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult
+  def consume(σ: S, h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C)(Q: H => VerificationResult):VerificationResult
 }
 
 class DefaultQuantifiedChunkHelper[ST <: Store[ST],
                                    H <: Heap[H],
                                    PC <: PathConditions[PC],
                                    S <: State[ST, H, S],
-                                   C <: Context[C, ST, H, S],
-                                   TV <: TraceView[TV, ST, H, S]]
-                                  (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV],
+                                   C <: Context[C]]
+                                  (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
                                    symbolConverter: SymbolConvert,
                                    stateFactory: StateFactory[ST, H, S])
-    extends QuantifiedChunkHelper[ST, H, PC, S, C, TV] {
+    extends QuantifiedChunkHelper[ST, H, PC, S, C] {
 
   import symbolConverter.toSort
   import stateFactory._
@@ -102,15 +101,15 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
     }
   }
 
-  def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C, tv: TV)(Q: Term => VerificationResult): VerificationResult = {
+  def value(σ: S, h: H, rcvr: Term, f: Field, pve: PartialVerificationError, locacc: LocationAccess, c: C)(Q: Term => VerificationResult): VerificationResult = {
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
-        Failure[ST, H, S, TV](pve dueTo ReceiverNull(locacc), tv)
+        Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
       case true =>
         decider.assert(σ, Less(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, f.name)))) {
           case false =>
             decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
-            Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
+            Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
           case true =>
             decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
             val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
@@ -200,10 +199,10 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
 
 
 
-  def consume(σ: S, h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C, tv:TV)(Q: H => VerificationResult):VerificationResult = {
+  def consume(σ: S, h: H, ch: QuantifiedChunk, pve:PartialVerificationError, locacc: LocationAccess, c:C)(Q: H => VerificationResult):VerificationResult = {
     val k = exhalePermissions2(σ, h, ch)
     if(!k._3)
-      Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
+      Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
     else Q(k._2)
   }
 
