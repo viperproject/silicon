@@ -135,25 +135,35 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             Q(h, Unit, Nil, c1)
           else {
             decider.assume(rewrittenCond)
+
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
+
             eval(σ0, eRcvr, pve, c1)((tRcvr, c2) =>
               evalp(σ0, loss, pve, c2)((tPerm, c3) => {
+
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
+
                 val h2 =
                   if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) h
                   else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
-                quantifiedChunkHelper.value(σ, h2, tRcvr, f, pve, locacc, c3)(t => {
-                  val ch = quantifiedChunkHelper.transform(tRcvr, f, null, tPerm, /* takes care of rewriting the cond */ tCond)
-                  quantifiedChunkHelper.consume(σ, h2, ch, pve, locacc, c3)(h3 => {
+                quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
+                  val ch = quantifiedChunkHelper.transform(tRcvr, f, t, tPerm, /* takes care of rewriting the cond */ tCond, tVars)
+                  quantifiedChunkHelper.consume(σ, h2, tRcvr, f, ch.perm, tVars, pve, locacc, c3)(h3 => {
 //                    println("\n[consumer/forall]")
 //                    println(s"  t = $t")
                     Q(h3, t, Nil, c3)})})}))}})
 
       /* Field access predicates for quantified fields */
-      case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm) if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
+      case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm)
+          if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
+
+        val ch = quantifiedChunkHelper.getQuantifiedChunk(h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1)((tPerm, c2) =>
-            quantifiedChunkHelper.value(σ, h, tRcvr, field, pve, locacc, c2)(t => {
-              val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, t, tPerm)
-              quantifiedChunkHelper.consume(σ, h, ch, pve, locacc, c2)(h2 =>
+            quantifiedChunkHelper.value(σ, h, tRcvr, field, ch.quantifiedVars, pve, locacc, c2)(t => {
+              val (ch1, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, t, tPerm)
+              quantifiedChunkHelper.consume(σ, h, tRcvr, field, ch1.perm, optIdx.toSeq, pve, locacc, c2)(h2 =>
                 Q(h2, t, Nil, c2))})))
 
       case ast.AccessPredicate(locacc, perm) =>

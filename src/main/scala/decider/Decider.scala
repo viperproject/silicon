@@ -162,6 +162,18 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
+  def locally[R](block: (R => VerificationResult) => VerificationResult)
+                (Q: R => VerificationResult)
+                : VerificationResult = {
+
+    pushScope()
+    var ir: R = null.asInstanceOf[R]
+    val r: VerificationResult = block(_ir  => {ir = _ir; Success()})
+    popScope()
+
+    r && Q(ir)
+  }
+
   /* Assuming facts */
 
   def assume(t: Term) {

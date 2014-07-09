@@ -35,6 +35,10 @@ trait Decider[P <: FractionalPermissions[P],
   def popScope()
   def inScope[R](block: => R): R
 
+  def locally[R](block: (R => VerificationResult) => VerificationResult)
+                (Q: R => VerificationResult)
+                : VerificationResult
+
   /* TODO: Should these take continuations to make it explicit that the state
    *       is changed?
    */

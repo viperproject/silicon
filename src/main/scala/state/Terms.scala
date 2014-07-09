@@ -8,6 +8,7 @@ package semper
 package silicon
 package state.terms
 
+import scala.reflect._
 import ast.commonnodes
 import sil.ast.utility.Visitor
 
@@ -84,7 +85,7 @@ object sorts {
         case SISeq() => SISeq(sorts.Unit)
         case SISeq(sorts.Unit) => from
         case other =>
-          Predef.assert(!other.exists(_ == sorts.Unit), "")
+          Predef.assert(!other.contains(sorts.Unit), "")
           other
       }
 
@@ -144,8 +145,16 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
     Visitor.existsDefined(this, state.utils.subterms, f)
 
-  def replace(original: Term, replacement: Term) =
+  def replace(original: Term, replacement: Term): Term =
     this.transform{case `original` => replacement}()
+
+  def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term = {
+    this.transform{case t: T if replacements.contains(t) => replacements(t)}()
+  }
+
+  def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
+    this.replace(toMap(originals.zip(replacements)))
+  }
 }
 
 /* Symbols */

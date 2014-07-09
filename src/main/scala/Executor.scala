@@ -1,9 +1,3 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package semper
 package silicon
 
@@ -208,6 +202,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       /* Assignment for a field that contains quantified chunks */
       case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
+//        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           eval(σ, rhs, pve, c1)((tRhs, c2) => {
@@ -216,12 +211,19 @@ trait DefaultExecutor[ST <: Store[ST],
               case false =>
                 Failure[ST, H, S](pve dueTo ReceiverNull(fl))
               case true =>
-                decider.assert(σ, AtLeast(quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)), FullPerm())){
+                val (ch, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
+//                println(s"  ch = $ch")
+                // TODO: !!!!!! qch.permission needs to instantiate quantified index variables with the index
+                //       !!!!!! used in the current receiver (i.e., with ch.quantifiedVars)
+                val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name), optIdx.toSeq)
+//                println(s"  perms = $perms")
+                decider.assert(σ, AtLeast(perms, FullPerm())){
                   case false =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fl))
                   case true =>
-                    val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
-                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2)(h =>
+//                    val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
+//                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2)(h =>
+                    quantifiedChunkHelper.consume(σ, σ.h, tRcvr, field, ch.perm, optIdx.toSeq, pve, fl, c2)(h =>
                       Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
