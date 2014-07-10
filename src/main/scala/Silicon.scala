@@ -13,14 +13,8 @@ import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, 
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import sil.verifier.{
-  Verifier => SilVerifier,
-  VerificationResult => SilVerificationResult,
-  Success => SilSuccess,
-  Failure => SilFailure,
-  DefaultDependency => SilDefaultDependency,
-  TimeoutOccurred => SilTimeoutOccurred}
-import sil.frontend.{SilFrontend, SilFrontendConfig, Phase}
+import sil.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError}
+import sil.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
@@ -95,26 +89,48 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
 
+  /** Start Silicon.
+    * Can throw a org.rogach.scallop.exceptions.ScallopResult if command-line
+    * parsing failed, or if --help or --version were supplied.
+    */
   def start() {
     assert(lifetimeState == LifetimeState.Configured,
            "Silicon must be configured before it can be initialized, and it can only be initialized once")
 
     lifetimeState = LifetimeState.Started
 
-    _config.initialize{case _ =>}
-    /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
-     *       that initialises the verifier's configuration. However, this
-     *       requires the verifier to inherit from SilFrontend, which is
-     *       not really meaningful.
-     *       The configuration logic should thus be refactored such that
-     *       a Verifier can be used without extending SilFrontend, while
-     *       still ensuring that, e.g., a config is not initialised twice,
-     *       and that a reasonable default handling of --version, --help
-     *       or --dependencies is can be shared.
-     */
+    if (!_config.initialized) initializeLazyScallopConfig()
+        /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
+         *       that initialises the verifier's configuration. However, this
+         *       requires the verifier to inherit from SilFrontend, which is
+         *       not really meaningful.
+         *       The configuration logic should thus be refactored such that
+         *       a Verifier can be used without extending SilFrontend, while
+         *       still ensuring that, e.g., a config is not initialised twice,
+         *       and that a reasonable default handling of --version, --help
+         *       or --dependencies is can be shared.
+         */
 
     setLogLevel(config.logLevel())
     verifier = createVerifier()
+  }
+
+  /* TODO: Corresponds partially to code from SilFrontend. The design of command-line parsing should be improved.
+   * TODO: Would be nice if logger could be used instead of printHelp()ing to stdout.
+   */
+  protected def initializeLazyScallopConfig() {
+    _config.initialize {
+      case org.rogach.scallop.exceptions.Version =>
+        println(_config.builder.vers.get)
+        throw org.rogach.scallop.exceptions.Version
+      case ex: org.rogach.scallop.exceptions.Help =>
+        _config.printHelp()
+        throw ex
+      case ex: org.rogach.scallop.exceptions.ScallopException =>
+        println(CliOptionError(ex.message + ".").readableMessage)
+        _config.printHelp()
+        throw ex
+    }
   }
 
   /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
@@ -463,20 +479,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     z3LogFile().orElse(new File(tempDirectory(), _).getPath)
 }
 
-
-object SiliconRunner extends App with SilFrontend {
+class SiliconFrontend extends SilFrontend {
   private var siliconInstance: Silicon = _
 
-  execute(args)
-
-  override def execute(args: Seq[String]) {
-    super.execute(args)
-
-    siliconInstance.stop()
-  }
-
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(Seq(("startedBy", "semper.silicon.SiliconRunner")))
+    siliconInstance = new Silicon(Seq("args" -> fullCmd))
 
     siliconInstance
   }
@@ -486,5 +493,16 @@ object SiliconRunner extends App with SilFrontend {
     siliconInstance.start()
 
     siliconInstance.config
+  }
+}
+
+object SiliconRunner extends SiliconFrontend {
+  def main(args: Array[String]) {
+    try {
+      execute(args)
+    } catch {
+      case ex: org.rogach.scallop.exceptions.ScallopResult =>
+        /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
+    }
   }
 }
