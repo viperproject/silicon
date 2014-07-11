@@ -314,3 +314,12 @@
     (>= ($Multiset.count s x) 0)
     :pattern (($Multiset.count s x))
     )))
+
+; Count over a multiset based on a sequence is positive iff the
+; underlying sequence contains the counted element.
+(assert (forall ((xs $Seq<$S$>) (x $S$)) (!
+	(iff
+		(> ($Multiset.count ($Multiset.fromSeq xs) x) 0)
+		($Seq.in xs x))
+	:pattern(($Seq.in xs x))
+	:pattern(($Multiset.count ($Multiset.fromSeq xs) x)))))
