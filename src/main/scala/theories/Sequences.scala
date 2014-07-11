@@ -49,8 +49,13 @@ class DefaultSequencesEmitter(prover: Prover,
 
     program visit { case t: sil.ast.Typed =>
       t.typ :: sil.ast.utility.Types.typeConstituents(t.typ) foreach {
-        case s: ast.types.Seq => sequenceTypes += s
-        case _ => /* Ignore other types */
+        case s: ast.types.Seq =>
+          sequenceTypes += s
+        case s: ast.types.Multiset =>
+          /* Sequences depend on multisets */
+          sequenceTypes += ast.types.Seq(s.elementType)
+        case _ =>
+        /* Ignore other types */
       }
     }
 
