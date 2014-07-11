@@ -218,18 +218,12 @@ trait DefaultExecutor[ST <: Store[ST],
                 Failure[ST, H, S](pve dueTo ReceiverNull(fl))
               case true =>
                 val (ch, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
-//                println(s"  ch = $ch")
-                // TODO: !!!!!! qch.permission needs to instantiate quantified index variables with the index
-                //       !!!!!! used in the current receiver (i.e., with ch.quantifiedVars)
                 val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name), optIdx.toSeq)
-//                println(s"  perms = $perms")
                 decider.assert(σ, AtLeast(perms, FullPerm())){
                   case false =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fl))
                   case true =>
-//                    val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
-//                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2)(h =>
-                    quantifiedChunkHelper.consume(σ, σ.h, Some(tRcvr), field, ch.perm, optIdx.toSeq, pve, fl, c2)(h =>
+                    quantifiedChunkHelper.consume(σ, σ.h, Some(tRcvr), field, ch.perm, pve, fl, c2)(h =>
                       Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>

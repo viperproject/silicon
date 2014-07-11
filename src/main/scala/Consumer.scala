@@ -131,13 +131,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             decider.assume(rewrittenCond)
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
-//            println("\n[Consumer/Forall]")
 
             eval(σ0, eRcvr, pve, c1)((tRcvr, c2) =>
               evalp(σ0, loss, pve, c2)((tPerm, c3) => {
-
-//                println(s"  tRcvr = $tRcvr")
-//                println(s"  tPerm = $tPerm")
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
@@ -146,13 +142,9 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                   else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
 
                 quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
-//                  println(s"  t = $t")
                   val ch = quantifiedChunkHelper.transform(tRcvr, f, t, tPerm, /* takes care of rewriting the cond */ tCond, tVars)
-//                  println(s"  ch = $ch")
-                  quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, tVars, pve, locacc, c3)(h3 => {
-//                    println("\n[consumer/forall]")
-//                    println(s"  t = $t")
-                    Q(h3, t, Nil, c3)})})}))}})
+                  quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
+                    Q(h3, t, Nil, c3))})}))}})
 
       /* Field access predicates for quantified fields */
       case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm)
@@ -164,7 +156,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
           evalp(σ, perm, pve, c1)((tPerm, c2) =>
             quantifiedChunkHelper.value(σ, h, tRcvr, field, ch.quantifiedVars, pve, locacc, c2)(t => {
               val (ch1, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, t, tPerm)
-              quantifiedChunkHelper.consume(σ, h, Some(tRcvr), field, ch1.perm, optIdx.toSeq, pve, locacc, c2)(h2 =>
+              quantifiedChunkHelper.consume(σ, h, Some(tRcvr), field, ch1.perm, pve, locacc, c2)(h2 =>
                 Q(h2, t, Nil, c2))})))
 
       case ast.AccessPredicate(locacc, perm) =>

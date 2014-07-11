@@ -200,8 +200,6 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
               v !== Null()),
             List(Trigger(List(NullTrigger(v)))))
         decider.assume(tNonNullQuant)
-//println("\n[Producer/Forall]")
-//println(s"  ch = $ch")
         val h =
           if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
           else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
