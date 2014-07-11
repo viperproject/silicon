@@ -174,9 +174,11 @@ trait DefaultEvaluator[
 
       /* Field access if the heap is quantified for that field */
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
+//        println("\n[Evaluator/FieldAccess/QP]")
         val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, fa.field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
           quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, ch.quantifiedVars, pve, fa, c)((t) => {
+//            println("[Evaluator/FieldAccess/QP] DONE")
             Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
@@ -478,13 +480,13 @@ trait DefaultEvaluator[
       case _: ast.Quantified if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       case quant: ast.Quantified =>
-        val body = quant.exp
-        val vars = quant.variables map (_.localVar)
-
-        val (tQuantOp, silTriggers) = quant match {
-          case fa: ast.Forall => (Forall, fa.autoTrigger.triggers)
-          case _: ast.Exists => (Exists, Seq())
+        val (triggerQuant, tQuantOp, silTriggers) = quant match {
+          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
+          case ex: ast.Exists => (ex, Exists, Seq())
         }
+
+        val body = triggerQuant.exp
+        val vars = triggerQuant.variables map (_.localVar)
 
         /* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
          *  - Assume we have a quantification forall x: int :: x > 0 ==> f(x) > 0
@@ -931,7 +933,12 @@ trait DefaultEvaluator[
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
-    val es = trigger.exps collect {case f: ast.DomainFuncApp => f}
+    val es = trigger.exps flatMap {
+      case _: ast.FuncApp => None
+      case f: sil.ast.PossibleTrigger => Some(f)
+      case _ => None
+    }
+
     if (es.length != trigger.exps.length)
       logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
     evals2(σ, es, Nil, pve, c)((ts, c1) =>

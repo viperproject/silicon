@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package semper
 package silicon
 
@@ -223,7 +229,7 @@ trait DefaultExecutor[ST <: Store[ST],
                   case true =>
 //                    val ch = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm())
 //                    quantifiedChunkHelper.consume(σ, σ.h, ch, pve, fl, c2)(h =>
-                    quantifiedChunkHelper.consume(σ, σ.h, tRcvr, field, ch.perm, optIdx.toSeq, pve, fl, c2)(h =>
+                    quantifiedChunkHelper.consume(σ, σ.h, Some(tRcvr), field, ch.perm, optIdx.toSeq, pve, fl, c2)(h =>
                       Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>

@@ -8,17 +8,16 @@ package semper
 package silicon
 package heap
 
-import interfaces.{VerificationResult, Failure}
-import interfaces.state.{ChunkIdentifier, Chunk, Store, Heap, PathConditions, State, StateFactory}
-import interfaces.reporting.Context
-import interfaces.decider.Decider
-import state.terms._
-import silicon.state.terms.utils.BigPermSum
-import state.{SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
-import ast.Field
-import sil.ast.LocationAccess
 import sil.verifier.PartialVerificationError
 import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import ast.{Field, LocationAccess}
+import interfaces.{VerificationResult, Failure}
+import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
+import interfaces.reporting.Context
+import interfaces.decider.Decider
+import state.{SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
+import state.terms.utils.BigPermSum
+import state.terms._
 
 /**
  * Helper functions to handle quantified chunks
@@ -33,8 +32,8 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
             ofReceiver: Term,
             withField: Field,
             quantifiedVars: Seq[Term],
-            pve:PartialVerificationError,
-            locacc:LocationAccess,
+            pve: PartialVerificationError,
+            locacc: LocationAccess,
             c: C)
            (Q: Term => VerificationResult)
            : VerificationResult
@@ -52,7 +51,7 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
   def transformElement(rcvr: Term,
                        field: String,
                        value: Term,
-                       perm:DefaultFractionalPermissions/*,
+                       perm: DefaultFractionalPermissions/*,
                        quantifiedVars: Seq[Var]*/)
                       : (QuantifiedChunk, Option[Term])
 
@@ -78,10 +77,10 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
   def consume(σ: S,
               h: H,
 //              ch: QuantifiedChunk,
-              rcvr: Term,
+              optRcvr: Option[Term],
               f: Field,
               perms: DefaultFractionalPermissions,
-              quantifiedVars: Seq[Term],
+              _quantifiedVars: Seq[Term],
               pve:PartialVerificationError,
               locacc: LocationAccess,
               c: C)
@@ -132,11 +131,11 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))),
             perm)
 
-        println(s"  rcvr = $rcvr")
-        println(s"  i = $i")
+//        println(s"  rcvr = $rcvr")
+//        println(s"  i = $i")
 //        println(s"  quantifiedVars = $quantifiedVars")
 //        println(s"  tPermInstantiated = $tPermInstantiated")
-        println(s"  tTotalPerm = $tTotalPerm")
+//        println(s"  tTotalPerm = $tTotalPerm")
 
         (QuantifiedChunk(field, value, tTotalPerm, Nil/*quantifiedVars*/), Some(i))
 
@@ -176,6 +175,12 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             c: C)
            (Q: Term => VerificationResult)
            : VerificationResult = {
+
+//    println("\n[QCH/value]")
+//    println(s"  h = $h")
+//    println(s"  rcvr = $rcvr")
+//    println(s"  f = $f")
+//    println(s"  quantifiedVars = $quantifiedVars")
 
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
       case false =>
@@ -296,28 +301,38 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   private def exhalePermissions2(σ: S,
                                  h: H,
                                  /*ch: QuantifiedChunk*/
-                                 rcvr: Term,
+                                 optRcvr: Option[Term],
                                  f: Field,
-                                 perms: DefaultFractionalPermissions,
-                                 quantifiedVars: Seq[Term])
+                                 permsToExhale: DefaultFractionalPermissions,
+//                                 vSkolem: Var,
+                                 _quantifiedVars: Seq[Term])
                                 : (DefaultFractionalPermissions, H, Boolean) = {
 
-    val vSkolem = rcvr // fresh(sorts.Ref)
+    val vSkolem = fresh(sorts.Ref)
+    val rcvr = optRcvr.getOrElse(vSkolem)
     val opt = h.values /* optimizedOrder(h.values, ch) */
-    decider.prover.logComment("" + opt)
+    decider.prover.logComment("[exhalePermissions2]" + opt)
 
     def skol(perms: DefaultFractionalPermissions) =
       perms.replace(*(), vSkolem).asInstanceOf[DefaultFractionalPermissions]
 
-    println("\n[exhalePermissions2]")
+//    def skolRange(permsToExhale: DefaultFractionalPermissions)
+
+//    permsToExhale match {
+//      case IntPermTimes(MultisetCount(*(), MultisetFromSeq(tSeq)), _) => assume(SeqIn(tSeq, vSkolem))
+//      case _ => /* TODO: Also assume that skolemised variable is in range when quantifying over a set instead of a sequence? */
+//    }
+
+//    println("\n[exhalePermissions2]")
 //    println(s"  ch = $ch")
-    println(s"  rcvr = $rcvr")
-    println(s"  f = $f")
-    println(s"  perms = $perms")
-    println(s"  quantifiedVars = $quantifiedVars")
+//    println(s"  f = $f")
+//    println(s"  permsToExhale = $permsToExhale")
+//    println(s"  rcvr = $rcvr")
+//    println(s"  vSkolem = $vSkolem")
+//    println(s"  quantifiedVars = $quantifiedVars")
 //    println(s"  vSkolem = $vSkolem")
 
-    opt.foldLeft((perms, h.empty, false)) {
+    opt.foldLeft((permsToExhale, h.empty, false)) {
       case ((perms1, h1, true), ch2) =>
         /* No further permissions needed */
         (perms1, h1 + ch2, true)
@@ -329,48 +344,51 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
          * at the time the quantified chunk ch2 was created have been replaced by the Vars
          * that were chosen when ch1 was created.
          */
-        val tInitializedPerm1 = perms1 //ch1.perm
-        val tInitializedPerm2 = ch2.perm.replace(ch2.quantifiedVars, /*ch1.*/quantifiedVars).asInstanceOf[DefaultFractionalPermissions]
+//        val tInitializedPerm1 = perms1 //ch1.perm
+//        val tInitializedPerm2 = ch2.perm.replace(ch2.quantifiedVars, /*ch1.*/quantifiedVars).asInstanceOf[DefaultFractionalPermissions]
 
 //        println(s"\n  ch1 = $ch1")
-        println(s"\n  perms1 = $perms1")
-        println(s"  ch2 = $ch2")
+//        println(s"\n  perms1 = $perms1")
+//        println(s"  perms1 = $perms1")
+//        println(s"  ch2 = $ch2")
 //        println(s"  ch1.quantifiedVars = ${ch1.quantifiedVars}")
-        println(s"  ch2.quantifiedVars = ${ch2.quantifiedVars}")
-        println(s"  tInitializedPerm1 = $tInitializedPerm1")
-        println(s"  tInitializedPerm2 = $tInitializedPerm2")
+//        println(s"  ch2.quantifiedVars = ${ch2.quantifiedVars}")
+//        println(s"  tInitializedPerm1 = $tInitializedPerm1")
+//        println(s"  tInitializedPerm2 = $tInitializedPerm2")
 
-        if (isWildcard(tInitializedPerm1)) // TODO: Unsound! Constrains all wildcards, regardless of whether or not they are currently constrainable
-          assume(skol(tInitializedPerm1) < skol(tInitializedPerm2))
+        if (isWildcard(permsToExhale)) // TODO: Unsound! Constrains all wildcards, regardless of whether or not they are currently constrainable
+          assume(skol(permsToExhale) < skol(ch2.perm))
 
-        val r = PermMin(tInitializedPerm1, tInitializedPerm2)
-        val d = check(σ, skol(tInitializedPerm1 - r) === NoPerm())
+        val r = PermMin(perms1, Ite(*() === rcvr, ch2.perm, NoPerm()))
+        val d = check(σ, skol(perms1 - r) === NoPerm())
 
-        println(s"  r = $r")
-        println(s"  d = $d")
+//        println(s"  r = $r")
+//        println(s"  remainder of perms1 = ${skol(perms1 - r)}")
+//        println(s"  d = $d")
+//        println(s"  remainder of ch2: ${skol(ch2.perm - r)}")
 
         /* IMPORTANT: The updated version of ch2 must still use the placeholder (*), not vSkolem!
          *            Hence, the updated version of ch1 must also still use the placeholder.
          */
 
-        if (check(σ, skol(tInitializedPerm2 - r) === NoPerm()))
+        if (check(σ, skol(ch2.perm - r) === NoPerm()))
           (/*ch1*/perms1 - r, h1, d)
         else
-          (/*ch1*/perms1 - r, h1 + ch2.copy(perm = tInitializedPerm2 - r, quantifiedVars = /*ch1.*/quantifiedVars), d)
+          (/*ch1*/perms1 - r, h1 + ch2.copy(perm = ch2.perm - r), d)
 
-      case ((ch1, h1, false), ch2) =>
+      case ((perms1, h1, false), ch2) =>
         /* More permissions needed, but ch2 is not a chunk that provides permissions */
-        (ch1, h1 + ch2, false)
+        (perms1, h1 + ch2, false)
     }
   }
 
   def consume(σ: S,
               h: H,
 //              ch: QuantifiedChunk,
-              rcvr: Term,
+              optRcvr: Option[Term],
               f: Field,
               perms: DefaultFractionalPermissions,
-              quantifiedVars: Seq[Term],
+              _quantifiedVars: Seq[Term],
               pve:PartialVerificationError,
               locacc: LocationAccess,
               c: C)
@@ -378,7 +396,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
              : VerificationResult = {
 
 
-    val k = exhalePermissions2(σ, h, rcvr, f, perms, quantifiedVars)
+    val k = exhalePermissions2(σ, h, optRcvr, f, perms, _quantifiedVars)
     if(!k._3)
       Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
     else
