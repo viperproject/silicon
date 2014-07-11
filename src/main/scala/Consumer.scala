@@ -137,14 +137,19 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
-                val h2 =
-                  if (quantifiedChunkHelper.isQuantifiedFor(h,f.name)) h
-                  else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
+                decider.assert(σ, IsPositive(tPerm)){
+                  case true =>
+                    val h2 =
+                      if (quantifiedChunkHelper.isQuantifiedFor(h, f.name)) h
+                      else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
 
-                quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
-                  val ch = quantifiedChunkHelper.transform(tRcvr, f, t, tPerm, /* takes care of rewriting the cond */ tCond, tVars)
-                  quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
-                    Q(h3, t, Nil, c3))})}))}})
+                      quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
+                        val ch = quantifiedChunkHelper.transform(tRcvr, f, t, tPerm * p, /* takes care of rewriting the cond */ tCond, tVars)
+                        quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
+                          Q(h3, t, Nil, c3))})
+
+                  case false =>
+                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
 
       /* Field access predicates for quantified fields */
       case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm)

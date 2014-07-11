@@ -199,7 +199,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
               Less(NoPerm(), ch.perm.replace(*(), v)),
               v !== Null()),
             List(Trigger(List(NullTrigger(v)))))
-        decider.assume(tNonNullQuant)
+        assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
         val h =
           if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
           else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
