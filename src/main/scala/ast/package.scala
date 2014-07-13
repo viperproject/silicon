@@ -135,8 +135,6 @@ package object ast {
   val Applying = sil.ast.Applying
   type Packaging = sil.ast.Packaging
   val Packaging = sil.ast.Packaging
-  type Exhaling = sil.ast.Exhaling
-  val Exhaling = sil.ast.Exhaling
 
   type InhaleExhale = sil.ast.InhaleExhaleExp
   val InhaleExhale = sil.ast.InhaleExhaleExp

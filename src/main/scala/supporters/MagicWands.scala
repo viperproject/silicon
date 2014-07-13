@@ -130,29 +130,6 @@ class MagicWandSupporter[ST <: Store[ST],
     MagicWandChunk[H](ghostFreeWand, renamedWand, vs, ts/*, hPO*/)
   }
 
-  def injectExhalingExp(exp: ast.Expression): ast.Expression = {
-    /* Only works if exp is a direct nesting of ghost operations, i.e., not
-     * something such as
-     *   folding acc(x.P) in (acc(x.Q) && applying ...)
-     * This structure must be ensured by appropriate consistency checks.
-     */
-
-    exp.transform {
-      case gop: ast.GhostOperation if (   !gop.body.isInstanceOf[ast.GhostOperation]
-        /*&& !gop.body.isPure*/) =>
-
-        val exh = ast.Exhaling(gop.body)(gop.body.pos, gop.body.info)
-
-        gop match {
-          case e: ast.Folding => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Unfolding => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Applying => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Packaging => e.copy(body = exh)(e.pos, e.info)
-          case e: ast.Exhaling => sys.error("Should never occur since Exhaling is not a source language node")
-        }
-    }()
-  }
-
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
    *       structure. Try to merge the two.
    */

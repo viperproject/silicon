@@ -465,7 +465,7 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhale | _: ast.PredicateAccess
            | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.WildcardPerm
            | _: sil.ast.MultisetExp | _: sil.ast.EmptySet | _: sil.ast.ExplicitSet
-           | _: ast.Applying | _: ast.Exhaling | _: ast.Folding | _: ast.MagicWand | _: ast.Packaging =>
+           | _: ast.Applying | _: ast.Folding | _: ast.MagicWand | _: ast.Packaging =>
 
         throw VerificationException(ast.Consistency.createUnexpectedNodeDuringDomainTranslationError(exp))
     }

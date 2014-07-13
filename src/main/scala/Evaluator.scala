@@ -91,14 +91,8 @@ trait DefaultEvaluator[
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-//    val hCombined = c.reserveHeaps match {
-//      case Stack() => σ.h
-//      case hs => σ.h + hs.head}
-//
-//    println(s"hCombined = ${stateFormatter.format(hCombined)}")
-
-//		eval2(σ \ hCombined, e, pve, c, tv)((t, c1) =>
-		eval2(σ, e, pve, c, tv)((t, c1) =>
+		val hEval = c.additionalEvalHeap.map(_ + σ.h).getOrElse(σ.h)
+    eval2(σ \ hEval, e, pve, c, tv)((t, c1) =>
       Q(t, c1))
   }
 
@@ -196,46 +190,6 @@ trait DefaultEvaluator[
         withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c1) =>
           decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1, tv)(ch =>
             Q(ch.value, c1)))
-
-////        var id: ChunkIdentifier = null
-////        var c0: C = null
-//        val hCombined = c.reserveHeaps match {
-//          case Stack() => σ.h
-//          case hs => σ.h + hs.head}
-////        decider.inScope {
-//        decider.inScope {
-//          withChunkIdentifier(σ \ hCombined, fa, true, pve, c, tv) _/*((_id, _c0) => {
-//            id = _id
-//            c0 = _c0
-//            Success()
-//          })*/
-////        } && {
-//        }{(id, c0) =>
-//            decider.withChunk[FieldChunk](σ, hCombined, id, fa, pve, c0, tv)(ch =>
-//              Q(ch.value, c0))}
-
-//        withChunkIdentifier(σ, fa, true, pve, c, tv)((id, c0) =>
-//          magicWandSupporter.doWithMultipleHeaps(σ, σ.h :: c0.reserveEvalHeaps, c)((σ1, h1, c1) =>
-//            decider.getChunk[FieldChunk](σ1, h1, id) match {
-//              case Some(ch) => (Some(ch.value), h1, c1)
-//              case _ => (None, h1, c1)
-//            }
-//          ){
-//            case (Some(t), _, c1) => Q(t, c1)
-//            case _ => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)
-//          })
-
-//          decider.getChunk[FieldChunk](σ, σ.h, id) match {
-//            case Some(ch) =>
-//              Q(ch.value, c)
-//            case None if c.reserveEvalHeap.nonEmpty =>
-//              decider.getChunk[FieldChunk](σ, c.reserveEvalHeap.get, id) match {
-//                case Some(ch) => Q(ch.value, c)
-//                case None => Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}
-//            case None =>
-//              Failure[ST, H, S, TV](pve dueTo InsufficientPermission(fa), tv)}
-//        })
-
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c, tv)((t0, c1) =>

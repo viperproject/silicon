@@ -17,7 +17,8 @@ case class DefaultContext[ST <: Store[ST],
                           reserveHeaps: Stack[H] = Nil,
                           exhaleExt: Boolean = false,
 //                          poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
-                          lhsHeap: Option[H] = None /* Used to interpret e in ApplyOld(e) */
+                          lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
+                          additionalEvalHeap: Option[H] = None
 //                          footprintHeap: Option[H] = None,
                           /*reinterpretWand: Boolean = true*/)
     extends Context[DefaultContext[ST, H, S], ST, H, S] {
