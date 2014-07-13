@@ -18,5 +18,17 @@ method test2(l: Ref)
     applying
       (true --* acc(l.next) && acc(Q(l.next)))
     in
-      unfolding acc(Q(l.next)) in acc(l.next) && acc(l.next.next)
+      unfolding acc(Q(l.next))
+    in acc(l.next) && acc(l.next.next)
+}
+
+method test3(l: Ref)
+  requires acc(l.next) && acc(l.next.next) --* acc(l.next) && acc(Q(l.next))
+{
+  package
+    acc(P(l))
+      --*
+    unfolding P(l)
+    in applying (acc(l.next) && acc(l.next.next) --* acc(l.next) && acc(Q(l.next)))
+    in acc(l.next) && acc(Q(l.next))
 }
