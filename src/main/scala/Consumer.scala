@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{NonPositivePermission, AssertionFalse}
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider

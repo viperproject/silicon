@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package interfaces.decider
 
-import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
-import sil.components.StatefulComponent
+import viper.silver.verifier.{PartialVerificationError, DependencyNotFoundError}
+import viper.silver.components.StatefulComponent
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
 import interfaces.{Failure, VerificationResult}
 import interfaces.reporting.Context

@@ -4,14 +4,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
-import sil.verifier.reasons.InsufficientPermission
+import viper.silver.verifier.{PartialVerificationError, DependencyNotFoundError}
+import viper.silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._

@@ -25,7 +25,7 @@ REM RVER = revision version (should be byte-code compatible)
 set SCALA_SVER=2.10
 set SCALA_RVER=%SCALA_SVER%.3
 set SILICON_VERSION=0.1-SNAPSHOT
-set SILICON_MAIN=semper.silicon.SiliconRunner
+set SILICON_MAIN=viper.silicon.SiliconRunner
 
 REM ======== Path-dependent configuration ========
 

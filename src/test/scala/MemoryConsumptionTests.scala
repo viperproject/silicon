@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package tests
 
 import org.scalatest.{Tag, FlatSpec}
-import semper.sil.frontend.SilFrontend
+import viper.silver.frontend.SilFrontend
 import java.nio.file.Paths
 
 /** This test is intended to benchmark the memory consumption of Silicon over
@@ -33,7 +33,7 @@ class MemoryTests extends FlatSpec {
     val silver = new DummySilverFrontend
 //    silver.configureVerifier(Nil)
     silver.init(silicon)
-    silver.reset(Paths.get("src/test/scala/linkedlist.sil"))
+    silver.reset(Paths.get("src/test/scala/linkedlist.silver"))
 
     silver.parse()
     silver.typecheck()

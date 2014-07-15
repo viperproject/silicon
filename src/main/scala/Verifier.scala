@@ -4,23 +4,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
+import viper.silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
-import sil.components.StatefulComponent
+import viper.silver.components.StatefulComponent
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import semper.silicon.state.{terms, SymbolConvert, DirectChunk}
-import semper.silicon.state.terms.{sorts, Sort, DefaultFractionalPermissions}
+import viper.silicon.state.{terms, SymbolConvert, DirectChunk}
+import viper.silicon.state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import semper.silicon.reporting.{DefaultContext, Bookkeeper}
+import viper.silicon.reporting.{DefaultContext, Bookkeeper}
 import heap.QuantifiedChunkHelper
-import semper.silicon.decider.PreambleFileEmitter
+import viper.silicon.decider.PreambleFileEmitter
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],

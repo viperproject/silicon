@@ -4,11 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package interfaces
 
-import sil.components.StatefulComponent
+import viper.silver.components.StatefulComponent
 import ast.Program
 import silicon.state.terms.{Sort, Function}
 

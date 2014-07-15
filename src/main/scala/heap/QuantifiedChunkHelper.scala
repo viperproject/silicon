@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package heap
 
-import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
 import ast.{Field, LocationAccess}
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}

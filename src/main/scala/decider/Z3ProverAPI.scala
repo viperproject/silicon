@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-//package semper.syxc.decider
+//package viper.syxc.decider
 //
 //import java.io.{PrintWriter, BufferedWriter, FileWriter, File,
 //		InputStreamReader, BufferedReader, OutputStreamWriter}

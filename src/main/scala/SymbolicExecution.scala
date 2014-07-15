@@ -4,10 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 
-import semper.silicon.interfaces.{VerificationResult, Unreachable}
+import viper.silicon.interfaces.{VerificationResult, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.Context
 import interfaces.state.{Store, Heap, PathConditions, State}

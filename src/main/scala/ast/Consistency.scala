@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package ast
 
-import sil.verifier.{AbstractVerificationError, VerificationError}
-import sil.verifier.errors.Internal
-import sil.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import viper.silver.verifier.{AbstractVerificationError, VerificationError}
+import viper.silver.verifier.errors.Internal
+import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 
 object Consistency {
   def check(program: Program) = (

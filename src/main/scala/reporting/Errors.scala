@@ -4,11 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package reporting
 
-import sil.verifier.AbstractError
+import viper.silver.verifier.AbstractError
 
 /* TODO: Distinguish between the exception that can be thrown and the error that is reported back to e.g. Scala2Sil. */
 case class Z3InteractionFailed(message: String) extends RuntimeException(message) with AbstractError {

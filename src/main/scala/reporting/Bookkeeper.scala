@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package reporting
 
@@ -16,7 +16,7 @@ package reporting
  */
 
 import java.text.SimpleDateFormat
-import sil.components.StatefulComponent
+import viper.silver.components.StatefulComponent
 
 class Bookkeeper extends StatefulComponent {
 	var branches: Long = 0

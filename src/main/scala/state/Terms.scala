@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package state.terms
 
 import scala.reflect._
 import ast.commonnodes
-import sil.ast.utility.Visitor
+import viper.silver.ast.utility.Visitor
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -117,7 +117,7 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
  * Basic terms
  */
 
-/* TODO: Should extend semper.sil.ast.Node in order to share all the
+/* TODO: Should extend viper.silver.ast.Node in order to share all the
  *       visitor-related methods.
  *       To do this, Node has to be made parametric in the type of concrete
  *       Nodes that the visitors operate on. Also, the 'subnodes/subterms'

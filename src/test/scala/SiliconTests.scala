@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package tests
 
 import java.nio.file.Path
-import sil.testing.SilSuite
-import sil.verifier.Verifier
+import viper.silver.testing.SilSuite
+import viper.silver.verifier.Verifier
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
@@ -30,8 +30,8 @@ class SiliconTests extends SilSuite {
   lazy val verifiers = List(createSiliconInstance())
 
   private def createSiliconInstance() = {
-    val silicon = new Silicon(Seq(("startedBy", "semper.silicon.SiliconTests")))
-    val args = optionsFromScalaTestConfigMap() ++ Seq("dummy.sil")
+    val silicon = new Silicon(Seq(("startedBy", "viper.silicon.SiliconTests")))
+    val args = optionsFromScalaTestConfigMap() ++ Seq("dummy.silver")
 
     silicon.parseCommandLine(args)
 

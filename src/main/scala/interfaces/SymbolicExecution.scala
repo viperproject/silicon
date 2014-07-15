@@ -4,11 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package interfaces
 
-import sil.verifier.PartialVerificationError
+import viper.silver.verifier.PartialVerificationError
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
 import reporting.Context
 import silicon.state.terms.{Sort, Term, FractionalPermissions}

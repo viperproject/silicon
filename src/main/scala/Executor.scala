@@ -4,14 +4,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
+import viper.silver.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import semper.sil.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
+import viper.silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -58,14 +58,14 @@ trait DefaultExecutor[ST <: Store[ST],
                     : VerificationResult = {
 
     edge match {
-      case ce: sil.ast.ConditionalEdge =>
+      case ce: viper.silver.ast.ConditionalEdge =>
         eval(σ, ce.cond, Internal(ce.cond), c)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
           branch(σ, tCond, c1,
             (c2: C) => exec(σ, ce.dest, c2)(Q),
             (c2: C) => Success()))
 
-      case ue: sil.ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
+      case ue: viper.silver.ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
     }
   }
 
@@ -102,11 +102,11 @@ trait DefaultExecutor[ST <: Store[ST],
           : VerificationResult = {
 
     block match {
-      case block @ sil.ast.StatementBlock(stmt, _) =>
+      case block @ viper.silver.ast.StatementBlock(stmt, _) =>
         exec(σ, stmt, c)((σ1, c1) =>
           leave(σ1, block, c1)(Q))
 
-      case lb: sil.ast.LoopBlock =>
+      case lb: viper.silver.ast.LoopBlock =>
         decider.prover.logComment(s"loop at ${lb.pos}")
 
         /* TODO: We should avoid roundtripping, i.e., parsing a SIL file into an AST,
@@ -157,7 +157,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 else
                   leave(σ3, lb, c2)(Q))})})
 
-        case frp @ sil.ast.ConstrainingBlock(vars, body, succ) =>
+        case frp @ viper.silver.ast.ConstrainingBlock(vars, body, succ) =>
           val arps = vars map σ.γ.apply
           val c1 = c.setConstrainable(arps, true)
           exec(σ, body, c1)((σ1, c2) =>
@@ -190,7 +190,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
     /* For debugging-purposes only */
     stmt match {
-      case _: sil.ast.Seqn =>
+      case _: viper.silver.ast.Seqn =>
       case _ =>
         logger.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
         logger.debug(stateFormatter.format(σ))
@@ -199,7 +199,7 @@ trait DefaultExecutor[ST <: Store[ST],
     }
 
 		val executed = stmt match {
-      case sil.ast.Seqn(stmts) =>
+      case viper.silver.ast.Seqn(stmts) =>
         exec(σ, stmts, c)(Q)
 
       case ass @ ast.Assignment(v, rhs) =>
@@ -377,12 +377,12 @@ trait DefaultExecutor[ST <: Store[ST],
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
 
       /* These cases should not occur when working with the CFG-representation of the program. */
-      case   _: sil.ast.Goto
-           | _: sil.ast.If
-           | _: sil.ast.Label
-           | _: sil.ast.Seqn
-           | _: sil.ast.Constraining
-           | _: sil.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
+      case   _: viper.silver.ast.Goto
+           | _: viper.silver.ast.If
+           | _: viper.silver.ast.Label
+           | _: viper.silver.ast.Seqn
+           | _: viper.silver.ast.Constraining
+           | _: viper.silver.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
 		}
 
 		executed

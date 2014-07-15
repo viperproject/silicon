@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package state
 
@@ -37,7 +37,7 @@ class DefaultSymbolConvert extends SymbolConvert {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(dt.toString)
 
-    case sil.ast.Pred | _: sil.ast.TypeVar =>
+    case silver.ast.Pred | _: viper.silver.ast.TypeVar =>
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 

@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.PartialVerificationError
-import sil.verifier.errors.PreconditionInAppFalse
-import sil.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{Bookkeeper, DefaultContext}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
@@ -643,19 +643,19 @@ trait DefaultEvaluator[
       case ast.SeqIn(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c)(Q)
         /* Note the reversed order of the arguments! */
 
-      case sil.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c)(Q)
-      case sil.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c)(Q)
-      case sil.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c)(Q)
+      case viper.silver.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c)(Q)
+      case viper.silver.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c)(Q)
+      case viper.silver.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c)(Q)
       case ast.SeqAt(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c)(Q)
-      case sil.ast.SeqLength(e0) => eval(σ, e0, pve, c)((t0, c1) => Q(SeqLength(t0), c1))
-      case sil.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
+      case viper.silver.ast.SeqLength(e0) => eval(σ, e0, pve, c)((t0, c1) => Q(SeqLength(t0), c1))
+      case viper.silver.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
       case ast.SeqRanged(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c)(Q)
 
-      case sil.ast.SeqUpdate(e0, e1, e2) =>
+      case viper.silver.ast.SeqUpdate(e0, e1, e2) =>
         evals2(σ, List(e0, e1, e2), Nil, pve, c)((ts, c1) =>
           Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
 
-      case sil.ast.ExplicitSeq(es) =>
+      case viper.silver.ast.ExplicitSeq(es) =>
         evals2(σ, es.reverse, Nil, pve, c)((tEs, c1) => {
           val tSeq =
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
@@ -665,51 +665,51 @@ trait DefaultEvaluator[
 
       /* Sets and multisets */
 
-      case sil.ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
+      case viper.silver.ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
 
-      case sil.ast.ExplicitSet(es) =>
+      case viper.silver.ast.ExplicitSet(es) =>
         evals2(σ, es, Nil, pve, c)((tEs, c1) => {
           val tSet =
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
           Q(tSet, c1)})
 
-      case sil.ast.AnySetUnion(e0, e1) => e.typ match {
+      case viper.silver.ast.AnySetUnion(e0, e1) => e.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetUnion, pve, c)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetUnion, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetIntersection(e0, e1) => e.typ match {
+      case viper.silver.ast.AnySetIntersection(e0, e1) => e.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIntersection, pve, c)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetSubset(e0, e1) => e0.typ match {
+      case viper.silver.ast.AnySetSubset(e0, e1) => e0.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetMinus(e0, e1) => e.typ match {
+      case viper.silver.ast.AnySetMinus(e0, e1) => e.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetContains(e0, e1) => e1.typ match {
+      case viper.silver.ast.AnySetContains(e0, e1) => e1.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
         case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case sil.ast.AnySetCardinality(e0) => e0.typ match {
+      case viper.silver.ast.AnySetCardinality(e0) => e0.typ match {
         case _: ast.types.Set => eval(σ, e0, pve, c)((t0, c1) => Q(SetCardinality(t0), c1))
         case _: ast.types.Multiset => eval(σ, e0, pve, c)((t0, c1) => Q(MultisetCardinality(t0), c1))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
@@ -933,7 +933,7 @@ trait DefaultEvaluator[
 
     val es = trigger.exps flatMap {
       case _: ast.FuncApp => None
-      case f: sil.ast.PossibleTrigger => Some(f)
+      case f: viper.silver.ast.PossibleTrigger => Some(f)
       case _ => None
     }
 

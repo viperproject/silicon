@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package state
 
-import semper.silicon.interfaces.state.{FieldChunk, Heap, Store, State}
+import viper.silicon.interfaces.state.{FieldChunk, Heap, Store, State}
 import terms._
-import semper.silicon.ast.commonnodes
+import viper.silicon.ast.commonnodes
 
 package object utils {
   def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]

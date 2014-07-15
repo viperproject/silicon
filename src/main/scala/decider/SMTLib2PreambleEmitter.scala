@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 package decider
 
 import scala.io.Source
-import sil.components.StatefulComponent
+import viper.silver.components.StatefulComponent
 import state.terms.Sort
 
 trait PreambleFileEmitter[R] extends StatefulComponent {

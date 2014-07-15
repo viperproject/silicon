@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper
+package viper
 package silicon
 
 import java.text.SimpleDateFormat
@@ -13,8 +13,8 @@ import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, 
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import sil.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError}
-import sil.frontend.{SilFrontend, SilFrontendConfig}
+import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError}
+import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
@@ -133,7 +133,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     }
   }
 
-  /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
+  /** Creates and sets up an instance of a [[viper.silicon.AbstractVerifier]], which can be used
     * to verify elements of a SIL AST such as procedures or functions.
     *
     * @return A fully set up verifier, ready to be used.
