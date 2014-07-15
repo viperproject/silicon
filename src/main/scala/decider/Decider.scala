@@ -10,8 +10,8 @@ package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import viper.silver.verifier.{PartialVerificationError, DependencyNotFoundError}
-import viper.silver.verifier.reasons.InsufficientPermission
+import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
+import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._

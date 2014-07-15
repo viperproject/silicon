@@ -10,7 +10,7 @@ package state.terms
 
 import scala.reflect._
 import ast.commonnodes
-import viper.silver.ast.utility.Visitor
+import silver.ast.utility.Visitor
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these

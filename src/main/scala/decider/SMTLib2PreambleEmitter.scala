@@ -9,7 +9,7 @@ package silicon
 package decider
 
 import scala.io.Source
-import viper.silver.components.StatefulComponent
+import silver.components.StatefulComponent
 import state.terms.Sort
 
 trait PreambleFileEmitter[R] extends StatefulComponent {

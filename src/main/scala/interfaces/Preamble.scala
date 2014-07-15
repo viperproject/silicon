@@ -8,7 +8,7 @@ package viper
 package silicon
 package interfaces
 
-import viper.silver.components.StatefulComponent
+import silver.components.StatefulComponent
 import ast.Program
 import silicon.state.terms.{Sort, Function}
 

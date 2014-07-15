@@ -8,19 +8,19 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import viper.silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
+import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed}
-import viper.silver.components.StatefulComponent
+import silver.components.StatefulComponent
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import viper.silicon.state.{terms, SymbolConvert, DirectChunk}
-import viper.silicon.state.terms.{sorts, Sort, DefaultFractionalPermissions}
+import state.{terms, SymbolConvert, DirectChunk}
+import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import viper.silicon.reporting.{DefaultContext, Bookkeeper}
+import reporting.{DefaultContext, Bookkeeper}
 import heap.QuantifiedChunkHelper
-import viper.silicon.decider.PreambleFileEmitter
+import decider.PreambleFileEmitter
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],

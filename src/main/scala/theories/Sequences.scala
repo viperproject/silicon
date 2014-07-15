@@ -47,7 +47,7 @@ class DefaultSequencesEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var sequenceTypes = Set[ast.types.Seq]()
 
-    program visit { case t: viper.silver.ast.Typed =>
+    program visit { case t: silver.ast.Typed =>
       t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
         case s: ast.types.Seq =>
           sequenceTypes += s

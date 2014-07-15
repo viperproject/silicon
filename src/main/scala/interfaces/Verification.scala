@@ -8,7 +8,7 @@ package viper
 package silicon
 package interfaces
 
-import viper.silver.verifier.VerificationError
+import silver.verifier.VerificationError
 import state.{Store, Heap, State}
 
 /*

@@ -9,7 +9,7 @@ package silicon
 package tests
 
 import org.scalatest.{Tag, FlatSpec}
-import viper.silver.frontend.SilFrontend
+import silver.frontend.SilFrontend
 import java.nio.file.Paths
 
 /** This test is intended to benchmark the memory consumption of Silicon over

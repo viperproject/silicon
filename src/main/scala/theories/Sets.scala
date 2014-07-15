@@ -49,7 +49,7 @@ class DefaultSetsEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var setTypes = Set[ast.types.Set]()
 
-    program visit { case t: viper.silver.ast.Typed =>
+    program visit { case t: silver.ast.Typed =>
       t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
         case s: ast.types.Set =>
           setTypes += s

@@ -16,7 +16,7 @@ package reporting
  */
 
 import java.text.SimpleDateFormat
-import viper.silver.components.StatefulComponent
+import silver.components.StatefulComponent
 
 class Bookkeeper extends StatefulComponent {
 	var branches: Long = 0

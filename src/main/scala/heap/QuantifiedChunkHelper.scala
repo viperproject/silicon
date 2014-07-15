@@ -8,8 +8,8 @@ package viper
 package silicon
 package heap
 
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import silver.verifier.PartialVerificationError
+import silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
 import ast.{Field, LocationAccess}
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}

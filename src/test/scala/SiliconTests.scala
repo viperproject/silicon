@@ -9,8 +9,8 @@ package silicon
 package tests
 
 import java.nio.file.Path
-import viper.silver.testing.SilSuite
-import viper.silver.verifier.Verifier
+import silver.testing.SilSuite
+import silver.verifier.Verifier
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")

@@ -8,9 +8,9 @@ package viper
 package silicon
 package ast
 
-import viper.silver.verifier.{AbstractVerificationError, VerificationError}
-import viper.silver.verifier.errors.Internal
-import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import silver.verifier.VerificationError
+import silver.verifier.errors.Internal
+import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 
 object Consistency {
   def check(program: Program) = (

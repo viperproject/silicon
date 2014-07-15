@@ -49,7 +49,7 @@ class DefaultMultisetsEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var multisetTypes = Set[ast.types.Multiset]()
 
-    program visit { case t: viper.silver.ast.Typed =>
+    program visit { case t: silver.ast.Typed =>
       t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
         case s: ast.types.Multiset =>
           multisetTypes += s

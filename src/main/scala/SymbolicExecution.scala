@@ -7,7 +7,7 @@
 package viper
 package silicon
 
-import viper.silicon.interfaces.{VerificationResult, Unreachable}
+import silicon.interfaces.{VerificationResult, Unreachable}
 import interfaces.decider.Decider
 import interfaces.reporting.Context
 import interfaces.state.{Store, Heap, PathConditions, State}

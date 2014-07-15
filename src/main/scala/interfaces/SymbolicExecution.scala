@@ -8,7 +8,7 @@ package viper
 package silicon
 package interfaces
 
-import viper.silver.verifier.PartialVerificationError
+import silver.verifier.PartialVerificationError
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
 import reporting.Context
 import silicon.state.terms.{Sort, Term, FractionalPermissions}

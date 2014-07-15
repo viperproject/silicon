@@ -453,24 +453,24 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
       case ast.PermGE(e0, e1) => terms.AtLeast(f(e0), f(e1))
       case ast.PermGT(e0, e1) => terms.Greater(f(e0), f(e1))
 
-      case viper.silver.ast.SeqAppend(e0, e1) => terms.SeqAppend(f(e0), f(e1))
-      case viper.silver.ast.SeqContains(e0, e1) => terms.SeqIn(f(e1), f(e0))
-      case viper.silver.ast.SeqDrop(e0, e1) => terms.SeqDrop(f(e0), f(e1))
-      case viper.silver.ast.SeqIndex(e0, e1) => terms.SeqAt(f(e0), f(e1))
-      case viper.silver.ast.SeqLength(e) => terms.SeqLength(f(e))
-      case viper.silver.ast.SeqTake(e0, e1) => terms.SeqTake(f(e0), f(e1))
-      case viper.silver.ast.EmptySeq(typ) => terms.SeqNil(toSort(typ, Map()))
-      case viper.silver.ast.RangeSeq(e0, e1) => terms.SeqRanged(f(e0), f(e1))
-      case viper.silver.ast.SeqUpdate(e0, e1, e2) => terms.SeqUpdate(f(e0), f(e1), f(e2))
+      case silver.ast.SeqAppend(e0, e1) => terms.SeqAppend(f(e0), f(e1))
+      case silver.ast.SeqContains(e0, e1) => terms.SeqIn(f(e1), f(e0))
+      case silver.ast.SeqDrop(e0, e1) => terms.SeqDrop(f(e0), f(e1))
+      case silver.ast.SeqIndex(e0, e1) => terms.SeqAt(f(e0), f(e1))
+      case silver.ast.SeqLength(e) => terms.SeqLength(f(e))
+      case silver.ast.SeqTake(e0, e1) => terms.SeqTake(f(e0), f(e1))
+      case silver.ast.EmptySeq(typ) => terms.SeqNil(toSort(typ, Map()))
+      case silver.ast.RangeSeq(e0, e1) => terms.SeqRanged(f(e0), f(e1))
+      case silver.ast.SeqUpdate(e0, e1, e2) => terms.SeqUpdate(f(e0), f(e1), f(e2))
 
-      case viper.silver.ast.ExplicitSeq(es) =>
+      case silver.ast.ExplicitSeq(es) =>
         es.tail.foldLeft[terms.SeqTerm](terms.SeqSingleton(f(es.head)))((tSeq, e) =>
             terms.SeqAppend(terms.SeqSingleton(f(e)), tSeq))
 
       case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhale | _: ast.PredicateAccess
            | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.WildcardPerm
-           | _: viper.silver.ast.MultisetExp | _: viper.silver.ast.EmptySet | _: viper.silver.ast.ExplicitSet =>
+           | _: silver.ast.MultisetExp | _: silver.ast.EmptySet | _: silver.ast.ExplicitSet =>
 
         throw VerificationException(ast.Consistency.createUnexpectedNodeDuringDomainTranslationError(exp))
     }

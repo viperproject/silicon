@@ -8,7 +8,7 @@ package viper
 package silicon
 package reporting
 
-import viper.silver.verifier.AbstractError
+import silver.verifier.AbstractError
 
 /* TODO: Distinguish between the exception that can be thrown and the error that is reported back to e.g. Scala2Sil. */
 case class Z3InteractionFailed(message: String) extends RuntimeException(message) with AbstractError {

@@ -8,9 +8,9 @@ package viper
 package silicon
 package state
 
-import viper.silicon.interfaces.state.{FieldChunk, Heap, Store, State}
+import interfaces.state.{FieldChunk, Heap, Store, State}
+import ast.commonnodes
 import terms._
-import viper.silicon.ast.commonnodes
 
 package object utils {
   def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]

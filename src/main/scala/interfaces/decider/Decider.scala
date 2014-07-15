@@ -8,8 +8,8 @@ package viper
 package silicon
 package interfaces.decider
 
-import viper.silver.verifier.{PartialVerificationError, DependencyNotFoundError}
-import viper.silver.components.StatefulComponent
+import silver.verifier.PartialVerificationError
+import silver.components.StatefulComponent
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
 import interfaces.{Failure, VerificationResult}
 import interfaces.reporting.Context

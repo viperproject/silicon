@@ -8,8 +8,8 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
+import silver.verifier.PartialVerificationError
+import silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider

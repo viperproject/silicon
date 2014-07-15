@@ -8,7 +8,7 @@ package viper
 package silicon
 package interfaces.decider
 
-import viper.silver.components.StatefulComponent
+import silver.components.StatefulComponent
 import state.terms.{Sort, Decl, Term, Var}
 
 sealed abstract class Result
