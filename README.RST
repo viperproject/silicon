@@ -1,4 +1,4 @@
-.. image:: https://bitbucket.org/viperproject/silicon/raw/tip/docs/logo_name.png
+.. image:: https://bitbucket.org/semperproject/silicon/raw/tip/docs/logo_name.png
    :alt: Silicon logo
    :align: center
 
