@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package ast.commonnodes
 
@@ -10,14 +16,14 @@ package ast.commonnodes
 /*
  * Generic implementation traits for common binary operations
  */
- 
+
 trait UnaryOp[E] {
-	def op: String = getClass.getSimpleName.stripSuffix("$") + ":"	
+	def op: String = getClass.getSimpleName.stripSuffix("$") + ":"
 		/* If UnaryOp is extended by a case-class then getSimpleName returns
 		 * the class name suffixed with a dollar sign.
 		 */
 	def p: E
-	
+
 	override def toString = op + p
 }
 
@@ -25,7 +31,7 @@ trait BinaryOp[E] {
 	def op: String = getClass.getSimpleName.stripSuffix("$")
 	def p0: E
 	def p1: E
-	
+
 	override def toString = "%s %s %s".format(p0, op, p1)
 }
 

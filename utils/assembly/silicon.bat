@@ -5,7 +5,7 @@ REM ======== Basic configuration ========
 
 set BASE_DIR=%~dp0
 set FWD_ARGS=%*
-set MAIN=semper.silicon.SiliconRunner
+set MAIN=viper.silicon.SiliconRunner
 
 REM ======== Path-dependent configuration ========
 

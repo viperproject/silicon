@@ -1,10 +1,16 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor, StateFactory}
-import interfaces.reporting.{TraceView, Context}
+import interfaces.reporting.Context
 import interfaces.decider.Decider
 import ast.Variable
 import terms.{Term, DefaultFractionalPermissions}
@@ -34,10 +40,10 @@ case class MapBackedStore(private val map: Map[Variable, Term])
 	def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
 
-case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedHeap] {
-	def this() = this(Set[Chunk]())
-	def this(h: SetBackedHeap) = this(h.chunks)
-	def this(chunks: Iterable[Chunk]) = this(toSet(chunks))
+case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBackedHeap] {
+  def this() = this(Nil)
+  def this(h: ListBackedHeap) = this(h.chunks)
+  def this(chunks: Iterable[Chunk]) = this(chunks.toList)
 
   @inline
 	def values = chunks
@@ -48,15 +54,15 @@ case class SetBackedHeap(private var chunks: Set[Chunk]) extends Heap[SetBackedH
     * instead.
     */
   def replace(chunks: Iterable[Chunk]) {
-    this.chunks = toSet(chunks)
+    this.chunks = chunks.toList
   }
 
-	def empty = new SetBackedHeap()
+  def empty = new ListBackedHeap()
 
-	def +(ch: Chunk) = new SetBackedHeap(chunks + ch)
-	def +(h: SetBackedHeap) = new SetBackedHeap(chunks ++ h.chunks)
+  def +(ch: Chunk) = ListBackedHeap(chunks :+ ch)
+  def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ::: chunks)
 
-	def -(ch: Chunk) = new SetBackedHeap(chunks - ch)
+  def -(ch: Chunk) = new ListBackedHeap(chunks.filterNot(_ == ch))
 }
 
 class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPathConditions] {
@@ -131,9 +137,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
                             H <: Heap[H],
 											     	PC <: PathConditions[PC],
                             S <: State[ST, H, S],
-											     	C <: Context[C, ST, H, S],
-                            TV <: TraceView[TV, ST, H, S]]
-                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV],
+											     	C <: Context[C]]
+                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
                             val distinctnessLowerBound: DefaultFractionalPermissions,
                             val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
@@ -188,6 +193,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		} while(rts.nonEmpty)
 		decider.popScope()
 
+    assumeValidPermissionAmounts(rh)
 		val tDists = deriveObjectDistinctness(σ, rh, fcs)
 
     decider.assume(tSnaps ++ tDists)
@@ -245,8 +251,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		 * We only consider the changeset fcs and compare each chunk in it to
 		 * all chunks in h having the same field id.
 		 */
-		val fields = h.values collect {case c: DirectFieldChunk => c}
-		val gs = fields groupBy(_.name)
+		val fieldChunks = h.values collect {case c: DirectFieldChunk => c}
+		val gs = fieldChunks groupBy(_.name)
 
 		val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
 			if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
@@ -258,6 +264,13 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
 		tDists
 	}
+
+  private def assumeValidPermissionAmounts(h: H) {
+    h.values foreach {
+      case fc: DirectFieldChunk => decider.assume(IsAsPermissive(distinctnessLowerBound, fc.perm))
+      case _=>
+    }
+  }
 }
 
 object SnapshotHelper {

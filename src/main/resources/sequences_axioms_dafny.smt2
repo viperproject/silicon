@@ -1,3 +1,7 @@
+; This Source Code Form is subject to the terms of the Mozilla Public
+; License, v. 2.0. If a copy of the MPL was not distributed with this
+; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 ; General sequence axioms
 
 ; axiom (forall<T> s: Seq T :: { Seq#Length(s) } 0 <= Seq#Length(s));
@@ -231,13 +235,24 @@
 ;   where $Seq.eq(xs, ys) implies xs == ys.
 ;   However, here we have xs ≡ $Seq.elem(x) and ys ≡ $Seq.elem(y),
 ;   but Z3 does not know that  $Seq.elem(x) == $Seq.elem(y) implies x == y.
-(assert (forall ((x $S$) (y $S$)) (!
-	(implies
-		($Seq.eq ($Seq.elem x) ($Seq.elem y))
-		(= x y))
-	:pattern (($Seq.eq ($Seq.elem x) ($Seq.elem y)))
-	)))
+; [2014-07-11 Malte]
+;   Alex added the axiom which comes after this one, which is supposed to
+;   subsume this one.
+;(assert (forall ((x $S$) (y $S$)) (!
+;	(implies
+;		($Seq.eq ($Seq.elem x) ($Seq.elem y))
+;		(= x y))
+;	:pattern (($Seq.eq ($Seq.elem x) ($Seq.elem y)))
+;	)))
 
+;axiom (forall<T> x, y: T ::
+;{ Seq#Contains(Seq#Singleton(x),y) }
+;     Seq#Contains(Seq#Singleton(x),y) <==> x==y);
+(assert (forall ((x $S$) (y $S$)) (!
+	(iff
+		($Seq.in ($Seq.elem x) y)
+		(= x y))
+	:pattern (($Seq.in ($Seq.elem x) y)))))
 
 ; axiom (forall<T> s0: Seq T, s1: Seq T, n: int :: { Seq#SameUntil(s0,s1,n) }
   ; Seq#SameUntil(s0,s1,n) <==>

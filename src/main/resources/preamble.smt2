@@ -1,3 +1,7 @@
+; This Source Code Form is subject to the terms of the Mozilla Public
+; License, v. 2.0. If a copy of the MPL was not distributed with this
+; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 ; Requires Z3 4.3.0
 
 ; ATTENTION: Continuing multi-line statements must be indented with at least

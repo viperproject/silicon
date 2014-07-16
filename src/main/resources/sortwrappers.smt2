@@ -1,3 +1,7 @@
+; This Source Code Form is subject to the terms of the Mozilla Public
+; License, v. 2.0. If a copy of the MPL was not distributed with this
+; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 ; Having only this axiom makes $SortWrappers.$S$To$Snap injective, which is
 ; necessary because Z3 otherwise won't know that an assumption such as
 ;   IntToSnap(x) = IntToSnap(y)

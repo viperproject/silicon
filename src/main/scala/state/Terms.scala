@@ -1,9 +1,16 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state.terms
 
+import scala.reflect._
 import ast.commonnodes
-import sil.ast.utility.Visitor
+import silver.ast.utility.Visitor
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -78,7 +85,7 @@ object sorts {
         case SISeq() => SISeq(sorts.Unit)
         case SISeq(sorts.Unit) => from
         case other =>
-          Predef.assert(!other.exists(_ == sorts.Unit), "")
+          Predef.assert(!other.contains(sorts.Unit), "")
           other
       }
 
@@ -116,7 +123,7 @@ case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
  * Basic terms
  */
 
-/* TODO: Should extend semper.sil.ast.Node in order to share all the
+/* TODO: Should extend viper.silver.ast.Node in order to share all the
  *       visitor-related methods.
  *       To do this, Node has to be made parametric in the type of concrete
  *       Nodes that the visitors operate on. Also, the 'subnodes/subterms'
@@ -144,8 +151,16 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
     Visitor.existsDefined(this, state.utils.subterms, f)
 
-  def replace(original: Term, replacement: Term) =
+  def replace(original: Term, replacement: Term): Term =
     this.transform{case `original` => replacement}()
+
+  def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term = {
+    this.transform{case t: T if replacements.contains(t) => replacements(t)}()
+  }
+
+  def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
+    this.replace(toMap(originals.zip(replacements)))
+  }
 }
 
 /* Symbols */

@@ -1,10 +1,16 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package ast
 
-import sil.verifier.{AbstractVerificationError, VerificationError}
-import sil.verifier.errors.Internal
-import sil.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import silver.verifier.VerificationError
+import silver.verifier.errors.Internal
+import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 
 object Consistency {
   def check(program: Program) = (

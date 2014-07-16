@@ -1,12 +1,18 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package interfaces.decider
 
-import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
-import sil.components.StatefulComponent
+import silver.verifier.PartialVerificationError
+import silver.components.StatefulComponent
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
 import interfaces.{Failure, VerificationResult}
-import interfaces.reporting.{TraceView, Context}
+import interfaces.reporting.Context
 import state.terms.{Term, Var, FractionalPermissions, Sort}
 import state.DirectChunk
 import utils.notNothing._
@@ -16,8 +22,7 @@ trait Decider[P <: FractionalPermissions[P],
               H <: Heap[H],
 						  PC <: PathConditions[PC],
               S <: State[ST, H, S],
-              C <: Context[C, ST, H, S],
-              TV <: TraceView[TV, ST, H, S]]
+              C <: Context[C]]
 
     extends StatefulComponent {
 
@@ -30,6 +35,10 @@ trait Decider[P <: FractionalPermissions[P],
   def popScope()
   def inScope[R](block: => R): R
 
+  def locally[R](block: (R => VerificationResult) => VerificationResult)
+                (Q: R => VerificationResult)
+                : VerificationResult
+
   /* TODO: Should these take continuations to make it explicit that the state
    *       is changed?
    */
@@ -37,7 +46,7 @@ trait Decider[P <: FractionalPermissions[P],
   def assume(ts: Set[Term])
 
   def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
+                  (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
                   : VerificationResult
@@ -54,8 +63,7 @@ trait Decider[P <: FractionalPermissions[P],
                 id: ChunkIdentifier,
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
-                c: C,
-                tv: TV)
+                c: C)
                (Q: CH => VerificationResult)
                : VerificationResult
 
@@ -70,8 +78,7 @@ trait Decider[P <: FractionalPermissions[P],
                 p: P,
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
-                c: C,
-                tv: TV)
+                c: C)
                (Q: CH => VerificationResult)
                : VerificationResult
 

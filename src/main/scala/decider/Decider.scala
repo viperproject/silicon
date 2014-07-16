@@ -1,15 +1,21 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import sil.verifier.{PartialVerificationError, DependencyNotFoundError}
-import sil.verifier.reasons.InsufficientPermission
+import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
+import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
-import interfaces.reporting.{TraceView, Context}
+import interfaces.reporting.Context
 import semper.silicon.state.{SnapshotHelper, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
@@ -21,9 +27,8 @@ class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S],
-                     C <: Context[C, ST, H, S],
-                     TV <: TraceView[TV, ST, H, S]]
-		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV]
+                     C <: Context[C]]
+		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
 		   with Logging {
 
   protected type P = DefaultFractionalPermissions
@@ -157,6 +162,18 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
+  def locally[R](block: (R => VerificationResult) => VerificationResult)
+                (Q: R => VerificationResult)
+                : VerificationResult = {
+
+    pushScope()
+    var ir: R = null.asInstanceOf[R]
+    val r: VerificationResult = block(_ir  => {ir = _ir; Success()})
+    popScope()
+
+    r && Q(ir)
+  }
+
   /* Assuming facts */
 
   def assume(t: Term) {
@@ -173,7 +190,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def assume(_terms: Set[Term]) {
     val terms = _terms filterNot isKnownToBeTrue
-    if (!terms.isEmpty) assumeWithoutSmokeChecks(terms)
+    if (terms.nonEmpty) assumeWithoutSmokeChecks(terms)
   }
 
   private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
@@ -191,13 +208,13 @@ class DefaultDecider[ST <: Store[ST],
   def checkSmoke() = prover.check() == Unsat
 
   def tryOrFail[R](σ: S)
-                  (block:    (S, R => VerificationResult, Failure[ST, H, S, TV] => VerificationResult)
+                  (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
                   : VerificationResult = {
 
     val chunks = σ.h.values
-    var failure: Option[Failure[ST, H, S, TV]] = None
+    var failure: Option[Failure[ST, H, S]] = None
 
     var r =
       block(
@@ -297,8 +314,7 @@ class DefaultDecider[ST <: Store[ST],
                 id: ChunkIdentifier,
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
-                c: C,
-                tv: TV)
+                c: C)
                (Q: CH => VerificationResult)
                : VerificationResult = {
 
@@ -311,7 +327,7 @@ class DefaultDecider[ST <: Store[ST],
         if (checkSmoke())
           Success() /* TODO: Mark branch as dead? */
         else
-          QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}
+          QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}
     )(Q)
   }
 
@@ -322,18 +338,17 @@ class DefaultDecider[ST <: Store[ST],
                 p: P,
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
-                c: C,
-                tv: TV)
+                c: C)
                (Q: CH => VerificationResult)
                : VerificationResult =
 
     tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
-      withChunk[CH](σ1, σ1.h, id, locacc, pve, c, tv)(ch => {
+      withChunk[CH](σ1, σ1.h, id, locacc, pve, c)(ch => {
         assert(σ1, IsAsPermissive(ch.perm, p)){
           case true =>
             QS(ch)
           case false =>
-            QF(Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv))}})
+            QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
     )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {

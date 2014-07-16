@@ -1,9 +1,15 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import state.terms.{Term, DefaultFractionalPermissions, *}
+import state.terms.{Term, DefaultFractionalPermissions, *, Var}
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 
@@ -21,18 +27,21 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 
 	def +(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm + perm)
 	def -(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm - perm)
+  def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
 
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions) extends Chunk {
-  val args = *() :: Nil   /* to make sure it does not match other chunks */
+case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions, quantifiedVars: Seq[Term])
+    extends Chunk {
+
+  val args = *() +: quantifiedVars
   val id = FieldChunkIdentifier(*(), name)
 
   def +(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm - perm)
 
-  override def toString = "FA %s -> %s # %s".format(name, value, perm)
+  override def toString = "FA %s :: %s -> %s # %s".format(quantifiedVars.mkString(", "), name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {
@@ -50,6 +59,7 @@ case class DirectPredicateChunk(name: String,
 
   def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
+  def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
 
   override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
 }

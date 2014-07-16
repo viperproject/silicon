@@ -1,10 +1,16 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
-import semper.silicon.interfaces.state.{FieldChunk, Heap, Store, State}
+import interfaces.state.{FieldChunk, Heap, Store, State}
+import ast.commonnodes
 import terms._
-import semper.silicon.ast.commonnodes
 
 package object utils {
   def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]

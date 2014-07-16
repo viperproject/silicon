@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
@@ -13,20 +19,20 @@ trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
 	def Γ(store: Map[ast.Variable, Term]) = MapBackedStore(store)
 }
 
-trait DefaultHeapFactory extends HeapFactory[SetBackedHeap] {
-	def H() = new SetBackedHeap()
-	def H(h: SetBackedHeap) = new SetBackedHeap(h)
-	def H(chunks: Iterable[Chunk]) = new SetBackedHeap(chunks)
+trait DefaultHeapFactory extends HeapFactory[ListBackedHeap] {
+	def H() = new ListBackedHeap()
+	def H(h: ListBackedHeap) = new ListBackedHeap(h)
+	def H(chunks: Iterable[Chunk]) = new ListBackedHeap(chunks)
 }
 
 class DefaultStateFactory
 		(private val π: () => Set[Term])
-		extends StateFactory[MapBackedStore, SetBackedHeap, DefaultState[MapBackedStore, SetBackedHeap]]
+		extends StateFactory[MapBackedStore, ListBackedHeap, DefaultState[MapBackedStore, ListBackedHeap]]
 		with DefaultStoreFactory
 		with DefaultHeapFactory {
 
 	def Σ() = Σ(Ø, Ø, Ø)
-	def Σ(γ: MapBackedStore, h: SetBackedHeap, g: SetBackedHeap) = DefaultState(γ, h, g, π)
+	def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g, π)
 }
 
 class DefaultPathConditionsFactory
@@ -34,7 +40,7 @@ class DefaultPathConditionsFactory
 
 	def Π() = new MutableSetBackedPathConditions()
 	def Π(term: Term) = (new MutableSetBackedPathConditions()).push(term)
-	
+
 	def Π(terms: Set[Term]) = {
 		val π = new MutableSetBackedPathConditions()
 		terms foreach π.push

@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package interfaces.state
 
@@ -19,6 +25,7 @@ trait PermissionChunk[P <: FractionalPermissions[P], CH <: PermissionChunk[P, CH
   val perm: P
   def +(perm: P): CH
   def -(perm: P): CH
+  def \(perm: P): CH
 }
 
 trait FieldChunk extends Chunk {
