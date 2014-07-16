@@ -63,7 +63,7 @@ set __CP.SLF4J_API=%IVY_CACHE%\org.slf4j\slf4j-api\jars\slf4j-api-1.6.4.jar
 set __CP.SLF4J_WRAPPER=%IVY_CACHE%\org.slf4j\slf4j-log4j12\jars\slf4j-log4j12-1.6.4.jar
 set __CP.LOG4J=%IVY_CACHE%\log4j\log4j\bundles\log4j-1.2.16.jar
 REM Sil and its additional dependencies
-set __CP.SIL="%BASE_DIR%..\sil\target\scala-%SCALA_SVER%\classes"
+set __CP.SILVER="%BASE_DIR%..\silver\target\scala-%SCALA_SVER%\classes"
 set __CP.KIAMA_LIB="%IVY_CACHE%\com.googlecode.kiama\kiama_%SCALA_SVER%\jars\kiama_%SCALA_SVER%-1.5.1.jar"
 
 REM Assemble classpath and check if all classpath elements exist
