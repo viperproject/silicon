@@ -35,7 +35,7 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
             pve: PartialVerificationError,
             locacc: LocationAccess,
             c: C)
-           (Q: Term => VerificationResult)
+           (Q: Select => VerificationResult)
            : VerificationResult
 
   /**
@@ -99,6 +99,8 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   import stateFactory._
   import decider._
 
+  /*private*/ val valueCache = MMap[(H, Term, Field), (Set[Term], Select)]()
+
   def getQuantifiedChunk(h: H, field: String) =
     h.values.find{
       case ch: QuantifiedChunk => ch.name == field
@@ -155,7 +157,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             pve: PartialVerificationError,
             locacc: LocationAccess,
             c: C)
-           (Q: Term => VerificationResult)
+           (Q: Select => VerificationResult)
            : VerificationResult = {
 
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {

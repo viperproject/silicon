@@ -98,7 +98,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) =>
+					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
 //            println("\n[consumer/and]")
 //            println(s"  φ = $φ")
 //            println(s"  s1 = $s1}  (${s1.sort}, ${s1.getClass.getSimpleName}})")
@@ -215,7 +215,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                 QS((h, Unit, Nil, c))
               case false =>
                 QF(Failure[ST, H, S](pve dueTo AssertionFalse(φ)))
-            }})
+            })
         })(Q.tupled)
 		}
 

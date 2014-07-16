@@ -13,7 +13,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
-import semper.silicon.state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import silicon.state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Bookkeeper}
 import heap.QuantifiedChunkHelper
 
@@ -202,8 +202,6 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
-        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-        val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond, tVars)
 //                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
                 val s = sf(sorts.Array(sorts.Ref, toSort(f.typ)))
 //                val s = sf(toSort(f.typ))
@@ -213,7 +211,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 //                val fs = App(s, *())
                 val fs = Select(s, *())
 //                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
-                val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
+//                val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
+        val ch = quantifiedChunkHelper.transform(tRcvr, f, fs/*sf(toSort(f.typ))*/, pGain * p, tCond, tVars)
 //                println(s"  ch = $ch")
         val v = Var("nonnull", sorts.Ref)
         val tNonNullQuant =

@@ -16,7 +16,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import interfaces.reporting.Context
-import semper.silicon.state.{SnapshotHelper, DirectChunk, SymbolConvert}
+import silicon.state.{DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
 import state.terms.perms.IsAsPermissive

@@ -16,7 +16,7 @@ import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, S
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
 import interfaces.decider.Decider
-import semper.silicon.state.{SnapshotHelper, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import silicon.state.{SnapshotHelper, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsPositive

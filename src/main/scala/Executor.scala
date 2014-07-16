@@ -372,7 +372,7 @@ trait DefaultExecutor[ST <: Store[ST],
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                   consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) =>
                     produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) =>
-                      Q(σ2 \ σ.γ, c4))})
+                      Q(σ2 \ σ.γ, c4)))
                 case false =>
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
 
