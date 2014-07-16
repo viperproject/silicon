@@ -12,7 +12,7 @@ import interfaces.decider.TermConverter
 import state.terms._
 
 class TermToSMTLib2Converter extends TermConverter[String, String, String] {
-  def convert(sort: Sort) = sort match {
+  def convert(sort: Sort): String = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
@@ -36,6 +36,9 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
        * domain sort of nullary functions.
        */
       ""
+
+    /* [SNAP-EQ] */
+    case a: sorts.Array => s"Array<${convert(a.from)}~${convert(a.to)}>"
   }
 
   def convert(decl: Decl): String = decl match {
@@ -74,21 +77,23 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       }
 
     case FApp(f, s, tArgs) =>
-      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))
+      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString " ")
 
     case Quantification(quant, vars, body, triggers) =>
-      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
+      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString " "
       val strBody = convert(body)
       val strQuant = convert(quant)
 
       val strTriggers: String =
-        triggers.map(trigger => trigger.ts map convert mkString(" "))
+        triggers.map(trigger => trigger.ts map convert mkString " ")
                 .map(s => s":pattern ($s)")
                 .mkString(" ")
 
       "(%s (%s) (! %s %s))".format(strQuant, strVars, strBody, strTriggers)
 
     /* Booleans */
+
+    case NullTrigger(t) => "($Ref.nullTrigger " + convert(t) + ")"
 
     case Not(f) => "(not " + convert(f) + ")"
 
@@ -121,13 +126,14 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
       if (specialise)
         t0.sort match {
-          case sorts.Snap => "(= " + convert(t0) + " " + convert(t1) + ")"
+          case sorts.Snap => convertBuiltinEq(t0, t1) // "(= " + convert(t0) + " " + convert(t1) + ")"
           case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
           case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
           case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
         }
       else
-        "(= " + convert(t0) + " " + convert(t1) + ")"
+        convertBuiltinEq(t0, t1)
+//        "(= " + convert(t0) + " " + convert(t1) + ")"
 
 
     /* Arithmetic */
@@ -256,14 +262,19 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case First(t) => "($Snap.first " + convert(t) + ")"
     case Second(t) => "($Snap.second " + convert(t) + ")"
 
-    case Combine(t0, t1) =>
+    case combine @ Combine(t0, t1) =>
       "($Snap.combine " + convert(t0) + " " + convert(t1) + ")"
 
     case SortWrapper(t, to) =>
       "(%s %s)".format(sortWrapperSymbol(t.sort, to), convert(t))
 
     case Distinct(symbols) =>
-      "(distinct %s)".format(symbols map(convert) mkString(" "))
+      "(distinct %s)".format(symbols map convert  mkString " ")
+
+    /* [SNAP-EQ] */
+    case Select(t0, t1) =>
+      s"(select ${convert(t0)} ${convert(t1)})"
+//      s"(${convert(t0)} ${convert(t1)})"
   }
 
   def sanitizeSymbol(str: String) =
@@ -282,8 +293,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
   private def literalToString(literal: Literal) = literal match {
     case IntLiteral(n) =>
-      if (n >= 0) n.toString
-      else "(- 0 %s)".format((-n).toString)
+      if (n >= 0) n.toString()
+      else "(- 0 %s)".format((-n).toString())
 
     case Unit => "$Snap.unit"
     case True() => "true"
@@ -299,6 +310,25 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     else
       convert(t)
 
+  /* [SNAP-EQ] */
   private def sortWrapperSymbol(from: Sort, to: Sort) =
     "$SortWrappers.%sTo%s".format(convert(from), convert(to))
+//    s"$$SortWrappers.${sortWrapperSortSymbol(from)}To${sortWrapperSortSymbol(to)}"
+
+//  private def sortWrapperSortSymbol(sort: Sort): String = sort match {
+//    case sorts.Array(from, to) => s"Array<${sortWrapperSortSymbol(from)}~${sortWrapperSortSymbol(to)}>"
+//    case _ => convert(sort)
+//  }
+
+  private def convertBuiltinEq(t0: Term, t1: Term): String = {
+    val hasStar = (t0 existsDefined { case *() => }) || (t1 existsDefined { case *() => })
+
+    if (hasStar) {
+      val x = Var("x", sorts.Ref)
+      val t0a = t0.replace(*(), x)
+      val t1a = t1.replace(*(), x)
+      s"(forall ((x $$Ref)) (= ${convert(t0a)} ${convert(t1a)}))"
+    } else
+      s"(= ${convert(t0)} ${convert(t1)})"
+  }
 }

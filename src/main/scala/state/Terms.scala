@@ -9,8 +9,8 @@ package silicon
 package state.terms
 
 import scala.reflect._
-import silver.ast.utility.Visitor
 import ast.commonnodes
+import silver.ast.utility.Visitor
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -97,6 +97,12 @@ object sorts {
     def unapply(arrow: Arrow) = Some((arrow.from, arrow.to))
   }
 
+  /* [SNAP-EQ] */
+  case class Array(from: Sort, to: Sort) extends Sort {
+    val id = "Array"
+    override val toString = s"$from -> $to"
+  }
+
   case class UserSort(id: String) extends Sort {
     override val toString = id
   }
@@ -138,7 +144,7 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
-  : this.type =
+               : this.type =
 
     state.utils.transform[this.type](this, pre)(recursive, post)
 
@@ -235,6 +241,14 @@ object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
 case class Trigger(ts: Seq[Term])
+
+/* Placeholder */
+case class *() extends Symbol with Term {
+  val id = "x"
+  val sort = sorts.Ref
+
+  override val toString = "*"
+}
 
 case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
     extends BooleanTerm
@@ -430,12 +444,17 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends ComparisonTerm with commonnodes.Eq[Term] {
   assert(p0.sort == p1.sort,
-      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-        .format(p0.sort, p0, p1.sort, p1))
+         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+         .format(p0.sort, p0, p1.sort, p1))
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term] {
+
+  assert(p0.sort == p1.sort,
+         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+         .format(p0.sort, p0, p1.sort, p1))
+}
 
 object Less extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
@@ -513,7 +532,7 @@ case class FullPerm() extends DefaultFractionalPermissions { override val toStri
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 
-case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
+case class TermPerm(t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
   override val toString = t.toString
@@ -605,7 +624,7 @@ class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPe
        with commonnodes.Less[DefaultFractionalPermissions]
        with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions] {
 
-  override val toString = "%s < %s".format(p0, p1)
+  override val toString = "(%s) < (%s)".format(p0, p1)
 }
 
 object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => BooleanTerm) {
@@ -1028,13 +1047,13 @@ object MultisetCardinality {
   def unapply(mc: MultisetCardinality) = Some((mc.p))
 }
 
-class MultisetCount(val p0:Term, val p1:Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
+class MultisetCount(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
   val sort = sorts.Int
   override val toString = s"cnt($p0,$p1)"
 }
 
 object MultisetCount extends {
-  def apply(e:Term, t:Term) = {
+  def apply(e: Term, t: Term) = {
     utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
     utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
 
@@ -1044,7 +1063,7 @@ object MultisetCount extends {
   def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
 }
 
-class MultisetFromSeq(val p:Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+class MultisetFromSeq(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
   val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Multiset(elementsSort)
 }
@@ -1091,9 +1110,31 @@ case class Second(t: Term) extends SnapshotTerm {
   utils.assertSort(t, "term", sorts.Snap)
 }
 
+/* Nasty internals */
+
+case class Select(t0: Term, t1: Term) extends Term {
+  private val arraySort: sorts.Array = t0.sort match {
+    case array: sorts.Array => array
+    case other => sys.error(s"Expected first operand $t0 to be of sort Array, but found $other.")
+  }
+
+  utils.assertSort(t1, "second operand", arraySort.from)
+
+  val sort = arraySort.to
+  override val toString = s"$t0($t1)"
+}
+
 class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
+
+  override val hashCode = silicon.utils.generateHashCode(t, to)
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case sw: SortWrapper => this.t == sw.t && this.to == sw.to
+      case _ => false
+    })
 
   override val toString = s"$t"
   override val sort = to
@@ -1136,6 +1177,18 @@ object Distinct {
     else True()
 
   def unapply(d: Distinct) = Some(d.ts)
+}
+
+class NullTrigger(val t:Term) extends BooleanTerm {
+  override val toString = s"Null($t)"
+  assert(t.sort == sorts.Ref)
+}
+
+object NullTrigger {
+  def apply(t:Term):Term =
+    new NullTrigger(t)
+
+  def unapply(n:NullTrigger) = Some(n.t)
 }
 
 /* Convenience functions */

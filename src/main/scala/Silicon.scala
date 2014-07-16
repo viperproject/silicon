@@ -23,6 +23,7 @@ import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, DefaultContext, Bookkeeper}
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
+import heap.DefaultQuantifiedChunkHelper
 import ast.Consistency
 
 
@@ -151,6 +152,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val dlb = FullPerm()
 
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C](decider, symbolConverter, stateFactory)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -165,7 +167,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, stateUtils,
+      stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils,
       bookkeeper)
   }
 
