@@ -35,7 +35,7 @@ trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[
             pve: PartialVerificationError,
             locacc: LocationAccess,
             c: C)
-           (Q: Term => VerificationResult)
+           (Q: Select => VerificationResult)
            : VerificationResult
 
   /**
@@ -99,6 +99,8 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
   import stateFactory._
   import decider._
 
+  /*private*/ val valueCache = MMap[(H, Term, Field), (Set[Term], Select)]()
+
   def getQuantifiedChunk(h: H, field: String) =
     h.values.find{
       case ch: QuantifiedChunk => ch.name == field
@@ -155,7 +157,7 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             pve: PartialVerificationError,
             locacc: LocationAccess,
             c: C)
-           (Q: Term => VerificationResult)
+           (Q: Select => VerificationResult)
            : VerificationResult = {
 
     decider.assert(σ, Or(NullTrigger(rcvr),rcvr !== Null())) {
@@ -167,12 +169,17 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
             decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
           case true =>
-            decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
-            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
-            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-            val x = Var("x", sorts.Ref)
-
-            h.values.foreach {
+            valueCache.get((h, rcvr, f)) match {
+              case None =>
+                var quants = Set[Term]()
+                decider.prover.logComment(s"Creating function to represent $rcvr.${f.name}; relevant heap chunks: ${h.values.filter(ch => ch.name == f.name)}")
+                //            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
+                val valueT = decider.fresh(f.name, sorts.Array(sorts.Ref, toSort(f.typ)))
+                //            val fApp = App(valueT, *())
+                //            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+                val x = Var("x", sorts.Ref)
+                val fApp = Select(valueT, x)
+                h.values.foreach {
               case ch: QuantifiedChunk if ch.name == f.name =>
                 /* TODO: Commenting the triggers is (probably) just a temporary work-around to cope with problems related to quantified permissions. */
                 //                val valtrigger = ch.value match {
@@ -192,12 +199,20 @@ class DefaultQuantifiedChunkHelper[ST <: Store[ST],
 
               case ch if ch.name == f.name =>
                 sys.error(s"I did not expect non-quantified chunks on the heap for field $ch")
-
-              case _ =>
+                  case _ =>
+                }
+                //            println(s"  value = ${Select(valueT, rcvr)}")
+                val value = Select(valueT, rcvr)
+                valueCache += (h, rcvr, f) -> (quants, value)
+                Q(value)
+              case Some((qt, rt)) =>
+                decider.assume(qt)
+                Q(rt)
             }
-
-            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
-  }
+        }
+      //            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
+      }
+    }
 
   def quantifyChunksForField(h: H, f: String) =
     H(h.values.map {

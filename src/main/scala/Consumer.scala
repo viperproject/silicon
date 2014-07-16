@@ -98,8 +98,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) =>
-						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)))
+					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
+//            println("\n[consumer/and]")
+//            println(s"  φ = $φ")
+//            println(s"  s1 = $s1}  (${s1.sort}, ${s1.getClass.getSimpleName}})")
+//            println(s"  s2 = $s2}  (${s2.sort}, ${s2.getClass.getSimpleName}})")
+            val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
+//            println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
+            val s2a = s2 // s2.sort match {case _: sorts.Arrow => Select(s2, *()) case _ => s2} /* [SNAP-EQ] */
+//            println(s"  s2a = $s2a  (${s2a.sort}, ${s2a.getClass.getSimpleName}})")
+						Q(h2, Combine(s1a, s2a), dcs1 ::: dcs2, c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c)((t0, c1) =>
@@ -143,7 +151,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                       if (quantifiedChunkHelper.isQuantifiedFor(h, f.name)) h
                       else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
 
-                      quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
+                      quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(v => {
+                        val t = v.t0
                         val ch = quantifiedChunkHelper.transform(tRcvr, f, t, tPerm * p, /* takes care of rewriting the cond */ tCond, tVars)
                         quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
                           Q(h3, t, Nil, c3))})
@@ -172,8 +181,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) =>
                   ch match {
                     case fc: DirectFieldChunk =>
-                        val snap = fc.value.convert(sorts.Snap)
-                        Q(h1, snap, fc :: Nil, c3)
+                      val snap = fc.value.convert(sorts.Snap)
+                      Q(h1, snap, fc :: Nil, c3)
 
                     case pc: DirectPredicateChunk =>
                       val h2 =
@@ -181,6 +190,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                           pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                         else
                           h1
+//                      println(s"  pc = $pc")
+//                      println(s"  pc.snap = ${pc.snap}  (${pc.snap.sort}, ${pc.snap.getClass.getSimpleName}})")
                       Q(h2, pc.snap, pc :: Nil, c3)})
               case false =>
                 Failure[ST, H, S](pve dueTo NonPositivePermission(perm))}))
@@ -195,6 +206,9 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
           eval(σ1, φ, pve, c)((t, c) =>
+//            println("\n[consume/pure]")
+//            println(s"  φ = $φ")
+//            println(s"  t = $t")
             decider.assert(σ1, t) {
               case true =>
                 assume(t)
