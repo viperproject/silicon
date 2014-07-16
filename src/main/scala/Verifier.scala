@@ -19,7 +19,6 @@ import state.{terms, SymbolConvert, DirectChunk}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.{DefaultContext, Bookkeeper}
-import heap.QuantifiedChunkHelper
 import decider.PreambleFileEmitter
 
 trait AbstractElementVerifier[ST <: Store[ST],
@@ -146,7 +145,6 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val symbolConverter: SymbolConvert,
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapCompressor: HeapCompressor[ST, H, S],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
 			val bookkeeper: Bookkeeper)
 		extends AbstractElementVerifier[ST, H, PC, S]
@@ -316,14 +314,13 @@ class DefaultVerifier[ST <: Store[ST],
 			val domainsEmitter: DomainsEmitter,
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapCompressor: HeapCompressor[ST, H, S],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
 			val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]
 			 with Logging {
 
 	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkHelper, stateUtils, bookkeeper)
+                                      stateUtils, bookkeeper)
 
   override def reset() {
     super.reset()

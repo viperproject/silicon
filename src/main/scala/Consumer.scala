@@ -17,7 +17,6 @@ import reporting.{DefaultContext, Bookkeeper}
 import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess}
-import heap.QuantifiedChunkHelper
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -37,7 +36,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
@@ -112,57 +110,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           branch(σ, t0, c,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
-
-
-      /* Quantified field access predicate */
-      case ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(locacc @ ast.FieldAccess(eRcvr, f), loss))) =>
-        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
-        val σ0 = σ \+ γVars
-
-        eval(σ0, cond, pve, c)((tCond, c1) => {
-          /* We cheat a bit and syntactically rewrite the range; this should
-           * not be needed if the axiomatisation supported it.
-           */
-          val rewrittenCond = quantifiedChunkHelper.rewriteGuard(tCond)
-          if (decider.check(σ0, Not(rewrittenCond)))
-            Q(h, Unit, Nil, c1)
-          else {
-            decider.assume(rewrittenCond)
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
-
-            eval(σ0, eRcvr, pve, c1)((tRcvr, c2) =>
-              evalp(σ0, loss, pve, c2)((tPerm, c3) => {
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
-
-                decider.assert(σ, IsPositive(tPerm)){
-                  case true =>
-                    val h2 =
-                      if (quantifiedChunkHelper.isQuantifiedFor(h, f.name)) h
-                      else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
-
-                      quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
-                        val ch = quantifiedChunkHelper.transform(tRcvr, f, t, tPerm * p, /* takes care of rewriting the cond */ tCond, tVars)
-                        quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
-                          Q(h3, t, Nil, c3))})
-
-                  case false =>
-                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
-
-      /* Field access predicates for quantified fields */
-      case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm)
-          if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
-
-        val ch = quantifiedChunkHelper.getQuantifiedChunk(h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          evalp(σ, perm, pve, c1)((tPerm, c2) =>
-            quantifiedChunkHelper.value(σ, h, tRcvr, field, ch.quantifiedVars, pve, locacc, c2)(t => {
-              val (ch1, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, t, tPerm)
-              quantifiedChunkHelper.consume(σ, h, Some(tRcvr), field, ch1.perm, pve, locacc, c2)(h2 =>
-                Q(h2, t, Nil, c2))})))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>

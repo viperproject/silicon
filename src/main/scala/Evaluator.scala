@@ -20,7 +20,6 @@ import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, Dir
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsPositive
-import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -48,8 +47,6 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
-
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -171,13 +168,6 @@ trait DefaultEvaluator[
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
-
-      /* Field access if the heap is quantified for that field */
-      case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
-        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, fa.field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-        eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
-          quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, ch.quantifiedVars, pve, fa, c)((t) => {
-            Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
@@ -808,7 +798,7 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           if (assertRcvrNonNull)
-            decider.assert(σ, Or(NullTrigger(tRcvr), tRcvr !== Null())){
+            decider.assert(σ, tRcvr !== Null()){
               case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
               case false => Failure[ST, H, S](pve dueTo ReceiverNull(locacc))}
           else

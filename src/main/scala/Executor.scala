@@ -20,7 +20,6 @@ import state.terms._
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
     DirectChunk, NestedFieldChunk, NestedPredicateChunk}
 import reporting.DefaultContext
-import heap.QuantifiedChunkHelper
 import state.terms.perms.IsPositive
 
 trait DefaultExecutor[ST <: Store[ST],
@@ -49,7 +48,6 @@ trait DefaultExecutor[ST <: Store[ST],
   import stateUtils.freshARP
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -205,26 +203,6 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass @ ast.Assignment(v, rhs) =>
         eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
-
-      /* Assignment for a field that contains quantified chunks */
-      case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
-//        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-        val pve = AssignmentFailed(ass)
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          eval(σ, rhs, pve, c1)((tRhs, c2) => {
-            decider.assume(NullTrigger(tRcvr))
-            decider.assert(σ, tRcvr !== Null()){
-              case false =>
-                Failure[ST, H, S](pve dueTo ReceiverNull(fl))
-              case true =>
-                val (ch, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
-                val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name), optIdx.toSeq)
-                decider.assert(σ, AtLeast(perms, FullPerm())){
-                  case false =>
-                    Failure[ST, H, S](pve dueTo InsufficientPermission(fl))
-                  case true =>
-                    quantifiedChunkHelper.consume(σ, σ.h, Some(tRcvr), field, ch.perm, pve, fl, c2)(h =>
-                      Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)

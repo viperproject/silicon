@@ -15,7 +15,6 @@ import interfaces.decider.Decider
 import state.terms._
 import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Bookkeeper}
-import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -39,7 +38,6 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -130,21 +128,6 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
-      /* Produce a field access if the heap is quantified for that field */
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
-        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
-          assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
-            val s = sf(toSort(field.typ))
-            val pNettoGain = pGain * p
-            val (ch1, _) = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain/*, ch.quantifiedVars*/)
-                // TODO: Why is this transform necessary? We already have a quantified chunk ch.
-                //       Looking at transformElement I'd say that the call is not needed and that
-                //       we can replace ch in σ.h with (ch + pNettoGain), instead of adding ch1 to σ.h.
-            assume(NoPerm() < pGain)
-            Q(σ.h + ch1, c2)})})
-
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
@@ -164,46 +147,6 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)}))
-
-      /* Quantified field access predicate */
-      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
-        val πPre = decider.π
-        var πAux: Set[Term] = Set()
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
-
-        decider.locally[(Term, Term, P, C)](QB => {
-          decider.prover.logComment("Begin local evaluation of sub-expressions of " + fa)
-          eval(σ \+ γVars, cond, pve, c)((tCond, c1) =>
-            eval(σ \+ γVars, eRcvr, pve, c1)((tRcvr, c2) =>
-              evalp(σ \+ γVars, gain, pve, c2)((pGain, c3) => {
-                πAux = decider.π -- πPre
-                decider.prover.logComment("End local evaluation of sub-expressions of " + fa)
-                QB(tCond, tRcvr, pGain, c3)})))}
-    ){case (tCond, tRcvr, pGain, c3) =>
-        val tAuxQuant = Quantification(Forall, tVars, state.terms.utils.BigAnd(πAux))
-        decider.assume(tAuxQuant)
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
-
-        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-        val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond, tVars)
-        val v = Var("nonnull", sorts.Ref)
-        val tNonNullQuant =
-          Quantification(
-            Forall,
-            List(v),
-            Implies(
-              Less(NoPerm(), ch.perm.replace(*(), v)),
-              v !== Null()),
-            List(Trigger(List(NullTrigger(v)))))
-        assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
-        val h =
-          if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
-          else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
-        Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

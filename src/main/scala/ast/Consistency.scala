@@ -14,8 +14,7 @@ import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 
 object Consistency {
   def check(program: Program) = (
-       checkQuantifiedLocationExpressions(program)
-    ++ program.functions.flatMap(checkFunctionPostconditionNotRecursive)
+       program.functions.flatMap(checkFunctionPostconditionNotRecursive)
     ++ checkPermissions(program))
 
   /* Unsupported expressions, features or cases */
@@ -27,33 +26,6 @@ object Consistency {
       + "or 'forall i: Int :: i in [0..|aSeq|) ==> acc(aSeq[i].f, perms)'.")
 
     Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-  }
-
-  def checkQuantifiedLocationExpressions(root: Node): Seq[VerificationError] = {
-    /* The constraints imposed on the shape of quantified permission
-     * expressions are the same that Korbinian imposed in DefaultProducer,
-     * DefaultConsumer and QuantifiedChunkHelper.
-     */
-
-    root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-      case ast.Forall(_, _, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(rcvr, _), _))) =>
-        val error =
-          rcvr match {
-            case ast.SeqAt(_, i) => cond match {
-              case ast.SeqIn(j, ast.SeqRanged(a, b)) if i == j => None
-              case _ => Some(createIllegalQuantifiedLocationExpressionError(cond))
-            }
-            case v: ast.Variable => None
-            case _ => Some(createIllegalQuantifiedLocationExpressionError(rcvr))
-          }
-
-        error.toSeq ++ errors.flatten
-
-      case e: ast.Forall if !e.isPure =>
-        createIllegalQuantifiedLocationExpressionError(e) +: errors.flatten
-
-      case _ => errors.flatten
-    })
   }
 
   def createUnsupportedRecursiveFunctionPostconditionError(fapp: FuncApp) = {

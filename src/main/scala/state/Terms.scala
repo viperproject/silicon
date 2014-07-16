@@ -9,8 +9,8 @@ package silicon
 package state.terms
 
 import scala.reflect._
-import ast.commonnodes
 import silver.ast.utility.Visitor
+import ast.commonnodes
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -235,14 +235,6 @@ object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
 case class Trigger(ts: Seq[Term])
-
-/* Placeholder */
-case class *() extends Symbol with Term {
-  val id = "*"
-  val sort = sorts.Ref
-
-  override val toString = "*"
-}
 
 case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
     extends BooleanTerm
@@ -1144,18 +1136,6 @@ object Distinct {
     else True()
 
   def unapply(d: Distinct) = Some(d.ts)
-}
-
-class NullTrigger(val t:Term) extends BooleanTerm {
-  override val toString = s"Null($t)"
-  assert(t.sort == sorts.Ref)
-}
-
-object NullTrigger {
-  def apply(t:Term):Term =
-    new NullTrigger(t)
-
-  def unapply(n:NullTrigger) = Some(n.t)
 }
 
 /* Convenience functions */
