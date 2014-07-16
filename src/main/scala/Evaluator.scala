@@ -16,11 +16,10 @@ import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, S
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
     FieldChunk}
 import interfaces.decider.Decider
-import silicon.state.{SnapshotHelper, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsPositive
-import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -48,8 +47,6 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
-
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -171,13 +168,6 @@ trait DefaultEvaluator[
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
-
-      /* Field access if the heap is quantified for that field */
-      case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
-        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, fa.field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-        eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
-          quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, ch.quantifiedVars, pve, fa, c)((t) => {
-            Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
@@ -555,12 +545,9 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
-//            println("\n[eval/fapp]")
-//            println(s"  fapp = $fapp")
-//            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
-//            println(s"  tFA = $tFA")
             if (fappCache.contains(tFA)) {
+              logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
               assume(piFB)
               Q(tFA, c3)
@@ -574,11 +561,8 @@ trait DefaultEvaluator[
                 bookkeeper.functionBodyEvaluations += 1
                 eval(σ3, func.exp, pve, c3a)((tFB, c4) =>
                   eval(σ3, post, pve, c4)((tPost, c5) => {
-//                    println(s"  tFB = $tFB")
                     val c5a = c5.decCycleCounter(func)
                     val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
-//                    println(s"  tFAEqFB = $tFAEqFB")
-//                    println(s"  tPost = $tPost")
                     if (!config.disableFunctionApplicationCaching())
                       fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
                     assume(Set(tFAEqFB, tPost))
@@ -814,7 +798,7 @@ trait DefaultEvaluator[
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           if (assertRcvrNonNull)
-            decider.assert(σ, Or(NullTrigger(tRcvr), tRcvr !== Null())){
+            decider.assert(σ, tRcvr !== Null()){
               case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
               case false => Failure[ST, H, S](pve dueTo ReceiverNull(locacc))}
           else

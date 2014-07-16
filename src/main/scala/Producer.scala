@@ -13,9 +13,8 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
-import silicon.state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Bookkeeper}
-import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -39,7 +38,6 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -106,23 +104,12 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
-//        println("\n[producer/and]")
-//        println(s"  φ = $φ")
         val s0 = mkSnap(a0, c)
         val s1 = mkSnap(a1, c)
-
-        val s0a = s0 // s0.sort match {case _: sorts.Arrow => Select(s0, *()) case _ => s0} /* [SNAP-EQ] */
-//        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
-        val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
-//        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
-
-        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))
-//        println(s"  tSnapEq = $tSnapEq")
+        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
-//        println(s"  sf0 = $sf0")
         val sf1 = (sort: Sort) => s1.convert(sort)
-//        println(s"  sf1 = $sf1")
 
         assume(tSnapEq)
         produce2(σ, sf0, p, a0, pve, c)((h1, c1) =>
@@ -141,21 +128,6 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
-      /* Produce a field access if the heap is quantified for that field */
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
-        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
-          assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
-            val s = sf(toSort(field.typ))
-            val pNettoGain = pGain * p
-            val (ch1, _) = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain/*, ch.quantifiedVars*/)
-                // TODO: Why is this transform necessary? We already have a quantified chunk ch.
-                //       Looking at transformElement I'd say that the call is not needed and that
-                //       we can replace ch in σ.h with (ch + pNettoGain), instead of adding ch1 to σ.h.
-            assume(NoPerm() < pGain)
-            Q(σ.h + ch1, c2)})})
-
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
@@ -170,64 +142,11 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           evalp(σ, gain, pve, c1)((pGain, c2) => {
-//            println("\n[producer/pred]")
-//            println(s"  φ = $φ")
             val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
-//            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)}))
-
-      /* Quantified field access predicate */
-      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
-        val πPre = decider.π
-        var πAux: Set[Term] = Set()
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
-
-        decider.locally[(Term, Term, P, C)](QB => {
-          decider.prover.logComment("Begin local evaluation of sub-expressions of " + fa)
-          eval(σ \+ γVars, cond, pve, c)((tCond, c1) =>
-            eval(σ \+ γVars, eRcvr, pve, c1)((tRcvr, c2) =>
-              evalp(σ \+ γVars, gain, pve, c2)((pGain, c3) => {
-                πAux = decider.π -- πPre
-                decider.prover.logComment("End local evaluation of sub-expressions of " + fa)
-                QB(tCond, tRcvr, pGain, c3)})))}
-    ){case (tCond, tRcvr, pGain, c3) =>
-        val tAuxQuant = Quantification(Forall, tVars, state.terms.utils.BigAnd(πAux))
-        decider.assume(tAuxQuant)
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
-
-//                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-                val s = sf(sorts.Array(sorts.Ref, toSort(f.typ)))
-//                val s = sf(toSort(f.typ))
-//                println("\n[produce/forall]")
-//                println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
-                // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-//                val fs = App(s, *())
-                val fs = Select(s, *())
-//                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
-//                val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
-        val ch = quantifiedChunkHelper.transform(tRcvr, f, fs/*sf(toSort(f.typ))*/, pGain * p, tCond, tVars)
-//                println(s"  ch = $ch")
-        val v = Var("nonnull", sorts.Ref)
-        val tNonNullQuant =
-          Quantification(
-            Forall,
-            List(v),
-            Implies(
-              Less(NoPerm(), ch.perm.replace(*(), v)),
-              v !== Null()),
-            List(Trigger(List(NullTrigger(v)))))
-        assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
-        val h =
-          if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
-          else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
-        Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -260,8 +179,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
     case ast.And(φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
-      (sorts.Snap, false)
-//      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false))
+      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), c)
 
     case ast.Ite(_, φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
@@ -278,9 +196,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
       /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-//      (toSort(f.typ), false)
-//      (sorts.Arrow(sorts.Ref, toSort(f.typ)), false)
-      (sorts.Array(sorts.Ref, toSort(f.typ)), false)
+      (toSort(f.typ), false)
 
     case _ =>
       (sorts.Snap, false)
@@ -288,32 +204,18 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
-                                             fIfBothImpure: () => (Sort, Boolean),
+                                             fIfBothPure: () => (Sort, Boolean),
                                              c: C)
                                             : (Sort, Boolean) = {
 
-    def followImpureIfNotAnd(φ: ast.Expression): (Sort, Boolean) = φ match {
-      case _: ast.And => (sorts.Snap, false)
-      case _ => getOptimalSnapshotSort(φ, c)
-    }
-
-    if (φ1.isPure && !φ2.isPure) followImpureIfNotAnd(φ2)
-    else if (!φ1.isPure && φ2.isPure) followImpureIfNotAnd(φ1)
-    else fIfBothImpure()
+    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, c)
+    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, c)
+    else fIfBothPure()
   }
 
-  private def mkSnap(φ: ast.Expression, c: C): Term = {
-    val oss = getOptimalSnapshotSort(φ, c)
-//    println("\n[mkSnap]")
-//    println(s"  φ = $φ")
-//    println(s"  oss = $oss  (${oss.getClass.getSimpleName}})")
-    val t = oss match {
-      case (sorts.Snap, true) => Unit
-      //    case (arrow: sorts.Arrow, _) => App(fresh(arrow), *())
-      case (sort, _) => fresh(sort)
-    }
-//    println(s"  t = $t  (${t.sort}, ${t.getClass.getSimpleName}})")
-    t
+  private def mkSnap(φ: ast.Expression, c: C): Term = getOptimalSnapshotSort(φ, c) match {
+    case (sorts.Snap, true) => Unit
+    case (sort, _) => fresh(sort)
   }
 
   override def pushLocalState() {

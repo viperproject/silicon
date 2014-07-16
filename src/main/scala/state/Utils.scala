@@ -25,7 +25,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal | _: NullTrigger  => Nil
+    case _: Symbol | _: Literal => Nil
     case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: commonnodes.UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -47,7 +47,6 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
-    case s: Select => List(s.t0, s.t1)
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -65,7 +64,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: NullTrigger | _: * => term
+      case _: Var | _: Function | _: Literal => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
@@ -129,7 +128,6 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
-      case Select(t0, t1) => Select(go(t0), go(t1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])
