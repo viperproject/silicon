@@ -97,12 +97,6 @@ object sorts {
     def unapply(arrow: Arrow) = Some((arrow.from, arrow.to))
   }
 
-  /* [SNAP-EQ] */
-  case class Array(from: Sort, to: Sort) extends Sort {
-    val id = "Array"
-    override val toString = s"$from -> $to"
-  }
-
   case class UserSort(id: String) extends Sort {
     override val toString = id
   }
@@ -244,7 +238,7 @@ case class Trigger(ts: Seq[Term])
 
 /* Placeholder */
 case class *() extends Symbol with Term {
-  val id = "x"
+  val id = "*"
   val sort = sorts.Ref
 
   override val toString = "*"
@@ -1111,18 +1105,6 @@ case class Second(t: Term) extends SnapshotTerm {
 }
 
 /* Nasty internals */
-
-case class Select(t0: Term, t1: Term) extends Term {
-  private val arraySort: sorts.Array = t0.sort match {
-    case array: sorts.Array => array
-    case other => sys.error(s"Expected first operand $t0 to be of sort Array, but found $other.")
-  }
-
-  utils.assertSort(t1, "second operand", arraySort.from)
-
-  val sort = arraySort.to
-  override val toString = s"$t0($t1)"
-}
 
 class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,

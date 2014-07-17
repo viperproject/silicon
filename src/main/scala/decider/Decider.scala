@@ -16,7 +16,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import interfaces.reporting.Context
-import silicon.state.{DirectChunk, SymbolConvert}
+import state.{DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
 import state.terms.perms.IsAsPermissive
@@ -230,7 +230,6 @@ class DefaultDecider[ST <: Store[ST],
         r
       else {
         heapCompressor.compress(σ, σ.h)
-//        assume(SnapshotHelper.discoverEqualities(π)) /* [SNAP-EQ] */
         block(σ, r => Q(r), f => f)
       }
 

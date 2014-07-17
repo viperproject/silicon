@@ -13,7 +13,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
-import silicon.state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Bookkeeper}
 import heap.QuantifiedChunkHelper
 
@@ -106,23 +106,12 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
-//        println("\n[producer/and]")
-//        println(s"  φ = $φ")
         val s0 = mkSnap(a0, c)
         val s1 = mkSnap(a1, c)
-
-        val s0a = s0 // s0.sort match {case _: sorts.Arrow => Select(s0, *()) case _ => s0} /* [SNAP-EQ] */
-//        println(s"  s0a = $s0a  (${s0a.sort}, ${s0a.getClass.getSimpleName}})")
-        val s1a = s1 // s1.sort match {case _: sorts.Arrow => Select(s1, *()) case _ => s1} /* [SNAP-EQ] */
-//        println(s"  s1a = $s1a  (${s1a.sort}, ${s1a.getClass.getSimpleName}})")
-
-        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0a, s1a))
-//        println(s"  tSnapEq = $tSnapEq")
+        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
-//        println(s"  sf0 = $sf0")
         val sf1 = (sort: Sort) => s1.convert(sort)
-//        println(s"  sf1 = $sf1")
 
         assume(tSnapEq)
         produce2(σ, sf0, p, a0, pve, c)((h1, c1) =>
@@ -170,10 +159,7 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           evalp(σ, gain, pve, c1)((pGain, c2) => {
-//            println("\n[producer/pred]")
-//            println(s"  φ = $φ")
             val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
-//            println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             assume(NoPerm() < pGain)
@@ -202,18 +188,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
-//                val s = sf(sorts.Arrow(sorts.Ref, toSort(f.typ)))
-                val s = sf(sorts.Array(sorts.Ref, toSort(f.typ)))
-//                val s = sf(toSort(f.typ))
-//                println("\n[produce/forall]")
-//                println(s"  s = $s  (${s.sort}, ${s.getClass.getSimpleName}})")
-                // val fs = DomainFApp(Function(s.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
-//                val fs = App(s, *())
-                val fs = Select(s, *())
-//                println(s"  fs == $fs  (${fs.sort}}, ${fs.getClass.getSimpleName}})")
-//                val ch = quantifiedChunkHelper.transform(tRcvr, f, fs, pGain * p, tCond)
-        val ch = quantifiedChunkHelper.transform(tRcvr, f, fs/*sf(toSort(f.typ))*/, pGain * p, tCond, tVars)
-//                println(s"  ch = $ch")
+        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
+        val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond, tVars)
         val v = Var("nonnull", sorts.Ref)
         val tNonNullQuant =
           Quantification(
@@ -260,8 +236,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
     case ast.And(φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
-      (sorts.Snap, false)
-//      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false))
+      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), c)
 
     case ast.Ite(_, φ1, φ2) =>
       /* At least one of φ1, φ2 must be impure, otherwise ... */
@@ -278,9 +253,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
       /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-//      (toSort(f.typ), false)
-//      (sorts.Arrow(sorts.Ref, toSort(f.typ)), false)
-      (sorts.Array(sorts.Ref, toSort(f.typ)), false)
+      (toSort(f.typ), false)
 
     case _ =>
       (sorts.Snap, false)
@@ -288,32 +261,18 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
-                                             fIfBothImpure: () => (Sort, Boolean),
+                                             fIfBothPure: () => (Sort, Boolean),
                                              c: C)
                                             : (Sort, Boolean) = {
 
-    def followImpureIfNotAnd(φ: ast.Expression): (Sort, Boolean) = φ match {
-      case _: ast.And => (sorts.Snap, false)
-      case _ => getOptimalSnapshotSort(φ, c)
+    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, c)
+    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, c)
+    else fIfBothPure()
     }
 
-    if (φ1.isPure && !φ2.isPure) followImpureIfNotAnd(φ2)
-    else if (!φ1.isPure && φ2.isPure) followImpureIfNotAnd(φ1)
-    else fIfBothImpure()
-  }
-
-  private def mkSnap(φ: ast.Expression, c: C): Term = {
-    val oss = getOptimalSnapshotSort(φ, c)
-//    println("\n[mkSnap]")
-//    println(s"  φ = $φ")
-//    println(s"  oss = $oss  (${oss.getClass.getSimpleName}})")
-    val t = oss match {
+  private def mkSnap(φ: ast.Expression, c: C): Term = getOptimalSnapshotSort(φ, c) match {
       case (sorts.Snap, true) => Unit
-      //    case (arrow: sorts.Arrow, _) => App(fresh(arrow), *())
       case (sort, _) => fresh(sort)
-    }
-//    println(s"  t = $t  (${t.sort}, ${t.getClass.getSimpleName}})")
-    t
   }
 
   override def pushLocalState() {

@@ -47,7 +47,6 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
-    case s: Select => List(s.t0, s.t1)
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -129,7 +128,6 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
-      case Select(t0, t1) => Select(go(t0), go(t1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])
