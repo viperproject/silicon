@@ -16,7 +16,6 @@ import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
 import reporting.{DefaultContext, Bookkeeper}
-import reporting.{Description, DefaultContext, Consuming, ImplBranching, IfBranching, Bookkeeper}
 import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk}
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess}
@@ -24,12 +23,12 @@ import supporters.MagicWandSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
-		extends Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-									  with Brancher[ST, H, S, DefaultContext] =>
-                    with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[ST, H, S], TV]
+		extends Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+									  with Brancher[ST, H, S, DefaultContext[H]]
+                    with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
 
   protected implicit val manifestH: Manifest[H]
@@ -43,8 +42,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C, TV]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
+  protected val stateUtils: StateUtils[ST, H, PC, S, C]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -168,7 +167,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          *       This would be possible if MagicWandSupporter were a trait whose self-type
          *       required it to be mixed into an Evaluator.
          */
-        def reinterpret(ch: MagicWandChunk[H], c: C, tv: TV)
+        def reinterpret(ch: MagicWandChunk[H], c: C)
                        (Q: C => VerificationResult)
                        : VerificationResult = {
 
@@ -185,12 +184,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }
           val eSame = ast.utils.BigAnd(eqs)
           /* Check the generated equalities. */
-          eval(σC, eSame, pve, c/*.copy(poldHeap = Some(ch.hPO))*/, tv)((tSame, c1) =>
+          eval(σC, eSame, pve, c/*.copy(poldHeap = Some(ch.hPO))*/)((tSame, c1) =>
             decider.assert(σC, tSame) {
               case true =>
                 Q(c1/*.copy(poldHeap = c.poldHeap)*/)
               case false =>
-                Failure[ST, H, S, TV](pve dueTo MagicWandChunkOutdated(wand), tv)})
+                Failure[ST, H, S](pve dueTo MagicWandChunkOutdated(wand))})
         }
 
         /* TODO: Getting id by first creating a chunk is not elegant. */
@@ -221,7 +220,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //            if (!c.reinterpretWand)
 //              Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
 //            else
-//              reinterpret(ch, c1.copy(reserveHeaps = hs.tail), tv)(c2 =>
+//              reinterpret(ch, c1.copy(reserveHeaps = hs.tail))(c2 =>
 //                Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
           case _ =>
             Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))
@@ -239,11 +238,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val σEmp = Σ(σ.γ, Ø, σ.g)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
         decider.locally[(H, Term, List[DirectChunk], C)](QB => {
-          produce(σEmp, decider.fresh, FullPerm(), eWand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+          produce(σEmp, decider.fresh, FullPerm(), eWand.left, pve, c0)((σLhs, c1) => {
             val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head :: σLhs.h :: c.reserveHeaps.tail, exhaleExt = true)
             val rhs = eWand.right
-            val tv2 = tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs"))
-            consume(σEmp, σEmp.h, FullPerm(), rhs, pve, c2, tv2)(scala.Function.untupled(QB))})} /* exhale_ext */
+            consume(σEmp, σEmp.h, FullPerm(), rhs, pve, c2)(scala.Function.untupled(QB))})} /* exhale_ext */
         ){case (_, _, _, c3) => /* result of exhale_ext, h1 = σUsed' */
               /* ??? Producing the wand is not an option because we need to pass in σ.h */
             val ch = magicWandSupporter.createChunk(σ.γ, /*h,*/ eWand)
@@ -251,7 +249,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val σEmp = Σ(σ.γ, Ø, σ.g)
             val c4 = c3.copy(reserveHeaps = (c3.reserveHeaps.head + h2) :: c3.reserveHeaps.drop(2),
                              exhaleExt = c.exhaleExt)
-            consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4, tv)((h3, _, _, c5) =>
+            consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4)((h3, _, _, c5) =>
               Q(h3, decider.fresh(sorts.Snap), Nil, c5))}
 
       case ast.Applying(eWand, eIn) =>
@@ -259,20 +257,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val σWV = σ \+ Γ(wandValues)
         val σEmp = Σ(σ.γ, Ø, σ.g)
         val eLHSAndWand = ast.And(wand.left, wand)(wand.left.pos, wand.left.info)
-        consume(σEmp \ σWV.γ, h, FullPerm(), eLHSAndWand, pve, c/*.copy(reinterpretWand = false)*/, tv)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
+        consume(σEmp \ σWV.γ, h, FullPerm(), eLHSAndWand, pve, c/*.copy(reinterpretWand = false)*/)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
           assert(chs1.last.isInstanceOf[MagicWandChunk[H]], s"Unexpected list of consumed chunks: $chs1")
           val ch = chs1.last.asInstanceOf[MagicWandChunk[H]]
           val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)/*.copy(reinterpretWand = c.reinterpretWand)*/
-          consume(σWV \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a/*.copy(reinterpretWand = false)*/, tv)((h2, _, chs2, c2) => { /* σUsed'.apply */
+          consume(σWV \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a/*.copy(reinterpretWand = false)*/)((h2, _, chs2, c2) => { /* σUsed'.apply */
             assert(chs2.last.isInstanceOf[MagicWandChunk[H]], s"Unexpected list of consumed chunks: $chs1")
             assert(ch == chs2.last.asInstanceOf[MagicWandChunk[H]], s"Expected $chs1 == $chs2")
             val c2a = c2.copy(lhsHeap = Some(h1))
-            produce(σWV \ h2, decider.fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) => { /* σ3.h = σUsed'' */
+            produce(σWV \ h2, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
               val c3a = c3.copy(reserveHeaps = (c1.reserveHeaps.head + σ3.h) :: c1.reserveHeaps.tail,
                                 exhaleExt = c1.exhaleExt,
                                 lhsHeap = c2.lhsHeap)
               decider.prover.logComment(s"in consume/apply after producing RHS ${wand.right}}, before consuming $eIn")
-              consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a, tv)((h4, _, _, c4) =>
+              consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
                 Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
 
       case ast.Folding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -283,22 +281,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val c0 = c.incCycleCounter(predicate)
           val σC = combine(σ, h, c0)
           val σEmp = Σ(σ.γ, Ø, σ.g)
-          evalp(σC, ePerm, pve, c0, tv)((tPerm, c1) => {
+          evalp(σC, ePerm, pve, c0)((tPerm, c1) => {
             if (decider.check(σC, IsPositive(tPerm)))
-              evals(σC, eArgs, pve, c1, tv)((tArgs, c2) => {
+              evals(σC, eArgs, pve, c1)((tArgs, c2) => {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
-                consume(σEmp \ insγ, h, FullPerm(), predicate.body, pve, c2, tv)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+                consume(σEmp \ insγ, h, FullPerm(), predicate.body, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
                   val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, additionalEvalHeap = Some(c3.reserveHeaps.head))
-                  consume(σ \ h1 \ insγ, h1, FullPerm(), predicate.body, pve, c3a, tv)((h2, snap, _, c3b) => { /* σUsed'.fold */
-                    produce(σ \ h2, s => snap.convert(s), tPerm, acc, pve, c3b, tv)((σ2, c4) => { /* σ2.h = σUsed'' */
+                  consume(σ \ h1 \ insγ, h1, FullPerm(), predicate.body, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.fold */
+                    produce(σ \ h2, s => snap.convert(s), tPerm, acc, pve, c3b)((σ2, c4) => { /* σ2.h = σUsed'' */
                       val c4a = c4.decCycleCounter(predicate)
                                   .copy(reserveHeaps = (c3.reserveHeaps.head + σ2.h) :: c3.reserveHeaps.tail,
                                         exhaleExt = c3.exhaleExt,
                                         additionalEvalHeap = c3.additionalEvalHeap)
-                      consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a, tv)((h3, _, _, c5) =>
+                      consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
             else
-              Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv)})
+              Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))})
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> folding next.P in e} is currently not " +
@@ -314,22 +312,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val c0 = c.incCycleCounter(predicate)
           val σC = combine(σ, h, c0)
           val σEmp = Σ(σ.γ, Ø, σ.g)
-          evalp(σC, ePerm, pve, c0, tv)((tPerm, c1) =>
+          evalp(σC, ePerm, pve, c0)((tPerm, c1) =>
             if (decider.check(σC, IsPositive(tPerm)))
-              evals(σC, eArgs, pve, c1, tv)((tArgs, c2) =>
-                consume(σEmp, h, FullPerm(), acc, pve, c2, tv)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+              evals(σC, eArgs, pve, c1)((tArgs, c2) =>
+                consume(σEmp, h, FullPerm(), acc, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
                   val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, additionalEvalHeap = Some(c3.reserveHeaps.head))
-                  consume(σ \ h1, h1, FullPerm(), acc, pve, c3a, tv)((h2, snap, _, c3b) => { /* σUsed'.unfold */
+                  consume(σ \ h1, h1, FullPerm(), acc, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.unfold */
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b, tv)((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b)((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
                       val c4a = c4.decCycleCounter(predicate)
                                   .copy(reserveHeaps = (c3.reserveHeaps.head + σ2.h) :: c3.reserveHeaps.tail,
                                         exhaleExt = c3.exhaleExt,
                                         additionalEvalHeap = c3.additionalEvalHeap)
-                      consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a, tv)((h3, _, _, c5) =>
+                      consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})}))
             else
-              Failure[ST, H, S, TV](pve dueTo NonPositivePermission(ePerm), tv))
+              Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm)))
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
@@ -342,7 +340,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val σC = combine(σ, h, c)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
         decider.tryOrFail[(H, Term, List[DirectChunk], C)](σC)((σC1, QS, QF) => {
-          eval(σC1, φ, pve, c0, tv)((t, c1) =>
+          eval(σC1, φ, pve, c0)((t, c1) =>
             decider.assert(σC1, t) {
               case true =>
                 assume(t)
@@ -369,7 +367,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
     if (c.exhaleExt) /* Function "transfer" from wands paper */
       /* Permissions are transferred from the stack of heaps to σUsed, which is h in the current context */
-      return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c, tv)((hs, chs, c1/*, pcr*/) => {
+      return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
         val c2 = c1.copy(reserveHeaps = hs)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
         Q(h + H(chs), chs.head, c2, pcr)})

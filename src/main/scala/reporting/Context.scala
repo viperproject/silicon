@@ -8,12 +8,13 @@ package viper
 package silicon
 package reporting
 
-import interfaces.state.{Store, Heap, State}
+import interfaces.state.Heap
 import interfaces.reporting.Context
 import state.terms.Term
 
 /* TODO: Use MultiSet[Member] instead of List[Member] */
-case class DefaultContext(program: ast.Program,
+case class DefaultContext[H <: Heap[H]]
+                         (program: ast.Program,
                           visited: List[ast.Member] = Nil,
                           constrainableARPs: Set[Term] = Set(),
                           reserveHeaps: Stack[H] = Nil,
@@ -23,7 +24,7 @@ case class DefaultContext(program: ast.Program,
                           additionalEvalHeap: Option[H] = None
 //                          footprintHeap: Option[H] = None,
                           /*reinterpretWand: Boolean = true*/)
-    extends Context[DefaultContext] {
+    extends Context[DefaultContext[H]] {
 
   assert(!exhaleExt || reserveHeaps.size >= 3, "Invariant exhaleExt ==> reserveHeaps.size >= 3 violated")
 

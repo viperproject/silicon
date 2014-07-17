@@ -51,8 +51,8 @@ package object ast {
   val Implies = silver.ast.Implies
   type Ite = silver.ast.CondExp
   val Ite = silver.ast.CondExp
-  type MagicWand = sil.ast.MagicWand
-  val MagicWand = sil.ast.MagicWand
+  type MagicWand = silver.ast.MagicWand
+  val MagicWand = silver.ast.MagicWand
 
   type NullLiteral = silver.ast.NullLit
   val NullLiteral = silver.ast.NullLit
@@ -110,10 +110,10 @@ package object ast {
 
   type Old = silver.ast.Old
   val Old = silver.ast.Old
-  type PackageOld = sil.ast.PackageOld
-  val PackageOld = sil.ast.PackageOld
-  type ApplyOld = sil.ast.ApplyOld
-  val ApplyOld = sil.ast.ApplyOld
+  type PackageOld = silver.ast.PackageOld
+  val PackageOld = silver.ast.PackageOld
+  type ApplyOld = silver.ast.ApplyOld
+  val ApplyOld = silver.ast.ApplyOld
 
   type AccessPredicate = silver.ast.AccessPredicate
   val AccessPredicate = silver.ast.AccessPredicate
@@ -132,18 +132,18 @@ package object ast {
   type FuncApp = silver.ast.FuncApp
   val FuncApp = silver.ast.FuncApp
 
-  type GhostOperation = sil.ast.GhostOperation
-  type Unfolding = sil.ast.Unfolding
-  val Unfolding = sil.ast.Unfolding
-  type Folding = sil.ast.Folding
-  val Folding = sil.ast.Folding
-  type Applying = sil.ast.Applying
-  val Applying = sil.ast.Applying
-  type Packaging = sil.ast.Packaging
-  val Packaging = sil.ast.Packaging
+  type GhostOperation = silver.ast.GhostOperation
+  type Unfolding = silver.ast.Unfolding
+  val Unfolding = silver.ast.Unfolding
+  type Folding = silver.ast.Folding
+  val Folding = silver.ast.Folding
+  type Applying = silver.ast.Applying
+  val Applying = silver.ast.Applying
+  type Packaging = silver.ast.Packaging
+  val Packaging = silver.ast.Packaging
 
-  type InhaleExhale = sil.ast.InhaleExhaleExp
-  val InhaleExhale = sil.ast.InhaleExhaleExp
+  type InhaleExhale = silver.ast.InhaleExhaleExp
+  val InhaleExhale = silver.ast.InhaleExhaleExp
 
   type Quantified = silver.ast.QuantifiedExp
   val Quantified = silver.ast.QuantifiedExp
@@ -179,10 +179,10 @@ package object ast {
   val Constraining = silver.ast.Constraining
   type While = silver.ast.While
   val While = silver.ast.While
-  type Package = sil.ast.Package
-  val Package = sil.ast.Package
-  type Apply = sil.ast.Apply
-  val Apply = sil.ast.Apply
+  type Package = silver.ast.Package
+  val Package = silver.ast.Package
+  type Apply = silver.ast.Apply
+  val Apply = silver.ast.Apply
 
   type Domain = silver.ast.Domain
   val Domain = silver.ast.Domain
@@ -221,7 +221,8 @@ package object ast {
     val Bool = silver.ast.Bool
     val Int = silver.ast.Int
     val Ref = silver.ast.Ref
-    val Wand = semper.sil.ast.Wand
+    val Wand = silver.ast.Wand
+    type Seq = silver.ast.SeqType
     val Seq = silver.ast.SeqType
     type Set = silver.ast.SetType
     val Set = silver.ast.SetType

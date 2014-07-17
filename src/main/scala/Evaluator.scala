@@ -28,12 +28,12 @@ trait DefaultEvaluator[
                        H <: Heap[H],
                        PC <: PathConditions[PC],
 											 S <: State[ST, H, S]]
-		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext] with HasLocalState
-		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-										with Brancher[ST, H, S, DefaultContext] =>
+		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] with HasLocalState
+		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+										with Brancher[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
 
 	protected val decider: Decider[P, ST, H, PC, S, C]
@@ -46,7 +46,7 @@ trait DefaultEvaluator[
 	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -191,7 +191,7 @@ trait DefaultEvaluator[
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
       case ast.PackageOld(e0) => ??? // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
-      case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c, tv)(Q)
+      case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -596,7 +596,7 @@ trait DefaultEvaluator[
 
       /* Prover hint expressions */
 
-      case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c, tv)(Q)
+      case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       /* TODO: Try to merge the code from Evaluator and Executor for fold/folding and unfold/unfolding. */
 

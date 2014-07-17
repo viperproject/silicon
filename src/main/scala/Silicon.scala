@@ -59,7 +59,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type V = DefaultVerifier[ST, H, PC, S]
   private type Failure = SiliconFailure[ST, H, S]
 
@@ -148,7 +148,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
-    val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S], TV](decider)
+    val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[H]](decider)
 
     val dlb = FullPerm()
 

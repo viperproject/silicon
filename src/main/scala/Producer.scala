@@ -21,13 +21,13 @@ trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
         with HasLocalState
-    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext] =>
+    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+                    with Brancher[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
 
   protected val decider: Decider[P, ST, H, PC, S, C]
@@ -39,7 +39,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -131,7 +131,7 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           /* Assuming receiver non-null might contradict current path conditions
            * and we would like to detect that as early as possible.
            * We could try to assert false after the assumption, but it seems likely

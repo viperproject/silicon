@@ -1,4 +1,4 @@
-package semper
+package viper
 package silicon
 package ast
 

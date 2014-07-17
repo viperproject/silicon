@@ -10,9 +10,8 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse,
-    MagicWandChunkNotFound}
+    UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed}
+import silver.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse, MagicWandChunkNotFound}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -28,13 +27,13 @@ trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-									  with Brancher[ST, H, S, DefaultContext] =>
+		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+									  with Brancher[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
 
   protected implicit val manifestH: Manifest[H]
@@ -52,7 +51,7 @@ trait DefaultExecutor[ST <: Store[ST],
   import stateUtils.freshARP
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C, TV]
+  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -218,7 +217,7 @@ trait DefaultExecutor[ST <: Store[ST],
               case Some(ch) =>
                 Q(σ \+ (v, WandChunkRef(ch)), c)
               case None =>
-                Failure[ST, H, S, TV](LetWandFailed(ass) dueTo MagicWandChunkNotFound(wand), tv)}
+                Failure[ST, H, S](LetWandFailed(ass) dueTo MagicWandChunkNotFound(wand))}
 
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
@@ -388,13 +387,13 @@ trait DefaultExecutor[ST <: Store[ST],
         /* TODO: Can inScope and (local execution) be removed? */
 
         decider.inScope {
-          produce(σEmp, fresh, FullPerm(), wand.left, pve, c0, tv.stepInto(c, Description[ST, H, S]("Produce wand lhs")))((σLhs, c1) => {
+          produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
             val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
                              exhaleExt = true,
                              lhsHeap = Some(σLhs.h) /*, reinterpretWand = false*/)
 //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
             val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
-            consume(σEmp, FullPerm(), rhs, pve, c2, tv.stepInto(c2, Description[ST, H, S]("Consume wand rhs")))((_, _, _, c3) => {
+            consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
               /* Producing the wand is not an option because we need to pass in σ.h */
               assert(chWand == null, s"Found unexpected packaged wand $chWand")
               assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
@@ -413,7 +412,7 @@ trait DefaultExecutor[ST <: Store[ST],
         /* TODO: Since resolveWand might already know the chunk it would be faster if we
          *       removed it from the heap directly instead of consuming the wand.
          */
-        consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c/*.copy(reinterpretWand = false)*/, tv)((σ1, _, chs, c1) => {
+        consume(σ \+ Γ(wandValues), FullPerm(), wand, pve, c/*.copy(reinterpretWand = false)*/)((σ1, _, chs, c1) => {
           assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk[H]], "Unexpected list of consumed chunks: $chs")
           val ch = chs(0).asInstanceOf[MagicWandChunk[H]]
           /* TODO: The given heap is not σ.h, but rather the consumed portion only. However,
@@ -422,9 +421,9 @@ trait DefaultExecutor[ST <: Store[ST],
            *       described by the left-hand side.
            */
           val c1a = c1/*poldHeap = Some(ch.hPO), reinterpretWand = true*/
-          consume(σ1, FullPerm(), wand.left, pve, c1a, tv)((σ2, _, _, c2) => {
+          consume(σ1, FullPerm(), wand.left, pve, c1a)((σ2, _, _, c2) => {
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
-            produce(σ2, fresh, FullPerm(), wand.right, pve, c2a, tv)((σ3, c3) => {
+            produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
               val c4 = c3.copy(lhsHeap = None/*, poldHeap = None*/)
               Q(σ3 \ σ.γ, c4)})})}) /* TODO: Remove wandValues from γ instead of using old σ.γ */
 

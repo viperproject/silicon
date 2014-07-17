@@ -12,7 +12,7 @@ import util.control.Breaks._
 import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed, MagicWandNotWellformed}
 import silver.components.StatefulComponent
-import sil.ast.utility.{Nodes, Visitor}
+import silver.ast.utility.{Nodes, Visitor}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -28,12 +28,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
                               H <: Heap[H], PC <: PathConditions[PC],
 														  S <: State[ST, H, S]]
     extends Logging
-		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext] {
+		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]] {
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   /*protected*/ val config: Config
 
@@ -46,8 +46,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  def verify(program: ast.Program, member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
-    val c = DefaultContext(program)
+  def verify(program: ast.Program, member: ast.Member): VerificationResult = {
+    val c = DefaultContext[H](program)
 
     member match {
       case m: ast.Method => verify(m, c)
@@ -57,7 +57,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     }
   }
 
-  private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C, tv: TV): VerificationResult = {
+  private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
     val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
     var result: VerificationResult = Success()
 
@@ -84,22 +84,22 @@ trait AbstractElementVerifier[ST <: Store[ST],
         result =
           inScope {
 //            println("  checking left")
-            produce(σ1, fresh, terms.FullPerm(), left, err, c1, tv)((σ2, c2) => {
+            produce(σ1, fresh, terms.FullPerm(), left, err, c1)((σ2, c2) => {
               σInner = σ2
 //              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
 //              val σ3 = σ1
               Success()})
           } && inScope {
 //            println("  checking right")
-            produce(σ1, fresh, terms.FullPerm(), right, err, c1.copy(lhsHeap = Some(σInner.h)), tv)((_, c4) =>
+            produce(σ1, fresh, terms.FullPerm(), right, err, c1.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
               Success())}
 
 //        println(s"  result = $result")
 
         result match {
-          case failure: Failure[ST@unchecked, H@unchecked, S@unchecked, TV@unchecked] =>
+          case failure: Failure[ST@unchecked, H@unchecked, S@unchecked] =>
             /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
-            result = failure.copy[ST, H, S, TV](message = MagicWandNotWellformed(wand, failure.message.reason))
+            result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
             break()
 
           case _: Success => /* Nothing needs to be done*/
@@ -139,13 +139,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
               /* TODO: Checking self-framingness here fails if pold(e) reads a location
                *       to which access is not required by the precondition.
                */
-              checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2a, tv2a)}
+              checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
         && inScope {
-              produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2b, tv2b)((_, c3) =>
+              produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
                 Success())}
-        &&  inScope {
-          exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-            consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
+        && inScope {
+              exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
+                consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
                   Success()))})})}
   }
 
@@ -168,18 +168,18 @@ trait AbstractElementVerifier[ST <: Store[ST],
      */
 
     /* Produce includes well-formedness check */
-    inScope {
-       (inScope {
-        produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
-            Success())}
-    && inScope {
+    inScope {(
+         inScope {
+            produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
+              Success())}
+      && inScope {
           produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c)((σ1, c2) =>
                inScope {
-                 checkWandsAreSelfFraming(σ1.γ, σ1.h, function, c2a, tv2a)}
+                 checkWandsAreSelfFraming(σ1.γ, σ1.h, function, c2)}
             && inScope {
-                 eval(σ1, function.exp, FunctionNotWellformed(function), c2, tv.stepInto(c2, Description[ST, H, S]("Execute Body")))((tB, c3) =>
-                    consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3, tv.stepInto(c3, ScopeChangingDescription[ST, H, S]("Consume Postcondition")))((_, _, _, c4) =>
-                      Success()))})})
+                 eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) =>
+                    consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3)((_, _, _, c4) =>
+                      Success()))})})}
   }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
@@ -192,9 +192,9 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val σ = Σ(γ, Ø, Ø)
 
        (inScope {
-          checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c2a, tv2a)}
+          checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
     && inScope {
-          produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c, tv)((_, c1) =>
+          produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c)((_, c1) =>
             Success())})
   }
 }
@@ -204,20 +204,21 @@ class DefaultElementVerifier[ST <: Store[ST],
                              PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
     (val config: Config,
-     val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
+     val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]],
      val stateFactory: StateFactory[ST, H, S],
      val symbolConverter: SymbolConvert,
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S],
-     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
-     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
+     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
+     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
+    (protected implicit val manifestH: Manifest[H])
 		extends AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S, DefaultContext]
+       with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -227,7 +228,7 @@ trait AbstractVerifier[ST <: Store[ST],
     extends StatefulComponent
        with Logging {
 
-  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext]
+  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
@@ -369,7 +370,7 @@ class DefaultVerifier[ST <: Store[ST],
                       PC <: PathConditions[PC],
 											S <: State[ST, H, S]]
     (val config: Config,
-     val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
+     val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]],
      val stateFactory: StateFactory[ST, H, S],
      val symbolConverter: SymbolConvert,
      val preambleEmitter: PreambleFileEmitter[_],
@@ -379,8 +380,8 @@ class DefaultVerifier[ST <: Store[ST],
      val domainsEmitter: DomainsEmitter,
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S],
-     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S]],
-     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
+     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
+     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]
        with Logging {

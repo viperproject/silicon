@@ -1,14 +1,14 @@
-package semper
+package viper
 package silicon
 package supporters
 
 import scala.collection.mutable
-import sil.verifier.PartialVerificationError
-import sil.verifier.reasons.InsufficientPermission
+import silver.verifier.PartialVerificationError
+import silver.verifier.reasons.InsufficientPermission
 import interfaces.{VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{ChunkIdentifier, State, PathConditions, Heap, Store}
-import interfaces.reporting.{TraceView, Context}
+import interfaces.reporting.Context
 import state.{DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
 import state.terms._
 import state.terms.perms.{IsNoAccess, IsAsPermissive}
@@ -17,9 +17,8 @@ class MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S],
-                         C <: Context[C, ST, H, S],
-                         TV <: TraceView[TV, ST, H, S]]
-                        (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV]) {
+                         C <: Context[C]]
+                        (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
 
   private type P = DefaultFractionalPermissions
 
@@ -59,7 +58,7 @@ class MagicWandSupporter[ST <: Store[ST],
 
         /* Create mappings from these fresh variables to the receivers that come with the chunk */
         val map: Map[ast.LocalVariable, Term] = toMap(lvs zip ch.localVariableValues)
-        val wand = sil.ast.utility.Expressions.instantiateVariables(ch.renamedWand, ch.localVariables, lvs)
+        val wand = silver.ast.utility.Expressions.instantiateVariables(ch.renamedWand, ch.localVariables, lvs)
 
         (wand, map)
 
@@ -164,8 +163,7 @@ class MagicWandSupporter[ST <: Store[ST],
                                pLoss: P,
                                locacc: ast.LocationAccess,
                                pve: PartialVerificationError,
-                               c: C,
-                               tv: TV)
+                               c: C)
 //                              (Q: (Stack[H], List[(DirectChunk, Int)], C) => VerificationResult)
                               (Q: (Stack[H], List[DirectChunk], C) => VerificationResult)
                               : VerificationResult = {
@@ -188,7 +186,7 @@ class MagicWandSupporter[ST <: Store[ST],
       heapsToVisit = heapsToVisit.tail
 
 //      println(s"\n  h = $h")
-      val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, id, toLose, cCurr, tv)
+      val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, id, toLose, cCurr)
 //      println(s"  h1 = $h1")
 //      println(s"  optCh1 = $optCh1")
 //      println(s"  toLose1 = $toLose1")
@@ -224,7 +222,7 @@ class MagicWandSupporter[ST <: Store[ST],
 
       Q(visitedHeaps.reverse ++ heapsToVisit, chunks.reverse, cCurr/*, pcr*/)
     } else {
-      Failure[ST, H, S, TV](pve dueTo InsufficientPermission(locacc), tv)
+      Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
     }
   }
 
@@ -236,8 +234,7 @@ class MagicWandSupporter[ST <: Store[ST],
                                     h: H,
                                     id: ChunkIdentifier,
                                     pLoss: P,
-                                    c: C,
-                                    tv: TV)
+                                    c: C)
                                    : (H, Option[DirectChunk], P, C) = {
 
     decider.getChunk[DirectChunk](σ, h, id) match {

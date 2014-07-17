@@ -467,10 +467,10 @@ class DefaultDomainsTranslator(symbolConverter: SymbolConvert) extends DomainsTr
         es.tail.foldLeft[terms.SeqTerm](terms.SeqSingleton(f(es.head)))((tSeq, e) =>
             terms.SeqAppend(terms.SeqSingleton(f(e)), tSeq))
 
-      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: sil.ast.OldExp | _: ast.FractionalPerm
+      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: silver.ast.OldExp | _: ast.FractionalPerm
            | _: ast.ResultLiteral | _: ast.Unfolding | _: ast.InhaleExhale | _: ast.PredicateAccess
            | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm | _: ast.WildcardPerm
-           | _: silver.ast.MultisetExp | _: silver.ast.EmptySet | _: silver.ast.ExplicitSet =>
+           | _: silver.ast.MultisetExp | _: silver.ast.EmptySet | _: silver.ast.ExplicitSet
            | _: ast.Applying | _: ast.Folding | _: ast.MagicWand | _: ast.Packaging =>
 
         throw VerificationException(ast.Consistency.createUnexpectedNodeDuringDomainTranslationError(exp))
