@@ -442,12 +442,12 @@ case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends Comparison
          .format(p0.sort, p0, p1.sort, p1))
 }
 
-class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term] {
+class Less(val p0: Term, val p1: Term)
+      extends ComparisonTerm with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term] {
 
   assert(p0.sort == p1.sort,
-         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-         .format(p0.sort, p0, p1.sort, p1))
+    "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+      .format(p0.sort, p0, p1.sort, p1))
 }
 
 object Less extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
