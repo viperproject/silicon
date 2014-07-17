@@ -1,9 +1,14 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package interfaces
 
-import sil.verifier.VerificationError
-import reporting.TraceView
+import silver.verifier.VerificationError
 import state.{Store, Heap, State}
 
 /*
@@ -73,10 +78,8 @@ case class Unreachable() extends NonFatalResult {
 
 case class Failure[ST <: Store[ST],
                    H <: Heap[H],
-                   S <: State[ST, H, S],
-                   TV <: TraceView[TV, ST, H, S]]
-                  (message: VerificationError,
-                   tv: TV)
+                   S <: State[ST, H, S]]
+                  (message: VerificationError)
 		extends FatalResult {
 
 //  tv.addResult(context.currentBranch, this)

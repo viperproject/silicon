@@ -14,7 +14,7 @@ object SiliconBuild extends Build {
     ++ hgIdSettings
     ++ brandSettings
     ++ Seq(
-          organization := "semper",
+          organization := "viper",
           version := "0.1-SNAPSHOT",
           scalaVersion := "2.10.3",
           scalacOptions in Compile ++= Seq(
@@ -37,7 +37,7 @@ object SiliconBuild extends Build {
         ++ assemblySettings
         ++ Seq(
               name := "Silicon-Wands",
-              mainClass in assembly := Some("semper.silicon.Silicon"),
+              mainClass in assembly := Some("viper.silicon.Silicon"),
               jarName in assembly := "silicon.jar",
               // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
               fork := true,
@@ -67,7 +67,7 @@ object SiliconBuild extends Build {
                  * "show javaOptions" on the Sbt console.
                  */
               libraryDependencies ++= externalDep,
-              BrandKeys.dataPackage := "semper.silicon",
+              BrandKeys.dataPackage := "viper.silicon",
               BrandKeys.dataObject := "brandingData",
               BrandKeys.data += Val("buildDate", new java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(new java.util.Date)),
               BrandKeys.data <+= scalaVersion(Val("scalaVersion", _)),
@@ -127,7 +127,7 @@ object SiliconBuild extends Build {
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
 
-    lazy val sil = "semper" %% "sil" %  "0.1-SNAPSHOT"
-    lazy val silSrc = RootProject(new java.io.File("../sil"))
+    lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
+    lazy val silSrc = RootProject(new java.io.File("../silver"))
   }
 }

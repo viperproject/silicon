@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
@@ -34,7 +40,7 @@ class DefaultPathConditionsFactory
 
 	def Π() = new MutableSetBackedPathConditions()
 	def Π(term: Term) = (new MutableSetBackedPathConditions()).push(term)
-	
+
 	def Π(terms: Set[Term]) = {
 		val π = new MutableSetBackedPathConditions()
 		terms foreach π.push

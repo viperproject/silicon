@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
@@ -19,7 +25,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal | _: NullTrigger | _: WandChunkRef[_] => Nil
+    case _: Symbol | _: Literal | _: WandChunkRef[_] => Nil
     case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: commonnodes.UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -58,7 +64,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: NullTrigger | _: * | _: WandChunkRef[_] => term
+      case _: Var | _: Function | _: Literal | _: WandChunkRef[_] => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))

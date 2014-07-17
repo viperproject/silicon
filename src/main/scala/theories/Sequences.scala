@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package theories
 
@@ -41,10 +47,15 @@ class DefaultSequencesEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var sequenceTypes = Set[ast.types.Seq]()
 
-    program visit { case t: sil.ast.Typed =>
-      t.typ :: sil.ast.utility.Types.typeConstituents(t.typ) foreach {
-        case s: ast.types.Seq => sequenceTypes += s
-        case _ => /* Ignore other types */
+    program visit { case t: silver.ast.Typed =>
+      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
+        case s: ast.types.Seq =>
+          sequenceTypes += s
+        case s: ast.types.Multiset =>
+          /* Sequences depend on multisets */
+          sequenceTypes += ast.types.Seq(s.elementType)
+        case _ =>
+        /* Ignore other types */
       }
     }
 

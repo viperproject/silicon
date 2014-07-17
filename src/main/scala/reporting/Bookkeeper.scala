@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package reporting
 
@@ -10,7 +16,7 @@ package reporting
  */
 
 import java.text.SimpleDateFormat
-import sil.components.StatefulComponent
+import silver.components.StatefulComponent
 
 class Bookkeeper extends StatefulComponent {
 	var branches: Long = 0

@@ -1,4 +1,10 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 
 import java.text.SimpleDateFormat
@@ -7,26 +13,17 @@ import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, 
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import sil.verifier.{
-  Verifier => SilVerifier,
-  VerificationResult => SilVerificationResult,
-  Success => SilSuccess,
-  Failure => SilFailure,
-  DefaultDependency => SilDefaultDependency,
-  TimeoutOccurred => SilTimeoutOccurred}
-import sil.frontend.{SilFrontend, SilFrontendConfig, Phase}
+import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError}
+import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
-import interfaces.reporting.TraceViewFactory
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{VerificationException, DefaultContext, Bookkeeper, BranchingOnlyTraceView,
-    BranchingOnlyTraceViewFactory}
+import reporting.{VerificationException, DefaultContext, Bookkeeper}
 import supporters.MagicWandSupporter
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
-import heap.DefaultQuantifiedChunkHelper
 import ast.Consistency
 
 
@@ -62,10 +59,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
-  private type C = DefaultContext[ST, H, S]
-  private type TV = BranchingOnlyTraceView[ST, H, S]
-  private type V = DefaultVerifier[ST, H, PC, S, TV]
-  private type Failure = SiliconFailure[ST, H, S, TV]
+  private type C = DefaultContext
+  private type V = DefaultVerifier[ST, H, PC, S]
+  private type Failure = SiliconFailure[ST, H, S]
 
   private var _config: Config = _
   final def config = _config
@@ -80,7 +76,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: AbstractVerifier[ST, H, PC, S, TV] = null
+  private var verifier: AbstractVerifier[ST, H, PC, S] = null
 
   def this() = this(Nil)
 
@@ -93,50 +89,70 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
 
+  /** Start Silicon.
+    * Can throw a org.rogach.scallop.exceptions.ScallopResult if command-line
+    * parsing failed, or if --help or --version were supplied.
+    */
   def start() {
     assert(lifetimeState == LifetimeState.Configured,
            "Silicon must be configured before it can be initialized, and it can only be initialized once")
 
     lifetimeState = LifetimeState.Started
 
-    _config.initialize{case _ =>}
-    /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
-     *       that initialises the verifier's configuration. However, this
-     *       requires the verifier to inherit from SilFrontend, which is
-     *       not really meaningful.
-     *       The configuration logic should thus be refactored such that
-     *       a Verifier can be used without extending SilFrontend, while
-     *       still ensuring that, e.g., a config is not initialised twice,
-     *       and that a reasonable default handling of --version, --help
-     *       or --dependencies is can be shared.
-     */
+    if (!_config.initialized) initializeLazyScallopConfig()
+        /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
+         *       that initialises the verifier's configuration. However, this
+         *       requires the verifier to inherit from SilFrontend, which is
+         *       not really meaningful.
+         *       The configuration logic should thus be refactored such that
+         *       a Verifier can be used without extending SilFrontend, while
+         *       still ensuring that, e.g., a config is not initialised twice,
+         *       and that a reasonable default handling of --version, --help
+         *       or --dependencies is can be shared.
+         */
 
     setLogLevel(config.logLevel())
-    verifier = createVerifier(new BranchingOnlyTraceViewFactory[ST, H, S]())
+    verifier = createVerifier()
   }
 
-  /** Creates and sets up an instance of a [[semper.silicon.AbstractVerifier]], which can be used
+  /* TODO: Corresponds partially to code from SilFrontend. The design of command-line parsing should be improved.
+   * TODO: Would be nice if logger could be used instead of printHelp()ing to stdout.
+   */
+  protected def initializeLazyScallopConfig() {
+    _config.initialize {
+      case org.rogach.scallop.exceptions.Version =>
+        println(_config.builder.vers.get)
+        throw org.rogach.scallop.exceptions.Version
+      case ex: org.rogach.scallop.exceptions.Help =>
+        _config.printHelp()
+        throw ex
+      case ex: org.rogach.scallop.exceptions.ScallopException =>
+        println(CliOptionError(ex.message + ".").readableMessage)
+        _config.printHelp()
+        throw ex
+    }
+  }
+
+  /** Creates and sets up an instance of a [[viper.silicon.AbstractVerifier]], which can be used
     * to verify elements of a SIL AST such as procedures or functions.
     *
-    * @param traceviewFactory The `TraceViewFactory` to be used.
     * @return A fully set up verifier, ready to be used.
     */
-  private def createVerifier(traceviewFactory: TraceViewFactory[TV, ST, H, S]): V = {
+  private def createVerifier(): V = {
     val bookkeeper = new Bookkeeper()
-    val decider = new DefaultDecider[ST, H, PC, S, C, TV]()
+    val decider = new DefaultDecider[ST, H, PC, S, C]()
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
-    val stateUtils = new StateUtils[ST, H, PC, S, C, TV](decider)
+    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
     val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[ST, H, S], TV](decider)
 
     val dlb = FullPerm()
 
-    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C, TV](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-    val quantifiedChunkHelper = new DefaultQuantifiedChunkHelper[ST, H, PC, S, C, TV](decider, symbolConverter, stateFactory)
+    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -149,10 +165,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
-    new DefaultVerifier[ST, H, PC, S, TV](config, decider, stateFactory, symbolConverter, preambleEmitter,
-                                          sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-                                          stateFormatter, heapCompressor, quantifiedChunkHelper, magicWandSupporter,
-                                          stateUtils, bookkeeper, traceviewFactory)
+    new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
+                                      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+                                      stateFormatter, heapCompressor, magicWandSupporter, stateUtils,
+                                      bookkeeper)
   }
 
   private def reset() {
@@ -463,20 +479,11 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     z3LogFile().orElse(new File(tempDirectory(), _).getPath)
 }
 
-
-object SiliconRunner extends App with SilFrontend {
+class SiliconFrontend extends SilFrontend {
   private var siliconInstance: Silicon = _
 
-  execute(args)
-
-  override def execute(args: Seq[String]) {
-    super.execute(args)
-
-    siliconInstance.stop()
-  }
-
   def createVerifier(fullCmd: String) = {
-    siliconInstance = new Silicon(Seq(("startedBy", "semper.silicon.SiliconRunner")))
+    siliconInstance = new Silicon(Seq("args" -> fullCmd))
 
     siliconInstance
   }
@@ -486,5 +493,16 @@ object SiliconRunner extends App with SilFrontend {
     siliconInstance.start()
 
     siliconInstance.config
+  }
+}
+
+object SiliconRunner extends SiliconFrontend {
+  def main(args: Array[String]) {
+    try {
+      execute(args)
+    } catch {
+      case ex: org.rogach.scallop.exceptions.ScallopResult =>
+        /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
+    }
   }
 }

@@ -1,3 +1,7 @@
+; This Source Code Form is subject to the terms of the Mozilla Public
+; License, v. 2.0. If a copy of the MPL was not distributed with this
+; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 ; These axioms correspond to Dafny's multiset axiomatisation from 2013-06-27.
 ; They depend on the set axiomatisation due to the fromSet-function.
 
@@ -310,3 +314,12 @@
     (>= ($Multiset.count s x) 0)
     :pattern (($Multiset.count s x))
     )))
+
+; Count over a multiset based on a sequence is positive iff the
+; underlying sequence contains the counted element.
+(assert (forall ((xs $Seq<$S$>) (x $S$)) (!
+	(iff
+		(> ($Multiset.count ($Multiset.fromSeq xs) x) 0)
+		($Seq.in xs x))
+	:pattern(($Seq.in xs x))
+	:pattern(($Multiset.count ($Multiset.fromSeq xs) x)))))

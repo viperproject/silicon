@@ -1,10 +1,16 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package interfaces
 
-import sil.verifier.PartialVerificationError
+import silver.verifier.PartialVerificationError
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
-import reporting.{Context, TraceView}
+import reporting.Context
 import silicon.state.terms.{Sort, Term, FractionalPermissions}
 
 /*
@@ -15,18 +21,17 @@ trait Evaluator[P <: FractionalPermissions[P],
                 ST <: Store[ST],
                 H <: Heap[H],
 								S <: State[ST, H, S],
-                C <: Context[C, ST, H, S],
-                TV <: TraceView[TV, ST, H, S]] {
+                C <: Context[C]] {
 
-	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C, tv: TV)
+	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C)
 					 (Q: (List[Term], C) => VerificationResult)
            : VerificationResult
 
-	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
 					(Q: (Term, C) => VerificationResult)
           : VerificationResult
 
-	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C)
 					 (Q: (P, C) => VerificationResult)
            : VerificationResult
 
@@ -34,8 +39,7 @@ trait Evaluator[P <: FractionalPermissions[P],
                           locacc: ast.LocationAccess,
                           assertRcvrNonNull: Boolean,
                           pve: PartialVerificationError,
-                          c: C,
-                          tv: TV)
+                          c: C)
                          (Q: (ChunkIdentifier, C) => VerificationResult)
                          : VerificationResult
 }
@@ -44,16 +48,14 @@ trait Producer[P <: FractionalPermissions[P],
                ST <: Store[ST],
                H <: Heap[H],
 							 S <: State[ST, H, S],
-               C <: Context[C, ST, H, S],
-               TV <: TraceView[TV, ST, H, S]] {
+               C <: Context[C]] {
 
 	def produce(σ: S,
               sf: Sort => Term,
               p: P,
               φ: ast.Expression,
               pve: PartialVerificationError,
-              c: C,
-              tv: TV)
+              c: C)
 						 (Q: (S, C) => VerificationResult)
              : VerificationResult
 
@@ -62,8 +64,7 @@ trait Producer[P <: FractionalPermissions[P],
                p: P,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
-               c: C,
-               tv: TV)
+               c: C)
               (Q: (S, C) => VerificationResult)
               : VerificationResult
 }
@@ -73,10 +74,9 @@ trait Consumer[P <: FractionalPermissions[P],
                ST <: Store[ST],
                H <: Heap[H],
 							 S <: State[ST, H, S],
-               C <: Context[C, ST, H, S],
-               TV <: TraceView[TV, ST, H, S]] {
+               C <: Context[C]] {
 
-	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C, tv: TV)
+	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
 						 (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult
 
@@ -84,8 +84,7 @@ trait Consumer[P <: FractionalPermissions[P],
                p: P,
                φ: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
-               c: C,
-               tv: TV)
+               c: C)
               (Q: (S, List[Term], List[CH], C) => VerificationResult)
               : VerificationResult
 }
@@ -94,13 +93,11 @@ trait Executor[X,
                ST <: Store[ST],
                H <: Heap[H],
                S <: State[ST, H, S],
-               C <: Context[C, ST, H, S],
-               TV <: TraceView[TV, ST, H, S]] {
+               C <: Context[C]] {
 
   def exec(σ: S,
            x: X,
-           c: C,
-           tv: TV)
+           c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult
 }

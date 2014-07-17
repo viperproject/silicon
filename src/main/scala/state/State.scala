@@ -1,10 +1,16 @@
-package semper
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper
 package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor, StateFactory}
-import interfaces.reporting.{TraceView, Context}
+import interfaces.reporting.Context
 import interfaces.decider.Decider
 import ast.Variable
 import terms.{Term, DefaultFractionalPermissions}
@@ -131,9 +137,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
                             H <: Heap[H],
 											     	PC <: PathConditions[PC],
                             S <: State[ST, H, S],
-											     	C <: Context[C, ST, H, S],
-                            TV <: TraceView[TV, ST, H, S]]
-                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C, TV],
+											     	C <: Context[C]]
+                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
                             val distinctnessLowerBound: DefaultFractionalPermissions,
                             val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
