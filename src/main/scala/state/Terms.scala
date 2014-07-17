@@ -437,8 +437,13 @@ case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends Comparison
         .format(p0.sort, p0, p1.sort, p1))
 }
 
-class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+class Less(val p0: Term, val p1: Term)
+      extends ComparisonTerm with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term] {
+
+  assert(p0.sort == p1.sort,
+    "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+      .format(p0.sort, p0, p1.sort, p1))
+}
 
 object Less extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
@@ -516,7 +521,7 @@ case class FullPerm() extends DefaultFractionalPermissions { override val toStri
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 
-case class TermPerm(val t: Term) extends DefaultFractionalPermissions {
+case class TermPerm(t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
   override val toString = t.toString
@@ -1097,6 +1102,14 @@ case class Second(t: Term) extends SnapshotTerm {
 class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
+
+  override val hashCode = silicon.utils.generateHashCode(t, to)
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case sw: SortWrapper => this.t == sw.t && this.to == sw.to
+      case _ => false
+    })
 
   override val toString = s"$t"
   override val sort = to
