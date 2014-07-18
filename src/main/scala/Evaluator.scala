@@ -921,11 +921,15 @@ trait DefaultEvaluator[
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
-    val es = trigger.exps flatMap {
-      case _: ast.FuncApp => None
-      case f: silver.ast.PossibleTrigger => Some(f)
-      case _ => None
-    }
+    val es =
+      trigger.exps.map {
+        case ast.Old(e) => e
+        case e => e
+      }.flatMap {
+        case _: ast.FuncApp => None
+        case f: silver.ast.PossibleTrigger => Some(f)
+        case _ => None
+      }
 
     if (es.length != trigger.exps.length)
       logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
