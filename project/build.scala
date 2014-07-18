@@ -127,7 +127,7 @@ object SiliconBuild extends Build {
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
 
-    lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
+    lazy val sil = "viper" %% "silver-magic-wands" %  "0.1-SNAPSHOT"
     lazy val silSrc = RootProject(new java.io.File("../silver"))
   }
 }
