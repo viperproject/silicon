@@ -311,25 +311,24 @@ trait DefaultExecutor[ST <: Store[ST],
                       case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
                     }
                     /* Producing Access is unfortunately not an option here
-                    * since the following would fail due to productions
-                    * starting in an empty heap:
-                    *
-                    *   predicate V { acc(x) }
-                    *
-                    *   function f(a: int): int
-                    *	   requires rd(x)
-                    * 	 { x + a }
-                    *
-                    *   method test(a: int)
-                    *     requires ... ensures ...
-                    *   { fold acc(V, f(a)) }
-                    *
-                    * Fold would fail since acc(V, f(a)) is produced in an
-                    * empty and thus f(a) fails due to missing permissions to
-                    * read x.
-                    *
-                    * TODO: Use heap merge function here!
-                    */
+                     * since the following would fail due to productions
+                     * starting in an empty heap:
+                     *
+                     *   predicate V { acc(x) }
+                     *
+                     *   function f(a: int): int
+                     *	   requires rd(x)
+                     * 	 { x + a }
+                     *
+                     *   method test(a: int)
+                     *     requires ... ensures ...
+                     *   { fold acc(V, f(a)) }
+                     *
+                     * Fold would fail since acc(V, f(a)) is produced in an
+                     * empty and thus f(a) fails due to missing permissions to
+                     * read x.
+                     *
+                     */
                     val id = PredicateChunkIdentifier(predicate.name, tArgs)
                     val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id) match {
                       case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
