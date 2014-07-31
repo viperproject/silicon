@@ -378,32 +378,22 @@ trait DefaultExecutor[ST <: Store[ST],
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-        val c0 = c/*.copy(poldHeap = Some(σ.h))*/
 
-        var chWand: MagicWandChunk[H] = null
-        var hInner: H = null
-        var cInner: C = null
-
-        /* TODO: Can inScope and (local execution) be removed? */
-
-        decider.inScope {
-          produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
+        decider.locally[(MagicWandChunk[H], H, C)](QB => {
+          produce(σEmp, fresh, FullPerm(), wand.left, pve, c)((σLhs, c1) => {
             val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
                              exhaleExt = true,
                              lhsHeap = Some(σLhs.h) /*, reinterpretWand = false*/)
 //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
             val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
             consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
-              /* Producing the wand is not an option because we need to pass in σ.h */
-              assert(chWand == null, s"Found unexpected packaged wand $chWand")
+              /* TODO: (Still valid?) Producing the wand is not an option because we need to pass in σ.h */
               assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
-              chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
-              hInner = c3.reserveHeaps(2)
-              cInner = c3
-              Success()})})
-        } && {
-          val c1 = cInner.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
-          Q(σ \ (hInner + chWand), c1)
+              val chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
+              QB(chWand, c3.reserveHeaps(2), c3)})})
+        }){case (chWand, h1, c1) =>
+          val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
+          Q(σ \ (h1 + chWand), c2)
         }
 
       case apply @ ast.Apply(e) =>
