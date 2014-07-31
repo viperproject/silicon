@@ -1,0 +1,11 @@
+field f: Ref
+
+//:: ExpectedOutput(typechecker.error)
+define INV(x, v) acc(x.f) && x.f == v
+
+method test02(a: Ref) {
+  inhale INV(a, 0)
+
+  /* TODO: Error location should be here, not above */
+  assert INV(a, null)
+}
