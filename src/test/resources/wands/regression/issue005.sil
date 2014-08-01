@@ -1,0 +1,33 @@
+field f: Ref
+field g: Ref
+field h: Ref
+
+/* Only package/packaging is allowed to contain applying operations */
+//method test22(x: Ref)
+//  requires x != null
+//  requires acc(x.f) --* acc(x.g) --* acc(x.h)
+//  requires acc(x.f) && acc(x.g)
+//{
+//  exhale applying (acc(x.f) --* acc(x.g) --* acc(x.h))
+//         in applying (acc(x.g) --* acc(x.h))
+//         in acc(x.h)
+//
+////  exhale acc(x.h)
+//}
+
+method test01(x: Ref)
+  requires acc(x.f) --* acc(x.g)
+  requires acc(x.g) --* acc(x.h)
+{
+  package
+    acc(x.f)
+      --*
+    applying (acc(x.f) --* acc(x.g))
+    in applying (acc(x.g) --* acc(x.h))
+    in acc(x.h)
+
+  exhale acc(x.f) --* acc(x.h)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
