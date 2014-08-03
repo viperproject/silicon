@@ -16,7 +16,7 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import interfaces.reporting.Context
-import state.{DirectChunk, SymbolConvert}
+import state.{MagicWandChunk, MagicWandChunkIdentifier, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
 import state.terms.perms.IsAsPermissive
@@ -353,10 +353,18 @@ class DefaultDecider[ST <: Store[ST],
     )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
-    val chunks = h.values collect {
-      case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]}
+    id match {
+      case mwid: MagicWandChunkIdentifier =>
+        val mwchs = h.values.collect{case ch: MagicWandChunk => ch}
+        mwchs.find(mwch => compareWands(σ, mwid.wand, mwch.wand)).asInstanceOf[Option[CH]]
 
-    getChunk(σ, chunks, id)
+      case _ =>
+        val chunks = h.values collect {
+          case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]
+        }
+
+        getChunk(σ, chunks, id)
+    }
   }
 
 	private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
@@ -381,6 +389,18 @@ class DefaultDecider[ST <: Store[ST],
 
 		chunk
 	}
+
+  private def compareWands(σ: S, wand1: MagicWand, wand2: MagicWand): Boolean = {
+    def eq(t1: Term, t2: Term): Boolean = (t1, t2) match {
+      case (SepAnd(t11, t12), SepAnd(t21, t22)) =>
+        eq(t11, t21) && eq(t12, t22)
+      case (Acc(id1, ts1, tp1), Acc(id2, ts2, tp2)) if id1 == id1 && ts1.length == ts2.length =>
+        check(σ, BigAnd(ts1.zip(ts2).map (p => p._1 === p._2) ++ List(tp1 === tp2)))
+      case (_t1, _t2) => check(σ, _t1 === _t2)
+    }
+
+    eq(wand1.left, wand2.left) && eq(wand1.right, wand2.right)
+  }
 
   /* Fresh symbols */
 

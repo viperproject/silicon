@@ -25,7 +25,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal | _: WandChunkRef[_] => Nil
+    case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: commonnodes.UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -47,6 +47,8 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
+    case mw: MagicWand => List(mw.left, mw.right)
+    case a: Acc => a.args ++ List(a.perms)
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -64,7 +66,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: WandChunkRef[_] => term
+      case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
@@ -128,6 +130,9 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
+      case MagicWand(left, right) => MagicWand(go(left), go(right))
+      case SepAnd(t0, t1) => SepAnd(go(t0), go(t1))
+      case Acc(id, args, perms) => Acc(id, args map go, go(perms))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

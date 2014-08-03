@@ -23,15 +23,15 @@ import state.terms.implicits._
 import state.terms.perms.IsPositive
 import supporters.MagicWandSupporter
 
-trait DefaultEvaluator[
-                       ST <: Store[ST],
+trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
 											 S <: State[ST, H, S]]
 		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] with HasLocalState
 		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
 										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-										with Brancher[ST, H, S, DefaultContext[H]] =>
+										with Brancher[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
@@ -46,7 +46,7 @@ trait DefaultEvaluator[
 	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+//  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
@@ -728,6 +728,31 @@ trait DefaultEvaluator[
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
+
+      /* Magic wands */
+
+      case mw: ast.MagicWand =>
+        magicWandSupporter.translate(σ, mw, pve, c)(Q)
+//        println("\n[Evaluator/MagicWand]")
+//        eval(σ, eLeft, pve, c)((tLeft, c1) =>
+//          eval(σ, eRight, pve, c1)((tRight, c2) => {
+//            println(s"  tLeft = $tLeft")
+//            println(s"  tRight = $tRight")
+//            Q(MagicWand(tLeft, tRight), c2)}))
+
+//      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
+//        println("\n[Evaluator/FAP]")
+//        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+//            Q(Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2)))
+//
+//      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
+//        println("\n[Evaluator/PAP]")
+//        evals(σ, eArgs, pve, c)((ts, c1) =>
+//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+//            Q(Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
+
+      /* Unexpected nodes */
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e))

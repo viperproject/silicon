@@ -8,15 +8,15 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{MagicWandChunkOutdated, NonPositivePermission, AssertionFalse,
+import silver.verifier.{VerificationError, PartialVerificationError}
+import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NonPositivePermission, AssertionFalse,
     MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
 import reporting.{DefaultContext, Bookkeeper}
-import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk}
+import state._
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess}
 import supporters.MagicWandSupporter
@@ -26,7 +26,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		extends Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
 		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
 									  with Brancher[ST, H, S, DefaultContext[H]]
-                    with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] =>
+                    with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
@@ -43,7 +44,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
+//  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -156,8 +157,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
        */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
-        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
-        val σC = combine(σ \+ Γ(wandValues), h, c)
+//        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
+//        val σC = combine(σ \+ Γ(wandValues), h, c)
 
         /* Checks that the value of package-old expressions hasn't changed
          * w.r.t. the state in which the wand was produced.
@@ -167,63 +168,78 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          *       This would be possible if MagicWandSupporter were a trait whose self-type
          *       required it to be mixed into an Evaluator.
          */
-        def reinterpret(ch: MagicWandChunk[H], c: C)
-                       (Q: C => VerificationResult)
-                       : VerificationResult = {
+//        def reinterpret(ch: MagicWandChunk, c: C)
+//                       (Q: C => VerificationResult)
+//                       : VerificationResult = {
+//
+//          /* Collect pold-expressions together with conditional guards they are nested in.
+//           * For example, b ==> pold(e) will be returned as (b, pold(e)).
+//           */
+//          val pathConditionedPOlds = magicWandSupporter.pathConditionedPOlds(wand)
+//          /* Extract e from pold(e) and turn the list of pairs (b, pold(e)) into a list
+//           * of terms of the shape b && e == pold(e).
+//           */
+//          val eqs = pathConditionedPOlds.map{case (pc, po) =>
+//            val eq = ast.Equals(po.exp, po)(po.pos, po.info)
+//            ast.Implies(pc, eq)(pc.pos, pc.info)
+//          }
+//          val eSame = ast.utils.BigAnd(eqs)
+//          /* Check the generated equalities. */
+//          eval(σC, eSame, pve, c/*.copy(poldHeap = Some(ch.hPO))*/)((tSame, c1) =>
+//            decider.assert(σC, tSame) {
+//              case true =>
+//                Q(c1/*.copy(poldHeap = c.poldHeap)*/)
+//              case false =>
+//                Failure[ST, H, S](pve dueTo MagicWandChunkOutdated(wand))})
+//        }
 
-          /* Collect pold-expressions together with conditional guards they are nested in.
-           * For example, b ==> pold(e) will be returned as (b, pold(e)).
-           */
-          val pathConditionedPOlds = magicWandSupporter.pathConditionedPOlds(wand)
-          /* Extract e from pold(e) and turn the list of pairs (b, pold(e)) into a list
-           * of terms of the shape b && e == pold(e).
-           */
-          val eqs = pathConditionedPOlds.map{case (pc, po) =>
-            val eq = ast.Equals(po.exp, po)(po.pos, po.info)
-            ast.Implies(pc, eq)(pc.pos, pc.info)
-          }
-          val eSame = ast.utils.BigAnd(eqs)
-          /* Check the generated equalities. */
-          eval(σC, eSame, pve, c/*.copy(poldHeap = Some(ch.hPO))*/)((tSame, c1) =>
-            decider.assert(σC, tSame) {
-              case true =>
-                Q(c1/*.copy(poldHeap = c.poldHeap)*/)
-              case false =>
-                Failure[ST, H, S](pve dueTo MagicWandChunkOutdated(wand))})
-        }
+//        /* TODO: Getting id by first creating a chunk is not elegant. */
+//        val id = magicWandSupporter.createChunk(σC.γ, /*σC.h,*/ wand).id
 
-        /* TODO: Getting id by first creating a chunk is not elegant. */
-        val id = magicWandSupporter.createChunk(σC.γ, /*σC.h,*/ wand).id
+        def QL(σ: S, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
+          val σC = combine(σ /*\+ Γ(wandValues)*/, h, c)
+          val hs =
+            if (c.exhaleExt) c.reserveHeaps
+            else Stack(h)
 
-        val hs =
-          if (c.exhaleExt) c.reserveHeaps
-          else Stack(h)
-
-        magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-          decider.getChunk[MagicWandChunk[H]](σC, h1, id) match {
-            case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
-            case _ => (None, h1, c1)
-          }
-        ){
-          case (Some(ch), hs1, c1) =>
+          magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
+            decider.getChunk[MagicWandChunk](σC, h1, id) match {
+              case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
+              case _ => (None, h1, c1)
+            }
+          ){case (Some(ch), hs1, c1) =>
             assert(c1.exhaleExt == c.exhaleExt)
             if (c.exhaleExt) {
               /* transfer: move ch into h = σUsed*/
               assert(hs1.size == c.reserveHeaps.size)
-              Q(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
+              Q(h + ch, decider.fresh(sorts.Snap), Nil/*List(ch)*/, c1.copy(reserveHeaps = hs1))
             } else {
               assert(hs1.size == 1)
               assert(c.reserveHeaps == c1.reserveHeaps)
-              Q(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
+              Q(hs1.head, decider.fresh(sorts.Snap), Nil/*List(ch)*/, c1)
             }
 
-//            if (!c.reinterpretWand)
-//              Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
-//            else
-//              reinterpret(ch, c1.copy(reserveHeaps = hs.tail))(c2 =>
-//                Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
+          //            if (!c.reinterpretWand)
+          //              Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
+          //            else
+          //              reinterpret(ch, c1.copy(reserveHeaps = hs.tail))(c2 =>
+          //                Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
           case _ =>
-            Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))
+//            Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))
+            Failure[ST, H, S](ve)
+          }
+        }
+
+        φ match {
+          case wand: ast.MagicWand =>
+            eval(σ, wand, pve, c)((tWand, c1) => {
+              val ve = pve dueTo MagicWandChunkNotFound(wand)
+              QL(σ, MagicWandChunkIdentifier(tWand.asInstanceOf[MagicWand]), ve, c1)})
+          case v: ast.LocalVariable =>
+            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
+            val ve = pve dueTo NamedMagicWandChunkNotFound(v)
+            QL(σ, MagicWandChunkIdentifier(tWandChunk.wand), ve, c)
+          case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
       case pckg @ ast.Packaging(eWand, eIn) =>
@@ -244,32 +260,43 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             consume(σEmp, σEmp.h, FullPerm(), rhs, pve, c2)(scala.Function.untupled(QB))})} /* exhale_ext */
         ){case (_, _, _, c3) => /* result of exhale_ext, h1 = σUsed' */
               /* ??? Producing the wand is not an option because we need to pass in σ.h */
-            val ch = magicWandSupporter.createChunk(σ.γ, /*h,*/ eWand)
-            val h2 = h + ch /* h2 = σUsed'' */
-            val σEmp = Σ(σ.γ, Ø, σ.g)
-            val c4 = c3.copy(reserveHeaps = (c3.reserveHeaps.head + h2) :: c3.reserveHeaps.drop(2),
-                             exhaleExt = c.exhaleExt)
-            consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4)((h3, _, _, c5) =>
-              Q(h3, decider.fresh(sorts.Snap), Nil, c5))}
+//            val ch = magicWandSupporter.createChunk(σ.γ, /*h,*/ eWand)
+            eval(σ, eWand, pve, c)((tWand, c1) => {
+              val h2 = h + MagicWandChunk(tWand.asInstanceOf[MagicWand]) /* h2 = σUsed'' */
+              val σEmp = Σ(σ.γ, Ø, σ.g)
+              val c4 = c3.copy(reserveHeaps = (c3.reserveHeaps.head + h2) :: c3.reserveHeaps.drop(2),
+                               exhaleExt = c.exhaleExt)
+              consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4)((h3, _, _, c5) =>
+                Q(h3, decider.fresh(sorts.Snap), Nil, c5))})}
 
       case ast.Applying(eWand, eIn) =>
-        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
-        val σWV = σ \+ Γ(wandValues)
+//        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWand)
+        val (eWand, eLHSAndWand) = φ match {
+          case _eWand: ast.MagicWand =>
+            (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info))
+          case v: ast.LocalVariable =>
+            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
+            val _eWand = tWandChunk.source
+            (_eWand, ast.And(_eWand.left, v)(v.pos, v.info))
+          case _ => sys.error(s"Expected a magic wand, but found node $φ")
+        }
+
+        val σWV = σ //\+ Γ(wandValues)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-        val eLHSAndWand = ast.And(wand.left, wand)(wand.left.pos, wand.left.info)
+//        val eLHSAndWand = ast.And(eWand.left, eWand)(eWand.left.pos, eWand.left.info)
         consume(σEmp \ σWV.γ, h, FullPerm(), eLHSAndWand, pve, c/*.copy(reinterpretWand = false)*/)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
-          assert(chs1.last.isInstanceOf[MagicWandChunk[H]], s"Unexpected list of consumed chunks: $chs1")
-          val ch = chs1.last.asInstanceOf[MagicWandChunk[H]]
+          assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
+          val ch = chs1.last.asInstanceOf[MagicWandChunk]
           val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)/*.copy(reinterpretWand = c.reinterpretWand)*/
           consume(σWV \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a/*.copy(reinterpretWand = false)*/)((h2, _, chs2, c2) => { /* σUsed'.apply */
-            assert(chs2.last.isInstanceOf[MagicWandChunk[H]], s"Unexpected list of consumed chunks: $chs1")
-            assert(ch == chs2.last.asInstanceOf[MagicWandChunk[H]], s"Expected $chs1 == $chs2")
+            assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
+            assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
             val c2a = c2.copy(lhsHeap = Some(h1))
-            produce(σWV \ h2, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
+            produce(σWV \ h2, decider.fresh, FullPerm(), eWand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
               val c3a = c3.copy(reserveHeaps = (c1.reserveHeaps.head + σ3.h) :: c1.reserveHeaps.tail,
                                 exhaleExt = c1.exhaleExt,
                                 lhsHeap = c2.lhsHeap)
-              decider.prover.logComment(s"in consume/apply after producing RHS ${wand.right}}, before consuming $eIn")
+              decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
               consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
                 Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
 

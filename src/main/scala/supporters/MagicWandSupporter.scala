@@ -2,25 +2,39 @@ package viper
 package silicon
 package supporters
 
+import com.weiglewilczek.slf4s.Logging
 import scala.collection.mutable
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.InsufficientPermission
-import interfaces.{VerificationResult, Failure}
+import interfaces.{Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{ChunkIdentifier, State, PathConditions, Heap, Store}
 import interfaces.reporting.Context
 import state.{DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
 import state.terms._
 import state.terms.perms.{IsNoAccess, IsAsPermissive}
+import reporting.DefaultContext
 
-class MagicWandSupporter[ST <: Store[ST],
+trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
                          PC <: PathConditions[PC],
-                         S <: State[ST, H, S],
-                         C <: Context[C]]
-                        (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
+                         S <: State[ST, H, S]]
+    { this:      Logging
+            with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] =>
+
+//class MagicWandSupporter[ST <: Store[ST],
+//                         H <: Heap[H],
+//                         PC <: PathConditions[PC],
+//                         S <: State[ST, H, S],
+//                         C <: Context[C]]
+//                        (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
+
+  protected val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]]
+
+  object magicWandSupporter {
 
   private type P = DefaultFractionalPermissions
+  private type C = DefaultContext[H]
 
   def isDirectWand(exp: ast.Expression) = exp match {
     case wand: ast.MagicWand => true
@@ -28,106 +42,146 @@ class MagicWandSupporter[ST <: Store[ST],
     case _ => false
   }
 
-  def resolveWand(σ: S, exp: ast.Expression): (ast.MagicWand, Map[ast.LocalVariable, Term]) = {
-    assert(isDirectWand(exp),
-             "Only direct wands (wand-typed variables w, A --* B) can be resolved."
-           + "Wands wrapped in ghost operations (applying w in (A --* B)) cannot.")
+  def translate(σ: S, eWand: ast.MagicWand, pve: PartialVerificationError, c: C)
+               (Q: (Term, C) => VerificationResult)
+               : VerificationResult = {
 
-    exp match {
-      case wand: ast.MagicWand =>
-        (wand, Map())
+    decider.locally[(MagicWand, C)](QL =>
+      translate(σ, eWand.left, pve, c)((tLeft, c1) =>
+        translate(σ, eWand.right, pve, c1)((tRight, c2) =>
+          QL(MagicWand(tLeft, tRight), c2)))
+    ){case (tWand, c1) => Q(tWand, c1)}
+  }
 
-      case v: ast.LocalVariable =>
-        val ch = σ.γ(v).asInstanceOf[WandChunkRef[H]].ch
+  protected def translate(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+                         (Q: (Term, C) => VerificationResult)
+                         : VerificationResult =
 
-        /* Give all local vars fresh names. This ensures that we can add them to
-       * a store without risking to overwrite existing local variables.
-       * Renaming is currently necessary because local variables inside wands
-       * in wand chunks are always given the same names when the wand chunk
-       * is created. (Having unique local variable names makes it easy to compare
-       * wands for syntactic equality modulo variable names.)
-       *
-       * TODO: [Malte] Renaming is - I think - only necessary for local variables
-       *       inside pold-expressions (see consume/wand).
-       *       It might be simpler to evaluate those
-       *       when creating the wand chunk, and to replace the expressions by
-       *       fresh variables $pold_i which can be mapped to the value the
-       *       replaced pold-expressions had.
-       */
-        val lvs = ch.localVariables map (lv => silicon.ast.utils.fresh(lv))
+    e match {
+      case and: ast.And if !and.isPure =>
+        translate(σ, and.left, pve, c)((tLeft, c1) =>
+          translate(σ, and.right, pve, c1)((tRight, c2) =>
+            Q(SepAnd(tLeft, tRight), c2)))
 
-        /* Create mappings from these fresh variables to the receivers that come with the chunk */
-        val map: Map[ast.LocalVariable, Term] = toMap(lvs zip ch.localVariableValues)
-        val wand = silver.ast.utility.Expressions.instantiateVariables(ch.renamedWand, ch.localVariables, lvs)
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
+          decider.assume(tRcvr !== Null())
+          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+            Q(Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2))})
 
-        (wand, map)
+      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
+        evals(σ, eArgs, pve, c)((ts, c1) =>
+          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+            Q(Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
 
-      case _ => sys.error(s"Unexpected expression $exp (${exp.getClass.getName}})")
+      case _ if e.isPure =>
+        eval(σ, e, pve, c)(Q)
+
+      case _ => sys.error(s"Assertion $e not yet supported")
     }
-  }
 
-  def pathConditionedPOlds(wand: ast.MagicWand): Seq[(ast.Expression, ast.PackageOld)] = {
-    val polds = new mutable.ListBuffer[(ast.Expression, ast.PackageOld)]()
-    val cs = Seq[ast.Expression]()
+//  def resolveWand(σ: S, exp: ast.Expression): (ast.MagicWand, Map[ast.LocalVariable, Term]) = {
+//    assert(isDirectWand(exp),
+//             "Only direct wands (wand-typed variables w, A --* B) can be resolved."
+//           + "Wands wrapped in ghost operations (applying w in (A --* B)) cannot.")
+//
+//    exp match {
+//      case wand: ast.MagicWand =>
+//        (wand, Map())
+//
+//      case v: ast.LocalVariable =>
+//        σ.γ(v).asInstanceOf[MagicWand]
+//
+////        val ch = σ.γ(v).asInstanceOf[MagicWand]
+////
+////        /* Give all local vars fresh names. This ensures that we can add them to
+////       * a store without risking to overwrite existing local variables.
+////       * Renaming is currently necessary because local variables inside wands
+////       * in wand chunks are always given the same names when the wand chunk
+////       * is created. (Having unique local variable names makes it easy to compare
+////       * wands for syntactic equality modulo variable names.)
+////       *
+////       * TODO: [Malte] Renaming is - I think - only necessary for local variables
+////       *       inside pold-expressions (see consume/wand).
+////       *       It might be simpler to evaluate those
+////       *       when creating the wand chunk, and to replace the expressions by
+////       *       fresh variables $pold_i which can be mapped to the value the
+////       *       replaced pold-expressions had.
+////       */
+////        val lvs = ch.localVariables map (lv => silicon.ast.utils.fresh(lv))
+////
+////        /* Create mappings from these fresh variables to the receivers that come with the chunk */
+////        val map: Map[ast.LocalVariable, Term] = toMap(lvs zip ch.localVariableValues)
+////        val wand = silver.ast.utility.Expressions.instantiateVariables(ch.renamedWand, ch.localVariables, lvs)
+////
+////        (wand, map)
+//
+//      case _ => sys.error(s"Unexpected expression $exp (${exp.getClass.getName}})")
+//    }
+//  }
 
-    pathConditionedPOlds(wand.left, cs, polds)
-    pathConditionedPOlds(wand.right, cs, polds)
+//  def pathConditionedPOlds(wand: ast.MagicWand): Seq[(ast.Expression, ast.PackageOld)] = {
+//    val polds = new mutable.ListBuffer[(ast.Expression, ast.PackageOld)]()
+//    val cs = Seq[ast.Expression]()
+//
+//    pathConditionedPOlds(wand.left, cs, polds)
+//    pathConditionedPOlds(wand.right, cs, polds)
+//
+//    polds.toList
+//  }
+//
+//  private def pathConditionedPOlds(e: ast.Expression,
+//                                   conditions: Seq[ast.Expression],
+//                                   polds: mutable.ListBuffer[(ast.Expression, ast.PackageOld)]) {
+//
+//    e.visitWithContextManually(conditions)(cs => {
+//      case ast.Implies(e0, e1) =>
+//        pathConditionedPOlds(e0, conditions, polds)
+//        pathConditionedPOlds(e1, conditions ++ Seq(e0), polds)
+//
+//      case ast.Ite(e0, e1, e2) =>
+//        pathConditionedPOlds(e0, conditions, polds)
+//        pathConditionedPOlds(e1, conditions ++ Seq(e0), polds)
+//        pathConditionedPOlds(e2, conditions ++ Seq(ast.Not(e0)(e0.pos, e0.info)), polds)
+//
+//      case po: ast.PackageOld =>
+//        polds += ((ast.utils.BigAnd(conditions), po))
+//   })
+//  }
 
-    polds.toList
-  }
-
-  private def pathConditionedPOlds(e: ast.Expression,
-                                   conditions: Seq[ast.Expression],
-                                   polds: mutable.ListBuffer[(ast.Expression, ast.PackageOld)]) {
-
-    e.visitWithContextManually(conditions)(cs => {
-      case ast.Implies(e0, e1) =>
-        pathConditionedPOlds(e0, conditions, polds)
-        pathConditionedPOlds(e1, conditions ++ Seq(e0), polds)
-
-      case ast.Ite(e0, e1, e2) =>
-        pathConditionedPOlds(e0, conditions, polds)
-        pathConditionedPOlds(e1, conditions ++ Seq(e0), polds)
-        pathConditionedPOlds(e2, conditions ++ Seq(ast.Not(e0)(e0.pos, e0.info)), polds)
-
-      case po: ast.PackageOld =>
-        polds += ((ast.utils.BigAnd(conditions), po))
-   })
-  }
-
-  /* TODO: Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
-   *       that term?
-   */
-  def createChunk(γ: ST/*, hPO: H*/, wand: ast.MagicWand) = {
-    /* Remove all ghost operations and keep only the real rhs of the wand */
-    val ghostFreeWand = ast.expressions.eraseGhostOperations(wand).asInstanceOf[ast.MagicWand]
-
-    var vs = mutable.ListBuffer[ast.LocalVariable]()
-    var ts = mutable.ListBuffer[Term]()
-    var i = 0
-
-    /* Collect all local variables and their values.
-     * Rename local variables to $lv_i to simplify comparing wands syntactically,
-     * which is currently done to find a potentially matching wand chunk in the
-     * heap when consuming a wand.
-     */
-    val renamedWand = ghostFreeWand.transform {
-      case lv: ast.LocalVariable =>
-        val id = "$lv" + i
-        val v = ast.LocalVariable(id)(lv.typ, lv.pos, lv.info)
-
-        vs += v
-        ts += γ(lv)
-        i += 1
-
-        v
-    }()
-
-    /* Keeping the list of local variables is not necessary, it could be computed
-     * from ghostFreeWand when needed.
-     */
-    MagicWandChunk[H](ghostFreeWand, renamedWand, vs, ts/*, hPO*/)
-  }
+//  /* TODO: Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
+//   *       that term?
+//   */
+//  def createChunk(γ: ST/*, hPO: H*/, wand: ast.MagicWand) = {
+//    /* Remove all ghost operations and keep only the real rhs of the wand */
+//    val ghostFreeWand = ast.expressions.eraseGhostOperations(wand).asInstanceOf[ast.MagicWand]
+//
+//    var vs = mutable.ListBuffer[ast.LocalVariable]()
+//    var ts = mutable.ListBuffer[Term]()
+//    var i = 0
+//
+//    /* Collect all local variables and their values.
+//     * Rename local variables to $lv_i to simplify comparing wands syntactically,
+//     * which is currently done to find a potentially matching wand chunk in the
+//     * heap when consuming a wand.
+//     */
+//    val renamedWand = ghostFreeWand.transform {
+//      case lv: ast.LocalVariable =>
+//        val id = "$lv" + i
+//        val v = ast.LocalVariable(id)(lv.typ, lv.pos, lv.info)
+//
+//        vs += v
+//        ts += γ(lv)
+//        i += 1
+//
+//        v
+//    }()
+//
+//    /* Keeping the list of local variables is not necessary, it could be computed
+//     * from ghostFreeWand when needed.
+//     */
+////    MagicWandChunk[H](ghostFreeWand, renamedWand, vs, ts/*, hPO*/)
+//  }
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
    *       structure. Try to merge the two.
@@ -257,5 +311,6 @@ class MagicWandSupporter[ST <: Store[ST],
 
       case None => (h, None, pLoss, c)
     }
+  }
   }
 }

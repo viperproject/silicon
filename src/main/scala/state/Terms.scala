@@ -166,6 +166,10 @@ sealed trait Symbol {
   def id: String
 }
 
+case class PlainSymbol(id: String) extends Symbol {
+  override val toString = id
+}
+
 case class Var(id: String, sort: Sort) extends Symbol with Term {
   override val toString = id
 }
@@ -1125,9 +1129,31 @@ object SortWrapper {
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
 }
 
-case class WandChunkRef[H <: Heap[H]](ch: MagicWandChunk[H]) extends Term {
+/* Magic wands */
+
+case class MagicWandChunkTerm(wand: MagicWand, source: ast.MagicWand) extends Term {
   override val sort = sorts.Unit
-  override val toString = s"WandChunkRef(${ch.name})"
+  override val toString = s"${wand.toString} (${source.pos}})"
+}
+
+case class MagicWand(left: Term, right: Term) extends Term {
+  override val sort = sorts.Unit
+  override val toString = s"$left --* $right"
+}
+
+case class SepAnd(p0: Term, p1: Term) extends BooleanTerm
+    with commonnodes.And[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+
+case class Acc(id: Symbol, args: Seq[Term], perms: DefaultFractionalPermissions) extends Term {
+  assert(args.length >= 1, "Expected at least one argument")
+
+  override val sort = sorts.Unit
+
+  override val toString =
+    if (args.length == 1)
+      s"acc(${args.head}.$id, $perms)"
+    else
+      s"acc($id(${args.mkString(", ")}), $perms)"
 }
 
 /* Other terms */

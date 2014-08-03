@@ -61,20 +61,20 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
     var result: VerificationResult = Success()
 
-//    println("\n[checkWandsAreSelfFraming]")
+    println("\n[checkWandsAreSelfFraming]")
 
     breakable {
       wands foreach {wand =>
         val err = MagicWandNotWellformed(wand)
         val left = wand.left
-        val right = ast.expressions.eraseGhostOperations(wand.right)
+        val right = wand.withoutGhostOperations.right
         val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.Variable => v}
         val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
         val σ1 = Σ(γ1, Ø, g)
         val c1 = c/*.copy(poldHeap = Some(σ.h))*/
 
-//        println(s"  left = $left")
-//        println(s"  right = $right")
+        println(s"  left = $left")
+        println(s"  right = $right")
 //        println(s"  s1.γ = ${σ1.γ}")
 //        println(s"  s1.h = ${σ1.h}")
 //        println(s"  s1.g = ${σ1.g}")
@@ -83,14 +83,14 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
         result =
           inScope {
-//            println("  checking left")
+            println("  checking left")
             produce(σ1, fresh, terms.FullPerm(), left, err, c1)((σ2, c2) => {
               σInner = σ2
 //              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
 //              val σ3 = σ1
               Success()})
           } && inScope {
-//            println("  checking right")
+            println("  checking right")
             produce(σ1, fresh, terms.FullPerm(), right, err, c1.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
               Success())}
 
@@ -209,7 +209,7 @@ class DefaultElementVerifier[ST <: Store[ST],
      val symbolConverter: SymbolConvert,
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S],
-     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
+//     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
     (protected implicit val manifestH: Manifest[H])
@@ -219,6 +219,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
+       with MagicWandSupporter[ST, H, PC, S]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -380,14 +381,14 @@ class DefaultVerifier[ST <: Store[ST],
      val domainsEmitter: DomainsEmitter,
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S],
-     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
+//     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      magicWandSupporter, stateUtils, bookkeeper)
+                                      /*magicWandSupporter,*/ stateUtils, bookkeeper)
 
   override def reset() {
     super.reset()
