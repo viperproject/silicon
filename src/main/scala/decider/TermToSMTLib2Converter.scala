@@ -192,6 +192,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     case PermMin(t0, t1) =>
       "($Perm.min %s %s)".format(convert(t0), convert(t1))
+
     /* Sequences */
 
     case SeqRanged(t0, t1) =>
@@ -233,6 +234,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Multisets */
 
+    case SingletonMultiset(t0) => "($Multiset.singleton " + convert(t0) + ")"
+    case MultisetAdd(t0, t1) => "($Multiset.add " + convert(t0) + " " + convert(t1) + ")"
     case MultisetCardinality(t0) => "($Multiset.card " + convert(t0) + ")"
     case MultisetDifference(t0, t1) => "($Multiset.difference " + convert(t0) + " " + convert(t1) + ")"
     case MultisetIntersection(t0, t1) => "($Multiset.intersection " + convert(t0) + " " + convert(t1) + ")"
@@ -291,6 +294,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Null() => "$Ref.null"
     case SeqNil(elementSort) => "$Seq.nil<" + convert(elementSort) + ">"
     case EmptySet(elementSort) => "$Set.empty<" + convert(elementSort) + ">"
+    case EmptyMultiset(elementSort) => "$Multiset.empty<" + convert(elementSort) + ">"
   }
 
   private def convert2real(t: Term): String =
