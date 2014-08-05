@@ -19,81 +19,14 @@ import state.{SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldC
 import state.terms.utils.BigPermSum
 import state.terms._
 
-/**
- * Helper functions to handle quantified chunks
- */
-trait QuantifiedChunkHelper[ST <: Store[ST], H <: Heap[H], PC <: PathConditions[PC], S <: State[ST, H, S], C <: Context[C]] {
-  def getQuantifiedChunk(h: H, field: String): Option[QuantifiedChunk]
-
-  def isQuantifiedFor(h: H, field: String): Boolean
-
-  def value(σ: S,
-            h: H,
-            ofReceiver: Term,
-            withField: Field,
-            quantifiedVars: Seq[Term],
-            pve: PartialVerificationError,
-            locacc: LocationAccess,
-            c: C)
-           (Q: Term => VerificationResult)
-           : VerificationResult
-
-  /**
-   * Converts all field chunks for the given field to their quantified equivalents
-   */
-  def quantifyChunksForField(h: H, f: String): H
-
-  def rewriteGuard(guard: Term): Term
-
-  /**
-   * Transform a single element (without a guard) to its axiomatization equivalent
-   */
-  def transformElement(rcvr: Term,
-                       field: String,
-                       value: Term,
-                       perm: DefaultFractionalPermissions)
-                      : (QuantifiedChunk, Option[Term])
-
-  /**
-   * Transform permissions under quantifiers to their axiomatization equivalents
-   */
-  def transform(rcvr: Term,
-                f: Field,
-                value: Term,
-                talpha: DefaultFractionalPermissions,
-                cond: Term,
-                quantifiedVars: Seq[Term])
-               : QuantifiedChunk
-
-  /**
-   * Returns a symbolic sum which is equivalent to the permissions for the given receiver/field combination
-   */
-  def permission(h: H, id: ChunkIdentifier, quantifiedVars: Seq[Term]): Term
-
-  /**
-   * Consumes the given chunk in the heap
-   */
-  def consume(σ: S,
-              h: H,
-              optRcvr: Option[Term],
-              f: Field,
-              perms: DefaultFractionalPermissions,
-              pve:PartialVerificationError,
-              locacc: LocationAccess,
-              c: C)
-             (Q: H => VerificationResult)
-             : VerificationResult
-}
-
-class DefaultQuantifiedChunkHelper[ST <: Store[ST],
-                                   H <: Heap[H],
-                                   PC <: PathConditions[PC],
-                                   S <: State[ST, H, S],
-                                   C <: Context[C]]
-                                  (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
-                                   symbolConverter: SymbolConvert,
-                                   stateFactory: StateFactory[ST, H, S])
-    extends QuantifiedChunkHelper[ST, H, PC, S, C] {
+class QuantifiedChunkHelper[ST <: Store[ST],
+                            H <: Heap[H],
+                            PC <: PathConditions[PC],
+                            S <: State[ST, H, S],
+                            C <: Context[C]]
+                           (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
+                            symbolConverter: SymbolConvert,
+                            stateFactory: StateFactory[ST, H, S]) {
 
   import symbolConverter.toSort
   import stateFactory._
