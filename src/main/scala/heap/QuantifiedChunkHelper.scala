@@ -32,6 +32,53 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   import stateFactory._
   import decider._
 
+  def createQuantifiedChunk(rcvr: Term,
+                            field: Field,
+                            value: Term,
+                            perms: DefaultFractionalPermissions,
+                            cond: Term,
+                            quantifiedVars: Seq[Term])
+                           : QuantifiedChunk = {
+
+    val count = rcvr match {
+      case SeqAt(s, i) => ???
+      //        cond match {
+      //          case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(`?r`, MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
+      //          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
+      //        }
+      case v: Var =>
+        Ite(cond.replace(rcvr, `?r`), IntLiteral(1), IntLiteral(0))
+      case _ =>
+        sys.error("Unknown type of receiver, cannot rewrite.")
+    }
+
+    QuantifiedChunk(field.name, value, IntPermTimes(count, perms), quantifiedVars)
+  }
+
+  def createSingletonQuantifiedChunk(rcvr: Term,
+                                     field: String,
+                                     value: Term,
+                                     perm: DefaultFractionalPermissions)
+                                    : QuantifiedChunk =
+
+    rcvr match {
+      case SeqAt(s, i) => ???
+      //        val tTotalPerm =
+      //          IntPermTimes(
+      //            MultisetCount(`?r`, MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))),
+      //            perm)
+      //
+      //        (QuantifiedChunk(field, value, tTotalPerm, Nil), Some(i))
+
+      case _ =>
+        val p = TermPerm(Ite(`?r` === rcvr, perm, NoPerm()))
+
+//        (QuantifiedChunk(field, value, p, Nil), None)
+        QuantifiedChunk(field, value, p, Nil)
+    }
+
+  /** ************* ******************** ***************** ********************* */
+
   def getQuantifiedChunk(h: H, field: String) =
     h.values.find{
       case ch: QuantifiedChunk => ch.name == field
@@ -40,33 +87,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   def isQuantifiedFor(h: H, field: String) = getQuantifiedChunk(h, field).nonEmpty
 
-  def transformElement(rcvr: Term,
-                       field: String,
-                       value: Term,
-                       perm: DefaultFractionalPermissions) =
-
-    rcvr match {
-      case SeqAt(s, i) =>
-        val tTotalPerm =
-          IntPermTimes(
-            MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))),
-            perm)
-
-        (QuantifiedChunk(field, value, tTotalPerm, Nil), Some(i))
-
-      case _ =>
-        val p = TermPerm(Ite(*() === rcvr, perm, NoPerm()))
-
-        (QuantifiedChunk(field, value, p, Nil), None)
-    }
-
   /**
     * Gives the permissions in the heap for the given receiver
     */
   def permission(h: H, id: ChunkIdentifier, quantifiedVars: Seq[Term]): Term = {
     val chunks = h.values.toSeq.collect {
       case permChunk: QuantifiedChunk if permChunk.name == id.name =>
-        permChunk.perm.replace(*(), id.args.last)
+        permChunk.perm.replace(`?r`, id.args.last)
                       .replace(permChunk.quantifiedVars, quantifiedVars)
     }.asInstanceOf[Iterable[DefaultFractionalPermissions]]
 
@@ -102,7 +129,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
           case true =>
             decider.prover.logComment("creating function to represent " + f + " relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
             val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
-            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(*()))
+            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(`?r`))
                 val x = Var("x", sorts.Ref)
 
                 h.values.foreach {
@@ -113,14 +140,14 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                 //                  case _ => Trigger(List())}
 
                 val qvsMap = toMap(quantifiedVars zip ch.quantifiedVars)
-                val tInstantiatedPerms = ch.perm.replace(qvsMap).replace(*(), x).asInstanceOf[DefaultFractionalPermissions]
-                val tInstantiatedValue = ch.value.replace(qvsMap).replace(*(), x)
+                val tInstantiatedPerms = ch.perm.replace(qvsMap).replace(`?r`, x).asInstanceOf[DefaultFractionalPermissions]
+                val tInstantiatedValue = ch.value.replace(qvsMap).replace(`?r`, x)
 
                 decider.assume(
                   Quantification(
                     Forall,
                     List(x),
-                    Implies(tInstantiatedPerms > NoPerm(), fApp.replace(*(), x) === tInstantiatedValue)
+                    Implies(tInstantiatedPerms > NoPerm(), fApp.replace(`?r`, x) === tInstantiatedValue)
                     /*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/))
 
               case ch if ch.name == f.name =>
@@ -135,50 +162,27 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def quantifyChunksForField(h: H, f: String) =
     H(h.values.map {
       case ch: DirectFieldChunk if ch.name == f =>
-        transformElement(ch.id.rcvr, f, ch.value, ch.perm)._1
+        createSingletonQuantifiedChunk(ch.id.rcvr, f, ch.value, ch.perm)
 
       case ch =>
         ch
     })
 
-  /* TODO: Don't emit the Seq[Int] axiomatisation just because there's a ranged in forall */
-  def transform(rcvr: Term,
-                f: Field,
-                value: Term,
-                talpha: DefaultFractionalPermissions,
-                cond: Term,
-                quantifiedVars: Seq[Term]) = {
-
-    val count = rcvr match {
-      case SeqAt(s, i) =>
-        cond match {
-          case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(*(), MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
-          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
-        }
-      case v: Var =>
-        Ite(cond.replace(rcvr, *()), IntLiteral(1), IntLiteral(0))
-      case _ =>
-        sys.error("Unknown type of receiver, cannot rewrite.")
-    }
-
-    QuantifiedChunk(f.name, value, IntPermTimes(count, talpha), quantifiedVars)
-  }
-
-  def isWildcard(perm: Term):Boolean = perm match {
-    case TermPerm(t) => isWildcard(t)
-    case _: WildcardPerm => true
-    case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
-    case IntPermTimes(_, t1) => isWildcard(t1)
-    case Ite(a,b,c) => isWildcard(b) || isWildcard(c)
-    case FullPerm() => false
-    case NoPerm() => false
-    case PermMin(a,b) => isWildcard(a) || isWildcard(b)
-    case MultisetCount(_) => false
-    case FractionPerm(_,_) => false
-    case _ => false
-  }
+//  def isWildcard(perm: Term):Boolean = perm match {
+//    case TermPerm(t) => isWildcard(t)
+//    case _: WildcardPerm => true
+//    case PermPlus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+//    case PermMinus(t0, t1) => isWildcard(t0) || isWildcard(t1)
+//    case PermTimes(t0, t1) => isWildcard(t0) || isWildcard(t1)
+//    case IntPermTimes(_, t1) => isWildcard(t1)
+//    case Ite(a,b,c) => isWildcard(b) || isWildcard(c)
+//    case FullPerm() => false
+//    case NoPerm() => false
+//    case PermMin(a,b) => isWildcard(a) || isWildcard(b)
+//    case MultisetCount(_) => false
+//    case FractionPerm(_,_) => false
+//    case _ => false
+//  }
 
   /* TODO: Implement an optimized order for exhale.
    *       One heuristic could be to take chunks first that
@@ -197,7 +201,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     decider.prover.logComment("[exhalePermissions2]" + opt)
 
     def skol(perms: DefaultFractionalPermissions) =
-      perms.replace(*(), vSkolem).asInstanceOf[DefaultFractionalPermissions]
+      perms.replace(`?r`, vSkolem).asInstanceOf[DefaultFractionalPermissions]
 
     opt.foldLeft((permsToExhale, h.empty, false)) {
       case ((perms1, h1, true), ch2) =>
@@ -207,10 +211,10 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       case ((perms1, h1, false), ch2: QuantifiedChunk) if ch2.name == f.name =>
         /* More permissions needed and ch2 is a chunk that provides permissions */
 
-        if (isWildcard(permsToExhale)) // TODO: Unsound! Constrains all wildcards, regardless of whether or not they are currently constrainable
-          assume(skol(permsToExhale) < skol(ch2.perm))
+//        if (isWildcard(permsToExhale)) // TODO: Unsound! Constrains all wildcards, regardless of whether or not they are currently constrainable
+//          assume(skol(permsToExhale) < skol(ch2.perm))
 
-        val r = PermMin(perms1, Ite(*() === rcvr, ch2.perm, NoPerm()))
+        val r = PermMin(perms1, Ite(`?r` === rcvr, ch2.perm, NoPerm()))
         val d = check(σ, skol(perms1 - r) === NoPerm())
 
         if (check(σ, skol(ch2.perm - r) === NoPerm()))

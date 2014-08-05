@@ -9,7 +9,7 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import state.terms.{Term, DefaultFractionalPermissions, *, Var}
+import state.terms.{Term, DefaultFractionalPermissions, `?r`, Var}
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 
@@ -35,8 +35,8 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions, quantifiedVars: Seq[Term])
     extends Chunk {
 
-  val args = *() +: quantifiedVars
-  val id = FieldChunkIdentifier(*(), name)
+  val args = `?r` +: quantifiedVars
+  val id = FieldChunkIdentifier(`?r`, name)
 
   def +(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm - perm)

@@ -64,7 +64,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: NullTrigger | _: * => term
+      case _: Var | _: Function | _: Literal | _: NullTrigger | `?r` => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))

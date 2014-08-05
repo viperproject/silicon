@@ -17,7 +17,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.state.factoryUtils.Ø
 import state.{terms, SymbolConvert, DirectChunk}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
-import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
+import theories.{FieldValueFunctionsEmitter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.{DefaultContext, Bookkeeper}
 import heap.QuantifiedChunkHelper
 import decider.PreambleFileEmitter
@@ -167,18 +167,19 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
-  /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
+  /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
   /*protected*/ def sequencesEmitter: SequencesEmitter
   /*protected*/ def setsEmitter: SetsEmitter
   /*protected*/ def multisetsEmitter: MultisetsEmitter
   /*protected*/ def domainsEmitter: DomainsEmitter
+  /*protected*/ def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S]
   import ev.symbolConverter
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
-    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
     decider)
 
   /* Lifetime */
@@ -237,6 +238,7 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.analyze(program)
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
+    fieldValueFunctionsEmitter.analyze(program)
 
     emitStaticPreamble()
 
@@ -244,6 +246,7 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.declareSorts()
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
+    fieldValueFunctionsEmitter.declareSorts()
 
     /* Sequences depend on multisets ($Multiset.fromSeq, which is
      * additionally axiomatised in the sequences axioms).
@@ -254,17 +257,20 @@ trait AbstractVerifier[ST <: Store[ST],
     sequencesEmitter.declareSymbols()
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
+    fieldValueFunctionsEmitter.declareSymbols()
 
     sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
+    fieldValueFunctionsEmitter.emitAxioms()
 
     emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
     emitSortWrappers(sequencesEmitter.sorts)
     emitSortWrappers(setsEmitter.sorts)
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
+    emitSortWrappers(fieldValueFunctionsEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -289,7 +295,8 @@ trait AbstractVerifier[ST <: Store[ST],
       decider.prover.declare(toSnapWrapper)
       decider.prover.declare(fromSnapWrapper)
 
-      preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
+      preambleEmitter.emitParametricAssertions("/sortwrappers.smt2",
+                                               Map("$S$" -> decider.prover.termConverter.convert(sort)))
     })
   }
 
@@ -309,11 +316,12 @@ class DefaultVerifier[ST <: Store[ST],
 			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
-      val preambleEmitter: PreambleFileEmitter[_],
+      val preambleEmitter: PreambleFileEmitter[String, String],
       val sequencesEmitter: SequencesEmitter,
       val setsEmitter: SetsEmitter,
       val multisetsEmitter: MultisetsEmitter,
 			val domainsEmitter: DomainsEmitter,
+      val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapCompressor: HeapCompressor[ST, H, S],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext],

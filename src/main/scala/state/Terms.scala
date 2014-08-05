@@ -48,7 +48,7 @@ object sorts {
   object Bool extends Sort { val id = "Bool"; override val toString = id }
   object Ref extends Sort { val id = "Ref"; override val toString = id }
   object Perm extends Sort { val id = "Perm"; override val toString = id }
-  object Unit extends Sort { val id = "()"; override val toString = "()" }
+  object Unit extends Sort { val id = "()"; override val toString = id }
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = "Seq[%s]".format(elementsSort)
@@ -98,6 +98,11 @@ object sorts {
   }
 
   case class UserSort(id: String) extends Sort {
+    override val toString = id
+  }
+
+  case class FieldValueFunction(codomainSort: Sort) extends Sort {
+    val id = "FVF[%s]".format(codomainSort)
     override val toString = id
   }
 }
@@ -235,14 +240,6 @@ object Forall extends Quantifier { override val toString = "∀ " }
 object Exists extends Quantifier { override val toString = "∃ " }
 
 case class Trigger(ts: Seq[Term])
-
-/* Placeholder */
-case class *() extends Symbol with Term {
-  val id = "*"
-  val sort = sorts.Ref
-
-  override val toString = "*"
-}
 
 case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
     extends BooleanTerm
@@ -563,9 +560,11 @@ class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
        with commonnodes.StructuralEqualityBinaryOp[Term]
 
 object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  val Zero = IntLiteral(0)
   val One = IntLiteral(1)
 
   def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
+    case (Zero, t) => NoPerm()
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
     case (_, _) => new IntPermTimes(t0, t1)
@@ -1134,7 +1133,30 @@ case class Second(t: Term) extends SnapshotTerm {
   utils.assertSort(t, "term", sorts.Snap)
 }
 
-/* Nasty internals */
+/* Quantified permissions */
+
+object `?r` extends Symbol with Term {
+  val id = "?r"
+  val sort = sorts.Ref
+
+  override val toString = id
+}
+
+case class Lookup(field: Symbol, fvf: Term, at: Term) extends Term {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = fvf.asInstanceOf[sorts.FieldValueFunction].codomainSort
+}
+
+case class Domain(field: Symbol, fvf: Term) extends SetTerm {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val elementsSort = fvf.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val sort = sorts.Set(elementsSort)
+}
+
+/* Sort wrappers */
 
 class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,

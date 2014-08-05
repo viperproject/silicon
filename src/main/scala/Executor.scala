@@ -217,8 +217,8 @@ trait DefaultExecutor[ST <: Store[ST],
               case false =>
                 Failure[ST, H, S](pve dueTo ReceiverNull(fl))
               case true =>
-                val (ch, optIdx) = quantifiedChunkHelper.transformElement(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
-                val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name), optIdx.toSeq)
+                val ch/*, optIdx)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
+                val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name), Nil/*optIdx.toSeq*/)
                 decider.assert(σ, AtLeast(perms, FullPerm())){
                   case false =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fl))

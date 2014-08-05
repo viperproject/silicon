@@ -138,7 +138,7 @@ trait DefaultProducer[ST <: Store[ST],
           evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val (ch1, _) = quantifiedChunkHelper.transformElement(tRcvr, field.name, s, pNettoGain/*, ch.quantifiedVars*/)
+            val ch1/*, _)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, s, pNettoGain/*, ch.quantifiedVars*/)
                 // TODO: Why is this transform necessary? We already have a quantified chunk ch.
                 //       Looking at transformElement I'd say that the call is not needed and that
                 //       we can replace ch in σ.h with (ch + pNettoGain), instead of adding ch1 to σ.h.
@@ -148,7 +148,7 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
+            evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
@@ -189,14 +189,14 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
         /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-        val ch = quantifiedChunkHelper.transform(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond, tVars)
+        val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond, tVars)
         val v = Var("nonnull", sorts.Ref)
         val tNonNullQuant =
           Quantification(
             Forall,
             List(v),
             Implies(
-              Less(NoPerm(), ch.perm.replace(*(), v)),
+              Less(NoPerm(), ch.perm.replace(`?r`, v)),
               v !== Null()),
             List(Trigger(List(NullTrigger(v)))))
         assume(Set[Term](NoPerm() < pGain, tNonNullQuant))

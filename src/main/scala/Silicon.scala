@@ -13,7 +13,15 @@ import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, 
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError}
+import silver.verifier.{
+    Verifier => SilVerifier,
+    VerificationResult => SilVerificationResult,
+    Success => SilSuccess,
+    Failure => SilFailure,
+    DefaultDependency => SilDefaultDependency,
+    TimeoutOccurred => SilTimeoutOccurred,
+    CliOptionError => SilCliOptionError
+}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
@@ -21,8 +29,8 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, DefaultContext, Bookkeeper}
-import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
-    DefaultDomainsTranslator}
+import theories.{DefaultFieldValueFunctionsEmitter, DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter,
+    DefaultSequencesEmitter, DefaultDomainsTranslator}
 import heap.QuantifiedChunkHelper
 import ast.Consistency
 
@@ -127,7 +135,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         _config.printHelp()
         throw ex
       case ex: org.rogach.scallop.exceptions.ScallopException =>
-        println(CliOptionError(ex.message + ".").readableMessage)
+        println(SilCliOptionError(ex.message + ".").readableMessage)
         _config.printHelp()
         throw ex
     }
@@ -164,9 +172,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
+    val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
       stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils,
       bookkeeper)
   }
