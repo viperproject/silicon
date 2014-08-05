@@ -128,7 +128,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           if (decider.check(σ0, Not(rewrittenCond)))
             Q(h, Unit, Nil, c1)
           else {
-            decider.assume(rewrittenCond)
+            decider.assume(rewrittenCond) // TODO: Should be a local assumption only (I assume)
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
@@ -143,10 +143,10 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                       if (quantifiedChunkHelper.isQuantifiedFor(h, f.name)) h
                       else quantifiedChunkHelper.quantifyChunksForField(h, f.name)
 
-                      quantifiedChunkHelper.value(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(t => {
-                        val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, t, tPerm * p, /* takes care of rewriting the cond */ tCond, tVars)
+                      quantifiedChunkHelper.withValue(σ, h2, tRcvr, f, tVars, pve, locacc, c3)(lookup => {
+                        val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, lookup.fvf, tPerm * p, /* takes care of rewriting the cond */ tCond, tVars)
                         quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
-                          Q(h3, t, Nil, c3))})
+                          Q(h3, lookup.fvf, Nil, c3))})
 
                   case false =>
                     Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
@@ -159,7 +159,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1)((tPerm, c2) =>
-            quantifiedChunkHelper.value(σ, h, tRcvr, field, ch.quantifiedVars, pve, locacc, c2)(t => {
+            quantifiedChunkHelper.withValue(σ, h, tRcvr, field, Nil/*ch.quantifiedVars*/, pve, locacc, c2)(t => {
               val ch1/*, optIdx)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, t, tPerm)
               quantifiedChunkHelper.consume(σ, h, Some(tRcvr), field, ch1.perm, pve, locacc, c2)(h2 =>
                 Q(h2, t, Nil, c2))})))

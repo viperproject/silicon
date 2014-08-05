@@ -176,7 +176,7 @@ trait DefaultEvaluator[
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
         val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, fa.field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
-          quantifiedChunkHelper.value(σ, σ.h, tRcvr, fa.field, ch.quantifiedVars, pve, fa, c)((t) => {
+          quantifiedChunkHelper.withValue(σ, σ.h, tRcvr, fa.field, Nil/*ch.quantifiedVars*/, pve, fa, c)((t) => {
             Q(t, c1)}))
 
       case fa: ast.FieldAccess =>

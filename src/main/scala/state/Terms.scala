@@ -236,13 +236,33 @@ case class False() extends BooleanLiteral {
 
 sealed trait Quantifier
 
-object Forall extends Quantifier { override val toString = "∀ " }
-object Exists extends Quantifier { override val toString = "∃ " }
+object Forall extends Quantifier { override val toString = "QA" }
+object Exists extends Quantifier { override val toString = "QE" }
 
 case class Trigger(ts: Seq[Term])
 
-case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
-    extends BooleanTerm
+class Quantification(val q: Quantifier, val vars: Seq[Var], val tBody: Term, val triggers: Seq[Trigger])
+    extends BooleanTerm {
+
+  override val hashCode = silicon.utils.generateHashCode(q, vars, tBody, triggers)
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case Quantification(_q, _vars, _tBody, _triggers) => q == _q && vars == _vars && tBody == _tBody && triggers == _triggers
+      case _ => false
+    })
+
+  override val toString = s"$q ${vars.mkString(",")} :: $tBody"
+}
+
+object Quantification extends Function4[Quantifier, Seq[Var], Term, Seq[Trigger], Term] {
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq()) = tBody match {
+    case True() | False() => tBody
+    case _ => new Quantification(q, vars, tBody, triggers)
+  }
+
+  def unapply(q: Quantification) = Some((q.q, q.vars, q.tBody, q.triggers))
+}
 
 /* Arithmetic expression terms */
 
@@ -1142,17 +1162,17 @@ object `?r` extends Symbol with Term {
   override val toString = id
 }
 
-case class Lookup(field: Symbol, fvf: Term, at: Term) extends Term {
+case class Lookup(field: String, fvf: Term, at: Term) extends Term {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
 
-  val sort = fvf.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 }
 
-case class Domain(field: Symbol, fvf: Term) extends SetTerm {
+case class Domain(field: String, fvf: Term) extends SetTerm {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
-  val elementsSort = fvf.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val elementsSort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
   val sort = sorts.Set(elementsSort)
 }
 

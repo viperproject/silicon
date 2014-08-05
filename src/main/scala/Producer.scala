@@ -166,7 +166,7 @@ trait DefaultProducer[ST <: Store[ST],
             Q(σ.h + ch, c2)}))
 
       /* Quantified field access predicate */
-      case fa@ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
+      case fa @ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
         val πPre = decider.π
@@ -182,28 +182,30 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
                 πAux = decider.π -- πPre
                 decider.prover.logComment("End local evaluation of sub-expressions of " + fa)
                 QB(tCond, tRcvr, pGain, c3)})))}
-    ){case (tCond, tRcvr, pGain, c3) =>
-        val tAuxQuant = Quantification(Forall, tVars, state.terms.utils.BigAnd(πAux))
-        decider.assume(tAuxQuant)
+        ){case (tCond, tRcvr, pGain, c3) =>
+            val tAuxQuant = Quantification(Forall, tVars, state.terms.utils.BigAnd(πAux))
+            decider.prover.logComment(s"Aux. quantifier for $fa")
+            decider.assume(tAuxQuant)
 
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
+    this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
-        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-        val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, sf(toSort(f.typ)), pGain * p, tCond, tVars)
-        val v = Var("nonnull", sorts.Ref)
-        val tNonNullQuant =
-          Quantification(
-            Forall,
-            List(v),
-            Implies(
-              Less(NoPerm(), ch.perm.replace(`?r`, v)),
-              v !== Null()),
-            List(Trigger(List(NullTrigger(v)))))
-        assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
-        val h =
-          if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
-          else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
-        Q(h + ch, c3)}
+            /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
+            val snap = sf(sorts.FieldValueFunction(toSort(f.typ)))
+            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond, tVars)
+            val v = Var("nonnull", sorts.Ref)
+            val tNonNullQuant =
+              Quantification(
+                Forall,
+                List(v),
+                Implies(
+                  Less(NoPerm(), ch.perm.replace(`?r`, v)),
+                  v !== Null()),
+                List(Trigger(List(NullTrigger(v)))))
+            assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
+            val h =
+              if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
+              else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
+            Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -252,8 +254,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
       getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, c)
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-      /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-      (toSort(f.typ), false)
+      (sorts.FieldValueFunction(toSort(f.typ)), false)
 
     case _ =>
       (sorts.Snap, false)

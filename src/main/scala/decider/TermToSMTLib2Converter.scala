@@ -36,6 +36,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
        * domain sort of nullary functions.
        */
       ""
+
+    case sorts.FieldValueFunction(codomainSort) => s"$$FVF<${convert(codomainSort)}>"
   }
 
   def convert(decl: Decl): String = decl match {
@@ -269,6 +271,9 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     case Distinct(symbols) =>
       "(distinct %s)".format(symbols map convert  mkString " ")
+
+    case Domain(id, fvf) => s"($$FVF.domain_$id ${convert(fvf)})"
+    case Lookup(id, fvf, at) => s"($$FVF.lookup_$id ${convert(fvf)} ${convert(at)})"
   }
 
   def sanitizeSymbol(str: String) =

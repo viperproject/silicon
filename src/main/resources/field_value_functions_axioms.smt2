@@ -5,7 +5,7 @@
 ; The axioms are parametric
 ;   - $FLD$ is a Silver field name
 
-(assert (forall ((vs $FVF) (ws $FVF)) (!
+(assert (forall ((vs $FVF<$S$>) (ws $FVF<$S$>)) (!
     (implies
       (and
         ($Set.eq ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))

@@ -77,13 +77,6 @@
 ; Sort wrappers are no longer part of the static preamble. Instead, they are
 ; emitted as part of the program-specific preamble.
 
-; --- Field value functions ---
-
-(declare-sort $FVF)
-
-; Additional FVF-related symbols and axioms are emitted as part of the
-; program-specific preamble.
-
 ; --- Math ---
 
 ;function Math#min(a: int, b: int): int;

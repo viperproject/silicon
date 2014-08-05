@@ -23,21 +23,25 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
                                         preambleFileEmitter: PreambleFileEmitter[String, String])
     extends FieldValueFunctionsEmitter {
 
-  private var fields: Seq[ast.Field] = Nil
+  private var collectedFields = Seq[ast.Field]()
+  private var collectedSorts = Set[terms.sorts.FieldValueFunction]()
 
-  val sorts: Set[Sort] = Set.empty
+  def sorts: Set[Sort] = toSet(collectedSorts)
 
   def analyze(program: Program) {
-    fields = program.fields /* TODO: Could be more specific here and only consider fields used under quantifiers */
+    collectedFields = program.fields /* TODO: Could be more specific here and only consider fields used under quantifiers */
+    collectedSorts = toSet(collectedFields map (f => terms.sorts.FieldValueFunction(symbolConverter.toSort(f.typ))))
   }
 
   /* Symbols are taken from a file, there currently isn't a way of retrieving them */
   def symbols: Option[Set[Function]] = None
 
-  def declareSorts() { /* No sorts to declare */ }
+  def declareSorts() {
+    collectedSorts foreach (s => prover.declare(terms.SortDecl(s)))
+  }
 
   def declareSymbols() {
-    fields foreach { f =>
+    collectedFields foreach { f =>
       val sort = symbolConverter.toSort(f.typ)
       val id = f.name
       val substitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
@@ -48,9 +52,10 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
   }
 
   def emitAxioms() {
-    fields foreach { f =>
+    collectedFields foreach { f =>
+      val sort = symbolConverter.toSort(f.typ)
       val id = f.name
-      val substitutions = Map("$FLD$" -> id)
+      val substitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
 
       prover.logComment(s"/field_value_functions_axioms.smt2 [$id]")
       preambleFileEmitter.emitParametricAssertions("/field_value_functions_axioms.smt2", substitutions)
@@ -60,7 +65,7 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
   /* Lifetime */
 
   def reset() {
-    fields = Nil
+    collectedFields = Nil
   }
 
   def stop() {}
