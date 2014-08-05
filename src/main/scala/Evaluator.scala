@@ -665,6 +665,7 @@ trait DefaultEvaluator[
       /* Sets and multisets */
 
       case silver.ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
+      case silver.ast.EmptyMultiset(typ) => Q(EmptyMultiset(toSort(typ)), c)
 
       case silver.ast.ExplicitSet(es) =>
         evals2(σ, es, Nil, pve, c)((tEs, c1) => {
@@ -672,6 +673,13 @@ trait DefaultEvaluator[
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
           Q(tSet, c1)})
+
+      case silver.ast.ExplicitMultiset(es) =>
+        evals2(σ, es, Nil, pve, c)((tEs, c1) => {
+          val tMultiset =
+            tEs.tail.foldLeft[MultisetTerm](SingletonMultiset(tEs.head))((tMultiset, te) =>
+              MultisetAdd(tMultiset, te))
+          Q(tMultiset, c1)})
 
       case silver.ast.AnySetUnion(e0, e1) => e.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetUnion, pve, c)(Q)
@@ -696,7 +704,7 @@ trait DefaultEvaluator[
 
       case silver.ast.AnySetMinus(e0, e1) => e.typ match {
         case _: ast.types.Set => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
+        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetDifference, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }

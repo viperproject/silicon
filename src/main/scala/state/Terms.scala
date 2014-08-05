@@ -955,9 +955,39 @@ sealed trait MultisetTerm extends Term {
   val sort: sorts.Multiset
 }
 
+case class EmptyMultiset(elementsSort: Sort) extends MultisetTerm with Literal {
+  val sort = sorts.Multiset(elementsSort)
+  override val toString = "Ø"
+}
+
+case class SingletonMultiset(p: Term) extends MultisetTerm /* with UnaryOp[Term] */ {
+  val elementsSort = p.sort
+  val sort = sorts.Multiset(elementsSort)
+
+  override val toString = "{" + p + "}"
+}
+
 sealed trait BinaryMultisetOp extends MultisetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
   val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
   val sort = sorts.Multiset(elementsSort)
+}
+
+class MultisetAdd(val p0: Term, val p1: Term) extends MultisetTerm with commonnodes.StructuralEqualityBinaryOp[Term] {
+  val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
+  val sort = sorts.Multiset(elementsSort)
+
+  override val op = "+"
+}
+
+object MultisetAdd extends ((Term, Term) => MultisetTerm) {
+  def apply(t0: Term, t1: Term) = {
+    utils.assertSort(t0, "first operand", "Set", _.isInstanceOf[sorts.Multiset])
+    utils.assertSort(t1, "second operand", t0.sort.asInstanceOf[sorts.Multiset].elementsSort)
+
+    new MultisetAdd(t0, t1)
+  }
+
+  def unapply(ma: MultisetAdd) = Some((ma.p0, ma.p1))
 }
 
 class MultisetUnion(val p0: Term, val p1: Term) extends BinaryMultisetOp {
