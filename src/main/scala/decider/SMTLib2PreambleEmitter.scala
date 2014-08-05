@@ -12,20 +12,20 @@ import scala.io.Source
 import silver.components.StatefulComponent
 import state.terms.Sort
 
-trait PreambleFileEmitter[R] extends StatefulComponent {
-  def readPreamble(resource: String): R
-  def emitPreamble(resource: String)
+trait PreambleFileEmitter[I, O] extends StatefulComponent {
+  def readPreamble(resource: I): Iterable[O]
+  def emitPreamble(resource: I)
 
-  def readSortParametricAssertions(resource: String, sort: Sort): R
-  def emitSortParametricAssertions(resource: String, sort: Sort)
+  def readParametricAssertions(resource: String, substitutions: Map[I, O]): Iterable[O]
+  def emitParametricAssertions(resource: String, substitutions: Map[I, O])
 
-  def emitPreamble(preamble: R)
+  def emitPreamble(preamble: Iterable[O])
 }
 
 /* TODO: Decouple from prover. Ideally, only the decider should have a reference to the prover.
  *       Could closures be passed in that forward the work to the prover?
  */
-class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[List[String]] {
+class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[String, String] {
 
   /* Lifetime  */
 
@@ -67,16 +67,16 @@ class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[
     emitPreamble(readPreamble(resource))
   }
 
-  def readSortParametricAssertions(resource: String, sort: Sort) = {
+  def readParametricAssertions(resource: String, substitutions: Map[String, String]) = {
     val lines = readPreamble(resource)
-    lines.map(_.replace("$S$", prover.termConverter.convert(sort)))
+    lines.map(line => substitutions.foldLeft(line){case (lineAcc, (orig, repl)) => lineAcc.replace(orig, repl)})
   }
 
-  def emitSortParametricAssertions(resource: String, sort: Sort) = {
-    emitPreamble(readSortParametricAssertions(resource, sort))
+  def emitParametricAssertions(resource: String, substitutions: Map[String, String]) = {
+    emitPreamble(readParametricAssertions(resource, substitutions))
   }
 
-  def emitPreamble(lines: List[String]) {
+  def emitPreamble(lines: Iterable[String]) {
     lines foreach prover.write
   }
 }

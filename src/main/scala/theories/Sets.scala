@@ -20,7 +20,7 @@ trait SetsEmitter extends PreambleEmitter
 
 class DefaultSetsEmitter(prover: Prover,
                          symbolConverter: SymbolConvert,
-                         preambleFileEmitter: PreambleFileEmitter[_])
+                         preambleFileEmitter: PreambleFileEmitter[String, String])
     extends SetsEmitter {
 
   private var collectedSorts = Set[terms.sorts.Set]()
@@ -73,15 +73,17 @@ class DefaultSetsEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/sets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sets_declarations_dafny.smt2", s.elementsSort)
+      preambleFileEmitter.emitParametricAssertions("/sets_declarations_dafny.smt2", substitutions)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/sets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sets_axioms_dafny.smt2", s.elementsSort)
+      preambleFileEmitter.emitParametricAssertions("/sets_axioms_dafny.smt2", substitutions)
     }
   }
 }
