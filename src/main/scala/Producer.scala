@@ -182,7 +182,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
 
             /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
             val snap = sf(sorts.FieldValueFunction(toSort(f.typ)))
-            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond, tVars)
+            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond)
             val v = Var("r", sorts.Ref)
             val tNonNullQuant =
               Quantification(

@@ -210,22 +210,22 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass@ast.FieldWrite(fl@ast.FieldAccess(eRcvr, field), rhs) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
         ???
 
-//        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
-        val pve = AssignmentFailed(ass)
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          eval(σ, rhs, pve, c1)((tRhs, c2) => {
-            decider.assert(σ, tRcvr !== Null()){
-              case false =>
-                Failure[ST, H, S](pve dueTo ReceiverNull(fl))
-              case true =>
-                val ch/*, optIdx)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
-                val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)/*, optIdx.toSeq*/)
-                decider.assert(σ, AtLeast(perms, FullPerm())){
-                  case false =>
-                    Failure[ST, H, S](pve dueTo InsufficientPermission(fl))
-                  case true =>
-                    quantifiedChunkHelper.consume(σ, σ.h, Some(tRcvr), field, ch.perm, pve, fl, c2)(h =>
-                      Q((σ \ h) \+ ch, c2))}}}))
+////        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
+//        val pve = AssignmentFailed(ass)
+//        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+//          eval(σ, rhs, pve, c1)((tRhs, c2) => {
+//            decider.assert(σ, tRcvr !== Null()){
+//              case false =>
+//                Failure[ST, H, S](pve dueTo ReceiverNull(fl))
+//              case true =>
+//                val ch/*, optIdx)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, tRhs, FullPerm()/*, Nil*/)
+//                val perms = quantifiedChunkHelper.permission(σ.h, FieldChunkIdentifier(tRcvr, field.name)/*, optIdx.toSeq*/)
+//                decider.assert(σ, AtLeast(perms, FullPerm())){
+//                  case false =>
+//                    Failure[ST, H, S](pve dueTo InsufficientPermission(fl))
+//                  case true =>
+//                    quantifiedChunkHelper.consume(σ, σ.h, Some(tRcvr), field, ch.perm, pve, fl, c2)(h =>
+//                      Q((σ \ h) \+ ch, c2))}}}))
 
       case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)

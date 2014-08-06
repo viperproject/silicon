@@ -119,10 +119,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 //        println("\n[Consumer/Forall]")
 //        println(s"  phi = $φ")
+        assert(vars.length == 1 && vars(0).typ == ast.types.Ref,
+               s"Only a single, ref-typed variable is supported in impure quantifiers, but found ${vars.map(v => (v, v.typ))}")
 
-        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
-        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
-        val σ0 = σ \+ γVars
+//        val tVars = vars map (v => decider.fresh(v.name, toSort(v.typ)))
+//        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
+        val tQVar = decider.fresh(vars(0).name, toSort(vars(0).typ))
+        val γQVar = Γ(ast.LocalVariable(vars(0).name)(vars(0).typ), tQVar)
+
+        val σ0 = σ \+ γQVar
 
         eval(σ0, cond, pve, c)((tCond, c1) => {
           /* ??? We cheat a bit and syntactically rewrite the range; this should
@@ -137,12 +142,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //            println(s"  rewrittenCond is satisfiable")
             decider.assume(rewrittenCond) // TODO: Should be a local assumption only (I assume)
 
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
+//this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
             eval(σ0, eRcvr, pve, c1)((tRcvr, c2) =>
               evalp(σ0, loss, pve, c2)((tPerm, c3) => {
 
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
+//this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
                 decider.assert(σ, IsPositive(tPerm)) {
                   case true =>
@@ -154,25 +161,31 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 //                      println(s"  h2 = $h2")
 //                      println(s"  ts = $ts")
                       assume(ts)
-                      quantifiedChunkHelper.withValue(σ, h2, tRcvr, f, pve, locacc, c3)(lookup => {
-                        val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, lookup.fvf, tPerm * p, /* takes care of rewriting the cond */ tCond, tVars)
-//                        println(s"  ch = $ch")
-                        quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
-                          Q(h3, lookup.fvf, Nil, c3))})
+//                      quantifiedChunkHelper.withValue(σ, h2, tRcvr, f, pve, locacc, c3)(lookup => {
+//                        val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, lookup.fvf, tPerm * p, /* takes care of rewriting the cond */ tCond)
+////                        println(s"  ch = $ch")
+//                        quantifiedChunkHelper.consume(σ, h2, None, f, ch.perm, pve, locacc, c3)(h3 =>
+//                          Q(h3, lookup.fvf, Nil, c3))})
+                      val condPerms = quantifiedChunkHelper.conditionalPermissions(tRcvr, tCond, tPerm)
+                      quantifiedChunkHelper.splitLocations(σ, h2, f, tQVar, condPerms * p, pve, locacc, c3)((h3, ch, c4) =>
+                        Q(h3, ch.value, /*ch :: */Nil, c4))
 
                   case false =>
                     Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
 
       /* Field access predicates for quantified fields */
       case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm)
-          if quantifiedChunkHelper.isQuantifiedFor(h, field.name) => ???
+          if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          evalp(σ, perm, pve, c1)((tPerm, c2) =>
-            quantifiedChunkHelper.withValue(σ, h, tRcvr, field, /*ch.quantifiedVars,*/ pve, locacc, c2)(t => {
-              val ch1/*, optIdx)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, t, tPerm)
-              quantifiedChunkHelper.consume(σ, h, Some(tRcvr), field, ch1.perm, pve, locacc, c2)(h2 =>
-                Q(h2, t, Nil, c2))})))
+          evalp(σ, perm, pve, c1)((tPerm, c2) => {
+//            quantifiedChunkHelper.withValue(σ, h, tRcvr, field, pve, locacc, c2)(t => {
+//              val ch1 = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, t, tPerm)
+//              quantifiedChunkHelper.consume(σ, h, Some(tRcvr), field, ch1.perm, pve, locacc, c2)(h2 =>
+//                Q(h2, t, Nil, c2))})))
+            val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, tPerm)
+            quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, condPerms * p, pve, locacc, c2)((h1, ch, c3) =>
+              Q(h1, ch.value, /*ch :: */Nil, c3))}))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>

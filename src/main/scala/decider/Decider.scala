@@ -188,9 +188,9 @@ class DefaultDecider[ST <: Store[ST],
    * but the interface does NOT guarantee mutability!
    */
 
-  def assume(_terms: Set[Term]) {
-    val terms = _terms filterNot isKnownToBeTrue
-    if (terms.nonEmpty) assumeWithoutSmokeChecks(terms)
+  def assume(terms: Iterable[Term]) {
+    val newTerms = toSet(terms filterNot isKnownToBeTrue)
+    if (terms.nonEmpty) assumeWithoutSmokeChecks(newTerms)
   }
 
   private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
