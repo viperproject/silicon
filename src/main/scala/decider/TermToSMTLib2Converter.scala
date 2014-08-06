@@ -92,8 +92,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     /* Booleans */
 
-    case NullTrigger(t) => "($Ref.nullTrigger " + convert(t) + ")"
-
     case Not(f) => "(not " + convert(f) + ")"
 
     /* TODO: Extract common conversion behaviour of binary expressions. */

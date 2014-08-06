@@ -25,7 +25,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal | _: NullTrigger  => Nil
+    case _: Symbol | _: Literal => Nil
     case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: commonnodes.UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -41,12 +41,15 @@ package object utils {
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
     case ss: SingletonSet => List(ss.p)
+    case ss: SingletonMultiset => List(ss.p)
     case dfa: DomainFApp => List(dfa.function) ++ dfa.tArgs
     case fst: First => List(fst.t)
     case snd: Second => List(snd.t)
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
+    case Domain(_, fvf) => fvf :: Nil
+    case Lookup(_, fvf, at) => fvf :: at :: Nil
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -64,7 +67,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal | _: NullTrigger | `?r` => term
+      case _: Var | _: Function | _: Literal | `?r` => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
@@ -114,6 +117,7 @@ package object utils {
       case SetIn(t0, t1) => SetIn(go(t0), go(t1))
       case SetCardinality(t) => SetCardinality(go(t))
       case SetDisjoint(t0, t1) => SetDisjoint(go(t0), go(t1))
+      case SingletonMultiset(t) => SingletonMultiset(go(t))
       case MultisetUnion(t0, t1) => MultisetUnion(go(t0), go(t1))
       case MultisetIntersection(t0, t1) => MultisetIntersection(go(t0), go(t1))
       case MultisetSubset(t0, t1) => MultisetSubset(go(t0), go(t1))
@@ -122,12 +126,15 @@ package object utils {
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
       case MultisetFromSeq(t) => MultisetFromSeq(go(t))
+      case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
       case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
+      case Domain(f, fvf) => Domain(f, go(fvf))
+      case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

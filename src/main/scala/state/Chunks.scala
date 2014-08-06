@@ -35,6 +35,9 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions/*, quantifiedVars: Seq[Term]*/)
     extends Chunk {
 
+  assert(value.sort.isInstanceOf[terms.sorts.FieldValueFunction],
+         "Quantified chunk values must be of sort FieldValueFunction")
+
   val args = Seq(`?r`) /*+: quantifiedVars*/
   val id = FieldChunkIdentifier(`?r`, name)
 

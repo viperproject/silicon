@@ -30,7 +30,25 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   import symbolConverter.toSort
   import stateFactory._
-  import decider._
+  import decider.{assume, assert, check, fresh}
+
+  /* Chunk creation */
+
+  def createSingletonQuantifiedChunk(rcvr: Term,
+                                     field: String,
+                                     value: Term,
+                                     perm: DefaultFractionalPermissions)
+                                    : QuantifiedChunk =
+
+    rcvr match {
+      case SeqAt(s, i) =>
+        ???
+
+      case _ =>
+//        println(s"[QCH.createSingletonQuantifiedChunk] rcvr = $rcvr (${rcvr.getClass.getSimpleName}})")
+        val p = TermPerm(Ite(`?r` === rcvr, perm, NoPerm()))
+        QuantifiedChunk(field, value, p)
+    }
 
   def createQuantifiedChunk(rcvr: Term,
                             field: Field,
@@ -40,45 +58,116 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                             quantifiedVars: Seq[Term])
                            : QuantifiedChunk = {
 
-//    val count = rcvr match {
     val condPerms = rcvr match {
       case SeqAt(s, i) => ???
-      //        cond match {
-      //          case SeqIn(SeqRanged(a, b), c) if c == i => MultisetCount(`?r`, MultisetFromSeq(SeqDrop(SeqTake(s, b), a)))
-      //          case a => sys.error("Silicon cannot handle conditions of this form when quantifying over a sequence. Try 'forall i:Int :: i in [x..y] ==>' ...")
-      //        }
-      case v: Var =>
-        TermPerm(Ite(cond.replace(rcvr, `?r`), perms, NoPerm()))
-      case _ =>
-        sys.error("Unknown type of receiver, cannot rewrite.")
+      case v: Var => TermPerm(Ite(cond.replace(rcvr, `?r`), perms, NoPerm()))
+      case _ => sys.error("Unknown type of receiver, cannot rewrite.")
     }
 
-    QuantifiedChunk(field.name, value, condPerms/*IntPermTimes(count, perms)*//*, quantifiedVars*/)
+    QuantifiedChunk(field.name, value, condPerms)
   }
 
-  def createSingletonQuantifiedChunk(rcvr: Term,
-                                     field: String,
-                                     value: Term,
-                                     perm: DefaultFractionalPermissions)
-                                    : QuantifiedChunk =
+  /* State queries */
 
-    rcvr match {
-      case SeqAt(s, i) => ???
-      //        val tTotalPerm =
-      //          IntPermTimes(
-      //            MultisetCount(`?r`, MultisetFromSeq(SeqDrop(SeqTake(s, Plus(IntLiteral(1), i)),i))),
-      //            perm)
-      //
-      //        (QuantifiedChunk(field, value, tTotalPerm, Nil), Some(i))
+  /**
+    * Computes the total permission amount held in the given heap for the given chunk identifier.
+    */
+  def permission(h: H, id: ChunkIdentifier): DefaultFractionalPermissions = {
+    val chunks = h.values.toSeq.collect {
+      case permChunk: QuantifiedChunk if permChunk.name == id.name => permChunk.perm.replace(`?r`, id.args.last)
+    }.asInstanceOf[Iterable[DefaultFractionalPermissions]]
 
-      case _ =>
-        val p = TermPerm(Ite(`?r` === rcvr, perm, NoPerm()))
+    BigPermSum(chunks, Predef.identity)
+  }
 
-//        (QuantifiedChunk(field, value, p, Nil), None)
-        QuantifiedChunk(field, value, p/*, Nil*/)
-    }
+  def withSingleValue(σ: S,
+                      h: H,
+                      rcvr: Term,
+                      f: Field,
+                      pve: PartialVerificationError,
+                      locacc: LocationAccess,
+                      c: C)
+                     (Q: Lookup => VerificationResult)
+                     : VerificationResult = {
 
-  /** ************* ******************** ***************** ********************* */
+    withValue(σ, h, rcvr, None, f, pve, locacc, c)((t, ts) => {
+      assume(ts)
+      Q(t)})
+  }
+
+  def withValue(σ: S,
+                h: H,
+                rcvr: Term,
+                f: Field,
+                pve: PartialVerificationError,
+                locacc: LocationAccess,
+                c: C)
+               (Q: Lookup => VerificationResult)
+               : VerificationResult = {
+
+    withValue(σ, h, rcvr, Some(Var("x", sorts.Ref)), f, pve, locacc, c)((t, ts) => {
+      assume(ts)
+      Q(t)})
+  }
+
+  private def withValue(σ: S,
+                        h: H,
+                        rcvr: Term,
+                        optQVar: Option[Var],
+                        f: Field,
+                        pve: PartialVerificationError,
+                        locacc: LocationAccess,
+                        c: C)
+                       (Q: (Lookup, Set[Term]) => VerificationResult)
+                       : VerificationResult = {
+
+    assert(σ, rcvr !== Null()) {
+      case false =>
+        Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
+
+      case true =>
+        assert(σ, NoPerm() < permission(h, FieldChunkIdentifier(rcvr, f.name))) {
+          case false =>
+            Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
+
+          case true =>
+            val x = optQVar.getOrElse(rcvr)
+            val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(f.typ)))
+            val lookupRcvr = Lookup(f.name, fvf, x)
+
+            var fvfDefs = Set[Term]()
+
+            h.values.foreach {
+              case ch: QuantifiedChunk if ch.name == f.name =>
+                val permsIndividual = ch.perm.replace(`?r`, x).asInstanceOf[DefaultFractionalPermissions]
+                val valueIndividual = ch.value.replace(`?r`, x)
+                val lookupIndividual = Lookup(f.name, valueIndividual, x)
+
+                val fvfDef = Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual)
+
+                //                assume(fvfDef)
+                fvfDefs = fvfDefs + fvfDef
+
+                /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                 * TODO: Add "domain(f.name, fvf) = ..." for each found chunk
+                 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                 */
+
+              case ch if ch.name == f.name =>
+                sys.error(s"I did not expect non-quantified chunks on the heap for field $ch")
+
+              case _ => /* Ignore other chunks */
+            }
+
+            fvfDefs = optQVar match {
+              case None => fvfDefs
+              case Some(qvar) => fvfDefs map (d =>  Forall(qvar :: Nil, d))
+            }
+
+            Q(lookupRcvr, fvfDefs)}}
+  }
+
+  /* Auxiliary functions */
 
   def getQuantifiedChunk(h: H, field: String) =
     h.values.find{
@@ -88,18 +177,25 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   def isQuantifiedFor(h: H, field: String) = getQuantifiedChunk(h, field).nonEmpty
 
-  /**
-    * Gives the permissions in the heap for the given receiver
-    */
-  def permission(h: H, id: ChunkIdentifier, quantifiedVars: Seq[Term]): Term = {
-    val chunks = h.values.toSeq.collect {
-      case permChunk: QuantifiedChunk if permChunk.name == id.name =>
-        permChunk.perm.replace(`?r`, id.args.last)
-//                      .replace(permChunk.quantifiedVars, quantifiedVars)
-    }.asInstanceOf[Iterable[DefaultFractionalPermissions]]
+  def quantifyChunksForField(h: H, field: Field): (H, Set[Term]) = {
+    val (chunks, ts) =
+      h.values.map {
+        case ch: DirectFieldChunk if ch.name == field.name =>
+          val fvf = fresh("vs", sorts.FieldValueFunction(toSort(field.typ)))
+          val fvfDef = And(Lookup(field.name, fvf, ch.rcvr) === ch.value,
+                           Domain(field.name, fvf) === SingletonSet(ch.rcvr))
+          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvf, ch.perm)
 
-    BigPermSum(chunks, Predef.identity)
+          (qch, fvfDef)
+
+        case ch =>
+          (ch, True())
+      }.unzip
+
+    (H(chunks), toSet(ts))
   }
+
+  /** ************* ******************** ***************** ********************* */
 
   def rewriteGuard(guard: Term): Term = {
     guard match {
@@ -107,82 +203,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       case t => t /* Sets */
     }
   }
-
-  def withValue(σ: S,
-                h: H,
-                rcvr: Term,
-                f: Field,
-                quantifiedVars: Seq[Term],
-                pve: PartialVerificationError,
-                locacc: LocationAccess,
-                c: C)
-               (Q: Lookup => VerificationResult)
-               : VerificationResult = {
-
-    decider.assert(σ, Or(NullTrigger(rcvr), rcvr !== Null())) {
-      case false =>
-        Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
-      case true =>
-        decider.assert(σ, Less(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, f.name), quantifiedVars))) {
-          case false =>
-            decider.prover.logComment("cannot read " + rcvr + "." + f.name + " in heap: " + h.values.filter(ch => ch.name == f.name))
-            Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
-          case true =>
-            decider.prover.logComment("creating function to represent " + f + "; relevant heap portion: " + h.values.filter(ch => ch.name == f.name))
-//            val valueT = decider.fresh(f.name, sorts.Arrow(sorts.Ref, toSort(f.typ)))
-//            val fApp = DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(`?r`))
-            val x = Var("x", sorts.Ref)
-
-            val fvf = decider.fresh("fvf", sorts.FieldValueFunction(toSort(f.typ)))
-            val lookupFvf = Lookup(f.name, fvf, x)
-
-            h.values.foreach {
-              case ch: QuantifiedChunk if ch.name == f.name =>
-                /* TODO: Commenting the triggers is (probably) just a temporary work-around to cope with problems related to quantified permissions. */
-                //                val valtrigger = ch.value match {
-                //                  case _: DomainFApp => Trigger(List(ch.value.replace(*(), x)))
-                //                  case _ => Trigger(List())}
-
-//                val qvsMap = toMap(quantifiedVars zip ch.quantifiedVars)
-//                val tInstantiatedPerms = ch.perm/*.replace(qvsMap)*/.replace(`?r`, x).asInstanceOf[DefaultFractionalPermissions]
-//                val tInstantiatedValue = ch.value/*.replace(qvsMap)*/.replace(`?r`, x)
-                val permsIndividual = ch.perm.replace(`?r`, x).asInstanceOf[DefaultFractionalPermissions]
-                val valueIndividual = ch.value.replace(`?r`, x)
-//
-//                decider.assume(
-//                  Quantification(
-//                    Forall,
-//                    List(x),
-//                    Implies(tInstantiatedPerms > NoPerm(), fApp.replace(`?r`, x) === tInstantiatedValue)
-//                    /*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/))
-                val lookupIndividual = Lookup(f.name, valueIndividual, x)
-                val defLvf =
-                  Quantification(
-                    Forall,
-                    List(x),
-                    Implies(permsIndividual > NoPerm(), lookupFvf === lookupIndividual)
-                    /*, List(Trigger(List(fApp.replace(*(), x))), valtrigger)*/)
-
-                decider.assume(defLvf)
-
-              case ch if ch.name == f.name =>
-                sys.error(s"I did not expect non-quantified chunks on the heap for field $ch")
-
-              case _ =>
-            }
-
-//            Q(DomainFApp(Function(valueT.id, sorts.Arrow(sorts.Ref, toSort(f.typ))), List(rcvr)))}}
-            Q(lookupFvf)}}
-    }
-
-  def quantifyChunksForField(h: H, f: String) =
-    H(h.values.map {
-      case ch: DirectFieldChunk if ch.name == f =>
-        createSingletonQuantifiedChunk(ch.id.rcvr, f, ch.value, ch.perm)
-
-      case ch =>
-        ch
-    })
 
 //  def isWildcard(perm: Term):Boolean = perm match {
 //    case TermPerm(t) => isWildcard(t)

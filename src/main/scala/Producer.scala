@@ -130,28 +130,19 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
-      /* Produce a field access if the heap is quantified for that field */
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
-        val ch = quantifiedChunkHelper.getQuantifiedChunk(σ.h, field.name).get // TODO: Slightly inefficient, since it repeats the work of isQuantifiedFor
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+        def createChunk =
+          if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name))
+            quantifiedChunkHelper.createSingletonQuantifiedChunk _
+          else
+            DirectFieldChunk
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch1/*, _)*/ = quantifiedChunkHelper.createSingletonQuantifiedChunk(tRcvr, field.name, s, pNettoGain/*, ch.quantifiedVars*/)
-                // TODO: Why is this transform necessary? We already have a quantified chunk ch.
-                //       Looking at transformElement I'd say that the call is not needed and that
-                //       we can replace ch in σ.h with (ch + pNettoGain), instead of adding ch1 to σ.h.
-            assume(NoPerm() < pGain)
-            Q(σ.h + ch1, c2)})})
-
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
-          assume(tRcvr !== Null())
-            evalp(σ, gain, pve, c1)((pGain, c2) => {
-            val s = sf(toSort(field.typ))
-            val pNettoGain = pGain * p
-            val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+            val ch = createChunk(tRcvr, field.name, s, pNettoGain)
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)})})
 
@@ -184,7 +175,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
                 QB(tCond, tRcvr, pGain, c3)})))}
         ){case (tCond, tRcvr, pGain, c3) =>
             val tAuxQuant = Quantification(Forall, tVars, state.terms.utils.BigAnd(πAux))
-            decider.prover.logComment(s"Aux. quantifier for $fa")
+            decider.prover.logComment(s"Aux. quantifier for $fa: $tAuxQuant")
             decider.assume(tAuxQuant)
 
     this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
@@ -192,19 +183,19 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
             /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
             val snap = sf(sorts.FieldValueFunction(toSort(f.typ)))
             val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond, tVars)
-            val v = Var("nonnull", sorts.Ref)
+            val v = Var("r", sorts.Ref)
             val tNonNullQuant =
               Quantification(
                 Forall,
                 List(v),
                 Implies(
-                  Less(NoPerm(), ch.perm.replace(`?r`, v)),
+                  NoPerm() < ch.perm.replace(`?r`, v).asInstanceOf[DefaultFractionalPermissions],
                   v !== Null()),
-                List(Trigger(List(NullTrigger(v)))))
+                List(/*Trigger(List(NullTrigger(v)))*/))
             assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
-            val h =
-              if(quantifiedChunkHelper.isQuantifiedFor(σ.h,f.name)) σ.h
-              else quantifiedChunkHelper.quantifyChunksForField(σ.h, f.name/*, tVars*/)
+            val (h, ts) =
+              if(quantifiedChunkHelper.isQuantifiedFor(σ.h, f.name)) (σ.h, Set.empty[Term])
+              else quantifiedChunkHelper.quantifyChunksForField(σ.h, f)
             Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>

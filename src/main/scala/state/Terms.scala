@@ -236,8 +236,19 @@ case class False() extends BooleanLiteral {
 
 sealed trait Quantifier
 
-object Forall extends Quantifier { override val toString = "QA" }
-object Exists extends Quantifier { override val toString = "QE" }
+object Forall extends Quantifier {
+  def apply(vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq()) =
+    Quantification(Forall, vars, tBody, triggers)
+
+  override val toString = "QA"
+}
+
+object Exists extends Quantifier {
+  def apply(vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq()) =
+    Quantification(Exists, vars, tBody, triggers)
+
+  override val toString = "QE"
+}
 
 case class Trigger(ts: Seq[Term])
 
@@ -425,7 +436,7 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
-	override val toString = "%s ? %s : %s".format(t0, t1, t2)
+	override val toString = "(%s ? %s : %s)".format(t0, t1, t2)
 
   override val hashCode = silicon.utils.generateHashCode(t0, t1, t2)
 
@@ -439,12 +450,17 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 }
 
 object Ite extends Function3[Term, Term, Term, Term] {
-	def apply(e0: Term, e1: Term, e2: Term) = e0 match {
-		case True() => e1
-		case False() => e2
-    case _ if e1 == e2 => e1
-		case _ => new Ite(e0, e1, e2)
-	}
+	def apply(e0: Term, e1: Term, e2: Term) = {
+//    println(s"[Ite.apply] $e0, $e1, $e2  (${e0.getClass.getSimpleName}, ${e1.getClass.getSimpleName}, ${e2.getClass.getSimpleName})")
+    (e0, e1, e2) match {
+      case _ if e1 == e2 => e1
+      case (True(), _, _) => e1
+      case (False(), _, _) => e2
+      case (_, True(), False()) => e0
+      case (_, False(), True()) => Not(e0)
+      case _ => new Ite(e0, e1, e2)
+    }
+  }
 
 	def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))
 }
@@ -524,8 +540,8 @@ sealed trait FractionalPermissions[P <: FractionalPermissions[P]] extends Term {
   def +(other: P): P
   def -(other: P): P
   def *(other: P): P
-  def <(other: P): BooleanTerm
-  def >(other: P): BooleanTerm
+  def <(other: P): Term
+  def >(other: P): Term
 }
 
 sealed abstract class DefaultFractionalPermissions extends FractionalPermissions[DefaultFractionalPermissions] {
@@ -543,10 +559,27 @@ case class FullPerm() extends DefaultFractionalPermissions { override val toStri
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 
-case class TermPerm(t: Term) extends DefaultFractionalPermissions {
+class TermPerm(val t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
+  override val hashCode = t.hashCode()
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case TermPerm(_t) => t == _t
+      case _ => false
+    })
+
   override val toString = t.toString
+}
+
+object TermPerm extends Function1[Term, DefaultFractionalPermissions] {
+  def apply(t: Term) = t match {
+    case dfp: DefaultFractionalPermissions => dfp
+    case _ => new TermPerm(t)
+  }
+
+  def unapply(tp: TermPerm) = Some(tp.t)
 }
 
 case class IsValidPermVar(v: Var) extends BooleanTerm {
@@ -640,10 +673,25 @@ class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPe
   override val toString = "(%s) < (%s)".format(p0, p1)
 }
 
-object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => BooleanTerm) {
-  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
-    case (t0, t1) if t0 == t1 => False()
-    case (_, _) => new PermLess(t0, t1)
+object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => Term) {
+  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = {
+//    println(s"\n[PermLess.apply] $t0 < $t1 (${t0.getClass.getSimpleName}}, ${t1.getClass.getSimpleName}})")
+    (t0, t1) match {
+      case _ if t0 == t1 => False()
+      case (NoPerm(), FullPerm()) =>
+//        println(s"  ($t0, $t1) --> True()")
+        True()
+      case (FullPerm(), _: WildcardPerm) => False()
+
+      case (`t0`, TermPerm(Ite(tCond, tIf, tElse))) =>
+//        println(s"  ($t0, $t1) --> Ite(...)")
+        /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
+         * Pushing the comparisons into the ite allows further simplifications.
+         */
+        Ite(tCond, t0 < TermPerm(tIf), t0 < TermPerm(tElse))
+
+      case _ => new PermLess(t0, t1)
+    }
   }
 
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
@@ -1156,7 +1204,7 @@ case class Second(t: Term) extends SnapshotTerm {
 /* Quantified permissions */
 
 object `?r` extends Symbol with Term {
-  val id = "?r"
+  val id = "r"
   val sort = sorts.Ref
 
   override val toString = id
@@ -1172,7 +1220,7 @@ case class Lookup(field: String, fvf: Term, at: Term) extends Term {
 case class Domain(field: String, fvf: Term) extends SetTerm {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
-  val elementsSort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val elementsSort = sorts.Ref //fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
   val sort = sorts.Set(elementsSort)
 }
 
@@ -1233,18 +1281,6 @@ object Distinct {
   def unapply(d: Distinct) = Some(d.ts)
 }
 
-class NullTrigger(val t:Term) extends BooleanTerm {
-  override val toString = s"Null($t)"
-  assert(t.sort == sorts.Ref)
-}
-
-object NullTrigger {
-  def apply(t:Term):Term =
-    new NullTrigger(t)
-
-  def unapply(n:NullTrigger) = Some(n.t)
-}
-
 /* Convenience functions */
 
 object perms {
@@ -1254,7 +1290,7 @@ object perms {
   }
 
   def IsPositive(p: DefaultFractionalPermissions) = p match {
-    case _: NoPerm => False() /* TODO: This "false" should not be checked; asserting it should just return false/no */
+    case _: NoPerm => False()
     case _: FullPerm | _: WildcardPerm => True()
     case _ => NoPerm() < p
   }
@@ -1265,7 +1301,7 @@ object perms {
 
   def IsNoAccess(p: DefaultFractionalPermissions) = p match {
     case _: NoPerm => True()
-    case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False() /* TODO: This "false" should not be checked; asserting it should just return false/no */
+    case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False()
       /* ATTENTION: This is only sound if both plus operands and the left minus operand are positive! */
     case _ => Or(p === NoPerm(), p < NoPerm())
   }
