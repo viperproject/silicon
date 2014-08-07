@@ -29,7 +29,17 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
   def sorts: Set[Sort] = toSet(collectedSorts)
 
   def analyze(program: Program) {
-    collectedFields = program.fields /* TODO: Could be more specific here and only consider fields used under quantifiers */
+    /* TODO: Would be more efficient to use something like program.findFirst(...) which
+     *       aborts the traversal as soon the partial function applies (and returns true).
+     *       Alternatively, we could perform the whole traversal but then only record fields
+     *       that actually occur under quantifiers.
+     */
+    program visit {
+      case q: ast.Quantified if collectedFields.isEmpty && !q.isPure =>
+        collectedFields = program.fields
+    }
+
+//    collectedFields = program.fields /* TODO: Could be more specific here and only consider fields used under quantifiers */
     collectedSorts = toSet(collectedFields map (f => terms.sorts.FieldValueFunction(symbolConverter.toSort(f.typ))))
   }
 

@@ -39,7 +39,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -131,18 +131,22 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        def createChunk =
-          if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name))
-            quantifiedChunkHelper.createSingletonQuantifiedChunk _
+        def createChunk(rcvr: Term, s: Term, p: DefaultFractionalPermissions) =
+          if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
+            val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
+            assume(fvfDef)
+
+            quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p, true)
+          }
           else
-            DirectFieldChunk
+            DirectFieldChunk(rcvr, field.name, s, p)
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch = createChunk(tRcvr, field.name, s, pNettoGain)
+            val ch = createChunk(tRcvr, s, pNettoGain)
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)})})
 
@@ -156,7 +160,6 @@ trait DefaultProducer[ST <: Store[ST],
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)}))
 
-      /* Quantified field access predicate */
       case fa @ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
@@ -180,9 +183,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
 
     this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
 
-            /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
             val snap = sf(sorts.FieldValueFunction(toSort(f.typ)))
-            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond)
+            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond, true)
             val v = Var("r", sorts.Ref)
             val tNonNullQuant =
               Quantification(

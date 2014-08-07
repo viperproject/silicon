@@ -146,7 +146,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val symbolConverter: SymbolConvert,
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapCompressor: HeapCompressor[ST, H, S],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext],
+      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
 			val bookkeeper: Bookkeeper)
 		extends AbstractElementVerifier[ST, H, PC, S]
@@ -324,7 +324,7 @@ class DefaultVerifier[ST <: Store[ST],
       val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapCompressor: HeapCompressor[ST, H, S],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, DefaultContext],
+      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
 			val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]

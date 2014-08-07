@@ -49,7 +49,7 @@ trait DefaultEvaluator[
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S, C]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -172,7 +172,6 @@ trait DefaultEvaluator[
             case None => Q(NoPerm(), c1)
           })
 
-      /* Field access if the heap is quantified for that field */
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
           quantifiedChunkHelper.withSingleValue(σ, σ.h, tRcvr, fa.field, pve, fa, c)((t) => {

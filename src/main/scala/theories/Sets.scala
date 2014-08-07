@@ -48,20 +48,28 @@ class DefaultSetsEmitter(prover: Prover,
 
   def analyze(program: ast.Program) {
     var setTypes = Set[ast.types.Set]()
+//    var foundQuantifiedPermissions = false
 
-    program visit { case t: silver.ast.Typed =>
-      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
-        case s: ast.types.Set =>
-          setTypes += s
-        case s: ast.types.Multiset =>
-          /* Multisets depend on sets */
-          setTypes += ast.types.Set(s.elementType)
-        case s: ast.types.Seq =>
-          /* Sequences depend on multisets, which in turn depend on sets */
-          setTypes += ast.types.Set(s.elementType)
-        case _ =>
-        /* Ignore other types */
-      }
+    program visit {
+//      case q: ast.Quantified if !foundQuantifiedPermissions && !q.isPure =>
+//        println(s"  q = $q")
+//        /* Axioms generated for quantified permissions depend on sets */
+//        program.fields foreach {f => setTypes += ast.types.Set(f.typ)}
+//        foundQuantifiedPermissions = true
+
+      case t: silver.ast.Typed =>
+        t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
+          case s: ast.types.Set =>
+            setTypes += s
+          case s: ast.types.Multiset =>
+            /* Multisets depend on sets */
+            setTypes += ast.types.Set(s.elementType)
+          case s: ast.types.Seq =>
+            /* Sequences depend on multisets, which in turn depend on sets */
+            setTypes += ast.types.Set(s.elementType)
+          case _ =>
+          /* Ignore other types */
+        }
     }
 
     collectedSorts = setTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Set])

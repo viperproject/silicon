@@ -237,15 +237,21 @@ case class False() extends BooleanLiteral {
 sealed trait Quantifier
 
 object Forall extends Quantifier {
-  def apply(vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq()) =
-    Quantification(Forall, vars, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Forall, qvars, tBody, triggers)
 
   override val toString = "QA"
 }
 
 object Exists extends Quantifier {
-  def apply(vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq()) =
-    Quantification(Exists, vars, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Exists, qvar :: Nil, tBody, triggers)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Exists, qvars, tBody, triggers)
 
   override val toString = "QE"
 }
@@ -450,16 +456,13 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 }
 
 object Ite extends Function3[Term, Term, Term, Term] {
-	def apply(e0: Term, e1: Term, e2: Term) = {
-//    println(s"[Ite.apply] $e0, $e1, $e2  (${e0.getClass.getSimpleName}, ${e1.getClass.getSimpleName}, ${e2.getClass.getSimpleName})")
-    (e0, e1, e2) match {
-      case _ if e1 == e2 => e1
-      case (True(), _, _) => e1
-      case (False(), _, _) => e2
-      case (_, True(), False()) => e0
-      case (_, False(), True()) => Not(e0)
-      case _ => new Ite(e0, e1, e2)
-    }
+	def apply(e0: Term, e1: Term, e2: Term) = (e0, e1, e2) match {
+    case _ if e1 == e2 => e1
+    case (True(), _, _) => e1
+    case (False(), _, _) => e2
+    case (_, True(), False()) => e0
+    case (_, False(), True()) => Not(e0)
+    case _ => new Ite(e0, e1, e2)
   }
 
 	def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))
@@ -675,16 +678,12 @@ class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPe
 
 object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => Term) {
   def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = {
-//    println(s"\n[PermLess.apply] $t0 < $t1 (${t0.getClass.getSimpleName}}, ${t1.getClass.getSimpleName}})")
     (t0, t1) match {
       case _ if t0 == t1 => False()
-      case (NoPerm(), FullPerm()) =>
-//        println(s"  ($t0, $t1) --> True()")
-        True()
+      case (NoPerm(), FullPerm()) => True()
       case (FullPerm(), _: WildcardPerm) => False()
 
       case (`t0`, TermPerm(Ite(tCond, tIf, tElse))) =>
-//        println(s"  ($t0, $t1) --> Ite(...)")
         /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
          * Pushing the comparisons into the ite allows further simplifications.
          */
