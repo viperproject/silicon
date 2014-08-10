@@ -247,6 +247,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     def skol(t: Term) = t.replace(`?r`, skolemVar)
 
+//    println("\n[split]")
+//    println(s"  field = $field")
+//    println(s"  skolemVar = $skolemVar")
+//    println(s"  rcvr = $rcvr")
+//    println(s"  fraction = $fraction")
+//    println(s"  conditionalizedFraction = $conditionalizedFraction")
+
     val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFraction
@@ -255,6 +262,11 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
     val fvfLookup = Lookup(field.name, fvf, rcvr)
     var fvfDefs: List[Term] = Nil
+
+//    println(s"  candidates = $candidates")
+//    println(s"  permsToTake = $permsToTake")
+//    println(s"  skolemizedConditionalizedFraction = $skolemizedConditionalizedFraction")
+//    println(s"  fvf = $fvf")
 
     candidates foreach {
       case ch: QuantifiedChunk =>
@@ -292,7 +304,12 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       case ch => residue ::= ch
     }
 
-    (H(residue ++ ignored), QuantifiedChunk(field.name, fvf, fraction), fvfDefs, success)
+//    println(s"  residue = $residue")
+//    println(s"  ch = ${QuantifiedChunk(field.name, fvf, fraction)}")
+//    println(s"  fvfDefs = $fvfDefs")
+//    println(s"  success = $success")
+
+    (H(residue ++ ignored), QuantifiedChunk(field.name, fvf, conditionalizedFraction), fvfDefs, success)
   }
 
   /* Auxiliary functions */
