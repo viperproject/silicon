@@ -218,7 +218,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 Failure[ST, H, S](pve dueTo ReceiverNull(fa))
               case true =>
                 val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, FullPerm())
-                quantifiedChunkHelper.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, pve, c2){
+                quantifiedChunkHelper.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, c2){
                   case Some((h1, ch, c3)) =>
                     val (fvf,fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, tRcvr, tRhs)
                     assume(fvfDef)

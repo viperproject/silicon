@@ -231,7 +231,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                           rcvr: Term,
                           fraction: DefaultFractionalPermissions,
                           conditionalizedFraction: DefaultFractionalPermissions,
-                          pve: PartialVerificationError,
                           c: C)
                          (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                          : VerificationResult = {
@@ -252,7 +251,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                      skolemVar: Var,
                      fraction: DefaultFractionalPermissions,
                      conditionalizedFraction: DefaultFractionalPermissions,
-                     pve:PartialVerificationError,
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                     : VerificationResult = {

@@ -139,7 +139,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                     else quantifiedChunkHelper.quantifyChunksForField(h, field)
                   assume(ts)
                   val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, tCond, tPerm)
-                  quantifiedChunkHelper.splitLocations(σ, h2, field, tQVar, tPerm * p, condPerms * p, pve, c2) {
+                  quantifiedChunkHelper.splitLocations(σ, h2, field, tQVar, tPerm * p, condPerms * p, c2) {
                     case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
                     case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
                   }
@@ -153,7 +153,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1)((tPerm, c2) => {
             val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, tPerm)
-            quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, tPerm * p, condPerms * p, pve, c2) {
+            quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, tPerm * p, condPerms * p, c2) {
               case Some((h1, ch, c3)) => Q(h1, ch.value, /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))
