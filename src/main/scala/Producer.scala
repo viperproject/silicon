@@ -160,7 +160,7 @@ trait DefaultProducer[ST <: Store[ST],
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)}))
 
-      case quantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, gain, _/*triggers*/, _) =>
+      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, gain, _/*triggers*/, _) =>
         /* TODO: Translate triggers */
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)

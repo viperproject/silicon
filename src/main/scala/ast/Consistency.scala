@@ -11,6 +11,7 @@ package ast
 import silver.verifier.VerificationError
 import silver.verifier.errors.Internal
 import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import heap.QuantifiedChunkHelper
 
 object Consistency {
   def check(program: Program) = (
@@ -21,10 +22,7 @@ object Consistency {
   /* Unsupported expressions, features or cases */
 
   def createIllegalQuantifiedLocationExpressionError(offendingNode: Node) = {
-    val message = (
-        "Silicon requires foralls with access predicates in their body to have "
-      + "a special shape. Try 'forall x: Ref :: x in aSet ==> acc(x.f, perms)' "
-      + "or 'forall i: Int :: i in [0..|aSeq|) ==> acc(aSeq[i].f, perms)'.")
+    val message = "This shape of quantified permissions is currently not supported."
 
     Internal(offendingNode, FeatureUnsupported(offendingNode, message))
   }
@@ -36,18 +34,8 @@ object Consistency {
      */
 
     root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-      case ast.Forall(_, _, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(rcvr, _), _))) =>
-        val error =
-          rcvr match {
-            case ast.SeqAt(_, i) => cond match {
-              case ast.SeqIn(j, ast.SeqRanged(a, b)) if i == j => None
-              case _ => Some(createIllegalQuantifiedLocationExpressionError(cond))
-            }
-            case v: ast.Variable => None
-            case _ => Some(createIllegalQuantifiedLocationExpressionError(rcvr))
-          }
-
-        error.toSeq ++ errors.flatten
+      case QuantifiedChunkHelper.QuantifiedSetAccess(_, _, _, _, _, _) =>
+        errors.flatten
 
       case e: ast.Forall if !e.isPure =>
         createIllegalQuantifiedLocationExpressionError(e) +: errors.flatten
