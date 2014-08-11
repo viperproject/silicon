@@ -235,7 +235,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                          (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                          : VerificationResult = {
 
-    val (h1, ch, fvfDef, success) = split(σ, h, field, fresh("sk", sorts.Ref), rcvr, fraction, conditionalizedFraction, c)
+    val (h1, ch, fvfDef, success) =
+      split(σ, h, field, fresh("sk", sorts.Ref), rcvr, fraction, conditionalizedFraction, c)
 
     if (success) {
       assume(fvfDef.singletonValues)
@@ -255,7 +256,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                     : VerificationResult = {
 
-    val (h1, ch, fvfDef, success) = split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
+    val (h1, ch, fvfDef, success) =
+      split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
 
     if (success) {
       assume(fvfDef.quantifiedValues(skolemVar))
