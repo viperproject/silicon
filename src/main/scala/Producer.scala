@@ -136,9 +136,8 @@ trait DefaultProducer[ST <: Store[ST],
             val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
             assume(fvfDef)
 
-            quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p, true)
-          }
-          else
+            quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
+          } else
             DirectFieldChunk(rcvr, field.name, s, p)
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {

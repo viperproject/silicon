@@ -53,19 +53,16 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def createSingletonQuantifiedChunk(rcvr: Term,
                                      field: String,
                                      value: Term,
-                                     perms: DefaultFractionalPermissions,
-                                     conditionalizePerms: Boolean)
+                                     perms: DefaultFractionalPermissions)
                                     : QuantifiedChunk = {
 
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
                   s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
 
-      val condPerms =
-        if (conditionalizePerms) singletonConditionalPermissions(rcvr, perms)
-        else perms
+    val condPerms = singletonConditionalPermissions(rcvr, perms)
 
-      QuantifiedChunk(field, value, condPerms)
-    }
+    QuantifiedChunk(field, value, condPerms)
+  }
 
   def singletonConditionalPermissions(rcvr: Term, perms: DefaultFractionalPermissions)
                                      : DefaultFractionalPermissions =
@@ -220,7 +217,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       h.values.map {
         case ch: DirectFieldChunk if ch.name == field.name =>
           val (fvf, fvfDef) = createFieldValueFunction(field, ch.rcvr, ch.value)
-          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvf, ch.perm, true)
+          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvf, ch.perm)
 
           (qch, fvfDef)
 
