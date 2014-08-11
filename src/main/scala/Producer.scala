@@ -182,7 +182,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this
     this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
             val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
-            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, field, snap, pGain * p, tCond, true)
+            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, field, snap, pGain * p, tCond)
             assume(Domain(field.name, snap) === tSet)
             val v = Var("r", sorts.Ref)
             val tNonNullQuant =

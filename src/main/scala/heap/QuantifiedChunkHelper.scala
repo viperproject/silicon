@@ -76,16 +76,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                             field: Field,
                             value: Term,
                             perms: DefaultFractionalPermissions,
-                            condition: Term,
-                            conditionalizePerms: Boolean)
+                            condition: Term)
                            : QuantifiedChunk = {
 
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
                   "Quantified chunk values must be of sort FieldValueFunction")
 
-    val condPerms =
-      if (conditionalizePerms) conditionalPermissions(rcvr, condition, perms)
-      else perms
+    val condPerms = conditionalPermissions(rcvr, condition, perms)
 
     QuantifiedChunk(field.name, value, condPerms)
   }
