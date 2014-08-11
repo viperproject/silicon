@@ -34,6 +34,20 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   private type C = DefaultContext
 
+  private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain)
+
+  private case class FvfDef(field: Field, fvf: Term, entries: Seq[FvfDefEntry]) {
+    lazy val singletonValues = entries map (entry => entry.partialValue)
+
+    def quantifiedValues(qvar: Var) =
+      entries map (entry => Forall(qvar, entry.partialValue, entry.valueTriggers))
+
+    lazy val totalDomain = (
+      Domain(field.name, fvf)
+        ===
+      entries.tail.foldLeft[SetTerm](entries.head.partialDomain)((dom, entry) => SetUnion(dom, entry.partialDomain)))
+  }
+
   /* Chunk creation */
 
   def createSingletonQuantifiedChunk(rcvr: Term,
@@ -90,6 +104,14 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   /* State queries */
 
+  def getQuantifiedChunk(h: H, field: String) =
+    h.values.find{
+      case ch: QuantifiedChunk => ch.name == field
+      case _ => false
+    }.asInstanceOf[Option[QuantifiedChunk]]
+
+  def isQuantifiedFor(h: H, field: String) = getQuantifiedChunk(h, field).nonEmpty
+
   /**
     * Computes the total permission amount held in the given heap for the given chunk identifier.
     */
@@ -111,8 +133,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                      (Q: Lookup => VerificationResult)
                      : VerificationResult = {
 
-    withValue(σ, h, rcvr, None, field, pve, locacc, c)((t, ts) => {
-      assume(ts)
+    withValue(σ, h, rcvr, None, field, pve, locacc, c)((t, fvfDef) => {
+      assume(fvfDef.singletonValues)
+      assume(fvfDef.totalDomain)
       Q(t)})
   }
 
@@ -126,8 +149,12 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                (Q: Lookup => VerificationResult)
                : VerificationResult = {
 
-    withValue(σ, h, rcvr, Some(Var("x", sorts.Ref)), field, pve, locacc, c)((t, ts) => {
-      assume(ts)
+    val qvar = Var("x", sorts.Ref)
+
+    withValue(σ, h, rcvr, Some(qvar), field, pve, locacc, c)((t, fvfDef) => {
+      assume(fvfDef.quantifiedValues(qvar))
+      assume(fvfDef.totalDomain)
+
       Q(t)})
   }
 
@@ -145,7 +172,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                         pve: PartialVerificationError,
                         locacc: LocationAccess,
                         c: C)
-                       (Q: (Lookup, List[Term]) => VerificationResult)
+                       (Q: (Lookup, FvfDef) => VerificationResult)
                        : VerificationResult = {
 
     assert(σ, rcvr !== Null()) {
@@ -162,7 +189,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
             val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
             val lookupRcvr = Lookup(field.name, fvf, x)
 
-            var fvfDefs: List[Term] = Nil
+            var fvfDefs: List[FvfDefEntry] = Nil
+            var fvfIndividualDomains: List[Domain] = Nil
 
             h.values.foreach {
               case ch: QuantifiedChunk if ch.name == field.name =>
@@ -170,169 +198,22 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                 val valueIndividual = ch.value.replace(`?r`, x)
                 val lookupIndividual = Lookup(field.name, valueIndividual, x)
 
-                fvfDefs ::= Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual)
-
-                /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                 * TODO: Add "domain(field.name, fvf) = ..." for each found chunk
-                 * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                 */
+                fvfDefs ::=
+                  FvfDefEntry(Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual),
+//                              Trigger(lookupRcvr :: lookupIndividual :: Nil) :: Nil,
+                              Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
+                              Domain(field.name, valueIndividual))
 
               case ch if ch.name == field.name =>
-                sys.error(s"I did not expect non-quantified chunks on the heap for field $ch")
+                sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
 
               case _ => /* Ignore other chunks */
             }
 
-            fvfDefs = optQVar match {
-              case None => fvfDefs
-              case Some(qvar) => fvfDefs map (d =>  Forall(qvar, d, Nil))
-            }
-
-            Q(lookupRcvr, fvfDefs)}}
+            Q(lookupRcvr, FvfDef(field, fvf, fvfDefs))}}
   }
 
   /* Manipulating quantified chunks */
-
-  def splitSingleLocation(σ: S,
-                          h: H,
-                          field: Field,
-                          rcvr: Term,
-                          fraction: DefaultFractionalPermissions,
-                          conditionalizedFraction: DefaultFractionalPermissions,
-                          pve: PartialVerificationError,
-                          locacc: LocationAccess,
-                          c: C)
-                         (Q: (H, QuantifiedChunk, C) => VerificationResult)
-                         : VerificationResult = {
-
-    val (h1, ch, ts, success) = split(σ, h, field, fresh("sk", sorts.Ref), rcvr, fraction, conditionalizedFraction, c)
-
-    if (success) {
-      assume(ts)
-      Q(h1, ch, c)
-    } else
-      Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
-  }
-
-  def splitLocations(σ: S,
-                     h: H,
-                     field: Field,
-                     skolemVar: Var,
-                     fraction: DefaultFractionalPermissions,
-                     conditionalizedFraction: DefaultFractionalPermissions,
-                     pve:PartialVerificationError,
-                     locacc: LocationAccess,
-                     c: C)
-                    (Q: (H, QuantifiedChunk, C) => VerificationResult)
-                    : VerificationResult = {
-
-    val (h1, ch, fvfDefs, success) = split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
-
-    if (success) {
-      assume(fvfDefs map (d => Forall(skolemVar, d, Nil)))
-      Q(h1, ch, c)
-    } else
-      Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
-  }
-
-  def split(σ: S,
-            h: H,
-            field: Field,
-            skolemVar: Var,
-            rcvr: Term,
-            fraction: DefaultFractionalPermissions,
-            conditionalizedFraction: DefaultFractionalPermissions,
-            c: C)
-           : (H, QuantifiedChunk, List[Term], Boolean) = {
-
-    def skol(t: Term) = t.replace(`?r`, skolemVar)
-
-//    println("\n[split]")
-//    println(s"  field = $field")
-//    println(s"  skolemVar = $skolemVar")
-//    println(s"  rcvr = $rcvr")
-//    println(s"  fraction = $fraction")
-//    println(s"  conditionalizedFraction = $conditionalizedFraction")
-
-    val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
-    var residue: List[Chunk] = Nil
-    var permsToTake = conditionalizedFraction
-    val skolemizedConditionalizedFraction = skol(conditionalizedFraction).asInstanceOf[DefaultFractionalPermissions]
-    var success = false
-    val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
-    val fvfLookup = Lookup(field.name, fvf, rcvr)
-    var fvfDefs: List[Term] = Nil
-
-//    println(s"  candidates = $candidates")
-//    println(s"  permsToTake = $permsToTake")
-//    println(s"  skolemizedConditionalizedFraction = $skolemizedConditionalizedFraction")
-//    println(s"  fvf = $fvf")
-
-    candidates foreach {
-      case ch: QuantifiedChunk =>
-        val candidatePerms = skol(ch.perm).asInstanceOf[DefaultFractionalPermissions]
-        val candidateValue = skol(ch.value)
-        val candidateLookup = Lookup(field.name, candidateValue, skolemVar)
-
-        fvfDefs ::= Implies(candidatePerms > NoPerm(), fvfLookup === candidateLookup)
-
-        /* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         * TODO: Add "domain(field.name, fvf) = ..." for each found chunk
-         * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-         */
-
-        if (success)
-          residue ::= ch
-        else {
-          val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
-
-          val permsTaken = PermMin(permsToTake, Ite(`?r` === rcvr, ch.perm, NoPerm()))
-          permsToTake = permsToTake - permsTaken
-
-          if (constrainPermissions) {
-            assume(Forall(skolemVar,
-                          Implies(candidatePerms !== NoPerm(),
-                                  skolemizedConditionalizedFraction < candidatePerms), Nil))
-
-            residue ::= ch.copy(perm = ch.perm - permsTaken)
-          } else  if (!check(σ, Forall(skolemVar, skol(ch.perm - permsTaken) === NoPerm(), Nil)))
-            residue ::= ch.copy(perm = ch.perm - permsTaken)
-
-          success = check(σ, skol(permsToTake) === NoPerm())
-        }
-
-      case ch => residue ::= ch
-    }
-
-//    println(s"  residue = $residue")
-//    println(s"  ch = ${QuantifiedChunk(field.name, fvf, fraction)}")
-//    println(s"  fvfDefs = $fvfDefs")
-//    println(s"  success = $success")
-
-    (H(residue ++ ignored), QuantifiedChunk(field.name, fvf, conditionalizedFraction), fvfDefs, success)
-  }
-
-  /* Auxiliary functions */
-
-  def getQuantifiedChunk(h: H, field: String) =
-    h.values.find{
-      case ch: QuantifiedChunk => ch.name == field
-      case _ => false
-    }.asInstanceOf[Option[QuantifiedChunk]]
-
-  def isQuantifiedFor(h: H, field: String) = getQuantifiedChunk(h, field).nonEmpty
-
-  def createFieldValueFunction(field: Field, rcvr: Term, value: Term): (Term, Term) = value.sort match {
-    case _: sorts.FieldValueFunction =>
-      /* The value is already a field value function, in which case we don't create a fresh one. */
-      (value, True())
-
-    case _ =>
-      val fvf = fresh ("vs", sorts.FieldValueFunction (toSort (field.typ) ) )
-      val fvfDef = And (Lookup (field.name, fvf, rcvr) === value, Domain (field.name, fvf) === SingletonSet (rcvr) )
-
-      (fvf, fvfDef)
-  }
 
   def quantifyChunksForField(h: H, field: Field): (H, Set[Term]) = {
     val (chunks, ts) =
@@ -348,5 +229,142 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       }.unzip
 
     (H(chunks), toSet(ts))
+  }
+
+  def splitSingleLocation(σ: S,
+                          h: H,
+                          field: Field,
+                          rcvr: Term,
+                          fraction: DefaultFractionalPermissions,
+                          conditionalizedFraction: DefaultFractionalPermissions,
+                          pve: PartialVerificationError,
+                          c: C)
+                         (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
+                         : VerificationResult = {
+
+    val (h1, ch, fvfDef, success) = split(σ, h, field, fresh("sk", sorts.Ref), rcvr, fraction, conditionalizedFraction, c)
+
+    if (success) {
+      assume(fvfDef.singletonValues)
+      assume(fvfDef.totalDomain)
+      Q(Some(h1, ch, c))
+    } else
+      Q(None)
+  }
+
+  def splitLocations(σ: S,
+                     h: H,
+                     field: Field,
+                     skolemVar: Var,
+                     fraction: DefaultFractionalPermissions,
+                     conditionalizedFraction: DefaultFractionalPermissions,
+                     pve:PartialVerificationError,
+                     c: C)
+                    (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
+                    : VerificationResult = {
+
+    val (h1, ch, fvfDef, success) = split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
+
+    if (success) {
+      assume(fvfDef.quantifiedValues(skolemVar))
+      assume(fvfDef.totalDomain)
+      Q(Some(h1, ch, c))
+    } else
+      Q(None)
+  }
+
+  private def split(σ: S,
+                    h: H,
+                    field: Field,
+                    skolemVar: Var,
+                    rcvr: Term,
+                    fraction: DefaultFractionalPermissions,
+                    conditionalizedFraction: DefaultFractionalPermissions,
+                    c: C)
+                   : (H, QuantifiedChunk, FvfDef, Boolean) = {
+
+    def skol(t: Term) = t.replace(`?r`, skolemVar)
+
+    val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
+    var residue: List[Chunk] = Nil
+    var permsToTake = conditionalizedFraction
+    val skolemizedConditionalizedFraction = skol(conditionalizedFraction).asInstanceOf[DefaultFractionalPermissions]
+    var success = false
+    val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
+    val fvfLookup = Lookup(field.name, fvf, rcvr)
+    var fvfDefs: List[FvfDefEntry] = Nil
+
+    candidates foreach {
+      case ch: QuantifiedChunk =>
+        val candidatePerms = skol(ch.perm).asInstanceOf[DefaultFractionalPermissions]
+        val candidateValue = skol(ch.value)
+        val candidateLookup = Lookup(field.name, candidateValue, skolemVar)
+
+        fvfDefs ::=
+          FvfDefEntry(Implies(candidatePerms > NoPerm(), fvfLookup === candidateLookup),
+//                      Trigger(fvfLookup :: candidateLookup :: Nil) :: Nil,
+                      Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
+                      Domain(field.name, candidateValue))
+
+        if (success)
+          residue ::= ch
+        else {
+          val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
+
+          val permsTaken = PermMin(permsToTake, Ite(`?r` === rcvr, ch.perm, NoPerm()))
+          permsToTake = permsToTake - permsTaken
+
+          if (constrainPermissions) {
+            /* TODO: Add triggers (probably needs autoTriggers for terms ) */
+            assume(Forall(skolemVar,
+                          Implies(candidatePerms !== NoPerm(),
+                                  skolemizedConditionalizedFraction < candidatePerms), Nil))
+
+            residue ::= ch.copy(perm = ch.perm - permsTaken)
+          } else  if (!check(σ, Forall(skolemVar, skol(ch.perm - permsTaken) === NoPerm(), Nil)))
+            residue ::= ch.copy(perm = ch.perm - permsTaken)
+
+          success = check(σ, skol(permsToTake) === NoPerm())
+        }
+
+      case ch =>
+        sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
+    }
+
+    val hResidue = H(residue ++ ignored)
+    val ch = QuantifiedChunk(field.name, fvf, conditionalizedFraction)
+    val fvfDef = FvfDef(field, fvf, fvfDefs)
+
+    (hResidue, ch, fvfDef, success)
+  }
+
+  /* Misc */
+
+  def createFieldValueFunction(field: Field, rcvr: Term, value: Term): (Term, Term) = value.sort match {
+    case _: sorts.FieldValueFunction =>
+      /* The value is already a field value function, in which case we don't create a fresh one. */
+      (value, True())
+
+    case _ =>
+      val fvf = fresh("vs", sorts.FieldValueFunction(toSort(field.typ)))
+      val fvfDef = And(Lookup(field.name, fvf, rcvr) === value, Domain(field.name, fvf) === SingletonSet(rcvr))
+
+      (fvf, fvfDef)
+  }
+
+  /* Convenience */
+
+  object QuantifiedSetAccess {
+    def unapply(n: ast.Node) = n match {
+      case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
+                      triggers,
+                      ast.Implies(ast.SetContains(x2, xs),
+                                  ast.FieldAccessPredicate(fa @ ast.FieldAccess(x3, f), gain)))
+           if lvd.localVar == x2 && x2 == x3 =>
+
+        Some((lvd, xs, f, gain, triggers, fa))
+
+      case _ => None
+    }
   }
 }

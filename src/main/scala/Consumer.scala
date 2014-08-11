@@ -9,7 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
+import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -113,52 +113,50 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case ast.Forall(vars, _/*triggers*/, ast.Implies(cond, ast.FieldAccessPredicate(locacc @ ast.FieldAccess(eRcvr, f), loss))) =>
-        /*TODO: Translate triggers! */
-
-        assert(vars.length == 1 && vars(0).typ == ast.types.Ref,
-               s"Only a single, ref-typed variable is supported in impure quantifiers, but found ${vars.map(v => (v, v.typ))}")
-
-        val tQVar = decider.fresh(vars(0).name, toSort(vars(0).typ))
-        val γQVar = Γ(ast.LocalVariable(vars(0).name)(vars(0).typ), tQVar)
-
-        val σ0 = σ \+ γQVar
-
-        eval(σ0, cond, pve, c)((tCond, c1) => {
-          if (decider.check(σ0, Not(tCond)))
+      case quantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, loss, _/*triggers*/, fa) =>
+        /* TODO: Translate triggers! */
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
+        val σQVar = σ \+ γQVar
+        eval(σQVar, set, pve, c)((tSet, c1) => {
+          val tCond = SetIn(tQVar, tSet)
+          if (decider.check(σQVar, Not(tCond)))
             /* The condition cannot be satisfied, hence we don't need to consume anything */
             Q(h, Unit, Nil, c1)
           else {
-            decider.assume(tCond) // TODO: Should be a local assumption only (I assume)
+            decider.assume(tCond)
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
-            eval(σ0, eRcvr, pve, c1)((tRcvr, c2) =>
-              evalp(σ0, loss, pve, c2)((tPerm, c3) => {
+            evalp(σQVar, loss, pve, c1)((tPerm, c2) => {
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
-                decider.assert(σ, IsPositive(tPerm)) {
-                  case true =>
-                    val (h2, ts) =
-                      if (quantifiedChunkHelper.isQuantifiedFor(h, f.name)) (h, Set.empty[Term])
-                      else quantifiedChunkHelper.quantifyChunksForField(h, f)
-                    assume(ts)
-                    val condPerms = quantifiedChunkHelper.conditionalPermissions(tRcvr, tCond, tPerm)
-                    quantifiedChunkHelper.splitLocations(σ, h2, f, tQVar, tPerm * p, condPerms * p, pve, locacc, c3)((h3, ch, c4) =>
-                      Q(h3, ch.value, /*ch :: */Nil, c4))
+              decider.assert(σ, IsPositive(tPerm)) {
+                case true =>
+                  val (h2, ts) =
+                    if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) (h, Set.empty[Term])
+                    else quantifiedChunkHelper.quantifyChunksForField(h, field)
+                  assume(ts)
+                  val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, tCond, tPerm)
+                  quantifiedChunkHelper.splitLocations(σ, h2, field, tQVar, tPerm * p, condPerms * p, pve, c2) {
+                    case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
+                    case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
+                  }
 
-                  case false =>
-                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
+                case false =>
+                  Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}})}})
 
-      case ast.AccessPredicate(locacc @ ast.FieldAccess(eRcvr, field), perm)
+      case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           evalp(σ, perm, pve, c1)((tPerm, c2) => {
             val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, tPerm)
-            quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, tPerm * p, condPerms * p, pve, locacc, c2)((h1, ch, c3) =>
-              Q(h1, ch.value, /*ch :: */Nil, c3))}))
+            quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, tPerm * p, condPerms * p, pve, c2) {
+              case Some((h1, ch, c3)) => Q(h1, ch.value, /*ch :: */ Nil, c3)
+              case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
+            }}))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>

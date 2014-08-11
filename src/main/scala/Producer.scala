@@ -160,31 +160,31 @@ trait DefaultProducer[ST <: Store[ST],
             assume(NoPerm() < pGain)
             Q(σ.h + ch, c2)}))
 
-      case fa @ ast.Forall(vars, triggers, ast.Implies(cond, ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, f), gain))) =>
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ((vars map (v => ast.LocalVariable(v.name)(v.typ))) zip tVars)
+      case quantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, gain, _/*triggers*/, _) =>
+        /* TODO: Translate triggers */
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
+        val σQVar = σ \+ γQVar
         val πPre = decider.π
         var πAux: Set[Term] = Set()
 
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
-        decider.locally[(Term, Term, P, C)](QB => {
-          decider.prover.logComment("Begin local evaluation of sub-expressions of " + fa)
-          eval(σ \+ γVars, cond, pve, c)((tCond, c1) =>
-            eval(σ \+ γVars, eRcvr, pve, c1)((tRcvr, c2) =>
-              evalp(σ \+ γVars, gain, pve, c2)((pGain, c3) => {
-                πAux = decider.π -- πPre
-                decider.prover.logComment("End local evaluation of sub-expressions of " + fa)
-                QB(tCond, tRcvr, pGain, c3)})))}
-        ){case (tCond, tRcvr, pGain, c3) =>
-            val tAuxQuant = Quantification(Forall, tVars, state.terms.utils.BigAnd(πAux))
-            decider.prover.logComment(s"Aux. quantifier for $fa: $tAuxQuant")
+        decider.locally[(Term, Term, Term, P, C)](QB =>
+          eval(σQVar, set, pve, c)((tSet, c1) =>
+            evalp(σQVar, gain, pve, c1)((pGain, c2) => {
+              πAux = decider.π -- πPre
+              val tCond = SetIn(tQVar, tSet)
+              QB(tSet, tCond, tQVar, pGain, c2)}))
+        ){case (tSet, tCond, tRcvr, pGain, c3) =>
+            val tAuxQuant = Quantification(Forall, tQVar :: Nil, state.terms.utils.BigAnd(πAux))
             decider.assume(tAuxQuant)
 
-    this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(tVars.length)
+    this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
-            val snap = sf(sorts.FieldValueFunction(toSort(f.typ)))
-            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, f, snap, pGain * p, tCond, true)
+            val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
+            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, field, snap, pGain * p, tCond, true)
+            assume(Domain(field.name, snap) === tSet)
             val v = Var("r", sorts.Ref)
             val tNonNullQuant =
               Quantification(
@@ -196,8 +196,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tVars ++: thi
                 List(/*Trigger(List(NullTrigger(v)))*/))
             assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
             val (h, ts) =
-              if(quantifiedChunkHelper.isQuantifiedFor(σ.h, f.name)) (σ.h, Set.empty[Term])
-              else quantifiedChunkHelper.quantifyChunksForField(σ.h, f)
+              if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
+              else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
             Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
