@@ -124,7 +124,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             /* The condition cannot be satisfied, hence we don't need to consume anything */
             Q(h, Unit, Nil, c1)
           else {
-            decider.assume(tCond)
+//            decider.assume(tCond)
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 

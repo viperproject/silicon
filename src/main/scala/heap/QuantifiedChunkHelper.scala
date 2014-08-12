@@ -133,24 +133,25 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       Q(t)})
   }
 
-  def withValue(σ: S,
-                h: H,
-                rcvr: Term,
-                field: Field,
-                pve: PartialVerificationError,
-                locacc: LocationAccess,
-                c: C)
-               (Q: Lookup => VerificationResult)
-               : VerificationResult = {
-
-    val qvar = Var("x", sorts.Ref)
-
-    withValue(σ, h, rcvr, Some(qvar), field, pve, locacc, c)((t, fvfDef) => {
-      assume(fvfDef.quantifiedValues(qvar))
-      assume(fvfDef.totalDomain)
-
-      Q(t)})
-  }
+  /* TODO: Currently not needed. Not needing it might simplify unifying withValue and split */
+//  def withValue(σ: S,
+//                h: H,
+//                rcvr: Term,
+//                field: Field,
+//                pve: PartialVerificationError,
+//                locacc: LocationAccess,
+//                c: C)
+//               (Q: Lookup => VerificationResult)
+//               : VerificationResult = {
+//
+//    val qvar = Var("x", sorts.Ref)
+//
+//    withValue(σ, h, rcvr, Some(qvar), field, pve, locacc, c)((t, fvfDef) => {
+//      assume(fvfDef.quantifiedValues(qvar))
+//      assume(fvfDef.totalDomain)
+//
+//      Q(t)})
+//  }
 
   /* TODO: Is conceptually very close to split(...) since the latter also computes a
    *       field value function over all chunks for a given field.
