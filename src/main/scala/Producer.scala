@@ -197,6 +197,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this
             val (h, ts) =
               if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
               else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
+            assume(ts)
             Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
