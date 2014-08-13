@@ -14,6 +14,16 @@ package object utils {
 		else
 			it.map(f).reduceLeft((t1, t2) => op(t1, t2))
 
+  def conflictFreeUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Either[Seq[(K, V, V)], Map[K, V]] = {
+    m1 flatMap { case (k1, v1) => m2.get(k1) match {
+      case None | Some(`v1`) => None
+      case Some(v2) => Some((k1, v1, v2))
+    }} match {
+      case Seq() => Right(m1 ++ m2)
+      case conflicts => Left(conflicts.toSeq)
+    }
+  }
+
   /* Take from scala -print when working with case classes. */
   @inline
   def generateHashCode(xs: Any*) = {

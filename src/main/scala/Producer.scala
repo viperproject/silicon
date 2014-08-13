@@ -9,12 +9,13 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
-import state.terms._
-import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import reporting.{DefaultContext, Bookkeeper}
+import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.terms._
+import state.terms.predef._
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -31,9 +32,6 @@ trait DefaultProducer[ST <: Store[ST],
 
   protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
-
-  protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -104,16 +102,28 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
+//        println(s"\n[Producer/And] $φ")
+        val s = sf(sorts.Snap)
         val s0 = mkSnap(a0, c)
         val s1 = mkSnap(a1, c)
-        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
+        val tSnapEq = Eq(s, Combine(s0, s1))
+
+//        println(s"  s = $s")
+//        println(s"  s0 = $s0")
+//        println(s"  s1 = $s1")
+//        println(s"  tSnapEq = $tSnapEq")
+        val currentSnap = c.getCurrentSnap
+//          if (c.currentSnap == null) `?s`
+//          else c.currentSnap
+//        println(s"  c.currentSnap = ${c.currentSnap}")
+//        println(s"  currentSnap = $currentSnap")
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
 
         assume(tSnapEq)
-        produce2(σ, sf0, p, a0, pve, c)((h1, c1) =>
-          produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
+        produce2(σ, sf0, p, a0, pve, c.setCurrentSnap(First(currentSnap)))((h1, c1) =>
+          produce2(σ \ h1, sf1, p, a1, pve, c1.setCurrentSnap(Second(currentSnap)))((h2, c2) =>
             Q(h2, c2)))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
@@ -128,25 +138,33 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
+            assume(NoPerm() < pGain)
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            assume(NoPerm() < pGain)
-            Q(σ.h + ch, c2)})})
+            val c3 =
+              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnap))
+//              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
+//              else c2
+            Q(σ.h + ch, c3)})})
 
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
+      case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           evalp(σ, gain, pve, c1)((pGain, c2) => {
+            assume(NoPerm() < pGain)
             val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            assume(NoPerm() < pGain)
-            Q(σ.h + ch, c2)}))
+            val c3 =
+              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnap))
+//              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
+//              else c2
+            Q(σ.h + ch, c3)}))
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

@@ -1,0 +1,56 @@
+field f: Int
+field g: Int
+field h: Ref
+
+function fun1(x: Ref, y: Ref): Int
+  requires acc(x.f) && acc(y.g)
+  requires x == y
+{ y.f + x.g }
+
+function fun2(x: Ref, y: Ref): Int
+  requires acc(x.f) && x == y && acc(y.g)
+{ y.f + x.g }
+
+predicate P(x: Ref) {
+  acc(x.g)
+}
+
+function fun3(x: Ref): Int
+  requires acc(P(x))
+{ unfolding acc(P(x)) in x.g }
+
+function fun4(x: Ref, y: Ref): Int
+  requires acc(x.f) && acc(P(y))
+  requires x == y
+{ y.f + unfolding acc(P(x)) in y.g }
+
+function fun6(b: Bool, x: Ref): Int
+  requires b ==> acc(x.f)
+{ b ? x.f : 0 }
+
+predicate Q(x: Ref) {
+  acc(x.f) && acc(x.h) && (x.h != null ==> acc(x.h.g))
+}
+
+function fun5(x: Ref): Int
+  requires acc(Q(x))
+{ unfolding acc(Q(x)) in x.f + (x.h == null ? 0 : x.h.g) }
+
+
+
+//:: ExpectedOutput(function.not.wellformed:receiver.null)
+//:: IgnoreOthers
+function err1(x: Ref): Int
+  requires acc(x.h.f)
+{ 0 }
+
+function err2(x: Ref): Int
+  requires acc(x.f)
+  //:: ExpectedOutput(application.precondition:insufficient.permission)
+  requires err1(x) == 0
+{ 0 }
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function er3(x: Ref, y: Ref): Int
+  requires acc(x.f) && acc(y.g)
+{ y.f + x.g }

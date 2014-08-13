@@ -1,0 +1,125 @@
+function fac(n: Int): Int
+  requires n >= 0
+  ensures result >= 0
+{ n < 2 ? n : n * fac(n - 1) }
+
+method test() {
+  assert fac(0) == 0
+  assert fac(1) == 1
+  assert fac(2) == 2
+  assert fac(3) == 6
+  assert fac(4) == 24
+  assert fac(6) >= 0
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert fac(6) == 720
+}
+
+field next: Ref
+field val: Int
+
+predicate list(xs: Ref) {
+  acc(xs.next) && acc(xs.val) && (xs.next != null ==> acc(list(xs.next)))
+}
+
+function length(xs: Ref): Int
+  requires acc(list(xs))
+  ensures result > 0
+{ unfolding acc(list(xs)) in 1 + (xs.next == null ? 0 : length(xs.next)) }
+
+function sum(xs: Ref): Int
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in xs.val + (xs.next == null ? 0 : sum(xs.next)) }
+
+function head(xs: Ref): Int
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in xs.val }
+
+function tail(xs: Ref): Ref
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in xs.next }
+
+function contains(xs: Ref, x: Int): Bool
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in x == xs.val || (xs.next != null && contains(xs.next, x)) }
+
+function elems(xs: Ref): Seq[Int]
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in Seq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next)) }
+
+method prepend(xs: Ref, y: Int) returns (ys: Ref)
+  requires acc(list(xs))
+  ensures acc(list(ys))
+  ensures length(ys) == old(length(xs)) + 1
+  ensures elems(ys) == Seq(y) ++ old(elems(xs))
+{
+  ys := new(val, next)
+  ys.val := y
+  ys.next := xs
+  fold acc(list(ys))
+}
+
+method append(xs: Ref, y: Int)
+  requires acc(list(xs))
+  ensures acc(list(xs))
+  ensures length(xs) == old(length(xs)) + 1
+  ensures elems(xs) == old(elems(xs)) ++ Seq(y)
+{
+  unfold acc(list(xs))
+
+  if (xs.next == null) {
+    var ys: Ref
+    ys := new(val, next)
+    ys.val := y
+    ys.next := null
+    fold acc(list(ys))
+    xs.next := ys
+    assert length(ys) == 1     // TODO: Should not be necessary
+    assert elems(ys) == Seq(y) // TODO: Should not be necessary
+  } else {
+    append(xs.next, y)
+  }
+
+  fold acc(list(xs))
+}
+
+function ascending(xs: Ref): Bool
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in xs.next == null || (xs.val <= head(xs.next) && ascending(xs.next)) }
+
+method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
+  requires acc(list(xs)) && ascending(xs)
+  ensures acc(list(ys))
+  ensures 0 <= i && i <= old(length(xs))
+  ensures elems(ys) == old(elems(xs))[0..i] ++ Seq(y) ++ old(elems(xs))[i..]
+//  ensures ascending(ys)
+{
+  if (y <= head(xs)) {
+    ys := prepend(xs, y)
+    i := 0
+  } elsif (tail(xs) == null) {
+    append(xs, y)
+    ys := xs
+    i := 1
+  } else {
+    unfold acc(list(xs))
+
+    if (y <= unfolding acc(list(xs.next)) in xs.next.val) {
+      ys := new(val, next)
+      ys.val := y
+      ys.next := xs.next
+      fold acc(list(ys))
+      assert elems(ys) == Seq(y) ++  unfolding acc(list(ys)) in elems(xs.next) // TODO: Should not be necessary
+      xs.next := ys
+      ys := xs
+      i := 1
+    } else {
+      ys, i := insert(xs.next, y)
+      xs.next := ys
+      ys := xs
+      i := i + 1
+    }
+
+    fold acc(list(ys))
+  }
+}

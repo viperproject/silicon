@@ -1,0 +1,66 @@
+field f: Int
+field g: Int
+
+predicate pair(x: Ref) {
+  acc(x.f) && acc(x.g)
+}
+
+function sum(x: Ref): Int
+  requires acc(pair(x))
+{ unfolding acc(pair(x)) in x.f + x.g }
+
+method test1() {
+  var x: Ref; x := new(f, g)
+  var y: Ref; y := new(f, g)
+
+  x.f := y.f
+  y.g := x.g
+
+  fold acc(pair(x))
+  fold acc(pair(y))
+
+  assert sum(x) == sum(y)
+
+  unfold acc(pair(x))
+  x.f := x.f + 1
+  fold acc(pair(x))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert sum(x) == sum(y)
+}
+
+function getf(z: Ref): Int
+  requires acc(pair(z))
+{ unfolding pair(z) in z.f }
+
+method test3(y: Ref)
+  requires acc(pair(y)) && getf(y) > 0
+{
+  var v: Int := unfolding acc(pair(y)) in y.g
+  assert getf(y) == sum(y) - v
+}
+
+function add(x: Ref, y: Ref): Int
+  requires acc(pair(x))
+  requires acc(pair(y))
+{ unfolding acc(pair(x)) in x.f + (unfolding acc(pair(y)) in y.f) + x.g }
+
+method test2(a: Int)
+  requires a > 10
+{
+  var x: Ref; x := new(f, g)
+  var y: Ref; y := new(f, g)
+
+  x.f := 1; x.g := a
+  y.f := 2; y.g := -a
+
+
+  fold acc(pair(x))
+  fold acc(pair(y))
+
+  assert add(x, y) == a + 3
+  assert add(y, x) < 0
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert add(x, y) < 0
+}

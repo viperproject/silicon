@@ -1181,6 +1181,12 @@ object Distinct {
   def unapply(d: Distinct) = Some(d.ts)
 }
 
+/* Predefined terms */
+
+object predef {
+  val `?s` = Var("s", sorts.Snap) // with SnapshotTerm
+}
+
 /* Convenience functions */
 
 object perms {

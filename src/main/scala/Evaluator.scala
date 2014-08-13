@@ -13,8 +13,7 @@ import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{Bookkeeper, DefaultContext}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
-    FieldChunk}
+import viper.silicon.interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
@@ -171,8 +170,10 @@ trait DefaultEvaluator[
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
-          decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch =>
-            Q(ch.value, c1)))
+          decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch => {
+            val c2 = c1.copy(locToChunk = c1.locToChunk + (fa -> ch))
+//            val c2 = c1.copy(chunkToSnap = c1.chunkToSnap + (fa -> ch))
+            Q(ch.value, c2)}))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -221,10 +222,11 @@ trait DefaultEvaluator[
           decider.popScope()
 
           r && {
-            val (t1: Term, tAux: Set[Term]) = combine(localResults)
+            val (t1: Term, tAux: Set[Term], cOpt) = combine(localResults)
             val tAnd = And(t0.get, t1)
             assume(tAux)
-            Q(tAnd, localResults.headOption.fold(c1)(_.context))}})
+//            Q(tAnd, localResults.headOption.fold(c1)(_.context))}})
+            Q(tAnd, cOpt.getOrElse(c1))}})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -290,6 +292,8 @@ trait DefaultEvaluator[
 
         var localResults: List[LocalEvaluationResult] = Nil
 
+//        println(s"\n[Eval/Implies] $e")
+
         decider.pushScope()
         val r =
           eval(σ, e0, pve, c)((t0, c1) => {
@@ -311,20 +315,23 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
+//          println(s" -- end local eval of $e")
+
           /* The additional path conditions gained while evaluating the
            * antecedent can be assumed in any case.
            * If the antecedent holds, then the additional path conditions
            * related to the consequent can also be assumed.
            */
 
-          val (tActualThen: Term, tAuxThen: Set[Term]) = combine(localResults)
+          val (tActualThen: Term, tAuxThen: Set[Term], cOpt) = combine(localResults)
           val tAuxIf = state.terms.utils.BigAnd(πIf)
 
           val tImplies = Implies(tEvaluatedIf, tActualThen)
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, localResults.headOption.fold(c)(_.context))}
+//          Q(tImplies, localResults.headOption.fold(c)(_.context))}
+          Q(tImplies, cOpt.getOrElse(c))}
 
       case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
@@ -337,6 +344,7 @@ trait DefaultEvaluator[
         var localResultsElse: List[LocalEvaluationResult] = Nil
 
         decider.pushScope()
+//        println(s"\n[Eval/Ite] $e")
 
         val r =
           eval(σ, e0, pve, c)((t0, c1) => {
@@ -363,6 +371,7 @@ trait DefaultEvaluator[
         val localResults = localResultsThen ::: localResultsElse
 
         r && {
+//          println(s" -- end local eval of $e")
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
@@ -375,8 +384,15 @@ trait DefaultEvaluator[
 
           /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
            *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
-          val (tActualThen: Term, tAuxThen: Set[Term]) = combine(localResultsThen, tActualThenVar === _)
-          val (tActualElse: Term, tAuxElse: Set[Term]) = combine(localResultsElse, tActualElseVar === _)
+          val (tActualThen: Term, tAuxThen: Set[Term], cOptThen) = combine(localResultsThen, tActualThenVar === _)
+          val (tActualElse: Term, tAuxElse: Set[Term], cOptElse) = combine(localResultsElse, tActualElseVar === _)
+
+          val c1 = (cOptThen, cOptElse) match {
+            case (None, Some(cElse)) => cElse
+            case (Some(cThen), None) => cThen
+            case (Some(cThen), Some(cElse)) => cThen.merge(cElse)
+            case (None, None) => c
+          }
 
           /* Ite with auxiliary terms */
           val tAuxIte = Ite(tActualIf.getOrElse(False()),
@@ -394,7 +410,8 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, localResults.headOption.fold(c)(_.context))}
+//          Q(tActualIte, localResults.headOption.fold(c)(_.context))}
+          Q(tActualIte, c1)}
 
       /* Integers */
 
@@ -528,12 +545,27 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
-          val (tActual: Term, tAux: Set[Term]) = combine(localResults)
+          val (tActual: Term, tAux: Set[Term], cOpt) = combine(localResults)
           /* TODO: Translate SIL triggers as well */
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-          Q(tQuant, localResults.headOption.fold(c)(_.context))}
+//          Q(tQuant, localResults.headOption.fold(c)(_.context))}
+          Q(tQuant, cOpt.getOrElse(c))}
+
+      case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
+        val err = PreconditionInAppFalse(fapp)
+        val func = c.program.findFunction(funcName)
+
+        evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
+          bookkeeper.functionApplications += 1
+          val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
+          val σ2 = σ \ insγ
+          val pre = ast.utils.BigAnd(func.pres)
+          /* TODO: Consuming the precondition might branch. Problem? */
+          consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
+            val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
+            Q(tFA, c3)})})
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -595,6 +627,8 @@ trait DefaultEvaluator[
         var tPerm: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
 
+//        println(s"\n[Eval/Unfolding] $e")
+
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
 
@@ -606,7 +640,7 @@ trait DefaultEvaluator[
               decider.assert(σ, IsPositive(_tPerm)){
                 case true =>
                   evals(σ, eArgs, pve, c1)((tArgs, c2) =>
-                    consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) => {
+                    consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
                       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
@@ -618,13 +652,15 @@ trait DefaultEvaluator[
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
 
           r && {
+//            println(s" -- end local eval of $e")
             val quantifiedVarsSorts = quantifiedVars.map(_.sort)
             val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
             val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), quantifiedVars)
-            val (tActualIn: Term, tAuxIn: Set[Term]) = combine(localResults, tActualInVar === _)
+            val (tActualIn: Term, tAuxIn: Set[Term], cOpt) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
+//            Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
+            Q(tActualInVar, cOpt.getOrElse(c))}
         } else
           Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
 
@@ -782,12 +818,13 @@ trait DefaultEvaluator[
         val πPre: Set[Term] = decider.π
         evalTriggers(σQuant, silTriggers, pve, c)((triggers, c1) =>
           eval(σQuant, body, pve, c1)((tBody, c2) => {
-            val (tActual: Term, tAux: Set[Term]) =
+            val (tActual: Term, tAux: Set[Term], cOpt) =
               combine(LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2) :: Nil)
             val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
             val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
             assume(tQuantAux)
-            Q(tQuant, c2)
+
+            Q(tQuant, cOpt.getOrElse(c2))
           }))
 
       case _ => sys.error(s"Cannot non-locally evaluate $e (${e.getClass.getName})")
@@ -870,22 +907,56 @@ trait DefaultEvaluator[
 
   private def combine(localResults: Seq[LocalEvaluationResult],
                       actualResultTransformer: Term => Term = Predef.identity)
-                     : (Term, Set[Term]) = {
+//                     : (Term, Set[Term], Map[Chunk, Term], Map[ast.LocationAccess, Chunk]) = {
+                     : (Term, Set[Term], Option[C]) = {
 
-    val (t1: Term, tAux: Set[Term]) =
-      localResults.map {lr =>
+//    println(s"  [combine] ${localResults.length}")
+    val (t1: Term, tAux: Set[Term], optC) =
+      localResults.map { lr =>
+//        println(s"    locToSnap = ${lr.context.locToSnap}")
+
         val newGuards = lr.πGuards filterNot decider.π.contains
         val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
 
-        (tAct, tAux)
-      }.foldLeft((True(): Term, Set[Term]())){case ((tActAcc, tAuxAcc), (tAct, _tAux)) =>
-        (And(tActAcc, tAct), tAuxAcc + _tAux)
+        (tAct, tAux, lr.context /*lr.context.chunkToSnap, lr.context.locToChunk*/)
+      }.foldLeft((True(): Term, Set[Term](), None: Option[C] /*Map[Chunk, Term](), Map[ast.LocationAccess, Chunk]()*/)) {
+//        case ((tActAcc, tAuxAcc, ctsAcc, ltcAcc), (tAct, _tAux, _cts, _ltc)) =>
+        case ((tActAcc, tAuxAcc, optCAcc), (tAct, _tAux, _c)) =>
+//          assert(ctsAcc.keys.toSet.intersect(_cts.keys.toSet).isEmpty, "Unexpected overlap between contexts")
+//          assert(ltcAcc.keys.toSet.intersect(_ltc.keys.toSet).isEmpty, "Unexpected overlap between contexts")
+
+//          val optCAcc1 = optCAcc.map(cAcc => combine(cAcc, _c))
+          val cAcc = optCAcc.fold(_c)(cAcc => cAcc.merge(_c))
+
+//          (And(tActAcc, tAct), tAuxAcc + _tAux, ctsAcc ++ _cts, ltcAcc ++ _ltc)
+          (And(tActAcc, tAct), tAuxAcc + _tAux, Some(cAcc))
       }
 
-    (t1, tAux)
+    (t1, tAux, optC)
   }
+
+//  private def combine(c1: C, c2: C): C = c1 match {
+//    case DefaultContext(program1, visited1, constrainableARPs1, currentSnap1, locToChunk1, chunkToSnap1) => c2 match {
+//      case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `currentSnap1`, locToChunk2, chunkToSnap2) =>
+//        assert(chunkToSnap1.keys.toSet.intersect(chunkToSnap2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
+//        assert(locToChunk1.keys.toSet.intersect(locToChunk2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
+//
+//        println(s"  chunkToSnap1 = $chunkToSnap1")
+//        println(s"  chunkToSnap2 = $chunkToSnap2")
+//        println(s"  locToChunk1 = $locToChunk1")
+//        println(s"  locToChunk2 = $locToChunk2")
+//
+//        val c3 = c2.copy(chunkToSnap = chunkToSnap1 ++ chunkToSnap2,
+//                locToChunk = locToChunk1 ++ locToChunk2)
+//
+//        println(s" c3 = $c3")
+//        c3
+//
+//      case _ => sys.error("Unexpected mismatch between contexts")
+//    }
+//  }
 
   /* TODO: The CP-style in which Silicon's main components are written makes it hard to work
    *       with sequences. evalTriggers, evals and execs all share the same pattern, they

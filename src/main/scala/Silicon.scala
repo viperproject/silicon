@@ -21,8 +21,7 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, DefaultContext, Bookkeeper}
-import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
-    DefaultDomainsTranslator}
+import theories.{ExpressionTranslator, DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter, DefaultDomainsTranslator}
 import ast.Consistency
 
 
@@ -144,6 +143,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
+//    val expressionTranslator = new ExpressionTranslator(symbolConverter)
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
@@ -340,12 +340,12 @@ case class DefaultValue[T](value: T) extends ConfigValue[T]
 case class UserValue[T](value: T) extends ConfigValue[T]
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
-  val stopOnFirstError = opt[Boolean]("stopOnFirstError",
-    descr = "Execute only until the first error is found",
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
+//  val stopOnFirstError = opt[Boolean]("stopOnFirstError",
+//    descr = "Execute only until the first error is found",
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
 
   private val statisticsSinkConverter = new ValueConverter[(String, String)] {
     val stdioRegex = """(stdio)""".r
@@ -467,6 +467,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  val disableFunctionAxiomatization = opt[Boolean]("disableFunctionAxiomatization",
+    descr = (  "Disable axiomatization of user-provided functions, and evaluate functions on "
+        + "the fly instead."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
 
   validateOpt(timeout){
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
