@@ -96,8 +96,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
 				consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) =>
-						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)))
+					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
+            val c3 =
+              if (c2.recordSnaps) {
+                println(s"\n[Consumer/And] $φ")
+                println(s"  c.getCurrentSnap = ${c.getCurrentSnap}")
+                println(s"  c1.getCurrentSnap = ${c1.getCurrentSnap}")
+                println(s"  s1 = $s1")
+                println(s"  c2.getCurrentSnap = ${c2.getCurrentSnap}")
+                println(s"  s2 = $s2")
+                c2.setCurrentSnap(Combine(c1.getCurrentSnap, c2.getCurrentSnap))
+              } else
+                c2
+						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
 				eval(σ, e0, pve, c)((t0, c1) =>
@@ -116,11 +127,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           evalp(σ, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σ, IsPositive(tPerm)){
               case true =>
-                consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) =>
+                consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) => {
+                  val c4 =
+                    if (c3.recordSnaps) {
+                      println(s"\n[Consumer/Acc] $φ")
+//                        println(s"  c3.getCurrentSnap = ${c3.getCurrentSnap}")
+                      println(s"  ch = $ch")
+//                        println(s"  c3.chunktoSnaps = ${c3.chunkToSnap}")
+//                        println(s"  c3.locToChunks = ${c3.locToChunk}")
+                      println(s"  c3.chunktoSnap(ch) = ${c3.chunkToSnap(ch)}")
+                      c3.setCurrentSnap(c3.chunkToSnap(ch))
+                    } else
+                      c3
+
                   ch match {
                     case fc: DirectFieldChunk =>
-                        val snap = fc.value.convert(sorts.Snap)
-                        Q(h1, snap, fc :: Nil, c3)
+                      val snap = fc.value.convert(sorts.Snap)
+                      Q(h1, snap, fc :: Nil, c4)
 
                     case pc: DirectPredicateChunk =>
                       val h2 =
@@ -128,7 +151,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                         else
                           h1
-                      Q(h2, pc.snap, pc :: Nil, c3)})
+                      Q(h2, pc.snap, pc :: Nil, c4)}})
+
               case false =>
                 Failure[ST, H, S](pve dueTo NonPositivePermission(perm))}))
 

@@ -1,6 +1,10 @@
 field f: Int
 field g: Ref
 
+function fun3(x: Ref): Int
+  requires acc(x.f) && acc(x.g)
+{ 1 + fun2(x) }
+
 function fun1(x: Ref): Int
   requires acc(x.f) && acc(x.g)
   requires acc(x.g.f)
@@ -9,6 +13,14 @@ function fun1(x: Ref): Int
 function fun2(x: Ref): Int
   requires acc(x.f)
 { -x.f }
+
+method test02() {
+  var x: Ref
+  x := new(f, g)
+  x.f := 1
+
+  assert fun3(x) == 0
+}
 
 method test01() {
   var x: Ref; x := new(f, g)
@@ -20,3 +32,29 @@ method test01() {
 
   assert fun1(x) == -6
 }
+
+function fun4(b: Bool, x: Ref, y: Ref): Int
+  requires acc(x.f) && acc(x.g)
+  requires b ==> acc(x.g.f)
+  requires x == y
+{ 7 - (!b ? fun2(y) : fun1(y)) + (b ? y.g.f : 99) }
+
+method test03() {
+  var x: Ref; x := new(f, g)
+  var y: Ref; y := new(f, g)
+
+  x.f := 3
+  x.g := y
+  x.g.f := 17
+
+  assert fun4(true, x, x) == 7 - 3 + 17 + 17
+  assert fun4(false, x, x) == 7 + 3 + 99
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+function fun5(x: Ref): Int
+  requires acc(x.f)
+  //:: ExpectedOutput(application.precondition:insufficient.permission)
+{ fun3(x) }

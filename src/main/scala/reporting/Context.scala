@@ -19,9 +19,11 @@ case class DefaultContext(program: ast.Program,
                           constrainableARPs: Set[Term] = Set(),
 //                          recordAccesses: Boolean = false,
 //                          chunkToAcc: Map[Chunk, ast.AccessPredicate] = Map(),
+                          recordSnaps: Boolean = false,
                           currentSnap: Option[Term] = None,
                           locToChunk: Map[ast.LocationAccess, Chunk] = Map(),
-                          chunkToSnap: Map[Chunk, Term] = Map()
+                          chunkToSnap: Map[Chunk, Term] = Map(),
+                          fappToSnap: Map[ast.FuncApp, Term] = Map()
                           /*locToSnap: Map[ast.LocationAccess, SnapshotTerm] = Map()*/)
     extends Context[DefaultContext] {
 
@@ -46,14 +48,14 @@ case class DefaultContext(program: ast.Program,
 
   def getCurrentSnap = currentSnap.getOrElse(`?s`)
 
-  def setCurrentSnap(s: SnapshotTerm) = copy(currentSnap = Some(s))
+  def setCurrentSnap(s: Term) = copy(currentSnap = Some(s))
 
   def locToSnap = locToChunk.map{case (loc, ch) => loc -> chunkToSnap(ch)}
 
   def merge(other: DefaultContext) = this match {
-    case DefaultContext(program1, visited1, constrainableARPs1, currentSnap1, locToChunk1, chunkToSnap1) =>
+    case DefaultContext(program1, visited1, constrainableARPs1, recordSnaps1, currentSnap1, locToChunk1, chunkToSnap1, fappToSnap1) =>
       other match {
-        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `currentSnap1`, locToChunk2, chunkToSnap2) =>
+        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `recordSnaps1`, `currentSnap1`, locToChunk2, chunkToSnap2, fappToSnap2) =>
 //          assert(chunkToSnap1.keys.toSet.intersect(chunkToSnap2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
 //          assert(locToChunk1.keys.toSet.intersect(locToChunk2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
 //
@@ -69,9 +71,10 @@ case class DefaultContext(program: ast.Program,
 //          c3
           val combinedCtsOrConflicts = utils.conflictFreeUnion(chunkToSnap1, chunkToSnap2)
           val combinedLtcOrConflicts = utils.conflictFreeUnion(locToChunk1, locToChunk2)
+          val combinedFtsOrConflicts = utils.conflictFreeUnion(fappToSnap1, fappToSnap2)
 
-          (combinedCtsOrConflicts, combinedLtcOrConflicts) match {
-            case (Right(cts), Right(ltc)) => copy(chunkToSnap = cts, locToChunk = ltc)
+          (combinedCtsOrConflicts, combinedLtcOrConflicts, combinedFtsOrConflicts) match {
+            case (Right(cts), Right(ltc), Right(fts)) => copy(chunkToSnap = cts, locToChunk = ltc, fappToSnap = fts)
             case _ => sys.error("Unexpected situation while merging contexts")
           }
 

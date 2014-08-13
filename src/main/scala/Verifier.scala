@@ -44,8 +44,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  def verify(program: ast.Program, member: ast.Member/*, history: History[ST, H, S]*/): VerificationResult = {
-    val c = DefaultContext(program)
+  def verify(program: ast.Program, member: ast.Member, c: C/*, history: History[ST, H, S]*/): VerificationResult = {
+//    val c = DefaultContext(program)
 
     member match {
       case m: ast.Method => verify(m, c)
@@ -198,15 +198,18 @@ trait AbstractVerifier[ST <: Store[ST],
 
   def verify(program: ast.Program): List[VerificationResult] = {
     var results: List[VerificationResult] = Nil
+    var c = DefaultContext(program = program, recordSnaps = true)
 
     emitPreamble(program)
     emitFunctionSymbols(program)
 
     results = program.members.collect {
-      case func: ast.ProgramFunction => ev.verify(program, func)
+      case func: ast.ProgramFunction => ev.verify(program, func, c)
     }.toList
 
     emitFunctionAxioms()
+
+    c = DefaultContext(program)
 
     val members = program.members.filterNot {
       case func: ast.ProgramFunction => true
@@ -227,7 +230,7 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results ++= members.map(m => ev.verify(program, m)).toList
+      results ++= members.map(m => ev.verify(program, m, c)).toList
 //    }
 
     results

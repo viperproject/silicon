@@ -44,7 +44,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   object functionsSupporter extends PreambleEmitter {
     private var collectedFunctions = Set[ast.ProgramFunction]()
     private var translatedFunctions = Set[Function]()
-    private var funcToLocToSnap = Map[ast.ProgramFunction, Map[ast.LocationAccess, Term]]()
+    private var funcToSnapRecords = Map[ast.ProgramFunction, (Map[ast.LocationAccess, Term], Map[ast.FuncApp, Term])]()
     private var axiomGenerators = Set[() => Set[Term]]()
 //    private var axioms = Set[Term]()
 
@@ -64,56 +64,77 @@ trait FunctionsSupporter[ST <: Store[ST],
       val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
       val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
 
-      /* Produce includes well-formedness check */
-      inScope {
-        (inScope {
-          produces(σ, fresh, FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
-            Success())}
-            &&
-            inScope {
-//              println(s"\n--------- ---- ${function.name} ----- ---------")
-              val c1 = c // c.copy(recordAccesses = true)
-              val pres = ast.utils.BigAnd(function.pres)
-              produce(σ, fresh, FullPerm(), pres, Internal(pres), c1)((σ1, c2) => {
-//              produces(σ, fresh, FullPerm(), function.pres, internalError, c1)((σ1, c2) =>
-                eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) => {
-//                  println(s"\n  --- ${function.name} ---\n")
-                  val c4 = c3 // c3.copy(recordAccesses = false)
-//                  println(s"  chunkToSnap = ${c4.chunkToSnap}")
-//                  println(s"  locToChunk = ${c4.locToChunk}")
-//                  println(s"  " + decider.π)
-                  //                  val locToSnap = c4.locToSnap // cc4.locToChunk.map{case (loc, ch) => loc -> c4.chunkToSnap(ch)}
-//                  println("  locToSnap =")
-//                  c4.locToSnap foreach {case (loc, snap) => println(s"    $loc -> $snap") }
+      var cs = List[C]()
 
-                  funcToLocToSnap += function -> (funcToLocToSnap.get(function) match {
-                    case None => c4.locToSnap
-                    case Some(locToSnap) =>
-                      silicon.utils.conflictFreeUnion(locToSnap, c4.locToSnap) match {
-                        case Right(lts) => lts
-                        case _ => sys.error("Unexpected situation while axiomatising functions")
-                      }
-                  })
+      val result =
+        inScope {
+          (inScope {
+            produces(σ, fresh, FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
+              Success())}
+              &&
+              inScope {
+  //              println(s"\n--------- ---- ${function.name} ----- ---------")
+                val c1 = c // c.copy(recordAccesses = true)
+                val pres = ast.utils.BigAnd(function.pres)
+                produce(σ, fresh, FullPerm(), pres, Internal(pres), c1)((σ1, c2) => {
+  //              produces(σ, fresh, FullPerm(), function.pres, internalError, c1)((σ1, c2) =>
+                  eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) => {
+  //                  println(s"\n  --- ${function.name} ---\n")
+                    val c4 = c3.copy(recordSnaps = false) // c3.copy(recordAccesses = false)
+  //                  println(s"  chunkToSnap = ${c4.chunkToSnap}")
+  //                  println(s"  locToChunk = ${c4.locToChunk}")
+  //                  println(s"  " + decider.π)
+                    //                  val locToSnap = c4.locToSnap // cc4.locToChunk.map{case (loc, ch) => loc -> c4.chunkToSnap(ch)}
+  //                  println("  locToSnap =")
+  //                  c4.locToSnap foreach {case (loc, snap) => println(s"    $loc -> $snap") }
 
-//                  println()
-//                  funcToLocToSnap(function) foreach println
+  //                  val snapRecords = funcToSnapRecords.get(function) match {
+  //                    case None => (c4.locToSnap, c4.locToSnap)
+  //                    case Some((locToSnap, fappToSnap)) =>
+  //                      val lts =
+  //                        silicon.utils.conflictFreeUnion(locToSnap, c4.locToSnap) match {
+  //                          case Right(_lts) => _lts
+  //                          case _ => sys.error("Unexpected situation while axiomatising functions")
+  //                        }
+  //                      val fts =
+  //                        silicon.utils.conflictFreeUnion(fappToSnap, c4.fappToSnap) match {
+  //                          case Right(_fts) => _fts
+  //                          case _ => sys.error("Unexpected situation while axiomatising functions")
+  //                        }
+  //
+  //                      (lts, fts)
+  //                  }
+  //
+  //                  funcToSnapRecords += function -> snapRecords
 
-//                  c4.locToChunk.foreach{case (loc, ch) =>
-//                    println(s"  $loc -> ${c4.chunkToSnap(ch)}")
-//                  }
-//                  val termToSnap = c4.locToChunk.map{case (loc, ch) =>
-//                    val t =  ch match {
-//                      case fch: FieldChunk => fch.value
-//                      case pch: PredicateChunk => pch.snap
-//                    }
-//
-//                    t -> c4.chunkToSnap(ch)
-//                  }
-//                  //                  println(s"  tB = $tB")
-//                  val fb = tB.replace(termToSnap)
-//                  println(s"  fb = $fb")
-                  consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
-                    Success())})})})}
+                    cs ::= c3
+
+  //                  println()
+  //                  funcToLocToSnap(function) foreach println
+
+  //                  c4.locToChunk.foreach{case (loc, ch) =>
+  //                    println(s"  $loc -> ${c4.chunkToSnap(ch)}")
+  //                  }
+  //                  val termToSnap = c4.locToChunk.map{case (loc, ch) =>
+  //                    val t =  ch match {
+  //                      case fch: FieldChunk => fch.value
+  //                      case pch: PredicateChunk => pch.snap
+  //                    }
+  //
+  //                    t -> c4.chunkToSnap(ch)
+  //                  }
+  //                  //                  println(s"  tB = $tB")
+  //                  val fb = tB.replace(termToSnap)
+  //                  println(s"  fb = $fb")
+                    consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
+                      Success())})})})}
+
+      if (cs.nonEmpty) {
+        val c1 = cs.tail.foldLeft(cs.head)((cAcc, c) => cAcc.merge(c))
+        funcToSnapRecords += function -> (c1.locToSnap, c1.fappToSnap)
+      }
+
+      result
     }
 
 //    private def disjointUnion[K, V](m1: Map[K, V], m2: Map[K,V], errmsg: String) = {
@@ -156,10 +177,11 @@ trait FunctionsSupporter[ST <: Store[ST],
 //          axioms += limAx
 
 //          println(fapp.function.id)
-          val locToSnap = funcToLocToSnap.getOrElse(silverFunc, Map())
+          val (locToSnap, fappToSnap) =
+            funcToSnapRecords.getOrElse(silverFunc, (Map[ast.LocationAccess, Term](), Map[ast.FuncApp, Term]()))
             /* If silverFunc isn't well-formed then the entry might be missing*/
 
-          val body = expressionTranslator.translate(program, silverFunc, locToSnap)
+          val body = expressionTranslator.translate(program, silverFunc, locToSnap, fappToSnap)
           val nonNulls = True()
           //        val nonNulls = utils.BigAnd(
           //          map.collect{case (fa: ast.FieldAccess, _) => fa.rcv}
@@ -218,7 +240,7 @@ trait FunctionsSupporter[ST <: Store[ST],
     def reset() {
       collectedFunctions = collectedFunctions.empty
       translatedFunctions = translatedFunctions.empty
-      funcToLocToSnap = funcToLocToSnap.empty
+      funcToSnapRecords = funcToSnapRecords.empty
       axiomGenerators = axiomGenerators.empty
     }
 
@@ -235,34 +257,46 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
 
   private var program: ast.Program = null
   private var locToSnap: Map[ast.LocationAccess, Term] = null
+  private var fappToSnap: Map[ast.FuncApp, Term] = null
   private var parentFunc: ast.ProgramFunction = null
 
-  def translate(program: ast.Program, func: ast.ProgramFunction, locToSnap: Map[ast.LocationAccess, Term]): Term = {
-    val oldProgram = this.program
-    val oldParentFunc = parentFunc
+  def translate(program: ast.Program,
+                func: ast.ProgramFunction,
+                locToSnap: Map[ast.LocationAccess, Term],
+                fappToSnap: Map[ast.FuncApp, Term]): Term = {
+
+//    val oldProgram = this.program
+//    val oldParentFunc = parentFunc
 
     this.program = program
     this.parentFunc = func
-    val body = translate(program, func.exp, locToSnap)
+    val body = translate(program, func.exp, locToSnap, fappToSnap)
 
-    this.program = oldProgram
-    this.parentFunc = oldParentFunc
+//    this.program = oldProgram
+//    this.parentFunc = oldParentFunc
 
     body
   }
 
-  def translate(program: ast.Program, exp: ast.Expression, locToSnap: Map[ast.LocationAccess, Term]): Term = {
+  def translate(program: ast.Program,
+                exp: ast.Expression,
+                locToSnap: Map[ast.LocationAccess, Term],
+                fappToSnap: Map[ast.FuncApp, Term]): Term = {
+
     val oldProgram = this.program
     val oldLocToSnap = this.locToSnap
+    val oldFappToSnap = this.fappToSnap
 
     this.program = program
     this.locToSnap = locToSnap
-    val t = translate(toSort)(exp)
+    this.fappToSnap = fappToSnap
+    val term = translate(toSort)(exp)
 
     this.program = oldProgram
     this.locToSnap = oldLocToSnap
+    this.fappToSnap = oldFappToSnap
 
-    t
+    term
   }
 
   /* Attention: Expects `locToSnap`, `parentFunc` and `program` to be set, see
@@ -278,19 +312,20 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
 //        println(s"loc = $loc")
 //        println(s"locToSnap(loc) = $locToSnap(loc)")
 //        println(s"locToSnap = $locToSnap")
-        val sort = toSort(loc.typ, Map())
+//        val sort = toSort(loc.typ, Map())
 
-        val snap = locToSnap.get(loc) match {
-          case None =>
-            /* It is assumed that the entry is missing because the currently
-             * translated function is malformed. In order to be able to continue
-             * we use a fresh term (instead of aborting)
-             */
-            fresh("$unresolvedLocAcc", sort)
-
-          case Some(s) =>
-            s.convert(sort)
-        }
+        val snap = getOrFresh(locToSnap, loc, toSort(loc.typ, Map()))
+//        val snap = locToSnap.get(loc) match {
+//          case None =>
+//            /* It is assumed that the entry is missing because the currently
+//             * translated function is malformed. In order to be able to continue
+//             * we use a fresh term (instead of aborting)
+//             */
+//            fresh("$unresolved", sort)
+//
+//          case Some(s) =>
+//            s.convert(sort)
+//        }
 
         snap
 
@@ -305,8 +340,25 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
 //        val snap = accToSnapTerm(pre, accs)
 
         val func = symbolConverter.toFunction(silverFunc)
-        val args = eFApp.args map (arg => translate(program, arg, locToSnap))
-        val fapp = FApp(func, null, args)
+        val args = eFApp.args map (arg => translate(program, arg, locToSnap, fappToSnap))
+
+        val snap = getOrFresh(fappToSnap, eFApp, sorts.Snap)
+          /* It is assumed that the entry is missing because the currently
+           * translated function is malformed. In order to be able to continue
+           * we use a fresh term (instead of aborting)
+           */
+
+//        val snap = fappToSnap.get(eFApp) match {
+//          case None =>
+//
+//            fresh("$unresolved", sorts.Snap)
+//
+//          case Some(s) =>
+//            s.convert(sorts.Snap)
+//        }
+
+        val fapp = FApp(func, snap, args)
+        println(s"\nfapp = $fapp")
 //        val tFApp = translateFuncApp(eFApp, snap, accs)
 
         if (eFApp.func == parentFunc)
@@ -317,4 +369,9 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
       case _ =>
         super.translate(toSort)(e)
     }
+
+  private def getOrFresh[K](map: Map[K, Term], key: K, sort: Sort): Term = map.get(key) match {
+    case Some(s) => s.convert(sort)
+    case None => fresh("$unresolved", sort)
+  }
 }
