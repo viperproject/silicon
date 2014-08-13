@@ -39,7 +39,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   val symbolConverter: SymbolConvert
 
   private val expressionTranslator =
-    new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
+    new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, functionsSupporter.limitedFunction)
 
   object functionsSupporter extends PreambleEmitter {
     private var collectedFunctions = Set[ast.ProgramFunction]()
@@ -74,16 +74,17 @@ trait FunctionsSupporter[ST <: Store[ST],
 //              println(s"\n--------- ---- ${function.name} ----- ---------")
               val c1 = c // c.copy(recordAccesses = true)
               val pres = ast.utils.BigAnd(function.pres)
-              produce(σ, fresh, FullPerm(), pres, Internal(pres), c1)((σ1, c2) =>
+              produce(σ, fresh, FullPerm(), pres, Internal(pres), c1)((σ1, c2) => {
 //              produces(σ, fresh, FullPerm(), function.pres, internalError, c1)((σ1, c2) =>
                 eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) => {
-//                  println(s"  ${function.name}")
+//                  println(s"\n  --- ${function.name} ---\n")
                   val c4 = c3 // c3.copy(recordAccesses = false)
 //                  println(s"  chunkToSnap = ${c4.chunkToSnap}")
 //                  println(s"  locToChunk = ${c4.locToChunk}")
 //                  println(s"  " + decider.π)
-//                  val locToSnap = c4.locToSnap // cc4.locToChunk.map{case (loc, ch) => loc -> c4.chunkToSnap(ch)}
-//                  c4.locToSnap foreach println
+                  //                  val locToSnap = c4.locToSnap // cc4.locToChunk.map{case (loc, ch) => loc -> c4.chunkToSnap(ch)}
+//                  println("  locToSnap =")
+//                  c4.locToSnap foreach {case (loc, snap) => println(s"    $loc -> $snap") }
 
                   funcToLocToSnap += function -> (funcToLocToSnap.get(function) match {
                     case None => c4.locToSnap
@@ -112,7 +113,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 //                  val fb = tB.replace(termToSnap)
 //                  println(s"  fb = $fb")
                   consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
-                    Success())}))})}
+                    Success())})})})}
     }
 
 //    private def disjointUnion[K, V](m1: Map[K, V], m2: Map[K,V], errmsg: String) = {
@@ -127,10 +128,10 @@ trait FunctionsSupporter[ST <: Store[ST],
         case _ => /* Ignore */
       }
 
-      generateFunctionSymbols()
+      generateFunctionSymbols(program)
     }
 
-    private def generateFunctionSymbols() {
+    private def generateFunctionSymbols(program: ast.Program) {
       collectedFunctions foreach { silverFunc =>
         val func = symbolConverter.toFunction(silverFunc)
         translatedFunctions += func
@@ -158,7 +159,7 @@ trait FunctionsSupporter[ST <: Store[ST],
           val locToSnap = funcToLocToSnap.getOrElse(silverFunc, Map())
             /* If silverFunc isn't well-formed then the entry might be missing*/
 
-          val body = expressionTranslator.translate(silverFunc, locToSnap)
+          val body = expressionTranslator.translate(program, silverFunc, locToSnap)
           val nonNulls = True()
           //        val nonNulls = utils.BigAnd(
           //          map.collect{case (fa: ast.FieldAccess, _) => fa.rcv}
@@ -192,7 +193,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 //      }
 //    }
 
-    private def limitedFunction(funcSymbol: Function) =
+    def limitedFunction(funcSymbol: Function) =
       Function(funcSymbol.id + "$", funcSymbol.sort)
 
     val sorts = Set[Sort]()
@@ -225,33 +226,48 @@ trait FunctionsSupporter[ST <: Store[ST],
   }
 }
 
-private class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert, fresh: (String, Sort) => Term)
+private class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert,
+                                                      fresh: (String, Sort) => Term,
+                                                      limitedFunction: Function => Function)
     extends ExpressionTranslator {
 
   private val toSort = (typ: ast.Type, _: Any) => symbolConverter.toSort(typ)
 
+  private var program: ast.Program = null
   private var locToSnap: Map[ast.LocationAccess, Term] = null
   private var parentFunc: ast.ProgramFunction = null
 
-  def translate(func: ast.ProgramFunction, locToSnap: Map[ast.LocationAccess, Term]): Term = {
+  def translate(program: ast.Program, func: ast.ProgramFunction, locToSnap: Map[ast.LocationAccess, Term]): Term = {
+    val oldProgram = this.program
     val oldParentFunc = parentFunc
+
+    this.program = program
     this.parentFunc = func
-    val body = translate(func.exp, locToSnap)
+    val body = translate(program, func.exp, locToSnap)
+
+    this.program = oldProgram
     this.parentFunc = oldParentFunc
 
     body
   }
 
-  def translate(exp: ast.Expression, locToSnap: Map[ast.LocationAccess, Term]): Term = {
+  def translate(program: ast.Program, exp: ast.Expression, locToSnap: Map[ast.LocationAccess, Term]): Term = {
+    val oldProgram = this.program
     val oldLocToSnap = this.locToSnap
+
+    this.program = program
     this.locToSnap = locToSnap
     val t = translate(toSort)(exp)
+
+    this.program = oldProgram
     this.locToSnap = oldLocToSnap
 
     t
   }
 
-  /* Attention: Expects `locToSnap` and `parentFunc` to be set, see preceding `translate`. */
+  /* Attention: Expects `locToSnap`, `parentFunc` and `program` to be set, see
+   * public `translate` methods.
+   */
   override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
                                   (e: ast.Expression)
                                   : Term =
@@ -283,14 +299,20 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
 //        accToSnapMapping(predloc.predicateBody, accs(predloc), accs)
         translate(toSort)(eIn)
 
-      case eFApp: ast.FuncApp => ???
-//        val pre = ast.utils.BigAnd(eFApp.pres)
+      case eFApp: ast.FuncApp =>
+        val silverFunc = program.findFunction(eFApp.funcname)
+        val pre = ast.utils.BigAnd(silverFunc.pres)
 //        val snap = accToSnapTerm(pre, accs)
+
+        val func = symbolConverter.toFunction(silverFunc)
+        val args = eFApp.args map (arg => translate(program, arg, locToSnap))
+        val fapp = FApp(func, null, args)
 //        val tFApp = translateFuncApp(eFApp, snap, accs)
-//        if (eFApp.func == parentFunc)
-//          tFApp.copy(function = limitedFunction(tFApp.function))
-//        else
-//          tFApp
+
+        if (eFApp.func == parentFunc)
+          fapp.copy(function = limitedFunction(fapp.function))
+        else
+          fapp
 
       case _ =>
         super.translate(toSort)(e)

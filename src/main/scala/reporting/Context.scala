@@ -19,7 +19,7 @@ case class DefaultContext(program: ast.Program,
                           constrainableARPs: Set[Term] = Set(),
 //                          recordAccesses: Boolean = false,
 //                          chunkToAcc: Map[Chunk, ast.AccessPredicate] = Map(),
-                          currentSnap: Option[SnapshotTerm] = None,
+                          currentSnap: Option[Term] = None,
                           locToChunk: Map[ast.LocationAccess, Chunk] = Map(),
                           chunkToSnap: Map[Chunk, Term] = Map()
                           /*locToSnap: Map[ast.LocationAccess, SnapshotTerm] = Map()*/)

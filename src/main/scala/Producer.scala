@@ -146,6 +146,8 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+//            println(s"\n[Producer/FAP] $acc")
+//            println(s"  $ch -> ${c2.getCurrentSnap}")
             val c3 =
               c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnap))
 //              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
@@ -160,6 +162,8 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
+//            println(s"\n[Producer/PAP] $acc")
+//            println(s"  $ch -> ${c2.getCurrentSnap}")
             val c3 =
               c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnap))
 //              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))

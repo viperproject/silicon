@@ -563,7 +563,10 @@ trait DefaultEvaluator[
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
           /* TODO: Consuming the precondition might branch. Problem? */
-          consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
+          consume(σ2, FullPerm(), pre, err, c2)((_, s, chs, c3) => {
+            println(s"\n[Eval/FApp] $fapp")
+            println(s"  chs = $chs")
+            println(s"  s = $s")
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             Q(tFA, c3)})})
 
@@ -641,8 +644,12 @@ trait DefaultEvaluator[
                 case true =>
                   evals(σ, eArgs, pve, c1)((tArgs, c2) =>
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
+//                      println(s"\n[Eval/Unfolding]")
+//                      println(s"  ch = $chs")
+//                      println(s"  snap = ${c3.chunkToSnap(chs(0))}")
+                      val c3a = c3.copy(currentSnap = Some(c3.chunkToSnap(chs(0))))
                       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3)((σ2, c4) => {
+                      produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3a)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
                         val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
                         eval(σ3, eIn, pve, c4a)((tIn, c5) => {

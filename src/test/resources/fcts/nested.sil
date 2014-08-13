@@ -1,0 +1,22 @@
+field f: Int
+field g: Ref
+
+function fun1(x: Ref): Int
+  requires acc(x.f) && acc(x.g)
+  requires acc(x.g.f)
+{ x.f + fun2(x.g) }
+
+function fun2(x: Ref): Int
+  requires acc(x.f)
+{ -x.f }
+
+method test01() {
+  var x: Ref; x := new(f, g)
+  var y: Ref; y := new(f, g)
+
+  x.f := 3
+  x.g := y
+  x.g.f := 9
+
+  assert fun1(x) == -6
+}
