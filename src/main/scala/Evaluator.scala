@@ -248,6 +248,7 @@ trait DefaultEvaluator[
         var t0: Option[Term] = None
         var t1: Option[Term] = None
         var πt1: Set[Term] = Set()
+        var innerC: Option[C] = None
 
         eval(σ, e0, pve, c)((_t0, c1) => {
           assert(t0.isEmpty, s"Unexpected branching occurred while locally evaluating $e0")
@@ -264,6 +265,11 @@ trait DefaultEvaluator[
                   assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
                   t1 = Some(_t1)
                   πt1 = decider.π -- (πPre + t0Neg) /* Removing t0Neg from πt1 is crucial! */
+                  innerC = Some(c3)
+//                  println(s"\n[Eval/Or/Right] $e")
+//                  println(s"π = ${decider.π}")
+//                  println(s"sr = ${c3.snapshotRecorder.get}")
+//                  println(s"sr = ${c2.snapshotRecorder.get.locToSnap}")
                   Success()}),
               (c2: C) => Success())
           decider.popScope()
@@ -272,7 +278,7 @@ trait DefaultEvaluator[
             val tAux = state.terms.utils.BigAnd(πt1)
             val tOr = Or(t0.get, t1.getOrElse(True()))
             assume(tAux)
-            Q(tOr, c1)}})
+            Q(tOr, innerC.getOrElse(c1))}})
 
       case _: ast.Implies if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
@@ -574,19 +580,20 @@ trait DefaultEvaluator[
           consume(σ2, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
             val c4 = c3.snapshotRecorder match {
               case Some(sr) =>
-                //            println(s"\n[Eval/FApp] $fapp")
-                //            println(s"  chs = $chs")
-                //            println(s"  s = $s")
-                //            println(s"  c3.getCurrentSnap = ${c3.getCurrentSnapOrDefault}")
-                //            println(s"  oldCurrentSnap = $oldCurrentSnap")
+//                println(s"\n[Eval/FApp] $fapp")
+////                println(s"  chs = $chs")
+//                println(s"  s = $s")
+//                println(s"  sr = ${c3.snapshotRecorder.get}")
                 val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
                                   fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
+//                println(s"  sr1 = $sr1")
                 c3.copy(snapshotRecorder = Some(sr1))
               case _ => c3
             }
 //              c3.copy(currentSnap = oldCurrentSnap,
 //              fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnapOrDefault))
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
+//            println(s"  c4.snapshotRecorder = ${c4.snapshotRecorder.get}")
             Q(tFA, c4)})})
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>

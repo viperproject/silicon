@@ -68,14 +68,23 @@ method append(xs: Ref, y: Int)
 
 function ascending(xs: Ref): Bool
   requires acc(list(xs))
-{ unfolding acc(list(xs)) in xs.next == null || (xs.val <= head(xs.next) && ascending(xs.next)) }
+{ unfolding acc(list(xs)) in (xs.next == null || (xs.val <= head(xs.next) && ascending(xs.next))) }
+
+method test(xs: Ref)
+  requires acc(list(xs)) && ascending(xs)
+{
+  assert ascending(xs)
+  unfold acc(list(xs))
+  assume xs.next != null; assert xs.next != null
+  assert ascending(xs.next)
+}
 
 method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
   requires acc(list(xs)) && ascending(xs)
   ensures acc(list(ys))
   ensures 0 <= i && i <= old(length(xs))
   ensures elems(ys) == old(elems(xs))[0..i] ++ Seq(y) ++ old(elems(xs))[i..]
-//  ensures ascending(ys)
+  ensures ascending(ys)
 {
   if (y <= head(xs)) {
     ys := prepend(xs, y)
