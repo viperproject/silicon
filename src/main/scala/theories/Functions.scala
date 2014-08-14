@@ -93,12 +93,11 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     def axiom = {
       val body = expressionTranslator.translate(program, programFunction, locToSnap, fappToSnap)
-      val nonNulls = True()
-      //        val nonNulls = utils.BigAnd(
-      //          map.collect{case (fa: ast.FieldAccess, _) => fa.rcv}
-      //              .map(rcv => expressionTranslator.translate(rcv, map) !== terms.Null())
-      //              .toSet[Term])
-      Quantification(Forall, args, And(nonNulls, fapp === body), triggers)
+      val nonNulls = state.terms.utils.BigAnd(
+        locToSnap.collect{case (fa: ast.FieldAccess, _) => fa.rcv}
+                 .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
+                 .toSet[Term])
+      Quantification(Forall, args, And(fapp === body, nonNulls), triggers)
     }
 
     def postAxiom = {
