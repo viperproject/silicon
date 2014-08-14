@@ -562,16 +562,17 @@ trait DefaultEvaluator[
           val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
-          val oldCurrentSnap = c2.getCurrentSnap
+          val oldCurrentSnap = c2.currentSnap
           val c2a = c2.copy(currentSnap = None)
           /* TODO: Consuming the precondition might branch. Problem? */
           consume(σ2, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
-            println(s"\n[Eval/FApp] $fapp")
+//            println(s"\n[Eval/FApp] $fapp")
 //            println(s"  chs = $chs")
-            println(s"  s = $s")
-            println(s"  c3.getCurrentSnap = ${c3.getCurrentSnap}")
-            val c4 = c3.copy(currentSnap = Some(oldCurrentSnap),
-                             fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnap))
+//            println(s"  s = $s")
+//            println(s"  c3.getCurrentSnap = ${c3.getCurrentSnapOrDefault}")
+//            println(s"  oldCurrentSnap = $oldCurrentSnap")
+            val c4 = c3.copy(currentSnap = oldCurrentSnap,
+                             fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnapOrDefault))
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             Q(tFA, c4)})})
 

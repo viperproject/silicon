@@ -41,6 +41,7 @@ package object utils {
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
     case ss: SingletonSet => List(ss.p)
+    case ss: SingletonMultiset => List(ss.p)
     case dfa: DomainFApp => List(dfa.function) ++ dfa.tArgs
     case fst: First => List(fst.t)
     case snd: Second => List(snd.t)
@@ -114,6 +115,7 @@ package object utils {
       case SetIn(t0, t1) => SetIn(go(t0), go(t1))
       case SetCardinality(t) => SetCardinality(go(t))
       case SetDisjoint(t0, t1) => SetDisjoint(go(t0), go(t1))
+      case SingletonMultiset(t) => SingletonMultiset(go(t))
       case MultisetUnion(t0, t1) => MultisetUnion(go(t0), go(t1))
       case MultisetIntersection(t0, t1) => MultisetIntersection(go(t0), go(t1))
       case MultisetSubset(t0, t1) => MultisetSubset(go(t0), go(t1))
@@ -122,6 +124,7 @@ package object utils {
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
       case MultisetFromSeq(t) => MultisetFromSeq(go(t))
+      case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
       case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))

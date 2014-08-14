@@ -112,7 +112,7 @@ trait DefaultProducer[ST <: Store[ST],
 //        println(s"  s0 = $s0")
 //        println(s"  s1 = $s1")
 //        println(s"  tSnapEq = $tSnapEq")
-        val currentSnap = c.getCurrentSnap
+        val currentSnap = c.getCurrentSnapOrDefault
 //          if (c.currentSnap == null) `?s`
 //          else c.currentSnap
 //        println(s"  c.currentSnap = ${c.currentSnap}")
@@ -149,7 +149,7 @@ trait DefaultProducer[ST <: Store[ST],
 //            println(s"\n[Producer/FAP] $acc")
 //            println(s"  $ch -> ${c2.getCurrentSnap}")
             val c3 =
-              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnap))
+              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnapOrDefault))
 //              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
 //              else c2
             Q(σ.h + ch, c3)})})
@@ -165,7 +165,7 @@ trait DefaultProducer[ST <: Store[ST],
 //            println(s"\n[Producer/PAP] $acc")
 //            println(s"  $ch -> ${c2.getCurrentSnap}")
             val c3 =
-              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnap))
+              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnapOrDefault))
 //              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
 //              else c2
             Q(σ.h + ch, c3)}))

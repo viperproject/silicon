@@ -53,8 +53,15 @@ class SiliconTests extends SilSuite {
 
     prefixSpecificConfigMap.get(prefix) match {
       case None => Seq()
-      case Some(optionMap) => optionMap.flatMap{
-        case (k, v) => Seq(s"--$k", v.toString)
+      case Some(optionMap) => optionMap.flatMap {
+        case (k, v) =>
+          val kStr = s"--$k"
+          val vStr = v.toString
+
+          vStr.toLowerCase match {
+            case "true" | "false" => Seq(kStr)
+            case _ => Seq(kStr, vStr)
+          }
       }.toSeq
     }
   }

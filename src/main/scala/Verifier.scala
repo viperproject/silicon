@@ -49,7 +49,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
     member match {
       case m: ast.Method => verify(m, c)
-      case f: ast.ProgramFunction => verify(f, c)
+      case f: ast.ProgramFunction => sys.error("Functions unexpected at this point, should have been handled already")
       case p: ast.Predicate => verify(p, c)
       case _: ast.Domain | _: ast.Field => Success()
     }
@@ -90,37 +90,37 @@ trait AbstractElementVerifier[ST <: Store[ST],
               Success()))})})}
 	}
 
-  def verify(function: ast.ProgramFunction, c: C): VerificationResult = {
-    functionsSupporter.verifyFunctionAndPrepareAxiomatization(function, c)
-//    logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
-//    decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
-//
-//    val ins = function.formalArgs.map(_.localVar)
-//    val out = function.result
-//
-//    val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
-//    val σ = Σ(γ, Ø, Ø)
-//
-//    val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
-//    val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
-//    val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
-//
-//    /* TODO:
-//     *  - Improve error message in case the ensures-clause is not well-defined
-//     */
-//
-//    /* Produce includes well-formedness check */
-//    inScope {
-//      (inScope {
-//        produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
-//          Success())}
-//        &&
-//        inScope {
-//          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c)((σ1, c2) =>
-//            eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) =>
-//              consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3)((_, _, _, c4) =>
-//                Success())))})}
-  }
+//  def verify(function: ast.ProgramFunction, c: C): VerificationResult = {
+//    functionsSupporter.verifyFunctionAndPrepareAxiomatization(function, c)
+////    logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
+////    decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
+////
+////    val ins = function.formalArgs.map(_.localVar)
+////    val out = function.result
+////
+////    val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
+////    val σ = Σ(γ, Ø, Ø)
+////
+////    val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
+////    val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
+////    val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
+////
+////    /* TODO:
+////     *  - Improve error message in case the ensures-clause is not well-defined
+////     */
+////
+////    /* Produce includes well-formedness check */
+////    inScope {
+////      (inScope {
+////        produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
+////          Success())}
+////        &&
+////        inScope {
+////          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c)((σ1, c2) =>
+////            eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) =>
+////              consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3)((_, _, _, c4) =>
+////                Success())))})}
+//  }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
@@ -197,19 +197,69 @@ trait AbstractVerifier[ST <: Store[ST],
   /* Functionality */
 
   def verify(program: ast.Program): List[VerificationResult] = {
-    var results: List[VerificationResult] = Nil
-    var c = DefaultContext(program = program, recordSnaps = true)
-
     emitPreamble(program)
-    emitFunctionSymbols(program)
 
-    results = program.members.collect {
-      case func: ast.ProgramFunction => ev.verify(program, func, c)
-    }.toList
+    var results = verifyAndAxiomatizeFunctions(program)
 
-    emitFunctionAxioms()
+    results ++= verifyMembersOtherThanFunctions(program)
 
-    c = DefaultContext(program)
+    results
+  }
+
+  private def verifyAndAxiomatizeFunctions(program: ast.Program): List[VerificationResult] = {
+    ev.functionsSupporter.reset()
+    ev.functionsSupporter.analyze(program)
+
+    decider.prover.logComment("-" * 60)
+    decider.prover.logComment("Declaring program functions")
+    ev.functionsSupporter.declareFunctions()
+    decider.prover.logComment("-" * 60)
+
+    var results = ev.functionsSupporter.checkSpecificationsWellDefined()
+
+    if (!config.disableFunctionAxiomatization()) {
+      decider.prover.logComment("-" * 60)
+      decider.prover.logComment("Program function axioms (postconditions)")
+      ev.functionsSupporter.emitPostconditionAxioms()
+      decider.prover.logComment("-" * 60)
+    }
+
+    results ++= ev.functionsSupporter.verifyAndAxiomatize()
+
+    if (!config.disableFunctionAxiomatization()) {
+      decider.prover.logComment("-" * 60)
+      decider.prover.logComment("Axiomatising program functions")
+      ev.functionsSupporter.emitOtherAxioms()
+      decider.prover.logComment("-" * 60)
+    }
+
+    results
+  }
+
+//  private def emitFunctionAxioms() {
+//    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("Axiomatising program functions")
+//
+//    if (!config.disableFunctionAxiomatization())
+//      ev.functionsSupporter.emitAxioms()
+//
+//    decider.prover.logComment("-" * 60)
+//  }
+
+  private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
+//    var results: List[VerificationResult] = Nil
+//    var c = DefaultContext(program = program, recordSnaps = true)
+//
+//    emitPreamble(program)
+//    emitFunctionSymbols(program)
+//
+//    results = program.members.collect {
+//      case func: ast.ProgramFunction => ev.verify(program, func, c)
+//    }.toList
+//
+//    emitFunctionAxioms()
+
+    val c = DefaultContext(program)
 
     val members = program.members.filterNot {
       case func: ast.ProgramFunction => true
@@ -230,7 +280,7 @@ trait AbstractVerifier[ST <: Store[ST],
        * all members are verified regardless of previous errors.
        * However, verification of a single member is aborted on first error.
        */
-      results ++= members.map(m => ev.verify(program, m, c)).toList
+      val results = members.map(m => ev.verify(program, m, c)).toList
 //    }
 
     results
@@ -286,26 +336,26 @@ trait AbstractVerifier[ST <: Store[ST],
 //    emitProgramFunctionDeclarations(program.functions)
   }
 
-  private def emitFunctionSymbols(program: ast.Program) {
-    decider.prover.logComment("-" * 60)
-    decider.prover.logComment("Declaring program functions")
-
-    ev.functionsSupporter.reset()
-    ev.functionsSupporter.analyze(program)
-    ev.functionsSupporter.declareSymbols()
-
-    decider.prover.logComment("-" * 60)
-  }
-
-  private def emitFunctionAxioms() {
-    decider.prover.logComment("-" * 60)
-    decider.prover.logComment("Axiomatising program functions")
-
-    if (!config.disableFunctionAxiomatization())
-      ev.functionsSupporter.emitAxioms()
-
-    decider.prover.logComment("-" * 60)
-  }
+//  private def emitFunctionSymbols(program: ast.Program) {
+//    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("Declaring program functions")
+//
+//    ev.functionsSupporter.reset()
+//    ev.functionsSupporter.analyze(program)
+//    ev.functionsSupporter.declareSymbols()
+//
+//    decider.prover.logComment("-" * 60)
+//  }
+//
+//  private def emitFunctionAxioms() {
+//    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("Axiomatising program functions")
+//
+//    if (!config.disableFunctionAxiomatization())
+//      ev.functionsSupporter.emitAxioms()
+//
+//    decider.prover.logComment("-" * 60)
+//  }
 
 //  private def emitProgramFunctionDeclarations(fs: Seq[ast.ProgramFunction]) {
 //    fs foreach (f =>

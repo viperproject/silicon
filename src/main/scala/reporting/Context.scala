@@ -46,7 +46,7 @@ case class DefaultContext(program: ast.Program,
     copy(constrainableARPs = newConstrainableARPs)
   }
 
-  def getCurrentSnap = currentSnap.getOrElse(`?s`)
+  def getCurrentSnapOrDefault = currentSnap.getOrElse(`?s`)
 
   def setCurrentSnap(s: Term) = copy(currentSnap = Some(s))
 
@@ -78,7 +78,10 @@ case class DefaultContext(program: ast.Program,
             case _ => sys.error("Unexpected situation while merging contexts")
           }
 
-        case _ => sys.error("Unexpected mismatch between contexts")
+        case _ =>
+          println(s"this = $this")
+          println(s"other = $other")
+          sys.error("Unexpected mismatch between contexts")
       }
   }
 }

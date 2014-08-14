@@ -100,12 +100,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val c3 =
               if (c2.recordSnaps) {
                 println(s"\n[Consumer/And] $φ")
-                println(s"  c.getCurrentSnap = ${c.getCurrentSnap}")
-                println(s"  c1.getCurrentSnap = ${c1.getCurrentSnap}")
+                println(s"  c.getCurrentSnap = ${c.getCurrentSnapOrDefault}")
+                println(s"  c1.getCurrentSnap = ${c1.getCurrentSnapOrDefault}")
                 println(s"  s1 = $s1")
-                println(s"  c2.getCurrentSnap = ${c2.getCurrentSnap}")
+                println(s"  c2.getCurrentSnap = ${c2.getCurrentSnapOrDefault}")
                 println(s"  s2 = $s2")
-                c2.setCurrentSnap(Combine(c1.getCurrentSnap, c2.getCurrentSnap))
+                c2.setCurrentSnap(Combine(c1.getCurrentSnapOrDefault, c2.getCurrentSnapOrDefault))
               } else
                 c2
 						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))

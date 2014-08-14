@@ -58,3 +58,13 @@ function fun5(x: Ref): Int
   requires acc(x.f)
   //:: ExpectedOutput(application.precondition:insufficient.permission)
 { fun3(x) }
+
+function fun6(x: Ref): Int
+  requires acc(x.f)
+  ensures result >= 0
+{ fun7(x) }
+
+function fun7(x: Ref): Int
+  requires acc(x.f)
+  ensures result >= 0
+{ x.f < 0 ? -x.f : x.f }
