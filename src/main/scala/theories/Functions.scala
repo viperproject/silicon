@@ -13,12 +13,39 @@ import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
 import interfaces.{VerificationResult, Consumer, Producer, Evaluator, Success}
 import interfaces.decider.Decider
-import interfaces.state.{StateFactory, State, PathConditions, Heap, Store}
+import interfaces.state.{Chunk, StateFactory, State, PathConditions, Heap, Store}
 import interfaces.state.factoryUtils.Ø
 import reporting.DefaultContext
 import state.{SymbolConvert, DirectChunk}
-import state.terms._
+import state.terms.{utils => _, _}
 import state.terms.predef._
+
+case class SnapshotRecorder(currentSnap: Term = null,
+                            locToChunk: Map[ast.LocationAccess, Chunk] = Map(),
+                            chunkToSnap: Map[Chunk, Term] = Map(),
+                            fappToSnap: Map[ast.FuncApp, Term] = Map()) {
+
+//  def getCurrentSnapOrDefault = currentSnap.getOrElse(`?s`)
+
+//  def setCurrentSnap(s: Term) = copy(currentSnap = Some(s))
+
+  def locToSnap = locToChunk.map{case (loc, ch) => loc -> chunkToSnap(ch)}
+
+  def merge(other: SnapshotRecorder): SnapshotRecorder = {
+    val combinedCtsOrConflicts = utils.conflictFreeUnion(chunkToSnap, other.chunkToSnap)
+    val combinedLtcOrConflicts = utils.conflictFreeUnion(locToChunk, other.locToChunk)
+    val combinedFtsOrConflicts = utils.conflictFreeUnion(fappToSnap, other.fappToSnap)
+
+    (combinedCtsOrConflicts, combinedLtcOrConflicts, combinedFtsOrConflicts) match {
+      case (Right(cts), Right(ltc), Right(fts)) if currentSnap == other.currentSnap =>
+
+        copy(chunkToSnap = cts, locToChunk = ltc, fappToSnap = fts)
+
+      case _ =>
+        sys.error("Unexpected situation while merging snapshot recorders")
+    }
+  }
+}
 
 trait FunctionsSupporter[ST <: Store[ST],
                          H <: Heap[H],
@@ -104,7 +131,7 @@ trait FunctionsSupporter[ST <: Store[ST],
     }
 
     def checkSpecificationsWellDefined(): List[VerificationResult] = {
-      val c = DefaultContext(program = program, recordSnaps = true)
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
 
       functionData.keys.map(function => checkSpecificationsWellDefined(function, c)).toList
     }
@@ -125,28 +152,28 @@ trait FunctionsSupporter[ST <: Store[ST],
 //      val functionMalformedGenerator = (_: ast.Expression) => functionMalformed
 //      val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
 //      val c = DefaultContext(program = program, recordSnaps = true)
-      var cs = List[C]()
+      var recorders = List[SnapshotRecorder]()
 
       val result =
         inScope {
           produces(σ, fresh, FullPerm(), function.pres, _ => functionMalformed, c)((σ1, c1) =>
             evals(σ1, function.posts, functionMalformed, c1)((tPosts, c2) => {
-              cs ::= c2
+              recorders ::= c2.snapshotRecorder.get
               Success()}))}
 
-      if (cs.nonEmpty) {
-        val c1 = cs.tail.foldLeft(cs.head)((cAcc, c) => cAcc.merge(c))
+      if (recorders.nonEmpty) {
+        val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
         val fd = functionData(function)
 
-        fd.optLocToSnap = Some(c1.locToSnap)
-        fd.optFappToSnap = Some(c1.fappToSnap)
+        fd.optLocToSnap = Some(summaryRecorder.locToSnap)
+        fd.optFappToSnap = Some(summaryRecorder.fappToSnap)
       }
 
       result
     }
 
     def verifyAndAxiomatize(): List[VerificationResult] = {
-      val c = DefaultContext(program = program, recordSnaps = true)
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
 
       functionData.keys.map(function => verifyAndAxiomatize(function, c)).toList
     }
@@ -166,30 +193,30 @@ trait FunctionsSupporter[ST <: Store[ST],
 //      val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
 //      val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
 
-      val c1 = c.copy(recordSnaps = true)
-      var cs = List[C]()
+//      val c1 = c.copy(recordSnaps = true)
+      var recorders = List[SnapshotRecorder]()
 
       val result =
         inScope {
           val pres = ast.utils.BigAnd(function.pres)
-          produce(σ, fresh, FullPerm(), pres, Internal(pres), c1)((σ1, c2) => { // TODO: Reuse σ1 and c1 from checkWellDefinedness
-            val c2a = c2.copy(currentSnap = None)
+          produce(σ, fresh, FullPerm(), pres, Internal(pres), c)((σ1, c2) => { // TODO: Reuse σ1 and c1 from checkWellDefinedness
+            val c2a = c2.copy(snapshotRecorder = c2.snapshotRecorder.map(_.copy(currentSnap = null)))
             eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) => {
-              val c4 = c3.copy(recordSnaps = false)
-              cs ::= c3
+              recorders ::= c3.snapshotRecorder.get
+              val c4 = c3.copy(snapshotRecorder = None)
               consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
                 Success())})})}
 
-      if (cs.nonEmpty) {
+      if (recorders.nonEmpty) {
         /* The recorded data should be a superset of the data recorded while
          * checking well-definedness of function specifications.
          */
 
-        val c1 = cs.tail.foldLeft(cs.head)((cAcc, c) => cAcc.merge(c))
+        val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
         val fd = functionData(function)
 
-        fd.optLocToSnap = Some(c1.locToSnap)
-        fd.optFappToSnap = Some(c1.fappToSnap)
+        fd.optLocToSnap = Some(summaryRecorder.locToSnap)
+        fd.optFappToSnap = Some(summaryRecorder.fappToSnap)
       }
 
       result

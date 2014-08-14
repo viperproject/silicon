@@ -13,10 +13,11 @@ import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
 import reporting.{Bookkeeper, DefaultContext}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import viper.silicon.interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
+import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
+import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsPositive
 
@@ -171,8 +172,10 @@ trait DefaultEvaluator[
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
           decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch => {
-            val c2 = c1.copy(locToChunk = c1.locToChunk + (fa -> ch))
-//            val c2 = c1.copy(chunkToSnap = c1.chunkToSnap + (fa -> ch))
+            val c2 = c1.snapshotRecorder match {
+              case Some(sr) => c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch))))
+              case _ => c1
+            }
             Q(ch.value, c2)}))
 
       case ast.Not(e0) =>
@@ -562,17 +565,27 @@ trait DefaultEvaluator[
           val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
           val σ2 = σ \ insγ
           val pre = ast.utils.BigAnd(func.pres)
-          val oldCurrentSnap = c2.currentSnap
-          val c2a = c2.copy(currentSnap = None)
+//          val oldCurrentSnap = c2.currentSnap
+          val c2a = c2.snapshotRecorder match {
+            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))
+            case _ => c2
+          }
           /* TODO: Consuming the precondition might branch. Problem? */
           consume(σ2, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
-//            println(s"\n[Eval/FApp] $fapp")
-//            println(s"  chs = $chs")
-//            println(s"  s = $s")
-//            println(s"  c3.getCurrentSnap = ${c3.getCurrentSnapOrDefault}")
-//            println(s"  oldCurrentSnap = $oldCurrentSnap")
-            val c4 = c3.copy(currentSnap = oldCurrentSnap,
-                             fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnapOrDefault))
+            val c4 = c3.snapshotRecorder match {
+              case Some(sr) =>
+                //            println(s"\n[Eval/FApp] $fapp")
+                //            println(s"  chs = $chs")
+                //            println(s"  s = $s")
+                //            println(s"  c3.getCurrentSnap = ${c3.getCurrentSnapOrDefault}")
+                //            println(s"  oldCurrentSnap = $oldCurrentSnap")
+                val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
+                                  fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
+                c3.copy(snapshotRecorder = Some(sr1))
+              case _ => c3
+            }
+//              c3.copy(currentSnap = oldCurrentSnap,
+//              fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnapOrDefault))
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             Q(tFA, c4)})})
 
@@ -650,10 +663,14 @@ trait DefaultEvaluator[
                 case true =>
                   evals(σ, eArgs, pve, c1)((tArgs, c2) =>
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
-//                      println(s"\n[Eval/Unfolding]")
-//                      println(s"  ch = $chs")
-//                      println(s"  snap = ${c3.chunkToSnap(chs(0))}")
-                      val c3a = c3.copy(currentSnap = Some(c3.chunkToSnap(chs(0))))
+                      val c3a = c3.snapshotRecorder match {
+                        case Some(sr) =>
+                          //                      println(s"\n[Eval/Unfolding]")
+                          //                      println(s"  ch = $chs")
+                          //                      println(s"  snap = ${c3.chunkToSnap(chs(0))}")
+                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0)))))
+                        case _ => c3
+                      }
                       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3a)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)

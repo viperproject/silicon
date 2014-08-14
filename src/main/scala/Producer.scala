@@ -102,17 +102,18 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
-//        println(s"\n[Producer/And] $φ")
         val s = sf(sorts.Snap)
         val s0 = mkSnap(a0, c)
         val s1 = mkSnap(a1, c)
         val tSnapEq = Eq(s, Combine(s0, s1))
 
+        assume(tSnapEq)
+        //        println(s"\n[Producer/And] $φ")
 //        println(s"  s = $s")
 //        println(s"  s0 = $s0")
 //        println(s"  s1 = $s1")
 //        println(s"  tSnapEq = $tSnapEq")
-        val currentSnap = c.getCurrentSnapOrDefault
+//        val currentSnap = c.getCurrentSnapOrDefault
 //          if (c.currentSnap == null) `?s`
 //          else c.currentSnap
 //        println(s"  c.currentSnap = ${c.currentSnap}")
@@ -121,10 +122,21 @@ trait DefaultProducer[ST <: Store[ST],
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
 
-        assume(tSnapEq)
-        produce2(σ, sf0, p, a0, pve, c.setCurrentSnap(First(currentSnap)))((h1, c1) =>
-          produce2(σ \ h1, sf1, p, a1, pve, c1.setCurrentSnap(Second(currentSnap)))((h2, c2) =>
-            Q(h2, c2)))
+        val (c1, rootSnap) = c.snapshotRecorder match {
+          case Some(sr) =>
+            val rootSnap = sr.currentSnap
+            (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
+          case _ =>
+            (c, null)
+        }
+
+        produce2(σ, sf0, p, a0, pve, c1)((h1, c2) => {
+          val c3 = c2.snapshotRecorder match {
+            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
+            case _ => c2
+          }
+          produce2(σ \ h1, sf1, p, a1, pve, c3)((h2, c4) =>
+            Q(h2, c4))})
 
       case ast.Implies(e0, a0) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -148,8 +160,12 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
 //            println(s"\n[Producer/FAP] $acc")
 //            println(s"  $ch -> ${c2.getCurrentSnap}")
-            val c3 =
-              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnapOrDefault))
+            val c3 = c2.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
+                c2.copy(snapshotRecorder = Some(sr1))
+              case _ => c2
+            }
 //              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
 //              else c2
             Q(σ.h + ch, c3)})})
@@ -164,8 +180,14 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
 //            println(s"\n[Producer/PAP] $acc")
 //            println(s"  $ch -> ${c2.getCurrentSnap}")
-            val c3 =
-              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnapOrDefault))
+            val c3 = c2.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
+                c2.copy(snapshotRecorder = Some(sr1))
+              case _ => c2
+            }
+//            val c3 =
+//              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnapOrDefault))
 //              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
 //              else c2
             Q(σ.h + ch, c3)}))
