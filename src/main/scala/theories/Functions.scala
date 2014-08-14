@@ -45,6 +45,26 @@ case class SnapshotRecorder(currentSnap: Term = null,
         sys.error("Unexpected situation while merging snapshot recorders")
     }
   }
+
+  override lazy val toString = {
+    val ltcStrs = locToChunk map {case (k, v) => s"$k  |==>  $v"}
+    val ctsStrs = chunkToSnap map {case (k, v) => s"$k  |==>  $v"}
+    val ltsStrs = locToSnap map {case (k, v) => s"$k  |==>  $v"}
+    val ftsStrs = fappToSnap map {case (k, v) => s"$k  |==>  $v"}
+
+    s"""SnapshotRecorder(
+       |  currentSnap: $currentSnap
+       |  locToChunk:
+       |    ${ltcStrs.mkString("\n    ")}
+       |  chunkToSnap:
+       |    ${ctsStrs.mkString("\n    ")}
+       |  locToSnap:
+       |    ${ltsStrs.mkString("\n    ")}
+       |  fappToSnap:
+       |    ${ftsStrs.mkString("\n    ")}
+       |)
+     """.stripMargin
+  }
 }
 
 trait FunctionsSupporter[ST <: Store[ST],
