@@ -104,10 +104,11 @@ trait FunctionsSupporter[ST <: Store[ST],
       Quantification(Forall, args, limFApp === fapp, triggers)
     }
 
+    /* If the program function isn't well-formed, the following collections might remain empty */
+    var statesAfterPrecondition = List[(S, C)]()
     var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
     var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
 
-    /* If silverFunc isn't well-formed then the entries might be missing*/
     def locToSnap = optLocToSnap.getOrElse(Map[ast.LocationAccess, Term]())
     def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
 
@@ -166,26 +167,26 @@ trait FunctionsSupporter[ST <: Store[ST],
       val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
       val σ = Σ(γ, Ø, Ø)
 
-//      val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
       val functionMalformed = FunctionNotWellformed(function)
-//      val functionMalformedGenerator = (_: ast.Expression) => functionMalformed
-//      val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
-//      val c = DefaultContext(program = program, recordSnaps = true)
+      val data = functionData(function)
       var recorders = List[SnapshotRecorder]()
 
       val result =
         inScope {
-          produces(σ, fresh, FullPerm(), function.pres, _ => functionMalformed, c)((σ1, c1) =>
+          produces(σ, fresh, FullPerm(), function.pres, _ => functionMalformed, c)((σ1, c1) => {
+            σ1.π /* TODO: Superduperugly hack! σ.π is computed lazily from the current decider.π,
+                  *       but if the evaluation isn't triggered here, then we will most likely
+                  *       get a wrong set of pathconditions by the time we use σ.π.
+                  */
+            data.statesAfterPrecondition ::= (σ1, c1)
             evals(σ1, function.posts, functionMalformed, c1)((tPosts, c2) => {
               recorders ::= c2.snapshotRecorder.get
-              Success()}))}
+              Success()})})}
 
       if (recorders.nonEmpty) {
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
-        val fd = functionData(function)
-
-        fd.optLocToSnap = Some(summaryRecorder.locToSnap)
-        fd.optFappToSnap = Some(summaryRecorder.fappToSnap)
+        data.optLocToSnap = Some(summaryRecorder.locToSnap)
+        data.optFappToSnap = Some(summaryRecorder.fappToSnap)
       }
 
       result
@@ -209,33 +210,49 @@ trait FunctionsSupporter[ST <: Store[ST],
       val σ = Σ(γ, Ø, Ø)
 
       val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
-//      val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
-//      val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
 
-//      val c1 = c.copy(recordSnaps = true)
+      val data = functionData(function)
       var recorders = List[SnapshotRecorder]()
+//      val pres = ast.utils.BigAnd(function.pres)
 
       val result =
-        inScope {
-          val pres = ast.utils.BigAnd(function.pres)
-          produce(σ, fresh, FullPerm(), pres, Internal(pres), c)((σ1, c2) => { // TODO: Reuse σ1 and c1 from checkWellDefinedness
-            val c2a = c2.copy(snapshotRecorder = c2.snapshotRecorder.map(_.copy(currentSnap = null)))
-            eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) => {
+        data.statesAfterPrecondition.foldLeft(Success(): VerificationResult){case (resAcc, (σ1, c1)) => (
+          resAcc
+            &&
+          inScope {
+            decider.assume(σ1.π)
+            eval(σ1, function.exp, FunctionNotWellformed(function), c1)((tB, c3) => {
               recorders ::= c3.snapshotRecorder.get
               val c4 = c3.copy(snapshotRecorder = None)
               consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
-                Success())})})}
+                Success())})
+          })}
+
+//      inScope {
+//          val pres = ast.utils.BigAnd(function.pres)
+//          /* TODO: Instead of re-producing the precondition and, if necessary,
+//           *       removing the malformed function errors, it would be better
+//           *       to cache and reuse the state and context yielded by producing
+//           *       the precondition in checkSpecificationsWellDefined.
+//           *       However, that is not straight-forward since the precondition
+//           *       might branch, in which case multiple states and contexts would
+//           *       have to be merged. Merging contexts is easy, but merging states
+//           *       in a sound way is not.
+//           *       An alternative would be to record a list
+//           */
+//          produce(σ, fresh, FullPerm(), pres, Internal(pres), c)((σ1, c2) => {
+//            val c2a = c2.copy(snapshotRecorder = c2.snapshotRecorder.map(_.copy(currentSnap = null)))
+//            eval(σ1, function.exp, FunctionNotWellformed(function), c2a)((tB, c3) => {
+//              recorders ::= c3.snapshotRecorder.get
+//              val c4 = c3.copy(snapshotRecorder = None)
+//              consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
+//                Success())})})}
 
       if (recorders.nonEmpty) {
-        /* The recorded data should be a superset of the data recorded while
-         * checking well-definedness of function specifications.
-         */
-
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
-        val fd = functionData(function)
 
-        fd.optLocToSnap = Some(summaryRecorder.locToSnap)
-        fd.optFappToSnap = Some(summaryRecorder.fappToSnap)
+        data.optLocToSnap = Some(summaryRecorder.locToSnap)
+        data.optFappToSnap = Some(summaryRecorder.fappToSnap)
       }
 
       result

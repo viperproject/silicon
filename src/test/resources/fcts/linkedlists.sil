@@ -22,6 +22,10 @@ function tail(xs: Ref): Ref
   requires acc(list(xs))
 { unfolding acc(list(xs)) in xs.next }
 
+function last(xs: Ref): Int
+  requires acc(list(xs))
+{ unfolding acc(list(xs)) in xs.next == null ? xs.val : last(xs.next) }
+
 function contains(xs: Ref, x: Int): Bool
   requires acc(list(xs))
 { unfolding acc(list(xs)) in x == xs.val || (xs.next != null && contains(xs.next, x)) }
@@ -35,6 +39,7 @@ method prepend(xs: Ref, y: Int) returns (ys: Ref)
   ensures acc(list(ys))
   ensures length(ys) == old(length(xs)) + 1
   ensures elems(ys) == Seq(y) ++ old(elems(xs))
+  ensures old(y <= head(xs) && ascending(xs)) ==> ascending(ys)
 {
   ys := new(val, next)
   ys.val := y
@@ -47,6 +52,7 @@ method append(xs: Ref, y: Int)
   ensures acc(list(xs))
   ensures length(xs) == old(length(xs)) + 1
   ensures elems(xs) == old(elems(xs)) ++ Seq(y)
+  ensures old(y >= last(xs) && ascending(xs)) ==> ascending(xs)
 {
   unfold acc(list(xs))
 
@@ -57,10 +63,14 @@ method append(xs: Ref, y: Int)
     ys.next := null
     fold acc(list(ys))
     xs.next := ys
+
     assert length(ys) == 1     // TODO: Should not be necessary
     assert elems(ys) == Seq(y) // TODO: Should not be necessary
+    assert ascending(ys)       // TODO: Should not be necessary
   } else {
     append(xs.next, y)
+
+    assert head(xs.next) == elems(xs.next)[0] // TODO: Should not be necessary
   }
 
   fold acc(list(xs))
@@ -70,21 +80,13 @@ function ascending(xs: Ref): Bool
   requires acc(list(xs))
 { unfolding acc(list(xs)) in (xs.next == null || (xs.val <= head(xs.next) && ascending(xs.next))) }
 
-method test(xs: Ref)
-  requires acc(list(xs)) && ascending(xs)
-{
-  assert ascending(xs)
-  unfold acc(list(xs))
-  assume xs.next != null; assert xs.next != null
-  assert ascending(xs.next)
-}
-
 method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
-  requires acc(list(xs)) && ascending(xs)
+  requires acc(list(xs))
   ensures acc(list(ys))
   ensures 0 <= i && i <= old(length(xs))
+  ensures length(ys) == old(length(xs)) + 1
   ensures elems(ys) == old(elems(xs))[0..i] ++ Seq(y) ++ old(elems(xs))[i..]
-  ensures ascending(ys)
+  ensures old(ascending(xs)) ==> ascending(ys)
 {
   if (y <= head(xs)) {
     ys := prepend(xs, y)
@@ -101,12 +103,15 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
       ys.val := y
       ys.next := xs.next
       fold acc(list(ys))
+      assert length(ys) == old(length(xs)) // TODO: Should not be necessary
       assert elems(ys) == Seq(y) ++  unfolding acc(list(ys)) in elems(xs.next) // TODO: Should not be necessary
+      assert old(ascending(xs)) ==> ascending(ys) // TODO: Should not be necessary
       xs.next := ys
       ys := xs
       i := 1
     } else {
       ys, i := insert(xs.next, y)
+      assert head(ys) == elems(ys)[0] // TODO: Should not be necessary
       xs.next := ys
       ys := xs
       i := i + 1
@@ -114,4 +119,18 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
 
     fold acc(list(ys))
   }
+}
+
+/* Misc */
+
+/* At some point, Silicon had a small bug in the handling of disjunction, as used
+ * in the body of ascending(xs). Hence this test.
+ */
+method test(xs: Ref)
+  requires acc(list(xs)) && ascending(xs)
+{
+  unfold acc(list(xs))
+  assume xs.next != null
+
+  assert ascending(xs.next)
 }

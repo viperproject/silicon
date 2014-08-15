@@ -1,0 +1,32 @@
+//:: IgnoreFile(/silicon/issue/0/)
+
+field f: Int
+field g: Int
+
+predicate F(x: Ref) { acc(x.f) }
+predicate G(x: Ref) { acc(x.g) }
+
+function fun3(x: Ref): Int
+  requires acc(F(x))
+{ unfolding acc(F(x)) in x.f }
+
+method test6(x: Ref)
+  requires acc(F(x)) && fun3(x) == 1
+{
+  assert x != null
+}
+
+predicate FF(x: Ref, y: Ref) {
+  acc(x.f) && acc(y.f)
+}
+
+function fun4(x: Ref, y: Ref): Int
+  requires acc(FF(x, y))
+{ unfolding acc(FF(x, y)) in x.f }
+
+method test7(x: Ref, y: Ref)
+  requires acc(FF(x, y)) && fun4(x, y) == 1
+{
+  assert x != null
+  assert y != null
+}
