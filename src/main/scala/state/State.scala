@@ -126,7 +126,7 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
 
 	def \(γ: ST = γ, h: H = h, g: H = g) = this.copy(γ, h, g)
 
-	def π = getPathConditions()
+	lazy val π = getPathConditions()
 }
 
 /*
