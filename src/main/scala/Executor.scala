@@ -238,9 +238,14 @@ trait DefaultExecutor[ST <: Store[ST],
         assume(toSet(arpConstraints))
         Q(σ \ γ1, c)
 
-      case inhale @ ast.Inhale(a) =>
-        produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c)((σ1, c1) =>
-          Q(σ1, c1))
+      case inhale @ ast.Inhale(a) => a match {
+        case _: ast.False =>
+          /* We're done */
+          Success()
+        case _ =>
+          produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c)((σ1, c1) =>
+            Q(σ1, c1))
+      }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
