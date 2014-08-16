@@ -101,14 +101,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case Some(sr) =>
                 val sr1 = c1.snapshotRecorder.get
                 val sr2 = c2.snapshotRecorder.get
+                val snap1 = if (s1 == Unit) Unit else sr1.currentSnap
+                val snap2 = if (s2 == Unit) Unit else sr2.currentSnap
 //                println(s"\n[Consumer/And] $φ")
 //                println(s"  c.getCurrentSnap = ${c.snapshotRecorder.get.currentSnap}")
 //                println(s"  c1.getCurrentSnap = ${sr1.currentSnap}")
 //                println(s"  s1 = $s1")
+//                println(s"  dcs1 = $dcs1")
 //                println(s"  c2.getCurrentSnap = ${sr2.currentSnap}")
 //                println(s"  s2 = $s2")
+//                println(s"  dcs2 = $dcs2")
 //                c2.setCurrentSnap(Combine(c1.getCurrentSnapOrDefault, c2.getCurrentSnapOrDefault))
-                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(sr1.currentSnap, sr2.currentSnap))))
+//                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(sr1.currentSnap, sr2.currentSnap))))
+                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
               case _ => c2
             }
 

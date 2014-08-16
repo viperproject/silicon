@@ -219,7 +219,8 @@ trait AbstractVerifier[ST <: Store[ST],
 
     if (!config.disableFunctionAxiomatization()) {
       decider.prover.logComment("-" * 60)
-      decider.prover.logComment("Program function axioms (postconditions)")
+      decider.prover.logComment("Program function axioms (limited, post)")
+      ev.functionsSupporter.emitLimitedAxioms()
       ev.functionsSupporter.emitPostconditionAxioms()
       decider.prover.logComment("-" * 60)
     }
@@ -228,8 +229,8 @@ trait AbstractVerifier[ST <: Store[ST],
 
     if (!config.disableFunctionAxiomatization()) {
       decider.prover.logComment("-" * 60)
-      decider.prover.logComment("Axiomatising program functions")
-      ev.functionsSupporter.emitOtherAxioms()
+      decider.prover.logComment("Program function axioms")
+      ev.functionsSupporter.emitFunctionAxioms()
       decider.prover.logComment("-" * 60)
     }
 

@@ -33,11 +33,15 @@ case class SnapshotRecorder(currentSnap: Term = null,
     val combinedFtsOrConflicts = utils.conflictFreeUnion(fappToSnap, other.fappToSnap)
 
     (combinedCtsOrConflicts, combinedLtcOrConflicts, combinedFtsOrConflicts) match {
-      case (Right(cts), Right(ltc), Right(fts)) if currentSnap == other.currentSnap =>
+      case (Right(cts), Right(ltc), Right(fts)) /*if currentSnap == other.currentSnap*/ =>
 
         copy(chunkToSnap = cts, locToChunk = ltc, fappToSnap = fts)
 
-      case _ =>
+      case p3 =>
+        p3.productIterator.zip[String](Seq("cts", "ltc", "fts").iterator).foreach{case (a,b) =>
+          println(s"$b: $a")
+        }
+
         sys.error("Unexpected situation while merging snapshot recorders")
     }
   }
@@ -94,6 +98,8 @@ trait FunctionsSupporter[ST <: Store[ST],
     val triggers = Trigger(fapp :: Nil) :: Nil
 
     val limitedFunc = limitedFunction(func)
+    val limitedFapp = FApp(limitedFunc, `?s`, formalArgs)
+    val limitedTriggers = Trigger(limitedFapp :: Nil) :: Nil
 
     val limitedAxiom = {
       val limFApp = FApp(limitedFunc, `?s`, formalArgs)
@@ -118,8 +124,8 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     def postAxiom = {
       if (programFunction.posts.nonEmpty) {
-        val post = expressionTranslator.translatePostcondition(program, ast.utils.BigAnd(programFunction.posts), locToSnap, fappToSnap, fapp)
-        Quantification(Forall, args, post, triggers)
+        val post = expressionTranslator.translatePostcondition(program, ast.utils.BigAnd(programFunction.posts), locToSnap, fappToSnap, limitedFapp)
+        Quantification(Forall, args, post, limitedTriggers)
       } else
         True()
     }
@@ -242,15 +248,16 @@ trait FunctionsSupporter[ST <: Store[ST],
       result
     }
 
+    def emitLimitedAxioms() {
+      functionData.values foreach (fd => decider.prover.assume(fd.limitedAxiom))
+    }
+
     def emitPostconditionAxioms() {
       functionData.values foreach (fd => decider.prover.assume(fd.postAxiom))
     }
 
-    def emitOtherAxioms() {
-      functionData.values foreach {fd =>
-        decider.prover.assume(fd.axiom)
-        decider.prover.assume(fd.limitedAxiom)
-      }
+    def emitFunctionAxioms() {
+      functionData.values foreach {fd => decider.prover.assume(fd.axiom) }
     }
 
     /* Lifetime */

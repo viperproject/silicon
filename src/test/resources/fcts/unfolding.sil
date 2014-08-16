@@ -97,3 +97,16 @@ method test2(a: Int)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert add(x, y) < 0
 }
+
+field n: Ref
+
+predicate R(x: Ref) {
+  acc(x.n) && (/*x.n != null ==>*/ acc(R(x.n)))
+}
+
+function fun3(y: Ref): Int
+  requires acc(R(y))
+{
+  unfolding acc(R(y)) in
+    y.n != null ? unfolding acc(R(y.n)) in 0 : 1
+}

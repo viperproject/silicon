@@ -173,7 +173,10 @@ trait DefaultEvaluator[
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
           decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch => {
             val c2 = c1.snapshotRecorder match {
-              case Some(sr) => c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch))))
+              case Some(sr) =>
+//                println(s"\nEval/FA $fa (${fa.pos})")
+//                println(s"  ch = $ch")
+                c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch))))
               case _ => c1
             }
             Q(ch.value, c2)}))
@@ -368,10 +371,18 @@ trait DefaultEvaluator[
             branch(σ, t0, c1,
               (c2: C) => {
                 eval(σ, e1, pve, c2)((t1, c3) => {
+//                  println(s"  Ite/then")
+//                  println(s"  t0 = $t0")
+//                  println(s"  t1 = $t1")
+//                  println(s"  sr = ${c3.snapshotRecorder.get}")
                   localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success()})},
               (c2: C) => {
                 eval(σ, e2, pve, c2)((t2, c3) => {
+//                  println(s"  Ite/else")
+//                  println(s"  !t0 = ${Not(t0)}")
+//                  println(s"  t2 = $t2")
+//                  println(s"  sr = ${c3.snapshotRecorder.get}")
                   localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
                   Success()})})})
 
@@ -643,7 +654,7 @@ trait DefaultEvaluator[
       case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
       case ast.Unfolding(
-                acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
+                acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
                 eIn) =>
 
         val predicate = c.program.findPredicate(predicateName)
@@ -673,16 +684,19 @@ trait DefaultEvaluator[
                       val c3a = c3.snapshotRecorder match {
                         case Some(sr) =>
                           //                      println(s"\n[Eval/Unfolding]")
-                          //                      println(s"  ch = $chs")
-                          //                      println(s"  snap = ${c3.chunkToSnap(chs(0))}")
+//                          println(s"  ch = $chs")
+//                          println(s"  snap = ${sr.chunkToSnap(chs(0))}")
                           c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0)))))
                         case _ => c3
                       }
-                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      produce(σ1 \ insγ, s => snap.convert(s), _tPerm, predicate.body, pve, c3a)((σ2, c4) => {
+//                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                      val body = pa.predicateBody(c.program)
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), _tPerm, body, pve, c3a)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
+                        val σ3 = σ2 \ (g = σ.g/*, γ = σ.γ*/)
                         eval(σ3, eIn, pve, c4a)((tIn, c5) => {
+//                          println(s"  tIn = $tIn")
+//                          println(s"  sr = ${c5.snapshotRecorder.get}")
                           localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                           Success()})})}))
                 case false =>
