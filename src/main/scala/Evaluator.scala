@@ -8,6 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
@@ -579,9 +580,9 @@ trait DefaultEvaluator[
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-          val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
-          val σ2 = σ \ insγ
-          val pre = ast.utils.BigAnd(func.pres)
+//          val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
+          val σ2 = σ // \ insγ
+          val pre = Expressions.instantiateVariables(ast.utils.BigAnd(func.pres), func.formalArgs, eArgs)
 //          val oldCurrentSnap = c2.currentSnap
           val c2a = c2.snapshotRecorder match {
             case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))

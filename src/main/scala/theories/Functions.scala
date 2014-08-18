@@ -9,9 +9,10 @@ package silicon
 package theories
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast.utility.Functions
 import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
+import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Chunk, StateFactory, State, PathConditions, Heap, Store}
 import interfaces.state.factoryUtils.Ø
@@ -79,6 +80,8 @@ trait FunctionsSupporter[ST <: Store[ST],
   private type C = DefaultContext
   private type AxiomGenerator = () => Quantification
 
+  val config: Config
+
   val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
   import decider.{fresh, inScope}
 
@@ -138,23 +141,79 @@ trait FunctionsSupporter[ST <: Store[ST],
     private var program: ast.Program = null
     private var functionData = Map[ast.ProgramFunction, FunctionData]()
 
-    def analyze(program: ast.Program) {
-      this.program = program
-      functionData = toMap(program.functions map (f => f -> new FunctionData(f, program)))
+    def handleFunctions(program: ast.Program): List[VerificationResult] =  {
+      reset()
+      analyze(program)
+
+      decider.prover.logComment("-" * 60)
+      decider.prover.logComment("Declaring program functions")
+      declareFunctions()
+
+//      var results = checkSpecificationsWellDefined()
+//
+//      if (!config.disableFunctionAxiomatization()) {
+//        decider.prover.logComment("-" * 60)
+//        decider.prover.logComment("Program function axioms (limited, post)")
+//        emitLimitedAxioms()
+//        emitPostconditionAxioms()
+//        decider.prover.logComment("-" * 60)
+//      }
+
+//      results ++= verifyAndAxiomatize()
+//
+//      if (!config.disableFunctionAxiomatization()) {
+//        decider.prover.logComment("-" * 60)
+//        decider.prover.logComment("Program function axioms")
+//        emitFunctionAxioms()
+//        decider.prover.logComment("-" * 60)
+//      }
+
+//      results
+
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
+
+      functionData.keys.flatMap(function => handleFunction(function, c)).toList
     }
 
-    def declareFunctions() {
+    private def analyze(program: ast.Program) {
+      this.program = program
+//      functionData = toMap(program.functions map (f => f -> new FunctionData(f, program)))
+      val heights = Functions.heights(program).toSeq.sortBy(_._2).reverse
+      heights.foreach{case (f, h) => decider.prover.logComment(s"Function ${f.name} at height $h")}
+      functionData = toMap(heights.map{case (f, _) => f -> new FunctionData(f, program)})
+    }
+
+    private def handleFunction(function: ast.ProgramFunction, c: C): List[VerificationResult] = {
+      val data = functionData(function)
+
+      val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
+
+      if (!config.disableFunctionAxiomatization()) {
+        decider.prover.assume(data.limitedAxiom)
+        decider.prover.assume(data.postAxiom)
+      }
+
+      val result = verifyAndAxiomatize(function, c)
+
+      if (!config.disableFunctionAxiomatization()) {
+        decider.prover.assume(data.axiom)
+      }
+
+      resultSpecsWellDefined :: result :: Nil
+    }
+
+    private def declareFunctions() {
       functionData.values foreach {fd =>
         decider.prover.declare(FunctionDecl(fd.func))
         decider.prover.declare(FunctionDecl(fd.limitedFunc))
       }
     }
 
-    def checkSpecificationsWellDefined(): List[VerificationResult] = {
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
-
-      functionData.keys.map(function => checkSpecificationsWellDefined(function, c)).toList
-    }
+//    def checkSpecificationsWellDefined(): List[VerificationResult] = {
+//      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
+//
+//      functionData.keys.map(function => checkSpecificationsWellDefined(function, c)).toList
+//    }
 
     private def checkSpecificationsWellDefined(function: ast.ProgramFunction, c: C): VerificationResult = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + " (specs well-defined) " + ("-" * 10)
@@ -187,16 +246,16 @@ trait FunctionsSupporter[ST <: Store[ST],
       result
     }
 
-    def verifyAndAxiomatize(): List[VerificationResult] = {
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
-
-      functionData.keys.map(function => verifyAndAxiomatize(function, c))
-                       .collect{case failure: Failure[ST, H, S] if !failure.message.isInstanceOf[Internal] => failure}
-                          /* Ignore internal errors; the assumption is that they have already
-                           * been recorded while checking well-framedness of function contracts.
-                           */
-                       .toList
-    }
+//    def verifyAndAxiomatize(): List[VerificationResult] = {
+//      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
+//
+//      functionData.keys.map(function => verifyAndAxiomatize(function, c))
+//                       .collect{case failure: Failure[ST, H, S] if !failure.message.isInstanceOf[Internal] => failure}
+//                          /* Ignore internal errors; the assumption is that they have already
+//                           * been recorded while checking well-framedness of function contracts.
+//                           */
+//                       .toList
+//    }
 
     private def verifyAndAxiomatize(function: ast.ProgramFunction, c: C): VerificationResult = {
       val comment = "-" * 10 + " FUNCTION " + function.name + "-" * 10
@@ -245,20 +304,33 @@ trait FunctionsSupporter[ST <: Store[ST],
         data.optFappToSnap = Some(summaryRecorder.fappToSnap)
       }
 
+      /* Ignore internal errors; the assumption is that they have already been
+       * recorded while checking well-framedness of function contracts.
+       */
+      result match {
+        case failure: Failure[ST, H, S] =>
+          if (!failure.message.isInstanceOf[Internal])
+            failure
+          else
+            Success()
+
+        case other => other
+      }
+
       result
     }
 
-    def emitLimitedAxioms() {
-      functionData.values foreach (fd => decider.prover.assume(fd.limitedAxiom))
-    }
+//    def emitLimitedAxioms() {
+//      functionData.values foreach (fd => decider.prover.assume(fd.limitedAxiom))
+//    }
+//
+//    def emitPostconditionAxioms() {
+//      functionData.values foreach (fd => decider.prover.assume(fd.postAxiom))
+//    }
 
-    def emitPostconditionAxioms() {
-      functionData.values foreach (fd => decider.prover.assume(fd.postAxiom))
-    }
-
-    def emitFunctionAxioms() {
-      functionData.values foreach {fd => decider.prover.assume(fd.axiom) }
-    }
+//    def emitFunctionAxioms() {
+//      functionData.values foreach {fd => decider.prover.assume(fd.axiom) }
+//    }
 
     /* Lifetime */
 

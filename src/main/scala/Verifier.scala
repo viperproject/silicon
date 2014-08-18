@@ -199,43 +199,44 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
 
-    var results = verifyAndAxiomatizeFunctions(program)
+//    var results = verifyAndAxiomatizeFunctions(program)
+    var results = ev.functionsSupporter.handleFunctions(program)
 
     results ++= verifyMembersOtherThanFunctions(program)
 
     results
   }
 
-  private def verifyAndAxiomatizeFunctions(program: ast.Program): List[VerificationResult] = {
-    ev.functionsSupporter.reset()
-    ev.functionsSupporter.analyze(program)
-
-    decider.prover.logComment("-" * 60)
-    decider.prover.logComment("Declaring program functions")
-    ev.functionsSupporter.declareFunctions()
-    decider.prover.logComment("-" * 60)
-
-    var results = ev.functionsSupporter.checkSpecificationsWellDefined()
-
-    if (!config.disableFunctionAxiomatization()) {
-      decider.prover.logComment("-" * 60)
-      decider.prover.logComment("Program function axioms (limited, post)")
-      ev.functionsSupporter.emitLimitedAxioms()
-      ev.functionsSupporter.emitPostconditionAxioms()
-      decider.prover.logComment("-" * 60)
-    }
-
-    results ++= ev.functionsSupporter.verifyAndAxiomatize()
-
-    if (!config.disableFunctionAxiomatization()) {
-      decider.prover.logComment("-" * 60)
-      decider.prover.logComment("Program function axioms")
-      ev.functionsSupporter.emitFunctionAxioms()
-      decider.prover.logComment("-" * 60)
-    }
-
-    results
-  }
+//  private def verifyAndAxiomatizeFunctions(program: ast.Program): List[VerificationResult] = {
+//    ev.functionsSupporter.reset()
+//    ev.functionsSupporter.analyze(program)
+//
+//    decider.prover.logComment("-" * 60)
+//    decider.prover.logComment("Declaring program functions")
+//    ev.functionsSupporter.declareFunctions()
+//    decider.prover.logComment("-" * 60)
+//
+//    var results = ev.functionsSupporter.checkSpecificationsWellDefined()
+//
+//    if (!config.disableFunctionAxiomatization()) {
+//      decider.prover.logComment("-" * 60)
+//      decider.prover.logComment("Program function axioms (limited, post)")
+//      ev.functionsSupporter.emitLimitedAxioms()
+//      ev.functionsSupporter.emitPostconditionAxioms()
+//      decider.prover.logComment("-" * 60)
+//    }
+//
+//    results ++= ev.functionsSupporter.verifyAndAxiomatize()
+//
+//    if (!config.disableFunctionAxiomatization()) {
+//      decider.prover.logComment("-" * 60)
+//      decider.prover.logComment("Program function axioms")
+//      ev.functionsSupporter.emitFunctionAxioms()
+//      decider.prover.logComment("-" * 60)
+//    }
+//
+//    results
+//  }
 
 //  private def emitFunctionAxioms() {
 //    decider.prover.logComment("-" * 60)
