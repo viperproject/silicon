@@ -9,14 +9,15 @@ package silicon
 package reporting
 
 import interfaces.reporting.Context
-import state.terms.Term
+import state.terms.{FApp, Term}
 import theories.SnapshotRecorder
 
 /* TODO: Use MultiSet[Member] instead of List[Member] */
 case class DefaultContext(program: ast.Program,
                           visited: List[ast.Member] = Nil,
                           constrainableARPs: Set[Term] = Set(),
-                          snapshotRecorder: Option[SnapshotRecorder] = None
+                          snapshotRecorder: Option[SnapshotRecorder] = None,
+                          fapps: Map[ast.FuncApp, FApp] = Map()
                           /*recordSnaps: Boolean = false,
                           currentSnap: Option[Term] = None,
                           locToChunk: Map[ast.LocationAccess, Chunk] = Map(),
@@ -44,9 +45,9 @@ case class DefaultContext(program: ast.Program,
   }
 
   def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, visited1, constrainableARPs1, snapshotRecorder1) =>
+    case DefaultContext(program1, visited1, constrainableARPs1, snapshotRecorder1, fapps1) =>
       other match {
-        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, snapshotRecorder2) =>
+        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, snapshotRecorder2, fapps2) =>
 //          assert(chunkToSnap1.keys.toSet.intersect(chunkToSnap2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
 //          assert(locToChunk1.keys.toSet.intersect(locToChunk2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
 //
@@ -68,9 +69,10 @@ case class DefaultContext(program: ast.Program,
 //            case (Right(cts), Right(ltc), Right(fts)) => copy(chunkToSnap = cts, locToChunk = ltc, fappToSnap = fts)
 //            case _ => sys.error("Unexpected situation while merging contexts")
 //          }
+
           (snapshotRecorder1, snapshotRecorder2) match {
-            case (Some(sr1), Some(sr2)) => copy(snapshotRecorder = Some(sr1.merge(sr2)))
-            case (None, None) => copy(snapshotRecorder = None)
+            case (Some(sr1), Some(sr2)) => copy(snapshotRecorder = Some(sr1.merge(sr2)), fapps = fapps1 ++ fapps2)
+            case (None, None) => copy(snapshotRecorder = None, fapps = fapps1 ++ fapps2)
             case _ => sys.error("Unexpected mismatch between contexts")
           }
 

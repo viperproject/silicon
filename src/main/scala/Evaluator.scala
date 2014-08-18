@@ -543,9 +543,10 @@ trait DefaultEvaluator[
         quantifiedVars = tVars ++: quantifiedVars
 
         val r =
-          evalTriggers(σQuant, silTriggers, pve, c)((_triggers, c1) =>
-            eval(σQuant, body, pve, c1)((tBody, c2) => {
+          eval(σQuant, body, pve, c)((tBody, c1) =>
+            evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, _c2) => {
               triggers = _triggers
+              val c2 = _c2.copy(fapps = Map.empty)
               localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2)
 
               /* We could call Q directly instead of returning Success, but in
@@ -606,7 +607,7 @@ trait DefaultEvaluator[
 //              fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnapOrDefault))
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
 //            println(s"  c4.snapshotRecorder = ${c4.snapshotRecorder.get}")
-            Q(tFA, c4)})})
+            Q(tFA, c4.copy(fapps = c4.fapps + (fapp -> tFA)))})})
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
@@ -1056,16 +1057,24 @@ trait DefaultEvaluator[
       trigger.exps.map {
         case ast.Old(e) => e
         case e => e
-      }.flatMap {
-        case _: ast.FuncApp => None
-        case f: silver.ast.PossibleTrigger => Some(f)
-        case _ => None
       }
 
-    if (es.length != trigger.exps.length)
-      logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
-    evals2(σ, es, Nil, pve, c)((ts, c1) =>
-      Q(Trigger(ts), c1))
+    val (es1, ts1) =
+      es.map {
+        case fapp: ast.FuncApp =>
+//          println(s"$fapp (${fapp.pos}})")
+//          println(c.fapps.get(fapp))
+//          None
+          (None, c.fapps.get(fapp).map(fa => fa.copy(function = Function(fa.function.id + "$", fa.function.sort))))
+        case f: silver.ast.PossibleTrigger => (Some(f), None)
+        case _ => (None, None)
+      }.unzip
+
+//    if (es.length != trigger.exps.length)
+//      logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
+
+    evals2(σ, es1.flatten, Nil, pve, c)((ts, c1) =>
+      Q(Trigger(ts ++ ts1.flatten), c1))
   }
 
 
