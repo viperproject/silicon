@@ -11,7 +11,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}

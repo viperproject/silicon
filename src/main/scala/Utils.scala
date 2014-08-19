@@ -7,7 +7,7 @@
 package viper
 package silicon
 
-import reporting.DefaultContext
+import state.DefaultContext
 import state.terms._
 
 package object utils {

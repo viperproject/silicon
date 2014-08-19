@@ -14,8 +14,7 @@ import ast.{Field, LocationAccess}
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
 import interfaces.decider.Decider
-import reporting.DefaultContext
-import state.{SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
+import viper.silicon.state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
 import state.terms.utils.BigPermSum
 import state.terms._
 import state.terms.sorts.FieldValueFunction

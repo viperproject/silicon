@@ -10,11 +10,11 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
+import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess}
 import heap.QuantifiedChunkHelper
@@ -30,6 +30,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.assume
+
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]

@@ -9,7 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
@@ -32,6 +32,9 @@ trait DefaultProducer[ST <: Store[ST],
 
   protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
+
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
