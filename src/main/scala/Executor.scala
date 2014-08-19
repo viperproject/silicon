@@ -16,10 +16,16 @@ import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
 import state.terms._
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
     DirectChunk, NestedFieldChunk, NestedPredicateChunk}
-import reporting.DefaultContext
 import state.terms.perms.IsPositive
 
 trait DefaultExecutor[ST <: Store[ST],

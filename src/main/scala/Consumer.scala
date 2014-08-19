@@ -13,7 +13,11 @@ import silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
-import reporting.{DefaultContext, Bookkeeper}
+import reporting.Bookkeeper
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
 import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess}
@@ -103,31 +107,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 val sr2 = c2.snapshotRecorder.get
                 val snap1 = if (s1 == Unit) Unit else sr1.currentSnap
                 val snap2 = if (s2 == Unit) Unit else sr2.currentSnap
-//                println(s"\n[Consumer/And] $φ")
-//                println(s"  c.getCurrentSnap = ${c.snapshotRecorder.get.currentSnap}")
-//                println(s"  c1.getCurrentSnap = ${sr1.currentSnap}")
-//                println(s"  s1 = $s1")
-//                println(s"  dcs1 = $dcs1")
-//                println(s"  c2.getCurrentSnap = ${sr2.currentSnap}")
-//                println(s"  s2 = $s2")
-//                println(s"  dcs2 = $dcs2")
-//                c2.setCurrentSnap(Combine(c1.getCurrentSnapOrDefault, c2.getCurrentSnapOrDefault))
-//                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(sr1.currentSnap, sr2.currentSnap))))
                 c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
               case _ => c2
             }
 
-//            val c3 =
-//              if (c2.recordSnaps) {
-//                println(s"\n[Consumer/And] $φ")
-//                println(s"  c.getCurrentSnap = ${c.getCurrentSnapOrDefault}")
-//                println(s"  c1.getCurrentSnap = ${c1.getCurrentSnapOrDefault}")
-//                println(s"  s1 = $s1")
-//                println(s"  c2.getCurrentSnap = ${c2.getCurrentSnapOrDefault}")
-//                println(s"  s2 = $s2")
-//                c2.setCurrentSnap(Combine(c1.getCurrentSnapOrDefault, c2.getCurrentSnapOrDefault))
-//              } else
-//                c2
 						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
@@ -150,26 +133,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) => {
                   val c4 = c3.snapshotRecorder match {
                     case Some(sr) =>
-//                      println(s"\n[Consumer/Acc] $φ")
-                        //                        println(s"  c3.getCurrentSnap = ${c3.getCurrentSnap}")
-//                      println(s"  ch = $ch")
-                        //                        println(s"  c3.chunktoSnaps = ${c3.chunkToSnap}")
-                        //                        println(s"  c3.locToChunks = ${c3.locToChunk}")
-//                      println(s"  c3.chunktoSnap(ch) = ${c3.chunkToSnap(ch)}")
                       c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch))))
-                    case _ => c3
-                  }
-//                    if (c3.recordSnaps) {
-//                      println(s"\n[Consumer/Acc] $φ")
-////                        println(s"  c3.getCurrentSnap = ${c3.getCurrentSnap}")
-//                      println(s"  ch = $ch")
-////                        println(s"  c3.chunktoSnaps = ${c3.chunkToSnap}")
-////                        println(s"  c3.locToChunks = ${c3.locToChunk}")
-//                      println(s"  c3.chunktoSnap(ch) = ${c3.chunkToSnap(ch)}")
-//                      c3.setCurrentSnap(c3.chunkToSnap(ch))
-//                    } else
-//                      c3
-
+                    case _ => c3}
                   ch match {
                     case fc: DirectFieldChunk =>
                       val snap = fc.value.convert(sorts.Snap)

@@ -15,10 +15,22 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
 import state.{terms, SymbolConvert, DirectChunk}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import reporting.{DefaultContext, Bookkeeper}
+import reporting.Bookkeeper
 import decider.PreambleFileEmitter
 
 trait AbstractElementVerifier[ST <: Store[ST],
@@ -44,9 +56,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  def verify(program: ast.Program, member: ast.Member, c: C/*, history: History[ST, H, S]*/): VerificationResult = {
-//    val c = DefaultContext(program)
-
+  def verify(program: ast.Program, member: ast.Member, c: C): VerificationResult = {
     member match {
       case m: ast.Method => verify(m, c)
       case f: ast.ProgramFunction => sys.error("Functions unexpected at this point, should have been handled already")
@@ -89,38 +99,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
               Success()))})})}
 	}
-
-//  def verify(function: ast.ProgramFunction, c: C): VerificationResult = {
-//    functionsSupporter.verifyFunctionAndPrepareAxiomatization(function, c)
-////    logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
-////    decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
-////
-////    val ins = function.formalArgs.map(_.localVar)
-////    val out = function.result
-////
-////    val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
-////    val σ = Σ(γ, Ø, Ø)
-////
-////    val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
-////    val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
-////    val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
-////
-////    /* TODO:
-////     *  - Improve error message in case the ensures-clause is not well-defined
-////     */
-////
-////    /* Produce includes well-formedness check */
-////    inScope {
-////      (inScope {
-////        produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
-////          Success())}
-////        &&
-////        inScope {
-////          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c)((σ1, c2) =>
-////            eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) =>
-////              consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3)((_, _, _, c4) =>
-////                Success())))})}
-//  }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
@@ -199,93 +177,24 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
 
-//    var results = verifyAndAxiomatizeFunctions(program)
-    var results = ev.functionsSupporter.handleFunctions(program)
-
-    results ++= verifyMembersOtherThanFunctions(program)
-
-    results
+    ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
   }
 
-//  private def verifyAndAxiomatizeFunctions(program: ast.Program): List[VerificationResult] = {
-//    ev.functionsSupporter.reset()
-//    ev.functionsSupporter.analyze(program)
-//
-//    decider.prover.logComment("-" * 60)
-//    decider.prover.logComment("Declaring program functions")
-//    ev.functionsSupporter.declareFunctions()
-//    decider.prover.logComment("-" * 60)
-//
-//    var results = ev.functionsSupporter.checkSpecificationsWellDefined()
-//
-//    if (!config.disableFunctionAxiomatization()) {
-//      decider.prover.logComment("-" * 60)
-//      decider.prover.logComment("Program function axioms (limited, post)")
-//      ev.functionsSupporter.emitLimitedAxioms()
-//      ev.functionsSupporter.emitPostconditionAxioms()
-//      decider.prover.logComment("-" * 60)
-//    }
-//
-//    results ++= ev.functionsSupporter.verifyAndAxiomatize()
-//
-//    if (!config.disableFunctionAxiomatization()) {
-//      decider.prover.logComment("-" * 60)
-//      decider.prover.logComment("Program function axioms")
-//      ev.functionsSupporter.emitFunctionAxioms()
-//      decider.prover.logComment("-" * 60)
-//    }
-//
-//    results
-//  }
-
-//  private def emitFunctionAxioms() {
-//    decider.prover.logComment("-" * 60)
-//    decider.prover.logComment("Axiomatising program functions")
-//
-//    if (!config.disableFunctionAxiomatization())
-//      ev.functionsSupporter.emitAxioms()
-//
-//    decider.prover.logComment("-" * 60)
-//  }
-
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-//    var results: List[VerificationResult] = Nil
-//    var c = DefaultContext(program = program, recordSnaps = true)
-//
-//    emitPreamble(program)
-//    emitFunctionSymbols(program)
-//
-//    results = program.members.collect {
-//      case func: ast.ProgramFunction => ev.verify(program, func, c)
-//    }.toList
-//
-//    emitFunctionAxioms()
-
     val c = DefaultContext(program)
 
     val members = program.members.filterNot {
       case func: ast.ProgramFunction => true
       case m => filter(m.name)
-    }//.iterator
+    }
 
-    /* Verification could be parallelised by forking DefaultMemberVerifiers. */
+    /* TODO: Verification could be parallelised by forking DefaultMemberVerifiers. */
 
-//    if (config.stopOnFirstError()) {
-//      /* Stops on first error */
-//      while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-//        results = ev.verify(program, members.next()) :: results
-//      }
-//
-//      results = results.reverse
-//    } else {
-      /* Verify members. Verification continues if errors are found, i.e.
-       * all members are verified regardless of previous errors.
-       * However, verification of a single member is aborted on first error.
-       */
-      val results = members.map(m => ev.verify(program, m, c)).toList
-//    }
-
-    results
+    /* Verify members. Verification continues if errors are found, i.e.
+     * all members are verified regardless of previous errors.
+     * However, verification of a single member is aborted on first error.
+     */
+    members.map(m => ev.verify(program, m, c)).toList
   }
 
   private def filter(str: String) = (
@@ -334,50 +243,22 @@ trait AbstractVerifier[ST <: Store[ST],
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
-
-//    emitProgramFunctionDeclarations(program.functions)
   }
 
-//  private def emitFunctionSymbols(program: ast.Program) {
-//    decider.prover.logComment("-" * 60)
-//    decider.prover.logComment("Declaring program functions")
-//
-//    ev.functionsSupporter.reset()
-//    ev.functionsSupporter.analyze(program)
-//    ev.functionsSupporter.declareSymbols()
-//
-//    decider.prover.logComment("-" * 60)
-//  }
-//
-//  private def emitFunctionAxioms() {
-//    decider.prover.logComment("-" * 60)
-//    decider.prover.logComment("Axiomatising program functions")
-//
-//    if (!config.disableFunctionAxiomatization())
-//      ev.functionsSupporter.emitAxioms()
-//
-//    decider.prover.logComment("-" * 60)
-//  }
-
-//  private def emitProgramFunctionDeclarations(fs: Seq[ast.ProgramFunction]) {
-//    fs foreach (f =>
-//      decider.prover.declare(terms.FunctionDecl(symbolConverter.toFunction(f))))
-//  }
-
   private def emitSortWrappers(ss: Set[Sort]) {
-    decider.prover.logComment("")
-    decider.prover.logComment("Declaring additional sort wrappers")
-    decider.prover.logComment("")
+    if (ss.nonEmpty) {
+      decider.prover.logComment("Declaring additional sort wrappers")
 
-    ss.foreach(sort => {
-      val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
-      val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
+      ss.foreach(sort => {
+        val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
+        val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
 
-      decider.prover.declare(toSnapWrapper)
-      decider.prover.declare(fromSnapWrapper)
+        decider.prover.declare(toSnapWrapper)
+        decider.prover.declare(fromSnapWrapper)
 
-      preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
-    })
+        preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
+      })
+    }
   }
 
   private def emitStaticPreamble() {

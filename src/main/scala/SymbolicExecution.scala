@@ -7,10 +7,9 @@
 package viper
 package silicon
 
-import silicon.interfaces.{VerificationResult, Unreachable}
+import interfaces.{VerificationResult, Unreachable}
 import interfaces.decider.Decider
-import interfaces.reporting.Context
-import interfaces.state.{Store, Heap, PathConditions, State}
+import interfaces.state.{Store, Heap, PathConditions, State, Context}
 import state.terms._
 import state.terms.utils.{BigAnd, ¬}
 import reporting.Bookkeeper

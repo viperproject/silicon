@@ -14,9 +14,14 @@ import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
 import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Chunk, StateFactory, State, PathConditions, Heap, Store}
+import interfaces.state.{Chunk, StateFactory, State, PathConditions, Heap, Store, Mergeable}
 import interfaces.state.factoryUtils.Ø
-import reporting.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
 import state.{SymbolConvert, DirectChunk}
 import state.terms.{utils => _, _}
 import state.terms.predef._
@@ -24,7 +29,8 @@ import state.terms.predef._
 case class SnapshotRecorder(currentSnap: Term = null,
                             locToChunk: Map[ast.LocationAccess, Chunk] = Map(),
                             chunkToSnap: Map[Chunk, Term] = Map(),
-                            fappToSnap: Map[ast.FuncApp, Term] = Map()) {
+                            fappToSnap: Map[ast.FuncApp, Term] = Map())
+    extends Mergeable[SnapshotRecorder] {
 
   def locToSnap = locToChunk.map{case (loc, ch) => loc -> chunkToSnap(ch)}
 
@@ -149,27 +155,6 @@ trait FunctionsSupporter[ST <: Store[ST],
       decider.prover.logComment("Declaring program functions")
       declareFunctions()
 
-//      var results = checkSpecificationsWellDefined()
-//
-//      if (!config.disableFunctionAxiomatization()) {
-//        decider.prover.logComment("-" * 60)
-//        decider.prover.logComment("Program function axioms (limited, post)")
-//        emitLimitedAxioms()
-//        emitPostconditionAxioms()
-//        decider.prover.logComment("-" * 60)
-//      }
-
-//      results ++= verifyAndAxiomatize()
-//
-//      if (!config.disableFunctionAxiomatization()) {
-//        decider.prover.logComment("-" * 60)
-//        decider.prover.logComment("Program function axioms")
-//        emitFunctionAxioms()
-//        decider.prover.logComment("-" * 60)
-//      }
-
-//      results
-
       val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
 
       functionData.keys.flatMap(function => handleFunction(function, c)).toList
@@ -177,9 +162,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     private def analyze(program: ast.Program) {
       this.program = program
-//      functionData = toMap(program.functions map (f => f -> new FunctionData(f, program)))
       val heights = Functions.heights(program).toSeq.sortBy(_._2).reverse
-      heights.foreach{case (f, h) => decider.prover.logComment(s"Function ${f.name} at height $h")}
       functionData = toMap(heights.map{case (f, _) => f -> new FunctionData(f, program)})
     }
 
@@ -208,12 +191,6 @@ trait FunctionsSupporter[ST <: Store[ST],
         decider.prover.declare(FunctionDecl(fd.limitedFunc))
       }
     }
-
-//    def checkSpecificationsWellDefined(): List[VerificationResult] = {
-//      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
-//
-//      functionData.keys.map(function => checkSpecificationsWellDefined(function, c)).toList
-//    }
 
     private def checkSpecificationsWellDefined(function: ast.ProgramFunction, c: C): VerificationResult = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + " (specs well-defined) " + ("-" * 10)
@@ -245,17 +222,6 @@ trait FunctionsSupporter[ST <: Store[ST],
 
       result
     }
-
-//    def verifyAndAxiomatize(): List[VerificationResult] = {
-//      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
-//
-//      functionData.keys.map(function => verifyAndAxiomatize(function, c))
-//                       .collect{case failure: Failure[ST, H, S] if !failure.message.isInstanceOf[Internal] => failure}
-//                          /* Ignore internal errors; the assumption is that they have already
-//                           * been recorded while checking well-framedness of function contracts.
-//                           */
-//                       .toList
-//    }
 
     private def verifyAndAxiomatize(function: ast.ProgramFunction, c: C): VerificationResult = {
       val comment = "-" * 10 + " FUNCTION " + function.name + "-" * 10
@@ -317,18 +283,6 @@ trait FunctionsSupporter[ST <: Store[ST],
         case other => other
       }
     }
-
-//    def emitLimitedAxioms() {
-//      functionData.values foreach (fd => decider.prover.assume(fd.limitedAxiom))
-//    }
-//
-//    def emitPostconditionAxioms() {
-//      functionData.values foreach (fd => decider.prover.assume(fd.postAxiom))
-//    }
-
-//    def emitFunctionAxioms() {
-//      functionData.values foreach {fd => decider.prover.assume(fd.axiom) }
-//    }
 
     /* Lifetime */
 
@@ -428,37 +382,12 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
                                   : Term =
 
     e match {
-      case loc: ast.LocationAccess =>
-//        println(s"$loc -> ${locToSnap(loc)}")
-//        println(s"loc = $loc")
-//        println(s"locToSnap(loc) = $locToSnap(loc)")
-//        println(s"locToSnap = $locToSnap")
-//        val sort = toSort(loc.typ, Map())
-
-        val snap = getOrFresh(locToSnap, loc, toSort(loc.typ, Map()))
-//        val snap = locToSnap.get(loc) match {
-//          case None =>
-//            /* It is assumed that the entry is missing because the currently
-//             * translated function is malformed. In order to be able to continue
-//             * we use a fresh term (instead of aborting)
-//             */
-//            fresh("$unresolved", sort)
-//
-//          case Some(s) =>
-//            s.convert(sort)
-//        }
-
-        snap
-
-      case ast.Unfolding(_, eIn) =>
-//        assert(accs contains predloc, s"Cannot statically determine to which access predicate $predloc belongs. Known are ${accs.keys})")
-//        accToSnapMapping(predloc.predicateBody, accs(predloc), accs)
-        translate(toSort)(eIn)
+      case loc: ast.LocationAccess => getOrFresh(locToSnap, loc, toSort(loc.typ, Map()))
+      case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val pre = ast.utils.BigAnd(silverFunc.pres)
-//        val snap = accToSnapTerm(pre, accs)
 
         val func = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(program, arg, locToSnap, fappToSnap))
@@ -469,21 +398,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
            * we use a fresh term (instead of aborting)
            */
 
-//        val snap = fappToSnap.get(eFApp) match {
-//          case None =>
-//
-//            fresh("$unresolved", sorts.Snap)
-//
-//          case Some(s) =>
-//            s.convert(sorts.Snap)
-//        }
-
         val fapp = FApp(func, snap, args)
-//        println(s"\nfapp = $fapp")
-//        println(s"parentFunc = ${parentFunc.name}")
-//        println(s"eFApp = ${eFApp.funcname}")
-//        println(eFApp.func(program) == parentFunc)
-//        val tFApp = translateFuncApp(eFApp, snap, accs)
 
         if (eFApp.func(program) == parentFunc)
           fapp.copy(function = limitedFunction(fapp.function))
@@ -491,7 +406,6 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
           fapp
 
       case _: ast.ResultLiteral => resultReplacement
-
       case _ => super.translate(toSort)(e)
     }
 

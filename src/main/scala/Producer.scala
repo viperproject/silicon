@@ -12,7 +12,12 @@ import silver.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
-import reporting.{DefaultContext, Bookkeeper}
+import reporting.Bookkeeper
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
 import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.predef._
@@ -108,16 +113,6 @@ trait DefaultProducer[ST <: Store[ST],
         val tSnapEq = Eq(s, Combine(s0, s1))
 
         assume(tSnapEq)
-        //        println(s"\n[Producer/And] $φ")
-//        println(s"  s = $s")
-//        println(s"  s0 = $s0")
-//        println(s"  s1 = $s1")
-//        println(s"  tSnapEq = $tSnapEq")
-//        val currentSnap = c.getCurrentSnapOrDefault
-//          if (c.currentSnap == null) `?s`
-//          else c.currentSnap
-//        println(s"  c.currentSnap = ${c.currentSnap}")
-//        println(s"  currentSnap = $currentSnap")
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
@@ -158,16 +153,11 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-//            println(s"\n[Producer/FAP] $acc")
-//            println(s"  $ch -> ${c2.getCurrentSnap}")
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2
-            }
-//              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
-//              else c2
+              case _ => c2}
             Q(σ.h + ch, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
@@ -178,18 +168,11 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-//            println(s"\n[Producer/PAP] $acc")
-//            println(s"  $ch -> ${c2.getCurrentSnap}")
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2
-            }
-//            val c3 =
-//              c2.copy(chunkToSnap = c2.chunkToSnap + (ch -> c2.getCurrentSnapOrDefault))
-//              if (c2.recordAccesses) c2.copy(chunkToAcc = c2.chunkToAcc + (ch -> acc))
-//              else c2
+              case _ => c2}
             Q(σ.h + ch, c3)}))
 
       case _: ast.InhaleExhale =>

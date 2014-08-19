@@ -12,10 +12,15 @@ import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
-import reporting.{Bookkeeper, DefaultContext}
+import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
+import state.DefaultContext
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.predef.`?s`
@@ -175,11 +180,8 @@ trait DefaultEvaluator[
           decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch => {
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
-//                println(s"\nEval/FA $fa (${fa.pos})")
-//                println(s"  ch = $ch")
                 c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch))))
-              case _ => c1
-            }
+              case _ => c1}
             Q(ch.value, c2)}))
 
       case ast.Not(e0) =>
@@ -232,7 +234,6 @@ trait DefaultEvaluator[
             val (t1: Term, tAux: Set[Term], cOpt) = combine(localResults)
             val tAnd = And(t0.get, t1)
             assume(tAux)
-//            Q(tAnd, localResults.headOption.fold(c1)(_.context))}})
             Q(tAnd, cOpt.getOrElse(c1))}})
 
       /* Strict evaluation of OR */
@@ -270,10 +271,6 @@ trait DefaultEvaluator[
                   t1 = Some(_t1)
                   πt1 = decider.π -- (πPre + t0Neg) /* Removing t0Neg from πt1 is crucial! */
                   innerC = Some(c3)
-//                  println(s"\n[Eval/Or/Right] $e")
-//                  println(s"π = ${decider.π}")
-//                  println(s"sr = ${c3.snapshotRecorder.get}")
-//                  println(s"sr = ${c2.snapshotRecorder.get.locToSnap}")
                   Success()}),
               (c2: C) => Success())
           decider.popScope()
@@ -305,8 +302,6 @@ trait DefaultEvaluator[
 
         var localResults: List[LocalEvaluationResult] = Nil
 
-//        println(s"\n[Eval/Implies] $e")
-
         decider.pushScope()
         val r =
           eval(σ, e0, pve, c)((t0, c1) => {
@@ -328,14 +323,11 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
-//          println(s" -- end local eval of $e")
-
           /* The additional path conditions gained while evaluating the
            * antecedent can be assumed in any case.
            * If the antecedent holds, then the additional path conditions
            * related to the consequent can also be assumed.
            */
-
           val (tActualThen: Term, tAuxThen: Set[Term], cOpt) = combine(localResults)
           val tAuxIf = state.terms.utils.BigAnd(πIf)
 
@@ -343,7 +335,6 @@ trait DefaultEvaluator[
           val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
 
           assume(Set(tAuxIf, tAuxImplies))
-//          Q(tImplies, localResults.headOption.fold(c)(_.context))}
           Q(tImplies, cOpt.getOrElse(c))}
 
       case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
@@ -357,7 +348,6 @@ trait DefaultEvaluator[
         var localResultsElse: List[LocalEvaluationResult] = Nil
 
         decider.pushScope()
-//        println(s"\n[Eval/Ite] $e")
 
         val r =
           eval(σ, e0, pve, c)((t0, c1) => {
@@ -372,18 +362,10 @@ trait DefaultEvaluator[
             branch(σ, t0, c1,
               (c2: C) => {
                 eval(σ, e1, pve, c2)((t1, c3) => {
-//                  println(s"  Ite/then")
-//                  println(s"  t0 = $t0")
-//                  println(s"  t1 = $t1")
-//                  println(s"  sr = ${c3.snapshotRecorder.get}")
                   localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
                   Success()})},
               (c2: C) => {
                 eval(σ, e2, pve, c2)((t2, c3) => {
-//                  println(s"  Ite/else")
-//                  println(s"  !t0 = ${Not(t0)}")
-//                  println(s"  t2 = $t2")
-//                  println(s"  sr = ${c3.snapshotRecorder.get}")
                   localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
                   Success()})})})
 
@@ -392,7 +374,6 @@ trait DefaultEvaluator[
         val localResults = localResultsThen ::: localResultsElse
 
         r && {
-//          println(s" -- end local eval of $e")
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
@@ -431,7 +412,6 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-//          Q(tActualIte, localResults.headOption.fold(c)(_.context))}
           Q(tActualIte, c1)}
 
       /* Integers */
@@ -544,10 +524,9 @@ trait DefaultEvaluator[
 
         val r =
           eval(σQuant, body, pve, c)((tBody, c1) =>
-            evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, _c2) => {
+            evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, c2) => {
               triggers = _triggers
-              val c2 = _c2.copy(fapps = Map.empty)
-              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2)
+              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2.copy(fapps = Map.empty))
 
               /* We could call Q directly instead of returning Success, but in
                * that case the path conditions πDelta would also be outside of
@@ -572,7 +551,6 @@ trait DefaultEvaluator[
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-//          Q(tQuant, localResults.headOption.fold(c)(_.context))}
           Q(tQuant, cOpt.getOrElse(c))}
 
       case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
@@ -581,32 +559,20 @@ trait DefaultEvaluator[
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-//          val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
-          val σ2 = σ // \ insγ
           val pre = Expressions.instantiateVariables(ast.utils.BigAnd(func.pres), func.formalArgs, eArgs)
-//          val oldCurrentSnap = c2.currentSnap
           val c2a = c2.snapshotRecorder match {
             case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))
             case _ => c2
           }
           /* TODO: Consuming the precondition might branch. Problem? */
-          consume(σ2, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
+          consume(σ, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
             val c4 = c3.snapshotRecorder match {
               case Some(sr) =>
-//                println(s"\n[Eval/FApp] $fapp")
-////                println(s"  chs = $chs")
-//                println(s"  s = $s")
-//                println(s"  sr = ${c3.snapshotRecorder.get}")
                 val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
                                   fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
-//                println(s"  sr1 = $sr1")
                 c3.copy(snapshotRecorder = Some(sr1))
-              case _ => c3
-            }
-//              c3.copy(currentSnap = oldCurrentSnap,
-//              fappToSnap = c3.fappToSnap + (fapp -> c3.getCurrentSnapOrDefault))
+              case _ => c3}
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
-//            println(s"  c4.snapshotRecorder = ${c4.snapshotRecorder.get}")
             Q(tFA, c4.copy(fapps = c4.fapps + (fapp -> tFA)))})})
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
@@ -669,8 +635,6 @@ trait DefaultEvaluator[
         var tPerm: Option[Term] = None
         var localResults: List[LocalEvaluationResult] = Nil
 
-//        println(s"\n[Eval/Unfolding] $e")
-
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
 
@@ -685,34 +649,25 @@ trait DefaultEvaluator[
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
                       val c3a = c3.snapshotRecorder match {
                         case Some(sr) =>
-                          //                      println(s"\n[Eval/Unfolding]")
-//                          println(s"  ch = $chs")
-//                          println(s"  snap = ${sr.chunkToSnap(chs(0))}")
                           c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0)))))
-                        case _ => c3
-                      }
-//                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                        case _ => c3}
                       val body = pa.predicateBody(c.program)
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), _tPerm, body, pve, c3a)((σ2, c4) => {
+                      produce(σ1, s => snap.convert(s), _tPerm, body, pve, c3a)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 \ (g = σ.g/*, γ = σ.γ*/)
+                        val σ3 = σ2 \ (g = σ.g)
                         eval(σ3, eIn, pve, c4a)((tIn, c5) => {
-//                          println(s"  tIn = $tIn")
-//                          println(s"  sr = ${c5.snapshotRecorder.get}")
                           localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
                           Success()})})}))
                 case false =>
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
 
           r && {
-//            println(s" -- end local eval of $e")
             val quantifiedVarsSorts = quantifiedVars.map(_.sort)
             val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
             val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), quantifiedVars)
             val (tActualIn: Term, tAuxIn: Set[Term], cOpt) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-//            Q(tActualInVar, localResults.headOption.fold(c)(_.context))}
             Q(tActualInVar, cOpt.getOrElse(c))}
         } else
           Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
@@ -960,56 +915,25 @@ trait DefaultEvaluator[
 
   private def combine(localResults: Seq[LocalEvaluationResult],
                       actualResultTransformer: Term => Term = Predef.identity)
-//                     : (Term, Set[Term], Map[Chunk, Term], Map[ast.LocationAccess, Chunk]) = {
                      : (Term, Set[Term], Option[C]) = {
 
-//    println(s"  [combine] ${localResults.length}")
     val (t1: Term, tAux: Set[Term], optC) =
       localResults.map { lr =>
-//        println(s"    locToSnap = ${lr.context.locToSnap}")
-
         val newGuards = lr.πGuards filterNot decider.π.contains
         val guard: Term = state.terms.utils.BigAnd(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
         val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
 
-        (tAct, tAux, lr.context /*lr.context.chunkToSnap, lr.context.locToChunk*/)
-      }.foldLeft((True(): Term, Set[Term](), None: Option[C] /*Map[Chunk, Term](), Map[ast.LocationAccess, Chunk]()*/)) {
-//        case ((tActAcc, tAuxAcc, ctsAcc, ltcAcc), (tAct, _tAux, _cts, _ltc)) =>
+        (tAct, tAux, lr.context)
+      }.foldLeft((True(): Term, Set[Term](), None: Option[C])) {
         case ((tActAcc, tAuxAcc, optCAcc), (tAct, _tAux, _c)) =>
-//          assert(ctsAcc.keys.toSet.intersect(_cts.keys.toSet).isEmpty, "Unexpected overlap between contexts")
-//          assert(ltcAcc.keys.toSet.intersect(_ltc.keys.toSet).isEmpty, "Unexpected overlap between contexts")
-
-//          val optCAcc1 = optCAcc.map(cAcc => combine(cAcc, _c))
           val cAcc = optCAcc.fold(_c)(cAcc => cAcc.merge(_c))
 
-//          (And(tActAcc, tAct), tAuxAcc + _tAux, ctsAcc ++ _cts, ltcAcc ++ _ltc)
           (And(tActAcc, tAct), tAuxAcc + _tAux, Some(cAcc))
       }
 
     (t1, tAux, optC)
   }
-
-//  private def combine(c1: C, c2: C): C = c1 match {
-//    case DefaultContext(program1, visited1, constrainableARPs1, currentSnap1, locToChunk1, chunkToSnap1) => c2 match {
-//      case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `currentSnap1`, locToChunk2, chunkToSnap2) =>
-//        assert(chunkToSnap1.keys.toSet.intersect(chunkToSnap2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
-//        assert(locToChunk1.keys.toSet.intersect(locToChunk2.keys.toSet).isEmpty, "Unexpected overlap between contexts")
-//
-//        println(s"  chunkToSnap1 = $chunkToSnap1")
-//        println(s"  chunkToSnap2 = $chunkToSnap2")
-//        println(s"  locToChunk1 = $locToChunk1")
-//        println(s"  locToChunk2 = $locToChunk2")
-//
-//        val c3 = c2.copy(chunkToSnap = chunkToSnap1 ++ chunkToSnap2,
-//                locToChunk = locToChunk1 ++ locToChunk2)
-//
-//        println(s" c3 = $c3")
-//        c3
-//
-//      case _ => sys.error("Unexpected mismatch between contexts")
-//    }
-//  }
 
   /* TODO: The CP-style in which Silicon's main components are written makes it hard to work
    *       with sequences. evalTriggers, evals and execs all share the same pattern, they
@@ -1040,41 +964,27 @@ trait DefaultEvaluator[
         evalTriggers(σ, silTriggers.tail, t :: triggers, pve, c1)(Q))
   }
 
-  /* TODO: Support applications of user-provided functions as triggers as well.
-   *       We can use eval for this, but we don't want to evaluate the function
-   *       body as well. Moreover, we don't need to check the preconditions
-   *       of functions used as triggers, but we do need to compute the snapshot,
-   *       because it is part of terms.FApp.
-   *       Axiomatising functions could make this task easier, and it is thus
-   *       probably not worth to address this problem before function
-   *       axiomatisation has been implemented (or discarded as an idea).
-   */
   private def evalTrigger(σ: S, trigger: ast.Trigger, pve: PartialVerificationError, c: C)
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
-    val es =
+    val (triggerExpressions, fappTriggers, unsupportedExpressions) =
       trigger.exps.map {
         case ast.Old(e) => e
         case e => e
-      }
-
-    val (es1, ts1) =
-      es.map {
+      }.map {
         case fapp: ast.FuncApp =>
-//          println(s"$fapp (${fapp.pos}})")
-//          println(c.fapps.get(fapp))
-//          None
-          (None, c.fapps.get(fapp).map(fa => fa.copy(function = Function(fa.function.id + "$", fa.function.sort))))
-        case f: silver.ast.PossibleTrigger => (Some(f), None)
-        case _ => (None, None)
-      }.unzip
+          (None, c.fapps.get(fapp).map(fa => fa.copy(function = Function(fa.function.id + "$", fa.function.sort))), None)
 
-//    if (es.length != trigger.exps.length)
-//      logger.warn(s"Only domain function applications are currently supported as triggers. Found ${trigger.exps}")
+        case f: silver.ast.PossibleTrigger => (Some(f), None, None)
+        case e => (None, None, Some(e))
+      }.unzip3
 
-    evals2(σ, es1.flatten, Nil, pve, c)((ts, c1) =>
-      Q(Trigger(ts ++ ts1.flatten), c1))
+    if (unsupportedExpressions.flatten.nonEmpty)
+      logger.warn(s"Found unsupported triggers: ${unsupportedExpressions.flatten}")
+
+    evals2(σ, triggerExpressions.flatten, Nil, pve, c)((ts, c1) =>
+      Q(Trigger(ts ++ fappTriggers.flatten), c1))
   }
 
 

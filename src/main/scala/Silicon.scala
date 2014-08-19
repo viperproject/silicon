@@ -10,6 +10,8 @@ package silicon
 import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
+import state.DefaultContext
+
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
@@ -20,7 +22,7 @@ import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{VerificationException, DefaultContext, Bookkeeper}
+import reporting.{VerificationException, Bookkeeper}
 import theories.{ExpressionTranslator, DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter, DefaultDomainsTranslator}
 import ast.Consistency
 
@@ -143,7 +145,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
-//    val expressionTranslator = new ExpressionTranslator(symbolConverter)
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
@@ -340,13 +341,6 @@ case class DefaultValue[T](value: T) extends ConfigValue[T]
 case class UserValue[T](value: T) extends ConfigValue[T]
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
-//  val stopOnFirstError = opt[Boolean]("stopOnFirstError",
-//    descr = "Execute only until the first error is found",
-//    default = Some(false),
-//    noshort = true,
-//    hidden = Silicon.hideInternalOptions
-//  )
-
   private val statisticsSinkConverter = new ValueConverter[(String, String)] {
     val stdioRegex = """(stdio)""".r
     val fileRegex = """(file)=(.*)""".r

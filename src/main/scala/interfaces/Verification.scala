@@ -65,14 +65,10 @@ abstract class NonFatalResult extends VerificationResult {
 }
 
 case class Success() extends NonFatalResult {
-//  context.currentBranch.addResult(this)
-
   override val toString = "Success"
 }
 
 case class Unreachable() extends NonFatalResult {
-//  context.currentBranch.addResult(this)
-
   override val toString = "Unreachable"
 }
 
@@ -81,8 +77,6 @@ case class Failure[ST <: Store[ST],
                    S <: State[ST, H, S]]
                   (message: VerificationError)
 		extends FatalResult {
-
-//  tv.addResult(context.currentBranch, this)
 
   override lazy val toString = message.readableMessage
 }

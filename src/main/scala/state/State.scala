@@ -9,8 +9,9 @@ package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
+import interfaces.state.Context
+import interfaces.state.Context
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor, StateFactory}
-import interfaces.reporting.Context
 import interfaces.decider.Decider
 import ast.Variable
 import terms.{Term, DefaultFractionalPermissions}
