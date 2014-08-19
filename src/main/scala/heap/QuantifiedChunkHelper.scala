@@ -350,11 +350,11 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 object QuantifiedChunkHelper {
   object QuantifiedSetAccess {
     def unapply(n: ast.Node) = n match {
-      case ast.Forall(Seq(lvd@silver.ast.LocalVarDecl(id, typ)),
-      triggers,
-      ast.Implies(ast.SetContains(x2, xs),
-      ast.FieldAccessPredicate(fa@ast.FieldAccess(x3, f), gain)))
-        if lvd.localVar == x2 && x2 == x3 =>
+      case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
+                      triggers,
+                      ast.Implies(ast.SetContains(x2, xs),
+                      ast.FieldAccessPredicate(fa@ast.FieldAccess(x3, f), gain)))
+          if lvd.localVar == x2 && x2 == x3 =>
 
         Some((lvd, xs, f, gain, triggers, fa))
 
