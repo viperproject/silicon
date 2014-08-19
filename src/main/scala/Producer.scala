@@ -13,14 +13,8 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.{DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
-import state.terms.predef._
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -67,15 +61,45 @@ trait DefaultProducer[ST <: Store[ST],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
               (Q: (S, C) => VerificationResult)
-              : VerificationResult =
+              : VerificationResult = {
+
+    /* TODO: produces(φs) allows more fine-grained error reporting when compared
+     *       to produce(BigAnd(φs)) because with produces, each φ in φs can be
+     *       produced with its own PartialVerificationError.
+     *       The two differ in behaviour, though, because producing a list of,
+     *       e.g., preconditions, with produce results in more explicit
+     *       conjunctions, and thus in more combine-terms.
+     *       It is therefore necessary to duplicate the code from producing
+     *       conjunctions (ast.And) that records snapshots in order to ensure
+     *       that both produce and produces create the same location-to-snapshot
+     *       mappings.
+     *       It would obviously be better if we could avoid the code duplication
+     *       while preserving the ability of generating more fine-grained errors.
+     */
 
     if (φs.isEmpty)
       Q(σ, c)
     else {
       val φ = φs.head.whenInhaling
-      produce(σ, sf, p, φ, pvef(φ), c)((σ1, c1) =>
-        produces(σ1, sf, p, φs.tail, pvef, c1)(Q))
+
+      if (φs.tail.isEmpty)
+        produce(σ, sf, p, φ, pvef(φ), c)(Q)
+      else {
+        val (c1, rootSnap) = c.snapshotRecorder match {
+          case Some(sr) =>
+            val rootSnap = sr.currentSnap
+            (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
+          case _ =>
+            (c, null)}
+
+        produce(σ, sf, p, φ, pvef(φ), c1)((σ1, c2) => {
+          val c3 = c2.snapshotRecorder match {
+            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
+            case _ => c2}
+          produces(σ1, sf, p, φs.tail, pvef, c3)(Q)})
+      }
     }
+  }
 
   private def produce2(σ: S,
                        sf: Sort => Term,
@@ -122,14 +146,12 @@ trait DefaultProducer[ST <: Store[ST],
             val rootSnap = sr.currentSnap
             (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
           case _ =>
-            (c, null)
-        }
+            (c, null)}
 
         produce2(σ, sf0, p, a0, pve, c1)((h1, c2) => {
           val c3 = c2.snapshotRecorder match {
             case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
-            case _ => c2
-          }
+            case _ => c2}
           produce2(σ \ h1, sf1, p, a1, pve, c3)((h2, c4) =>
             Q(h2, c4))})
 

@@ -10,15 +10,11 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier, StateFactory}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
+import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
 import state.terms.perms.{IsPositive, IsNoAccess}
 
@@ -33,12 +29,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.assume
-
-  protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
-
-  protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
 
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
@@ -62,21 +52,47 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
-              (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
+              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
               : VerificationResult =
 
-    consumes(σ, σ.h, p, φs map (_.whenExhaling), Nil, Nil, pvef, c)(Q)
+    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)(Q)
 
-  private def consumes(σ: S, h: H, p: P, φs: Seq[ast.Expression], ts: List[Term], dcs: List[DirectChunk], pvef: ast.Expression => PartialVerificationError, c: C)
-                       (Q: (S, List[Term], List[DirectChunk], C) => VerificationResult)
+  private def consumes(σ: S,
+                       h: H,
+                       p: P,
+                       φs: Seq[ast.Expression],
+                       pvef: ast.Expression => PartialVerificationError,
+                       c: C)
+                       (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
 
-    if (φs.isEmpty)
-      Q(σ \ h, ts.reverse, dcs.reverse, c)
-    else
-      consume(σ, h, p, φs.head, pvef(φs.head), c)((h1, t, dcs1, c1) =>
-        consumes(σ, h1, p, φs.tail, t :: ts, dcs1 ::: dcs, pvef, c1)(Q))
+    /* TODO: See the code comment about produce vs. produces in DefaultProducer.produces.
+     *       The same applies to consume vs. consumes.
+     */
 
+    if (φs.isEmpty)
+      Q(σ \ h, Unit, Nil, c)
+    else {
+      val φ = φs.head
+
+      if (φ.tail.isEmpty)
+        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
+          Q(σ \ h1, s1, dcs1, c1))
+      else
+        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
+          consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
+            val c3 = c2.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = c1.snapshotRecorder.get
+                val sr2 = c2.snapshotRecorder.get
+                val snap1 = if (s1 == Unit) Unit else sr1.currentSnap
+                val snap2 = if (s2 == Unit) Unit else sr2.currentSnap
+                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
+              case _ => c2}
+
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)
+          }))
+    }
 
   protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
 			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
@@ -108,8 +124,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 val snap1 = if (s1 == Unit) Unit else sr1.currentSnap
                 val snap2 = if (s2 == Unit) Unit else sr2.currentSnap
                 c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
-              case _ => c2
-            }
+              case _ => c2}
 
 						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
 

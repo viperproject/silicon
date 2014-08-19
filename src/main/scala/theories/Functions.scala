@@ -16,13 +16,7 @@ import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, S
 import interfaces.decider.Decider
 import interfaces.state.{Chunk, StateFactory, State, PathConditions, Heap, Store, Mergeable}
 import interfaces.state.factoryUtils.Ø
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.{SymbolConvert, DirectChunk}
+import state.{DefaultContext, SymbolConvert, DirectChunk}
 import state.terms.{utils => _, _}
 import state.terms.predef._
 
@@ -112,6 +106,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     val limitedAxiom = {
       val limFApp = FApp(limitedFunc, `?s`, formalArgs)
+
       Quantification(Forall, args, limFApp === fapp, triggers)
     }
 
@@ -122,19 +117,31 @@ trait FunctionsSupporter[ST <: Store[ST],
     def locToSnap = optLocToSnap.getOrElse(Map[ast.LocationAccess, Term]())
     def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
 
-    def axiom = {
-      val body = expressionTranslator.translate(program, programFunction, locToSnap, fappToSnap)
+    lazy val translatedPre = {
+      val pre = ast.utils.BigAnd(programFunction.pres)
+
+      expressionTranslator.translatePrecondition(program, pre, locToSnap, fappToSnap)
+    }
+
+    lazy val axiom = {
+      val translatedBody = expressionTranslator.translate(program, programFunction, locToSnap, fappToSnap)
+
       val nonNulls = state.terms.utils.BigAnd(
         programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
                            .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
                            .toSet[Term])
-      Quantification(Forall, args, And(fapp === body, nonNulls), triggers)
+
+      Quantification(Forall, args, Implies(translatedPre, And(fapp === translatedBody, nonNulls)), triggers)
     }
 
-    def postAxiom = {
+    lazy val postAxiom = {
       if (programFunction.posts.nonEmpty) {
-        val post = expressionTranslator.translatePostcondition(program, ast.utils.BigAnd(programFunction.posts), locToSnap, fappToSnap, limitedFapp)
-        Quantification(Forall, args, post, limitedTriggers)
+        val post = ast.utils.BigAnd(programFunction.posts)
+
+        val translatedPost =
+          expressionTranslator.translatePostcondition(program, post, locToSnap, fappToSnap, limitedFapp)
+
+        Quantification(Forall, args, Implies(translatedPre, translatedPost), limitedTriggers)
       } else
         True()
     }
@@ -309,6 +316,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   private var fappToSnap: Map[ast.FuncApp, Term] = null
   private var parentFunc: ast.ProgramFunction = null
   private var resultReplacement: FApp = null
+  private var ignoreAccessPredicates = false
 
   def translate(program: ast.Program,
                 func: ast.ProgramFunction,
@@ -373,8 +381,28 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
     term
   }
 
-  /* Attention: Expects  `locToSnap`, `parentFunc`, `program` and `resultReplacement`
-   * to be set, depending on which kind of expressions are to be translated.
+  def translatePrecondition(program: ast.Program,
+                            pre: ast.Expression,
+                            locToSnap: Map[ast.LocationAccess, Term],
+                            fappToSnap: Map[ast.FuncApp, Term]): Term = {
+
+    this.program = program
+    this.locToSnap = locToSnap
+    this.fappToSnap = fappToSnap
+    this.ignoreAccessPredicates = true
+
+    val term = translate(toSort)(pre)
+
+    this.program = null
+    this.locToSnap = null
+    this.fappToSnap = null
+    this.ignoreAccessPredicates = false
+
+    term
+  }
+
+  /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
+   * set, depending on which kind of translation is performed.
    * See public `translate` methods.
    */
   override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
@@ -405,6 +433,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
         else
           fapp
 
+      case _: ast.AccessPredicate if ignoreAccessPredicates => True()
       case _: ast.ResultLiteral => resultReplacement
       case _ => super.translate(toSort)(e)
     }
