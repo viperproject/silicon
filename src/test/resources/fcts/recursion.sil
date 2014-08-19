@@ -14,15 +14,11 @@ method test() {
 
   assert fac(7) >= 0
 
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert fac(10) == 3628800
-//
-//  //:: ExpectedOutput(assert.failed:assertion.false)
-//  assert fac(11) == 3628800
+  // assert fac(10) == 3628800
 }
 
 function err1(n: Int): Int
   requires n >= 0
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures result >= 0
-{ n <= 1 ? 1 : err1(n) - n }
+{ n <= 1 ? 1 : err1(n - 1) - n }
