@@ -48,6 +48,8 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
+    case Domain(_, fvf) => fvf :: Nil
+    case Lookup(_, fvf, at) => fvf :: at :: Nil
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -65,7 +67,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal => term
+      case _: Var | _: Function | _: Literal | `?r` => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
@@ -131,6 +133,8 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
+      case Domain(f, fvf) => Domain(f, go(fvf))
+      case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

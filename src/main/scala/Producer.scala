@@ -15,6 +15,7 @@ import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -35,6 +36,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -168,13 +170,22 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+        def createChunk(rcvr: Term, s: Term, p: DefaultFractionalPermissions) =
+          if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
+            val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
+            assume(fvfDef)
+
+            quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
+          } else
+            DirectFieldChunk(rcvr, field.name, s, p)
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
             assume(NoPerm() < pGain)
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+            val ch = createChunk(tRcvr, s, pNettoGain)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
@@ -196,6 +207,47 @@ trait DefaultProducer[ST <: Store[ST],
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
             Q(σ.h + ch, c3)}))
+
+      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, gain, _/*triggers*/, _) =>
+        /* TODO: Translate triggers */
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
+        val σQVar = σ \+ γQVar
+        val πPre = decider.π
+        var πAux: Set[Term] = Set()
+
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
+
+        decider.locally[(Term, Term, Term, P, C)](QB =>
+          eval(σQVar, set, pve, c)((tSet, c1) =>
+            evalp(σQVar, gain, pve, c1)((pGain, c2) => {
+              πAux = decider.π -- πPre
+              val tCond = SetIn(tQVar, tSet)
+              QB(tSet, tCond, tQVar, pGain, c2)}))
+        ){case (tSet, tCond, tRcvr, pGain, c3) =>
+            val tAuxQuant = Quantification(Forall, tQVar :: Nil, state.terms.utils.BigAnd(πAux))
+            decider.assume(tAuxQuant)
+
+    this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
+
+            val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
+            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, field, snap, pGain * p, tCond)
+            assume(Domain(field.name, snap) === tSet)
+            val v = Var("r", sorts.Ref)
+            val tNonNullQuant =
+              Quantification(
+                Forall,
+                List(v),
+                Implies(
+                  NoPerm() < ch.perm.replace(`?r`, v).asInstanceOf[DefaultFractionalPermissions],
+                  v !== Null()),
+                List(/*Trigger(List(NullTrigger(v)))*/))
+            assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
+            val (h, ts) =
+              if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
+              else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
+            assume(ts)
+            Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -244,8 +296,7 @@ trait DefaultProducer[ST <: Store[ST],
       getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, c)
 
     case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-      /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-      (toSort(f.typ), false)
+      (sorts.FieldValueFunction(toSort(f.typ)), false)
 
     case _ =>
       (sorts.Snap, false)
@@ -260,11 +311,11 @@ trait DefaultProducer[ST <: Store[ST],
     if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, c)
     else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, c)
     else fIfBothPure()
-  }
+    }
 
   private def mkSnap(φ: ast.Expression, c: C): Term = getOptimalSnapshotSort(φ, c) match {
-    case (sorts.Snap, true) => Unit
-    case (sort, _) => fresh(sort)
+      case (sorts.Snap, true) => Unit
+      case (sort, _) => fresh(sort)
   }
 
   override def pushLocalState() {

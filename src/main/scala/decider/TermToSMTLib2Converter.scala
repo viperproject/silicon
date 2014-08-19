@@ -12,7 +12,7 @@ import interfaces.decider.TermConverter
 import state.terms._
 
 class TermToSMTLib2Converter extends TermConverter[String, String, String] {
-  def convert(sort: Sort) = sort match {
+  def convert(sort: Sort): String = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
@@ -36,6 +36,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
        * domain sort of nullary functions.
        */
       ""
+
+    case sorts.FieldValueFunction(codomainSort) => s"$$FVF<${convert(codomainSort)}>"
   }
 
   def convert(decl: Decl): String = decl match {
@@ -74,15 +76,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       }
 
     case FApp(f, s, tArgs) =>
-      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))
+      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString " ")
 
     case Quantification(quant, vars, body, triggers) =>
-      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
+      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString " "
       val strBody = convert(body)
       val strQuant = convert(quant)
 
       val strTriggers: String =
-        triggers.map(trigger => trigger.ts map convert mkString(" "))
+        triggers.map(trigger => trigger.ts map convert mkString " ")
                 .map(s => s":pattern ($s)")
                 .mkString(" ")
 
@@ -266,7 +268,10 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(%s %s)".format(sortWrapperSymbol(t.sort, to), convert(t))
 
     case Distinct(symbols) =>
-      "(distinct %s)".format(symbols map(convert) mkString(" "))
+      "(distinct %s)".format(symbols map convert  mkString " ")
+
+    case Domain(id, fvf) => s"($$FVF.domain_$id ${convert(fvf)})"
+    case Lookup(id, fvf, at) => s"($$FVF.lookup_$id ${convert(fvf)} ${convert(at)})"
   }
 
   def sanitizeSymbol(str: String) =
@@ -285,8 +290,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
   private def literalToString(literal: Literal) = literal match {
     case IntLiteral(n) =>
-      if (n >= 0) n.toString
-      else "(- 0 %s)".format((-n).toString)
+      if (n >= 0) n.toString()
+      else "(- 0 %s)".format((-n).toString())
 
     case Unit => "$Snap.unit"
     case True() => "true"

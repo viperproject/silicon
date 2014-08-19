@@ -20,7 +20,7 @@ trait MultisetsEmitter extends PreambleEmitter
 
 class DefaultMultisetsEmitter(prover: Prover,
                               symbolConverter: SymbolConvert,
-                              preambleFileEmitter: PreambleFileEmitter[_])
+                              preambleFileEmitter: PreambleFileEmitter[String, String])
     extends MultisetsEmitter {
 
   private var collectedSorts = Set[terms.sorts.Multiset]()
@@ -70,15 +70,17 @@ class DefaultMultisetsEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/multisets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/multisets_declarations_dafny.smt2", s.elementsSort)
+      preambleFileEmitter.emitParametricAssertions("/multisets_declarations_dafny.smt2", substitutions)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/multisets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/multisets_axioms_dafny.smt2", s.elementsSort)
+      preambleFileEmitter.emitParametricAssertions("/multisets_axioms_dafny.smt2", substitutions)
     }
   }
 }

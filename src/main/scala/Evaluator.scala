@@ -21,6 +21,7 @@ import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsPositive
+import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -48,6 +49,8 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
+
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -169,6 +172,11 @@ trait DefaultEvaluator[
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
+
+      case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
+          quantifiedChunkHelper.withSingleValue(σ, σ.h, tRcvr, fa.field, pve, fa, c)((t) => {
+            Q(t, c1)}))
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
@@ -582,7 +590,6 @@ trait DefaultEvaluator[
           consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
-              logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
               assume(piFB)
               Q(tFA, c3)

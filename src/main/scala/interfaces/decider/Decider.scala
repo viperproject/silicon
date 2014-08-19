@@ -44,7 +44,7 @@ trait Decider[P <: FractionalPermissions[P],
    *       is changed?
    */
   def assume(t: Term)
-  def assume(ts: Set[Term])
+  def assume(ts: Iterable[Term])
 
   def tryOrFail[R](σ: S)
                   (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)

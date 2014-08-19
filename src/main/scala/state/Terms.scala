@@ -9,8 +9,8 @@ package silicon
 package state.terms
 
 import scala.reflect._
-import silver.ast.utility.Visitor
 import ast.commonnodes
+import silver.ast.utility.Visitor
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -48,7 +48,7 @@ object sorts {
   object Bool extends Sort { val id = "Bool"; override val toString = id }
   object Ref extends Sort { val id = "Ref"; override val toString = id }
   object Perm extends Sort { val id = "Perm"; override val toString = id }
-  object Unit extends Sort { val id = "()"; override val toString = "()" }
+  object Unit extends Sort { val id = "()"; override val toString = id }
 
   case class Seq(elementsSort: Sort) extends Sort {
     val id = "Seq[%s]".format(elementsSort)
@@ -100,6 +100,11 @@ object sorts {
   case class UserSort(id: String) extends Sort {
     override val toString = id
   }
+
+  case class FieldValueFunction(codomainSort: Sort) extends Sort {
+    val id = "FVF[%s]".format(codomainSort)
+    override val toString = id
+  }
 }
 
 /*
@@ -138,7 +143,7 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
-  : this.type =
+               : this.type =
 
     state.utils.transform[this.type](this, pre)(recursive, post)
 
@@ -231,13 +236,50 @@ case class False() extends BooleanLiteral {
 
 sealed trait Quantifier
 
-object Forall extends Quantifier { override val toString = "∀ " }
-object Exists extends Quantifier { override val toString = "∃ " }
+object Forall extends Quantifier {
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Forall, qvars, tBody, triggers)
+
+  override val toString = "QA"
+}
+
+object Exists extends Quantifier {
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Exists, qvar :: Nil, tBody, triggers)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Exists, qvars, tBody, triggers)
+
+  override val toString = "QE"
+}
 
 case class Trigger(ts: Seq[Term])
 
-case class Quantification(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq())
-    extends BooleanTerm
+class Quantification(val q: Quantifier, val vars: Seq[Var], val tBody: Term, val triggers: Seq[Trigger])
+    extends BooleanTerm {
+
+  override val hashCode = silicon.utils.generateHashCode(q, vars, tBody, triggers)
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case Quantification(_q, _vars, _tBody, _triggers) => q == _q && vars == _vars && tBody == _tBody && triggers == _triggers
+      case _ => false
+    })
+
+  override val toString = s"$q ${vars.mkString(",")} :: $tBody"
+}
+
+object Quantification extends Function4[Quantifier, Seq[Var], Term, Seq[Trigger], Term] {
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger] = Seq()) = tBody match {
+    case True() | False() => tBody
+    case _ => new Quantification(q, vars, tBody, triggers)
+  }
+
+  def unapply(q: Quantification) = Some((q.q, q.vars, q.tBody, q.triggers))
+}
 
 /* Arithmetic expression terms */
 
@@ -400,7 +442,7 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
-	override val toString = "%s ? %s : %s".format(t0, t1, t2)
+	override val toString = "(%s ? %s : %s)".format(t0, t1, t2)
 
   override val hashCode = silicon.utils.generateHashCode(t0, t1, t2)
 
@@ -414,12 +456,14 @@ class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
 }
 
 object Ite extends Function3[Term, Term, Term, Term] {
-	def apply(e0: Term, e1: Term, e2: Term) = e0 match {
-		case True() => e1
-		case False() => e2
+	def apply(e0: Term, e1: Term, e2: Term) = (e0, e1, e2) match {
     case _ if e1 == e2 => e1
-		case _ => new Ite(e0, e1, e2)
-	}
+    case (True(), _, _) => e1
+    case (False(), _, _) => e2
+    case (_, True(), False()) => e0
+    case (_, False(), True()) => Not(e0)
+    case _ => new Ite(e0, e1, e2)
+  }
 
 	def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))
 }
@@ -430,8 +474,8 @@ sealed trait ComparisonTerm extends BooleanTerm
 
 case class Eq(p0: Term, p1: Term, specialize: Boolean = true) extends ComparisonTerm with commonnodes.Eq[Term] {
   assert(p0.sort == p1.sort,
-      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-        .format(p0.sort, p0, p1.sort, p1))
+         "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+         .format(p0.sort, p0, p1.sort, p1))
 }
 
 class Less(val p0: Term, val p1: Term)
@@ -499,8 +543,8 @@ sealed trait FractionalPermissions[P <: FractionalPermissions[P]] extends Term {
   def +(other: P): P
   def -(other: P): P
   def *(other: P): P
-  def <(other: P): BooleanTerm
-  def >(other: P): BooleanTerm
+  def <(other: P): Term
+  def >(other: P): Term
 }
 
 sealed abstract class DefaultFractionalPermissions extends FractionalPermissions[DefaultFractionalPermissions] {
@@ -518,10 +562,27 @@ case class FullPerm() extends DefaultFractionalPermissions { override val toStri
 case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
 
-case class TermPerm(t: Term) extends DefaultFractionalPermissions {
+class TermPerm(val t: Term) extends DefaultFractionalPermissions {
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
+  override val hashCode = t.hashCode()
+
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case TermPerm(_t) => t == _t
+      case _ => false
+    })
+
   override val toString = t.toString
+}
+
+object TermPerm extends Function1[Term, DefaultFractionalPermissions] {
+  def apply(t: Term) = t match {
+    case dfp: DefaultFractionalPermissions => dfp
+    case _ => new TermPerm(t)
+  }
+
+  def unapply(tp: TermPerm) = Some(tp.t)
 }
 
 case class IsValidPermVar(v: Var) extends BooleanTerm {
@@ -555,9 +616,11 @@ class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
        with commonnodes.StructuralEqualityBinaryOp[Term]
 
 object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  val Zero = IntLiteral(0)
   val One = IntLiteral(1)
 
   def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
+    case (Zero, t) => NoPerm()
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
     case (_, _) => new IntPermTimes(t0, t1)
@@ -610,13 +673,24 @@ class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPe
        with commonnodes.Less[DefaultFractionalPermissions]
        with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions] {
 
-  override val toString = "%s < %s".format(p0, p1)
+  override val toString = "(%s) < (%s)".format(p0, p1)
 }
 
-object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => BooleanTerm) {
-  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
-    case (t0, t1) if t0 == t1 => False()
-    case (_, _) => new PermLess(t0, t1)
+object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => Term) {
+  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = {
+    (t0, t1) match {
+      case _ if t0 == t1 => False()
+      case (NoPerm(), FullPerm()) => True()
+      case (FullPerm(), _: WildcardPerm) => False()
+
+      case (`t0`, TermPerm(Ite(tCond, tIf, tElse))) =>
+        /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
+         * Pushing the comparisons into the ite allows further simplifications.
+         */
+        Ite(tCond, t0 < TermPerm(tIf), t0 < TermPerm(tElse))
+
+      case _ => new PermLess(t0, t1)
+    }
   }
 
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
@@ -1063,13 +1137,13 @@ object MultisetCardinality {
   def unapply(mc: MultisetCardinality) = Some((mc.p))
 }
 
-class MultisetCount(val p0:Term, val p1:Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
+class MultisetCount(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
   val sort = sorts.Int
   override val toString = s"cnt($p0,$p1)"
 }
 
 object MultisetCount extends {
-  def apply(e:Term, t:Term) = {
+  def apply(e: Term, t: Term) = {
     utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
     utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
 
@@ -1079,7 +1153,7 @@ object MultisetCount extends {
   def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
 }
 
-class MultisetFromSeq(val p:Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+class MultisetFromSeq(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
   val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Multiset(elementsSort)
 }
@@ -1125,6 +1199,31 @@ case class First(t: Term) extends SnapshotTerm {
 case class Second(t: Term) extends SnapshotTerm {
   utils.assertSort(t, "term", sorts.Snap)
 }
+
+/* Quantified permissions */
+
+object `?r` extends Symbol with Term {
+  val id = "r"
+  val sort = sorts.Ref
+
+  override val toString = id
+}
+
+case class Lookup(field: String, fvf: Term, at: Term) extends Term {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+}
+
+case class Domain(field: String, fvf: Term) extends SetTerm {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val elementsSort = sorts.Ref //fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val sort = sorts.Set(elementsSort)
+}
+
+/* Sort wrappers */
 
 class SortWrapper(val t: Term, val to: Sort) extends Term {
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
@@ -1196,7 +1295,7 @@ object perms {
   }
 
   def IsPositive(p: DefaultFractionalPermissions) = p match {
-    case _: NoPerm => False() /* TODO: This "false" should not be checked; asserting it should just return false/no */
+    case _: NoPerm => False()
     case _: FullPerm | _: WildcardPerm => True()
     case _ => NoPerm() < p
   }
@@ -1207,7 +1306,7 @@ object perms {
 
   def IsNoAccess(p: DefaultFractionalPermissions) = p match {
     case _: NoPerm => True()
-    case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False() /* TODO: This "false" should not be checked; asserting it should just return false/no */
+    case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False()
       /* ATTENTION: This is only sound if both plus operands and the left minus operand are positive! */
     case _ => Or(p === NoPerm(), p < NoPerm())
   }

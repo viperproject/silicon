@@ -14,7 +14,8 @@ import silver.verifier.Verifier
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
-  private val silTestDirectories = List("all")
+//  private val silTestDirectories = List("all", "quantifiedpermissions")
+  private val silTestDirectories = List("all", "quantifiedpermissions/sets")
 
   override def testDirectories = siliconTestDirectories ++ silTestDirectories
 

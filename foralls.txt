@@ -1,0 +1,14 @@
+CONSUME foralls.sil,6:11: (forall x: Ref :: x in xs ==> acc(x.f, write))
+?(
+  ?(xs -> xs@1, a -> a@2, b -> b@3), 
+  
+  h(FA f -> f@10(b@3) + 1 # * == a@2 ? W : Z,
+    FA f -> $t@5 # * in xs@1 ? 1 : 0 - min (* == a@2 ? W : Z, * in xs@1 ? 1 : 0)), 
+    
+  g(FA f -> $t@5 # * in xs@1 ? 1 : 0), 
+  
+  ?(Quantification(? ,List(nonnull),Z < nonnull in xs@1 ? 1 : 0 ==> nonnull != Null,List(Trigger(List(Null(nonnull))))),
+    a@2 in xs@1 && b@3 in xs@1,
+    Quantification(? ,List(x),Z < x in xs@1 ? 1 : 0 ==> f@10(x) == $t@5,List()),
+    Null(a@2))
+)
