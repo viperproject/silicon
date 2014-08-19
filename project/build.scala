@@ -115,7 +115,7 @@ object SiliconBuild extends Build {
 
   def externalDep = (
        dependencies.logging
-    ++ Seq(dependencies.scallop)
+    ++ Seq(dependencies.scallop, dependencies.jgrapht)
     ++ (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil))
 
   /* Dependencies */
@@ -126,6 +126,7 @@ object SiliconBuild extends Build {
     lazy val slf4j = "org.slf4j" % "slf4j-log4j12" % "1.6.4"
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
+    lazy val jgrapht = "org.jgrapht" % "jgrapht-jdk1.5" % "0.7.3"
 
     lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
     lazy val silSrc = RootProject(new java.io.File("../silver"))
