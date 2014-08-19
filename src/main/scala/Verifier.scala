@@ -8,26 +8,13 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
-    PredicateNotWellformed}
+import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed}
 import silver.components.StatefulComponent
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.DefaultContext
-import state.{terms, SymbolConvert, DirectChunk}
+import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
