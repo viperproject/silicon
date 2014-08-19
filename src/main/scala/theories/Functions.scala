@@ -316,8 +316,6 @@ trait FunctionsSupporter[ST <: Store[ST],
 
         case other => other
       }
-
-      result
     }
 
 //    def emitLimitedAxioms() {
