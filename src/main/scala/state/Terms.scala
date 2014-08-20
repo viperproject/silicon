@@ -1005,13 +1005,13 @@ class SetCardinality(val p: Term) extends Term with commonnodes.StructuralEquali
   override val toString = "|" + p + "|"
 }
 
-object SetCardinality {
+object SetCardinality extends (Term => SetCardinality) {
   def apply(t: Term) = {
     utils.assertSort(t, "term", "Set", _.isInstanceOf[sorts.Set])
     new SetCardinality(t)
   }
 
-  def unapply(sc: SetCardinality) = Some((sc.p))
+  def unapply(sc: SetCardinality) = Some(sc.p)
 }
 
 /* Multisets */
@@ -1128,13 +1128,13 @@ class MultisetCardinality(val p: Term) extends Term with commonnodes.StructuralE
   override val toString = "|" + p + "|"
 }
 
-object MultisetCardinality {
+object MultisetCardinality extends (Term => MultisetCardinality) {
   def apply(t: Term) = {
     utils.assertSort(t, "term", "Multiset", _.isInstanceOf[sorts.Multiset])
     new MultisetCardinality(t)
   }
 
-  def unapply(mc: MultisetCardinality) = Some((mc.p))
+  def unapply(mc: MultisetCardinality) = Some(mc.p)
 }
 
 class MultisetCount(val p0: Term, val p1: Term) extends Term with commonnodes.StructuralEqualityBinaryOp[Term] {
