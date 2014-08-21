@@ -148,39 +148,41 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, loss, _/*triggers*/, fa) =>
-        /* TODO: Translate triggers! */
+      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, /*set,*/ condition, rcvr, field, loss, fa) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
-        eval(σQVar, set, pve, c)((tSet, c1) => {
-          val tCond = SetIn(tQVar, tSet)
+//        eval(σQVar, set, pve, c)((tSet, c1) => {
+        eval(σQVar, condition, pve, c)((tCond, c1) => {
+//          val tCond = SetIn(tQVar, tSet)
           if (decider.check(σQVar, Not(tCond)))
             /* The condition cannot be satisfied, hence we don't need to consume anything */
             Q(h, Unit, Nil, c1)
           else {
-//            decider.assume(tCond)
+            decider.assume(tCond)
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
-            evalp(σQVar, loss, pve, c1)((tPerm, c2) => {
+            eval(σQVar, rcvr, pve, c1)((tRcvr, c1a) =>
+              evalp(σQVar, loss, pve, c1a)((tPerm, c2) => {
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
-              decider.assert(σ, IsPositive(tPerm)) {
-                case true =>
-                  val (h2, ts) =
-                    if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) (h, Set.empty[Term])
-                    else quantifiedChunkHelper.quantifyChunksForField(h, field)
-                  assume(ts)
-                  val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, tCond, tPerm)
-                  quantifiedChunkHelper.splitLocations(σ, h2, field, tQVar, tPerm * p, condPerms * p, c2) {
-                    case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
-                    case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
-                  }
+                decider.assert(σ, IsPositive(tPerm)) {
+                  case true =>
+                    val (h2, ts) =
+                      if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) (h, Set.empty[Term])
+                      else quantifiedChunkHelper.quantifyChunksForField(h, field)
+                    assume(ts)
+                    val arbitraryInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
+                    val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, arbitraryInverseRcvr, tCond, tPerm)
+                    quantifiedChunkHelper.splitLocations(σ, h2, field, tQVar, tPerm * p, condPerms * p, c2) {
+                      case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
+                      case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
+                    }
 
-                case false =>
-                  Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}})}})
+                  case false =>
+                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>

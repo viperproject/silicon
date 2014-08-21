@@ -32,20 +32,18 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions/*, quantifiedVars: Seq[Term]*/)
-    extends Chunk {
-
+case class QuantifiedChunk(rcvr: Term, name: String, value: Term, perm: DefaultFractionalPermissions) extends Chunk {
   assert(value.sort.isInstanceOf[terms.sorts.FieldValueFunction],
          "Quantified chunk values must be of sort FieldValueFunction")
 
-  val args = Seq(`?r`) /*+: quantifiedVars*/
-  val id = FieldChunkIdentifier(`?r`, name)
+  val args = `?r` :: rcvr :: Nil
+  val id = FieldChunkIdentifier(rcvr, name)
 
   def +(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm - perm)
 
 //  override def toString = "A %s :: %s -> %s # %s".format(quantifiedVars.mkString(","), name, value, perm)
-  override def toString = "%s %s :: %s -> %s # %s".format(terms.Forall, `?r`, name, value, perm)
+  override def toString = "%s %s :: %s.%s -> %s # %s".format(terms.Forall, `?r`, rcvr, name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {

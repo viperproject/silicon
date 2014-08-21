@@ -1203,7 +1203,7 @@ case class Second(t: Term) extends SnapshotTerm {
 /* Quantified permissions */
 
 object `?r` extends Symbol with Term {
-  val id = "r"
+  val id = "?r"
   val sort = sorts.Ref
 
   override val toString = id
@@ -1221,6 +1221,10 @@ case class Domain(field: String, fvf: Term) extends SetTerm {
 
   val elementsSort = sorts.Ref //fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
   val sort = sorts.Set(elementsSort)
+}
+
+case class Inverse(template: Term, appliedTo: Term, sort: Sort) extends Term {
+  override val toString = s"${template.getClass.getSimpleName}_inv($appliedTo)"
 }
 
 /* Sort wrappers */

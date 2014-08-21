@@ -8,3 +8,4 @@
 
 (declare-fun $FVF.domain_$FLD$ ($FVF<$S$>) $Set<$Ref>)
 (declare-fun $FVF.lookup_$FLD$ ($FVF<$S$> $Ref) $S$)
+(declare-fun $FVF.lookup_$FLD$_inv ($S$) $Ref)

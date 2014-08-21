@@ -211,8 +211,9 @@ trait DefaultProducer[ST <: Store[ST],
               case _ => c2}
             Q(σ.h + ch, c3)}))
 
-      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, set, field, gain, _/*triggers*/, _) =>
+      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, condition, rcvr, field, gain, _) =>
         /* TODO: Translate triggers */
+        println("\n[Producer/QuantifiedSetAccess]")
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
@@ -221,36 +222,57 @@ trait DefaultProducer[ST <: Store[ST],
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
-        decider.locally[(Term, Term, Term, P, C)](QB =>
-          eval(σQVar, set, pve, c)((tSet, c1) =>
-            evalp(σQVar, gain, pve, c1)((pGain, c2) => {
-              πAux = decider.π -- πPre
-              val tCond = SetIn(tQVar, tSet)
-              QB(tSet, tCond, tQVar, pGain, c2)}))
-        ){case (tSet, tCond, tRcvr, pGain, c3) =>
-            val tAuxQuant = Quantification(Forall, tQVar :: Nil, state.terms.utils.BigAnd(πAux))
-            decider.assume(tAuxQuant)
+        decider.locally[(Term, Term, P, C)](QB =>
+          eval(σQVar, condition, pve, c)((tCond, c1) => {
+            assume(tCond)
+            eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
+              evalp(σQVar, gain, pve, c2)((pGain, c3) => {
+                πAux = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term we want to keep */
+                  QB(tCond, tRcvr, pGain, c3)}))})
+        ){case (tCond, tRcvr, pGain, c3) =>
+this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
-    this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
+          val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
+//          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
+//          println(s"tQVar = $tQVar")
+//          println("πAuxWithQVar:")
+//          πAuxWithQVar foreach println
+//          println("/πAuxWithQVar")
+//          println("πAuxWithoutQVar:")
+//          πAuxWithoutQVar foreach println
+//          println("/πAuxWithoutQVar")
+//            decider.assume(tAuxQuant)
 
-            val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
-            val ch = quantifiedChunkHelper.createQuantifiedChunk(tRcvr, field, snap, pGain * p, tCond)
-            assume(Domain(field.name, snap) === tSet)
-            val v = Var("r", sorts.Ref)
-            val tNonNullQuant =
-              Quantification(
-                Forall,
-                List(v),
-                Implies(
-                  NoPerm() < ch.perm.replace(`?r`, v).asInstanceOf[DefaultFractionalPermissions],
-                  v !== Null()),
-                List(/*Trigger(List(NullTrigger(v)))*/))
-            assume(Set[Term](NoPerm() < pGain, tNonNullQuant))
-            val (h, ts) =
-              if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
-              else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
-            assume(ts)
-            Q(h + ch, c3)}
+          println(s"  tQVar = $tQVar")
+          println(s"  tCond = $tCond")
+          println(s"  tRcvr = $tRcvr")
+
+          val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil)
+          assume(πAuxWithoutQVar)
+          assume(πAuxWithQVarQuant)
+
+          val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
+          val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
+//            assume(Domain(field.name, snap) === tSet)
+          println(s"\n  ch = $ch")
+          val tDomainQuant =
+            Forall(tQVar,
+                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
+                       tCond),
+                   Trigger(Lookup(field.name, snap, tRcvr) :: Nil) :: Nil)
+          val tNonNullQuant =
+            Forall(tQVar,
+                   Implies(NoPerm() < ch.perm.replace(`?r`, tQVar).asInstanceOf[DefaultFractionalPermissions],
+                           tRcvr !== Null()),
+                   Nil)
+          println(s"  tDomainQuant = $tDomainQuant")
+          println(s"  tNonNullQuant = $tNonNullQuant")
+          assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant))
+          val (h, ts) =
+            if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
+            else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
+          assume(ts)
+          Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

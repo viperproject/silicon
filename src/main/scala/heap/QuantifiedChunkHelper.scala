@@ -60,18 +60,17 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     val condPerms = singletonConditionalPermissions(rcvr, perms)
 
-    QuantifiedChunk(field, value, condPerms)
+    QuantifiedChunk(rcvr, field, value, condPerms)
   }
 
   def singletonConditionalPermissions(rcvr: Term, perms: DefaultFractionalPermissions)
-                                     : DefaultFractionalPermissions =
+                                     : DefaultFractionalPermissions = {
 
-    rcvr match {
-      case SeqAt(s, i) => ???
-      case _ => TermPerm(Ite(`?r` === rcvr, perms, NoPerm()))
-    }
+    TermPerm(Ite(`?r` === rcvr, perms, NoPerm()))
+  }
 
-  def createQuantifiedChunk(rcvr: Term,
+  def createQuantifiedChunk(qvar: Var,
+                            rcvr: Term,
                             field: Field,
                             value: Term,
                             perms: DefaultFractionalPermissions,
@@ -81,18 +80,47 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
                   "Quantified chunk values must be of sort FieldValueFunction")
 
-    val condPerms = conditionalPermissions(rcvr, condition, perms)
+    val arbitraryInverseRcvr = getInverseFunction(rcvr)(`?r`)
+    val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
 
-    QuantifiedChunk(field.name, value, condPerms)
+    println("\n[QCH/createQuantifiedChunk]")
+    println(s"  qvar = $qvar")
+    println(s"  arbitraryInverseRcvr = $arbitraryInverseRcvr")
+    println(s"  rcvr = $rcvr")
+    println(s"  condition = $condition")
+
+    QuantifiedChunk(`?r`, field.name, value, condPerms)
   }
 
-  def conditionalPermissions(rcvr: Term, condition: Term, perms: DefaultFractionalPermissions)
-                            : DefaultFractionalPermissions =
+  def conditionalPermissions(qvar: Var,
+                             arbitraryInverseRcvr: Term,
+                             qvarSpecificCondition: Term,
+                             perms: DefaultFractionalPermissions)
+                            : DefaultFractionalPermissions = {
 
-  rcvr match {
-    case SeqAt(s, i) => ???
-    case v: Var => TermPerm(Ite(condition.replace(rcvr, `?r`), perms, NoPerm()))
-    case _ => sys.error(s"Receiver $rcvr has unsupported shape")
+//    val arbitraryInverseRcvr = inverseRcvr.replace(qvar, `?r`)
+    val arbitraryCondition = qvarSpecificCondition.replace(qvar, arbitraryInverseRcvr)
+
+    TermPerm(Ite(arbitraryCondition, perms, NoPerm()))
+
+//  rcvr match {
+//    case SeqAt(s, i) => ???
+//    case _: Var => TermPerm(Ite(condition.replace(rcvr, `?r`), perms, NoPerm()))
+  }
+
+  /** Returns `t` wrapped in the inverse function that belongs to `t`.
+    * If that would be the identity function, than `t` itself is returned.
+    * It is not checked whether or not `t` actually has an inverse function,
+    * the return value is determined purely syntactially. Such a check has to
+    * be made elsewhere.
+    *
+    * @param t A term whose inverse function is to be determined.
+    * @return The inverse function applied to `t`.
+    */
+  def getInverseFunction(t: Term): Term => Term = t match {
+    case _: Var => Predef.identity //(arg: Term) => arg // t
+    case lookup: Lookup => (arg: Term) => Inverse(lookup, arg, lookup.at.sort) // Inverse(lookup, lookup.at.sort)
+    case _ => sys.error(s"Cannot determine inverse function for term $t")
   }
 
   /* State queries */
@@ -109,11 +137,18 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     * Computes the total permission amount held in the given heap for the given chunk identifier.
     */
   def permission(h: H, id: ChunkIdentifier): DefaultFractionalPermissions = {
-    val chunks = h.values.toSeq.collect {
+    println("\n[permission]")
+    println(s"  id = $id")
+    println(s"  id.args = ${id.args}")
+    println(s"  h.values = ${h.values}")
+
+    val perms = h.values.toSeq.collect {
       case permChunk: QuantifiedChunk if permChunk.name == id.name => permChunk.perm.replace(`?r`, id.args.last)
     }.asInstanceOf[Iterable[DefaultFractionalPermissions]]
 
-    BigPermSum(chunks, Predef.identity)
+    println(s"  perms = $perms")
+
+    BigPermSum(perms, Predef.identity)
   }
 
   def withSingleValue(σ: S,
@@ -169,12 +204,14 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                        (Q: (Lookup, FvfDef) => VerificationResult)
                        : VerificationResult = {
 
-    assert(σ, rcvr !== Null()) {
+    assert(σ, True()/*rcvr !== Null()*/) {
       case false =>
         Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
 
       case true =>
-        assert(σ, NoPerm() < permission(h, FieldChunkIdentifier(rcvr, field.name))) {
+        val permsXXX = permission(h, FieldChunkIdentifier(rcvr, field.name))
+        println(s"permsXXX = $permsXXX")
+        assert(σ, NoPerm() < permsXXX) {
           case false =>
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
@@ -326,7 +363,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     }
 
     val hResidue = H(residue ++ ignored)
-    val ch = QuantifiedChunk(field.name, fvf, conditionalizedFraction)
+    val ch = QuantifiedChunk(rcvr, field.name, fvf, conditionalizedFraction)
     val fvfDef = FvfDef(field, fvf, fvfDefs)
 
     (hResidue, ch, fvfDef, success)
@@ -352,11 +389,30 @@ object QuantifiedChunkHelper {
     def unapply(n: ast.Node) = n match {
       case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
                       triggers,
-                      ast.Implies(ast.SetContains(x2, xs),
-                      ast.FieldAccessPredicate(fa@ast.FieldAccess(x3, f), gain)))
-          if lvd.localVar == x2 && x2 == x3 =>
+                      ast.Implies(condition,
+                      ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr/*x3*/, f), gain)))
+//          if lvd.localVar == /*x2 && x2 ==*/ x3 =>
+          if rcvr.exists(_ == lvd.localVar) =>
 
-        Some((lvd, xs, f, gain, triggers, fa))
+        assert(triggers.isEmpty, s"Did not expect triggers in impure forall, but found $triggers")
+
+        /* TODO: If the condition is just "x in xs" then xs could be returned to
+         *       simplify the definition of domains of freshly created FVFs (as
+         *       done, e.g., when producing quantified permissions) by just
+         *       assuming "domain(vs) == xs" instead of assuming that
+         *       "forall x :: x in domain(cs) <==> condition". This should have
+         *       a positive effect on the prover's runtime.
+         */
+
+        (condition match {
+//          case ast.SetContains(`x3`, xs) => Some(xs)
+          case ast.SetContains(lvd.localVar, xs) => Some(xs)
+//          case ast.And(ast.SetContains(`x3`, xs), _) => Some(xs)
+          case ast.And(ast.SetContains(lvd.localVar, xs), _) => Some(xs)
+          case _ => None
+        }).map {
+          case xs => (lvd, /*xs,*/ condition, rcvr, f, gain, fa)
+        }
 
       case _ => None
     }
