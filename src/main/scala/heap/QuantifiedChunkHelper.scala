@@ -38,8 +38,11 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private case class FvfDef(field: Field, fvf: Term, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
-    def quantifiedValues(qvar: Var) =
-      entries map (entry => Forall(qvar, entry.partialValue, entry.valueTriggers))
+    def quantifiedValues(qvar: Term/*Var*/) = {
+      // TODO: #######################  qvar still needed?  #######################
+      val qvarXXX = Var("r", sorts.Ref)
+      entries map (entry => Forall(qvarXXX, entry.partialValue, entry.valueTriggers))
+    }
 
     lazy val totalDomain = (
       Domain(field.name, fvf)
@@ -126,7 +129,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   /* State queries */
 
   def getQuantifiedChunk(h: H, field: String) =
-    h.values.find{
+    h.values.find {
       case ch: QuantifiedChunk => ch.name == field
       case _ => false
     }.asInstanceOf[Option[QuantifiedChunk]]
@@ -204,8 +207,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                        (Q: (Lookup, FvfDef) => VerificationResult)
                        : VerificationResult = {
 
-    assert(σ, True()/*rcvr !== Null()*/) {
+    println(s"\n[QCH/withValue] $locacc")
+    println("  rcvr !== Null() = " + (rcvr !== Null()))
+    println("  rcvr !== Null()? " + check(σ, rcvr !== Null()))
+
+    assert(σ, rcvr !== Null()) {
       case false =>
+        println("Receiver might be null!")
         Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
 
       case true =>
@@ -230,7 +238,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                 val lookupIndividual = Lookup(field.name, valueIndividual, x)
 
                 fvfDefs ::=
-                  FvfDefEntry(Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual),
+                    FvfDefEntry(Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual),
 //                              Trigger(lookupRcvr :: lookupIndividual :: Nil) :: Nil,
                               Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
                               Domain(field.name, valueIndividual))
@@ -246,6 +254,21 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   /* Manipulating quantified chunks */
 
+  /** Replaces all non-quantified chunks for `field` in `h` with a corresponding
+    * quantified chunk. That is, each chunk `x.field |-> v # p` will be replaced
+    * with a chunk `forall ?r :: r.field |-> fvf # ?r == x ? W : Z`, and the
+    * original value will be preserved by the assumption that `fvf(x) == v` (for
+    * a fresh field value function `fvf`, see `createFieldValueFunction`).
+    *
+    * `h` remains unchanged if it contains no non-quantified chunks for `field`.
+    *
+    * @param h A heap in which to quantify all chunks for `field`.
+    * @param field A field whose chunks in `h` are to be quantified.
+    * @return A pair `(h1, ts)` where `h1` is `h` except that all non-quantified
+    *         chunks for `field` have been replaced by corresponding quantified
+    *         chunks. `ts` is the set of assumptions axiomatising the fresh
+    *         field value function `fvf`.
+    */
   def quantifyChunksForField(h: H, field: Field): (H, Set[Term]) = {
     val (chunks, ts) =
       h.values.map {
@@ -260,6 +283,19 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       }.unzip
 
     (H(chunks), toSet(ts))
+  }
+
+  def quantifyHeapForMentionedFields(h: H, expressions: Seq[ast.Expression]): (H, Set[Term]) = {
+    import silver.ast.utility
+
+    val fields =
+      utility.Visitor.deepCollect(expressions, utility.Nodes.subnodes) { case fa: ast.FieldAccess => fa.field }
+
+    fields.foldLeft((h, Set[Term]())){case ((hAcc, tsAcc), field) =>
+      val (h1, ts1) = quantifyChunksForField(hAcc, field)
+
+      (h1, tsAcc ++ ts1)
+    }
   }
 
   def splitSingleLocation(σ: S,
@@ -286,12 +322,14 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def splitLocations(σ: S,
                      h: H,
                      field: Field,
-                     skolemVar: Var,
+                     skolemVar: Term, //Var,
                      fraction: DefaultFractionalPermissions,
                      conditionalizedFraction: DefaultFractionalPermissions,
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                     : VerificationResult = {
+
+//    val skolemVar = fresh("sk", sorts.Ref)
 
     val (h1, ch, fvfDef, success) =
       split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
@@ -307,7 +345,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private def split(σ: S,
                     h: H,
                     field: Field,
-                    skolemVar: Var,
+                    skolemVar: Term, //Var,
                     rcvr: Term,
                     fraction: DefaultFractionalPermissions,
                     conditionalizedFraction: DefaultFractionalPermissions,
@@ -316,6 +354,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     def skol(t: Term) = t.replace(`?r`, skolemVar)
 
+    val skolemVarXXX = Var("r", sorts.Ref)
     val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFraction
@@ -347,12 +386,12 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
           if (constrainPermissions) {
             /* TODO: Add triggers (probably needs autoTriggers for terms ) */
-            assume(Forall(skolemVar,
+            assume(Forall(skolemVarXXX,
                           Implies(candidatePerms !== NoPerm(),
                                   skolemizedConditionalizedFraction < candidatePerms), Nil))
 
             residue ::= ch.copy(perm = ch.perm - permsTaken)
-          } else  if (!check(σ, Forall(skolemVar, skol(ch.perm - permsTaken) === NoPerm(), Nil)))
+          } else  if (!check(σ, Forall(skolemVarXXX, skol(ch.perm - permsTaken) === NoPerm(), Nil)))
             residue ::= ch.copy(perm = ch.perm - permsTaken)
 
           success = check(σ, skol(permsToTake) === NoPerm())

@@ -148,41 +148,65 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, /*set,*/ condition, rcvr, field, loss, fa) =>
+      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, condition, rcvr, field, loss, fa) =>
+        println(s"\n[Consumer/QuantifiedSetAccess] $φ")
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        println(s"  tQVar = $tQVar")
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
-        val σQVar = σ \+ γQVar
-//        eval(σQVar, set, pve, c)((tSet, c1) => {
+        val (h1, ts) = quantifiedChunkHelper.quantifyHeapForMentionedFields(σ.h, rcvr :: condition :: Nil)
+          /* If receiver or condition dereference a field which hasn't been quantified yet,
+           * then the evaluator will try to find a regular chunk for the quantified variable,
+           * which will fail.
+           * TODO: It would be better if the heap were quantified on-demand (e.g., in the
+           *       evaluator) AND if that quantified heap would be used afterwards as well
+           *       (which would currently not be possible since the evaluator cannot pass
+           *       on modified heaps).
+           */
+//          if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) (h, Set.empty[Term])
+//          else quantifiedChunkHelper.quantifyChunksForField(h, field)
+        assume(ts)
+        val σQVar = σ \ h1 \+ γQVar
         eval(σQVar, condition, pve, c)((tCond, c1) => {
-//          val tCond = SetIn(tQVar, tSet)
+          println(s"  tCond = $tCond")
           if (decider.check(σQVar, Not(tCond)))
-            /* The condition cannot be satisfied, hence we don't need to consume anything */
+            /* The condition cannot be satisfied, hence we don't need to consume anything. */
             Q(h, Unit, Nil, c1)
           else {
             decider.assume(tCond)
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
 
-            eval(σQVar, rcvr, pve, c1)((tRcvr, c1a) =>
+            eval(σQVar, rcvr, pve, c1)((tRcvr, c1a) => {
+              println(s"\n  tRcvr = $tRcvr")
               evalp(σQVar, loss, pve, c1a)((tPerm, c2) => {
 
 this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
 
                 decider.assert(σ, IsPositive(tPerm)) {
                   case true =>
-                    val (h2, ts) =
-                      if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) (h, Set.empty[Term])
-                      else quantifiedChunkHelper.quantifyChunksForField(h, field)
+                    val (h2, ts) = quantifiedChunkHelper.quantifyChunksForField(h, field)
+//                      if (quantifiedChunkHelper.isQuantifiedFor(h, field.name)) (h, Set.empty[Term])
+//                      else quantifiedChunkHelper.quantifyChunksForField(h, field)
                     assume(ts)
                     val arbitraryInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
                     val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, arbitraryInverseRcvr, tCond, tPerm)
-                    quantifiedChunkHelper.splitLocations(σ, h2, field, tQVar, tPerm * p, condPerms * p, c2) {
+                    println(s"  h2 = $h2")
+                    println(s"  tPerm = $tPerm")
+                    println(s"  arbitraryInverseRcvr = $arbitraryInverseRcvr")
+                    println(s"  condPerms = $condPerms")
+                    /* TODO: In cases where the receiver is just the quantified variable, i.e., where
+                     *       explicitly and implicitly quantified receiver coincide, we can save a
+                     *       fresh term by passing in tQVar such that it can be used instead of a
+                     *       fresh skolem variable.
+                     */
+//                    quantifiedChunkHelper.splitLocations(σ, h2, field, /*tQVar,*/ tPerm * p, condPerms * p, c2) {
+                    quantifiedChunkHelper.splitLocations(σ, h2, field, tRcvr, tPerm * p, condPerms * p, c2) {
                       case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
                       case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
                     }
 
                   case false =>
-                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}}))}})
+                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}})})}})
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>

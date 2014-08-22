@@ -212,7 +212,6 @@ trait DefaultProducer[ST <: Store[ST],
             Q(σ.h + ch, c3)}))
 
       case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, condition, rcvr, field, gain, _) =>
-        /* TODO: Translate triggers */
         println("\n[Producer/QuantifiedSetAccess]")
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
@@ -245,7 +244,6 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
 
           println(s"  tQVar = $tQVar")
           println(s"  tCond = $tCond")
-          println(s"  tRcvr = $tRcvr")
 
           val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil)
           assume(πAuxWithoutQVar)
