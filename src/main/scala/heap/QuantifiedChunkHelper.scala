@@ -101,9 +101,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     TermPerm(Ite(arbitraryCondition, perms, NoPerm()))
 
-//  rcvr match {
+//  concreteReceiver match {
 //    case SeqAt(s, i) => ???
-//    case _: Var => TermPerm(Ite(condition.replace(rcvr, `?r`), perms, NoPerm()))
+//    case _: Var => TermPerm(Ite(condition.replace(concreteReceiver, `?r`), perms, NoPerm()))
   }
 
   /** Returns `t` wrapped in the inverse function that belongs to `t`.
@@ -161,7 +161,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   /* TODO: Currently not needed. Not needing it might simplify unifying withValue and split */
 //  def withValue(σ: S,
 //                h: H,
-//                rcvr: Term,
+//                concreteReceiver: Term,
 //                field: Field,
 //                pve: PartialVerificationError,
 //                locacc: LocationAccess,
@@ -171,7 +171,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 //
 //    val qvar = Var("x", sorts.Ref)
 //
-//    withValue(σ, h, rcvr, Some(qvar), field, pve, locacc, c)((t, fvfDef) => {
+//    withValue(σ, h, concreteReceiver, Some(qvar), field, pve, locacc, c)((t, fvfDef) => {
 //      assume(fvfDef.quantifiedValues(qvar))
 //      assume(fvfDef.totalDomain)
 //
@@ -282,7 +282,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def splitSingleLocation(σ: S,
                           h: H,
                           field: Field,
-                          rcvr: Term,
+                          concreteReceiver: Term,
                           fraction: DefaultFractionalPermissions,
                           conditionalizedFraction: DefaultFractionalPermissions,
                           c: C)
@@ -290,7 +290,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                          : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, fresh("sk", sorts.Ref), rcvr, fraction, conditionalizedFraction, c)
+      split(σ, h, field, fresh("sk", sorts.Ref), concreteReceiver, fraction, conditionalizedFraction, c)
 
     if (success) {
       assume(fvfDef.singletonValues)
@@ -303,7 +303,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def splitLocations(σ: S,
                      h: H,
                      field: Field,
-                     skolemVar: Term, //Var,
+                     quantifiedReceiver: Term,
                      fraction: DefaultFractionalPermissions,
                      conditionalizedFraction: DefaultFractionalPermissions,
                      c: C)
@@ -311,10 +311,10 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
+      split(σ, h, field, quantifiedReceiver, quantifiedReceiver, fraction, conditionalizedFraction, c)
 
     if (success) {
-      assume(fvfDef.quantifiedValues(skolemVar))
+      assume(fvfDef.quantifiedValues(quantifiedReceiver))
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
     } else
@@ -324,28 +324,28 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private def split(σ: S,
                     h: H,
                     field: Field,
-                    skolemVar: Term,
-                    rcvr: Term,
+                    arbitraryReceiver: Term,
+                    concreteReceiver: Term,
                     fraction: DefaultFractionalPermissions,
                     conditionalizedFraction: DefaultFractionalPermissions,
                     c: C)
                    : (H, QuantifiedChunk, FvfDef, Boolean) = {
 
-    def skol(t: Term) = t.replace(`?r`, skolemVar)
+    def repl(t: Term) = t.replace(`?r`, arbitraryReceiver)
 
     val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFraction
     var success = false
     val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
-    val fvfLookup = Lookup(field.name, fvf, rcvr)
+    val fvfLookup = Lookup(field.name, fvf, concreteReceiver)
     var fvfDefs: List[FvfDefEntry] = Nil
 
     candidates foreach {
       case ch: QuantifiedChunk =>
-        val candidatePerms = skol(ch.perm).asInstanceOf[DefaultFractionalPermissions]
-        val candidateValue = skol(ch.value)
-        val candidateLookup = Lookup(field.name, candidateValue, skolemVar)
+        val candidatePerms = repl(ch.perm).asInstanceOf[DefaultFractionalPermissions]
+        val candidateValue = repl(ch.value)
+        val candidateLookup = Lookup(field.name, candidateValue, arbitraryReceiver)
 
         fvfDefs ::=
           FvfDefEntry(Implies(candidatePerms > NoPerm(), fvfLookup === candidateLookup),
@@ -358,7 +358,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
         else {
           val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
-          val permsTaken = PermMin(permsToTake, Ite(`?r` === rcvr, ch.perm, NoPerm()))
+          val permsTaken = PermMin(permsToTake, Ite(`?r` === concreteReceiver, ch.perm, NoPerm()))
           permsToTake = permsToTake - permsTaken
 
           if (constrainPermissions) {
@@ -371,7 +371,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
           } else  if (!check(σ, Forall(`?r`, ch.perm - permsTaken === NoPerm(), Nil)))
             residue ::= ch.copy(perm = ch.perm - permsTaken)
 
-          success = check(σ, skol(permsToTake) === NoPerm())
+          success = check(σ, repl(permsToTake) === NoPerm())
         }
 
       case ch =>
@@ -379,7 +379,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     }
 
     val hResidue = H(residue ++ ignored)
-    val ch = QuantifiedChunk(rcvr, field.name, fvf, conditionalizedFraction)
+    val ch = QuantifiedChunk(concreteReceiver, field.name, fvf, conditionalizedFraction)
     val fvfDef = FvfDef(field, fvf, fvfDefs)
 
     (hResidue, ch, fvfDef, success)

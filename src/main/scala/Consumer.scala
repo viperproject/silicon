@@ -181,8 +181,8 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
                   case true =>
                     val (h2, ts) = quantifiedChunkHelper.quantifyChunksForField(h, field)
                     assume(ts)
-                    val arbitraryInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
-                    val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, arbitraryInverseRcvr, tCond, tPerm)
+                    val quantifiedInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
+                    val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, quantifiedInverseRcvr, tCond, tPerm)
                     quantifiedChunkHelper.splitLocations(σ, h2, field, tRcvr, tPerm * p, condPerms * p, c2) {
                       case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
                       case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
