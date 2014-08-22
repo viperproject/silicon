@@ -1202,13 +1202,6 @@ case class Second(t: Term) extends SnapshotTerm {
 
 /* Quantified permissions */
 
-object `?r` extends Symbol with Term {
-  val id = "?r"
-  val sort = sorts.Ref
-
-  override val toString = id
-}
-
 case class Lookup(field: String, fvf: Term, at: Term) extends Term {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
   utils.assertSort(at, "receiver", sorts.Ref)
@@ -1288,6 +1281,7 @@ object Distinct {
 
 object predef {
   val `?s` = Var("s", sorts.Snap) // with SnapshotTerm
+  val `?r` = Var("s", sorts.Ref)
 }
 
 /* Convenience functions */

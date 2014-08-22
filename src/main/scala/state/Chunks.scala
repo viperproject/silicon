@@ -9,7 +9,8 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import state.terms.{Term, DefaultFractionalPermissions, `?r`, Var}
+import state.terms.{Term, DefaultFractionalPermissions}
+import state.terms.predef.`?r`
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 

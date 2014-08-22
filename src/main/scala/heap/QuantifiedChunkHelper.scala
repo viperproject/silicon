@@ -17,6 +17,7 @@ import interfaces.decider.Decider
 import viper.silicon.state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
 import state.terms.utils.BigPermSum
 import state.terms._
+import state.terms.predef.`?r`
 import state.terms.sorts.FieldValueFunction
 
 class QuantifiedChunkHelper[ST <: Store[ST],
@@ -86,12 +87,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     val arbitraryInverseRcvr = getInverseFunction(rcvr)(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
 
-    println("\n[QCH/createQuantifiedChunk]")
-    println(s"  qvar = $qvar")
-    println(s"  arbitraryInverseRcvr = $arbitraryInverseRcvr")
-    println(s"  rcvr = $rcvr")
-    println(s"  condition = $condition")
-
     QuantifiedChunk(`?r`, field.name, value, condPerms)
   }
 
@@ -140,16 +135,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     * Computes the total permission amount held in the given heap for the given chunk identifier.
     */
   def permission(h: H, id: ChunkIdentifier): DefaultFractionalPermissions = {
-    println("\n[permission]")
-    println(s"  id = $id")
-    println(s"  id.args = ${id.args}")
-    println(s"  h.values = ${h.values}")
-
     val perms = h.values.toSeq.collect {
       case permChunk: QuantifiedChunk if permChunk.name == id.name => permChunk.perm.replace(`?r`, id.args.last)
     }.asInstanceOf[Iterable[DefaultFractionalPermissions]]
-
-    println(s"  perms = $perms")
 
     BigPermSum(perms, Predef.identity)
   }
@@ -207,19 +195,12 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                        (Q: (Lookup, FvfDef) => VerificationResult)
                        : VerificationResult = {
 
-    println(s"\n[QCH/withValue] $locacc")
-    println("  rcvr !== Null() = " + (rcvr !== Null()))
-    println("  rcvr !== Null()? " + check(σ, rcvr !== Null()))
-
     assert(σ, rcvr !== Null()) {
       case false =>
-        println("Receiver might be null!")
         Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
 
       case true =>
-        val permsXXX = permission(h, FieldChunkIdentifier(rcvr, field.name))
-        println(s"permsXXX = $permsXXX")
-        assert(σ, NoPerm() < permsXXX) {
+        assert(σ, NoPerm() < permission(h, FieldChunkIdentifier(rcvr, field.name))) {
           case false =>
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
@@ -329,8 +310,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                     : VerificationResult = {
 
-//    val skolemVar = fresh("sk", sorts.Ref)
-
     val (h1, ch, fvfDef, success) =
       split(σ, h, field, skolemVar, skolemVar, fraction, conditionalizedFraction, c)
 
@@ -345,7 +324,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private def split(σ: S,
                     h: H,
                     field: Field,
-                    skolemVar: Term, //Var,
+                    skolemVar: Term,
                     rcvr: Term,
                     fraction: DefaultFractionalPermissions,
                     conditionalizedFraction: DefaultFractionalPermissions,
@@ -354,11 +333,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     def skol(t: Term) = t.replace(`?r`, skolemVar)
 
-    val skolemVarXXX = Var("r", sorts.Ref)
     val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFraction
-    val skolemizedConditionalizedFraction = skol(conditionalizedFraction).asInstanceOf[DefaultFractionalPermissions]
     var success = false
     val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
     val fvfLookup = Lookup(field.name, fvf, rcvr)
@@ -386,12 +363,12 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
           if (constrainPermissions) {
             /* TODO: Add triggers (probably needs autoTriggers for terms ) */
-            assume(Forall(skolemVarXXX,
-                          Implies(candidatePerms !== NoPerm(),
-                                  skolemizedConditionalizedFraction < candidatePerms), Nil))
+            assume(Forall(`?r`,
+                          Implies(ch.perm !== NoPerm(),
+                                  conditionalizedFraction < ch.perm), Nil))
 
             residue ::= ch.copy(perm = ch.perm - permsTaken)
-          } else  if (!check(σ, Forall(skolemVarXXX, skol(ch.perm - permsTaken) === NoPerm(), Nil)))
+          } else  if (!check(σ, Forall(`?r`, ch.perm - permsTaken === NoPerm(), Nil)))
             residue ::= ch.copy(perm = ch.perm - permsTaken)
 
           success = check(σ, skol(permsToTake) === NoPerm())
