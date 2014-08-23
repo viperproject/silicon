@@ -16,6 +16,7 @@ case class DefaultContext(program: ast.Program,
                           visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
+                          additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           fapps: Map[ast.FuncApp, FApp] = Map())
     extends Context[DefaultContext] {
@@ -47,13 +48,14 @@ case class DefaultContext(program: ast.Program,
    */
 
   def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1, snapshotRecorder1, fapps1) =>
+    case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1, additionalTriggers1, snapshotRecorder1, fapps1) =>
       other match {
-        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`, snapshotRecorder2, fapps2) =>
+        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`, additionalTriggers2, snapshotRecorder2, fapps2) =>
+          val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
           val fapps3 = DefaultContext.conflictFreeUnionOrAbort(fapps1, fapps2)
           val snapshotRecorder3 = DefaultContext.merge(snapshotRecorder1, snapshotRecorder2)
 
-          copy(snapshotRecorder = snapshotRecorder3, fapps = fapps3)
+          copy(additionalTriggers = additionalTriggers3, snapshotRecorder = snapshotRecorder3, fapps = fapps3)
 
         case _ =>
           sys.error("Unexpected mismatch between contexts")

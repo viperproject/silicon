@@ -400,6 +400,8 @@ trait DefaultEvaluator[
             case (None, None) => c
           }
 
+          val c2 = c1.copy(additionalTriggers = tActualThenVar :: tActualElseVar :: c1.additionalTriggers)
+
           /* Ite with auxiliary terms */
           val tAuxIte = Ite(tActualIf.getOrElse(False()),
                             state.terms.utils.BigAnd(tAuxThen),
@@ -416,7 +418,7 @@ trait DefaultEvaluator[
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, c1)}
+          Q(tActualIte, c2)}
 
       /* Integers */
 
@@ -550,12 +552,12 @@ trait DefaultEvaluator[
 
         r && {
           val (tActual: Term, tAux: Set[Term], cOpt) = combine(localResults)
-          /* TODO: Translate SIL triggers as well */
-          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
-          val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
-          assume(tQuantAux)
           val c1 = cOpt.getOrElse(c0)
-          val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.drop(tVars.length))
+          val actualTriggers = triggers ++ c1.additionalTriggers.map(t => Trigger(t :: Nil))
+          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
+          val tQuant = Quantification(tQuantOp, tVars, tActual, actualTriggers)
+          assume(tQuantAux)
+          val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.drop(tVars.length), additionalTriggers = Nil)
           Q(tQuant, c2)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
@@ -672,7 +674,9 @@ trait DefaultEvaluator[
             val (tActualIn: Term, tAuxIn: Set[Term], cOpt) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, cOpt.getOrElse(c))}
+            val c1 = cOpt.getOrElse(c)
+            val c2 = c1.copy(additionalTriggers = tActualInVar :: c1.additionalTriggers)
+            Q(tActualInVar, c2)}
         } else
           Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
 
