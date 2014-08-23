@@ -54,7 +54,6 @@ trait DefaultEvaluator[
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
-  /*private*/ var quantifiedVars: Stack[Term] = Stack()
 
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C)
 			     (Q: (List[Term], C) => VerificationResult)
@@ -174,9 +173,11 @@ trait DefaultEvaluator[
           })
 
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
-        eval(σ, fa.rcv, pve, c)((tRcvr, c1) =>
-          quantifiedChunkHelper.withSingleValue(σ, σ.h, tRcvr, fa.field, pve, fa, c)((t) => {
-            Q(t, c1)}))
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+          assert(c.quantifiedVariables.length <= 1 && c.quantifiedVariables.headOption.map(_.sort == sorts.Ref).getOrElse(true),
+                 s"Expected at most one, ref-typed quantified variable, but found ${c.quantifiedVariables}")
+          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, c.quantifiedVariables.headOption, fa.field, pve, fa, c)((t) => {
+            Q(t, c1)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
@@ -380,12 +381,12 @@ trait DefaultEvaluator[
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
-          val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+          val quantifiedVarsSorts = c.quantifiedVariables.map(_.sort)
           val actualThenFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e1.typ))
           val actualElseFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e2.typ))
 
-          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), quantifiedVars)
-          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), quantifiedVars)
+          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), c.quantifiedVariables)
+          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), c.quantifiedVariables)
 
           /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
            *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
@@ -408,9 +409,9 @@ trait DefaultEvaluator[
           val tActualIte =
             Ite(tActualIf.getOrElse(False()),
                 if (localResultsThen.nonEmpty) tActualThenVar
-                else Apply(fresh("$deadThen", actualThenFuncSort), quantifiedVars),
+                else Apply(fresh("$deadThen", actualThenFuncSort), c1.quantifiedVariables),
                 if (localResultsElse.nonEmpty) tActualElseVar
-                else Apply(fresh("$deadElse", actualElseFuncSort), quantifiedVars))
+                else Apply(fresh("$deadElse", actualElseFuncSort), c1.quantifiedVariables))
 
           val actualTerms = And(tActualThen, tActualElse)
 
@@ -521,12 +522,12 @@ trait DefaultEvaluator[
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
+        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables)
 
         decider.pushScope()
-        quantifiedVars = tVars ++: quantifiedVars
 
         val r =
-          eval(σQuant, body, pve, c)((tBody, c1) =>
+          eval(σQuant, body, pve, c0)((tBody, c1) =>
             evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, c2) => {
               triggers = _triggers
               localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2.copy(fapps = Map.empty))
@@ -545,7 +546,6 @@ trait DefaultEvaluator[
                */
               Success()}))
 
-        quantifiedVars = quantifiedVars.drop(tVars.length)
         decider.popScope()
 
         r && {
@@ -554,7 +554,9 @@ trait DefaultEvaluator[
           val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
           val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
           assume(tQuantAux)
-          Q(tQuant, cOpt.getOrElse(c))}
+          val c1 = cOpt.getOrElse(c0)
+          val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.drop(tVars.length))
+          Q(tQuant, c2)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
         val err = PreconditionInAppFalse(fapp)
@@ -664,9 +666,9 @@ trait DefaultEvaluator[
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
 
           r && {
-            val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+            val quantifiedVarsSorts = c.quantifiedVariables.map(_.sort)
             val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
-            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), quantifiedVars)
+            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), c.quantifiedVariables)
             val (tActualIn: Term, tAuxIn: Set[Term], cOpt) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
@@ -991,7 +993,7 @@ trait DefaultEvaluator[
 
 
 	override def pushLocalState() {
-		fappCacheFrames = fappCache :: fappCacheFrames
+		fappCacheFrames = fappCache +: fappCacheFrames
 		super.pushLocalState()
 	}
 

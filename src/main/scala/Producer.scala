@@ -218,27 +218,22 @@ trait DefaultProducer[ST <: Store[ST],
         val σQVar = σ \+ γQVar
         val πPre = decider.π
         var πAux: Set[Term] = Set()
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
-
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
         decider.locally[(Term, Term, P, C)](QB =>
-          eval(σQVar, condition, pve, c)((tCond, c1) => {
+          eval(σQVar, condition, pve, c0)((tCond, c1) => {
             assume(tCond)
             eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
               evalp(σQVar, gain, pve, c2)((pGain, c3) => {
                 πAux = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term we want to keep */
                   QB(tCond, tRcvr, pGain, c3)}))})
-        ){case (tCond, tRcvr, pGain, c3) =>
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
-
+        ){case (tCond, tRcvr, pGain, c1) =>
+          val c3 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
           val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
 //          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
 //          decider.assume(tAuxQuant)
-
           val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil)
           assume(πAuxWithoutQVar)
           assume(πAuxWithQVarQuant)
-
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
 //          assume(Domain(field.name, snap) === tSet)
@@ -329,7 +324,7 @@ this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstan
   }
 
   override def pushLocalState() {
-    snapshotCacheFrames = snapshotCache :: snapshotCacheFrames
+    snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
     super.pushLocalState()
   }
 

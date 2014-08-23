@@ -404,6 +404,8 @@ object And extends Function2[Term, Term, Term] {
 		case _ => new And(el, er)
 	}
 
+  def apply(ts: Term*) = utils.BigAnd(ts)
+
 	def unapply(e: And) = Some((e.p0, e.p1))
 }
 

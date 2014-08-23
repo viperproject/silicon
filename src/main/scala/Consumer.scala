@@ -9,7 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, AssertionFalse}
+import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NonPositivePermission, AssertionFalse}
 import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -163,33 +163,49 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
            */
         assume(ts)
         val σQVar = σ \ h1 \+ γQVar
-        eval(σQVar, condition, pve, c)((tCond, c1) => {
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
+        eval(σQVar, condition, pve, c0)((tCond, c1) =>
           if (decider.check(σQVar, Not(tCond)))
             /* The condition cannot be satisfied, hence we don't need to consume anything. */
             Q(h, Unit, Nil, c1)
           else {
             decider.assume(tCond)
+            evalp(σQVar, loss, pve, c1)((tPerm, c2) =>
+              decider.assert(σ, IsPositive(tPerm)) {
+                case true =>
+                  decider.prover.logComment(s"xxxx before eval rcvr $rcvr")
+                  eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
+                    decider.prover.logComment(s"xxxx after eval rcvr $rcvr to $tRcvr")
+                    val receiverInjective =
+                      if (!decider.check(σQVar, FullPerm() < (tPerm + tPerm))) {
+                        val vx = Var("x", sorts.Ref)
+                        val vy = Var("y", sorts.Ref)
+                        Forall(vx :: vy :: Nil,
+                          Implies(And(tCond.replace(tQVar, vx),
+                            tCond.replace(tQVar, vy),
+                            tRcvr.replace(tQVar, vx) === tRcvr.replace(tQVar, vy)),
+                            vx === vy),
+                          Nil)
+                      } else
+                        True()
+                    decider.assert(σ, receiverInjective) {
+                      case true =>
+                        val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
+                        val (h2, ts) = quantifiedChunkHelper.quantifyChunksForField(h, field)
+                        assume(ts)
+                        val quantifiedInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
+                        val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, quantifiedInverseRcvr, tCond, tPerm)
+                        quantifiedChunkHelper.splitLocations(σ, h2, field, tRcvr, tQVar, tPerm * p, condPerms * p, c3a) {
+                          case Some((h3, ch, c4)) =>
+                            Q(h3, ch.value, /*ch :: */Nil, c4)
+                          case None =>
+                            Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
 
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = tQVar +: this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars
+                      case false =>
+                        Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
 
-            eval(σQVar, rcvr, pve, c1)((tRcvr, c1a) => {
-              evalp(σQVar, loss, pve, c1a)((tPerm, c2) => {
-
-this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars = this.asInstanceOf[DefaultEvaluator[ST, H, PC, C]].quantifiedVars.drop(1)
-
-                decider.assert(σ, IsPositive(tPerm)) {
-                  case true =>
-                    val (h2, ts) = quantifiedChunkHelper.quantifyChunksForField(h, field)
-                    assume(ts)
-                    val quantifiedInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
-                    val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, quantifiedInverseRcvr, tCond, tPerm)
-                    quantifiedChunkHelper.splitLocations(σ, h2, field, tRcvr, tPerm * p, condPerms * p, c2) {
-                      case Some((h3, ch, c3)) => Q(h3, ch.value, /*ch :: */Nil, c3)
-                      case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
-                    }
-
-                  case false =>
-                    Failure[ST, H, S](pve dueTo NonPositivePermission(loss))}})})}})
+                case false =>
+                  Failure[ST, H, S](pve dueTo NonPositivePermission(loss))})})
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>

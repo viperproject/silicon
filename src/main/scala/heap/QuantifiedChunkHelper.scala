@@ -39,11 +39,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private case class FvfDef(field: Field, fvf: Term, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
-    def quantifiedValues(qvar: Term/*Var*/) = {
-      // TODO: #######################  qvar still needed?  #######################
-      val qvarXXX = Var("r", sorts.Ref)
-      entries map (entry => Forall(qvarXXX, entry.partialValue, entry.valueTriggers))
-    }
+    def quantifiedValues(qvar: Var) =
+      entries map (entry => Forall(qvar, entry.partialValue, entry.valueTriggers))
 
     lazy val totalDomain = (
       Domain(field.name, fvf)
@@ -106,18 +103,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 //    case _: Var => TermPerm(Ite(condition.replace(concreteReceiver, `?r`), perms, NoPerm()))
   }
 
-  /** Returns `t` wrapped in the inverse function that belongs to `t`.
-    * If that would be the identity function, than `t` itself is returned.
-    * It is not checked whether or not `t` actually has an inverse function,
-    * the return value is determined purely syntactially. Such a check has to
-    * be made elsewhere.
-    *
-    * @param t A term whose inverse function is to be determined.
-    * @return The inverse function applied to `t`.
-    */
   def getInverseFunction(t: Term): Term => Term = t match {
-    case _: Var => Predef.identity //(arg: Term) => arg // t
-    case lookup: Lookup => (arg: Term) => Inverse(lookup, arg, lookup.at.sort) // Inverse(lookup, lookup.at.sort)
+    case _: Var => Predef.identity
+    case lookup: Lookup => (arg: Term) => Inverse(lookup, arg, lookup.at.sort)
     case _ => sys.error(s"Cannot determine inverse function for term $t")
   }
 
@@ -142,41 +130,43 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     BigPermSum(perms, Predef.identity)
   }
 
-  def withSingleValue(σ: S,
-                      h: H,
-                      rcvr: Term,
-                      field: Field,
-                      pve: PartialVerificationError,
-                      locacc: LocationAccess,
-                      c: C)
-                     (Q: Lookup => VerificationResult)
-                     : VerificationResult = {
-
-    withValue(σ, h, rcvr, None, field, pve, locacc, c)((t, fvfDef) => {
-      assume(fvfDef.singletonValues)
-      assume(fvfDef.totalDomain)
-      Q(t)})
-  }
-
-  /* TODO: Currently not needed. Not needing it might simplify unifying withValue and split */
-//  def withValue(σ: S,
-//                h: H,
-//                concreteReceiver: Term,
-//                field: Field,
-//                pve: PartialVerificationError,
-//                locacc: LocationAccess,
-//                c: C)
-//               (Q: Lookup => VerificationResult)
-//               : VerificationResult = {
+//  def withSingleValue(σ: S,
+//                      h: H,
+//                      rcvr: Term,
+//                      field: Field,
+//                      pve: PartialVerificationError,
+//                      locacc: LocationAccess,
+//                      c: C)
+//                     (Q: Lookup => VerificationResult)
+//                     : VerificationResult = {
 //
-//    val qvar = Var("x", sorts.Ref)
-//
-//    withValue(σ, h, concreteReceiver, Some(qvar), field, pve, locacc, c)((t, fvfDef) => {
-//      assume(fvfDef.quantifiedValues(qvar))
+//    withValue(σ, h, rcvr, None, field, pve, locacc, c)((t, fvfDef) => {
+//      assume(fvfDef.singletonValues)
 //      assume(fvfDef.totalDomain)
-//
 //      Q(t)})
 //  }
+
+  def withPotentiallyQuantifiedValue(σ: S,
+                                     h: H,
+                                     rcvr: Term,
+                                     qvarInRcvr: Option[Var],
+                                     field: Field,
+                                     pve: PartialVerificationError,
+                                     locacc: LocationAccess,
+                                     c: C)
+                                    (Q: Lookup => VerificationResult)
+                                    : VerificationResult = {
+
+    withValue(σ, h, rcvr, qvarInRcvr, field, pve, locacc, c)((t, fvfDef) => {
+      qvarInRcvr match {
+        case Some(qvar) => assume(fvfDef.quantifiedValues(qvar))
+        case None => assume(fvfDef.singletonValues)
+      }
+
+      assume(fvfDef.totalDomain)
+
+      Q(t)})
+  }
 
   /* TODO: Is conceptually very close to split(...) since the latter also computes a
    *       field value function over all chunks for a given field.
@@ -304,6 +294,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                      h: H,
                      field: Field,
                      quantifiedReceiver: Term,
+                     qvarInReceiver: Var,
                      fraction: DefaultFractionalPermissions,
                      conditionalizedFraction: DefaultFractionalPermissions,
                      c: C)
@@ -314,7 +305,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       split(σ, h, field, quantifiedReceiver, quantifiedReceiver, fraction, conditionalizedFraction, c)
 
     if (success) {
-      assume(fvfDef.quantifiedValues(quantifiedReceiver))
+      assume(fvfDef.quantifiedValues(qvarInReceiver))
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
     } else
@@ -406,8 +397,7 @@ object QuantifiedChunkHelper {
       case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
                       triggers,
                       ast.Implies(condition,
-                      ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr/*x3*/, f), gain)))
-//          if lvd.localVar == /*x2 && x2 ==*/ x3 =>
+                      ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
           if rcvr.exists(_ == lvd.localVar) =>
 
         assert(triggers.isEmpty, s"Did not expect triggers in impure forall, but found $triggers")
@@ -421,9 +411,7 @@ object QuantifiedChunkHelper {
          */
 
         (condition match {
-//          case ast.SetContains(`x3`, xs) => Some(xs)
           case ast.SetContains(lvd.localVar, xs) => Some(xs)
-//          case ast.And(ast.SetContains(`x3`, xs), _) => Some(xs)
           case ast.And(ast.SetContains(lvd.localVar, xs), _) => Some(xs)
           case _ => None
         }).map {
