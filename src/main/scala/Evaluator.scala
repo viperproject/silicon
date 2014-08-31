@@ -51,7 +51,6 @@ trait DefaultEvaluator[
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
-  /*private*/ var quantifiedVars: Stack[Term] = Stack()
 
 	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C)
 			     (Q: (List[Term], C) => VerificationResult)
@@ -372,12 +371,12 @@ trait DefaultEvaluator[
           /* Conjunct all auxiliary terms (sort: bool). */
           val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
 
-          val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+          val quantifiedVarsSorts = c.quantifiedVariables.map(_.sort)
           val actualThenFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e1.typ))
           val actualElseFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e2.typ))
 
-          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), quantifiedVars)
-          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), quantifiedVars)
+          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), c.quantifiedVariables)
+          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), c.quantifiedVariables)
 
           /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
            *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
@@ -391,6 +390,8 @@ trait DefaultEvaluator[
             case (None, None) => c
           }
 
+          val c2 = c1.copy(additionalTriggers = tActualThenVar :: tActualElseVar :: c1.additionalTriggers)
+
           /* Ite with auxiliary terms */
           val tAuxIte = Ite(tActualIf.getOrElse(False()),
                             state.terms.utils.BigAnd(tAuxThen),
@@ -400,14 +401,14 @@ trait DefaultEvaluator[
           val tActualIte =
             Ite(tActualIf.getOrElse(False()),
                 if (localResultsThen.nonEmpty) tActualThenVar
-                else Apply(fresh("$deadThen", actualThenFuncSort), quantifiedVars),
+                else Apply(fresh("$deadThen", actualThenFuncSort), c1.quantifiedVariables),
                 if (localResultsElse.nonEmpty) tActualElseVar
-                else Apply(fresh("$deadElse", actualElseFuncSort), quantifiedVars))
+                else Apply(fresh("$deadElse", actualElseFuncSort), c1.quantifiedVariables))
 
           val actualTerms = And(tActualThen, tActualElse)
 
           assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, c1)}
+          Q(tActualIte, c2)}
 
       /* Integers */
 
@@ -513,12 +514,12 @@ trait DefaultEvaluator[
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
+        val c0 = c.copy(quantifiedVariables = tVars.toList ::: c.quantifiedVariables)
 
         decider.pushScope()
-        quantifiedVars = tVars ++: quantifiedVars
 
         val r =
-          eval(σQuant, body, pve, c)((tBody, c1) =>
+          eval(σQuant, body, pve, c0)((tBody, c1) =>
             evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, c2) => {
               triggers = _triggers
               localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2.copy(fapps = Map.empty))
@@ -537,16 +538,17 @@ trait DefaultEvaluator[
                */
               Success()}))
 
-        quantifiedVars = quantifiedVars.drop(tVars.length)
         decider.popScope()
 
         r && {
           val (tActual: Term, tAux: Set[Term], cOpt) = combine(localResults)
-          /* TODO: Translate SIL triggers as well */
-          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
-          val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
+          val c1 = cOpt.getOrElse(c0)
+          val actualTriggers = triggers ++ c1.additionalTriggers.map(t => Trigger(t :: Nil))
+          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
+          val tQuant = Quantification(tQuantOp, tVars, tActual, actualTriggers)
           assume(tQuantAux)
-          Q(tQuant, cOpt.getOrElse(c))}
+          val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.drop(tVars.length), additionalTriggers = Nil)
+          Q(tQuant, c2)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
         val err = PreconditionInAppFalse(fapp)
@@ -582,7 +584,6 @@ trait DefaultEvaluator[
           consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             if (fappCache.contains(tFA)) {
-              logger.debug("[Eval(FApp)] Took cache entry for " + fapp)
               val piFB = fappCache(tFA)
               assume(piFB)
               Q(tFA, c3)
@@ -657,13 +658,15 @@ trait DefaultEvaluator[
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
 
           r && {
-            val quantifiedVarsSorts = quantifiedVars.map(_.sort)
+            val quantifiedVarsSorts = c.quantifiedVariables.map(_.sort)
             val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
-            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), quantifiedVars)
+            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), c.quantifiedVariables)
             val (tActualIn: Term, tAuxIn: Set[Term], cOpt) = combine(localResults, tActualInVar === _)
               /* TODO: See comment about performance in case ast.Ite */
             assume(tAuxIn + tActualIn)
-            Q(tActualInVar, cOpt.getOrElse(c))}
+            val c1 = cOpt.getOrElse(c)
+            val c2 = c1.copy(additionalTriggers = tActualInVar :: c1.additionalTriggers)
+            Q(tActualInVar, c2)}
         } else
           Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
 
@@ -984,7 +987,7 @@ trait DefaultEvaluator[
 
 
 	override def pushLocalState() {
-		fappCacheFrames = fappCache :: fappCacheFrames
+		fappCacheFrames = fappCache +: fappCacheFrames
 		super.pushLocalState()
 	}
 

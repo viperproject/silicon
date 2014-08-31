@@ -281,7 +281,6 @@ class DefaultVerifier[ST <: Store[ST],
 
   override def reset() {
     super.reset()
-    ev.quantifiedVars = Stack()
     ev.fappCache = Map()
     ev.fappCacheFrames = Stack()
     ev.currentGuards = Stack()
