@@ -95,19 +95,6 @@ trait DefaultEvaluator[
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
 
-    internalEval(σ, e, pve, c)((t, c1) => {
-      Q(t, c1)
-    })
-  }
-
-	/* Attention: Only use eval(σ, e, m, c)(Q) inside of internalEval, because
-	 *   - eval adds an "Evaluating" operation to the context
-	 *   - eval sets the source node of the resulting term
-	 */
-	private def internalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
-                          (Q: (Term, C) => VerificationResult)
-                          : VerificationResult = {
-
 		/* For debugging only */
 		e match {
 			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm

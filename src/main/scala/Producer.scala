@@ -110,20 +110,6 @@ trait DefaultProducer[ST <: Store[ST],
                       (Q: (H, C) => VerificationResult)
                       : VerificationResult = {
 
-    internalProduce(σ, sf, p, φ, pve, c)((h, c1) => {
-      Q(h, c1)
-    })
-  }
-
-  private def internalProduce(σ: S,
-                              sf: Sort => Term,
-                              p: P,
-                              φ: ast.Expression,
-                              pve: PartialVerificationError,
-                              c: C)
-                             (Q: (H, C) => VerificationResult)
-                             : VerificationResult = {
-
     if (!φ.isInstanceOf[ast.And]) {
       logger.debug(s"\nPRODUCE ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))

@@ -95,17 +95,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
 
   protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
-			                 (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                       (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult = {
-
-    internalConsume(σ, h, p, φ, pve, c)((h1, s1, dcs, c1) => {
-      Q(h1, s1, dcs, c1)
-    })
-  }
-
-  private def internalConsume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
-                             (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-                             : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
       logger.debug(s"\nCONSUME ${φ.pos}: $φ")
