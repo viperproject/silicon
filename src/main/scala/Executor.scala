@@ -175,17 +175,8 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   private def exec(σ: S, stmt: ast.Statement, c: C)
-                  (Q: (S, C) => VerificationResult)
+			            (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
-
-    actualExec(σ, stmt, c)((σ1, c1) => {
-      Q(σ1, c1)
-    })
-  }
-
-	private def actualExec(σ: S, stmt: ast.Statement, c: C)
-			    (Q: (S, C) => VerificationResult)
-          : VerificationResult = {
 
     /* For debugging-purposes only */
     stmt match {
