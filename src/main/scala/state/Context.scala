@@ -9,7 +9,7 @@ package silicon
 package state
 
 import interfaces.state.{Context, Mergeable}
-import state.terms.{FApp, Term, Var}
+import terms.{Var, FApp, Term}
 import theories.SnapshotRecorder
 
 case class DefaultContext(program: ast.Program,
