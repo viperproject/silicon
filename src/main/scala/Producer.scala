@@ -132,8 +132,8 @@ trait DefaultProducer[ST <: Store[ST],
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
         val s = sf(sorts.Snap)
-        val s0 = mkSnap(a0, c)
-        val s1 = mkSnap(a1, c)
+        val s0 = mkSnap(a0, c.program)
+        val s1 = mkSnap(a1, c.program)
         val tSnapEq = Eq(s, Combine(s0, s1))
 
         assume(tSnapEq)
@@ -187,7 +187,7 @@ trait DefaultProducer[ST <: Store[ST],
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           evalp(σ, gain, pve, c1)((pGain, c2) => {
             assume(NoPerm() < pGain)
-            val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
+            val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             val c3 = c2.snapshotRecorder match {
@@ -210,62 +210,73 @@ trait DefaultProducer[ST <: Store[ST],
     produced
   }
 
-  private def getOptimalSnapshotSort(φ: ast.Expression, c: C): (Sort, Boolean) = φ match {
-    case _ if φ.isPure =>
-      (sorts.Snap, true)
+  private def getOptimalSnapshotSort(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil)
+                                    : (Sort, Boolean) =
 
-    case ast.AccessPredicate(locacc, _) => locacc match {
-      case fa: ast.FieldAccess => (toSort(fa.field.typ), false)
-      case pa: ast.PredicateAccess => getOptimalSnapshotSort(c.program.findPredicate(pa.predicateName).body, c)
-      /* TODO: Most likely won't terminate for a predicate that only contains
-       *       itself in its body, e.g., predicate P(x) {P(x)}.
-       */
-    }
+    φ match {
+      case _ if φ.isPure =>
+        (sorts.Snap, true)
 
-    case ast.Implies(e0, φ1) =>
-      /* φ1 must be impure, otherwise the first case would have applied. */
-      getOptimalSnapshotSort(φ1, c)
+      case ast.AccessPredicate(locacc, _) => locacc match {
+        case fa: ast.FieldAccess =>
+          (toSort(fa.field.typ), false)
 
-    case ast.And(φ1, φ2) =>
-      /* At least one of φ1, φ2 must be impure, otherwise ... */
-      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), c)
-
-    case ast.Ite(_, φ1, φ2) =>
-      /* At least one of φ1, φ2 must be impure, otherwise ... */
-
-      def findCommonSort() = {
-        val (s1, isPure1) = getOptimalSnapshotSort(φ1, c)
-        val (s2, isPure2) = getOptimalSnapshotSort(φ2, c)
-        val s = if (s1 == s2) s1 else sorts.Snap
-        val isPure = isPure1 && isPure2
-        (s, isPure)
+        case pa: ast.PredicateAccess =>
+          if (!visited.contains(pa.predicateName))
+            getOptimalSnapshotSort(program.findPredicate(pa.predicateName).body, program, pa.predicateName +: visited)
+          else
+          /* We detected a cycle in the predicate definition and thus stop
+           * inspecting the predicate bodies.
+           */
+            (sorts.Snap, false)
       }
 
-      getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, c)
+      case ast.Implies(e0, φ1) =>
+        /* φ1 must be impure, otherwise the first case would have applied. */
+        getOptimalSnapshotSort(φ1, program, visited)
 
-    case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-      /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-      (toSort(f.typ), false)
+      case ast.And(φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+        getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), program, visited)
 
-    case _ =>
-      (sorts.Snap, false)
-  }
+      case ast.Ite(_, φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+
+        def findCommonSort() = {
+          val (s1, isPure1) = getOptimalSnapshotSort(φ1, program, visited)
+          val (s2, isPure2) = getOptimalSnapshotSort(φ2, program, visited)
+          val s = if (s1 == s2) s1 else sorts.Snap
+          val isPure = isPure1 && isPure2
+          (s, isPure)
+        }
+
+        getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
+
+      case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
+        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
+        (toSort(f.typ), false)
+
+      case _ =>
+        (sorts.Snap, false)
+    }
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
                                              fIfBothPure: () => (Sort, Boolean),
-                                             c: C)
+                                             program: ast.Program,
+                                             visited: Seq[String])
                                             : (Sort, Boolean) = {
 
-    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, c)
-    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, c)
+    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, program, visited)
+    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, program, visited)
     else fIfBothPure()
   }
 
-  private def mkSnap(φ: ast.Expression, c: C): Term = getOptimalSnapshotSort(φ, c) match {
-    case (sorts.Snap, true) => Unit
-    case (sort, _) => fresh(sort)
-  }
+  private def mkSnap(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil): Term =
+    getOptimalSnapshotSort(φ, program, visited) match {
+      case (sorts.Snap, true) => Unit
+      case (sort, _) => fresh(sort)
+    }
 
   override def pushLocalState() {
     snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
