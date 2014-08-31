@@ -168,9 +168,15 @@ class DefaultDecider[ST <: Store[ST],
                 (Q: R => VerificationResult)
                 : VerificationResult = {
 
-    pushScope()
     var ir: R = null.asInstanceOf[R]
-    val r: VerificationResult = block(_ir  => {ir = _ir; Success()})
+
+    pushScope()
+
+    val r: VerificationResult = block(_ir  => {
+      Predef.assert(ir == null, s"Unexpected intermediate result $ir")
+      ir = _ir
+      Success()})
+
     popScope()
 
     r && Q(ir)
