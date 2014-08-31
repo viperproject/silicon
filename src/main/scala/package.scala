@@ -25,7 +25,7 @@ package object silicon {
   @inline
   def toMap[K, V](it: Iterable[(K, V)]): Map[K, V] = Map.empty ++ it
 
-  type Stack[E] = List[E]
+  type Stack[E] = Seq[E]
   val Stack = List
 
   /* Mutable collections with a deterministic iteration order */

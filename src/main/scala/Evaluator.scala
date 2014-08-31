@@ -514,7 +514,7 @@ trait DefaultEvaluator[
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
-        val c0 = c.copy(quantifiedVariables = tVars.toList ::: c.quantifiedVariables)
+        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables)
 
         decider.pushScope()
 

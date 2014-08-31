@@ -268,7 +268,7 @@ trait DefaultProducer[ST <: Store[ST],
   }
 
   override def pushLocalState() {
-    snapshotCacheFrames = snapshotCache :: snapshotCacheFrames
+    snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
     super.pushLocalState()
   }
 

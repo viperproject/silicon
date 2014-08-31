@@ -98,7 +98,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
 		((if (exploreTrueBranch) {
 			pushLocalState()
-      currentGuards = guardsTrue :: currentGuards
+      currentGuards = guardsTrue +: currentGuards
 
       val result =
         decider.inScope {
@@ -118,7 +118,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			&&
 		(if (exploreFalseBranch) {
 			pushLocalState()
-      currentGuards = guardsFalse :: currentGuards
+      currentGuards = guardsFalse +: currentGuards
 
       val result =
         decider.inScope {
