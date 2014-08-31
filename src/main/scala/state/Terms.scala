@@ -315,7 +315,7 @@ class Not(val p: Term) extends BooleanTerm with commonnodes.StructuralEqualityUn
 	}
 }
 
-object Not {
+object Not extends (Term => Term) {
 	def apply(e0: Term) = e0 match {
 		case Not(e1) => e1
 		case True() => False()
@@ -323,7 +323,7 @@ object Not {
 		case _ => new Not(e0)
 	}
 
-	def unapply(e: Not) = Some((e.p))
+	def unapply(e: Not) = Some(e.p)
 }
 
 class Or(val p0: Term, val p1: Term) extends BooleanTerm
