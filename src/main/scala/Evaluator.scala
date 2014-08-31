@@ -181,41 +181,9 @@ trait DefaultEvaluator[
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        /* TODO: It should no longer be possible to accumulate local results, because
-         *       all branching constructs are locally evaluated themselves.
-         *       Hence, implement evaluation of AND similar to that of OR.
-         *       Try to reuse code!
-         */
-        var πPre: Set[Term] = Set()
-        var t0: Option[Term] = None
-        var localResults: List[LocalEvaluationResult] = Nil
-
-        eval(σ, e0, pve, c)((_t0, c1) => {
-          assert(t0.isEmpty || t0.get == _t0, s"Unexpected difference: $t0 vs ${_t0}")
-
-          t0 = Some(_t0)
-          πPre = decider.π
-
-          decider.pushScope()
-          /* TODO: Add a branch-function that only takes a true-continuation.
-          *       Give it a more appropriate name, one that expresses
-          *       that it is more a continue-if-no-contradiction thing.
-          */
-          val r =
-            branch(σ, t0.get, c1,
-              (c2: C) =>
-                eval(σ, e1, pve, c2)((_t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, _t1, decider.π -- (πPre + t0.get), c3)
-                  Success()}),
-              (c2: C) => Success())
-
-          decider.popScope()
-
-          r && {
-            val (t1: Term, tAux: Set[Term], cOpt) = combine(localResults)
-            val tAnd = And(t0.get, t1)
-            assume(tAux)
-            Q(tAnd, cOpt.getOrElse(c1))}})
+        evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
+          val tAnd = And(t0, optT1.getOrElse(True()))
+          Q(tAnd, c1)})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -223,44 +191,9 @@ trait DefaultEvaluator[
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
-        /* Evaluating the disjuncts should never non-locally branch, because
-         *   1. OR may not contain any access predicates, and consequently no impure conditionals
-         *   2. OR may contain an unfolding, but it will be evaluated locally, thus any
-         *      potential branching should not be witnessed by the evaluation of OR.
-         * It should therefore not be necessary to accumulate local evaluation results, or to
-         * consider the brancher guards.
-         */
-        var πPre: Set[Term] = Set()
-        var t0: Option[Term] = None
-        var t1: Option[Term] = None
-        var πt1: Set[Term] = Set()
-        var innerC: Option[C] = None
-
-        eval(σ, e0, pve, c)((_t0, c1) => {
-          assert(t0.isEmpty, s"Unexpected branching occurred while locally evaluating $e0")
-          t0 = Some(_t0)
-          πPre = decider.π
-
-          decider.pushScope()
-          /* TODO: See comment to short-circuiting evaluation of AND */
-          val t0Neg = Not(t0.get)
-          val r =
-            branch(σ, t0Neg, c1,
-              (c2: C) =>
-                eval(σ, e1, pve, c2)((_t1, c3) => {
-                  assert(t1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
-                  t1 = Some(_t1)
-                  πt1 = decider.π -- (πPre + t0Neg) /* Removing t0Neg from πt1 is crucial! */
-                  innerC = Some(c3)
-                  Success()}),
-              (c2: C) => Success())
-          decider.popScope()
-
-          r && {
-            val tAux = state.terms.utils.BigAnd(πt1)
-            val tOr = Or(t0.get, t1.getOrElse(True()))
-            assume(tAux)
-            Q(tOr, innerC.getOrElse(c1))}})
+        evalDependently(σ, e0, e1, Not, pve, c)((t0, optT1, c1) => {
+          val tOr = Or(t0, optT1.getOrElse(True()))
+          Q(tOr, c1)})
 
       case _: ast.Implies if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
@@ -351,8 +284,6 @@ trait DefaultEvaluator[
                   Success()})})})
 
         decider.popScope()
-
-        val localResults = localResultsThen ::: localResultsElse
 
         r && {
           /* Conjunct all auxiliary terms (sort: bool). */
@@ -972,6 +903,49 @@ trait DefaultEvaluator[
       Q(Trigger(ts ++ fappTriggers.flatten), c1))
   }
 
+  /* Evaluate `e0`, and only evaluate `e1` if `t0Transformer(t0)` is not guaranteed
+   * to be false.
+   * Attention: `e1` is not expected to branch; if it does, and exception will be
+   * thrown.
+   */
+  private def evalDependently(σ: S,
+                              e0: ast.Expression,
+                              e1: ast.Expression,
+                              t0Transformer: Term => Term,
+                              pve: PartialVerificationError, c: C)
+                             (Q: (Term, Option[Term], C) => VerificationResult)
+                             : VerificationResult = {
+
+      var πPre: Set[Term] = Set()
+      var optT1: Option[Term] = None /* e1 won't be evaluated if e0 cannot be satisfied */
+      var πAux: Set[Term] = Set()
+      var optInnerC: Option[C] = None
+
+      eval(σ, e0, pve, c)((t0, c1) => {
+        πPre = decider.π
+
+        decider.pushScope()
+
+        val guard = t0Transformer(t0)
+        val r =
+          branch(σ, guard, c1,
+            (c2: C) =>
+              eval(σ, e1, pve, c2)((t1, c3) => {
+                assert(optT1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
+                optT1 = Some(t1)
+                πAux = decider.π -- (πPre + guard)
+                  /* Removing guard from πAux is crucial, it is not part of the aux. terms */
+                optInnerC = Some(c3)
+                Success()}),
+            (c2: C) => Success())
+
+        decider.popScope()
+
+        r && {
+          val tAux = state.terms.utils.BigAnd(πAux)
+          assume(tAux)
+          Q(t0, optT1, optInnerC.getOrElse(c1))}})
+  }
 
 	override def pushLocalState() {
 		fappCacheFrames = fappCache +: fappCacheFrames
