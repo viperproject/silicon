@@ -64,9 +64,9 @@
 	(<= $Perm.No p))
 
 (define-fun $Perm.isReadVar ((p $Perm) (ub $Perm)) Bool
-  (and ($Perm.isValidVar p)
-	     (not (= p $Perm.No))
-       (< (* 1000.0 p) $Perm.Write)))
+    (and ($Perm.isValidVar p)
+         (not (= p $Perm.No))
+         (< p $Perm.Write)))
 
 ; min function for permissions
 (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
