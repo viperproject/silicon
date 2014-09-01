@@ -8,8 +8,8 @@ package viper
 package silicon
 package interfaces.state
 
-trait Context[C <: Context[C]]
-
 trait Mergeable[S <: Mergeable[S]] {
   def merge(other: S): S
 }
+
+trait Context[C <: Context[C]] extends Mergeable[C]
