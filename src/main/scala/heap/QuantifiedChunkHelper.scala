@@ -392,9 +392,9 @@ object QuantifiedChunkHelper {
       case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
                       triggers,
                       ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
-          if rcvr.exists(_ == lvd.localVar) && !gain.exists(_ == lvd.localVar) =>
-
-        assert(triggers.isEmpty, s"Did not expect triggers in impure forall, but found $triggers")
+          if    rcvr.exists(_ == lvd.localVar)
+//             && !gain.exists(_ == lvd.localVar)
+             && triggers.isEmpty =>
 
         /* TODO: If the condition is just "x in xs" then xs could be returned to
          *       simplify the definition of domains of freshly created FVFs (as
@@ -404,13 +404,15 @@ object QuantifiedChunkHelper {
          *       a positive effect on the prover's runtime.
          */
 
-        (condition match {
-          case ast.SetContains(lvd.localVar, xs) => Some(xs)
-          case ast.And(ast.SetContains(lvd.localVar, xs), _) => Some(xs)
-          case _ => None
-        }).map {
-          case xs => (lvd, /*xs,*/ condition, rcvr, f, gain, fa)
-        }
+//        (condition match {
+//          case ast.SetContains(lvd.localVar, xs) => Some(xs)
+//          case ast.And(ast.SetContains(lvd.localVar, xs), _) => Some(xs)
+//          case _ => None
+//        }).map {
+//          case xs => (lvd, /*xs,*/ condition, rcvr, f, gain, fa)
+//        }
+
+        Some((lvd, /*xs,*/ condition, rcvr, f, gain, fa))
 
       case _ => None
     }
