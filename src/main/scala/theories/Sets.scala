@@ -48,14 +48,15 @@ class DefaultSetsEmitter(prover: Prover,
 
   def analyze(program: ast.Program) {
     var setTypes = Set[ast.types.Set]()
-//    var foundQuantifiedPermissions = false
+    var foundQuantifiedPermissions = false
 
     program visit {
-//      case q: ast.Quantified if !foundQuantifiedPermissions && !q.isPure =>
-//        println(s"  q = $q")
-//        /* Axioms generated for quantified permissions depend on sets */
-//        program.fields foreach {f => setTypes += ast.types.Set(f.typ)}
-//        foundQuantifiedPermissions = true
+      case q: ast.Quantified if !foundQuantifiedPermissions && !q.isPure =>
+        //        println(s"  q = $q")
+        /* Axioms generated for quantified permissions depend on sets */
+        foundQuantifiedPermissions = true
+        program.fields foreach {f => setTypes += ast.types.Set(f.typ)}
+        setTypes += ast.types.Set(ast.types.Ref) /* $FVF.domain_f is ref-typed */
 
       case t: silver.ast.Typed =>
         t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
