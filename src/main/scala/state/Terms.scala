@@ -1283,7 +1283,7 @@ object Distinct {
 
 object predef {
   val `?s` = Var("s", sorts.Snap) // with SnapshotTerm
-  val `?r` = Var("s", sorts.Ref)
+  val `?r` = Var("r", sorts.Ref)
 }
 
 /* Convenience functions */
