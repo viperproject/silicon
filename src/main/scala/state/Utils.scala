@@ -8,7 +8,7 @@ package viper
 package silicon
 package state
 
-import interfaces.state.{FieldChunk, Heap, Store, State}
+import interfaces.state.{PredicateChunk, FieldChunk, Heap, Store, State}
 import ast.commonnodes
 import terms._
 
@@ -16,9 +16,20 @@ package object utils {
   def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                                          (σ: S)
                                          : Set[Term] = {
+
+    /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
+     *       then we should also establish that !(x in xs).
+     */
+
     val ts = (
+      /* Refs pointed to by local variables */
          σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
-      ++ σ.h.values.flatMap(_.args).filter(_.sort == terms.sorts.Ref)
+      /* Receivers of fields and ref-typed arguments of predicates */
+      ++ σ.h.values.collect {
+          case fc: FieldChunk => fc.args
+          case pc: PredicateChunk => pc.args.filter(_.sort == terms.sorts.Ref)
+         }.flatten
+      /* Refs pointed to by fields */
       ++ σ.h.values.collect { case fc: FieldChunk if fc.value.sort == terms.sorts.Ref => fc.value })
 
     toSet(ts)
