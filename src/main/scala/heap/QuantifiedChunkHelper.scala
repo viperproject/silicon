@@ -93,14 +93,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                              perms: DefaultFractionalPermissions)
                             : DefaultFractionalPermissions = {
 
-//    val arbitraryInverseRcvr = inverseRcvr.replace(qvar, `?r`)
     val arbitraryCondition = qvarSpecificCondition.replace(qvar, arbitraryInverseRcvr)
 
     TermPerm(Ite(arbitraryCondition, perms, NoPerm()))
-
-//  concreteReceiver match {
-//    case SeqAt(s, i) => ???
-//    case _: Var => TermPerm(Ite(condition.replace(concreteReceiver, `?r`), perms, NoPerm()))
   }
 
   def getInverseFunction(t: Term): Term => Term = t match {
@@ -149,7 +144,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def withPotentiallyQuantifiedValue(σ: S,
                                      h: H,
                                      rcvr: Term,
-                                     qvarInRcvr: Option[Var],
+                                     optQVarInRcvr: Option[Var],
                                      field: Field,
                                      pve: PartialVerificationError,
                                      locacc: LocationAccess,
@@ -157,8 +152,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                                     (Q: Lookup => VerificationResult)
                                     : VerificationResult = {
 
-    withValue(σ, h, rcvr, qvarInRcvr, field, pve, locacc, c)((t, fvfDef) => {
-      qvarInRcvr match {
+    withValue(σ, h, rcvr, optQVarInRcvr, field, pve, locacc, c)((t, fvfDef) => {
+      optQVarInRcvr match {
         case Some(qvar) => assume(fvfDef.quantifiedValues(qvar))
         case None => assume(fvfDef.singletonValues)
       }
@@ -177,7 +172,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private def withValue(σ: S,
                         h: H,
                         rcvr: Term,
-                        optQVar: Option[Var],
+                        optQVarInRcvr: Option[Var],
                         field: Field,
                         pve: PartialVerificationError,
                         locacc: LocationAccess,
@@ -195,7 +190,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
           case true =>
-            val x = optQVar.getOrElse(rcvr)
+            val x = optQVarInRcvr.getOrElse(rcvr)
             val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
             val lookupRcvr = Lookup(field.name, fvf, x)
 
@@ -316,7 +311,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                     h: H,
                     field: Field,
                     arbitraryReceiver: Term,
-                    concreteReceiver: Term,
+                    specificReceiver: Term,
                     fraction: DefaultFractionalPermissions,
                     conditionalizedFraction: DefaultFractionalPermissions,
                     c: C)
@@ -329,7 +324,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     var permsToTake = conditionalizedFraction
     var success = false
     val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
-    val fvfLookup = Lookup(field.name, fvf, concreteReceiver)
+    val fvfLookup = Lookup(field.name, fvf, specificReceiver)
     var fvfDefs: List[FvfDefEntry] = Nil
 
     candidates foreach {
@@ -349,7 +344,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
         else {
           val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
-          val permsTaken = PermMin(permsToTake, Ite(`?r` === concreteReceiver, ch.perm, NoPerm()))
+          val permsTaken = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
           permsToTake = permsToTake - permsTaken
 
           if (constrainPermissions) {
@@ -370,7 +365,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     }
 
     val hResidue = H(residue ++ ignored)
-    val ch = QuantifiedChunk(concreteReceiver, field.name, fvf, conditionalizedFraction)
+    val ch = QuantifiedChunk(specificReceiver, field.name, fvf, conditionalizedFraction)
     val fvfDef = FvfDef(field, fvf, fvfDefs)
 
     (hResidue, ch, fvfDef, success)
@@ -396,9 +391,8 @@ object QuantifiedChunkHelper {
     def unapply(n: ast.Node) = n match {
       case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
                       triggers,
-                      ast.Implies(condition,
-                      ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
-          if rcvr.exists(_ == lvd.localVar) =>
+                      ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
+          if rcvr.exists(_ == lvd.localVar) && !gain.exists(_ == lvd.localVar) =>
 
         assert(triggers.isEmpty, s"Did not expect triggers in impure forall, but found $triggers")
 

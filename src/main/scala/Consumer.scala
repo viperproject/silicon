@@ -164,9 +164,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             evalp(σQVar, loss, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)) {
                 case true =>
-                  decider.prover.logComment(s"xxxx before eval rcvr $rcvr")
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
-                    decider.prover.logComment(s"xxxx after eval rcvr $rcvr to $tRcvr")
                     val receiverInjective =
                       if (!decider.check(σQVar, FullPerm() < (tPerm + tPerm))) {
                         val vx = Var("x", sorts.Ref)
