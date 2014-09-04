@@ -34,7 +34,7 @@ object Consistency {
      */
 
     root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-      case QuantifiedChunkHelper.QuantifiedSetAccess(_, _, _, _, _, _) =>
+      case QuantifiedChunkHelper.ForallRef(_, _, _, _, _, _) =>
         errors.flatten
 
       case e: ast.Forall if !e.isPure =>

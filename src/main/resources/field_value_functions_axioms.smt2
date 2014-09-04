@@ -18,9 +18,3 @@
           :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))))
       (= vs ws))
     :pattern (($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws)))))
-
-; forall vs: FVF, x: Ref :: lookup_inv(lookup(vs, x)) = x
-(assert (forall ((vs $FVF<$S$>) (x $Ref)) (!
-    (= ($FVF.lookup_$FLD$_inv ($FVF.lookup_$FLD$ vs x)) x)
-    :pattern (($FVF.lookup_$FLD$_inv ($FVF.lookup_$FLD$ vs x)))
-    )))

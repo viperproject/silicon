@@ -8,9 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed}
+import silver.verifier.errors._
 import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
@@ -58,7 +56,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
     edge match {
       case ce: silver.ast.ConditionalEdge =>
-        eval(σ, ce.cond, Internal(ce.cond), c)((tCond, c1) =>
+        eval(σ, ce.cond, IfFailed(ce.cond), c)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
           branch(σ, tCond, c1,
             (c2: C) => exec(σ, ce.dest, c2)(Q),

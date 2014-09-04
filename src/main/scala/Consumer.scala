@@ -140,7 +140,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, condition, rcvr, field, loss, fa) =>
+      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, loss, fa) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val (h1, ts) = quantifiedChunkHelper.quantifyHeapForMentionedFields(σ.h, rcvr :: condition :: Nil)

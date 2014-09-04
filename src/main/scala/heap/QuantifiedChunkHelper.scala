@@ -101,6 +101,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def getInverseFunction(t: Term): Term => Term = t match {
     case _: Var => Predef.identity
     case lookup: Lookup => (arg: Term) => Inverse(lookup, arg, lookup.at.sort)
+    case at: SeqAt =>
+//      println(s"[getInverseFunction] t = $t")
+      (arg: Term) => Inverse(at, arg, at.p1.sort)
     case _ => sys.error(s"Cannot determine inverse function for term $t")
   }
 
@@ -190,7 +193,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
           case true =>
-            val x = optQVarInRcvr.getOrElse(rcvr)
+            val x = rcvr// optQVarInRcvr.getOrElse(rcvr)
             val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
             val lookupRcvr = Lookup(field.name, fvf, x)
 
@@ -387,34 +390,36 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 }
 
 object QuantifiedChunkHelper {
-  object QuantifiedSetAccess {
-    def unapply(n: ast.Node) = n match {
-      case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(id, typ)),
-                      triggers,
-                      ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
-          if    rcvr.exists(_ == lvd.localVar)
-//             && !gain.exists(_ == lvd.localVar)
-             && triggers.isEmpty =>
+  object ForallRef {
+    def unapply(n: ast.Node): Option[(silver.ast.LocalVarDecl, /* Quantified variable */
+                                      ast.Expression,          /* Condition */
+                                      ast.Expression,          /* Receiver e of acc(e.f, p) */
+                                      ast.Field,               /* Field f of acc(e.f, p) */
+                                      ast.Expression,          /* Permissions p of acc(e.f, p) */
+                                      ast.FieldAccess)] =      /* AST node for e.f (for error reporting) */
 
-        /* TODO: If the condition is just "x in xs" then xs could be returned to
-         *       simplify the definition of domains of freshly created FVFs (as
-         *       done, e.g., when producing quantified permissions) by just
-         *       assuming "domain(vs) == xs" instead of assuming that
-         *       "forall x :: x in domain(cs) <==> condition". This should have
-         *       a positive effect on the prover's runtime.
-         */
+      n match {
+        case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(_, _/*ast.types.Ref*/)),
+                        triggers,
+                        ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
+            if    rcvr.exists(_ == lvd.localVar)
+               && triggers.isEmpty =>
 
-//        (condition match {
-//          case ast.SetContains(lvd.localVar, xs) => Some(xs)
-//          case ast.And(ast.SetContains(lvd.localVar, xs), _) => Some(xs)
-//          case _ => None
-//        }).map {
-//          case xs => (lvd, /*xs,*/ condition, rcvr, f, gain, fa)
-//        }
+          /* TODO: If the condition is just "x in xs" then xs could be returned to
+           *       simplify the definition of domains of freshly created FVFs (as
+           *       done, e.g., when producing quantified permissions) by just
+           *       assuming "domain(fvf) == xs" instead of assuming that
+           *       "forall x :: x in domain(fvf) <==> condition(x)". This should
+           *       have a positive effect on the prover's runtime.
+           *
+           *       Another way of handling this would be to have an optimisation
+           *       rule that transforms a "forall x :: x in domain(fvf) <==> x in xs"
+           *       into a "domain(fvf) == xs".
+           */
 
-        Some((lvd, /*xs,*/ condition, rcvr, f, gain, fa))
+          Some((lvd, condition, rcvr, f, gain, fa))
 
-      case _ => None
-    }
+        case _ => None
+      }
   }
 }

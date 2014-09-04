@@ -198,7 +198,7 @@ trait DefaultProducer[ST <: Store[ST],
               case _ => c2}
             Q(σ.h + ch, c3)}))
 
-      case QuantifiedChunkHelper.QuantifiedSetAccess(qvar, condition, rcvr, field, gain, _) =>
+      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, gain, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
@@ -230,7 +230,7 @@ trait DefaultProducer[ST <: Store[ST],
                    Trigger(Lookup(field.name, snap, tRcvr) :: Nil) :: Nil)
           val tNonNullQuant =
             Forall(tQVar,
-                   Implies(NoPerm() < ch.perm.replace(`?r`, tQVar).asInstanceOf[DefaultFractionalPermissions],
+                   Implies(NoPerm() < ch.perm.replace(`?r`, tRcvr).asInstanceOf[DefaultFractionalPermissions],
                            tRcvr !== Null()),
                    Nil)
           assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant))

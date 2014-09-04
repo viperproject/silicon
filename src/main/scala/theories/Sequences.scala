@@ -22,6 +22,7 @@ class DefaultSequencesEmitter(prover: Prover,
     extends SequencesEmitter {
 
   private var collectedSorts = Set[terms.sorts.Seq]()
+  private var programUsesQuantifiedPermissions = false
 
   def sorts = toSet(collectedSorts)
 
@@ -60,6 +61,8 @@ class DefaultSequencesEmitter(prover: Prover,
     }
 
     collectedSorts = sequenceTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Seq])
+
+    programUsesQuantifiedPermissions = program existsDefined { case q: ast.Quantified if !q.isPure => }
   }
 
   def declareSorts() {
@@ -91,6 +94,12 @@ class DefaultSequencesEmitter(prover: Prover,
       val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
       prover.logComment("/sequences_int_axioms_dafny.smt2")
       preambleFileEmitter.emitParametricAssertions("/sequences_int_axioms_dafny.smt2", substitutions)
+    }
+
+    if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
+      val axioms = "/sequences_inverse_axioms.smt2"
+      prover.logComment(axioms)
+      preambleFileEmitter.emitParametricAssertions(axioms, Map())
     }
   }
 }
