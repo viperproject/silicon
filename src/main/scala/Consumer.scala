@@ -141,7 +141,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
       case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, loss, fa) =>
-        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val sortQVar = toSort(qvar.typ)
+        val tQVar = decider.fresh(qvar.name, sortQVar)
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val (h1, ts) = quantifiedChunkHelper.quantifyHeapForMentionedFields(σ.h, rcvr :: condition :: Nil)
           /* If receiver or condition dereference a field which hasn't been quantified yet,
@@ -167,12 +168,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
                     val receiverInjective =
                       if (!decider.check(σQVar, FullPerm() < (tPerm + tPerm))) {
-                        val vx = Var("x", sorts.Ref)
-                        val vy = Var("y", sorts.Ref)
+                        val vx = Var("x", sortQVar)
+                        val vy = Var("y", sortQVar)
                         Forall(vx :: vy :: Nil,
-                          Implies(And(tCond.replace(tQVar, vx),
-                            tCond.replace(tQVar, vy),
-                            tRcvr.replace(tQVar, vx) === tRcvr.replace(tQVar, vy)),
+                          Implies(
+                            And(tCond.replace(tQVar, vx),
+                                tCond.replace(tQVar, vy),
+                                tRcvr.replace(tQVar, vx) === tRcvr.replace(tQVar, vy)),
                             vx === vy),
                           Nil)
                       } else

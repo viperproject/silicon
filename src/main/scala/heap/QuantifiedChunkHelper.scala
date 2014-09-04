@@ -155,7 +155,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                                     (Q: Lookup => VerificationResult)
                                     : VerificationResult = {
 
-    withValue(σ, h, rcvr, optQVarInRcvr, field, pve, locacc, c)((t, fvfDef) => {
+    withValue(σ, h, rcvr, field, pve, locacc, c)((t, fvfDef) => {
       optQVarInRcvr match {
         case Some(qvar) => assume(fvfDef.quantifiedValues(qvar))
         case None => assume(fvfDef.singletonValues)
@@ -175,7 +175,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   private def withValue(σ: S,
                         h: H,
                         rcvr: Term,
-                        optQVarInRcvr: Option[Var],
                         field: Field,
                         pve: PartialVerificationError,
                         locacc: LocationAccess,
@@ -193,18 +192,17 @@ class QuantifiedChunkHelper[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
           case true =>
-            val x = rcvr// optQVarInRcvr.getOrElse(rcvr)
             val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
-            val lookupRcvr = Lookup(field.name, fvf, x)
+            val lookupRcvr = Lookup(field.name, fvf, rcvr)
 
             var fvfDefs: List[FvfDefEntry] = Nil
             var fvfIndividualDomains: List[Domain] = Nil
 
             h.values.foreach {
               case ch: QuantifiedChunk if ch.name == field.name =>
-                val permsIndividual = ch.perm.replace(`?r`, x).asInstanceOf[DefaultFractionalPermissions]
-                val valueIndividual = ch.value.replace(`?r`, x)
-                val lookupIndividual = Lookup(field.name, valueIndividual, x)
+                val permsIndividual = ch.perm.replace(`?r`, rcvr).asInstanceOf[DefaultFractionalPermissions]
+                val valueIndividual = ch.value.replace(`?r`, rcvr)
+                val lookupIndividual = Lookup(field.name, valueIndividual, rcvr)
 
                 fvfDefs ::=
                     FvfDefEntry(Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual),
