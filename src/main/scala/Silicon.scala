@@ -173,7 +173,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
     val inverseFunctionsEmitter = new DefaultInverseFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
+
+    val fieldValueFunctionsEmitter =
+      new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, inverseFunctionsEmitter)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
