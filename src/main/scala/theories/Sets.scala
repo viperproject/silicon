@@ -74,14 +74,14 @@ class DefaultSetsEmitter(prover: Prover,
   def declareSymbols() {
     collectedSorts foreach {s =>
       prover.logComment(s"/sets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sets_declarations_dafny.smt2", s.elementsSort)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sets_declarations_dafny.smt2", s.elementsSort)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
       prover.logComment(s"/sets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/sets_axioms_dafny.smt2", s.elementsSort)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sets_axioms_dafny.smt2", s.elementsSort)
     }
   }
 }
