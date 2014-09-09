@@ -95,8 +95,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                             : DefaultFractionalPermissions = {
 
     val arbitraryCondition = qvarSpecificCondition.replace(qvar, arbitraryInverseRcvr)
+    val arbitraryPerms = perms.replace(qvar, arbitraryInverseRcvr)
 
-    TermPerm(Ite(arbitraryCondition, perms, NoPerm()))
+    TermPerm(Ite(arbitraryCondition, arbitraryPerms/*perms*/, NoPerm()))
   }
 
   def getInverseFunction(t: Term): Term => Term = t match {
