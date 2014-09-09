@@ -29,8 +29,8 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
-import theories.{DefaultInverseFunctionsEmitter, DefaultFieldValueFunctionsEmitter, DefaultMultisetsEmitter,
-    DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter, DefaultDomainsTranslator}
+import theories.{DefaultFieldValueFunctionsEmitter, DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter,
+    DefaultSequencesEmitter, DefaultDomainsTranslator}
 import heap.QuantifiedChunkHelper
 import ast.Consistency
 
@@ -172,15 +172,13 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
-    val inverseFunctionsEmitter = new DefaultInverseFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
 
     val fieldValueFunctionsEmitter =
-      new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, inverseFunctionsEmitter)
+      new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
-      inverseFunctionsEmitter, stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils,
-      bookkeeper)
+      stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils, bookkeeper)
   }
 
   private def reset() {

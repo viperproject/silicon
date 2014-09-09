@@ -9,7 +9,7 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import state.terms.{Term, DefaultFractionalPermissions}
+import terms.{Lookup, Term, DefaultFractionalPermissions}
 import state.terms.predef.`?r`
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
@@ -33,18 +33,19 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class QuantifiedChunk(rcvr: Term, name: String, value: Term, perm: DefaultFractionalPermissions) extends Chunk {
+case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions) extends Chunk {
   assert(value.sort.isInstanceOf[terms.sorts.FieldValueFunction],
          "Quantified chunk values must be of sort FieldValueFunction")
 
-  val args = `?r` :: rcvr :: Nil
-  val id = FieldChunkIdentifier(rcvr, name)
+  val args = `?r` :: Nil
+  val id = FieldChunkIdentifier(`?r`, name)
 
   def +(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm + perm)
   def -(perm: DefaultFractionalPermissions): QuantifiedChunk = this.copy(perm = this.perm - perm)
 
-//  override def toString = "A %s :: %s -> %s # %s".format(quantifiedVars.mkString(","), name, value, perm)
-  override def toString = "%s %s :: %s.%s -> %s # %s".format(terms.Forall, `?r`, rcvr, name, value, perm)
+  def valueAt(rcvr: Term) = Lookup(name, value, rcvr)
+
+  override def toString = "%s %s :: %s.%s -> %s # %s".format(terms.Forall, `?r`, `?r`, name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {

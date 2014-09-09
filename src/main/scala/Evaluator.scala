@@ -164,7 +164,11 @@ trait DefaultEvaluator[
           assert(c.quantifiedVariables.length <= 1,
                  s"Expected at most one quantified variable, but found ${c.quantifiedVariables}")
           quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, c.quantifiedVariables.headOption, fa.field, pve, fa, c)((t) => {
-            Q(t, c1)})})
+//          val c2 = c1.snapshotRecorder match {
+//            case Some(sr) =>
+//              c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> t))))
+//            case _ => c1}
+          Q(t, c1)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
@@ -499,49 +503,6 @@ trait DefaultEvaluator[
               case _ => c3}
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
             Q(tFA, c4.copy(fapps = c4.fapps + (fapp -> tFA)))})})
-
-      case fapp @ ast.FuncApp(funcName, eArgs) =>
-        val err = PreconditionInAppFalse(fapp)
-        val func = c.program.findFunction(funcName)
-
-        evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
-          bookkeeper.functionApplications += 1
-          val insγ = Γ(func.formalArgs.map(_.localVar).zip(tArgs))
-          val σ2 = σ \ insγ
-          val pre = ast.utils.BigAnd(func.pres)
-          consume(σ2, FullPerm(), pre, err, c2)((_, s, _, c3) => {
-            val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
-            if (fappCache.contains(tFA)) {
-              val piFB = fappCache(tFA)
-              assume(piFB)
-              Q(tFA, c3)
-            } else {
-              val σ3 = σ2 \+ (func.result, tFA)
-              val πPre = decider.π
-              val post = ast.utils.BigAnd(func.posts)
-              /* Break recursive cycles */
-              if (c3.cycles(func) < config.unrollFunctions()) {
-                val c3a = c3.incCycleCounter(func)
-                bookkeeper.functionBodyEvaluations += 1
-                eval(σ3, func.exp, pve, c3a)((tFB, c4) =>
-                  eval(σ3, post, pve, c4)((tPost, c5) => {
-                    val c5a = c5.decCycleCounter(func)
-                    val tFAEqFB = Implies(state.terms.utils.BigAnd(guards), tFA === tFB)
-                    if (!config.disableFunctionApplicationCaching())
-                      fappCache += (tFA -> (decider.π -- πPre + tFAEqFB + tPost))
-                    assume(Set(tFAEqFB, tPost))
-                    Q(tFA, c5a)}))
-              } else {
-                /* Unfolded the function often enough already. We still need to
-                 * evaluate the postcondition, though, because Z3 might
-                 * otherwise not know enough about the recursive call.
-                 * For example, that the length of a list is always positive.
-                 */
-                eval(σ3, post, pve, c3)((tPost, c4) => {
-                  if (!config.disableFunctionApplicationCaching())
-                    fappCache += (tFA -> (decider.π -- πPre + tPost))
-                  assume(tPost)
-                  Q(tFA, c4)})}}})})
 
       case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 

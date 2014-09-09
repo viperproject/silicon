@@ -198,7 +198,7 @@ trait DefaultProducer[ST <: Store[ST],
               case _ => c2}
             Q(σ.h + ch, c3)}))
 
-      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, gain, _) =>
+      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, gain, _, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
@@ -233,7 +233,8 @@ trait DefaultProducer[ST <: Store[ST],
                    Implies(NoPerm() < ch.perm.replace(`?r`, tRcvr).asInstanceOf[DefaultFractionalPermissions],
                            tRcvr !== Null()),
                    Nil)
-          assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant))
+          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tCond, tRcvr, tQVar)
+          assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
             if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)

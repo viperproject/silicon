@@ -1211,15 +1211,27 @@ case class Lookup(field: String, fvf: Term, at: Term) extends Term {
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 }
 
+case class LookupInv(field: String, fvf: Term, value: Term) extends Term {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  private val fvfCodomainSort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  utils.assertSort(value, "value", fvfCodomainSort.toString, _ == fvfCodomainSort)
+
+  val sort = sorts.Ref
+}
+
 case class Domain(field: String, fvf: Term) extends SetTerm {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
 
-  val elementsSort = sorts.Ref //fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+  val elementsSort = sorts.Ref
   val sort = sorts.Set(elementsSort)
 }
 
-case class Inverse(template: Term, appliedTo: Term, sort: Sort) extends Term {
-  override val toString = s"${template.getClass.getSimpleName}_inv($appliedTo)"
+case class SeqAtInv(seq: Term, value: Term) extends ArithmeticTerm {
+  utils.assertSort(seq, "sequence", "Seq", _.isInstanceOf[sorts.Seq])
+  private val elementsSort = seq.sort.asInstanceOf[sorts.Seq].elementsSort
+  utils.assertSort(value, "value", elementsSort.toString, _ == elementsSort)
+
+  override val sort = sorts.Int
 }
 
 /* Sort wrappers */

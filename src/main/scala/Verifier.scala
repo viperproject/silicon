@@ -16,8 +16,8 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.state.factoryUtils.Ø
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
-import theories.{InverseFunctionsEmitter, FunctionsSupporter, FieldValueFunctionsEmitter, DomainsEmitter, SetsEmitter,
-    MultisetsEmitter, SequencesEmitter}
+import theories.{FunctionsSupporter, FieldValueFunctionsEmitter, DomainsEmitter, SetsEmitter, MultisetsEmitter,
+    SequencesEmitter}
 import reporting.Bookkeeper
 import heap.QuantifiedChunkHelper
 import decider.PreambleFileEmitter
@@ -141,7 +141,6 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def multisetsEmitter: MultisetsEmitter
   /*protected*/ def domainsEmitter: DomainsEmitter
   /*protected*/ def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
-  /*protected*/ def inverseFunctionsEmitter: InverseFunctionsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S]
   import ev.symbolConverter
@@ -149,7 +148,6 @@ trait AbstractVerifier[ST <: Store[ST],
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
-    inverseFunctionsEmitter,
     decider)
 
   /* Lifetime */
@@ -205,7 +203,6 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.analyze(program)
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
-    inverseFunctionsEmitter.analyze(program)
     fieldValueFunctionsEmitter.analyze(program)
 
     emitStaticPreamble()
@@ -214,7 +211,6 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.declareSorts()
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
-    inverseFunctionsEmitter.declareSorts()
     fieldValueFunctionsEmitter.declareSorts()
 
     /* Sequences depend on multisets ($Multiset.fromSeq, which is
@@ -226,14 +222,12 @@ trait AbstractVerifier[ST <: Store[ST],
     sequencesEmitter.declareSymbols()
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
-    inverseFunctionsEmitter.declareSymbols()
     fieldValueFunctionsEmitter.declareSymbols()
 
     sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
-    inverseFunctionsEmitter.emitAxioms()
     fieldValueFunctionsEmitter.emitAxioms()
 
     emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
@@ -241,7 +235,6 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(setsEmitter.sorts)
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
-    emitSortWrappers(inverseFunctionsEmitter.sorts)
     emitSortWrappers(fieldValueFunctionsEmitter.sorts)
 
     decider.prover.logComment("Preamble end")
@@ -287,7 +280,6 @@ class DefaultVerifier[ST <: Store[ST],
       val multisetsEmitter: MultisetsEmitter,
 			val domainsEmitter: DomainsEmitter,
       val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
-      val inverseFunctionsEmitter: InverseFunctionsEmitter,
 			val stateFormatter: StateFormatter[ST, H, S, String],
 			val heapCompressor: HeapCompressor[ST, H, S],
       val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S],

@@ -52,7 +52,6 @@ class DefaultSetsEmitter(prover: Prover,
 
     program visit {
       case q: ast.Quantified if !foundQuantifiedPermissions && !q.isPure =>
-        //        println(s"  q = $q")
         /* Axioms generated for quantified permissions depend on sets */
         foundQuantifiedPermissions = true
         program.fields foreach {f => setTypes += ast.types.Set(f.typ)}

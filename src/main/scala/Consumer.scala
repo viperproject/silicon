@@ -140,11 +140,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, loss, fa) =>
-        val sortQVar = toSort(qvar.typ)
-        val tQVar = decider.fresh(qvar.name, sortQVar)
+      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, loss, forall, fa) =>
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
-        val (h1, ts) = quantifiedChunkHelper.quantifyHeapForMentionedFields(σ.h, rcvr :: condition :: Nil)
+        val (h1, ts) = quantifiedChunkHelper.quantifyHeapForFields(σ.h, QuantifiedChunkHelper.fieldAccesses(forall))
           /* If receiver or condition dereference a field which hasn't been quantified yet,
            * then the evaluator will try to find a regular chunk for the quantified variable,
            * which will fail.
@@ -168,15 +167,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
                     val receiverInjective =
                       if (!decider.check(σQVar, FullPerm() < (tPerm + tPerm))) {
-                        val vx = Var("x", sortQVar)
-                        val vy = Var("y", sortQVar)
-                        Forall(vx :: vy :: Nil,
-                          Implies(
-                            And(tCond.replace(tQVar, vx),
-                                tCond.replace(tQVar, vy),
-                                tRcvr.replace(tQVar, vx) === tRcvr.replace(tQVar, vy)),
-                            vx === vy),
-                          Nil)
+                        quantifiedChunkHelper.injectivityAxiom(tCond, tRcvr, tQVar)
                       } else
                         True()
                     decider.assert(σ, receiverInjective) {
@@ -205,7 +196,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           evalp(σ, perm, pve, c1)((tPerm, c2) => {
             val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, tPerm)
             quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, tPerm * p, condPerms * p, c2) {
-              case Some((h1, ch, c3)) => Q(h1, ch.value, /*ch :: */ Nil, c3)
+              case Some((h1, ch, c3)) =>
+                Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))
 

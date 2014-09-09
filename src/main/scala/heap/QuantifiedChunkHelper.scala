@@ -10,11 +10,12 @@ package heap
 
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import silver.ast.utility
 import ast.{Field, LocationAccess}
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
 import interfaces.decider.Decider
-import viper.silicon.state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
+import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
 import state.terms.utils.BigPermSum
 import state.terms._
 import state.terms.predef.`?r`
@@ -61,7 +62,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     val condPerms = singletonConditionalPermissions(rcvr, perms)
 
-    QuantifiedChunk(rcvr, field, value, condPerms)
+    QuantifiedChunk(field, value, condPerms)
   }
 
   def singletonConditionalPermissions(rcvr: Term, perms: DefaultFractionalPermissions)
@@ -79,12 +80,12 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                            : QuantifiedChunk = {
 
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
-                  "Quantified chunk values must be of sort FieldValueFunction")
+                  s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
 
     val arbitraryInverseRcvr = getInverseFunction(rcvr)(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
 
-    QuantifiedChunk(`?r`, field.name, value, condPerms)
+    QuantifiedChunk(field.name, value, condPerms)
   }
 
   def conditionalPermissions(qvar: Var,
@@ -100,10 +101,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   def getInverseFunction(t: Term): Term => Term = t match {
     case _: Var => Predef.identity
-    case lookup: Lookup => (arg: Term) => Inverse(lookup, arg, lookup.at.sort)
-    case at: SeqAt =>
-//      println(s"[getInverseFunction] t = $t")
-      (arg: Term) => Inverse(at, arg, at.p1.sort)
+    case lookup: Lookup => (arg: Term) => LookupInv(lookup.field, lookup.fvf, arg)
+    case seqAt: SeqAt => (arg: Term) => SeqAtInv(seqAt.p0, arg)
     case _ => sys.error(s"Cannot determine inverse function for term $t")
   }
 
@@ -252,12 +251,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     (H(chunks), toSet(ts))
   }
 
-  def quantifyHeapForMentionedFields(h: H, expressions: Seq[ast.Expression]): (H, Set[Term]) = {
-    import silver.ast.utility
-
-    val fields =
-      utility.Visitor.deepCollect(expressions, utility.Nodes.subnodes) { case fa: ast.FieldAccess => fa.field }
-
+  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Set[Term]) = {
     fields.foldLeft((h, Set[Term]())){case ((hAcc, tsAcc), field) =>
       val (h1, ts1) = quantifyChunksForField(hAcc, field)
 
@@ -275,11 +269,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                          (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                          : VerificationResult = {
 
+    val skolemVar = fresh("sk", sorts.Ref)
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, fresh("sk", sorts.Ref), concreteReceiver, fraction, conditionalizedFraction, c)
+      split(σ, h, field, skolemVar, concreteReceiver, fraction, conditionalizedFraction, c)
 
     if (success) {
-      assume(fvfDef.singletonValues)
+//      assume(fvfDef.singletonValues)
+      assume(fvfDef.quantifiedValues(skolemVar))
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
     } else
@@ -325,7 +321,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     var permsToTake = conditionalizedFraction
     var success = false
     val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
-    val fvfLookup = Lookup(field.name, fvf, specificReceiver)
+//    val fvfLookup = Lookup(field.name, fvf, specificReceiver)
+    val fvfLookup = Lookup(field.name, fvf, arbitraryReceiver)
     var fvfDefs: List[FvfDefEntry] = Nil
 
     candidates foreach {
@@ -366,7 +363,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     }
 
     val hResidue = H(residue ++ ignored)
-    val ch = QuantifiedChunk(specificReceiver, field.name, fvf, conditionalizedFraction)
+//    val ch = QuantifiedChunk(specificReceiver, field.name, fvf, conditionalizedFraction)
+    val ch = QuantifiedChunk(field.name, fvf, conditionalizedFraction)
     val fvfDef = FvfDef(field, fvf, fvfDefs)
 
     (hResidue, ch, fvfDef, success)
@@ -385,6 +383,20 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
       (fvf, fvfDef)
   }
+
+  def injectivityAxiom(condition: Term, receiver: Term, qvar: Var) = {
+    val vx = Var("x", qvar.sort)
+    val vy = Var("y", qvar.sort)
+
+    Forall(vx :: vy :: Nil,
+      Implies(
+        And(
+          condition.replace(qvar, vx),
+          condition.replace(qvar, vy),
+          receiver.replace(qvar, vx) === receiver.replace(qvar, vy)),
+        vx === vy),
+      Nil) /* TODO: Triggers */
+  }
 }
 
 object QuantifiedChunkHelper {
@@ -394,12 +406,13 @@ object QuantifiedChunkHelper {
                                       ast.Expression,          /* Receiver e of acc(e.f, p) */
                                       ast.Field,               /* Field f of acc(e.f, p) */
                                       ast.Expression,          /* Permissions p of acc(e.f, p) */
+                                      ast.Forall,              /* AST node of the forall (for error reporting) */
                                       ast.FieldAccess)] =      /* AST node for e.f (for error reporting) */
 
       n match {
-        case ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(_, _/*ast.types.Ref*/)),
-                        triggers,
-                        ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
+        case forall @ ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(_, _/*ast.types.Ref*/)),
+                                triggers,
+                                ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
             if    rcvr.exists(_ == lvd.localVar)
                && triggers.isEmpty =>
 
@@ -415,9 +428,19 @@ object QuantifiedChunkHelper {
            *       into a "domain(fvf) == xs".
            */
 
-          Some((lvd, condition, rcvr, f, gain, fa))
+          Some((lvd, condition, rcvr, f, gain, forall, fa))
 
         case _ => None
       }
   }
+
+  /* TODO: This is only defined in the object (instead of in the class) because the class
+   *       takes the usual type parameters, which would then have to be added to the
+   *       DefaultFieldValueFunctionsEmitter, which is where `fieldAccesses` is used
+   *       as well. Not a very convincing reason.
+   */
+  def fieldAccesses(q: ast.Forall) =
+    utility.Visitor.deepCollect(q :: Nil, utility.Nodes.subnodes) {
+      case fa: ast.FieldAccess => fa.field
+    }
 }
