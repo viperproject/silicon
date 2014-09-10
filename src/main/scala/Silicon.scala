@@ -11,13 +11,17 @@ import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import state.DefaultContext
-
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess,
-    Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred,
-    CliOptionError}
+import silver.verifier.{
+    Verifier => SilVerifier,
+    VerificationResult => SilVerificationResult,
+    Success => SilSuccess,
+    Failure => SilFailure,
+    DefaultDependency => SilDefaultDependency,
+    TimeoutOccurred => SilTimeoutOccurred,
+    CliOptionError => SilCliOptionError}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
@@ -25,8 +29,9 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
-import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
-    DefaultDomainsTranslator}
+import theories.{DefaultFieldValueFunctionsEmitter, DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter,
+    DefaultSequencesEmitter, DefaultDomainsTranslator}
+import heap.QuantifiedChunkHelper
 import ast.Consistency
 
 
@@ -130,7 +135,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         _config.printHelp()
         throw ex
       case ex: org.rogach.scallop.exceptions.ScallopException =>
-        println(CliOptionError(ex.message + ".").readableMessage)
+        println(SilCliOptionError(ex.message + ".").readableMessage)
         _config.printHelp()
         throw ex
     }
@@ -155,6 +160,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val dlb = FullPerm()
 
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val quantifiedChunkHelper = new QuantifiedChunkHelper[ST, H, PC, S](decider, symbolConverter, stateFactory)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -167,10 +173,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
+    val fieldValueFunctionsEmitter =
+      new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
+
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, stateUtils,
-      bookkeeper)
+      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
+      stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils, bookkeeper)
   }
 
   private def reset() {

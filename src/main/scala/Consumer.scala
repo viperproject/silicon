@@ -9,14 +9,16 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
+import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NonPositivePermission, AssertionFalse}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
+import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
+import state.terms.predef.`?r`
 import state.terms.perms.{IsPositive, IsNoAccess}
+import heap.QuantifiedChunkHelper
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -30,6 +32,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 	protected val decider: Decider[P, ST, H, PC, S, C]
 	import decider.assume
 
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
+
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val bookkeeper: Bookkeeper
 	protected val config: Config
@@ -131,6 +140,67 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
+      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, loss, forall, fa) =>
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
+        val (h1, ts) = quantifiedChunkHelper.quantifyHeapForFields(σ.h, QuantifiedChunkHelper.fieldAccesses(forall))
+          /* If receiver or condition dereference a field which hasn't been quantified yet,
+           * then the evaluator will try to find a regular chunk for the quantified variable,
+           * which will fail.
+           * TODO: It would be better if the heap were quantified on-demand (e.g., in the
+           *       evaluator) AND if that quantified heap would be used afterwards as well
+           *       (which would currently not be possible since the evaluator cannot pass
+           *       on modified heaps).
+           */
+        assume(ts)
+        val σQVar = σ \ h1 \+ γQVar
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
+        eval(σQVar, condition, pve, c0)((tCond, c1) =>
+          if (decider.check(σQVar, Not(tCond)))
+            /* The condition cannot be satisfied, hence we don't need to consume anything. */
+            Q(h, Unit, Nil, c1)
+          else {
+            decider.assume(tCond)
+            evalp(σQVar, loss, pve, c1)((tPerm, c2) =>
+              decider.assert(σ, IsPositive(tPerm)) {
+                case true =>
+                  eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
+                    val receiverInjective =
+                      if (!decider.check(σQVar, FullPerm() < (tPerm + tPerm))) {
+                        quantifiedChunkHelper.injectivityAxiom(tCond, tRcvr, tQVar)
+                      } else
+                        True()
+                    decider.assert(σ, receiverInjective) {
+                      case true =>
+                        val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
+                        val (h2, ts) = quantifiedChunkHelper.quantifyChunksForField(h, field)
+                        assume(ts)
+                        val quantifiedInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
+                        val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, quantifiedInverseRcvr, tCond, tPerm)
+                        quantifiedChunkHelper.splitLocations(σ, h2, field, tRcvr, tQVar, tPerm * p, condPerms * p, c3a) {
+                          case Some((h3, ch, c4)) =>
+                            Q(h3, ch.value, /*ch :: */Nil, c4)
+                          case None =>
+                            Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
+
+                      case false =>
+                        Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
+
+                case false =>
+                  Failure[ST, H, S](pve dueTo NonPositivePermission(loss))})})
+
+      case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
+          if quantifiedChunkHelper.isQuantifiedFor(h, field.name) =>
+
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+          evalp(σ, perm, pve, c1)((tPerm, c2) => {
+            val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, tPerm)
+            quantifiedChunkHelper.splitSingleLocation(σ, h, field, tRcvr, tPerm * p, condPerms * p, c2) {
+              case Some((h1, ch, c3)) =>
+                Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
+              case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
+            }}))
+
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           evalp(σ, perm, pve, c1)((tPerm, c2) =>
@@ -187,13 +257,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C)
-                                (Q:     (H, DirectChunk, C, PermissionsConsumptionResult)
-                                     => VerificationResult)
+                                (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
                                 :VerificationResult = {
 
     /* TODO: assert that pLoss > 0 */
 
-    if (consumeExactRead(pLoss, c)) {
+    if (utils.consumeExactRead(pLoss, c)) {
       decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c)(ch => {
         if (decider.check(σ, IsNoAccess(ch.perm - pLoss))) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
@@ -204,17 +273,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }
-  }
-
-  private def consumeExactRead(fp: P, c: C): Boolean = fp match {
-    case TermPerm(v: Var) => !c.constrainableARPs.contains(v)
-    case _: TermPerm => true
-    case _: WildcardPerm => false
-    case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
-    case IntPermTimes(_, t1) => consumeExactRead(t1, c)
-    case _ => true
   }
 }
 

@@ -9,12 +9,14 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import state.terms.predef.`?r`
+import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -32,9 +34,13 @@ trait DefaultProducer[ST <: Store[ST],
   protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
 
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -154,13 +160,22 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+        def createChunk(rcvr: Term, s: Term, p: DefaultFractionalPermissions) =
+          if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
+            val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
+            assume(fvfDef)
+
+            quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
+          } else
+            DirectFieldChunk(rcvr, field.name, s, p)
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
             assume(NoPerm() < pGain)
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+            val ch = createChunk(tRcvr, s, pNettoGain)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
@@ -182,6 +197,49 @@ trait DefaultProducer[ST <: Store[ST],
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
             Q(σ.h + ch, c3)}))
+
+      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, gain, _, _) =>
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
+        val σQVar = σ \+ γQVar
+        val πPre = decider.π
+        var πAux: Set[Term] = Set()
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
+        decider.locally[(Term, Term, P, C)](QB =>
+          eval(σQVar, condition, pve, c0)((tCond, c1) => {
+            assume(tCond)
+            eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
+              evalp(σQVar, gain, pve, c2)((pGain, c3) => {
+                πAux = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term we want to keep */
+                  QB(tCond, tRcvr, pGain, c3)}))})
+        ){case (tCond, tRcvr, pGain, c1) =>
+          val c3 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
+          val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
+//          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
+//          decider.assume(tAuxQuant)
+          val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil)
+          assume(πAuxWithoutQVar)
+          assume(πAuxWithQVarQuant)
+          val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
+          val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
+//          assume(Domain(field.name, snap) === tSet)
+          val tDomainQuant =
+            Forall(tQVar,
+                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
+                       tCond),
+                   Trigger(Lookup(field.name, snap, tRcvr) :: Nil) :: Nil)
+          val tNonNullQuant =
+            Forall(tQVar,
+                   Implies(NoPerm() < ch.perm.replace(`?r`, tRcvr).asInstanceOf[DefaultFractionalPermissions],
+                           tRcvr !== Null()),
+                   Nil)
+          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tCond, tRcvr, tQVar)
+          assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
+          val (h, ts) =
+            if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
+            else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
+          assume(ts)
+          Q(h + ch, c3)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -239,8 +297,7 @@ trait DefaultProducer[ST <: Store[ST],
         getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
 
       case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-        (toSort(f.typ), false)
+      (sorts.FieldValueFunction(toSort(f.typ)), false)
 
       case _ =>
         (sorts.Snap, false)
@@ -256,7 +313,7 @@ trait DefaultProducer[ST <: Store[ST],
     if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, program, visited)
     else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, program, visited)
     else fIfBothPure()
-  }
+    }
 
   private def mkSnap(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil): Term =
     getOptimalSnapshotSort(φ, program, visited) match {

@@ -53,8 +53,8 @@ REM Scala
 set __CP.SCALA_LIB="%SBT_HOME%\boot\scala-%SCALA_RVER%\lib\scala-library.jar"
 set __CP.SCALA_REF="%SBT_HOME%\boot\scala-%SCALA_RVER%\lib\scala-reflect.jar"
 REM Silicon
-set __CP.SILICON_COMMON=%BASE_DIR%\common\target\scala-%SCALA_SVER%\silicon-common_%SCALA_SVER%-%SILICON_VERSION%.jar
-set __CP.SILICON_JAR=%BASE_DIR%\target\scala-%SCALA_SVER%\silicon_%SCALA_SVER%-%SILICON_VERSION%.jar
+set __CP.SILICON_COMMON=%BASE_DIR%\common\target\scala-%SCALA_SVER%\silicon-quantified-permissions-common_%SCALA_SVER%-%SILICON_VERSION%.jar
+set __CP.SILICON_JAR=%BASE_DIR%\target\scala-%SCALA_SVER%\silicon-quantified-permissions_%SCALA_SVER%-%SILICON_VERSION%.jar
 )
 REM Silicon's dependencies
 set __CP.SCALLOP_LIB="%IVY_CACHE%\org.rogach\scallop_%SCALA_SVER%\jars\scallop_%SCALA_SVER%-0.9.4.jar"

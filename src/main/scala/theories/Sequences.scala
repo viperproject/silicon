@@ -18,10 +18,11 @@ trait SequencesEmitter extends PreambleEmitter
 
 class DefaultSequencesEmitter(prover: Prover,
                              symbolConverter: SymbolConvert,
-                             preambleFileEmitter: PreambleFileEmitter[_])
+                             preambleFileEmitter: PreambleFileEmitter[String, String])
     extends SequencesEmitter {
 
   private var collectedSorts = Set[terms.sorts.Seq]()
+  private var programUsesQuantifiedPermissions = false
 
   def sorts = toSet(collectedSorts)
 
@@ -60,6 +61,8 @@ class DefaultSequencesEmitter(prover: Prover,
     }
 
     collectedSorts = sequenceTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Seq])
+
+    programUsesQuantifiedPermissions = program existsDefined { case q: ast.Quantified if !q.isPure => }
   }
 
   def declareSorts() {
@@ -68,25 +71,47 @@ class DefaultSequencesEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/sequences_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_declarations_dafny.smt2", s.elementsSort)
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
+      val declarations = "/dafny_axioms/sequences_declarations_dafny.smt2"
+      prover.logComment(s"$declarations [${s.elementsSort}]")
+      preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
     }
 
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
-      prover.logComment("/dafny_axioms/sequences_int_declarations_dafny.smt2")
-      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_int_declarations_dafny.smt2", terms.sorts.Int)
+      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
+      val declarations = "/dafny_axioms/sequences_int_declarations_dafny.smt2"
+      prover.logComment(declarations)
+      preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
+    }
+
+    if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
+      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Ref))
+      val axioms = "/sequences_inverse_declarations.smt2"
+      prover.logComment(axioms)
+      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/sequences_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_axioms_dafny.smt2", s.elementsSort)
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
+      val axioms = "/dafny_axioms/sequences_axioms_dafny.smt2"
+      prover.logComment(s"$axioms [${s.elementsSort}]")
+      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }
 
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
-      prover.logComment("/dafny_axioms/sequences_int_axioms_dafny.smt2")
-      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_int_axioms_dafny.smt2", terms.sorts.Int)
+      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
+      val axioms = "/dafny_axioms/sequences_int_axioms_dafny.smt2"
+      prover.logComment(axioms)
+      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
+    }
+
+    if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
+      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Ref))
+      val axioms = "/sequences_inverse_axioms.smt2"
+      prover.logComment(axioms)
+      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }
   }
 }
