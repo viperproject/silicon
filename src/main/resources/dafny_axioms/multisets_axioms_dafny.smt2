@@ -29,11 +29,6 @@
 
 ;axiom (forall<T> s: MultiSet T, x: T, n: int :: { MultiSet#Card(s[x := n]) }
 ;  0 <= n ==> MultiSet#Card(s[x := n]) == MultiSet#Card(s) - s[x] + n);
-(assert (forall ((xs $Multiset<$S$>) (x $S$) (n Int)) (!
-  (< 0 ($Multiset.card xs))
-	:pattern (($Multiset.card xs))
-	)))
-
 
 ;axiom (forall<T> o: T :: { MultiSet#Empty()[o] } MultiSet#Empty()[o] == 0);
 (assert (forall ((x $S$)) (!
@@ -112,7 +107,7 @@
   (implies
     (< 0 ($Multiset.count xs x))
     (< 0 ($Multiset.count ($Multiset.add xs y) x)))
-	:pattern (($Multiset.add xs y) ($Multiset.count xs y))
+	:pattern (($Multiset.add xs y) ($Multiset.count xs x))
 	)))
 
 ;// other elements unchanged
