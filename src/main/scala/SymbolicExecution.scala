@@ -7,12 +7,13 @@
 package viper
 package silicon
 
-import interfaces.{VerificationResult, Unreachable}
+import interfaces.{VerificationResult, Unreachable, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, Context}
+import reporting.Bookkeeper
+import state.DefaultContext
 import state.terms._
 import state.terms.utils.{BigAnd, ¬}
-import reporting.Bookkeeper
 
 /* TODO: Move interfaces into interfaces package */
 
@@ -33,6 +34,7 @@ trait Brancher[ST <: Store[ST],
 						 fFalse: C => VerificationResult)
             : VerificationResult
 
+  /* TODO: Remove this method, keep only the above */
 	def branch(σ: S,
              ts: List[Term],
              c: C,
@@ -40,7 +42,15 @@ trait Brancher[ST <: Store[ST],
 						 fFalse: C => VerificationResult)
             : VerificationResult
 
-  def guards: Seq[Term]
+  def branchAndJoin(σ: S,
+                    guard: Term,
+                    c: C,
+                    fTrue: (C, (Term, C) => VerificationResult) => VerificationResult,
+                    fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
+                   (Q: (Option[Term], Option[Term], C) => VerificationResult)
+                   : VerificationResult
+
+  def guards: Set[Term]
 }
 
 /*
@@ -60,11 +70,8 @@ trait DefaultBrancher[ST <: Store[ST],
 	val bookkeeper: Bookkeeper
 
 
-  /*private*/ var currentGuards: Stack[Term] = Stack()
-  /* TODO: Use a set that preserves insertion order, should be faster than
-   *       calling Stack.distinct over and over again.
-   */
-  def guards = this.currentGuards.distinct
+  /*private*/ var currentGuards: Set[Term] = Set()
+  def guards = this.currentGuards
 
 	def branch(σ: S,
              t: Term,
@@ -98,7 +105,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
 		((if (exploreTrueBranch) {
 			pushLocalState()
-      currentGuards = guardsTrue +: currentGuards
+      currentGuards = currentGuards + guardsTrue
 
       val result =
         decider.inScope {
@@ -107,7 +114,7 @@ trait DefaultBrancher[ST <: Store[ST],
           fTrue(c)
         }
 
-      currentGuards = currentGuards.tail
+      currentGuards = currentGuards - guardsTrue
       popLocalState()
 
 			result
@@ -118,7 +125,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			&&
 		(if (exploreFalseBranch) {
 			pushLocalState()
-      currentGuards = guardsFalse +: currentGuards
+      currentGuards = currentGuards + guardsFalse
 
       val result =
         decider.inScope {
@@ -127,7 +134,7 @@ trait DefaultBrancher[ST <: Store[ST],
           fFalse(c)
         }
 
-      currentGuards = currentGuards.tail
+      currentGuards = currentGuards - guardsFalse
       popLocalState()
 
 			result
@@ -136,7 +143,185 @@ trait DefaultBrancher[ST <: Store[ST],
       Unreachable()
     }))
 	}
+
+  def branchAndJoin(σ: S,
+                    guard: Term,
+                    c: C,
+                    fTrue: (C, (Term, C) => VerificationResult) => VerificationResult,
+                    fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
+                   (Q: (Option[Term], Option[Term], C) => VerificationResult)
+                   : VerificationResult = {
+
+    val πPre: Set[Term] = decider.π
+    var πThen: Option[Set[Term]] = None
+    var tThen: Option[Term] = None
+    var cThen: Option[C] = None
+    var πElse: Option[Set[Term]] = None
+    var tElse: Option[Term] = None
+    var cElse: Option[C] = None
+
+    val r =
+      branch(σ, guard, c,
+        (c1: C) =>
+          fTrue(c1,
+                (t, c2) => {
+                  assert(πThen.isEmpty, s"Unexpected branching occurred")
+                  πThen = Some(decider.π -- (πPre + guard))
+                  tThen = Some(t)
+                  cThen = Some(c2)
+                  Success()}),
+        (c1: C) =>
+          fFalse(c1,
+                (t, c2) => {
+                  assert(πElse.isEmpty, s"Unexpected branching occurred")
+                  πElse = Some(decider.π -- (πPre + guard))
+                  tElse = Some(t)
+                  cElse = Some(c2)
+                  Success()}))
+
+    r && {
+      val tAuxIte = /* Ite with auxiliary terms */
+        Ite(guard,
+            πThen.fold(True(): Term)(ts => state.terms.utils.BigAnd(ts)),
+            πElse.fold(True(): Term)(ts => state.terms.utils.BigAnd(ts)))
+
+      assume(tAuxIte)
+
+      val cJoined = (cThen, cElse) match {
+        case (Some(_cThen), Some(_cElse)) => _cThen.merge(_cElse)
+        case (None, Some(_cElse)) => _cElse
+        case (Some(_cThen), None) => _cThen
+        case (None, None) => c
+      }
+
+      Q(tThen, tElse, cJoined)
+    }
+  }
 }
+
+/* Joiner */
+
+trait Joiner[ST <: Store[ST],
+             H <: Heap[H],
+             S <: State[ST, H, S],
+             C <: Context[C]] {
+
+  def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
+          (block: ((Term, C) => VerificationResult) => VerificationResult)
+          (Q: (Term, C) => VerificationResult)
+          : VerificationResult
+}
+
+trait DefaultJoiner[ST <: Store[ST],
+                    H <: Heap[H],
+                    PC <: PathConditions[PC],
+                    S <: State[ST, H, S]]
+    extends Joiner[ST, H, S, DefaultContext]
+    { this: DefaultBrancher[ST, H, PC, S, DefaultContext] =>
+
+  private type C = DefaultContext
+
+  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+
+  def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
+          (block: ((Term, C) => VerificationResult) => VerificationResult)
+          (Q: (Term, C) => VerificationResult)
+          : VerificationResult = {
+          
+    val πPre: Set[Term] = decider.π
+    var localResults: List[LocalEvaluationResult] = Nil
+
+//    decider.pushScope()
+      /* Note: Executing the block in its own scope may result in incompletenesses:
+       *   1. Let A be an assumption, e.g., a combine-term, that is added during
+       *      the execution of block, but before block's execution branches
+       *   2. When the leaves of block's execution are combined, A will be placed
+       *      under the guards corresponding to the individual leaves; but A should
+       *      be unconditional since it was added to the path conditions before
+       *      the branching took place.
+       */
+
+    val oldGuards = currentGuards
+    currentGuards = Set()
+
+    val r =
+      block((tR, cR)  => {
+        localResults ::= LocalEvaluationResult(guards, tR, decider.π -- πPre, cR)
+        Success()
+      })
+
+    currentGuards = oldGuards
+
+//    decider.popScope()
+                    
+    r && {
+        var tJoined: Term = null
+        var cJoined: C = null
+
+        localResults match {
+          case List() =>
+            /* Should imply that Silicon is exploring an infeasible proof branch,
+             * but hasn't noticed that yet.
+             */
+            tJoined = True()
+            cJoined = c
+
+          case List(localResult) =>
+//            assert(localResult.πGuards.isEmpty,
+//                   s"Joining single branch, expected no guard, but found ${localResult.πGuards}")
+
+            decider.assume(localResult.auxiliaryTerms)
+
+            tJoined = localResult.actualResult
+            cJoined = localResult.context
+
+          case _ =>
+            val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
+            val actualResultFuncSort = sorts.Arrow(quantifiedVarsSorts, joinSort)
+            val summarySymbol = decider.fresh(joinFunctionName, actualResultFuncSort)
+            val tActualVar = Apply(summarySymbol, joinFunctionArgs)
+            val (tActualResult: Term, tAuxResult: Set[Term], cOpt) = combine(localResults, tActualVar === _)
+            val c1 = cOpt.getOrElse(c)
+
+            decider.assume(tAuxResult + tActualResult)
+
+            tJoined = tActualVar
+            cJoined = c1.copy(additionalTriggers = tActualVar :: c1.additionalTriggers)
+        }
+
+      Q(tJoined, cJoined)}
+  }
+
+  private case class LocalEvaluationResult(πGuards: Set[Term],
+                                           actualResult: Term,
+                                           auxiliaryTerms: Set[Term],
+                                           context: C)
+
+  private def combine(localResults: Seq[LocalEvaluationResult],
+                      actualResultTransformer: Term => Term = Predef.identity)
+                     : (Term, Set[Term], Option[C]) = {
+
+    val (t1: Term, tAux: Set[Term], optC) =
+      localResults.map { lr =>
+        val newGuards = lr.πGuards filterNot decider.π.contains
+        val guard: Term = state.terms.utils.BigAnd(newGuards)
+        val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
+        val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
+
+        (tAct, tAux, lr.context)
+      }.foldLeft((True(): Term, Set[Term](), None: Option[C])) {
+        case ((tActAcc, tAuxAcc, optCAcc), (tAct, _tAux, _c)) =>
+          val cAcc = optCAcc.fold(_c)(cAcc => cAcc.merge(_c))
+
+          (And(tActAcc, tAct), tAuxAcc + _tAux, Some(cAcc))
+      }
+
+    (t1, tAux, optC)
+  }
+}
+
+
+/* TODO: Remove this class */
 
 class StateUtils[ST <: Store[ST],
                  H <: Heap[H],

@@ -412,14 +412,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  val disableLocalEvaluations = opt[Boolean]("disableLocalEvaluations",
-    descr = (  "Disable local evaluation of pure conditionals, function applications, unfoldings etc. "
-             + "WARNING: Disabling it is unsound unsound and incomplete, intended for debugging only!"),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
              + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),

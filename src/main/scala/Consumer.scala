@@ -175,6 +175,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 QF(Failure[ST, H, S](pve dueTo AssertionFalse(φ)))
             })
         })(Q.tupled)
+/* Consume pure expression w/o trying heuristics in case of failure */
+/*
+        eval(σ, φ, pve, c)((t, c) =>
+          decider.assert(σ, t) {
+            case true =>
+              assume(t)
+              Q(h, Unit, Nil, c)
+            case false =>
+              Failure[ST, H, S](pve dueTo AssertionFalse(φ))})
+*/
 		}
 
 		consumed

@@ -120,6 +120,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S, DefaultContext]
+       with DefaultJoiner[ST, H, PC, S]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -283,6 +284,6 @@ class DefaultVerifier[ST <: Store[ST],
     super.reset()
     ev.fappCache = Map()
     ev.fappCacheFrames = Stack()
-    ev.currentGuards = Stack()
+    ev.currentGuards = Set()
   }
 }
