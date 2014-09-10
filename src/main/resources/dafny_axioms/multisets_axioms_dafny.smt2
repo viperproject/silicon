@@ -2,9 +2,11 @@
 ; Microsoft's Dafny tool by translating them from Boogie to SMT-LIB. Visit
 ; http://dafny.codeplex.com for more information about the Dafny verifier.
 ;
+; A snapshot of the corresponding DafnyPrelude.bpl file including the date
+; of the version and its copyright notices can be found in this directory.
+;
 ; This file is subject to the terms of the Microsoft Public License
-; (Ms-PL). A copy of the Ms-PL can be found in the same directory in which
-; this file is located.
+; (Ms-PL). A copy of the Ms-PL is provided in this directory (LICENCE.TXT)
 
 
 
@@ -27,11 +29,6 @@
 
 ;axiom (forall<T> s: MultiSet T, x: T, n: int :: { MultiSet#Card(s[x := n]) }
 ;  0 <= n ==> MultiSet#Card(s[x := n]) == MultiSet#Card(s) - s[x] + n);
-(assert (forall ((xs $Multiset<$S$>) (x $S$) (n Int)) (!
-  (< 0 ($Multiset.card xs))
-	:pattern (($Multiset.card xs))
-	)))
-
 
 ;axiom (forall<T> o: T :: { MultiSet#Empty()[o] } MultiSet#Empty()[o] == 0);
 (assert (forall ((x $S$)) (!
@@ -110,7 +107,7 @@
   (implies
     (< 0 ($Multiset.count xs x))
     (< 0 ($Multiset.count ($Multiset.add xs y) x)))
-	:pattern (($Multiset.add xs y) ($Multiset.count xs y))
+	:pattern (($Multiset.add xs y) ($Multiset.count xs x))
 	)))
 
 ;// other elements unchanged
