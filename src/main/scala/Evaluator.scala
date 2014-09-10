@@ -453,15 +453,18 @@ trait DefaultEvaluator[
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
-        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables, recordPossibleTriggers = true)
+        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
+                        recordPossibleTriggers = true,
+                        possibleTriggers = Map.empty)
 
         decider.pushScope()
 
         val r =
-          eval(σQuant, body, pve, c0)((tBody, c1) =>
+          eval(σQuant, body, pve, c0)((tBody, c1) => {
             evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, c2) => {
               triggers = _triggers
-              val c3 = c2.copy(recordPossibleTriggers = false, possibleTriggers = Map.empty)
+              val c3 = c2.copy(recordPossibleTriggers = c.recordPossibleTriggers,
+                               possibleTriggers = c.possibleTriggers)
               localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c3)
 
               /* We could call Q directly instead of returning Success, but in
@@ -476,7 +479,7 @@ trait DefaultEvaluator[
                * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
                * which is currently overcome by caching fapp-terms.
                */
-              Success()}))
+              Success()})})
 
         decider.popScope()
 
@@ -882,6 +885,11 @@ trait DefaultEvaluator[
       }.unzip
 
     if (optRemainingTriggerExpressions.flatten.nonEmpty)
+      /* Reasons for why a trigger wasn't recorded while evaluating the body include:
+       *   - It did not occur in the body
+       *   - The evaluation of the body terminated early, for example, because the
+       *     LHS of an implication evaluated to false
+       */
       logger.warn(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
 
     /* TODO: Translate remaining triggers - which is currently not directly possible.
