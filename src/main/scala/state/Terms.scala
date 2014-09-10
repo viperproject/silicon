@@ -173,6 +173,8 @@ case class Var(id: String, sort: Sort) extends Symbol with Term {
 }
 
 class Function(val id: String, val sort: sorts.Arrow) extends Symbol with Term {
+  lazy val limitedVersion = Function(id + "$", sort)
+
   override val hashCode = silicon.utils.generateHashCode(id, sort)
 
   override def equals(other: Any) =
@@ -722,6 +724,9 @@ case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Te
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
   val sort = function.sort.to
+
+  lazy val limitedVersion = FApp(function.limitedVersion, snapshot, tArgs)
+
   override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
 }
 

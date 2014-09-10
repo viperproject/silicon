@@ -83,7 +83,7 @@ class DefaultSetsEmitter(prover: Prover,
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/sets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitParametricAssertions("/sets_declarations_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sets_declarations_dafny.smt2", substitutions)
     }
   }
 
@@ -91,7 +91,7 @@ class DefaultSetsEmitter(prover: Prover,
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/sets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitParametricAssertions("/sets_axioms_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sets_axioms_dafny.smt2", substitutions)
     }
   }
 }

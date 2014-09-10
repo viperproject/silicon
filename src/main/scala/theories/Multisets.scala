@@ -72,7 +72,7 @@ class DefaultMultisetsEmitter(prover: Prover,
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/multisets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitParametricAssertions("/multisets_declarations_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/multisets_declarations_dafny.smt2", s.elementsSort)
     }
   }
 
@@ -80,7 +80,7 @@ class DefaultMultisetsEmitter(prover: Prover,
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/multisets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitParametricAssertions("/multisets_axioms_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/multisets_axioms_dafny.smt2", s.elementsSort)
     }
   }
 }

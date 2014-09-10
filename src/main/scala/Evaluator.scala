@@ -90,8 +90,15 @@ trait DefaultEvaluator[
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-		eval2(σ, e, pve, c)((t, c1) =>
-			Q(t, c1))
+		eval2(σ, e, pve, c)((t, c1) => {
+      val c2 =
+        if (c1.recordPossibleTriggers)
+          e match {
+            case pt: silver.ast.PossibleTrigger => c1.copy(possibleTriggers = c1.possibleTriggers + (pt -> t))
+            case _ => c1}
+        else
+          c1
+			Q(t, c2)})
   }
 
   protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
@@ -446,7 +453,7 @@ trait DefaultEvaluator[
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
-        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables)
+        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables, recordPossibleTriggers = true)
 
         decider.pushScope()
 
@@ -454,7 +461,8 @@ trait DefaultEvaluator[
           eval(σQuant, body, pve, c0)((tBody, c1) =>
             evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, c2) => {
               triggers = _triggers
-              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2.copy(fapps = Map.empty))
+              val c3 = c2.copy(recordPossibleTriggers = false, possibleTriggers = Map.empty)
+              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c3)
 
               /* We could call Q directly instead of returning Success, but in
                * that case the path conditions πDelta would also be outside of
@@ -502,7 +510,7 @@ trait DefaultEvaluator[
                 c3.copy(snapshotRecorder = Some(sr1))
               case _ => c3}
             val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
-            Q(tFA, c4.copy(fapps = c4.fapps + (fapp -> tFA)))})})
+            Q(tFA, c4/*c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFA))*/)})})
 
       case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
 
@@ -855,28 +863,61 @@ trait DefaultEvaluator[
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
-    val (triggerExpressions, fappTriggers, unsupportedExpressions) =
+    val (optCachedTriggerTerms, optRemainingTriggerExpressions) =
       trigger.exps.map {
         case ast.Old(e) => e
         case e => e
       }.map {
         case fapp: ast.FuncApp =>
-          (None, c.fapps.get(fapp).map(fa => fa.copy(function = Function(fa.function.id + "$", fa.function.sort))), None)
+          val cachedTrigger = c.possibleTriggers.get(fapp).collect{case fa: FApp => fa.limitedVersion}
 
-        case f: silver.ast.PossibleTrigger => (Some(f), None, None)
-        case e => (None, None, Some(e))
-      }.unzip3
+          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
 
-    if (unsupportedExpressions.flatten.nonEmpty)
-      logger.warn(s"Found unsupported triggers: ${unsupportedExpressions.flatten}")
+        case pt: silver.ast.PossibleTrigger =>
+          val cachedTrigger = c.possibleTriggers.get(pt)
 
-    evals2(σ, triggerExpressions.flatten, Nil, pve, c)((ts, c1) =>
-      Q(Trigger(ts ++ fappTriggers.flatten), c1))
+          (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
+
+        case e => (None, Some(e))
+      }.unzip
+
+    if (optRemainingTriggerExpressions.flatten.nonEmpty)
+      logger.warn(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
+
+    /* TODO: Translate remaining triggers - which is currently not directly possible.
+     *       For example, assume a conjunction f(x) && g(x) where f(x) is the
+     *       precondition of g(x). This gives rise to the trigger {f(x), g(x)}.
+     *       If the two trigger expressions are evaluated individually, evaluating
+     *       the second will fail because its precondition doesn't hold.
+     *       For example, let f(x) be "x in xs" (and assume that this, via other
+     *       path conditions, implies that x != null), and let g(x) be "y.f in xs".
+     *       Evaluating the latter will currently fail when evaluating y.f because
+     *       y on its own (i.e., without having assumed y in xs) might be null.
+     *
+     *       What should probably be done is to merely translate (instead of
+     *       evaluate) triggers, where the difference is that translating does not
+     *       entail any checks such as checking for non-nullity.
+     *       In case of applications of heap. dep. functions this won't be
+     *       straight-forward, because the resulting FApp-term expects a snapshot,
+     *       which is computed by (temporarily) consuming the function's
+     *       precondition.
+     *       We could replace each concrete snapshot occurring in an FApp-term by
+     *       a quantified snapshot, but that might make the chosen triggers invalid
+     *       because some trigger sets might no longer cover all quantified
+     *       variables.
+     */
+//    evals(σ, optRemainingTriggerExpressions.flatten, pve, c)((ts, c1) =>
+//      Q(Trigger(ts ++ fappTriggers.flatten), c1))
+    Q(Trigger(optCachedTriggerTerms.flatten), c)
   }
 
-  /* Evaluate `e0`, and only evaluate `e1` if `t0Transformer(t0)` is not guaranteed
-   * to be false.
-   * Attention: `e1` is not expected to branch; if it does, and exception will be
+  /* Evaluates `e0` to `t0`, assumes `t0Transformer(t0)`, and afterwards only
+   * evaluates `e1` if the current state is consistent. That is, `e1` is only
+   * evaluated if `t0Transformer(t0)` does not contradict the current path
+   * conditions. This method can be used to evaluate short-circuiting operators
+   * such as conjunction, disjunction or implication.
+   *
+   * Attention: `e1` is not expected to branch; if it does, an exception will be
    * thrown.
    */
   private def evalDependently(σ: S,
@@ -908,7 +949,8 @@ trait DefaultEvaluator[
                   /* Removing guard from πAux is crucial, it is not part of the aux. terms */
                 optInnerC = Some(c3)
                 Success()}),
-            (c2: C) => Success())
+            (c2: C) =>
+              Success())
 
         decider.popScope()
 

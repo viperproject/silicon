@@ -1,8 +1,14 @@
-; This Source Code Form is subject to the terms of the Mozilla Public
-; License, v. 2.0. If a copy of the MPL was not distributed with this
-; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+; These axioms are derived from the corresponding axioms of the prelude of
+; Microsoft's Dafny tool by translating them from Boogie to SMT-LIB. Visit
+; http://dafny.codeplex.com for more information about the Dafny verifier.
+;
+; A snapshot of the corresponding DafnyPrelude.bpl file including the date
+; of the version and its copyright notices can be found in this directory.
+;
+; This file is subject to the terms of the Microsoft Public License
+; (Ms-PL). A copy of the Ms-PL is provided in this directory (LICENCE.TXT)
 
-; These axioms correspond to Dafny's set axiomatisation from 2013-06-27.
+
 
 ; type Set T = [T]bool;
 

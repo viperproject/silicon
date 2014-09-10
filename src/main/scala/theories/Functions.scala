@@ -93,7 +93,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   private val expressionTranslator =
     new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, limitedFunction)
 
-  private class FunctionData(programFunction: ast.ProgramFunction, program: ast.Program) {
+  private class FunctionData(val programFunction: ast.ProgramFunction, val program: ast.Program) {
     val func = symbolConverter.toFunction(programFunction)
     val formalArgs = programFunction.formalArgs map (v => Var(v.name, symbolConverter.toSort(v.typ)))
     val args = Seq(`?s`) ++ formalArgs
@@ -152,6 +152,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 
   object functionsSupporter extends StatefulComponent {
     private var program: ast.Program = null
+
     private var functionData = Map[ast.ProgramFunction, FunctionData]()
 
     def handleFunctions(program: ast.Program): List[VerificationResult] =  {
@@ -301,6 +302,15 @@ trait FunctionsSupporter[ST <: Store[ST],
     }
 
     def stop() {}
+
+    /* Debugging */
+
+    private def show(functionData: Map[ast.ProgramFunction, FunctionData]) =
+      functionData.map { case (fun, fd) => (
+        fun.name,    // Function name only
+//        s"${fun.name}(${fun.formalArgs.mkString(", ")}}): ${fun.typ}",    // Function name and signature
+        s"${fd.getClass.getSimpleName}@${System.identityHashCode(fd)}(${fd.programFunction.name}})"
+      )}
   }
 }
 

@@ -8,13 +8,7 @@ import state.terms._
 trait ExpressionTranslator {
   val symbolConverter: SymbolConvert
 
-  /**
-   *
-   * @param toSort
-   * @param exp
-   * @return
-    *
-   * TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
+  /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
    *       reuse code because the code in DefaultEvaluator uses the state whereas this one here
    *       doesn't. Of course, one could just evaluate the domains using the DefaultEvaluator - which
    *       was done before - but that is less efficient and creates lots of additional noise output
@@ -53,16 +47,15 @@ trait ExpressionTranslator {
 
 
     exp match {
-      /* TODO: Translate triggers */
-      case q @ ast.Quantified(qvars, body) =>
-        val (quantifier, triggers) = q match {
-          case fa: ast.Forall => (Forall, fa.autoTrigger.triggers)
-          case _: ast.Exists => (Exists, Nil)
+      case q @ ast.Quantified(qvars, _) =>
+        val (autoTriggerQuant, quantifier, triggers) = q match {
+          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
+          case ex: ast.Exists => (ex, Exists, Seq())
         }
 
         Quantification(quantifier,
                        qvars map (v => Var(v.name, toSort(v.typ, Map()))),
-                       f(body),
+                       f(autoTriggerQuant.exp),
                        triggers map (tr => Trigger(tr.exps map f)))
 
       case ast.True() => True()

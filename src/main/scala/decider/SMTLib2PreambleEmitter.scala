@@ -8,6 +8,7 @@ package viper
 package silicon
 package decider
 
+import java.io.FileNotFoundException
 import scala.io.Source
 import silver.components.StatefulComponent
 import state.terms.Sort
@@ -38,11 +39,16 @@ class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[
   def readPreamble(resource: String): List[String] = {
     val in = getClass.getResourceAsStream(resource)
 
+    if (in == null)
+      throw new FileNotFoundException(s"Cannot read preamble resource $resource")
+
     var lines =
       Source.fromInputStream(in)
             .getLines()
             .toList
             .filterNot(s => s.trim == "" || s.trim.startsWith(";"))
+
+    in.close()
 
     var assertions = List[String]()
 

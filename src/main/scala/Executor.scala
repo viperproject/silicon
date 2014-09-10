@@ -8,8 +8,10 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.errors._
+import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
 import silver.verifier.reasons.{InsufficientPermission, NonPositivePermission, ReceiverNull, AssertionFalse}
+    LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
+    UnfoldFailed, AssertFailed}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}

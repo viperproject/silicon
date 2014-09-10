@@ -1,9 +1,14 @@
-; This Source Code Form is subject to the terms of the Mozilla Public
-; License, v. 2.0. If a copy of the MPL was not distributed with this
-; file, You can obtain one at http://mozilla.org/MPL/2.0/.
+; These axioms are derived from the corresponding axioms of the prelude of
+; Microsoft's Dafny tool by translating them from Boogie to SMT-LIB. Visit
+; http://dafny.codeplex.com for more information about the Dafny verifier.
+;
+; A snapshot of the corresponding DafnyPrelude.bpl file including the date
+; of the version and its copyright notices can be found in this directory.
+;
+; This file is subject to the terms of the Microsoft Public License
+; (Ms-PL). A copy of the Ms-PL is provided in this directory (LICENCE.TXT)
 
-; These axioms correspond to Dafny's multiset axiomatisation from 2013-06-27.
-; They depend on the set axiomatisation due to the fromSet-function.
+
 
 ;
 ; Multiset axioms
@@ -11,12 +16,10 @@
 
 ;type MultiSet T = [T]int;
 
-
 ; 2013-07-24 Malte: Ignored for now. Not sure when it should be used.
 ;// ints are non-negative, used after havocing, and for conversion from sequences to multisets.
 ;axiom (forall<T> ms: MultiSet T :: { $IsGoodMultiSet(ms) }
 ;  $IsGoodMultiSet(ms) <==> (forall bx: T :: { ms[bx] } 0 <= ms[bx]));
-
 
 ;axiom (forall<T> s: MultiSet T :: { MultiSet#Card(s) } 0 <= MultiSet#Card(s));
 (assert (forall ((xs $Multiset<$S$>)) (!

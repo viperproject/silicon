@@ -73,13 +73,13 @@ class DefaultSequencesEmitter(prover: Prover,
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/sequences_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitParametricAssertions("/sequences_declarations_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_declarations_dafny.smt2", substitutions)
     }
 
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
       val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
       prover.logComment("/sequences_int_declarations_dafny.smt2")
-      preambleFileEmitter.emitParametricAssertions("/sequences_int_declarations_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_int_declarations_dafny.smt2", substitutions)
     }
 
     if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
@@ -94,13 +94,13 @@ class DefaultSequencesEmitter(prover: Prover,
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
       prover.logComment(s"/sequences_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitParametricAssertions("/sequences_axioms_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_axioms_dafny.smt2", substitutions)
     }
 
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
       val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
       prover.logComment("/sequences_int_axioms_dafny.smt2")
-      preambleFileEmitter.emitParametricAssertions("/sequences_int_axioms_dafny.smt2", substitutions)
+      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/sequences_int_axioms_dafny.smt2", substitutions)
     }
 
     if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
