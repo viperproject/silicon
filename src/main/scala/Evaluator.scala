@@ -572,33 +572,6 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private case class LocalEvaluationResultXXX(πGuards: Seq[Term],
-                                           actualResult: Term,
-                                           auxiliaryTerms: Set[Term],
-                                           context: C)
-
-  private def combineXXX(localResults: Seq[LocalEvaluationResultXXX],
-                      actualResultTransformer: Term => Term = Predef.identity)
-                     : (Term, Set[Term], Option[C]) = {
-
-    val (t1: Term, tAux: Set[Term], optC) =
-      localResults.map { lr =>
-        val newGuards = lr.πGuards filterNot decider.π.contains
-        val guard: Term = state.terms.utils.BigAnd(newGuards)
-        val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
-        val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
-
-        (tAct, tAux, lr.context)
-      }.foldLeft((True(): Term, Set[Term](), None: Option[C])) {
-        case ((tActAcc, tAuxAcc, optCAcc), (tAct, _tAux, _c)) =>
-          val cAcc = optCAcc.fold(_c)(cAcc => cAcc.merge(_c))
-
-          (And(tActAcc, tAct), tAuxAcc + _tAux, Some(cAcc))
-      }
-
-    (t1, tAux, optC)
-  }
-
   /* TODO: The CP-style in which Silicon's main components are written makes it hard to work
    *       with sequences. evalTriggers, evals and execs all share the same pattern, they
    *       essentially recurse over a sequence and accumulate results, where results can be
