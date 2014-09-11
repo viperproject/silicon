@@ -31,7 +31,8 @@ trait DefaultEvaluator[
 		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext] with HasLocalState
 		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
 										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-										with Brancher[ST, H, S, DefaultContext] =>
+										with Brancher[ST, H, S, DefaultContext]
+										with Joiner[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
   private type P = DefaultFractionalPermissions
@@ -216,138 +217,25 @@ trait DefaultEvaluator[
           val tOr = Or(t0, optT1.getOrElse(True()))
           Q(tOr, c1)})
 
-      case _: ast.Implies if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
-
-      case impl @ ast.Implies(e0, e1) =>
-        /* - Problem with Implies(e0, e1) is that simply evaluating e1 after e0
-         *   fails if e0 establishes a precondition of e1
-         * - Hence we have to assume e0 when evaluating e1, but revoke that
-         *   assumption afterwards
-         * - We also have to keep track of all path conditions that result from
-         *   the evaluation of e0 and e1
-         */
-
-        val πPre: Set[Term] = decider.π
-          /* Initial set of path conditions */
-
-        var πIf: Set[Term] = Set()
-          /* Path conditions assumed while evaluating the antecedent */
-        var tEvaluatedIf: Term = False()
-          /* The term the antecedent actually evaluates too. */
-
-        var localResults: List[LocalEvaluationResult] = Nil
-
-        decider.pushScope()
-        val r =
-          eval(σ, e0, pve, c)((t0, c1) => {
-            val πDiff = decider.π -- πPre
-
-            assert(tEvaluatedIf == False() || tEvaluatedIf == t0, s"Unexpected difference: $tEvaluatedIf vs $t0")
-            assert(πIf.isEmpty || πIf == πDiff, s"Unexpected difference: $πIf vs $πDiff")
-
-            πIf = πDiff
-            tEvaluatedIf = t0
-
-            branch(σ, t0, c1,
-              (c2: C) =>
-                eval(σ, e1, pve, c2)((t1, c3) => {
-                  localResults ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf + tEvaluatedIf), c3)
-                  Success()}),
-              (c2: C) => Success())})
-
-        decider.popScope()
-
-        r && {
-          /* The additional path conditions gained while evaluating the
-           * antecedent can be assumed in any case.
-           * If the antecedent holds, then the additional path conditions
-           * related to the consequent can also be assumed.
-           */
-          val (tActualThen: Term, tAuxThen: Set[Term], cOpt) = combine(localResults)
-          val tAuxIf = state.terms.utils.BigAnd(πIf)
-
-          val tImplies = Implies(tEvaluatedIf, tActualThen)
-          val tAuxImplies = Implies(tEvaluatedIf, state.terms.utils.BigAnd(tAuxThen))
-
-          assume(Set(tAuxIf, tAuxImplies))
-          Q(tImplies, cOpt.getOrElse(c))}
-
-      case _: ast.Ite if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
+      case ast.Implies(e0, e1) =>
+        evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
+          val tImplies = Implies(t0, optT1.getOrElse(True()))
+          Q(tImplies, c1)})
 
       case ite @ ast.Ite(e0, e1, e2) =>
-        val πPre: Set[Term] = decider.π
-        var πIf: Option[Set[Term]] = None
-        var tActualIf: Option[Term] = None
-
-        var localResultsThen: List[LocalEvaluationResult] = Nil
-        var localResultsElse: List[LocalEvaluationResult] = Nil
-
-        decider.pushScope()
-
-        val r =
-          eval(σ, e0, pve, c)((t0, c1) => {
-            val πDiff = decider.π -- πPre
-
-            assert(tActualIf.isEmpty || tActualIf.get == t0, s"Unexpected difference: $tActualIf vs $t0")
-            assert(πIf.isEmpty || πIf.get == πDiff, s"Unexpected difference: $πIf vs $πDiff")
-
-            πIf = Some(πDiff)
-            tActualIf = Some(t0)
-
-            branch(σ, t0, c1,
-              (c2: C) => {
-                eval(σ, e1, pve, c2)((t1, c3) => {
-                  localResultsThen ::= LocalEvaluationResult(guards, t1, decider.π -- (πPre ++ πIf.get + t0), c3)
-                  Success()})},
-              (c2: C) => {
-                eval(σ, e2, pve, c2)((t2, c3) => {
-                  localResultsElse ::= LocalEvaluationResult(guards, t2, decider.π -- (πPre ++ πIf.get + Not(t0)), c3)
-                  Success()})})})
-
-        decider.popScope()
-
-        r && {
-          /* Conjunct all auxiliary terms (sort: bool). */
-          val tAuxIf: Term = state.terms.utils.BigAnd(πIf.getOrElse(Set(False())))
-
-          val quantifiedVarsSorts = c.quantifiedVariables.map(_.sort)
-          val actualThenFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e1.typ))
-          val actualElseFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(e2.typ))
-
-          val tActualThenVar = Apply(fresh("actualThen", actualThenFuncSort), c.quantifiedVariables)
-          val tActualElseVar = Apply(fresh("actualElse", actualElseFuncSort), c.quantifiedVariables)
-
-          /* TODO: Does it increase prover performance if the actualXXXVar terms include tActualIf in the
-           *       antecedent of the implication? I.e. 'guard && tActualIf ==> actualResult'? */
-          val (tActualThen: Term, tAuxThen: Set[Term], cOptThen) = combine(localResultsThen, tActualThenVar === _)
-          val (tActualElse: Term, tAuxElse: Set[Term], cOptElse) = combine(localResultsElse, tActualElseVar === _)
-
-          val c1 = (cOptThen, cOptElse) match {
-            case (None, Some(cElse)) => cElse
-            case (Some(cThen), None) => cThen
-            case (Some(cThen), Some(cElse)) => cThen.merge(cElse)
-            case (None, None) => c
-          }
-
-          val c2 = c1.copy(additionalTriggers = tActualThenVar :: tActualElseVar :: c1.additionalTriggers)
-
-          /* Ite with auxiliary terms */
-          val tAuxIte = Ite(tActualIf.getOrElse(False()),
-                            state.terms.utils.BigAnd(tAuxThen),
-                            state.terms.utils.BigAnd(tAuxElse))
-
-          /* Ite with the actual results of the evaluation */
-          val tActualIte =
-            Ite(tActualIf.getOrElse(False()),
-                if (localResultsThen.nonEmpty) tActualThenVar
-                else Apply(fresh("$deadThen", actualThenFuncSort), c1.quantifiedVariables),
-                if (localResultsElse.nonEmpty) tActualElseVar
-                else Apply(fresh("$deadElse", actualElseFuncSort), c1.quantifiedVariables))
-
-          val actualTerms = And(tActualThen, tActualElse)
-
-          assume(Set(tAuxIf, tAuxIte, actualTerms))
-          Q(tActualIte, c2)}
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branchAndJoin(σ, t0, c1,
+            (c2, QB) =>
+              eval(σ, e1, pve, c2)(QB),
+            (c2, QB) =>
+              eval(σ, e2, pve, c2)(QB)
+          )((optT1, optT2, cJoined) => {
+            val tIte =
+              Ite(t0,
+                  optT1.getOrElse(fresh("$deadThen", toSort(e1.typ))),
+                  optT2.getOrElse(fresh("$deadElse", toSort(e2.typ))))
+            Q(tIte, cJoined)
+          }))
 
       /* Integers */
 
@@ -418,9 +306,7 @@ trait DefaultEvaluator[
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      case _: ast.Quantified if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
-
-      case quant: ast.Quantified =>
+      case quant: ast.Quantified /*if config.disableLocalEvaluations()*/ =>
         val (triggerQuant, tQuantOp, silTriggers) = quant match {
           case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
           case ex: ast.Exists => (ex, Exists, Seq())
@@ -429,70 +315,34 @@ trait DefaultEvaluator[
         val body = triggerQuant.exp
         val vars = triggerQuant.variables map (_.localVar)
 
-        /* Why so cumbersome? Why not simply eval(..., tBody => Q(..., tBody))?
-         *  - Assume we have a quantification forall x: int :: x > 0 ==> f(x) > 0
-         *  - Evaluating the body yields a term Implies(lhs, rhs) which will be
-         *    used as the body if the Quantification term
-         *  - The evaluation also yields additional path conditions, for example
-         *    the relation between the function application and the evaluated
-         *    function body, e.g. f(x) == 2x
-         *  - These are not returned but added to the path conditions during they
-         *    evaluation of the function application
-         *  - However, we need them to occur inside the quantification, not
-         *    outside of it, because assumptions outside of the quantification
-         *    will not be considered even if the quantified variable occurs in
-         *    them due to the scope of the quantified variables
-         *  - We thus have to determine these additional path conditions
-         *    to be able to include them in the quantification
-         */
-
-        val πPre: Set[Term] = decider.π
-        var localResults: List[LocalEvaluationResult] = Nil
-        var triggers: List[Trigger] = Nil
-
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
+
+        val πPre: Set[Term] = decider.π // TODO: Set after evalTriggers?
         val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
                         recordPossibleTriggers = true,
-                        possibleTriggers = Map.empty)
+                        possibleTriggers = Map.empty,
+                        additionalTriggers = Nil)
 
-        decider.pushScope()
-
-        val r =
-          eval(σQuant, body, pve, c0)((tBody, c1) => {
-            evalTriggers(σQuant, silTriggers, pve, c1)((_triggers, c2) => {
-              triggers = _triggers
-              val c3 = c2.copy(recordPossibleTriggers = c.recordPossibleTriggers,
-                               possibleTriggers = c.possibleTriggers)
-              localResults ::= LocalEvaluationResult(guards, tBody, decider.π -- πPre, c3)
-
-              /* We could call Q directly instead of returning Success, but in
-               * that case the path conditions πDelta would also be outside of
-               * the quantification. Since they are not needed outside of the
-               * quantification we go the extra mile to get ride of them in order
-               * to not pollute the path conditions.
-               *
-               * Actually, only path conditions in which the quantified variable
-               * occurs are waste, others, especially $combine-terms, are actually
-               * of interest and should be in the path conditions to avoid the
-               * 'fapp-requires-separating-conjunction-fresh-snapshots' problem,
-               * which is currently overcome by caching fapp-terms.
-               */
-              Success()})})
-
-        decider.popScope()
-
-        r && {
-          val (tActual: Term, tAux: Set[Term], cOpt) = combine(localResults)
-          val c1 = cOpt.getOrElse(c0)
-          val actualTriggers = triggers ++ c1.additionalTriggers.map(t => Trigger(t :: Nil))
-          val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
-          val tQuant = Quantification(tQuantOp, tVars, tActual, actualTriggers)
+        decider.locally[(Term, Term, C)](QB =>
+          eval(σQuant, body, pve, c0)((tBody, c1) =>
+            evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
+              val tAux = decider.π -- πPre
+              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t :: Nil))
+              val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
+              val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
+              val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
+                               recordPossibleTriggers = c.recordPossibleTriggers,
+                               possibleTriggers = c.possibleTriggers,
+                               additionalTriggers = c.additionalTriggers)
+              QB(tQuantAux, tQuant, c3)}))
+        ){case (tQuantAux, tQuant, c1) =>
           assume(tQuantAux)
-          val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.drop(tVars.length), additionalTriggers = Nil)
-          Q(tQuant, c2)}
+          Q(tQuant, c1)
+        }
 
+      /* Only evaluate the function application; relies on functions being axiomatised */
       case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
         val err = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
@@ -504,69 +354,59 @@ trait DefaultEvaluator[
             case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))
             case _ => c2
           }
-          /* TODO: Consuming the precondition might branch. Problem? */
-          consume(σ, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
-            val c4 = c3.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
-                                  fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
-                c3.copy(snapshotRecorder = Some(sr1))
-              case _ => c3}
-            val tFA = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
-            Q(tFA, c4/*c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFA))*/)})})
-
-      case _: ast.Unfolding if config.disableLocalEvaluations() => nonLocalEval(σ, e, pve, c)(Q)
+          val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
+          /* TODO: Does it matter that the above filterNot does not filter out quantified
+           *       variables that are not "raw" function arguments, but instead are used
+           *       in an expression that is used as a function argument?
+           *       E.g., in
+           *         forall i: Int :: fun(i*i)
+           *       the above filterNot will not remove i from the list of already
+           *       used quantified variables because i does not match i*i.
+           *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
+           *       although the latter is not necessary.
+           */
+          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2a)(QB =>
+            consume(σ, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
+              val c4 = c3.snapshotRecorder match {
+                case Some(sr) =>
+                  val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
+                                   fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
+                  c3.copy(snapshotRecorder = Some(sr1))
+                case _ => c3}
+              val tFApp = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
+              val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+              QB(tFApp, c5)})
+            )((tR, cR) => {
+              Q(tR, cR)
+            })})
 
       case ast.Unfolding(
-                acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
-                eIn) =>
+              acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
+              eIn) =>
 
         val predicate = c.program.findPredicate(predicateName)
 
-        /* Unfolding only has a temporary effect on the current heap because
-         * the resulting heap is not forwarded to the final continuation.
-         */
-
-        var πPre: Set[Term] = Set()
-        var tPerm: Option[Term] = None
-        var localResults: List[LocalEvaluationResult] = Nil
-
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0a = c.incCycleCounter(predicate)
-
-          val r =
-            evalp(σ, ePerm, pve, c0a)((_tPerm, c1) => {
-              assert(tPerm.isEmpty || tPerm.get == _tPerm, s"Unexpected difference: $tPerm vs ${_tPerm}")
-              tPerm = Some(_tPerm)
-              πPre = decider.π
-              decider.assert(σ, IsPositive(_tPerm)){
-                case true =>
-                  evals(σ, eArgs, pve, c1)((tArgs, c2) =>
+          evalp(σ, ePerm, pve, c0a)((tPerm, c1) => {
+            decider.assert(σ, IsPositive(tPerm)){
+              case true =>
+                evals(σ, eArgs, pve, c1)((tArgs, c2) =>
+                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
                       val c3a = c3.snapshotRecorder match {
                         case Some(sr) =>
                           c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0)))))
                         case _ => c3}
                       val body = pa.predicateBody(c.program)
-                      produce(σ1, s => snap.convert(s), _tPerm, body, pve, c3a)((σ2, c4) => {
+                      produce(σ1, s => snap.convert(s), tPerm, body, pve, c3a)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
                         val σ3 = σ2 \ (g = σ.g)
                         eval(σ3, eIn, pve, c4a)((tIn, c5) => {
-                          localResults ::= LocalEvaluationResult(guards, tIn, decider.π -- πPre, c5)
-                          Success()})})}))
-                case false =>
-                  Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
-
-          r && {
-            val quantifiedVarsSorts = c.quantifiedVariables.map(_.sort)
-            val actualInFuncSort = sorts.Arrow(quantifiedVarsSorts, toSort(eIn.typ))
-            val tActualInVar = Apply(fresh("actualIn", actualInFuncSort), c.quantifiedVariables)
-            val (tActualIn: Term, tAuxIn: Set[Term], cOpt) = combine(localResults, tActualInVar === _)
-              /* TODO: See comment about performance in case ast.Ite */
-            assume(tAuxIn + tActualIn)
-            val c1 = cOpt.getOrElse(c)
-            val c2 = c1.copy(additionalTriggers = tActualInVar :: c1.additionalTriggers)
-            Q(tActualInVar, c2)}
+                          QB(tIn, c5)})})})
+                  })(Q))
+              case false =>
+                Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
         } else
           Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
 
@@ -663,80 +503,6 @@ trait DefaultEvaluator[
     resultTerm
 	}
 
-  /* The non-local evaluations are intended for benchmarking and debugging
-   * only, because they can result in incompletenesses (and probably also
-   * in unsoundnesses because they are not constantly tested).
-   */
-  private def nonLocalEval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
-                          (Q: (Term, C) => VerificationResult)
-                          : VerificationResult = {
-
-    assert(config.disableLocalEvaluations(),
-           "Unexpected call to performNonLocalEvaluation since config.localEvaluations is true.")
-
-    e match {
-      case ast.Implies(e0, e1) =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => eval(σ, e1, pve, c2)(Q),
-            (c2: C) => Q(True(), c2)))
-
-      case ast.Ite(e0, e1, e2) =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => eval(σ, e1, pve, c2)(Q),
-            (c2: C) => eval(σ, e2, pve, c2)(Q)))
-
-      case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm), eIn) =>
-        val predicate = c.program.findPredicate(predicateName)
-
-        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
-          val c0a = c.incCycleCounter(predicate)
-          evalp(σ, ePerm, pve, c0a)((tPerm, c1) =>
-            decider.assert(σ, IsPositive(tPerm)){
-              case true =>
-                evals(σ, eArgs, pve, c1)((tArgs, c2) =>
-                  consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) => {
-                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    /* Unfolding only effects the current heap */
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) => {
-                      val c4a = c4.decCycleCounter(predicate)
-                      val σ3 = σ2 \ (g = σ.g, γ = σ.γ)
-                      eval(σ3, eIn, pve, c4a)(Q)})}))
-              case false =>
-                Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))})}
-        else
-          Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
-
-      case quant: ast.Quantified if config.disableLocalEvaluations() =>
-        val body = quant.exp
-        val vars = quant.variables map (_.localVar)
-
-        val (tQuantOp, silTriggers) = quant match {
-          case fa: ast.Forall => (Forall, fa.autoTrigger.triggers)
-          case _: ast.Exists => (Exists, Seq())
-        }
-
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(vars zip tVars)
-        val σQuant = σ \+ γVars
-
-        val πPre: Set[Term] = decider.π
-        evalTriggers(σQuant, silTriggers, pve, c)((triggers, c1) =>
-          eval(σQuant, body, pve, c1)((tBody, c2) => {
-            val (tActual: Term, tAux: Set[Term], cOpt) =
-              combine(LocalEvaluationResult(guards, tBody, decider.π -- πPre, c2) :: Nil)
-            val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), triggers)
-            val tQuant = Quantification(tQuantOp, tVars, tActual, triggers)
-            assume(tQuantAux)
-
-            Q(tQuant, cOpt.getOrElse(c2))
-          }))
-
-      case _ => sys.error(s"Cannot non-locally evaluate $e (${e.getClass.getName})")
-    }
-  }
-
   def withChunkIdentifier(σ: S,
                           locacc: ast.LocationAccess,
                           assertRcvrNonNull: Boolean,
@@ -806,12 +572,12 @@ trait DefaultEvaluator[
         Q(permOp(t0, t1), c2)))
   }
 
-  private case class LocalEvaluationResult(πGuards: Seq[Term],
+  private case class LocalEvaluationResultXXX(πGuards: Seq[Term],
                                            actualResult: Term,
                                            auxiliaryTerms: Set[Term],
                                            context: C)
 
-  private def combine(localResults: Seq[LocalEvaluationResult],
+  private def combineXXX(localResults: Seq[LocalEvaluationResultXXX],
                       actualResultTransformer: Term => Term = Predef.identity)
                      : (Term, Set[Term], Option[C]) = {
 
