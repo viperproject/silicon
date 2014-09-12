@@ -4,8 +4,6 @@ syntax: glob
 project/project
 project/target
 target
-tools/checkTestOutput.jar
-tools/z3_tidy.jar
 .settings/
 .cache
 .scala_dependencies
@@ -16,3 +14,4 @@ tmp_*
 tmp/
 utils/assembly/silicon.jar
 utils/scripts/z3_tidy.jar
+utils/tidy_smtlib/tidy_smtlib.jar
