@@ -8,9 +8,6 @@ package viper
 package silicon
 package decider
 
-import interfaces.state.Context
-import interfaces.state.Context
-
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
