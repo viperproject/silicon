@@ -19,7 +19,6 @@ import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifi
 import state.terms.utils.BigPermSum
 import state.terms._
 import state.terms.predef.`?r`
-import state.terms.sorts.FieldValueFunction
 
 class QuantifiedChunkHelper[ST <: Store[ST],
                             H <: Heap[H],
@@ -82,8 +81,11 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
                   s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
 
-    val arbitraryInverseRcvr = getInverseFunction(rcvr)(`?r`)
+    val (inverseFunc, inverseFuncAxioms) = getFreshInverseFunction(rcvr, condition, qvar)
+    val arbitraryInverseRcvr = inverseFunc(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
+
+    decider.assume(inverseFuncAxioms)
 
     QuantifiedChunk(field.name, value, condPerms)
   }
@@ -98,13 +100,6 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     val arbitraryPerms = perms.replace(qvar, arbitraryInverseRcvr)
 
     TermPerm(Ite(arbitraryCondition, arbitraryPerms/*perms*/, NoPerm()))
-  }
-
-  def getInverseFunction(t: Term): Term => Term = t match {
-    case _: Var => Predef.identity
-    case lookup: Lookup => (arg: Term) => LookupInv(lookup.field, lookup.fvf, arg)
-    case seqAt: SeqAt => (arg: Term) => SeqAtInv(seqAt.p0, arg)
-    case _ => sys.error(s"Cannot determine inverse function for term $t")
   }
 
   /* State queries */
@@ -321,7 +316,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFraction
     var success = false
-    val fvf = fresh("vs", FieldValueFunction(toSort(field.typ)))
+    val fvf = fresh("vs", sorts.FieldValueFunction(toSort(field.typ)))
 //    val fvfLookup = Lookup(field.name, fvf, specificReceiver)
     val fvfLookup = Lookup(field.name, fvf, arbitraryReceiver)
     var fvfDefs: List[FvfDefEntry] = Nil
@@ -397,6 +392,22 @@ class QuantifiedChunkHelper[ST <: Store[ST],
           receiver.replace(qvar, vx) === receiver.replace(qvar, vy)),
         vx === vy),
       Nil) /* TODO: Triggers */
+  }
+
+  def getFreshInverseFunction(of: Term, condition: Term, qvar: Var): (Term => Term, Seq[Term]) = {
+    Predef.assert(of.sort == sorts.Ref, s"Expected ref-sorted term, but found $of of sort ${of.sort}")
+
+    val codomainSort = qvar.sort
+    val funcSort = sorts.Arrow(of.sort, codomainSort)
+    val funcSymbol = decider.fresh("inv", funcSort)
+    val inverseFunc = (t: Term) => Apply(funcSymbol, t :: Nil)
+
+    val ax1 = Forall(qvar, Implies(condition, inverseFunc(of) === qvar), Trigger(of :: Nil) :: Nil)
+
+    val r = Var("r", sorts.Ref)
+    val ax2 = Forall(r, Implies(condition, of.replace(qvar, inverseFunc(r)) === r), Trigger(inverseFunc(r) :: Nil) :: Nil)
+
+    (inverseFunc, ax1 :: ax2 :: Nil)
   }
 }
 

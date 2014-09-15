@@ -83,13 +83,6 @@ class DefaultSequencesEmitter(prover: Prover,
       prover.logComment(declarations)
       preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
     }
-
-    if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
-      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Ref))
-      val axioms = "/sequences_inverse_declarations.smt2"
-      prover.logComment(axioms)
-      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
-    }
   }
 
   def emitAxioms() {
@@ -103,13 +96,6 @@ class DefaultSequencesEmitter(prover: Prover,
     if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
       val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
       val axioms = "/dafny_axioms/sequences_int_axioms_dafny.smt2"
-      prover.logComment(axioms)
-      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
-    }
-
-    if (collectedSorts.nonEmpty && programUsesQuantifiedPermissions) {
-      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Ref))
-      val axioms = "/sequences_inverse_axioms.smt2"
       prover.logComment(axioms)
       preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }

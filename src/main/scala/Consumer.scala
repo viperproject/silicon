@@ -174,9 +174,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       case true =>
                         val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
                         val (h2, ts) = quantifiedChunkHelper.quantifyChunksForField(h, field)
-                        assume(ts)
-                        val quantifiedInverseRcvr = quantifiedChunkHelper.getInverseFunction(tRcvr)(`?r`)
+                        val (inverseRcvrFunc, inverseRcvrFuncAxioms) =
+                          quantifiedChunkHelper.getFreshInverseFunction(tRcvr, tCond, tQVar)
+                        val quantifiedInverseRcvr = inverseRcvrFunc(`?r`)
                         val condPerms = quantifiedChunkHelper.conditionalPermissions(tQVar, quantifiedInverseRcvr, tCond, tPerm)
+                        assume(ts ++ inverseRcvrFuncAxioms)
                         quantifiedChunkHelper.splitLocations(σ, h2, field, tRcvr, tQVar, tPerm * p, condPerms * p, c3a) {
                           case Some((h3, ch, c4)) =>
                             Q(h3, ch.value, /*ch :: */Nil, c4)

@@ -59,10 +59,6 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
       val fvfDeclarations = "/field_value_functions_declarations.smt2"
       prover.logComment(s"$fvfDeclarations [$id: $sort]")
       preambleFileEmitter.emitParametricAssertions(fvfDeclarations, substitutions)
-
-      val fvfInvDeclarations = "/field_value_functions_inverse_declarations.smt2"
-      prover.logComment(fvfInvDeclarations)
-      preambleFileEmitter.emitParametricAssertions(fvfInvDeclarations, substitutions)
     }
   }
 
@@ -78,10 +74,6 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
 
       prover.logComment(s"$fvfAxioms [$id: $sort]")
       preambleFileEmitter.emitParametricAssertions(fvfAxioms, fvfSubstitutions)
-
-      val fvfInverseAxioms = "/field_value_functions_inverse_axioms.smt2"
-      prover.logComment(s"$fvfInverseAxioms [$id: $sort]")
-      preambleFileEmitter.emitParametricAssertions(fvfInverseAxioms, fvfSubstitutions)
     }
   }
 

@@ -272,9 +272,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
     case Domain(id, fvf) => s"($$FVF.domain_$id ${convert(fvf)})"
     case Lookup(field, fvf, at) => s"($$FVF.lookup_$field ${convert(fvf)} ${convert(at)})"
-
-    case LookupInv(field, fvf, value) => s"($$FVF.lookup_${field}_inv ${convert(fvf)} ${convert(value)})"
-    case SeqAtInv(seq, value) => s"($$Seq.at_inv ${convert(seq)} ${convert(value)})"
   }
 
   def sanitizeSymbol(str: String) =

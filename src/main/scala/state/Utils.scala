@@ -61,8 +61,6 @@ package object utils {
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
-    case LookupInv(_, fvf, value) => fvf :: value :: Nil
-    case SeqAtInv(seq, value) => seq :: value :: Nil
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -148,8 +146,6 @@ package object utils {
       case Distinct(ts) => Distinct(ts map go)
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
-      case LookupInv(f, fvf, value) => LookupInv(f, go(fvf), go(value))
-      case SeqAtInv(seq, value) => SeqAtInv(go(seq), go(value))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])
