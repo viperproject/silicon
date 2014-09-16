@@ -443,76 +443,76 @@
   :pattern (($Seq.drop ($Seq.update xs i x) j))
   )))
 
-;axiom (forall<T> :: MultiSet#FromSeq(Seq#Empty(): Seq T) == MultiSet#Empty(): MultiSet T);
-(assert (= ($Multiset.fromSeq $Seq.nil<$S$>) $Multiset.empty<$S$>))
-
-;additional axioms to support counting for splitted sequences
-
-; If there are two different indices with the same element, we know that
-; the count is >= 2
-(assert (forall ((s $Seq<$S$>) (x $S$)) (!
-    (iff
-        (exists ((i Int) (j Int)) (!
-            (and
-                (not (= i j))
-                (<= 0 i)
-                (<= 0 j)
-                (< i ($Seq.len s))
-                (< j ($Seq.len s))
-                (= ($Seq.at s i) x)
-                (= ($Seq.at s j) x)
-            )
-            :pattern (($Seq.at s i) ($Seq.at s j))
-         ))
-        (>= ($Multiset.count ($Multiset.fromSeq s) x) 2)
-    )
-    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
-    )))
-
-
-; Trigger functions for splitting axioms
-; These functions are declared here because they are not exposed as syntax
-(declare-fun $Seq.split($Seq<$S$> $S$ Int) Bool)
-(declare-fun $Seq.countP ($Seq<$S$> $S$) Int)
-
-(assert (forall ((s $Seq<$S$>) (x $S$) (a Int) (b Int)) (!
-    (and
-        ($Seq.split s x a)
-        ($Seq.split s x b)
-    )
-    :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s b) a)) x))
-    )))
-(assert (forall ((s $Seq<$S$>) (x $S$)) (!
-        (= ($Multiset.count ($Multiset.fromSeq s) x) ($Seq.countP s x))
-    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
-    )))
-(assert (forall ((s $Seq<$S$>) (x $S$)) (!
-        (<= 0 ($Seq.countP s x))
-    :pattern (($Seq.countP s x))
-    )))
-; Splitting
-(assert (forall ((s $Seq<$S$>) (x $S$) (start Int) (end Int) (k Int)) (!
-        (implies
-            (and (<= start k) (<= k end))
-            (= ($Seq.countP  ($Seq.drop ($Seq.take s end) start) x)
-                (+ ($Seq.countP ($Seq.drop ($Seq.take s k) start) x)
-                    ($Seq.countP  ($Seq.drop ($Seq.take s end) k) x)
-            )
-            )
-        )
-        :pattern (($Seq.split s x start) ($Seq.split s x k) ($Seq.split s x end))
-    )))
-; Lookup
-(assert (forall ((S $Seq<$S$>) (start Int) (end  Int) (i Int)) (!
-    (iff
-        (and
-            (<= 0 start)
-            (<= end ($Seq.len S))
-            (<= start i)
-            (< i end)
-        )
-        (< 0 ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i)))
-    )
-   :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i)))
-   )))
+;;axiom (forall<T> :: MultiSet#FromSeq(Seq#Empty(): Seq T) == MultiSet#Empty(): MultiSet T);
+;(assert (= ($Multiset.fromSeq $Seq.nil<$S$>) $Multiset.empty<$S$>))
+;
+;;additional axioms to support counting for splitted sequences
+;
+;; If there are two different indices with the same element, we know that
+;; the count is >= 2
+;(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+;    (iff
+;        (exists ((i Int) (j Int)) (!
+;            (and
+;                (not (= i j))
+;                (<= 0 i)
+;                (<= 0 j)
+;                (< i ($Seq.len s))
+;                (< j ($Seq.len s))
+;                (= ($Seq.at s i) x)
+;                (= ($Seq.at s j) x)
+;            )
+;            :pattern (($Seq.at s i) ($Seq.at s j))
+;         ))
+;        (>= ($Multiset.count ($Multiset.fromSeq s) x) 2)
+;    )
+;    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
+;    )))
+;
+;
+;; Trigger functions for splitting axioms
+;; These functions are declared here because they are not exposed as syntax
+;(declare-fun $Seq.split($Seq<$S$> $S$ Int) Bool)
+;(declare-fun $Seq.countP ($Seq<$S$> $S$) Int)
+;
+;(assert (forall ((s $Seq<$S$>) (x $S$) (a Int) (b Int)) (!
+;    (and
+;        ($Seq.split s x a)
+;        ($Seq.split s x b)
+;    )
+;    :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take s b) a)) x))
+;    )))
+;(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+;        (= ($Multiset.count ($Multiset.fromSeq s) x) ($Seq.countP s x))
+;    :pattern (($Multiset.count ($Multiset.fromSeq s) x))
+;    )))
+;(assert (forall ((s $Seq<$S$>) (x $S$)) (!
+;        (<= 0 ($Seq.countP s x))
+;    :pattern (($Seq.countP s x))
+;    )))
+;; Splitting
+;(assert (forall ((s $Seq<$S$>) (x $S$) (start Int) (end Int) (k Int)) (!
+;        (implies
+;            (and (<= start k) (<= k end))
+;            (= ($Seq.countP  ($Seq.drop ($Seq.take s end) start) x)
+;                (+ ($Seq.countP ($Seq.drop ($Seq.take s k) start) x)
+;                    ($Seq.countP  ($Seq.drop ($Seq.take s end) k) x)
+;            )
+;            )
+;        )
+;        :pattern (($Seq.split s x start) ($Seq.split s x k) ($Seq.split s x end))
+;    )))
+;; Lookup
+;(assert (forall ((S $Seq<$S$>) (start Int) (end  Int) (i Int)) (!
+;    (iff
+;        (and
+;            (<= 0 start)
+;            (<= end ($Seq.len S))
+;            (<= start i)
+;            (< i end)
+;        )
+;        (< 0 ($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i)))
+;    )
+;   :pattern (($Multiset.count ($Multiset.fromSeq ($Seq.drop ($Seq.take S end) start)) ($Seq.at S i)))
+;   )))
 
