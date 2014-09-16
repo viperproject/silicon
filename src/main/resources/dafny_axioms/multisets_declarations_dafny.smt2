@@ -45,5 +45,5 @@
 ;function MultiSet#Disjoint<T>(MultiSet T, MultiSet T): bool;
 (declare-fun $Multiset.disjoint ($Multiset<$S$> $Multiset<$S$>) Bool)
 
-;function MultiSet#FromSet<T>(Set T): MultiSet T;
-(declare-fun $Multiset.fromSet ($Set<$S$>) $Multiset<$S$>)
+;;function MultiSet#FromSet<T>(Set T): MultiSet T;
+;(declare-fun $Multiset.fromSet ($Set<$S$>) $Multiset<$S$>)

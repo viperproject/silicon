@@ -283,41 +283,41 @@
 	:pattern (($Multiset.disjoint xs ys))
 	)))
 
-;// conversion to a multiset. each element in the original set has duplicity 1.
-;axiom (forall<T> s: Set T, a: T :: { MultiSet#FromSet(s)[a] }
-;  (MultiSet#FromSet(s)[a] == 0 <==> !s[a]) &&
-;  (MultiSet#FromSet(s)[a] == 1 <==> s[a]));
-(assert (forall ((xs $Set<$S$>) (x $S$)) (!
-  (and
-    (iff
-      (= ($Multiset.count ($Multiset.fromSet xs) x) 0)
-      (not ($Set.in x xs)))
-    (iff
-      (= ($Multiset.count ($Multiset.fromSet xs) x) 1)
-      ($Set.in x xs)))
-	:pattern (($Multiset.count ($Multiset.fromSet xs) x))
-	)))
-
-;axiom (forall<T> s: Set T :: { MultiSet#Card(MultiSet#FromSet(s)) }
-;  MultiSet#Card(MultiSet#FromSet(s)) == Set#Card(s));
-(assert (forall ((xs $Set<$S$>)) (!
-  (=
-    ($Multiset.card ($Multiset.fromSet xs))
-    ($Set.card xs))
-	:pattern (($Multiset.card ($Multiset.fromSet xs)))
-	)))
-
-; count is always >= 0
-(assert (forall ((s $Multiset<$S$>) (x $S$)) (!
-    (>= ($Multiset.count s x) 0)
-    :pattern (($Multiset.count s x))
-    )))
-
-; Count over a multiset based on a sequence is positive iff the
-; underlying sequence contains the counted element.
-(assert (forall ((xs $Seq<$S$>) (x $S$)) (!
-	(iff
-		(> ($Multiset.count ($Multiset.fromSeq xs) x) 0)
-		($Seq.in xs x))
-	:pattern(($Seq.in xs x))
-	:pattern(($Multiset.count ($Multiset.fromSeq xs) x)))))
+;;// conversion to a multiset. each element in the original set has duplicity 1.
+;;axiom (forall<T> s: Set T, a: T :: { MultiSet#FromSet(s)[a] }
+;;  (MultiSet#FromSet(s)[a] == 0 <==> !s[a]) &&
+;;  (MultiSet#FromSet(s)[a] == 1 <==> s[a]));
+;(assert (forall ((xs $Set<$S$>) (x $S$)) (!
+;  (and
+;    (iff
+;      (= ($Multiset.count ($Multiset.fromSet xs) x) 0)
+;      (not ($Set.in x xs)))
+;    (iff
+;      (= ($Multiset.count ($Multiset.fromSet xs) x) 1)
+;      ($Set.in x xs)))
+;	:pattern (($Multiset.count ($Multiset.fromSet xs) x))
+;	)))
+;
+;;axiom (forall<T> s: Set T :: { MultiSet#Card(MultiSet#FromSet(s)) }
+;;  MultiSet#Card(MultiSet#FromSet(s)) == Set#Card(s));
+;(assert (forall ((xs $Set<$S$>)) (!
+;  (=
+;    ($Multiset.card ($Multiset.fromSet xs))
+;    ($Set.card xs))
+;	:pattern (($Multiset.card ($Multiset.fromSet xs)))
+;	)))
+;
+;; count is always >= 0
+;(assert (forall ((s $Multiset<$S$>) (x $S$)) (!
+;    (>= ($Multiset.count s x) 0)
+;    :pattern (($Multiset.count s x))
+;    )))
+;
+;; Count over a multiset based on a sequence is positive iff the
+;; underlying sequence contains the counted element.
+;(assert (forall ((xs $Seq<$S$>) (x $S$)) (!
+;	(iff
+;		(> ($Multiset.count ($Multiset.fromSeq xs) x) 0)
+;		($Seq.in xs x))
+;	:pattern(($Seq.in xs x))
+;	:pattern(($Multiset.count ($Multiset.fromSeq xs) x)))))
