@@ -245,7 +245,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case MultisetIn(t0, t1) => "(> ($Multiset.count " + convert(t1) + " " + convert(t0) + ") 0)"
     case MultisetSubset(t0, t1) => "($Multiset.subset " + convert(t0) + " " + convert(t1) + ")"
     case MultisetCount(t0, t1) => "($Multiset.count " + convert(t1) + " " + convert(t0) + ")"
-    case MultisetFromSeq(t0) => "($Multiset.fromSeq " + convert(t0) + ")"
 
     /* Domains */
 
