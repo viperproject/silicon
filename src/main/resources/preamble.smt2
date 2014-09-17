@@ -50,7 +50,6 @@
 
 (declare-sort $Ref)
 (declare-const $Ref.null $Ref)
-(declare-const x $Ref)
 
 ; --- Permissions ---
 
