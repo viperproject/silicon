@@ -150,6 +150,11 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
     Visitor.existsDefined(this, state.utils.subterms, f)
 
+  def hasSubterm(subterm: Term): Boolean = {
+    val self = this
+    this.existsDefined { case found if found == subterm && found != self => }
+  }
+
   def replace(original: Term, replacement: Term): Term =
     this.transform{case `original` => replacement}()
 
@@ -239,8 +244,14 @@ case class False() extends BooleanLiteral {
 sealed trait Quantifier
 
 object Forall extends Quantifier {
+  def apply(qvar: Var, tBody: Term, trigger: Trigger) =
+    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil)
+
   def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Forall, qvar :: Nil, tBody, triggers)
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger) =
+    Quantification(Forall, qvars, tBody, trigger :: Nil)
 
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Forall, qvars, tBody, triggers)
@@ -1160,20 +1171,20 @@ object MultisetCount extends {
   def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
 }
 
-class MultisetFromSeq(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
-  val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
-  val sort = sorts.Multiset(elementsSort)
-}
-
-object MultisetFromSeq {
-  def apply(p:Term) = {
-    utils.assertSort(p, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-
-    new MultisetFromSeq(p)
-  }
-
-  def unapply(m:MultisetFromSeq) = Some(m.p)
-}
+//class MultisetFromSeq(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
+//  val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
+//  val sort = sorts.Multiset(elementsSort)
+//}
+//
+//object MultisetFromSeq {
+//  def apply(p:Term) = {
+//    utils.assertSort(p, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
+//
+//    new MultisetFromSeq(p)
+//  }
+//
+//  def unapply(m:MultisetFromSeq) = Some(m.p)
+//}
 
 /* Domains */
 

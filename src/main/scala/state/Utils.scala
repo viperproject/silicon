@@ -136,7 +136,7 @@ package object utils {
       case MultisetIn(t0, t1) => MultisetIn(go(t0), go(t1))
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
-      case MultisetFromSeq(t) => MultisetFromSeq(go(t))
+//      case MultisetFromSeq(t) => MultisetFromSeq(go(t))
       case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
       case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))
