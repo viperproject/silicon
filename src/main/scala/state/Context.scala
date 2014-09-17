@@ -19,7 +19,7 @@ case class DefaultContext(program: ast.Program,
                           additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
-                          possibleTriggers: Map[silver.ast.PossibleTrigger, Term] = Map())
+                          possibleTriggers: Map[ast.Expression, Term] = Map())
     extends Context[DefaultContext] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)

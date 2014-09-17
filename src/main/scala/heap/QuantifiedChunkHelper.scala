@@ -380,9 +380,11 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       (fvf, fvfDef)
   }
 
-  def injectivityAxiom(condition: Term, receiver: Term, qvar: Var) = {
+  def injectivityAxiom(qvar: Var, condition: Term, receiver: Term, triggers: Option[Seq[Trigger]]) = {
     val vx = Var("x", qvar.sort)
     val vy = Var("y", qvar.sort)
+
+//    val trigger = Trigger(triggerTerms.map(_.replace(qvar, vx)) ++ triggerTerms.map(_.replace(qvar, vy)))
 
     Forall(vx :: vy :: Nil,
       Implies(
@@ -391,7 +393,101 @@ class QuantifiedChunkHelper[ST <: Store[ST],
           condition.replace(qvar, vy),
           receiver.replace(qvar, vx) === receiver.replace(qvar, vy)),
         vx === vy),
-      Nil) /* TODO: Triggers */
+      triggers.getOrElse(Nil))
+  }
+
+  def injectivityAxiomTriggers(qvar: ast.LocalVariable,
+                               condition: ast.Expression,
+                               receiver: ast.Expression,
+                               tQVar: Var,
+                               possibleTriggers: Map[ast.Expression, Term])
+                              : Option[Seq[Trigger]] = {
+
+    /* ATTENTION: It is important that the quantified variables used here have
+     * the same names as the quantified variables used in method injectivityAxiom!
+     */
+    val vxDecl = silver.ast.LocalVarDecl("x", qvar.typ)()
+    val vyDecl = silver.ast.LocalVarDecl("y", qvar.typ)()
+    val vx = vxDecl.localVar
+    val vy = vyDecl.localVar
+    val tVX = Var(vx.name, toSort(vx.typ))
+    val tVY = Var(vy.name, toSort(vy.typ))
+
+    /* Taking all possible trigger terms yields much more restrictive triggers.
+     * Compared to using autoTrigger (see below), they reduce the verification
+     * time of seqsinglelements.sil from 50s to 30s.
+     */
+    val triggerTerms = possibleTriggers.values.toSeq
+    val trigger = Trigger(triggerTerms.map(_.replace(tQVar, tVX)) ++ triggerTerms.map(_.replace(tQVar, tVY)))
+    Some(trigger :: Nil)
+
+//    /* Get triggers by
+//     *   1. Creating an AST representation of the injectivity axiom
+//     *   2. Get triggers from autoTrigger
+//     *   3. Lookup those triggers in the list of recorded possible triggers to
+//     *      get the corresponding trigger terms
+//     */
+//    val axiom =
+//      ast.Forall(vxDecl :: vyDecl :: Nil,
+//        Nil,
+//        ast.Implies(
+//          ast.And(
+//            ast.And(
+//              condition.replace(qvar, vx),
+//              condition.replace(qvar, vy)
+//            )(),
+//            ast.Equals(
+//              receiver.replace(qvar, vx),
+//              receiver.replace(qvar, vy)
+//            )())(),
+//          ast.Equals(vx, vy)()
+//        )())()
+//
+//    val axiomWithTriggers = axiom.autoTrigger
+//
+//    if (axiom.variables == axiomWithTriggers.variables) {
+//      val triggers =
+//        axiomWithTriggers.triggers.map { trigger =>
+//          val triggerTerms =
+//            trigger.exps.flatMap { triggerExp =>
+//              // TODO: Log a warning if a trigger couldn't be looked up
+//              val trx = possibleTriggers.get(triggerExp.replace(vx, qvar))
+//                                        .map(_.replace(tQVar, tVX))
+//
+//              val tr = trx.orElse(possibleTriggers.get(triggerExp.replace(vy, qvar))
+//                                                  .map(_.replace(tQVar, tVY)))
+//
+//              tr
+//            }
+//
+//          println(s"triggerTerms = $triggerTerms")
+//          Trigger(triggerTerms)
+//        }
+//
+//      Some(triggers)
+//    } else {
+//      println(s"Different quantified variables! ${axiom.variables} vs ${axiomWithTriggers.variables}")
+//      // TODO: Log a warning that the axiom with triggers has additional quantified variables
+//      None
+//    }
+  }
+
+  def receiverNonNullAxiom(qvar: Var, perm: Term, rcvr: Term, possibleTriggers: Map[ast.Expression, Term]) = {
+    /* Constructing a forall-AST, calling autoTrigger and looking up the
+     * computed triggers in the map of recorded possible triggers is complicated
+     * by the need for using the rewritten permission expression, for which we
+     * don't have a corresponding AST node (we could create one, though.)
+     */
+
+    val triggerTerms = Nil
+    /* WARNING: Using the recorded possible triggers results in matching loops */
+//    val triggerTerms = possibleTriggers.values.filter(_.hasSubterm(qvar)).toSeq
+//    val triggerTerms = possibleTriggers.values.toSeq
+
+    Forall(qvar,
+      Implies(NoPerm() < perm.replace(`?r`, rcvr).asInstanceOf[DefaultFractionalPermissions],
+        rcvr !== Null()),
+      Trigger(triggerTerms))
   }
 
   def getFreshInverseFunction(of: Term, condition: Term, qvar: Var): (Term => Term, Seq[Term]) = {
@@ -413,13 +509,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
 object QuantifiedChunkHelper {
   object ForallRef {
-    def unapply(n: ast.Node): Option[(silver.ast.LocalVarDecl, /* Quantified variable */
-                                      ast.Expression,          /* Condition */
-                                      ast.Expression,          /* Receiver e of acc(e.f, p) */
-                                      ast.Field,               /* Field f of acc(e.f, p) */
-                                      ast.Expression,          /* Permissions p of acc(e.f, p) */
-                                      ast.Forall,              /* AST node of the forall (for error reporting) */
-                                      ast.FieldAccess)] =      /* AST node for e.f (for error reporting) */
+    def unapply(n: ast.Node): Option[(ast.LocalVariable,  /* Quantified variable */
+                                      ast.Expression,     /* Condition */
+                                      ast.Expression,     /* Receiver e of acc(e.f, p) */
+                                      ast.Field,          /* Field f of acc(e.f, p) */
+                                      ast.Expression,     /* Permissions p of acc(e.f, p) */
+                                      ast.Forall,         /* AST node of the forall (for error reporting) */
+                                      ast.FieldAccess)] = /* AST node for e.f (for error reporting) */
 
       n match {
         case forall @ ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(_, _/*ast.types.Ref*/)),
@@ -440,7 +536,7 @@ object QuantifiedChunkHelper {
            *       into a "domain(fvf) == xs".
            */
 
-          Some((lvd, condition, rcvr, f, gain, forall, fa))
+          Some((lvd.localVar, condition, rcvr, f, gain, forall, fa))
 
         case _ => None
       }

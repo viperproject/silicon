@@ -198,22 +198,26 @@ trait DefaultProducer[ST <: Store[ST],
               case _ => c2}
             Q(σ.h + ch, c3)}))
 
-      case QuantifiedChunkHelper.ForallRef(qvar, condition, rcvr, field, gain, _, _) =>
+      case QuantifiedChunkHelper.ForallRef(qvar, cond, rcvr, field, gain, _, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
         val πPre = decider.π
         var πAux: Set[Term] = Set()
-        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
-        decider.locally[(Term, Term, P, C)](QB =>
-          eval(σQVar, condition, pve, c0)((tCond, c1) => {
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables,
+                        recordPossibleTriggers = true,
+                        possibleTriggers = Map())
+        decider.locally[(Term, Term, P, C, Map[ast.Expression, Term])](QB =>
+          eval(σQVar, cond, pve, c0)((tCond, c1) => {
             assume(tCond)
             eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
               evalp(σQVar, gain, pve, c2)((pGain, c3) => {
                 πAux = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term we want to keep */
-                  QB(tCond, tRcvr, pGain, c3)}))})
-        ){case (tCond, tRcvr, pGain, c1) =>
-          val c3 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
+                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
+                                 recordPossibleTriggers = c.recordPossibleTriggers,
+                                 possibleTriggers = c.possibleTriggers)
+                QB(tCond, tRcvr, pGain, c4, c2.possibleTriggers)}))})
+        ){case (tCond, tRcvr, pGain, c1, possibleTriggersInCondAndRcvr) =>
           val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
 //          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
 //          decider.assume(tAuxQuant)
@@ -228,18 +232,15 @@ trait DefaultProducer[ST <: Store[ST],
                    Iff(SetIn(tRcvr, Domain(field.name, snap)),
                        tCond),
                    Trigger(Lookup(field.name, snap, tRcvr) :: Nil) :: Nil)
-          val tNonNullQuant =
-            Forall(tQVar,
-                   Implies(NoPerm() < ch.perm.replace(`?r`, tRcvr).asInstanceOf[DefaultFractionalPermissions],
-                           tRcvr !== Null()),
-                   Nil)
-          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tCond, tRcvr, tQVar)
+          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, ch.perm, tRcvr, possibleTriggersInCondAndRcvr)
+          val injectivityAxiomTriggers = quantifiedChunkHelper.injectivityAxiomTriggers(qvar, cond, rcvr, tQVar, possibleTriggersInCondAndRcvr)
+          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr, injectivityAxiomTriggers)
           assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
             if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
           assume(ts)
-          Q(h + ch, c3)}
+          Q(h + ch, c1)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
