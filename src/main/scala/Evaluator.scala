@@ -169,9 +169,9 @@ trait DefaultEvaluator[
 
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-          assert(c.quantifiedVariables.length <= 1,
-                 s"Expected at most one quantified variable, but found ${c.quantifiedVariables}")
-          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, c.quantifiedVariables.headOption, fa.field, pve, fa, c)((t) => {
+          assert(c1.quantifiedVariables.length <= 1,
+                 s"Expected at most one quantified variable, but found ${c1.quantifiedVariables}")
+          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, c1.quantifiedVariables.headOption, fa.field, pve, fa, c1)((t) => {
 //          val c2 = c1.snapshotRecorder match {
 //            case Some(sr) =>
 //              c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> t))))

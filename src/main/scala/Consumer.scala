@@ -156,10 +156,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val σQVar = σ \ h1 \+ γQVar
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
         eval(σQVar, condition, pve, c0)((tCond, c1) =>
-          if (decider.check(σQVar, Not(tCond)))
+          if (decider.check(σQVar, Not(tCond))) {
             /* The condition cannot be satisfied, hence we don't need to consume anything. */
-            Q(h, Unit, Nil, c1)
-          else {
+            val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
+            Q(h, Unit, Nil, c2)
+          } else {
             decider.assume(tCond)
             evalp(σQVar, loss, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)) {
