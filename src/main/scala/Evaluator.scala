@@ -630,7 +630,7 @@ trait DefaultEvaluator[
        *   - The evaluation of the body terminated early, for example, because the
        *     LHS of an implication evaluated to false
        */
-      logger.warn(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
+      logger.debug(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
 
     /* TODO: Translate remaining triggers - which is currently not directly possible.
      *       For example, assume a conjunction f(x) && g(x) where f(x) is the
