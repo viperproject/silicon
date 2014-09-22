@@ -23,12 +23,7 @@ def Scopes(elems: Scope*) = mutable.Stack(elems: _*)
 def tidyUp(source: BufferedSource): (Int, Scopes) = {
   val scopes = Scopes()
   var currentScope = Scope()
-  //var firstScope = currentScope
-  //var preambleFinished = false
-  //var decls = mutable.ListBuffer[String]()
-
   var counter = 0
-//  var outCnt = 0
 
   source.getLines().foreach { sourceLine =>
     counter += 1
@@ -38,17 +33,11 @@ def tidyUp(source: BufferedSource): (Int, Scopes) = {
       scopes.push(currentScope)
       currentScope = Scope()
     } else if (line.startsWith("(pop")) {
-      // currentScope = scopes.head
-      // scopes = scopes.pop
       val declarations = filterDeclarations(currentScope)
+
       currentScope = scopes.pop()
       currentScope ++= declarations
-//    } else if (line.startsWith("; Preamble end")) {
-//      preambleFinished = true
-//      scopes.push(decls)
-//    } else if (preambleFinished && line.startsWith("(declare-")) {
-//      decls += sourceLine
-    } else /*if (!decls.contains(sourceLine))*/ {
+    } else {
       currentScope += sourceLine
     }
   }
@@ -60,8 +49,8 @@ def tidyUp(source: BufferedSource): (Int, Scopes) = {
 
 def writeTo(scopes: Scopes, sink: BufferedWriter): Int = {
   var counter = 0
-//  scopes = scopes.push(currentScope)
-  scopes.reverse/*.map(_.reverse)*/.flatten.foreach { line =>
+
+  scopes.reverse.flatten.foreach { line =>
     counter += 1
 
     sink.write(line)
@@ -74,11 +63,6 @@ def writeTo(scopes: Scopes, sink: BufferedWriter): Int = {
 def filterDeclarations(scope: Scope): Scope = {
   scope.filter(_.startsWith("(declare-"))
 }
-
-//val outWriter =
-//	new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outFile)))
-
-// firstScope ++= decls
 
 /* Script */
 
