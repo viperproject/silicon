@@ -126,9 +126,8 @@ trait DefaultProducer[ST <: Store[ST],
         val s = sf(sorts.Snap)
         val s0 = mkSnap(a0, c.program)
         val s1 = mkSnap(a1, c.program)
-        val tSnapEq = Eq(s, Combine(s0, s1))
 
-        assume(tSnapEq)
+        assume(s === Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
@@ -221,9 +220,10 @@ trait DefaultProducer[ST <: Store[ST],
           val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
 //          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
 //          decider.assume(tAuxQuant)
-          val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil)
+          val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil).autoTrigger
           assume(πAuxWithoutQVar)
           assume(πAuxWithQVarQuant)
+
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
 //          assume(Domain(field.name, snap) === tSet)
@@ -231,10 +231,10 @@ trait DefaultProducer[ST <: Store[ST],
             Forall(tQVar,
                    Iff(SetIn(tRcvr, Domain(field.name, snap)),
                        tCond),
-                   Trigger(Lookup(field.name, snap, tRcvr) :: Nil) :: Nil)
+                   Trigger(Lookup(field.name, snap, tRcvr)))
           val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, ch.perm, tRcvr, possibleTriggersInCondAndRcvr)
           val injectivityAxiomTriggers = quantifiedChunkHelper.injectivityAxiomTriggers(qvar, cond, rcvr, tQVar, possibleTriggersInCondAndRcvr)
-          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr, injectivityAxiomTriggers)
+          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr, None/*, injectivityAxiomTriggers*/)
           assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
             if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])

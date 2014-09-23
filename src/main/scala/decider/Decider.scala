@@ -293,7 +293,7 @@ class DefaultDecider[ST <: Store[ST],
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
-    case eq: Eq => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
     case _ => false
   }

@@ -66,8 +66,8 @@ trait ExpressionTranslator {
       case ast.Implies(e0, e1) => Implies(f(e0), f(e1))
       case ast.Ite(e0, e1, e2) => Ite(f(e0), f(e1), f(e2))
 
-      case ast.Equals(e0, e1) => Eq(f(e0), f(e1))
-      case ast.Unequals(e0, e1) => Not(Eq(f(e0), f(e1)))
+      case ast.Equals(e0, e1) => Equals(f(e0), f(e1))
+      case ast.Unequals(e0, e1) => Not(Equals(f(e0), f(e1)))
 
       case ast.IntegerLiteral(n) => IntLiteral(n)
       case ast.IntPlus(e0, e1) => Plus(f(e0), f(e1))

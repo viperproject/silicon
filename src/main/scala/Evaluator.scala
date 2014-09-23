@@ -143,8 +143,8 @@ trait DefaultEvaluator[
       case ast.NullLiteral() => Q(Null(), c)
       case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval), c)
 
-      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Eq(p0, p1, true), pve, c)(Q)
-      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c)(Q)
+      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, Equals, pve, c)(Q)
+      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, c)(Q)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -168,10 +168,11 @@ trait DefaultEvaluator[
           })
 
       case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
-        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-          assert(c1.quantifiedVariables.length <= 1,
-                 s"Expected at most one quantified variable, but found ${c1.quantifiedVariables}")
-          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, c1.quantifiedVariables.headOption, fa.field, pve, fa, c1)((t) => {
+          eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+          val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+          assert(qvarsInRcvr.length <= 1,
+                 s"Expected receiver to contain at most one quantified variable, but found $qvarsInRcvr in $tRcvr")
+          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, qvarsInRcvr.headOption, fa.field, pve, fa, c1)((t) => {
 //          val c2 = c1.snapshotRecorder match {
 //            case Some(sr) =>
 //              c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> t))))
@@ -312,6 +313,10 @@ trait DefaultEvaluator[
           case ex: ast.Exists => (ex, Exists, Seq())
         }
 
+//        println("\n[Eval/Quant]")
+//        println(s"\nquant = $quant")
+//        println(s"\ntriggerQuant = $triggerQuant")
+
         val body = triggerQuant.exp
         val vars = triggerQuant.variables map (_.localVar)
 
@@ -329,9 +334,15 @@ trait DefaultEvaluator[
           eval(σQuant, body, pve, c0)((tBody, c1) =>
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val tAux = decider.π -- πPre
-              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t :: Nil))
+              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
               val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
+//              println(s"\ntQuantAux = $tQuantAux")
+//              println(s"\ntQuantAux.triggers = ${tQuantAux.triggers}")
+//              println(s"\ntQuantAux.autoTriggers = ${tQuantAux.autoTrigger.triggers}")
+//              println(s"\ntQuant = $tQuant")
+//              println(s"\ntQuant.triggers = ${tQuant.triggers}")
+//              println(s"\ntQuant.autoTriggers = ${tQuant.autoTrigger.triggers}")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers,
@@ -629,7 +640,7 @@ trait DefaultEvaluator[
        *   - The evaluation of the body terminated early, for example, because the
        *     LHS of an implication evaluated to false
        */
-      logger.warn(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
+      logger.debug(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
 
     /* TODO: Translate remaining triggers - which is currently not directly possible.
      *       For example, assume a conjunction f(x) && g(x) where f(x) is the
