@@ -486,7 +486,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
     Forall(qvar,
       Implies(NoPerm() < perm.replace(`?r`, rcvr).asInstanceOf[DefaultFractionalPermissions],
-        rcvr !== Null()),
+              rcvr !== Null()),
       Nil/*Trigger(triggerTerms)*/).autoTrigger
   }
 

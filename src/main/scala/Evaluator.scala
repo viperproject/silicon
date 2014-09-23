@@ -313,10 +313,6 @@ trait DefaultEvaluator[
           case ex: ast.Exists => (ex, Exists, Seq())
         }
 
-//        println("\n[Eval/Quant]")
-//        println(s"\nquant = $quant")
-//        println(s"\ntriggerQuant = $triggerQuant")
-
         val body = triggerQuant.exp
         val vars = triggerQuant.variables map (_.localVar)
 
@@ -335,14 +331,8 @@ trait DefaultEvaluator[
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val tAux = decider.π -- πPre
               val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
-              val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
+              val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), Nil).autoTrigger
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
-//              println(s"\ntQuantAux = $tQuantAux")
-//              println(s"\ntQuantAux.triggers = ${tQuantAux.triggers}")
-//              println(s"\ntQuantAux.autoTriggers = ${tQuantAux.autoTrigger.triggers}")
-//              println(s"\ntQuant = $tQuant")
-//              println(s"\ntQuant.triggers = ${tQuant.triggers}")
-//              println(s"\ntQuant.autoTriggers = ${tQuant.autoTrigger.triggers}")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers,
