@@ -10,7 +10,6 @@ package heap
 
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
-import silver.ast.utility
 import ast.{Field, LocationAccess}
 import interfaces.{VerificationResult, Failure}
 import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
@@ -343,9 +342,10 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
           if (constrainPermissions) {
             /* TODO: Add triggers (probably needs autoTriggers for terms ) */
-            assume(Forall(`?r`,
-                          Implies(ch.perm !== NoPerm(),
-                                  conditionalizedFraction < ch.perm), Nil))
+            val constrainPermissionQuantifier =
+              Forall(`?r`, Implies(ch.perm !== NoPerm(), conditionalizedFraction < ch.perm), Nil).autoTrigger
+
+            assume(constrainPermissionQuantifier)
 
             residue ::= ch.copy(perm = ch.perm - permsTaken)
           } else  if (!check(σ, Forall(`?r`, ch.perm - permsTaken === NoPerm(), Nil)))
@@ -393,7 +393,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
           condition.replace(qvar, vy),
           receiver.replace(qvar, vx) === receiver.replace(qvar, vy)),
         vx === vy),
-      triggers.getOrElse(Nil))
+      triggers.getOrElse(Nil)).autoTrigger
   }
 
   def injectivityAxiomTriggers(qvar: ast.LocalVariable,
@@ -479,7 +479,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
      * don't have a corresponding AST node (we could create one, though.)
      */
 
-    val triggerTerms = Nil
+//    val triggerTerms = Nil
     /* WARNING: Using the recorded possible triggers results in matching loops */
 //    val triggerTerms = possibleTriggers.values.filter(_.hasSubterm(qvar)).toSeq
 //    val triggerTerms = possibleTriggers.values.toSeq
@@ -487,7 +487,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     Forall(qvar,
       Implies(NoPerm() < perm.replace(`?r`, rcvr).asInstanceOf[DefaultFractionalPermissions],
         rcvr !== Null()),
-      Trigger(triggerTerms))
+      Nil/*Trigger(triggerTerms)*/).autoTrigger
   }
 
   def getFreshInverseFunction(of: Term, condition: Term, qvar: Var): (Term => Term, Seq[Term]) = {
@@ -498,10 +498,10 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     val funcSymbol = decider.fresh("inv", funcSort)
     val inverseFunc = (t: Term) => Apply(funcSymbol, t :: Nil)
 
-    val ax1 = Forall(qvar, Implies(condition, inverseFunc(of) === qvar), Trigger(of :: Nil) :: Nil)
+    val ax1 = Forall(qvar, Implies(condition, inverseFunc(of) === qvar), Nil).autoTrigger
 
     val r = Var("r", sorts.Ref)
-    val ax2 = Forall(r, Implies(condition, of.replace(qvar, inverseFunc(r)) === r), Trigger(inverseFunc(r) :: Nil) :: Nil)
+    val ax2 = Forall(r, Implies(condition, of.replace(qvar, inverseFunc(r)) === r), Nil/*Trigger(inverseFunc(r))*/).autoTrigger
 
     (inverseFunc, ax1 :: ax2 :: Nil)
   }
@@ -548,7 +548,7 @@ object QuantifiedChunkHelper {
    *       as well. Not a very convincing reason.
    */
   def fieldAccesses(q: ast.Forall) =
-    utility.Visitor.deepCollect(q :: Nil, utility.Nodes.subnodes) {
+    q.deepCollect {
       case fa: ast.FieldAccess => fa.field
     }
 }

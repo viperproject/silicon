@@ -84,7 +84,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       val strQuant = convert(quant)
 
       val strTriggers: String =
-        triggers.map(trigger => trigger.ts map convert mkString " ")
+        triggers.map(trigger => trigger.p map convert mkString " ")
                 .map(s => s":pattern ($s)")
                 .mkString(" ")
 
@@ -108,29 +108,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Iff(t0, t1) =>
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
-    case Eq(t0, t1, specialise) =>
-      /* Design choice: Either have a single Eq term, and based on its sort,
-       * different equalities are generated on the SMTLib2 level. This is
-       * currently done, but has the disadvantage, that the additional
-       * specialise flag is needed to indicate when to generate user-defined
-       * equality, e.g., $Snap.eq, or built-in equality, i.e., "=".
-       * Another possible design is to have equality terms for each sort, e.g.,
-       * SnapEq and SeqEq, and a general one, e.g., Eq, that always translates
-       * to built-in equality. This approach has the disadvantage, that
-       * an additional case distinction is necessary when SIL equalities are
-       * translated to Silicon terms.
-       */
+    case BuiltinEquals(t0, t1) =>
+      "(= " + convert(t0) + " " + convert(t1) + ")"
 
-      if (specialise)
-        t0.sort match {
-          case sorts.Snap => "(= " + convert(t0) + " " + convert(t1) + ")"
-          case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
-          case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
-          case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
-        }
-      else
-        "(= " + convert(t0) + " " + convert(t1) + ")"
-
+    case CustomEquals(t0, t1) => t0.sort match {
+      case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
+      case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
+      case _: sorts.Multiset => "($Multiset.eq " + convert(t0) + " " + convert(t1) + ")"
+      case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
+    }
 
     /* Arithmetic */
 
