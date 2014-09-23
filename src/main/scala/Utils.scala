@@ -7,6 +7,9 @@
 package viper
 package silicon
 
+import state.DefaultContext
+import state.terms._
+
 package object utils {
 	def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
 		if (it.isEmpty)
@@ -33,6 +36,19 @@ package object utils {
       code = code * 41 + (if (x == null) 0 else x.##)
 
     code
+  }
+
+  def consumeExactRead(fp: Term, c: DefaultContext): Boolean = fp match {
+    case _: WildcardPerm => false
+    case v: Var => !c.constrainableARPs.contains(v)
+    case TermPerm(t) => consumeExactRead(t, c)
+    case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
+    case IntPermTimes(_, t1) => consumeExactRead(t1, c)
+    case PermMin(t0 ,t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case Ite(_, t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case _ => true
   }
 
   /* http://www.tikalk.com/java/blog/avoiding-nothing */

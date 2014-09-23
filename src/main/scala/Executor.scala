@@ -11,7 +11,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import silver.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse, InsufficientPermission}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -19,6 +19,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
     DirectChunk, NestedFieldChunk, NestedPredicateChunk, DefaultContext}
+import heap.QuantifiedChunkHelper
 import state.terms.perms.IsPositive
 
 trait DefaultExecutor[ST <: Store[ST],
@@ -47,6 +48,7 @@ trait DefaultExecutor[ST <: Store[ST],
   import stateUtils.freshARP
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -194,17 +196,37 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
+      /* Assignment for a field that contains quantified chunks */
+      case ass @ ast.FieldWrite(fa @ ast.FieldAccess(eRcvr, field), rhs)
+              if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
+
+        val pve = AssignmentFailed(ass)
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+          eval(σ, rhs, pve, c1)((tRhs, c2) =>
+            decider.assert(σ, tRcvr !== Null()){
+              case false =>
+                Failure[ST, H, S](pve dueTo ReceiverNull(fa))
+              case true =>
+                val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, FullPerm())
+                quantifiedChunkHelper.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, c2){
+                  case Some((h1, ch, c3)) =>
+                    val (fvf,fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, tRcvr, tRhs)
+                    assume(fvfDef)
+                    Q(σ \ h1 \+ ch.copy(value = fvf), c3)
+                  case None =>
+                    Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
+
+      case ass @ ast.FieldWrite(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           decider.assert(σ, tRcvr !== Null()){
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2)(fc =>
+                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fa, pve, c2)(fc =>
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             case false =>
-              Failure[ST, H, S](pve dueTo ReceiverNull(fl))})
+              Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
 
       case ast.New(v, fields) =>
         val t = fresh(v)

@@ -21,6 +21,7 @@ import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsPositive
+import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[
                        ST <: Store[ST],
@@ -49,6 +50,8 @@ trait DefaultEvaluator[
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper
+
+  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 
 	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
 	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
@@ -163,6 +166,17 @@ trait DefaultEvaluator[
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
+
+      case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+          assert(c1.quantifiedVariables.length <= 1,
+                 s"Expected at most one quantified variable, but found ${c1.quantifiedVariables}")
+          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, c1.quantifiedVariables.headOption, fa.field, pve, fa, c1)((t) => {
+//          val c2 = c1.snapshotRecorder match {
+//            case Some(sr) =>
+//              c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> t))))
+//            case _ => c1}
+          Q(t, c1)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
