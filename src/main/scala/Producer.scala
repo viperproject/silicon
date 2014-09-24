@@ -120,9 +120,8 @@ trait DefaultProducer[ST <: Store[ST],
         val s = sf(sorts.Snap)
         val s0 = mkSnap(a0, c.program)
         val s1 = mkSnap(a1, c.program)
-        val tSnapEq = Eq(s, Combine(s0, s1))
 
-        assume(tSnapEq)
+        assume(s === Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)

@@ -45,11 +45,11 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 		/* Attention: Hides non-null and combine terms. */
 		if (π.isEmpty) "Ø"
 		else
-			"π" + (π.filterNot {
-				case c: Eq if    c.p0.isInstanceOf[Combine]
+			"π" + π.filterNot {
+				case c: BuiltinEquals if    c.p0.isInstanceOf[Combine]
 					      || c.p1.isInstanceOf[Combine] => true
-				case Not(Eq(_, Null(), _)) => true
+				case Not(BuiltinEquals(_, Null())) => true
 				case _ => false
-			}).mkString("(", ", ", ")")
+			}.mkString("(", ", ", ")")
 	}
 }

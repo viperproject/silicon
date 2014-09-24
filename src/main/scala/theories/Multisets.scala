@@ -20,7 +20,7 @@ trait MultisetsEmitter extends PreambleEmitter
 
 class DefaultMultisetsEmitter(prover: Prover,
                               symbolConverter: SymbolConvert,
-                              preambleFileEmitter: PreambleFileEmitter[_])
+                              preambleFileEmitter: PreambleFileEmitter[String, String])
     extends MultisetsEmitter {
 
   private var collectedSorts = Set[terms.sorts.Multiset]()
@@ -70,15 +70,19 @@ class DefaultMultisetsEmitter(prover: Prover,
 
   def declareSymbols() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/multisets_declarations_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/multisets_declarations_dafny.smt2", s.elementsSort)
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
+      val declarations = "/dafny_axioms/multisets_declarations_dafny.smt2"
+      prover.logComment(s"$declarations [${s.elementsSort}]")
+      preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
     }
   }
 
   def emitAxioms() {
     collectedSorts foreach {s =>
-      prover.logComment(s"/multisets_axioms_dafny.smt2 [${s.elementsSort}]")
-      preambleFileEmitter.emitSortParametricAssertions("/dafny_axioms/multisets_axioms_dafny.smt2", s.elementsSort)
+      val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
+      val axioms = "/dafny_axioms/multisets_axioms_dafny.smt2"
+      prover.logComment(s"$axioms [${s.elementsSort}]")
+      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }
   }
 }

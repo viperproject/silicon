@@ -8,7 +8,7 @@ package viper
 package silicon
 package state
 
-import interfaces.state.{FieldChunk, Heap, Store, State}
+import interfaces.state.{PredicateChunk, FieldChunk, Heap, Store, State}
 import ast.commonnodes
 import terms._
 
@@ -16,9 +16,19 @@ package object utils {
   def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                                          (σ: S)
                                          : Set[Term] = {
+
+    /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
+     *       then we should also establish that !(x in xs).
+     */
     val ts = (
+      /* Refs pointed to by local variables */
          σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
-      ++ σ.h.values.flatMap(_.args).filter(_.sort == terms.sorts.Ref)
+      /* Receivers of fields and ref-typed arguments of predicates */
+      ++ σ.h.values.collect {
+          case fc: FieldChunk => fc.args
+          case pc: PredicateChunk => pc.args.filter(_.sort == terms.sorts.Ref)
+         }.flatten
+      /* Refs pointed to by fields */
       ++ σ.h.values.collect { case fc: FieldChunk if fc.value.sort == terms.sorts.Ref => fc.value })
 
     toSet(ts)
@@ -47,13 +57,10 @@ package object utils {
     case snd: Second => List(snd.t)
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
-    case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
+    case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
   }
 
-  /* Structurally a copy of the SIL transformer written by Stefan Heule.
-   * Only recurses on terms (terms.Term), not on sorts (terms.Sort) or
-   * declarations (term.Decl)
-   */
+  /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
   def transform[T <: Term](term: T,
                            pre: PartialFunction[Term, Term] = PartialFunction.empty)
                           (recursive: Term => Boolean = !pre.isDefinedAt(_),
@@ -62,11 +69,11 @@ package object utils {
 
     def go[D <: Term](term: D): D = transform(term, pre)(recursive, post)
 
-    def goTriggers(trigger: Trigger) = Trigger(trigger.ts map go)
+    def goTriggers(trigger: Trigger) = Trigger(trigger.p map go)
 
     def recurse(term: Term): Term = term match {
       case _: Var | _: Function | _: Literal => term
-      case q: Quantification => Quantification(q.q, q.vars map go, go(q.tBody), q.triggers map goTriggers)
+      case q: Quantification => Quantification(q.q, q.vars map go, go(q.body), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
       case Times(t0, t1) => Times(go(t0), go(t1))
@@ -78,7 +85,8 @@ package object utils {
       case Implies(t0, t1) => Implies(go(t0), go(t1))
       case Iff(t0, t1) => Iff(go(t0), go(t1))
       case Ite(t0, t1, t2) => Ite(go(t0), go(t1), go(t2))
-      case Eq(t0, t1, specialize) => Eq(go(t0), go(t1), specialize)
+      case BuiltinEquals(t0, t1) => Equals(go(t0), go(t1))
+      case CustomEquals(t0, t1) => Equals(go(t0), go(t1))
       case Less(t0, t1) => Less(go(t0), go(t1))
       case AtMost(t0, t1) => AtMost(go(t0), go(t1))
       case Greater(t0, t1) => Greater(go(t0), go(t1))
@@ -123,7 +131,7 @@ package object utils {
       case MultisetIn(t0, t1) => MultisetIn(go(t0), go(t1))
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
-      case MultisetFromSeq(t) => MultisetFromSeq(go(t))
+//      case MultisetFromSeq(t) => MultisetFromSeq(go(t))
       case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
       case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))

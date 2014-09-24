@@ -74,15 +74,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       }
 
     case FApp(f, s, tArgs) =>
-      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString(" "))
+      "(%s %s %s)".format(sanitizeSymbol(f.id), convert(s), tArgs map convert mkString " ")
 
     case Quantification(quant, vars, body, triggers) =>
-      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString(" ")
+      val strVars = vars map (v => s"(${v.id} ${convert(v.sort)})") mkString " "
       val strBody = convert(body)
       val strQuant = convert(quant)
 
       val strTriggers: String =
-        triggers.map(trigger => trigger.ts map convert mkString(" "))
+        triggers.map(trigger => trigger.p map convert mkString " ")
                 .map(s => s":pattern ($s)")
                 .mkString(" ")
 
@@ -106,29 +106,15 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Iff(t0, t1) =>
       "(iff " + convert(t0) + " " + convert(t1) + ")"
 
-    case Eq(t0, t1, specialise) =>
-      /* Design choice: Either have a single Eq term, and based on its sort,
-       * different equalities are generated on the SMTLib2 level. This is
-       * currently done, but has the disadvantage, that the additional
-       * specialise flag is needed to indicate when to generate user-defined
-       * equality, e.g., $Snap.eq, or built-in equality, i.e., "=".
-       * Another possible design is to have equality terms for each sort, e.g.,
-       * SnapEq and SeqEq, and a general one, e.g., Eq, that always translates
-       * to built-in equality. This approach has the disadvantage, that
-       * an additional case distinction is necessary when SIL equalities are
-       * translated to Silicon terms.
-       */
+    case BuiltinEquals(t0, t1) =>
+      "(= " + convert(t0) + " " + convert(t1) + ")"
 
-      if (specialise)
-        t0.sort match {
-          case sorts.Snap => "(= " + convert(t0) + " " + convert(t1) + ")"
+    case CustomEquals(t0, t1) => t0.sort match {
           case _: sorts.Seq => "($Seq.eq " + convert(t0) + " " + convert(t1) + ")"
           case _: sorts.Set => "($Set.eq " + convert(t0) + " " + convert(t1) + ")"
-          case _ => "(= " + convert(t0) + " " + convert(t1) + ")"
+      case _: sorts.Multiset => "($Multiset.eq " + convert(t0) + " " + convert(t1) + ")"
+      case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
         }
-      else
-        "(= " + convert(t0) + " " + convert(t1) + ")"
-
 
     /* Arithmetic */
 
@@ -243,7 +229,6 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case MultisetIn(t0, t1) => "(> ($Multiset.count " + convert(t1) + " " + convert(t0) + ") 0)"
     case MultisetSubset(t0, t1) => "($Multiset.subset " + convert(t0) + " " + convert(t1) + ")"
     case MultisetCount(t0, t1) => "($Multiset.count " + convert(t1) + " " + convert(t0) + ")"
-    case MultisetFromSeq(t0) => "($Multiset.fromSeq " + convert(t0) + ")"
 
     /* Domains */
 
@@ -266,7 +251,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
       "(%s %s)".format(sortWrapperSymbol(t.sort, to), convert(t))
 
     case Distinct(symbols) =>
-      "(distinct %s)".format(symbols map(convert) mkString(" "))
+      "(distinct %s)".format(symbols map convert  mkString " ")
   }
 
   def sanitizeSymbol(str: String) =
@@ -285,8 +270,8 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
 
   private def literalToString(literal: Literal) = literal match {
     case IntLiteral(n) =>
-      if (n >= 0) n.toString
-      else "(- 0 %s)".format((-n).toString)
+      if (n >= 0) n.toString()
+      else "(- 0 %s)".format((-n).toString())
 
     case Unit => "$Snap.unit"
     case True() => "true"

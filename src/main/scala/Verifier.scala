@@ -133,7 +133,7 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
-  /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
+  /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
   /*protected*/ def sequencesEmitter: SequencesEmitter
   /*protected*/ def setsEmitter: SetsEmitter
   /*protected*/ def multisetsEmitter: MultisetsEmitter
@@ -244,7 +244,8 @@ trait AbstractVerifier[ST <: Store[ST],
         decider.prover.declare(toSnapWrapper)
         decider.prover.declare(fromSnapWrapper)
 
-        preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
+        preambleEmitter.emitParametricAssertions("/sortwrappers.smt2",
+                                                 Map("$S$" -> decider.prover.termConverter.convert(sort)))
       })
     }
   }
@@ -265,7 +266,7 @@ class DefaultVerifier[ST <: Store[ST],
 			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
-      val preambleEmitter: PreambleFileEmitter[_],
+      val preambleEmitter: PreambleFileEmitter[String, String],
       val sequencesEmitter: SequencesEmitter,
       val setsEmitter: SetsEmitter,
       val multisetsEmitter: MultisetsEmitter,

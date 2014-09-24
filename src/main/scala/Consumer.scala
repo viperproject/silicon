@@ -197,13 +197,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C)
-                                (Q:     (H, DirectChunk, C, PermissionsConsumptionResult)
-                                     => VerificationResult)
+                                (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
                                 :VerificationResult = {
 
     /* TODO: assert that pLoss > 0 */
 
-    if (consumeExactRead(pLoss, c)) {
+    if (utils.consumeExactRead(pLoss, c)) {
       decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c)(ch => {
         if (decider.check(σ, IsNoAccess(ch.perm - pLoss))) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
@@ -214,17 +213,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }
-  }
-
-  private def consumeExactRead(fp: P, c: C): Boolean = fp match {
-    case TermPerm(v: Var) => !c.constrainableARPs.contains(v)
-    case _: TermPerm => true
-    case _: WildcardPerm => false
-    case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
-    case IntPermTimes(_, t1) => consumeExactRead(t1, c)
-    case _ => true
   }
 }
 

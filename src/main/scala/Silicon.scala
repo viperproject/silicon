@@ -15,9 +15,10 @@ import state.DefaultContext
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess,
-    Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred,
-    CliOptionError}
+import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
+    Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
+    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
+    AbortedExceptionally => SilExceptionThrown}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
@@ -130,7 +131,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         _config.printHelp()
         throw ex
       case ex: org.rogach.scallop.exceptions.ScallopException =>
-        println(CliOptionError(ex.message + ".").readableMessage)
+        println(SilCliOptionError(ex.message + ".").readableMessage)
         _config.printHelp()
         throw ex
     }
@@ -234,8 +235,16 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           /* If possible, report the real exception that has been wrapped in
            * the ExecutionException. The wrapping is due to using a future.
            */
-          if (ee.getCause != null) throw ee.getCause
-          else throw ee
+          val ex =
+            if (ee.getCause != null) ee.getCause
+            else ee
+
+          logger.debug(ex.getStackTraceString)
+          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+
+        case ex: Exception =>
+          logger.debug(ex.getStackTraceString)
+          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()

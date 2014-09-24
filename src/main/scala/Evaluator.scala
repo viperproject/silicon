@@ -140,8 +140,8 @@ trait DefaultEvaluator[
       case ast.NullLiteral() => Q(Null(), c)
       case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval), c)
 
-      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Eq(p0, p1, true), pve, c)(Q)
-      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Eq(p0, p1)), pve, c)(Q)
+      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, Equals, pve, c)(Q)
+      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, c)(Q)
 
       case v: ast.Variable => Q(σ.γ(v), c)
 
@@ -315,8 +315,8 @@ trait DefaultEvaluator[
           eval(σQuant, body, pve, c0)((tBody, c1) =>
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val tAux = decider.π -- πPre
-              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t :: Nil))
-              val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), actualTriggers)
+              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
+              val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), Nil).autoTrigger
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
@@ -615,7 +615,7 @@ trait DefaultEvaluator[
        *   - The evaluation of the body terminated early, for example, because the
        *     LHS of an implication evaluated to false
        */
-      logger.warn(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
+      logger.debug(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
 
     /* TODO: Translate remaining triggers - which is currently not directly possible.
      *       For example, assume a conjunction f(x) && g(x) where f(x) is the
