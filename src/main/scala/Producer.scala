@@ -232,8 +232,13 @@ trait DefaultProducer[ST <: Store[ST],
                    Iff(SetIn(tRcvr, Domain(field.name, snap)),
                        tCond),
                    Trigger(Lookup(field.name, snap, tRcvr)))
-          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, ch.perm, tRcvr, possibleTriggersInCondAndRcvr)
-          val injectivityAxiomTriggers = quantifiedChunkHelper.injectivityAxiomTriggers(qvar, cond, rcvr, tQVar, possibleTriggersInCondAndRcvr)
+//          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, ch.perm, tRcvr, possibleTriggersInCondAndRcvr)
+          val tNonNullQuant =
+            Forall(tQVar,
+                   Implies(And(tCond, NoPerm() < pGain * p),
+                           tRcvr !== Null()),
+                   Nil/*Trigger(triggerTerms)*/).autoTrigger
+//          val injectivityAxiomTriggers = quantifiedChunkHelper.injectivityAxiomTriggers(qvar, cond, rcvr, tQVar, possibleTriggersInCondAndRcvr)
           val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr, None/*, injectivityAxiomTriggers*/)
           assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
