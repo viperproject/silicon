@@ -168,7 +168,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
                     val receiverInjective =
                       if (!decider.check(σQVar, FullPerm() < (tPerm + tPerm))) {
-                        quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr, None)
+                        quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr)
                       } else
                         True()
                     decider.assert(σ, receiverInjective) {

@@ -227,19 +227,13 @@ trait DefaultProducer[ST <: Store[ST],
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
 //          assume(Domain(field.name, snap) === tSet)
-          val tDomainQuant =
-            Forall(tQVar,
-                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
-                       tCond),
-                   Trigger(Lookup(field.name, snap, tRcvr)))
-//          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, ch.perm, tRcvr, possibleTriggersInCondAndRcvr)
-          val tNonNullQuant =
-            Forall(tQVar,
-                   Implies(And(tCond, NoPerm() < pGain * p),
-                           tRcvr !== Null()),
-                   Nil/*Trigger(triggerTerms)*/).autoTrigger
-//          val injectivityAxiomTriggers = quantifiedChunkHelper.injectivityAxiomTriggers(qvar, cond, rcvr, tQVar, possibleTriggersInCondAndRcvr)
-          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr, None/*, injectivityAxiomTriggers*/)
+          val tDomainQuant = quantifiedChunkHelper.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
+//            Forall(tQVar,
+//                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
+//                       tCond),
+//                   Trigger(Lookup(field.name, snap, tRcvr)))
+          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, tCond, tRcvr, pGain * p)
+          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr)
           assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
             if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
