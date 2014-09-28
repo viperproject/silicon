@@ -35,6 +35,16 @@ trait BinaryOp[E] {
 	override def toString = "%s %s %s".format(p0, op, p1)
 }
 
+trait StructuralEqualityUnaryOp[E] extends UnaryOp[E] {
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case uop: UnaryOp[_] if uop.getClass.eq(this.getClass) => p == uop.p
+      case _ => false
+    })
+
+  override def hashCode(): Int = p.hashCode
+}
+
 trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
 	override def equals(other: Any) =
 		this.eq(other.asInstanceOf[AnyRef]) || (other match {
@@ -50,14 +60,18 @@ trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
   override def hashCode(): Int = p0.hashCode() * p1.hashCode()
 }
 
-trait StructuralEqualityUnaryOp[E] extends UnaryOp[E] {
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case uop: UnaryOp[_] if uop.getClass.eq(this.getClass) => p == uop.p
-      case _ => false
-    })
+trait StructuralEquality { self: AnyRef =>
+  val equalityDefiningMembers: Seq[Any]
 
-  override def hashCode(): Int = p.hashCode
+  override val hashCode = silicon.utils.generateHashCode(equalityDefiningMembers)
+
+  override def equals(other: Any) = (
+       this.eq(other.asInstanceOf[AnyRef])
+    || (other match {
+         case se: StructuralEquality if this.getClass.eq(se.getClass) =>
+           equalityDefiningMembers == se.equalityDefiningMembers
+         case _ => false
+       }))
 }
 
 /* Booleans */

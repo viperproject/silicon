@@ -378,7 +378,7 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-		val chunk = chunks find (ch => check(σ, BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
+		val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
 		chunk
 	}
