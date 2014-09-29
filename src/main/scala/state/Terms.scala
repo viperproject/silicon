@@ -26,14 +26,6 @@ import silver.ast.utility.{GenericTriggerGenerator, Visitor}
  * optimisations, as done in the work on the type safe builder pattern.
  */
 
-/* TODO: Sorts currently take not type parameters, will probably is necessary
- *       in order to support e.g. non-integer sequences.
- */
-
-/* TODO: Can we use scala.FunctionN instead of UnaryOperator, BinaryOperator?
- *
- */
-
 /*
  * Sorts
  */
@@ -283,7 +275,7 @@ class Quantification private[terms] (val q: Quantifier,
                                      val vars: Seq[Var],
                                      val body: Term,
                                      val triggers: Seq[Trigger])
-    extends BooleanTerm {
+    extends BooleanTerm
        with commonnodes.StructuralEquality {
 
   lazy val autoTrigger: Quantification = {
@@ -314,13 +306,6 @@ object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger]) => Qua
      *       autoTrigger on the returned object.
      */
     new Quantification(q, vars, tBody, triggers)
-//    tBody match {
-//    case True() | False() => tBody
-//    case _ => new Quantification(q, vars, tBody, triggers)
-//  }
-
-  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers))
-}
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
@@ -444,8 +429,8 @@ object Or extends Function2[Term, Term, Term] {
 }
 
 class And(val ts: Seq[Term]) extends BooleanTerm
-    with commonnodes.StructuralEquality with ForbiddenInTrigger {
-    with ForbiddenInTrigger
+    with commonnodes.StructuralEquality
+    with ForbiddenInTrigger {
 
   assert(ts.nonEmpty, "Expected at least one term, but found none")
 
@@ -546,7 +531,7 @@ object Equals extends ((Term, Term) => BooleanTerm) {
            .format(e0.sort, e0, e1.sort, e1))
 
     if (e0 == e1)
-        True()
+      True()
     else
       e0.sort match {
         case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset => new CustomEquals(e0, e1)
@@ -580,25 +565,6 @@ class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 object CustomEquals {
   def unapply(e: CustomEquals) = Some((e.p0, e.p1))
 }
-
-
-class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-    with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
-
-object CustomEquals /*extends ((Term, Term) => BooleanTerm)*/ {
-//  def apply(e0: Term, e1: Term) = {
-//    assert(e0.sort == e1.sort,
-//           "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-//           .format(e0.sort, e0, e1.sort, e1))
-//
-//    if (e0 == e1) True()
-//    else new CustomEq(e0, e1)
-//  }
-
-  def unapply(e: CustomEquals) = Some((e.p0, e.p1))
-}
-
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
     with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
@@ -1508,24 +1474,6 @@ object SortWrapper {
 }
 
 /* Trigger-related terms */
-
-sealed trait PossibleTrigger extends Term with GenericTriggerGenerator.PossibleTrigger[Term, PossibleTrigger] {
-  val asManifestation = this
-  /* Returning this assumes that the possible trigger is always the trigger
-   * term itself. This is not the case, for example, on Silver's side, where
-   * an old-expression itself is not the trigger, but where the expression
-   * nested in 'old' is the trigger.
-   */
-}
-
-sealed trait PossibleBinaryOpTrigger[T <: Term] extends PossibleTrigger { self: commonnodes.BinaryOp[T] =>
-  lazy val getArgs = p0 :: p1 :: Nil
-}
-
-sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.ForbiddenInTrigger[Sort] {
-  val typ = sort
-}
-
 
 sealed trait PossibleTrigger extends Term with GenericTriggerGenerator.PossibleTrigger[Term, PossibleTrigger] {
   val asManifestation = this

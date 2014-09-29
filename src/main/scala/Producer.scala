@@ -220,7 +220,7 @@ trait DefaultProducer[ST <: Store[ST],
           val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
 //          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
 //          decider.assume(tAuxQuant)
-          val πAuxWithQVarQuant = Forall(tQVar, state.terms.utils.BigAnd(πAuxWithQVar), Nil).autoTrigger
+          val πAuxWithQVarQuant = Forall(tQVar, And(πAuxWithQVar), Nil).autoTrigger
           assume(πAuxWithoutQVar)
           assume(πAuxWithQVarQuant)
 
