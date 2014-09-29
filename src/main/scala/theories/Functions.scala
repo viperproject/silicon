@@ -126,10 +126,10 @@ trait FunctionsSupporter[ST <: Store[ST],
     lazy val axiom = {
       val translatedBody = expressionTranslator.translate(program, programFunction, locToSnap, fappToSnap)
 
-      val nonNulls = state.terms.utils.BigAnd(
+      val nonNulls = And(
         programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
                            .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
-                           .toSet[Term])
+                           .distinct: _*)
 
       Quantification(Forall, args, Implies(translatedPre, And(fapp === translatedBody, nonNulls)), triggers)
     }

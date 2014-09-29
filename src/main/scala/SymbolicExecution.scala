@@ -13,7 +13,6 @@ import interfaces.state.{Store, Heap, PathConditions, State, Context}
 import reporting.Bookkeeper
 import state.DefaultContext
 import state.terms._
-import state.terms.utils.{BigAnd, ¬}
 
 /* TODO: Move interfaces into interfaces package */
 
@@ -89,8 +88,8 @@ trait DefaultBrancher[ST <: Store[ST],
              fFalse: C => VerificationResult)
             : VerificationResult = {
 
-		val guardsTrue = BigAnd(ts)
-		val guardsFalse = BigAnd(ts, t => ¬(t))
+		val guardsTrue = And(ts: _*)
+		val guardsFalse = And(ts map (t => Not(t)): _*)
 
     val exploreTrueBranch = !decider.check(σ, guardsFalse)
     val exploreFalseBranch = !decider.check(σ, guardsTrue)
@@ -182,8 +181,8 @@ trait DefaultBrancher[ST <: Store[ST],
     r && {
       val tAuxIte = /* Ite with auxiliary terms */
         Ite(guard,
-            πThen.fold(True(): Term)(ts => state.terms.utils.BigAnd(ts)),
-            πElse.fold(True(): Term)(ts => state.terms.utils.BigAnd(ts)))
+            πThen.fold(True(): Term)(ts => And(ts)),
+            πElse.fold(True(): Term)(ts => And(ts)))
 
       assume(tAuxIte)
 
@@ -304,9 +303,9 @@ trait DefaultJoiner[ST <: Store[ST],
     val (t1: Term, tAux: Set[Term], optC) =
       localResults.map { lr =>
         val newGuards = lr.πGuards filterNot decider.π.contains
-        val guard: Term = state.terms.utils.BigAnd(newGuards)
+        val guard: Term = And(newGuards)
         val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
-        val tAux: Term = Implies(guard, state.terms.utils.BigAnd(lr.auxiliaryTerms))
+        val tAux: Term = Implies(guard, And(lr.auxiliaryTerms))
 
         (tAct, tAux, lr.context)
       }.foldLeft((True(): Term, Set[Term](), None: Option[C])) {

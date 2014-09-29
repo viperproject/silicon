@@ -65,17 +65,11 @@ object sorts {
     override val toString = id
   }
 
-  class Arrow private (val from: SISeq[Sort], val to: Sort) extends Sort {
+  class Arrow private (val from: SISeq[Sort], val to: Sort) extends Sort
+      with commonnodes.StructuralEquality {
+
+    val equalityDefiningMembers = from :: to :: Nil
     val id = s"${from mkString " x "} -> $to"
-
-    override val hashCode = silicon.utils.generateHashCode(from, to)
-
-    override def equals(other: Any) =
-      this.eq(other.asInstanceOf[AnyRef]) || (other match {
-        case a: Arrow => this.from == a.from && this.to == a.to
-        case _ => false
-      })
-
     override val toString = id
   }
 
@@ -186,17 +180,13 @@ case class Var(id: String, sort: Sort) extends Symbol with Term {
   override val toString = id
 }
 
-class Function(val id: String, val sort: sorts.Arrow) extends Symbol with Term {
+class Function(val id: String, val sort: sorts.Arrow)
+    extends Symbol
+       with Term
+       with commonnodes.StructuralEquality {
+
   lazy val limitedVersion = Function(id + "$", sort)
-
-  override val hashCode = silicon.utils.generateHashCode(id, sort)
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case f: Function => this.id == f.id && this.sort == f.sort
-      case _ => false
-    })
-
+  val equalityDefiningMembers = id :: sort :: Nil
   override val toString = s"$id: $sort"
 }
 
@@ -225,7 +215,7 @@ case class IntLiteral(n: BigInt) extends ArithmeticTerm with Literal {
 	def -(m: Int) = IntLiteral(n - m)
 	def *(m: Int) = IntLiteral(n * m)
 	def /(m: Int) = Div(this, IntLiteral(m))
-	override val toString = n.toString
+	override val toString = n.toString()
 }
 
 case class Null() extends Term with Literal {
@@ -294,6 +284,7 @@ class Quantification private[terms] (val q: Quantifier,
                                      val body: Term,
                                      val triggers: Seq[Trigger])
     extends BooleanTerm {
+       with commonnodes.StructuralEquality {
 
   lazy val autoTrigger: Quantification = {
     if (triggers.nonEmpty) {
@@ -312,15 +303,7 @@ class Quantification private[terms] (val q: Quantifier,
     }
   }
 
-  override val hashCode = silicon.utils.generateHashCode(q, vars, body, triggers)
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case Quantification(_q, _vars, _tBody, _triggers) =>
-        q == _q && vars == _vars && body == _tBody && triggers == _triggers
-
-      case _ => false
-    })
+  val equalityDefiningMembers = q :: vars :: body :: triggers :: Nil
 
   override val toString = s"$q ${vars.mkString(",")} :: $body"
 }
@@ -331,6 +314,13 @@ object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger]) => Qua
      *       autoTrigger on the returned object.
      */
     new Quantification(q, vars, tBody, triggers)
+//    tBody match {
+//    case True() | False() => tBody
+//    case _ => new Quantification(q, vars, tBody, triggers)
+//  }
+
+  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers))
+}
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
@@ -444,34 +434,44 @@ class Or(val p0: Term, val p1: Term) extends BooleanTerm
 object Or extends Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (True(), _) | (_, True()) => True()
-		case (False(), e1) => e1
-		case (e0, False()) => e0
-		case (e0, e1) if e0 == e1 => e0
+		case (False(), _) => e1
+		case (_, False()) => e0
+		case _ if e0 == e1 => e0
 		case _ => new Or(e0, e1)
 	}
 
 	def unapply(e: Or) = Some((e.p0, e.p1))
 }
 
-class And(val p0: Term, val p1: Term) extends BooleanTerm
-		with commonnodes.And[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+class And(val ts: Seq[Term]) extends BooleanTerm
+    with commonnodes.StructuralEquality with ForbiddenInTrigger {
     with ForbiddenInTrigger
 
-object And extends Function2[Term, Term, Term] {
-	def apply(el: Term, er: Term) = (el, er) match {
-		case (True(), e1) => e1
-		case (e0, True()) => e0
-		case (False(), _) | (_, False()) => False()
-		case (e0, e1) if e0 == e1 => e0
-    case (e0, Implies(e1, e2)) if e0 == e1 =>
-      /* This case arises quite often during local evaluation of expressions. */
-      new And(e0, e2)
-		case _ => new And(el, er)
-	}
+  assert(ts.nonEmpty, "Expected at least one term, but found none")
 
-  def apply(ts: Term*) = utils.BigAnd(ts)
+  val equalityDefiningMembers = ts
 
-	def unapply(e: And) = Some((e.p0, e.p1))
+  override lazy val toString = ts.mkString(" && ")
+}
+
+object And {
+  def apply(ts: Term*) = createAnd(ts)
+  def apply(ts: Set[Term]) = createAnd(ts.toSeq)
+
+  @inline
+  def createAnd(_ts: Seq[Term]): Term = {
+    var ts = _ts.flatMap { case And(ts1) => ts1; case other => other :: Nil}
+    ts = _ts.filterNot(_ == True())
+    ts = ts.distinct
+
+    ts match {
+      case Seq() => True()
+      case Seq(t) => t
+      case _ => new And(ts)
+    }
+  }
+
+	def unapply(e: And) = Some(e.ts)
 }
 
 class Implies(val p0: Term, val p1: Term) extends BooleanTerm
@@ -480,11 +480,11 @@ class Implies(val p0: Term, val p1: Term) extends BooleanTerm
 
 object Implies extends Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term): Term = (e0, e1) match {
-		case (True(), e1) => e1
+		case (True(), _) => e1
 		case (False(), _) => True()
-		case (e0, True()) => True()
-		case (e0, Implies(e10, e11)) => Implies(And(e0, e10), e11)
-		case (e0, e1) if e0 == e1 => True()
+		case (_, True()) => True()
+		case (_, Implies(e10, e11)) => Implies(And(e0, e10), e11)
+		case _ if e0 == e1 => True()
 		case _ => new Implies(e0, e1)
 	}
 
@@ -497,31 +497,27 @@ class Iff(val p0: Term, val p1: Term) extends BooleanTerm
 
 object Iff extends Function2[Term, Term, Term] {
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (True(), e1) => e1
-		case (e0, True()) => e0
-		case (e0, e1) if e0 == e1 => True()
+		case (True(), _) => e1
+		case (_, True()) => e0
+		case _ if e0 == e1 => True()
 		case _ => new Iff(e0, e1)
 	}
 
 	def unapply(e: Iff) = Some((e.p0, e.p1))
 }
 
-class Ite(val t0: Term, val t1: Term, val t2: Term) extends Term {
+class Ite(val t0: Term, val t1: Term, val t2: Term)
+    extends Term
+       with commonnodes.StructuralEquality {
+
 	assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
 			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
 			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
-	override val toString = "(%s ? %s : %s)".format(t0, t1, t2)
 
-  override val hashCode = silicon.utils.generateHashCode(t0, t1, t2)
-
-	override def equals(other: Any) =
-		this.eq(other.asInstanceOf[AnyRef]) || (other match {
-			case Ite(_t0, _t1, _t2) => t0 == _t0 && t1 == _t1 && t2 == _t2
-			case _ => false
-		})
-
-  override val sort = t1.sort
+  val equalityDefiningMembers = t0 :: t1 :: t2 :: Nil
+  val sort = t1.sort
+  override val toString = "(%s ? %s : %s)".format(t0, t1, t2)
 }
 
 object Ite extends Function3[Term, Term, Term, Term] {
@@ -567,16 +563,7 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
     with ForbiddenInTrigger {
 }
 
-object BuiltinEquals /*extends ((Term, Term) => BooleanTerm)*/ {
-//  def apply(e0: Term, e1: Term) = {
-//    assert(e0.sort == e1.sort,
-//           "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
-//           .format(e0.sort, e0, e1.sort, e1))
-//
-//    if (e0 == e1) True()
-//    else new BuiltinEq(e0, e1)
-//  }
-
+object BuiltinEquals {
   def unapply(e: BuiltinEquals) = Some((e.p0, e.p1))
 }
 
@@ -589,6 +576,15 @@ class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
   def withArgs(args: Seq[Term]) = Equals(args(0), args(1)).asInstanceOf[CustomEquals]
     /* The cast will raise an exception if the equality has been optimised away */
 }
+
+object CustomEquals {
+  def unapply(e: CustomEquals) = Some((e.p0, e.p1))
+}
+
+
+class Less(val p0: Term, val p1: Term) extends ComparisonTerm
+    with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
 object CustomEquals /*extends ((Term, Term) => BooleanTerm)*/ {
 //  def apply(e0: Term, e1: Term) = {
@@ -698,17 +694,12 @@ case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override 
  *
  * As a consequence, TermPerms can be ignored by trigger generators.
  */
-class TermPerm(val t: Term) extends DefaultFractionalPermissions {
+class TermPerm(val t: Term) extends DefaultFractionalPermissions
+    with commonnodes.StructuralEquality {
+
   utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
 
-  override val hashCode = t.hashCode()
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case TermPerm(_t) => t == _t
-      case _ => false
-    })
-
+  val equalityDefiningMembers = t :: Nil
   override val toString = t.toString
 }
 
@@ -998,7 +989,7 @@ object SeqLength {
     new SeqLength(t)
   }
 
-  def unapply(sl: SeqLength) = Some((sl.p))
+  def unapply(sl: SeqLength) = Some(sl.p)
 }
 
 class SeqAt(val p0: Term, val p1: Term) extends Term
@@ -1043,19 +1034,15 @@ object SeqIn extends ((Term, Term) => BooleanTerm) {
   def unapply(si: SeqIn) = Some((si.p0, si.p1))
 }
 
-class SeqUpdate(val t0: Term, val t1: Term, val t2: Term) extends SeqTerm with PossibleTrigger {
+class SeqUpdate(val t0: Term, val t1: Term, val t2: Term)
+    extends SeqTerm
+       with commonnodes.StructuralEquality
+       with PossibleTrigger {
+
   val sort = t0.sort.asInstanceOf[sorts.Seq]
   val elementsSort = sort.elementsSort
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case su: SeqUpdate if su.getClass.eq(this.getClass) => t0 == su.t0 && t1 == su.t1 && t2 == su.t2
-      case _ => false
-    })
-
-  override def hashCode(): Int = silicon.utils.generateHashCode(t0, t1, t2)
-
-  override val toString = s"$t0[$t1] := $t2".format(t0, t1, t2)
+  val equalityDefiningMembers = t0 :: t1 :: t2 :: Nil
+  override val toString = s"$t0[$t1] := $t2"
 
   lazy val getArgs = t0 :: t1 :: t2 :: Nil
   def withArgs(args: Seq[Term]) = SeqUpdate(args(0), args(1), args(2))
@@ -1420,21 +1407,6 @@ object MultisetCount extends {
   def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
 }
 
-//class MultisetFromSeq(val p: Term) extends Term with commonnodes.StructuralEqualityUnaryOp[Term] {
-//  val elementsSort = p.sort.asInstanceOf[sorts.Seq].elementsSort
-//  val sort = sorts.Multiset(elementsSort)
-//}
-//
-//object MultisetFromSeq {
-//  def apply(p:Term) = {
-//    utils.assertSort(p, "first operand", "Seq", _.isInstanceOf[sorts.Seq])
-//
-//    new MultisetFromSeq(p)
-//  }
-//
-//  def unapply(m:MultisetFromSeq) = Some(m.p)
-//}
-
 /* Domains */
 
 case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term with PossibleTrigger {
@@ -1509,18 +1481,18 @@ case class Domain(field: String, fvf: Term) extends SetTerm with PossibleTrigger
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
  * because they are optimised away if wrappee `t` already has sort `to`.
  */
-class SortWrapper(val t: Term, val to: Sort) extends Term {
+
+/* Note: Sort wrappers should probably not be used as (outermost) triggers
+ * because they are optimised away if wrappee `t` already has sort `to`.
+ */
+class SortWrapper(val t: Term, val to: Sort)
+    extends Term
+       with commonnodes.StructuralEquality {
+
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
 
-  override val hashCode = silicon.utils.generateHashCode(t, to)
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case sw: SortWrapper => this.t == sw.t && this.to == sw.to
-      case _ => false
-    })
-
+  val equalityDefiningMembers = t :: to :: Nil
   override val toString = s"$t"
   override val sort = to
 }
@@ -1554,25 +1526,31 @@ sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.Forbid
   val typ = sort
 }
 
+
+sealed trait PossibleTrigger extends Term with GenericTriggerGenerator.PossibleTrigger[Term, PossibleTrigger] {
+  val asManifestation = this
+  /* Returning this assumes that the possible trigger is always the trigger
+   * term itself. This is not the case, for example, on Silver's side, where
+   * an old-expression itself is not the trigger, but where the expression
+   * nested in 'old' is the trigger.
+   */
+}
+
+sealed trait PossibleBinaryOpTrigger[T <: Term] extends PossibleTrigger { self: commonnodes.BinaryOp[T] =>
+  lazy val getArgs = p0 :: p1 :: Nil
+}
+
+sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.ForbiddenInTrigger[Sort] {
+  val typ = sort
+}
+
 /* Other terms */
 
-class Distinct(val ts: Set[Term]) extends BooleanTerm {
+class Distinct(val ts: Set[Term]) extends BooleanTerm with commonnodes.StructuralEquality {
   assert(ts.nonEmpty, "Distinct requires at least term.")
 
+  val equalityDefiningMembers = ts :: Nil
   override val toString = s"Distinct($ts)"
-
-  override val hashCode = ts.hashCode
-
-  override def equals(other: Any) =
-    this.eq(other.asInstanceOf[AnyRef]) || (other match {
-      case d: Distinct if d.getClass.eq(this.getClass) =>
-        /* getClass identity is checked in order to prevent that different
-         * subtypes of Distinct are considered equal.
-         */
-        ts == d.ts
-
-      case _ => false
-    })
 }
 
 object Distinct {
@@ -1619,10 +1597,8 @@ object perms {
 /* Utility functions */
 
 object utils {
-  def ¬(t: Term) = Not(t)
-
-  def BigAnd(it: Iterable[Term], f: Term => Term = t => t) =
-    silicon.utils.mapReduceLeft(it, f, And, True())
+//  def BigAnd(it: Iterable[Term], f: Term => Term = t => t) =
+//    silicon.utils.mapReduceLeft[Term](it, f, (t1, t2) => new And(t1 :: t2 :: Nil), True())
 
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, Or, True())

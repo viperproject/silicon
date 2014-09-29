@@ -200,7 +200,7 @@ trait DefaultEvaluator[
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
-        evalBinOp(σ, e0, e1, And, pve, c)(Q)
+        evalBinOp(σ, e0, e1, (t1, t2) => And(t1, t2), pve, c)(Q)
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
@@ -320,25 +320,25 @@ trait DefaultEvaluator[
         val γVars = Γ(vars zip tVars)
         val σQuant = σ \+ γVars
 
-        val πPre: Set[Term] = decider.π // TODO: Set after evalTriggers?
         val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
                         recordPossibleTriggers = true,
                         possibleTriggers = Map.empty,
                         additionalTriggers = Nil)
 
-        decider.locally[(Term, Term, C)](QB =>
-          eval(σQuant, body, pve, c0)((tBody, c1) =>
+        decider.locally[(Term, Term, C)](QB => {
+          val πPre: Set[Term] = decider.π
+          eval(σQuant, body, pve, c0)((tBody, c1) => {
+            val tAux = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val tAux = decider.π -- πPre
               val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
-              val tQuantAux = Quantification(tQuantOp, tVars, state.terms.utils.BigAnd(tAux), Nil).autoTrigger
+              val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers,
                                additionalTriggers = c.additionalTriggers)
-              QB(tQuantAux, tQuant, c3)}))
-        ){case (tQuantAux, tQuant, c1) =>
+              QB(tQuantAux, tQuant, c3)})})
+        }){case (tQuantAux, tQuant, c1) =>
           assume(tQuantAux)
           Q(tQuant, c1)
         }
@@ -703,7 +703,7 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
-          val tAux = state.terms.utils.BigAnd(πAux)
+          val tAux = And(πAux)
           assume(tAux)
           Q(t0, optT1, optInnerC.getOrElse(c1))}})
   }

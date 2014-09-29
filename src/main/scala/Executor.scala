@@ -234,7 +234,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val newh = H(fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
         val σ1 = σ \+ (v, t) \+ newh
         val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - t
-        assume(state.terms.utils.BigAnd(refs map (_ !== t)))
+        assume(And(refs map (_ !== t)))
         Q(σ1, c)
 
       case ast.Fresh(vars) =>
