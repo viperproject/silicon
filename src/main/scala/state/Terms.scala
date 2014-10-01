@@ -125,22 +125,26 @@ sealed trait Term /*extends Traversable[Term]*/ {
   lazy val subterms = state.utils.subterms(this)
 
   /** @see [[Visitor.visit()]] */
-  def visit[A](f: PartialFunction[Term, A]) =
+  def visit(f: PartialFunction[Term, Any]) =
     Visitor.visit(this, state.utils.subterms)(f)
 
   /** @see [[Visitor.reduceTree()]] */
-  def reduceTree[A](f: (Term, Seq[A]) => A) = Visitor.reduceTree(this, state.utils.subterms)(f)
+  def reduceTree[R](f: (Term, Seq[R]) => R) = Visitor.reduceTree(this, state.utils.subterms)(f)
 
   /** @see [[Visitor.existsDefined()]] */
-  def existsDefined[A](f: PartialFunction[Term, A]): Boolean =
+  def existsDefined(f: PartialFunction[Term, Any]): Boolean =
     Visitor.existsDefined(this, state.utils.subterms)(f)
 
   /** @see [[Visitor.hasSubnode()]] */
   def hasSubterm(subterm: Term): Boolean = Visitor.hasSubnode(this, subterm, state.utils.subterms)
 
   /** @see [[Visitor.deepCollect()]] */
-  def deepCollect[A](f: PartialFunction[Term, A]) : Seq[A] =
+  def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
     Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
+
+  /** @see [[Visitor.find()]] */
+  def find[R](f: PartialFunction[Term, R]): Option[R] =
+    Visitor.find(this, state.utils.subterms)(f)
 
   /** @see [[state.utils.transform()]] */
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
