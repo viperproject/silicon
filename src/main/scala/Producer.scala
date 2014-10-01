@@ -225,7 +225,9 @@ trait DefaultProducer[ST <: Store[ST],
           assume(πAuxWithQVarQuant)
 
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
+          val hints = quantifiedChunkHelper.extractHints(Some(tQVar), Some(tCond), tRcvr)
           val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
+          val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
 //          assume(Domain(field.name, snap) === tSet)
           val tDomainQuant = quantifiedChunkHelper.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
 //            Forall(tQVar,
@@ -239,7 +241,7 @@ trait DefaultProducer[ST <: Store[ST],
             if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
           assume(ts)
-          Q(h + ch, c1)}
+          Q(h + ch1, c1)}
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

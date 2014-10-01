@@ -33,7 +33,14 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Default
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class QuantifiedChunk(name: String, value: Term, perm: DefaultFractionalPermissions) extends Chunk {
+case class QuantifiedChunkAuxiliaryData(hints: Seq[Term] = Nil)
+
+case class QuantifiedChunk(name: String,
+                           value: Term,
+                           perm: DefaultFractionalPermissions,
+                           aux: QuantifiedChunkAuxiliaryData = QuantifiedChunkAuxiliaryData())
+    extends Chunk {
+
   assert(value.sort.isInstanceOf[terms.sorts.FieldValueFunction],
          "Quantified chunk values must be of sort FieldValueFunction")
 

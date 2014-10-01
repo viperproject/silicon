@@ -164,6 +164,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
    *       field value function over all chunks for a given field.
    *       It would be great to merge the code, while still being able to just compute
    *       a value without manipulating the visited heap chunks.
+   *       Also, withValue always has to iterate over all chunks (unlike split).
    */
 
   private def withValue(σ: S,
@@ -260,13 +261,14 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                           concreteReceiver: Term,
                           fraction: DefaultFractionalPermissions,
                           conditionalizedFraction: DefaultFractionalPermissions,
+                          chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                           c: C)
                          (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                          : VerificationResult = {
 
     val skolemVar = fresh("sk", sorts.Ref)
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, skolemVar, concreteReceiver, fraction, conditionalizedFraction, c)
+      split(σ, h, field, skolemVar, concreteReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
 //      assume(fvfDef.singletonValues)
@@ -284,12 +286,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                      qvarInReceiver: Var,
                      fraction: DefaultFractionalPermissions,
                      conditionalizedFraction: DefaultFractionalPermissions,
+                     chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, quantifiedReceiver, quantifiedReceiver, fraction, conditionalizedFraction, c)
+      split(σ, h, field, quantifiedReceiver, quantifiedReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
       assume(fvfDef.quantifiedValues(qvarInReceiver))
@@ -306,12 +309,25 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                     specificReceiver: Term,
                     fraction: DefaultFractionalPermissions,
                     conditionalizedFraction: DefaultFractionalPermissions,
+                    chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                     c: C)
                    : (H, QuantifiedChunk, FvfDef, Boolean) = {
 
     def repl(t: Term) = t.replace(`?r`, arbitraryReceiver)
 
-    val (candidates, ignored) = h.values.partition(_.name == field.name) /* TODO: Consider optimising order of chunks */
+    var quantifiedChunks = Seq[QuantifiedChunk]()
+    var ignored = Seq[Chunk]()
+
+    h.values foreach {
+      case ch: QuantifiedChunk if ch.name == field.name =>
+        quantifiedChunks +:= ch
+      case ch if ch.name == field.name =>
+        sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
+      case ch =>
+        ignored +:= ch
+    }
+
+    val candidates = chunkOrderHeuristic(quantifiedChunks)
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFraction
     var success = false
@@ -320,43 +336,39 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     val fvfLookup = Lookup(field.name, fvf, arbitraryReceiver)
     var fvfDefs: List[FvfDefEntry] = Nil
 
-    candidates foreach {
-      case ch: QuantifiedChunk =>
-        val candidatePerms = repl(ch.perm).asInstanceOf[DefaultFractionalPermissions]
-        val candidateValue = repl(ch.value)
-        val candidateLookup = Lookup(field.name, candidateValue, arbitraryReceiver)
+    candidates.foreach(ch => {
+      val candidatePerms = repl(ch.perm).asInstanceOf[DefaultFractionalPermissions]
+      val candidateValue = repl(ch.value)
+      val candidateLookup = Lookup(field.name, candidateValue, arbitraryReceiver)
 
-        fvfDefs ::=
-          FvfDefEntry(Implies(candidatePerms > NoPerm(), fvfLookup === candidateLookup),
+      fvfDefs ::=
+        FvfDefEntry(Implies(candidatePerms > NoPerm(), fvfLookup === candidateLookup),
 //                      Trigger(fvfLookup :: candidateLookup :: Nil) :: Nil,
-                      Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
-                      Domain(field.name, candidateValue))
+                    Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
+                    Domain(field.name, candidateValue))
 
-        if (success)
-          residue ::= ch
-        else {
-          val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
+      if (success)
+        residue ::= ch
+      else {
+        val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
-          val permsTaken = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
-          permsToTake = permsToTake - permsTaken
+        val permsTaken = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
+        permsToTake = permsToTake - permsTaken
 
-          if (constrainPermissions) {
-            /* TODO: Add triggers (probably needs autoTriggers for terms ) */
-            val constrainPermissionQuantifier =
-              Forall(`?r`, Implies(ch.perm !== NoPerm(), conditionalizedFraction < ch.perm), Nil).autoTrigger
+        if (constrainPermissions) {
+          /* TODO: Add triggers (probably needs autoTriggers for terms ) */
+          val constrainPermissionQuantifier =
+            Forall(`?r`, Implies(ch.perm !== NoPerm(), conditionalizedFraction < ch.perm), Nil).autoTrigger
 
-            assume(constrainPermissionQuantifier)
+          assume(constrainPermissionQuantifier)
 
-            residue ::= ch.copy(perm = ch.perm - permsTaken)
-          } else  if (!check(σ, Forall(`?r`, ch.perm - permsTaken === NoPerm(), Nil)))
-            residue ::= ch.copy(perm = ch.perm - permsTaken)
+          residue ::= ch.copy(perm = ch.perm - permsTaken)
+        } else  if (!check(σ, Forall(`?r`, ch.perm - permsTaken === NoPerm(), Nil)))
+          residue ::= ch.copy(perm = ch.perm - permsTaken)
 
-          success = check(σ, repl(permsToTake) === NoPerm())
-        }
-
-      case ch =>
-        sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
-    }
+        success = check(σ, repl(permsToTake) === NoPerm())
+      }
+    })
 
     val hResidue = H(residue ++ ignored)
 //    val ch = QuantifiedChunk(specificReceiver, field.name, fvf, conditionalizedFraction)
@@ -424,6 +436,18 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     val ax2 = Forall(r, Implies(condition, of.replace(qvar, inverseFunc(r)) === r), Nil/*Trigger(inverseFunc(r))*/).autoTrigger
 
     (inverseFunc, ax1 :: ax2 :: Nil)
+  }
+
+  def hintBasedChunkOrderHeuristic(hints: Seq[Term]) = (chunks: Seq[QuantifiedChunk]) => {
+    val (matchingChunks, otherChunks) = chunks.partition(_.aux.hints == hints)
+
+    matchingChunks ++ otherChunks
+  }
+
+  def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term] = {
+    None.orElse(rcvr.find{case SeqAt(seq, _) => seq})
+        .orElse(cond.map(_.find{case SeqIn(seq, _) => seq; case SetIn(_, set) => set}).flatten)
+        .toSeq
   }
 }
 

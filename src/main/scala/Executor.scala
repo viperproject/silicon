@@ -208,11 +208,13 @@ trait DefaultExecutor[ST <: Store[ST],
                 Failure[ST, H, S](pve dueTo ReceiverNull(fa))
               case true =>
                 val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, FullPerm())
-                quantifiedChunkHelper.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, c2){
+                val hints = quantifiedChunkHelper.extractHints(None, None, tRcvr)
+                val chunkOrderHeuristics = quantifiedChunkHelper.hintBasedChunkOrderHeuristic(hints)
+                quantifiedChunkHelper.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2){
                   case Some((h1, ch, c3)) =>
-                    val (fvf,fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, tRcvr, tRhs)
+                    val (fvf, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, tRcvr, tRhs)
                     assume(fvfDef)
-                    Q(σ \ h1 \+ ch.copy(value = fvf), c3)
+                    Q(σ \ h1 \+ ch.copy(value = fvf, aux = ch.aux.copy(hints = hints)), c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
 
