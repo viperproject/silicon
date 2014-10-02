@@ -25,7 +25,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                             S <: State[ST, H, S]]
                            (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
                             symbolConverter: SymbolConvert,
-                            stateFactory: StateFactory[ST, H, S]) {
+                            stateFactory: StateFactory[ST, H, S],
+                            config: Config) {
 
   import symbolConverter.toSort
   import stateFactory._
@@ -352,7 +353,17 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       else {
         val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
-        val permsTaken = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
+        val permsTakenAmount = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
+        var permsTaken: DefaultFractionalPermissions = permsTakenAmount
+
+        if (config.introduceFreshSymbolsForTakenQuantifiedPermissions()) {
+          val permsTakenFunc = fresh("permsTaken", sorts.Arrow(`?r`.sort, sorts.Perm))
+          val permsTakenFApp = TermPerm(Apply(permsTakenFunc, `?r` :: Nil))
+          assume(Forall(`?r`, permsTakenFApp === permsTakenAmount, Trigger(permsTakenFApp)))
+
+          permsTaken = permsTakenFApp
+        }
+
         permsToTake = permsToTake - permsTaken
 
         if (constrainPermissions) {

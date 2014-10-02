@@ -156,7 +156,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val dlb = FullPerm()
 
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-    val quantifiedChunkHelper = new QuantifiedChunkHelper[ST, H, PC, S](decider, symbolConverter, stateFactory)
+    val quantifiedChunkHelper = new QuantifiedChunkHelper[ST, H, PC, S](decider, symbolConverter, stateFactory, config)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -472,6 +472,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val disableFunctionAxiomatization = opt[Boolean]("disableFunctionAxiomatization",
     descr = (  "Disable axiomatization of user-provided functions, and evaluate functions on "
         + "the fly instead."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val introduceFreshSymbolsForTakenQuantifiedPermissions = opt[Boolean]("shorterQPTerms",
+    descr = "Shorten terms arising from quantified permissions by introducing fresh symbols",
     default = Some(false),
     noshort = true,
     hidden = Silicon.hideInternalOptions
