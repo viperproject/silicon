@@ -497,6 +497,7 @@ object Iff extends Function2[Term, Term, Term] {
 
 class Ite(val t0: Term, val t1: Term, val t2: Term)
     extends Term
+       with ForbiddenInTrigger
        with commonnodes.StructuralEquality {
 
 	assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
@@ -1493,7 +1494,7 @@ sealed trait PossibleBinaryOpTrigger[T <: Term] extends PossibleTrigger { self: 
 }
 
 sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.ForbiddenInTrigger[Sort] {
-  val typ = sort
+  lazy val typ = sort
 }
 
 /* Other terms */
