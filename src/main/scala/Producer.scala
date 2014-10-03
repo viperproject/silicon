@@ -9,13 +9,12 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{Chunk, StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
-import state.terms.predef.`?r`
 import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
@@ -159,14 +158,18 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        def createChunk(rcvr: Term, s: Term, p: DefaultFractionalPermissions) =
+        def addNewChunk(h: H, rcvr: Term, s: Term, p: DefaultFractionalPermissions): (H, Chunk) =
           if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
             val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
             assume(fvfDef)
-
-            quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
-          } else
-            DirectFieldChunk(rcvr, field.name, s, p)
+            val ch = quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
+            (h + ch, ch)
+          } else {
+            val ch = DirectFieldChunk(rcvr, field.name, s, p)
+            val (h1, t) = addDirectChunk(h, ch)
+            assume(t)
+            (h1, ch)
+          }
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
@@ -174,13 +177,13 @@ trait DefaultProducer[ST <: Store[ST],
             assume(NoPerm() < pGain)
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val ch = createChunk(tRcvr, s, pNettoGain)
+            val (h1, ch) = addNewChunk(σ.h, tRcvr, s, pNettoGain)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
-            Q(σ.h + ch, c3)})})
+            Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -190,12 +193,14 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
+            val (h1, t) = addDirectChunk(σ.h, ch)
+            assume(t)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
-            Q(σ.h + ch, c3)}))
+            Q(h1, c3)}))
 
       case QuantifiedChunkHelper.ForallRef(qvar, cond, rcvr, field, gain, _, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
@@ -322,6 +327,43 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
+  
+  private def addDirectChunk(h: H, dc: DirectChunk): (H, Term) = {
+    var foundMatchingChunk = false
+    var tEq: Term = True()
+
+    /* Only the first match will be considered. This is incomplete, but sound,
+     * and the underlying assumption is that the input heap is "tidy" in the
+     * sense that there will be at most one chunk that syntactically matches
+     * the given chunk dc.
+     */
+
+    /* TODO: Code duplication is necessary because a FieldChunk has a value
+     *       whereas a predicate chunk has a snap(shot).
+     *       The two should be unified (as VeriFast does).
+     */
+    val chunks = h.values.map {
+      case ch: DirectFieldChunk if !foundMatchingChunk && ch.name == dc.name && ch.args == dc.args =>
+        tEq = ch.value === dc.asInstanceOf[DirectFieldChunk].value
+        foundMatchingChunk = true
+
+        ch + dc.perm
+
+      case ch: DirectPredicateChunk if !foundMatchingChunk && ch.name == dc.name && ch.args == dc.args =>
+        tEq = ch.snap === dc.asInstanceOf[DirectPredicateChunk].snap
+        foundMatchingChunk = true
+
+        ch + dc.perm
+
+      case ch => ch
+    }
+
+    val h1 =
+      if (foundMatchingChunk) H(chunks)
+      else H(chunks) + dc
+
+    (h1, tEq)
+  }
 
   override def pushLocalState() {
     snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
