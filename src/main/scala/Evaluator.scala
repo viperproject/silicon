@@ -169,7 +169,7 @@ trait DefaultEvaluator[
           decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch => {
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
-                c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch))))
+                c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch.id))))
               case _ => c1}
             Q(ch.value, c2)}))
 
@@ -382,7 +382,7 @@ trait DefaultEvaluator[
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
                       val c3a = c3.snapshotRecorder match {
                         case Some(sr) =>
-                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0)))))
+                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
                         case _ => c3}
                       val body = pa.predicateBody(c.program)
                       produce(σ1, s => snap.convert(s), tPerm, body, pve, c3a)((σ2, c4) => {

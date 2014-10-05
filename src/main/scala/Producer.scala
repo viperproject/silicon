@@ -9,7 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
@@ -31,6 +31,9 @@ trait DefaultProducer[ST <: Store[ST],
 
   protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
+
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -160,12 +163,14 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
+            assume(t)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
-            Q(σ.h + ch, c3)})})
+            Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -175,12 +180,14 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
+            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
+            assume(t)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
-            Q(σ.h + ch, c3)}))
+            Q(h1, c3)}))
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -262,6 +269,43 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
+  
+  private def addDirectChunk(h: H, dc: DirectChunk): (H, Option[DirectChunk], Term) = {
+    var matchingChunk: Option[DirectChunk] = None
+    var tEq: Term = True()
+
+    /* Only the first match will be considered. This is incomplete, but sound,
+     * and the underlying assumption is that the input heap is "tidy" in the
+     * sense that there will be at most one chunk that syntactically matches
+     * the given chunk dc.
+     */
+
+    /* TODO: Code duplication is necessary because a FieldChunk has a value
+     *       whereas a predicate chunk has a snap(shot).
+     *       The two should be unified (as VeriFast does).
+     */
+    val chunks = h.values.map {
+      case ch: DirectFieldChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
+        tEq = ch.value === dc.asInstanceOf[DirectFieldChunk].value
+        matchingChunk = Some(ch)
+
+        ch + dc.perm
+
+      case ch: DirectPredicateChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
+        tEq = ch.snap === dc.asInstanceOf[DirectPredicateChunk].snap
+        matchingChunk = Some(ch)
+
+        ch + dc.perm
+
+      case ch => ch
+    }
+
+    val h1 =
+      if (matchingChunk.nonEmpty) H(chunks)
+      else H(chunks) + dc
+
+    (h1, matchingChunk, tEq)
+  }
 
   override def pushLocalState() {
     snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
