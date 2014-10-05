@@ -158,17 +158,17 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        def addNewChunk(h: H, rcvr: Term, s: Term, p: DefaultFractionalPermissions): (H, Chunk) =
+        def addNewChunk(h: H, rcvr: Term, s: Term, p: DefaultFractionalPermissions): (H, Option[Chunk], Chunk) =
           if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
             val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
             assume(fvfDef)
             val ch = quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
-            (h + ch, ch)
+            (h + ch, None, ch)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
-            val (h1, t) = addDirectChunk(h, ch)
+            val (h1, matchedChunk, t) = addDirectChunk(h, ch)
             assume(t)
-            (h1, ch)
+            (h1, matchedChunk, ch)
           }
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
@@ -177,10 +177,10 @@ trait DefaultProducer[ST <: Store[ST],
             assume(NoPerm() < pGain)
             val s = sf(toSort(field.typ))
             val pNettoGain = pGain * p
-            val (h1, ch) = addNewChunk(σ.h, tRcvr, s, pNettoGain)
+            val (h1, matchedChunk, ch) = addNewChunk(σ.h, tRcvr, s, pNettoGain)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
             Q(h1, c3)})})
@@ -193,11 +193,11 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, t) = addDirectChunk(σ.h, ch)
+            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
             assume(t)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (ch -> sr.currentSnap))
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
             Q(h1, c3)}))
@@ -328,8 +328,8 @@ trait DefaultProducer[ST <: Store[ST],
       case (sort, _) => fresh(sort)
     }
   
-  private def addDirectChunk(h: H, dc: DirectChunk): (H, Term) = {
-    var foundMatchingChunk = false
+  private def addDirectChunk(h: H, dc: DirectChunk): (H, Option[DirectChunk], Term) = {
+    var matchingChunk: Option[DirectChunk] = None
     var tEq: Term = True()
 
     /* Only the first match will be considered. This is incomplete, but sound,
@@ -343,15 +343,15 @@ trait DefaultProducer[ST <: Store[ST],
      *       The two should be unified (as VeriFast does).
      */
     val chunks = h.values.map {
-      case ch: DirectFieldChunk if !foundMatchingChunk && ch.name == dc.name && ch.args == dc.args =>
+      case ch: DirectFieldChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
         tEq = ch.value === dc.asInstanceOf[DirectFieldChunk].value
-        foundMatchingChunk = true
+        matchingChunk = Some(ch)
 
         ch + dc.perm
 
-      case ch: DirectPredicateChunk if !foundMatchingChunk && ch.name == dc.name && ch.args == dc.args =>
+      case ch: DirectPredicateChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
         tEq = ch.snap === dc.asInstanceOf[DirectPredicateChunk].snap
-        foundMatchingChunk = true
+        matchingChunk = Some(ch)
 
         ch + dc.perm
 
@@ -359,10 +359,10 @@ trait DefaultProducer[ST <: Store[ST],
     }
 
     val h1 =
-      if (foundMatchingChunk) H(chunks)
+      if (matchingChunk.nonEmpty) H(chunks)
       else H(chunks) + dc
 
-    (h1, tEq)
+    (h1, matchingChunk, tEq)
   }
 
   override def pushLocalState() {

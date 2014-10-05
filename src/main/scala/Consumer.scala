@@ -216,7 +216,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) => {
                   val c4 = c3.snapshotRecorder match {
                     case Some(sr) =>
-                      c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch))))
+                      c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
                     case _ => c3}
                   ch match {
                     case fc: DirectFieldChunk =>

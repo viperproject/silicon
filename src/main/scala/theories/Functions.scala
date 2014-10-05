@@ -14,15 +14,15 @@ import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
 import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Chunk, StateFactory, State, PathConditions, Heap, Store, Mergeable}
+import interfaces.state.{ChunkIdentifier, StateFactory, State, PathConditions, Heap, Store, Mergeable}
 import interfaces.state.factoryUtils.Ø
 import state.{DefaultContext, SymbolConvert, DirectChunk}
 import state.terms.{utils => _, _}
 import state.terms.predef._
 
 case class SnapshotRecorder(currentSnap: Term = null,
-                            locToChunk: Map[ast.LocationAccess, Chunk] = Map(),
-                            chunkToSnap: Map[Chunk, Term] = Map(),
+                            locToChunk: Map[ast.LocationAccess, ChunkIdentifier] = Map(),
+                            chunkToSnap: Map[ChunkIdentifier, Term] = Map(),
                             fappToSnap: Map[ast.FuncApp, Term] = Map())
     extends Mergeable[SnapshotRecorder] {
 
