@@ -402,7 +402,16 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val unrollFunctions = opt[Int]("unrollFunctions",
-    descr = "Unroll function definitions at most n times (default: 1)",
+    descr = (  "Unroll function definitions at most n times (default: 1). "
+             + "Only has an effect in combination with --disableFunctionAxiomatization."),
+    default = Some(1),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
+    descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
+             + "other instances of themselves (default: 1)"),
     default = Some(1),
     noshort = true,
     hidden = Silicon.hideInternalOptions

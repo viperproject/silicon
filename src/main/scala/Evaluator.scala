@@ -387,7 +387,7 @@ trait DefaultEvaluator[
 
         val predicate = c.program.findPredicate(predicateName)
 
-        if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+        if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
           val c0a = c.incCycleCounter(predicate)
           evalp(σ, ePerm, pve, c0a)((tPerm, c1) => {
             decider.assert(σ, IsPositive(tPerm)){
@@ -408,8 +408,10 @@ trait DefaultEvaluator[
                   })(Q))
               case false =>
                 Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
-        } else
-          Failure[ST, H, S](ast.Consistency.createUnsupportedPredicateRecursionError(e))
+        } else {
+          val unknownValue = fresh("recunf", toSort(eIn.typ))
+          Q(unknownValue, c)
+        }
 
       /* Sequences */
 
