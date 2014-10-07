@@ -30,39 +30,10 @@ class SiliconTests extends SilSuite {
   lazy val verifiers = List(createSiliconInstance())
 
   private def createSiliconInstance() = {
-    val silicon = new Silicon(Seq(("startedBy", "viper.silicon.SiliconTests")))
-    val args = optionsFromScalaTestConfigMap() ++ Seq("dummy.silver")
-
-    silicon.parseCommandLine(args)
-
-    silicon.config.initialize {
-      case _ =>
-        /* Ignore command-line errors, --help, --version and other non-positive
-         * results from Scallop.
-         * After initialized has been set to true, Silicon itself will not call
-         * config.initialize again.
-         */
-        silicon.config.initialized = true
-    }
+    val args = Silicon.optionsFromScalaTestConfigMap(prefixSpecificConfigMap.getOrElse("silicon", Map()))
+    val debugInfo = ("startedBy" -> "viper.silicon.SiliconTests") :: Nil
+    val silicon = Silicon.fromPartialCommandLineArguments(args, debugInfo)
 
     silicon
-  }
-
-  private def optionsFromScalaTestConfigMap(): Seq[String] = {
-    val prefix = "silicon"
-
-    prefixSpecificConfigMap.get(prefix) match {
-      case None => Seq()
-      case Some(optionMap) => optionMap.flatMap {
-        case (k, v) =>
-          val kStr = s"--$k"
-          val vStr = v.toString
-
-          vStr.toLowerCase match {
-            case "true" | "false" => Seq(kStr)
-            case _ => Seq(kStr, vStr)
-          }
-      }.toSeq
-    }
   }
 }

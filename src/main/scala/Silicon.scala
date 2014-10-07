@@ -51,6 +51,36 @@ trait SiliconConstants {
 
 object Silicon extends SiliconConstants {
   val hideInternalOptions = true
+
+  def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
+    configMap.flatMap {
+      case (k, v) =>
+        val kStr = s"--$k"
+        val vStr = v.toString
+
+        vStr.toLowerCase match {
+          case "true" | "false" => Seq(kStr)
+          case _ => Seq(kStr, vStr)
+        }
+    }.toSeq
+
+  def fromPartialCommandLineArguments(args: Seq[String], debugInfo: Seq[(String, Any)] = Nil): Silicon = {
+    val silicon = new Silicon(debugInfo)
+
+    silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
+
+    silicon.config.initialize {
+      case _ =>
+        /* Ignore command-line errors, --help, --version and other non-positive
+         * results from Scallop.
+         * After initialized has been set to true, Silicon itself will not call
+         * config.initialize again.
+         */
+        silicon.config.initialized = true
+    }
+
+    silicon
+  }
 }
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
