@@ -325,13 +325,16 @@ trait DefaultEvaluator[
                         possibleTriggers = Map.empty,
                         additionalTriggers = Nil)
 
-        decider.locally[(Term, Term, C)](QB => {
+        decider.locally[(Set[Term], Term, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val tAux = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
-              val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
+//              val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
+              val (tAuxWithQVars, tOtherAux) = tAux.partition(_.existsDefined{case v: Var if tVars.contains(v) => })
+              val (tRealAux, _) = tAuxWithQVars.partition(_.existsDefined{case _: Apply => })
+              val tQuantAux = tOtherAux + Quantification(tQuantOp, tVars, And(tRealAux), Nil).autoTrigger
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
@@ -705,7 +708,7 @@ trait DefaultEvaluator[
         decider.popScope()
 
         r && {
-          val tAux = And(πAux)
+          val tAux = πAux
           assume(tAux)
           Q(t0, optT1, optInnerC.getOrElse(c1))}})
   }
