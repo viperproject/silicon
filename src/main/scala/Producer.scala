@@ -207,28 +207,22 @@ trait DefaultProducer[ST <: Store[ST],
         val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
         val πPre = decider.π
-        var πAux: Set[Term] = Set()
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables,
                         recordPossibleTriggers = true,
                         possibleTriggers = Map())
-        decider.locally[(Term, Term, P, C, Map[ast.Expression, Term])](QB =>
+        decider.locally[(Set[Term], Term, Term, P, C, Map[ast.Expression, Term])](QB =>
           eval(σQVar, cond, pve, c0)((tCond, c1) => {
             assume(tCond)
             eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
               evalp(σQVar, gain, pve, c2)((pGain, c3) => {
-                πAux = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term we want to keep */
+                val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
+                val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
                 val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
                                  recordPossibleTriggers = c.recordPossibleTriggers,
                                  possibleTriggers = c.possibleTriggers)
-                QB(tCond, tRcvr, pGain, c4, c2.possibleTriggers)}))})
-        ){case (tCond, tRcvr, pGain, c1, possibleTriggersInCondAndRcvr) =>
-          val (πAuxWithQVar, πAuxWithoutQVar) = πAux.partition(_.existsDefined{case `tQVar` => true})
-//          val tAuxQuant = Forall(tQVar, state.terms.utils.BigAnd(πAux), Nil)
-//          decider.assume(tAuxQuant)
-          val πAuxWithQVarQuant = Forall(tQVar, And(πAuxWithQVar), Nil).autoTrigger
-          assume(πAuxWithoutQVar)
-          assume(πAuxWithQVarQuant)
-
+                QB(πAux, tCond, tRcvr, pGain, c4, c2.possibleTriggers)}))})
+        ){case (πAux, tCond, tRcvr, pGain, c1, possibleTriggersInCondAndRcvr) =>
+          assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val hints = quantifiedChunkHelper.extractHints(Some(tQVar), Some(tCond), tRcvr)
           val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
@@ -327,7 +321,7 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
-  
+
   private def addDirectChunk(h: H, dc: DirectChunk): (H, Option[DirectChunk], Term) = {
     var matchingChunk: Option[DirectChunk] = None
     var tEq: Term = True()
