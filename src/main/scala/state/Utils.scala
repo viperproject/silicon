@@ -35,6 +35,18 @@ package object utils {
     toSet(ts)
   }
 
+  def extractAuxiliaryTerms(candidates: Set[Term], quantifiedVariables: Seq[Var], quantifier: Quantifier): Set[Term] = {
+    // val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
+
+    val (termsWithQVars, termsWithoutVars) =
+      candidates.partition(_.existsDefined { case v: Var if quantifiedVariables.contains(v) => })
+
+    val (relevantTerms, _) =
+      termsWithQVars.partition(_.existsDefined { case _: Apply => })
+
+    termsWithoutVars + Quantification(quantifier, quantifiedVariables, And(relevantTerms), Nil).autoTrigger
+  }
+
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal => Nil
     case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
