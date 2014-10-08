@@ -313,21 +313,22 @@ trait DefaultEvaluator[
         decider.locally[(Set[Term], Term, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
-            val tAux = decider.π -- πPre
+            val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
-//              val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
-              val (tAuxWithQVars, tOtherAux) = tAux.partition(_.existsDefined{case v: Var if tVars.contains(v) => })
-              val (tRealAux, _) = tAuxWithQVars.partition(_.existsDefined{case _: Apply => })
-              val tQuantAux = tOtherAux + Quantification(tQuantOp, tVars, And(tRealAux), Nil).autoTrigger
+////              val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
+//              val (tAuxWithQVars, tOtherAux) = tAux.partition(_.existsDefined{case v: Var if tVars.contains(v) => })
+//              val (tRealAux, _) = tAuxWithQVars.partition(_.existsDefined{case _: Apply => })
+//              val tQuantAux = tOtherAux + Quantification(tQuantOp, tVars, And(tRealAux), Nil).autoTrigger
+              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tVars, tQuantOp)
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers,
                                additionalTriggers = c.additionalTriggers)
-              QB(tQuantAux, tQuant, c3)})})
-        }){case (tQuantAux, tQuant, c1) =>
-          assume(tQuantAux)
+              QB(πAux, tQuant, c3)})})
+        }){case (πAux, tQuant, c1) =>
+          assume(πAux)
           Q(tQuant, c1)
         }
 
