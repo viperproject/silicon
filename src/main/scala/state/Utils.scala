@@ -34,16 +34,86 @@ package object utils {
     toSet(ts)
   }
 
-  def extractAuxiliaryTerms(candidates: Set[Term], quantifiedVariables: Seq[Var], quantifier: Quantifier): Set[Term] = {
-    // val tQuantAux = Quantification(tQuantOp, tVars, And(tAux), Nil).autoTrigger
+  /** Auxiliary terms are internal terms in the sense that they arise from the
+    * encoding of certain Silver constructs, and that they are not already
+    * "visible" in the program itself. Such terms usually define/axiomatise
+    * internal symbols such as snapshots, join-functions or field value
+    * functions. If such an internal symbol is created during a local
+    * evaluation, it is likely that the symbol is used even after the join
+    * point of the local evaluation. Hence, assumptions about that symbol
+    * have to be preserved as well.
+    *
+    * Some auxiliary terms, e.g., join-functions, will mention some of the
+    * quantifiedVariables, in which case they need to be placed under a
+    * quantifier.
+    *
+    * The current implementation of Silicon, however, makes it difficult to
+    * discriminate between such auxiliary terms, and terms that come from the
+    * program and that mention the "skolemised instance" of one of the
+    * quantifiedVariables. An example of the latter kind would be the term
+    * "0 < i < 10", which is added to the path conditions when locally
+    * evaluating an expression such as "forall i :: 0 < i < 10 ==> f(i)". It
+    * would obviously be unsound to place "0 < i < 10" under a quantifier
+    * binding "i".
+    *
+    * The problem with the current implementation is that both kind of terms are
+    * just added to the path conditions, which makes it hard to precisely
+    * differentiate between them.
+    *
+    * @param terms Terms/path conditions from which to extract auxiliary terms
+    * @param quantifier The quantifier under which the currently ongoing
+    *                   symbolic execution takes place
+    * @param quantifiedVariables Variables that are bound by the quantifier
+    * @return Extracted auxiliary terms
+    */
+  def extractAuxiliaryTerms(terms: Set[Term], quantifier: Quantifier, quantifiedVariables: Seq[Var]): Set[Term] = {
+//    return Set(Quantification(quantifier, quantifiedVariables, And(terms), Nil).autoTrigger)
 
-    val (termsWithQVars, termsWithoutVars) =
-      candidates.partition(_.existsDefined { case v: Var if quantifiedVariables.contains(v) => })
+    var auxiliaryTerms = Set[Term]()
 
-    val (relevantTerms, _) =
-      termsWithQVars.partition(_.existsDefined { case _: Apply => })
+    def qvars(t: Term) = t.deepCollect { case v: Var if quantifiedVariables.contains(v) => v }
 
-    termsWithoutVars + Quantification(quantifier, quantifiedVariables, And(relevantTerms), Nil).autoTrigger
+    terms foreach {
+      case q: Quantification =>
+        /* Quantified expressions are assumed to always be relevant. We need
+         * to ensure that all quantifiedVariables are covered, though.
+         */
+
+        val occurringQuantifiedVariables = qvars(q.body)
+        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains)
+
+        if (varsToBind.isEmpty)
+          auxiliaryTerms += q
+        else
+          /* Note: We can either place q under another quantifier binding varsToBind,
+           * or add the missing variables to q. Not sure which strategy is better, in
+           * particular w.r.t. to triggers.
+           */
+          auxiliaryTerms += Quantification(quantifier, varsToBind, q, Nil).autoTrigger
+
+      case t =>
+        val occurringQuantifiedVariables = qvars(t)
+
+        if (occurringQuantifiedVariables.isEmpty)
+          auxiliaryTerms += t
+        else {
+          /* At least one of the quantifiedVariables occurs in t, and t therefore
+           * has to be placed under a quantifier. However, since not all terms
+           * can soundly be placed under a quantifier, we have to select only
+           * those that can (and are meant to be).
+           */
+
+          t match {
+            case _ if t.existsDefined { case _: Apply =>} =>
+              /* Apply-terms should only occur in auxiliary terms */
+              auxiliaryTerms += Quantification(quantifier, occurringQuantifiedVariables, t, Nil).autoTrigger
+
+            case _ => /* Ignore this term */
+          }
+        }
+    }
+
+    auxiliaryTerms
   }
 
   def subterms(t: Term): Seq[Term] = t match {

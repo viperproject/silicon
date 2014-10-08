@@ -316,7 +316,7 @@ trait DefaultEvaluator[
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
-              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tVars, tQuantOp)
+              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
