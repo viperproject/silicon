@@ -122,7 +122,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case bop: CustomEquals => bop.p0.sort match {
       case _: sorts.Seq => renderBinaryOp("$Seq.equal", bop)
       case _: sorts.Set => renderBinaryOp("$Set.equal", bop)
-      case _: sorts.Multiset => renderBinaryOp("$Multiset.eq", bop)
+      case _: sorts.Multiset => renderBinaryOp("$Multiset.equal", bop)
       case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
     }
 
@@ -189,7 +189,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     /* Multisets */
 
     case SingletonMultiset(t0) => parens("$Multiset.singleton" <+> render(t0))
-    case bop: MultisetAdd => renderBinaryOp("$Multiset.add", bop)
+    case bop: MultisetAdd => renderBinaryOp("$Multiset.unionone", bop)
     case uop: MultisetCardinality => renderUnaryOp("$Multiset.card", uop)
     case bop: MultisetDifference => renderBinaryOp("$Multiset.difference", bop)
     case bop: MultisetIntersection => renderBinaryOp("$Multiset.intersection", bop)
