@@ -83,7 +83,7 @@
 
 ;function Math#clip(a: int): int;
 (define-fun $Math.clip ((a Int)) Int
-    (ite (< a 0) (- a) a))
+    (ite (< a 0) 0 a))
 
 ; --- End static preamble ---
 
