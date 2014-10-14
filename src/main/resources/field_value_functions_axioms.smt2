@@ -9,7 +9,7 @@
 (assert (forall ((vs $FVF<$S$>) (ws $FVF<$S$>)) (!
     (implies
       (and
-        ($Set.eq ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
+        ($Set.equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
         (forall ((x $Ref)) (!
           (implies
             ($Set.in x ($FVF.domain_$FLD$ vs))
