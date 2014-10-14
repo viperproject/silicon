@@ -120,8 +120,8 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case bop: BuiltinEquals => renderBinaryOp("=", bop)
 
     case bop: CustomEquals => bop.p0.sort match {
-      case _: sorts.Seq => renderBinaryOp("$Seq.eq", bop)
-      case _: sorts.Set => renderBinaryOp("$Set.eq", bop)
+      case _: sorts.Seq => renderBinaryOp("$Seq.equal", bop)
+      case _: sorts.Set => renderBinaryOp("$Set.equal", bop)
       case _: sorts.Multiset => renderBinaryOp("$Multiset.eq", bop)
       case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
     }
@@ -160,25 +160,29 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
 
     /* Sequences */
 
-    case SeqRanged(t0, t1) => renderBinaryOp("$Seq.rng", render(t0), render(t1))
-    case SeqSingleton(t0) => parens("$Seq.elem" <+> render(t0))
-    case bop: SeqAppend => renderBinaryOp("$Seq.con", bop)
-    case uop: SeqLength => renderUnaryOp("$Seq.len", uop)
-    case bop: SeqAt => renderBinaryOp("$Seq.at", bop)
+    case SeqRanged(t0, t1) => renderBinaryOp("$Seq.range", render(t0), render(t1))
+    case SeqSingleton(t0) => parens("$Seq.singleton" <+> render(t0))
+    case bop: SeqAppend => renderBinaryOp("$Seq.append", bop)
+    case uop: SeqLength => renderUnaryOp("$Seq.length", uop)
+    case bop: SeqAt => renderBinaryOp("$Seq.index", bop)
     case bop: SeqTake => renderBinaryOp("$Seq.take", bop)
     case bop: SeqDrop => renderBinaryOp("$Seq.drop", bop)
-    case bop: SeqIn => renderBinaryOp("$Seq.in", bop)
+    case bop: SeqIn => renderBinaryOp("$Seq.contains", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("$Seq.update", t0, t1, t2)
 
     /* Sets */
 
     case SingletonSet(t0) => parens("$Set.singleton " <+> render(t0))
-    case bop: SetAdd => renderBinaryOp("$Set.add", bop)
+    case bop: SetAdd => renderBinaryOp("$Set.unionone", bop)
     case uop: SetCardinality => renderUnaryOp("$Set.card", uop)
     case bop: SetDifference => renderBinaryOp("$Set.difference", bop)
     case bop: SetIntersection => renderBinaryOp("$Set.intersection", bop)
     case bop: SetUnion => renderBinaryOp("$Set.union", bop)
-    case bop: SetIn => renderBinaryOp("$Set.in", bop)
+    case bop: SetIn =>
+      renderBinaryOp("$Set.in", bop)
+//      val expandedTerm = SetSubset(SingletonSet(bop.p0), bop.p1)
+//      render(expandedTerm)
+//      renderBinaryOp("$Map.select", render(bop.p1), render(bop.p0))
     case bop: SetSubset => renderBinaryOp("$Set.subset", bop)
     case bop: SetDisjoint => renderBinaryOp("$Set.disjoint", bop)
 
@@ -255,7 +259,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case True() => "true"
     case False() => "false"
     case Null() => "$Ref.null"
-    case SeqNil(elementSort) => "$Seq.nil<" <> render(elementSort) <> ">"
+    case SeqNil(elementSort) => "$Seq.empty<" <> render(elementSort) <> ">"
     case EmptySet(elementSort) => "$Set.empty<" <> render(elementSort) <> ">"
     case EmptyMultiset(elementSort) => "$Multiset.empty<" <> render(elementSort) <> ">"
   }
