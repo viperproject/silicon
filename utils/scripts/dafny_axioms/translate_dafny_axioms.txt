@@ -1,0 +1,155 @@
+/*
+http://regex101.com
+
+Sequences
+---------
+
+1. Extract relevant block from Dafny's Boogie prelude as seq.bpl
+2. Edit seq.bpl
+     - Replace '<T>' by ''
+     - Add 'sort T'
+     - Leave 'sort Seq T' unchanged
+     - Fix syntactically broken quantifiers that no longer bind any arguments
+     - Add 'procedure p() {}' at end of file
+3. boogie /proverLog:seq.smt2 seq.bpl, should yield no errors
+4. Edit seq.smt2
+     - Step 1:
+         - Remove config options
+         - Remove push-pop and the end
+         - Remove sorts other than '|T@Seq T|' and 'T@T'
+         - Remove declarations and axioms not mentioning 'Seq#...'
+     - Run Z3, it shouldn't complain
+     - Replace "\|(Seq)#(\w+)\|" with "$\1.\L$2"
+     - Run Z3, it shouldn't complain
+     - Step 2:
+         - Replace '$Seq.empty' by '$Seq.empty<T@T>'
+         - Replace 'T@T' by '$S$'
+         - Replace '|T@Seq T|' by '$Seq<$S$>'
+     - Run Z3, it shouldn't complain
+     - Step 4 (tidying up, not strictly necessary):
+         - Replace "\s*:skolemid \|\d+\|" with ""
+         - Replace "\s*:qid \|.*?\|" with ""
+         - Replace "@@\d+" by ""
+     - Run Z3, it shouldn't complain
+5. Remove sort declarations (should only be two)
+6. Cut & paste all function declarations into the appropriate Silicon file
+7. Replace "^(?!\(assert)\s*(.+)" with "  \1"
+8. Cut & paste all axioms into the appropriate Silicon file
+9. Run Silicon's tests
+
+Sets
+---------
+
+NOTE: This guide assumes that Silicon uses $Map.select: Set x Elem -> Bool, but
+Silicon actually uses $Set.in: Elem x Set -> Bool.
+
+1. Extract relevant block from Dafny's Boogie prelude as sets.bpl
+2. Edit sets.bpl
+    - Add this prelude:
+
+        type T;
+        type V = bool;
+        type Map T V;
+        function Map#Select(Map T V, T): V;
+
+    - Add 'procedure p() {}' at end of file
+    - Change 'type Set T = [T]bool' to 'type Set = Map T V'
+    - Replace '<T>' by ''
+    - Replace 'Set T' by 'Set'
+    - Run boogie sets.bpl, this should only yield "map select applied" errors
+    - Replace "([\w#]+?(?:\([^\)]*\))?)\[(\w+?)\]" by "Map#Select\(\1, \2\)"
+3. boogie /proverLog:sets.smt2 sets.bpl, should yield no errors
+4. Edit sets.smt2
+    - Step 1:
+        - Remove config options
+        - Remove push-pop and the end
+        - Remove sorts other than '|T@Map T V|' and 'T@T'
+        - Remove declarations and axioms not mentioning 'Set#...' or 'Map#...'
+    - Run Z3, it shouldn't complain
+    - Replace "\|(Set|Map)#(\w+)\|" with "$\1.\L$2"
+    - Run Z3, it shouldn't complain
+    - Step 2:
+        - Replace '$Set.empty' by '$Set.empty<T@T>'
+        - Replace 'T@T' by '$S$'
+        - Replace '|T@Map T V|' by '$Set<$S$>'
+    - Run Z3, it shouldn't complain
+    - Step 4 (tidying up, not strictly necessary):
+        - Replace "\s*:skolemid \|\d+\|" with ""
+        - Replace "\s*:qid \|.*?\|" with ""
+        - Replace "@@\d+" by ""
+    - Run Z3, it shouldn't complain
+5. Remove sort declarations (should only be two)
+6. Cut & paste all function declarations into the appropriate Silicon file
+7. Replace "^(?!\(assert)\s*(.+)" with "  \1"
+8. Cut & paste all axioms into the appropriate Silicon file
+9. Run Silicon's tests
+
+Boogie desugares equivalence (<==>) into two implications. I undid this when I
+copied axioms to Silicon. No clue if it has any effect on the performance, one
+would hope that it doesn't.
+
+Multisets
+---------
+
+1. Extract relevant block from Dafny's Boogie prelude as multisets.bpl
+2. Edit multisets.bpl
+    - Keep declarations of 'Math#min' and of 'Math#clip'; Silicon's preamble
+      already contains them, so the axioms can be removed
+    - Add this prelude:
+
+        type T;
+        type V = int;
+        type Map T V;
+        function Map#Select(Map T V, T): V;
+
+    - Add 'procedure p() {}' at end of file
+    - Replace 'MultiSet' by 'Multiset' (spelling!)
+    - Change 'type Multiset T = [T]int' to 'type Multiset = Map T V'      
+    - Replace '<T>' by ''
+    - Replace 'Multiset T' by 'Multiset'
+    - Search for ':='; only one axiom is supposed to use map updates; comment it
+    - Run boogie multisets.bpl, this should only yield "map select applied" errors
+    - Replace "([\w#]+?(?:\([^\)]*\))?)\[(\w+?)\]" by "Map#Select\(\1, \2\)"
+3. boogie /proverLog:multisets.smt2 multisets.bpl, should yield no errors
+4. Edit multisets.smt2
+    - Step 1:
+        - Remove config options
+        - Remove push-pop and the end
+        - Remove sorts other than '|T@Map T V|' and 'T@T'
+        - Remove declarations and axioms not mentioning 'Multiset#...' or 'Map#...'; 
+          keep $IsGoodMultiset for now
+    - Run Z3, it shouldn't complain
+    - Replace "\|(Multiset|Map)#(\w+)\|" with "$\1.\L$2"
+    - Run Z3, it shouldn't complain
+    - Step 2:
+        - Replace '$Multiset.empty' by '$Multiset.empty<T@T>'
+        - Replace 'T@T' by '$S$'
+        - Replace '|T@Map T V|' by '$Multiset<$S$>'
+        - Replace '$Map.select' by '$Multiset.count'
+    - Run Z3, it shouldn't complain
+    - Step 4 (tidying up, not strictly necessary):
+        - Replace "\s*:skolemid \|\d+\|" with ""
+        - Replace "\s*:qid \|.*?\|" with ""
+        - Replace "@@\d+" by ""
+    - Run Z3, it shouldn't complain
+    - Step 5:
+        - Replace '|Math#min|' with '$Math.min'
+        - Replace '|Math#clip|' with '$Math.clip'
+        - Remove declarations for '$Math.min' and '$Math.clip'
+        - Remove sort declarations (should only be two)
+6. Cut & paste all function declarations into the appropriate Silicon file
+7. Replace "^(?!\(assert)\s*(.+)" with "  \1"
+8. Cut & paste all axioms into the appropriate Silicon file
+9. Run Silicon's tests
+
+NOTE: I removed IsGoodMultiset-related declarations and axioms and used the
+following axiom instead:
+
+  (assert (forall ((ms $Multiset<$S$>) (bx $S$)) (!
+    (and
+      (<= 0 ($Multiset.count ms bx))
+      (<= ($Multiset.count ms bx) ($Multiset.card ms)))
+    :pattern (($Multiset.count ms bx))
+    )))
+    
+We need to see if its triggering behaviour is acceptible.
