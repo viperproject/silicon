@@ -2,7 +2,7 @@
 ; License, v. 2.0. If a copy of the MPL was not distributed with this
 ; file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-; Requires Z3 4.3.0
+; Requires Z3 >= 4.3.0
 
 ; ATTENTION: Continuing multi-line statements must be indented with at least
 ;            one tab or two spaces. All other lines must not start with tabs
@@ -14,31 +14,46 @@
 (set-option :print-success true) ; Boogie: false
 
 (set-option :global-decls true) ; Boogie: default
-(set-option :AUTO_CONFIG false) ; Usually a good idea
+(set-option :auto_config false) ; Usually a good idea
 
-; Don't try to find models. Z3 would otherwise try to find models for uninterpreted (limited)
-; functions that come from the program.
-(set-option :MBQI false)
+; Syntax for 4.3.0 <= Z3 < 4.3.2
+(set-option :mbqi false)
+(set-option :model-v2 true)
+(set-option :phase_selection 0)
+(set-option :restart_strategy 0)
+(set-option :restart_factor |1.5|)
+(set-option :arith-random_initial_value true)
+(set-option :case_split 3)
+(set-option :delay_units true)
+(set-option :delay_units_threshold 16)
+(set-option :nnf-sk_hack true)
+(set-option :qi-eager_threshold 100)
+(set-option :qi-cost |"(+ weight generation)"|)
+(set-option :type_check true)
+(set-option :bv-reflect true)
+;(set-option :qi_profile true)
+;(set-option :default_qid true)
+;(set-option :macro_finder true)
 
-; [Malte] The remaining options were taken from the Boogie preamble when I compared Syxc and
-; VCG-Chalice for the VSTTE12 paper. I have no clue what these options do and how important
-; they are.
-(set-option :MODEL-V2 true)
-(set-option :PHASE_SELECTION 0)
-(set-option :RESTART_STRATEGY 0)
-(set-option :RESTART_FACTOR |1.5|)
-(set-option :ARITH-RANDOM_INITIAL_VALUE true)
-(set-option :CASE_SPLIT 3) ; Unsupported in Z3 4.3.2-nightlies?
-(set-option :DELAY_UNITS true)
-(set-option :DELAY_UNITS_THRESHOLD 16)
-(set-option :NNF-SK_HACK true)
-(set-option :QI-EAGER_THRESHOLD 100)
-(set-option :QI-COST |"(+ weight generation)"|) ; Unsupported in Z3 4.3.2-nightlies?
-(set-option :TYPE_CHECK true)
-(set-option :BV-REFLECT true)
-
-; (set-option :QI_PROFILE true)
-; (set-option :DEFAULT_QID true)
+; Syntax for Z3 >= 4.3.2
+; (set-option :smt.mbqi false)
+; (set-option :model.v2 true)
+; (set-option :smt.phase_selection 0)
+; (set-option :smt.restart_strategy 0)
+; (set-option :smt.restart_factor |1.5|)
+; (set-option :smt.arith.random_initial_value true)
+; (set-option :smt.case_split 3)
+; (set-option :smt.delay_units true)
+; (set-option :smt.delay_units_threshold 16)
+; (set-option :nnf.sk_hack true)
+; (set-option :smt.qi.eager_threshold 100)
+; (set-option :smt.qi.cost "(+ weight generation)")
+; (set-option :type_check true)
+; (set-option :smt.bv.reflect true)
+; (set-option :smt.bv.reflect true)
+;;(set-option :smt.qi_profile true)
+;;(set-option :smt.default_qid true) ; Not supported in Z3 4.3.2?
+;;(set-option :smt.macro_finder true)
 
 ; --- Snapshots ---
 
