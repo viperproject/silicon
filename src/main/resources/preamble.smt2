@@ -2,7 +2,7 @@
 ; License, v. 2.0. If a copy of the MPL was not distributed with this
 ; file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-; Requires Z3 >= 4.3.0
+; Requires Z3 >= 4.3.2
 
 ; ATTENTION: Continuing multi-line statements must be indented with at least
 ;            one tab or two spaces. All other lines must not start with tabs
@@ -36,24 +36,24 @@
 ;;(set-option :macro_finder true)
 
 ; Syntax for Z3 >= 4.3.2
- (set-option :smt.mbqi false)
- (set-option :model.v2 true)
- (set-option :smt.phase_selection 0)
- (set-option :smt.restart_strategy 0)
- (set-option :smt.restart_factor |1.5|)
- (set-option :smt.arith.random_initial_value true)
- (set-option :smt.case_split 3)
- (set-option :smt.delay_units true)
- (set-option :smt.delay_units_threshold 16)
- (set-option :nnf.sk_hack true)
- (set-option :smt.qi.eager_threshold 100)
- (set-option :smt.qi.cost "(+ weight generation)")
- (set-option :type_check true)
- (set-option :smt.bv.reflect true)
-;;(set-option :smt.qi_profile true)
-;;(set-option :smt.default_qid true) ; Not supported in Z3 4.3.2?
-;;(set-option :smt.macro_finder true)
-;;(set-option :smt.macro_finder true)
+(set-option :smt.mbqi false)
+(set-option :model.v2 true)
+(set-option :smt.phase_selection 0)
+(set-option :smt.restart_strategy 0)
+(set-option :smt.restart_factor |1.5|)
+(set-option :smt.arith.random_initial_value true)
+(set-option :smt.case_split 3)
+(set-option :smt.delay_units true)
+(set-option :smt.delay_units_threshold 16)
+(set-option :nnf.sk_hack true)
+(set-option :smt.qi.eager_threshold 100)
+(set-option :smt.qi.cost "(+ weight generation)")
+(set-option :type_check true)
+(set-option :smt.bv.reflect true)
+(set-option :smt.bv.reflect true)
+;(set-option :smt.qi_profile true)
+;(set-option :smt.default_qid true) ; Not supported in Z3 4.3.2?
+;(set-option :smt.macro_finder true)
 
 ; --- Snapshots ---
 

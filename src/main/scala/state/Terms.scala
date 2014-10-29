@@ -329,7 +329,7 @@ class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
     with ForbiddenInTrigger
 
 object Plus extends Function2[Term, Term, Term] {
-	val Zero = IntLiteral(0)
+	import predef.Zero
 
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => t0
@@ -346,7 +346,7 @@ class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
     with ForbiddenInTrigger
 
 object Minus extends Function2[Term, Term, Term] {
-	val Zero = IntLiteral(0)
+	import predef.Zero
 
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => t0
@@ -363,8 +363,7 @@ class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
     with ForbiddenInTrigger
 
 object Times extends Function2[Term, Term, Term] {
-	val Zero = IntLiteral(0)
-	val One = IntLiteral(1)
+	import predef.{Zero, One}
 
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => Zero
@@ -716,8 +715,7 @@ class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
        with ForbiddenInTrigger
 
 object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
-  val Zero = IntLiteral(0)
-  val One = IntLiteral(1)
+  import predef.{Zero, One}
 
   def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (Zero, t) => NoPerm()
@@ -727,6 +725,15 @@ object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFrac
   }
 
   def unapply(pt: IntPermTimes) = Some((pt.p0, pt.p1))
+}
+
+case class PermIntDiv(p0: DefaultFractionalPermissions, p1: Term)
+    extends DefaultFractionalPermissions
+    with commonnodes.Div[Term]
+//    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
+
+  utils.assertSort(p1, "Second term", sorts.Int)
 }
 
 class PermPlus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
@@ -1519,6 +1526,9 @@ object Distinct {
 object predef {
   val `?s` = Var("s", sorts.Snap) // with SnapshotTerm
   val `?r` = Var("r", sorts.Ref)
+
+  val Zero = IntLiteral(0)
+  val One = IntLiteral(1)
 }
 
 /* Convenience functions */
