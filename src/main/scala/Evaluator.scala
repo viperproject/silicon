@@ -270,6 +270,11 @@ trait DefaultEvaluator[
           evalp(σ, e1, pve, c1)((t1, c2) =>
             Q(IntPermTimes(t0, t1), c2)))
 
+      case ast.PermIntDiv(e0, e1) =>
+        evalp(σ, e0, pve, c)((t0, c1) =>
+          eval(σ, e1, pve, c1)((t1, c2) =>
+            failIfDivByZero(σ, PermIntDiv(t0, t1), e1, t1, 0, pve, c1)(Q)))
+
       case ast.PermLE(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c)(Q)
 
