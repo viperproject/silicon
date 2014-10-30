@@ -47,6 +47,7 @@ package object utils {
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
     case IntPermTimes(_, t1) => consumeExactRead(t1, c)
+    case PermIntDiv(t0, _) => consumeExactRead(t0, c)
     case PermMin(t0 ,t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case Ite(_, t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case _ => true
