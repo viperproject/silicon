@@ -17,10 +17,10 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
 import interfaces.state.factoryUtils.Ø
-import state.{terms, SymbolConvert}
+import state.{DefaultContext, terms, SymbolConvert}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
-import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
-import reporting.{DefaultContext, Bookkeeper}
+import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
+import reporting.Bookkeeper
 import decider.PreambleFileEmitter
 import supporters.MagicWandSupporter
 
@@ -28,13 +28,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
 														 S <: State[ST, H, S]]
 		extends Logging
-		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+		   with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
+		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
        with FunctionsSupporter[ST, H, PC, S] {
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   /*protected*/ val config: Config
 
@@ -186,7 +186,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S, DefaultContext]
+       with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
        with DefaultJoiner[ST, H, PC, S]
        with MagicWandSupporter[ST, H, PC, S]
        with Logging
@@ -198,7 +198,7 @@ trait AbstractVerifier[ST <: Store[ST],
     extends StatefulComponent
        with Logging {
 
-  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext]
+  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
@@ -237,7 +237,7 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-    val c = DefaultContext(program)
+    val c = DefaultContext[H](program)
 
     val members = program.members.filterNot {
       case func: ast.ProgramFunction => true

@@ -19,20 +19,19 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.state.factoryUtils.Ø
 import state.terms._
 import viper.silicon.state._
-import reporting.DefaultContext
 import state.terms.perms.IsPositive
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-									  with Brancher[ST, H, S, DefaultContext] =>
+		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+									  with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
+									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+									  with Brancher[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
 
   protected implicit val manifestH: Manifest[H]

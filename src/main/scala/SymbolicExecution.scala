@@ -7,13 +7,11 @@
 package viper
 package silicon
 
-import interfaces.{VerificationResult, Unreachable}
+import interfaces.{Success, VerificationResult, Unreachable}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, Context}
-import interfaces.reporting.Context
-import interfaces.state.{Store, Heap, PathConditions, State}
 import state.terms._
-import state.terms.utils.{BigAnd, ¬}
+import state.DefaultContext
 import reporting.Bookkeeper
 
 /* TODO: Move interfaces into interfaces package */
@@ -217,10 +215,10 @@ trait DefaultJoiner[ST <: Store[ST],
                     H <: Heap[H],
                     PC <: PathConditions[PC],
                     S <: State[ST, H, S]]
-    extends Joiner[ST, H, S, DefaultContext]
-    { this: DefaultBrancher[ST, H, PC, S, DefaultContext] =>
+    extends Joiner[ST, H, S, DefaultContext[H]]
+    { this: DefaultBrancher[ST, H, PC, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
 
@@ -228,7 +226,7 @@ trait DefaultJoiner[ST <: Store[ST],
           (block: ((Term, C) => VerificationResult) => VerificationResult)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
-          
+
     val πPre: Set[Term] = decider.π
     var localResults: List[LocalEvaluationResult] = Nil
 
@@ -254,7 +252,7 @@ trait DefaultJoiner[ST <: Store[ST],
     currentGuards = oldGuards
 
 //    decider.popScope()
-                    
+
     r && {
         var tJoined: Term = null
         var cJoined: C = null

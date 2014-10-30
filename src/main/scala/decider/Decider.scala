@@ -402,7 +402,7 @@ class DefaultDecider[ST <: Store[ST],
       case (shapes.And(t11, t12), shapes.And(t21, t22)) =>
         eq(t11, t21) && eq(t12, t22)
       case (shapes.Acc(id1, ts1, tp1), shapes.Acc(id2, ts2, tp2)) if id1 == id1 && ts1.length == ts2.length =>
-        check(σ, BigAnd(ts1.zip(ts2).map (p => p._1 === p._2) ++ List(tp1 === tp2)))
+        check(σ, And(ts1.zip(ts2).map (p => p._1 === p._2) ++ List(tp1 === tp2)))
       case (shapes.Implies(t11, t12), shapes.Implies(t21, t22)) =>
         eq(t11, t21) && eq(t12, t22)
       case (shapes.Ite(t11, t12, t13), shapes.Ite(t21, t22, t23)) =>

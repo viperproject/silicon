@@ -9,24 +9,24 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Chunk}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Chunk, StateFactory}
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
-import state.{MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
-import reporting.{DefaultContext, Bookkeeper}
+import state.{DirectChunk, DefaultContext, MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
+import reporting.Bookkeeper
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-        with HasLocalState
-    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext] =>
+    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+       with HasLocalState
+    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+                    with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
+                    with Brancher[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
 
   protected val decider: Decider[P, ST, H, PC, S, C]
@@ -206,7 +206,7 @@ trait DefaultProducer[ST <: Store[ST],
           println(s"  tWand = $tWand")
 //        val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
           Q(σ.h + MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand]), c)})
-            
+
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
@@ -287,7 +287,7 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
-  
+
   private def addDirectChunk(h: H, dc: DirectChunk): (H, Option[DirectChunk], Term) = {
     var matchingChunk: Option[DirectChunk] = None
     var tEq: Term = True()

@@ -32,7 +32,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 		{ this: Logging with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
 										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
 										with Brancher[ST, H, S, DefaultContext[H]]
-										with Joiner[ST, H, S, DefaultContext]
+										with Joiner[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
@@ -411,7 +411,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
-            checkReserveHeaps(localResults)
+          Q(unknownValue, c)
         }
 
       /* Sequences */
@@ -599,13 +599,6 @@ trait DefaultEvaluator[ST <: Store[ST],
     evalp(σ, e0, pve, c)((t0, c1) =>
       evalp(σ, e1, pve, c1)((t1, c2) =>
         Q(permOp(t0, t1), c2)))
-  }
-
-  private def checkReserveHeaps(localResults: Seq[LocalEvaluationResult]) {
-    val heaps = localResults.flatMap(_.context.reserveHeaps).toSet
-
-    assert(heaps.size <= 1,
-           "Unexpectedly found multiple different reserve heaps after a local evaluation.")
   }
 
   /* TODO: The CP-style in which Silicon's main components are written makes it hard to work

@@ -9,7 +9,7 @@ package silicon
 package state.terms
 
 import scala.reflect._
-import silver.ast.utility.Visitor
+import silver.ast.utility.{GenericTriggerGenerator, Visitor}
 import ast.commonnodes
 import state.MagicWandChunk
 import interfaces.state.Heap
@@ -453,7 +453,7 @@ class And(val ts: Seq[Term]) extends BooleanTerm
 
 object And {
   def apply(ts: Term*) = createAnd(ts)
-  def apply(ts: Set[Term]) = createAnd(ts.toSeq)
+  def apply(ts: Iterable[Term]) = createAnd(ts.toSeq)
 
   @inline
   def createAnd(_ts: Seq[Term]): Term = {

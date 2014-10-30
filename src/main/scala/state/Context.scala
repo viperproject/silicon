@@ -8,19 +8,29 @@ package viper
 package silicon
 package state
 
-import interfaces.state.{Context, Mergeable}
-import terms.{Var, FApp, Term}
+import interfaces.state.{Heap, Context, Mergeable}
+import terms.{Var, Term}
 import theories.SnapshotRecorder
 
-case class DefaultContext(program: ast.Program,
+case class DefaultContext[H <: Heap[H]]
+                         (program: ast.Program,
                           visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
+
                           additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
-                          possibleTriggers: Map[ast.Expression, Term] = Map())
-    extends Context[DefaultContext] {
+                          possibleTriggers: Map[ast.Expression, Term] = Map(),
+
+                          reserveHeaps: Stack[H] = Nil,
+                          exhaleExt: Boolean = false,
+                          // poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
+                          lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
+                          additionalEvalHeap: Option[H] = None
+                          // footprintHeap: Option[H] = None,
+                          /*reinterpretWand: Boolean = true*/)
+    extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)
 
@@ -48,13 +58,15 @@ case class DefaultContext(program: ast.Program,
    *       output.
    */
 
-  def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1, additionalTriggers1,
-                        snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1) =>
+  def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
+    case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1,
+                        additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
+                        reserveHeaps1, exhaleExt1, lhsHeap1, additionalEvalHeap1) =>
 
       other match {
-        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`, additionalTriggers2,
-                            snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2) =>
+        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`,
+                            additionalTriggers2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
+                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `additionalEvalHeap1`) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
           val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)

@@ -9,11 +9,9 @@ import silver.verifier.reasons.InsufficientPermission
 import interfaces.{Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{ChunkIdentifier, State, PathConditions, Heap, Store}
-import interfaces.reporting.Context
-import state.{DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
+import viper.silicon.state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
 import state.terms._
 import state.terms.perms.{IsNoAccess, IsAsPermissive}
-import reporting.DefaultContext
 
 trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
