@@ -356,6 +356,8 @@ class DefaultDecider[ST <: Store[ST],
     id match {
       case mwid: MagicWandChunkIdentifier =>
         val mwchs = h.values.collect{case ch: MagicWandChunk => ch}
+        println(s"mwid = $mwid")
+        println(s"mwchs = $mwchs")
         mwchs.find(mwch => compareWands(σ, mwid.wand, mwch.wand)).asInstanceOf[Option[CH]]
 
       case _ =>
@@ -390,13 +392,20 @@ class DefaultDecider[ST <: Store[ST],
 		chunk
 	}
 
-  private def compareWands(σ: S, wand1: MagicWand, wand2: MagicWand): Boolean = {
+  private def compareWands(σ: S, wand1: shapes.MagicWand, wand2: shapes.MagicWand): Boolean = {
     def eq(t1: Term, t2: Term): Boolean = (t1, t2) match {
-      case (SepAnd(t11, t12), SepAnd(t21, t22)) =>
+      case (shapes.And(t11, t12), shapes.And(t21, t22)) =>
         eq(t11, t21) && eq(t12, t22)
-      case (Acc(id1, ts1, tp1), Acc(id2, ts2, tp2)) if id1 == id1 && ts1.length == ts2.length =>
+      case (shapes.Acc(id1, ts1, tp1), shapes.Acc(id2, ts2, tp2)) if id1 == id1 && ts1.length == ts2.length =>
         check(σ, BigAnd(ts1.zip(ts2).map (p => p._1 === p._2) ++ List(tp1 === tp2)))
-      case (_t1, _t2) => check(σ, _t1 === _t2)
+      case (shapes.Implies(t11, t12), shapes.Implies(t21, t22)) =>
+        eq(t11, t21) && eq(t12, t22)
+      case (shapes.Ite(t11, t12, t13), shapes.Ite(t21, t22, t23)) =>
+        eq(t11, t21) && eq(t12, t22) && eq(t13, t23)
+      case (_: BooleanTerm, _: BooleanTerm) =>
+        check(σ, t1 === t2)
+      case _ =>
+        false
     }
 
     eq(wand1.left, wand2.left) && eq(wand1.right, wand2.right)

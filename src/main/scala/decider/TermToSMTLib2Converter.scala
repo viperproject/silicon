@@ -265,7 +265,7 @@ class TermToSMTLib2Converter extends TermConverter[String, String, String] {
     case Distinct(symbols) =>
       "(distinct %s)".format(symbols map(convert) mkString(" "))
 
-    case _: MagicWand | _: Acc | _: MagicWandChunkTerm | _: SepAnd =>
+    case _: MagicWandChunkTerm | _: Shape =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
   }
 

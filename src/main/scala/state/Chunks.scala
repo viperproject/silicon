@@ -9,7 +9,7 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import state.terms.{MagicWand, Term, DefaultFractionalPermissions}
+import state.terms.{Term, DefaultFractionalPermissions, shapes}
 
 sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
 
@@ -116,15 +116,15 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 //}
 
 abstract class MagicWandChunkLike extends {
-  val wand: MagicWand
+  val wand: shapes.MagicWand
   val name = wand.toString
   val args = Nil
 
   override val toString = wand.toString
 }
 
-case class MagicWandChunk(wand: MagicWand) extends MagicWandChunkLike with Chunk {
+case class MagicWandChunk(wand: shapes.MagicWand) extends MagicWandChunkLike with Chunk {
   val id = MagicWandChunkIdentifier(wand)
 }
 
-case class MagicWandChunkIdentifier(wand: MagicWand) extends MagicWandChunkLike with ChunkIdentifier
+case class MagicWandChunkIdentifier(wand: shapes.MagicWand) extends MagicWandChunkLike with ChunkIdentifier

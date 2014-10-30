@@ -14,10 +14,9 @@ import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermiss
 import reporting.{Bookkeeper, DefaultContext}
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
-    FieldChunk}
+    FieldChunk, Chunk}
 import interfaces.decider.Decider
-import interfaces.state.factoryUtils.Ø
-import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import state.{PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsPositive
@@ -28,7 +27,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                        PC <: PathConditions[PC],
 											 S <: State[ST, H, S]]
 		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] with HasLocalState
-		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+		{ this: Logging with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
 										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
 										with Brancher[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
@@ -46,7 +45,6 @@ trait DefaultEvaluator[ST <: Store[ST],
 	import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-//  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
 	protected val config: Config
 	protected val bookkeeper: Bookkeeper

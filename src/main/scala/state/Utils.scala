@@ -47,8 +47,9 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.tBody) ++ q.triggers.flatMap(_.ts)
-    case mw: MagicWand => List(mw.left, mw.right)
-    case a: Acc => a.args ++ List(a.perms)
+    case mw: shapes.MagicWand => List(mw.left, mw.right)
+    case a: shapes.Acc => a.args ++ List(a.perms)
+    case si: shapes.Ite => List(si.p0, si.p1, si.p2)
   }
 
   /* Structurally a copy of the SIL transformer written by Stefan Heule.
@@ -130,9 +131,11 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
-      case MagicWand(left, right) => MagicWand(go(left), go(right))
-      case SepAnd(t0, t1) => SepAnd(go(t0), go(t1))
-      case Acc(id, args, perms) => Acc(id, args map go, go(perms))
+      case shapes.MagicWand(left, right) => shapes.MagicWand(go(left), go(right))
+      case shapes.And(t0, t1) => shapes.And(go(t0), go(t1))
+      case shapes.Implies(t0, t1) => shapes.Implies(go(t0), go(t1))
+      case shapes.Ite(t0, t1, t2) => shapes.Ite(go(t0), go(t1), go(t2))
+      case shapes.Acc(id, args, perms) => shapes.Acc(id, args map go, go(perms))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

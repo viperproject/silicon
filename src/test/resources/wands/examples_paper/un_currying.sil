@@ -11,7 +11,7 @@
  * hypothetical LHS A * B while showing the overall wand A * B --* C, and we
  * can therefore subsequently apply the outer and inner wand that we were
  * given (A --* B --* C), which suffices to show the RHS C.
- * 
+ *
  * The "==>" case is more involved. An initial idea might be to package
  * the inner wand B --* C first, followed by the outer wand A --* B --* C.
  * However, the sequence of statements
@@ -33,21 +33,21 @@ predicate Q() { true }
 predicate R() { true }
 
 /* A --* B --* C  ==>  A * B --* C */
-method uncurry() {
-
-  /* Define short-hands for the sake of readability (global short-hands are
-   * currently not supported)
-   */
-  define A acc(P())
-  define B acc(Q())
-  define C acc(R())
-
-  inhale A --* (B --* C) /* requires */
-
-  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
-
-  exhale A && B --* C /* ensures */
-}
+//method uncurry() {
+//
+//  /* Define short-hands for the sake of readability (global short-hands are
+//   * currently not supported)
+//   */
+//  define A acc(P())
+//  define B acc(Q())
+//  define C acc(R())
+//
+//  inhale A --* (B --* C) /* requires */
+//
+//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+//
+//  exhale A && B --* C /* ensures */
+//}
 
 /* A * B --* C  ==>  A --* B --* C */
 method curry() {

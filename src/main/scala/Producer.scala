@@ -9,13 +9,12 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Chunk}
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
-import state.{MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import reporting.{DefaultContext, Bookkeeper}
-import supporters.MagicWandSupporter
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -24,7 +23,7 @@ trait DefaultProducer[ST <: Store[ST],
     extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
         with HasLocalState
     { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+                    with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
@@ -33,13 +32,9 @@ trait DefaultProducer[ST <: Store[ST],
   protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
 
-//  protected val stateFactory: StateFactory[ST, H, S]
-//  import stateFactory._
-
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-//  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -166,7 +161,7 @@ trait DefaultProducer[ST <: Store[ST],
         eval(σ, wand, pve, c)((tWand, c1) => {
           println(s"  tWand = $tWand")
 //        val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
-          Q(σ.h + MagicWandChunk(tWand.asInstanceOf[MagicWand]), c)})
+          Q(σ.h + MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand]), c)})
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

@@ -15,9 +15,9 @@ import silver.components.StatefulComponent
 import silver.ast.utility.{Nodes, Visitor}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
 import interfaces.state.factoryUtils.Ø
-import state.{terms, SymbolConvert, DirectChunk}
+import state.{terms, SymbolConvert}
 import state.terms.{sorts, Sort, DefaultFractionalPermissions}
 import theories.{DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.{DefaultContext, Bookkeeper}
@@ -30,7 +30,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     extends Logging
 		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
 		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext[H]]
+		   with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
 		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]] {
 
   private type C = DefaultContext[H]
@@ -58,10 +58,12 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
   private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
+    return Success()
+
     val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
     var result: VerificationResult = Success()
 
-    println("\n[checkWandsAreSelfFraming]")
+//    println("\n[checkWandsAreSelfFraming]")
 
     breakable {
       wands foreach {wand =>
@@ -73,8 +75,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
         val σ1 = Σ(γ1, Ø, g)
         val c1 = c/*.copy(poldHeap = Some(σ.h))*/
 
-        println(s"  left = $left")
-        println(s"  right = $right")
+//        println(s"  left = $left")
+//        println(s"  right = $right")
 //        println(s"  s1.γ = ${σ1.γ}")
 //        println(s"  s1.h = ${σ1.h}")
 //        println(s"  s1.g = ${σ1.g}")
@@ -83,14 +85,14 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
         result =
           inScope {
-            println("  checking left")
+//            println("  checking left")
             produce(σ1, fresh, terms.FullPerm(), left, err, c1)((σ2, c2) => {
               σInner = σ2
 //              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
 //              val σ3 = σ1
               Success()})
           } && inScope {
-            println("  checking right")
+//            println("  checking right")
             produce(σ1, fresh, terms.FullPerm(), right, err, c1.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
               Success())}
 

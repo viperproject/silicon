@@ -46,10 +46,10 @@ trait MagicWandSupporter[ST <: Store[ST],
                (Q: (Term, C) => VerificationResult)
                : VerificationResult = {
 
-    decider.locally[(MagicWand, C)](QL =>
+    decider.locally[(shapes.MagicWand, C)](QL =>
       translate(σ, eWand.left, pve, c)((tLeft, c1) =>
         translate(σ, eWand.right, pve, c1)((tRight, c2) =>
-          QL(MagicWand(tLeft, tRight), c2)))
+          QL(shapes.MagicWand(tLeft, tRight), c2)))
     ){case (tWand, c1) => Q(tWand, c1)}
   }
 
@@ -58,21 +58,38 @@ trait MagicWandSupporter[ST <: Store[ST],
                          : VerificationResult =
 
     e match {
-      case and: ast.And if !and.isPure =>
-        translate(σ, and.left, pve, c)((tLeft, c1) =>
-          translate(σ, and.right, pve, c1)((tRight, c2) =>
-            Q(SepAnd(tLeft, tRight), c2)))
-
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           decider.assume(tRcvr !== Null())
           evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
-            Q(Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2))})
+            Q(shapes.Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2))})
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
         evals(σ, eArgs, pve, c)((ts, c1) =>
           evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
-            Q(Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
+            Q(shapes.Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
+
+      case and: ast.And if !and.isPure =>
+        translate(σ, and.left, pve, c)((tLeft, c1) =>
+          translate(σ, and.right, pve, c1)((tRight, c2) =>
+            Q(shapes.And(tLeft, tRight), c2)))
+
+      case ast.Implies(e0, e1) if !e.isPure =>
+        translate(σ, e0, pve, c)((t0, c1) =>
+          translate(σ, e1, pve, c1)((t1, c2) =>
+            Q(shapes.Implies(t0, t1), c2)))
+
+      case ast.Ite(e0, e1, e2) if !e.isPure =>
+        translate(σ, e0, pve, c)((t0, c1) =>
+          translate(σ, e1, pve, c1)((t1, c2) =>
+            translate(σ, e2, pve, c2)((t2, c3) =>
+              Q(shapes.Ite(t0, t1, t2), c3))))
+
+      case ast.MagicWand(e0, e1) =>
+        assert(!e.isPure, "Found a pure magic wand ... surprise!")
+        translate(σ, e0, pve, c)((t0, c1) =>
+          translate(σ, e1, pve, c1)((t1, c2) =>
+            Q(shapes.MagicWand(t0, t1), c2)))
 
       case _ if e.isPure =>
         eval(σ, e, pve, c)(Q)
