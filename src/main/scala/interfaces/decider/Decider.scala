@@ -10,9 +10,8 @@ package interfaces.decider
 
 import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
-import interfaces.state.{Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
 import interfaces.{Failure, VerificationResult}
-import interfaces.reporting.Context
+import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
 import state.terms.{Term, Var, FractionalPermissions, Sort}
 import state.DirectChunk
 import utils.notNothing._

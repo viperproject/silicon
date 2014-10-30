@@ -99,6 +99,8 @@ package object ast {
   val PermTimes = silver.ast.PermMul
   type IntPermTimes = silver.ast.IntPermMul
   val IntPermTimes = silver.ast.IntPermMul
+  type PermIntDiv = silver.ast.PermDiv
+  val PermIntDiv = silver.ast.PermDiv
   type PermGT = silver.ast.PermGtCmp
   val PermGT = silver.ast.PermGtCmp
   type PermGE = silver.ast.PermGeCmp

@@ -10,17 +10,22 @@ package silicon
 import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
+import state.DefaultContext
+
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError}
+import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
+    Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
+    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
+    AbortedExceptionally => SilExceptionThrown}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.{FullPerm, DefaultFractionalPermissions}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{VerificationException, DefaultContext, Bookkeeper}
+import reporting.{VerificationException, Bookkeeper}
 import supporters.MagicWandSupporter
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
@@ -47,6 +52,36 @@ trait SiliconConstants {
 
 object Silicon extends SiliconConstants {
   val hideInternalOptions = true
+
+  def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
+    configMap.flatMap {
+      case (k, v) =>
+        val kStr = s"--$k"
+        val vStr = v.toString
+
+        vStr.toLowerCase match {
+          case "true" | "false" => Seq(kStr)
+          case _ => Seq(kStr, vStr)
+        }
+    }.toSeq
+
+  def fromPartialCommandLineArguments(args: Seq[String], debugInfo: Seq[(String, Any)] = Nil): Silicon = {
+    val silicon = new Silicon(debugInfo)
+
+    silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
+
+    silicon.config.initialize {
+      case _ =>
+        /* Ignore command-line errors, --help, --version and other non-positive
+         * results from Scallop.
+         * After initialized has been set to true, Silicon itself will not call
+         * config.initialize again.
+         */
+        silicon.config.initialized = true
+    }
+
+    silicon
+  }
 }
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
@@ -127,7 +162,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         _config.printHelp()
         throw ex
       case ex: org.rogach.scallop.exceptions.ScallopException =>
-        println(CliOptionError(ex.message + ".").readableMessage)
+        println(SilCliOptionError(ex.message + ".").readableMessage)
         _config.printHelp()
         throw ex
     }
@@ -232,8 +267,16 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           /* If possible, report the real exception that has been wrapped in
            * the ExecutionException. The wrapping is due to using a future.
            */
-          if (ee.getCause != null) throw ee.getCause
-          else throw ee
+          val ex =
+            if (ee.getCause != null) ee.getCause
+            else ee
+
+          logger.debug(ex.toString + "\n" + ex.getStackTraceString)
+          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+
+        case ex: Exception =>
+          logger.debug(ex.toString + "\n" + ex.getStackTraceString)
+          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -342,13 +385,6 @@ case class DefaultValue[T](value: T) extends ConfigValue[T]
 case class UserValue[T](value: T) extends ConfigValue[T]
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
-  val stopOnFirstError = opt[Boolean]("stopOnFirstError",
-    descr = "Execute only until the first error is found",
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
   private val statisticsSinkConverter = new ValueConverter[(String, String)] {
     val stdioRegex = """(stdio)""".r
     val fileRegex = """(file)=(.*)""".r
@@ -395,7 +431,16 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val unrollFunctions = opt[Int]("unrollFunctions",
-    descr = "Unroll function definitions at most n times (default: 1)",
+    descr = (  "Unroll function definitions at most n times (default: 1). "
+             + "Only has an effect in combination with --disableFunctionAxiomatization."),
+    default = Some(1),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
+    descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
+             + "other instances of themselves (default: 1)"),
     default = Some(1),
     noshort = true,
     hidden = Silicon.hideInternalOptions
@@ -412,14 +457,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
     descr = (  "Disable caching of snapshot symbols. "
              + "Caching reduces the number of symbols the prover has to work with."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val disableLocalEvaluations = opt[Boolean]("disableLocalEvaluations",
-    descr = (  "Disable local evaluation of pure conditionals, function applications, unfoldings etc. "
-             + "WARNING: Disabling it is unsound unsound and incomplete, intended for debugging only!"),
     default = Some(false),
     noshort = true,
     hidden = Silicon.hideInternalOptions
@@ -469,6 +506,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
+
+  val disableFunctionAxiomatization = opt[Boolean]("disableFunctionAxiomatization",
+    descr = (  "Disable axiomatization of user-provided functions, and evaluate functions on "
+        + "the fly instead."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
 
   validateOpt(timeout){
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")

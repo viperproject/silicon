@@ -8,7 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.errors.{Internal, InhaleFailed, LoopInvariantNotPreserved,
+import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed}
 import silver.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse, MagicWandChunkNotFound,
@@ -26,13 +26,13 @@ trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-									  with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
-									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-									  with Brancher[ST, H, S, DefaultContext[H]] =>
+		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+									  with Brancher[ST, H, S, DefaultContext] =>
 
-  private type C = DefaultContext[H]
+  private type C = DefaultContext
   private type P = DefaultFractionalPermissions
 
   protected implicit val manifestH: Manifest[H]
@@ -59,7 +59,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
     edge match {
       case ce: silver.ast.ConditionalEdge =>
-        eval(σ, ce.cond, Internal(ce.cond), c)((tCond, c1) =>
+        eval(σ, ce.cond, IfFailed(ce.cond), c)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
           branch(σ, tCond, c1,
             (c2: C) => exec(σ, ce.dest, c2)(Q),
@@ -178,17 +178,8 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   private def exec(σ: S, stmt: ast.Statement, c: C)
-                  (Q: (S, C) => VerificationResult)
+			            (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
-
-    actualExec(σ, stmt, c)((σ1, c1) => {
-      Q(σ1, c1)
-    })
-  }
-
-	private def actualExec(σ: S, stmt: ast.Statement, c: C)
-			    (Q: (S, C) => VerificationResult)
-          : VerificationResult = {
 
     /* For debugging-purposes only */
     stmt match {
@@ -222,17 +213,17 @@ trait DefaultExecutor[ST <: Store[ST],
               Q(σ \+ (v, tRhs), c1))
         }
 
-      case ass @ ast.FieldWrite(fl @ ast.FieldAccess(eRcvr, field), rhs) =>
+      case ass @ ast.FieldWrite(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           decider.assert(σ, tRcvr !== Null()){
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fl, pve, c2)(fc =>
+                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fa, pve, c2)(fc =>
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             case false =>
-              Failure[ST, H, S](pve dueTo ReceiverNull(fl))})
+              Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
 
       case ast.New(v, fields) =>
         val t = fresh(v)
@@ -240,7 +231,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val newh = H(fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
         val σ1 = σ \+ (v, t) \+ newh
         val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - t
-        assume(state.terms.utils.BigAnd(refs map (_ !== t)))
+        assume(And(refs map (_ !== t)))
         Q(σ1, c)
 
       case ast.Fresh(vars) =>
@@ -256,9 +247,14 @@ trait DefaultExecutor[ST <: Store[ST],
         assume(toSet(arpConstraints))
         Q(σ \ γ1, c)
 
-      case inhale @ ast.Inhale(a) =>
-        produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c)((σ1, c1) =>
-          Q(σ1, c1))
+      case inhale @ ast.Inhale(a) => a match {
+        case _: ast.False =>
+          /* We're done */
+          Success()
+        case _ =>
+          produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c)((σ1, c1) =>
+            Q(σ1, c1))
+      }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
@@ -330,25 +326,24 @@ trait DefaultExecutor[ST <: Store[ST],
                     /*case _: MagicWandChunk => None*/}
 
                     /* Producing Access is unfortunately not an option here
-                    * since the following would fail due to productions
-                    * starting in an empty heap:
-                    *
-                    *   predicate V { acc(x) }
-                    *
-                    *   function f(a: int): int
-                    *	   requires rd(x)
-                    * 	 { x + a }
-                    *
-                    *   method test(a: int)
-                    *     requires ... ensures ...
-                    *   { fold acc(V, f(a)) }
-                    *
-                    * Fold would fail since acc(V, f(a)) is produced in an
-                    * empty and thus f(a) fails due to missing permissions to
-                    * read x.
-                    *
-                    * TODO: Use heap merge function here!
-                    */
+                     * since the following would fail due to productions
+                     * starting in an empty heap:
+                     *
+                     *   predicate V { acc(x) }
+                     *
+                     *   function f(a: int): int
+                     *	   requires rd(x)
+                     * 	 { x + a }
+                     *
+                     *   method test(a: int)
+                     *     requires ... ensures ...
+                     *   { fold acc(V, f(a)) }
+                     *
+                     * Fold would fail since acc(V, f(a)) is produced in an
+                     * empty and thus f(a) fails due to missing permissions to
+                     * read x.
+                     *
+                     */
                     val id = PredicateChunkIdentifier(predicate.name, tArgs)
                     val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id) match {
                       case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)

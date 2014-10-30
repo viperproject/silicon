@@ -25,15 +25,16 @@ import decider.PreambleFileEmitter
 import supporters.MagicWandSupporter
 
 trait AbstractElementVerifier[ST <: Store[ST],
-                              H <: Heap[H], PC <: PathConditions[PC],
-														  S <: State[ST, H, S]]
-    extends Logging
-		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-		   with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]] {
+														 H <: Heap[H], PC <: PathConditions[PC],
+														 S <: State[ST, H, S]]
+		extends Logging
+		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+       with FunctionsSupporter[ST, H, PC, S] {
 
-  private type C = DefaultContext[H]
+  private type C = DefaultContext
 
   /*protected*/ val config: Config
 
@@ -46,12 +47,10 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  def verify(program: ast.Program, member: ast.Member): VerificationResult = {
-    val c = DefaultContext[H](program)
-
+  def verify(program: ast.Program, member: ast.Member, c: C): VerificationResult = {
     member match {
       case m: ast.Method => verify(m, c)
-      case f: ast.ProgramFunction => verify(f, c)
+      case f: ast.ProgramFunction => sys.error("Functions unexpected at this point, should have been handled already")
       case p: ast.Predicate => verify(p, c)
       case _: ast.Domain | _: ast.Field => Success()
     }
@@ -151,39 +150,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
                   Success()))})})}
   }
 
-  def verify(function: ast.ProgramFunction, c: C): VerificationResult = {
-    logger.debug("\n\n" + "-" * 10 + " FUNCTION " + function.name + "-" * 10 + "\n")
-    decider.prover.logComment("%s %s %s".format("-" * 10, function.name, "-" * 10))
-
-    val ins = function.formalArgs.map(_.localVar)
-    val out = function.result
-
-    val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
-    val σ = Σ(γ, Ø, Ø)
-
-    val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
-    val malformedError = (_: ast.Expression) => FunctionNotWellformed(function)
-    val internalError = (offendingNode: ast.Expression) => Internal(offendingNode)
-
-    /* TODO:
-     *  - Improve error message in case the ensures-clause is not well-defined
-     */
-
-    /* Produce includes well-formedness check */
-    inScope {(
-         inScope {
-            produces(σ, fresh, terms.FullPerm(), function.pres ++ function.posts, malformedError, c)((_, c2) =>
-              Success())}
-      && inScope {
-          produces(σ, fresh, terms.FullPerm(), function.pres, internalError, c)((σ1, c2) =>
-               inScope {
-                 checkWandsAreSelfFraming(σ1.γ, σ1.h, function, c2)}
-            && inScope {
-                 eval(σ1, function.exp, FunctionNotWellformed(function), c2)((tB, c3) =>
-                    consumes(σ1 \+ (out, tB), terms.FullPerm(), function.posts, postError, c3)((_, _, _, c4) =>
-                      Success()))})})}
-  }
-
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
@@ -220,7 +186,8 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
+       with DefaultBrancher[ST, H, PC, S, DefaultContext]
+       with DefaultJoiner[ST, H, PC, S]
        with MagicWandSupporter[ST, H, PC, S]
        with Logging
 
@@ -231,10 +198,10 @@ trait AbstractVerifier[ST <: Store[ST],
     extends StatefulComponent
        with Logging {
 
-  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]]
+  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
-  /*protected*/ def preambleEmitter: PreambleFileEmitter[_]
+  /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
   /*protected*/ def sequencesEmitter: SequencesEmitter
   /*protected*/ def setsEmitter: SetsEmitter
   /*protected*/ def multisetsEmitter: MultisetsEmitter
@@ -266,27 +233,24 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
 
-    val members = program.members.filterNot(m => filter(m.name)).iterator
-    var results: List[VerificationResult] = Nil
+    ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
+  }
 
-    /* Verification could be parallelised by forking DefaultMemberVerifiers. */
+  private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
+    val c = DefaultContext(program)
 
-    if (config.stopOnFirstError()) {
-      /* Stops on first error */
-      while (members.nonEmpty && (results.isEmpty || !results.head.isFatal)) {
-        results = ev.verify(program, members.next()) :: results
-      }
-
-      results = results.reverse
-    } else {
-      /* Verify members. Verification continues if errors are found, i.e.
-       * all members are verified regardless of previous errors.
-       * However, verification of a single member is aborted on first error.
-       */
-      results = members.map(m => ev.verify(program, m)).toList
+    val members = program.members.filterNot {
+      case func: ast.ProgramFunction => true
+      case m => filter(m.name)
     }
 
-    results
+    /* TODO: Verification could be parallelised by forking DefaultMemberVerifiers. */
+
+    /* Verify members. Verification continues if errors are found, i.e.
+     * all members are verified regardless of previous errors.
+     * However, verification of a single member is aborted on first error.
+     */
+    members.map(m => ev.verify(program, m, c)).toList
   }
 
   private def filter(str: String) = (
@@ -335,29 +299,23 @@ trait AbstractVerifier[ST <: Store[ST],
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
-
-    emitProgramFunctionDeclarations(program.functions)
-  }
-
-  private def emitProgramFunctionDeclarations(fs: Seq[ast.ProgramFunction]) {
-    fs foreach (f =>
-      decider.prover.declare(terms.FunctionDecl(symbolConverter.toFunction(f))))
   }
 
   private def emitSortWrappers(ss: Set[Sort]) {
-    decider.prover.logComment("")
-    decider.prover.logComment("Declaring additional sort wrappers")
-    decider.prover.logComment("")
+    if (ss.nonEmpty) {
+      decider.prover.logComment("Declaring additional sort wrappers")
 
-    ss.foreach(sort => {
-      val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
-      val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
+      ss.foreach(sort => {
+        val toSnapWrapper = terms.SortWrapperDecl(sort, sorts.Snap)
+        val fromSnapWrapper = terms.SortWrapperDecl(sorts.Snap, sort)
 
-      decider.prover.declare(toSnapWrapper)
-      decider.prover.declare(fromSnapWrapper)
+        decider.prover.declare(toSnapWrapper)
+        decider.prover.declare(fromSnapWrapper)
 
-      preambleEmitter.emitSortParametricAssertions("/sortwrappers.smt2", sort)
-    })
+        preambleEmitter.emitParametricAssertions("/sortwrappers.smt2",
+                                                 Map("$S$" -> decider.prover.termConverter.convert(sort)))
+      })
+    }
   }
 
   private def emitStaticPreamble() {
@@ -376,7 +334,7 @@ class DefaultVerifier[ST <: Store[ST],
      val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]],
      val stateFactory: StateFactory[ST, H, S],
      val symbolConverter: SymbolConvert,
-     val preambleEmitter: PreambleFileEmitter[_],
+     val preambleEmitter: PreambleFileEmitter[String, String],
      val sequencesEmitter: SequencesEmitter,
      val setsEmitter: SetsEmitter,
      val multisetsEmitter: MultisetsEmitter,
@@ -394,9 +352,8 @@ class DefaultVerifier[ST <: Store[ST],
 
   override def reset() {
     super.reset()
-    ev.quantifiedVars = Stack()
     ev.fappCache = Map()
     ev.fappCacheFrames = Stack()
-    ev.currentGuards = Stack()
+    ev.currentGuards = Set()
   }
 }

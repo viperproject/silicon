@@ -57,20 +57,6 @@ object Consistency {
       case _ => errors.flatten
     })
 
-  /* TODO: Implement a corresponding check-method. Currently, the check is
-   *       done during the verification, see DefaultEvaluator.
-   */
-  def createUnsupportedPredicateRecursionError(offendingNode: Node) = {
-    val message = (
-        "Recursion that does not go through a function, e.g., a predicate such as "
-      + "P {... && (x.next != null ==> acc(P(x.next)) && unfolding acc(P(x.next)) in e)} "
-      + "is currently not supported in Silicon. Try wrapping "
-      + "'unfolding acc(P(x.next)) in e' in a function, and invoking the function "
-      + "from the predicate body.")
-
-    Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-  }
-
   /* Unexpected nodes */
 
   def createUnexpectedInhaleExhaleExpressionError(offendingNode: Node) = {

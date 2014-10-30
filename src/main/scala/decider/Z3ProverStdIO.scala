@@ -144,8 +144,11 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 		push()
 		writeLine("(assert (not " + goal + "))")
 		readSuccess()
-		writeLine("(check-sat)")
+    val startTime = System.currentTimeMillis()
+    writeLine("(check-sat)")
 		val r = readUnsat()
+    val endTime = System.currentTimeMillis()
+    logComment(s"${common.format.formatMillisReadably(endTime - startTime)}")
 		pop()
 
 		r

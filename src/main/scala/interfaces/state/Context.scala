@@ -6,8 +6,10 @@
 
 package viper
 package silicon
-package interfaces.reporting
+package interfaces.state
 
-import interfaces.state.{Heap, Store, State}
+trait Mergeable[S <: Mergeable[S]] {
+  def merge(other: S): S
+}
 
-trait Context[C <: Context[C]]
+trait Context[C <: Context[C]] extends Mergeable[C]

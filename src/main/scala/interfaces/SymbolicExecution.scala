@@ -9,8 +9,8 @@ package silicon
 package interfaces
 
 import silver.verifier.PartialVerificationError
+import interfaces.state.Context
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
-import reporting.Context
 import silicon.state.terms.{Sort, Term, FractionalPermissions}
 
 /*
@@ -85,7 +85,7 @@ trait Consumer[P <: FractionalPermissions[P],
                φ: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
-              (Q: (S, List[Term], List[CH], C) => VerificationResult)
+              (Q: (S, Term, List[CH], C) => VerificationResult)
               : VerificationResult
 }
 

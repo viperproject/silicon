@@ -15,7 +15,6 @@ import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
-import interfaces.reporting.Context
 import state.{MagicWandChunk, MagicWandChunkIdentifier, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.utils._
@@ -166,9 +165,15 @@ class DefaultDecider[ST <: Store[ST],
                 (Q: R => VerificationResult)
                 : VerificationResult = {
 
-    pushScope()
     var ir: R = null.asInstanceOf[R]
-    val r: VerificationResult = block(_ir  => {ir = _ir; Success()})
+
+    pushScope()
+
+    val r: VerificationResult = block(_ir  => {
+      Predef.assert(ir == null, s"Unexpected intermediate result $ir")
+      ir = _ir
+      Success()})
+
     popScope()
 
     r && Q(ir)
@@ -290,7 +295,7 @@ class DefaultDecider[ST <: Store[ST],
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
-    case eq: Eq => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
     case _ => false
   }
@@ -387,7 +392,7 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-		val chunk = chunks find (ch => check(σ, BigAnd(ch.args zip id.args map (x => x._1 === x._2))))
+		val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
 		chunk
 	}

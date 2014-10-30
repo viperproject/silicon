@@ -20,17 +20,20 @@ trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
         with HasLocalState
-    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-                    with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
-                    with Brancher[ST, H, S, DefaultContext[H]] =>
+    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+                    with Brancher[ST, H, S, DefaultContext] =>
 
-  private type C = DefaultContext[H]
+  private type C = DefaultContext
   private type P = DefaultFractionalPermissions
 
   protected val decider: Decider[P, ST, H, PC, S, C]
   import decider.{fresh, assume}
+
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -61,15 +64,45 @@ trait DefaultProducer[ST <: Store[ST],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
               (Q: (S, C) => VerificationResult)
-              : VerificationResult =
+              : VerificationResult = {
+
+    /* TODO: produces(φs) allows more fine-grained error reporting when compared
+     *       to produce(BigAnd(φs)) because with produces, each φ in φs can be
+     *       produced with its own PartialVerificationError.
+     *       The two differ in behaviour, though, because producing a list of,
+     *       e.g., preconditions, with produce results in more explicit
+     *       conjunctions, and thus in more combine-terms.
+     *       It is therefore necessary to duplicate the code from producing
+     *       conjunctions (ast.And) that records snapshots in order to ensure
+     *       that both produce and produces create the same location-to-snapshot
+     *       mappings.
+     *       It would obviously be better if we could avoid the code duplication
+     *       while preserving the ability of generating more fine-grained errors.
+     */
 
     if (φs.isEmpty)
       Q(σ, c)
     else {
       val φ = φs.head.whenInhaling
-      produce(σ, sf, p, φ, pvef(φ), c)((σ1, c1) =>
-        produces(σ1, sf, p, φs.tail, pvef, c1)(Q))
+
+      if (φs.tail.isEmpty)
+        produce(σ, sf, p, φ, pvef(φ), c)(Q)
+      else {
+        val (c1, rootSnap) = c.snapshotRecorder match {
+          case Some(sr) =>
+            val rootSnap = sr.currentSnap
+            (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
+          case _ =>
+            (c, null)}
+
+        produce(σ, sf, p, φ, pvef(φ), c1)((σ1, c2) => {
+          val c3 = c2.snapshotRecorder match {
+            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
+            case _ => c2}
+          produces(σ1, sf, p, φs.tail, pvef, c3)(Q)})
+      }
     }
+  }
 
   private def produce2(σ: S,
                        sf: Sort => Term,
@@ -80,20 +113,6 @@ trait DefaultProducer[ST <: Store[ST],
                       (Q: (H, C) => VerificationResult)
                       : VerificationResult = {
 
-    internalProduce(σ, sf, p, φ, pve, c)((h, c1) => {
-      Q(h, c1)
-    })
-  }
-
-  private def internalProduce(σ: S,
-                              sf: Sort => Term,
-                              p: P,
-                              φ: ast.Expression,
-                              pve: PartialVerificationError,
-                              c: C)
-                             (Q: (H, C) => VerificationResult)
-                             : VerificationResult = {
-
     if (!φ.isInstanceOf[ast.And]) {
       logger.debug(s"\nPRODUCE ${φ.pos}: $φ")
       logger.debug(stateFormatter.format(σ))
@@ -101,17 +120,28 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
-        val s0 = mkSnap(a0, c)
-        val s1 = mkSnap(a1, c)
-        val tSnapEq = Eq(sf(sorts.Snap), Combine(s0, s1))
+        val s = sf(sorts.Snap)
+        val s0 = mkSnap(a0, c.program)
+        val s1 = mkSnap(a1, c.program)
+
+        assume(s === Combine(s0, s1))
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
 
-        assume(tSnapEq)
-        produce2(σ, sf0, p, a0, pve, c)((h1, c1) =>
-          produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
-            Q(h2, c2)))
+        val (c1, rootSnap) = c.snapshotRecorder match {
+          case Some(sr) =>
+            val rootSnap = sr.currentSnap
+            (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
+          case _ =>
+            (c, null)}
+
+        produce2(σ, sf0, p, a0, pve, c1)((h1, c2) => {
+          val c3 = c2.snapshotRecorder match {
+            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
+            case _ => c2}
+          produce2(σ \ h1, sf1, p, a1, pve, c3)((h2, c4) =>
+            Q(h2, c4))})
 
       case ast.Implies(e0, a0) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -125,7 +155,7 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           /* Assuming receiver non-null might contradict current path conditions
            * and we would like to detect that as early as possible.
@@ -139,21 +169,35 @@ trait DefaultProducer[ST <: Store[ST],
           else {
             assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
+            assume(NoPerm() < pGain)
               val s = sf(toSort(field.typ))
               val pNettoGain = pGain * p
               val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-              assume(NoPerm() < pGain)
-              Q(σ.h + ch, c2)})})
+            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
+            assume(t)
+            val c3 = c2.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
+                c2.copy(snapshotRecorder = Some(sr1))
+              case _ => c2}
+            Q(h1, c3)})})
 
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
+      case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           evalp(σ, gain, pve, c1)((pGain, c2) => {
-            val s = sf(getOptimalSnapshotSort(predicate.body, c)._1)
+            assume(NoPerm() < pGain)
+            val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            assume(NoPerm() < pGain)
-            Q(σ.h + ch, c2)}))
+            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
+            assume(t)
+            val c3 = c2.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
+                c2.copy(snapshotRecorder = Some(sr1))
+              case _ => c2}
+            Q(h1, c3)}))
 
       case wand: ast.MagicWand =>
         println("\n[Producer/MagicWand]")
@@ -162,7 +206,7 @@ trait DefaultProducer[ST <: Store[ST],
           println(s"  tWand = $tWand")
 //        val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
           Q(σ.h + MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand]), c)})
-
+            
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
@@ -176,65 +220,113 @@ trait DefaultProducer[ST <: Store[ST],
     produced
   }
 
-  private def getOptimalSnapshotSort(φ: ast.Expression, c: C): (Sort, Boolean) = φ match {
-    case _ if φ.isPure =>
-      (sorts.Snap, true)
+  private def getOptimalSnapshotSort(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil)
+                                    : (Sort, Boolean) =
 
-    case ast.AccessPredicate(locacc, _) => locacc match {
-      case fa: ast.FieldAccess => (toSort(fa.field.typ), false)
-      case pa: ast.PredicateAccess => getOptimalSnapshotSort(c.program.findPredicate(pa.predicateName).body, c)
-      /* TODO: Most likely won't terminate for a predicate that only contains
-       *       itself in its body, e.g., predicate P(x) {P(x)}.
-       */
-    }
+    φ match {
+      case _ if φ.isPure =>
+        (sorts.Snap, true)
 
-    case ast.Implies(e0, φ1) =>
-      /* φ1 must be impure, otherwise the first case would have applied. */
-      getOptimalSnapshotSort(φ1, c)
+      case ast.AccessPredicate(locacc, _) => locacc match {
+        case fa: ast.FieldAccess =>
+          (toSort(fa.field.typ), false)
 
-    case ast.And(φ1, φ2) =>
-      /* At least one of φ1, φ2 must be impure, otherwise ... */
-      getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), c)
-
-    case ast.Ite(_, φ1, φ2) =>
-      /* At least one of φ1, φ2 must be impure, otherwise ... */
-
-      def findCommonSort() = {
-        val (s1, isPure1) = getOptimalSnapshotSort(φ1, c)
-        val (s2, isPure2) = getOptimalSnapshotSort(φ2, c)
-        val s = if (s1 == s2) s1 else sorts.Snap
-        val isPure = isPure1 && isPure2
-        (s, isPure)
+        case pa: ast.PredicateAccess =>
+          if (!visited.contains(pa.predicateName))
+            getOptimalSnapshotSort(program.findPredicate(pa.predicateName).body, program, pa.predicateName +: visited)
+          else
+          /* We detected a cycle in the predicate definition and thus stop
+           * inspecting the predicate bodies.
+           */
+            (sorts.Snap, false)
       }
 
-      getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, c)
+      case ast.Implies(e0, φ1) =>
+        /* φ1 must be impure, otherwise the first case would have applied. */
+        getOptimalSnapshotSort(φ1, program, visited)
 
-    case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-      /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
-      (toSort(f.typ), false)
+      case ast.And(φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+        getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), program, visited)
 
-    case _ =>
-      (sorts.Snap, false)
-  }
+      case ast.Ite(_, φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+
+        def findCommonSort() = {
+          val (s1, isPure1) = getOptimalSnapshotSort(φ1, program, visited)
+          val (s2, isPure2) = getOptimalSnapshotSort(φ2, program, visited)
+          val s = if (s1 == s2) s1 else sorts.Snap
+          val isPure = isPure1 && isPure2
+          (s, isPure)
+        }
+
+        getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
+
+      case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
+        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
+        (toSort(f.typ), false)
+
+      case _ =>
+        (sorts.Snap, false)
+    }
 
   private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
                                              φ2: ast.Expression,
                                              fIfBothPure: () => (Sort, Boolean),
-                                             c: C)
+                                             program: ast.Program,
+                                             visited: Seq[String])
                                             : (Sort, Boolean) = {
 
-    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, c)
-    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, c)
+    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, program, visited)
+    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, program, visited)
     else fIfBothPure()
   }
 
-  private def mkSnap(φ: ast.Expression, c: C): Term = getOptimalSnapshotSort(φ, c) match {
-    case (sorts.Snap, true) => Unit
-    case (sort, _) => fresh(sort)
+  private def mkSnap(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil): Term =
+    getOptimalSnapshotSort(φ, program, visited) match {
+      case (sorts.Snap, true) => Unit
+      case (sort, _) => fresh(sort)
+    }
+  
+  private def addDirectChunk(h: H, dc: DirectChunk): (H, Option[DirectChunk], Term) = {
+    var matchingChunk: Option[DirectChunk] = None
+    var tEq: Term = True()
+
+    /* Only the first match will be considered. This is incomplete, but sound,
+     * and the underlying assumption is that the input heap is "tidy" in the
+     * sense that there will be at most one chunk that syntactically matches
+     * the given chunk dc.
+     */
+
+    /* TODO: Code duplication is necessary because a FieldChunk has a value
+     *       whereas a predicate chunk has a snap(shot).
+     *       The two should be unified (as VeriFast does).
+     */
+    val chunks = h.values.map {
+      case ch: DirectFieldChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
+        tEq = ch.value === dc.asInstanceOf[DirectFieldChunk].value
+        matchingChunk = Some(ch)
+
+        ch + dc.perm
+
+      case ch: DirectPredicateChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
+        tEq = ch.snap === dc.asInstanceOf[DirectPredicateChunk].snap
+        matchingChunk = Some(ch)
+
+        ch + dc.perm
+
+      case ch => ch
+    }
+
+    val h1 =
+      if (matchingChunk.nonEmpty) H(chunks)
+      else H(chunks) + dc
+
+    (h1, matchingChunk, tEq)
   }
 
   override def pushLocalState() {
-    snapshotCacheFrames = snapshotCache :: snapshotCacheFrames
+    snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
     super.pushLocalState()
   }
 
