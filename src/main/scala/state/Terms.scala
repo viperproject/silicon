@@ -1471,38 +1471,40 @@ object SortWrapper {
 
 /* Magic wands */
 
-case class MagicWandChunkTerm(wand: shapes.MagicWand, source: ast.MagicWand) extends Term {
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
   override val sort = sorts.Unit
-  override val toString = s"${wand.toString} (${source.pos}})"
+  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
 }
 
-sealed trait Shape
+//sealed trait Shape
 
-/* TODO: Consider using regular And/Implies/Ite (Acc is most likely needed in any case) */
-object shapes {
-  case class Acc(id: Symbol, args: Seq[Term], perms: DefaultFractionalPermissions) extends Term with Shape {
-    override val sort = sorts.Unit
+//case class MagicWand(left: Term, right: Term) extends Term /*with Shape*/ {
+//  override val sort = sorts.Unit
+//  override val toString = s"$left --* $right"
+//}
 
-    override val toString =
-      if (args.length == 1)
-        s"acc(${args.head}.$id, $perms)"
-      else
-        s"acc($id(${args.mkString(", ")}), $perms)"
-  }
-
-  case class And(p0: Term, p1: Term) extends BooleanTerm with commonnodes.And[Term] with Shape
-
-  case class Implies(p0: Term, p1: Term) extends BooleanTerm with commonnodes.Implies[Term] with Shape
-
-  case class Ite(p0: Term, p1: Term, p2: Term) extends BooleanTerm with Shape {
-    override lazy val toString = s"$p0 ? $p1 : $p2"
-  }
-
-  case class MagicWand(left: Term, right: Term) extends Term with Shape {
-    override val sort = sorts.Unit
-    override val toString = s"$left --* $right"
-  }
-}
+///* TODO: Consider using regular And/Implies/Ite (Acc is most likely needed in any case) */
+//object shapes {
+//  case class Acc(id: Symbol, args: Seq[Term], perms: DefaultFractionalPermissions) extends Term with Shape {
+//    override val sort = sorts.Unit
+//
+//    override val toString =
+//      if (args.length == 1)
+//        s"acc(${args.head}.$id, $perms)"
+//      else
+//        s"acc($id(${args.mkString(", ")}), $perms)"
+//  }
+//
+//  case class And(p0: Term, p1: Term) extends BooleanTerm with commonnodes.And[Term] with Shape
+//
+//  case class Implies(p0: Term, p1: Term) extends BooleanTerm with commonnodes.Implies[Term] with Shape
+//
+//  case class Ite(p0: Term, p1: Term, p2: Term) extends BooleanTerm with Shape {
+//    override lazy val toString = s"$p0 ? $p1 : $p2"
+//  }
+//
+//
+//}
 
 /* Trigger-related terms */
 

@@ -502,8 +502,8 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Magic wands */
 
-      case mw: ast.MagicWand =>
-        magicWandSupporter.translate(σ, mw, pve, c)(Q)
+//      case mw: ast.MagicWand =>
+//        magicWandSupporter.translate(σ, mw, pve, c)(Q)
 //        println("\n[Evaluator/MagicWand]")
 //        eval(σ, eLeft, pve, c)((tLeft, c1) =>
 //          eval(σ, eRight, pve, c1)((tRight, c2) => {

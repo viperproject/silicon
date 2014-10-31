@@ -40,60 +40,60 @@ trait MagicWandSupporter[ST <: Store[ST],
     case _ => false
   }
 
-  def translate(σ: S, eWand: ast.MagicWand, pve: PartialVerificationError, c: C)
-               (Q: (Term, C) => VerificationResult)
-               : VerificationResult = {
-
-    decider.locally[(shapes.MagicWand, C)](QL =>
-      translate(σ, eWand.left, pve, c)((tLeft, c1) =>
-        translate(σ, eWand.right, pve, c1)((tRight, c2) =>
-          QL(shapes.MagicWand(tLeft, tRight), c2)))
-    ){case (tWand, c1) => Q(tWand, c1)}
-  }
-
-  protected def translate(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
-                         (Q: (Term, C) => VerificationResult)
-                         : VerificationResult =
-
-    e match {
-      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
-          decider.assume(tRcvr !== Null())
-          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
-            Q(shapes.Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2))})
-
-      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
-        evals(σ, eArgs, pve, c)((ts, c1) =>
-          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
-            Q(shapes.Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
-
-      case and: ast.And if !and.isPure =>
-        translate(σ, and.left, pve, c)((tLeft, c1) =>
-          translate(σ, and.right, pve, c1)((tRight, c2) =>
-            Q(shapes.And(tLeft, tRight), c2)))
-
-      case ast.Implies(e0, e1) if !e.isPure =>
-        translate(σ, e0, pve, c)((t0, c1) =>
-          translate(σ, e1, pve, c1)((t1, c2) =>
-            Q(shapes.Implies(t0, t1), c2)))
-
-      case ast.Ite(e0, e1, e2) if !e.isPure =>
-        translate(σ, e0, pve, c)((t0, c1) =>
-          translate(σ, e1, pve, c1)((t1, c2) =>
-            translate(σ, e2, pve, c2)((t2, c3) =>
-              Q(shapes.Ite(t0, t1, t2), c3))))
-
-      case ast.MagicWand(e0, e1) =>
-        assert(!e.isPure, "Found a pure magic wand ... surprise!")
-        translate(σ, e0, pve, c)((t0, c1) =>
-          translate(σ, e1, pve, c1)((t1, c2) =>
-            Q(shapes.MagicWand(t0, t1), c2)))
-
-      case _ if e.isPure =>
-        eval(σ, e, pve, c)(Q)
-
-      case _ => sys.error(s"Assertion $e not yet supported")
-    }
+//  def translate(σ: S, eWand: ast.MagicWand, pve: PartialVerificationError, c: C)
+//               (Q: (Term, C) => VerificationResult)
+//               : VerificationResult = {
+//
+//    decider.locally[(shapes.MagicWand, C)](QL =>
+//      translate(σ, eWand.left, pve, c)((tLeft, c1) =>
+//        translate(σ, eWand.right, pve, c1)((tRight, c2) =>
+//          QL(shapes.MagicWand(tLeft, tRight), c2)))
+//    ){case (tWand, c1) => Q(tWand, c1)}
+//  }
+//
+//  protected def translate(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+//                         (Q: (Term, C) => VerificationResult)
+//                         : VerificationResult =
+//
+//    e match {
+//      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
+//        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
+//          decider.assume(tRcvr !== Null())
+//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+//            Q(shapes.Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2))})
+//
+//      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
+//        evals(σ, eArgs, pve, c)((ts, c1) =>
+//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+//            Q(shapes.Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
+//
+//      case and: ast.And if !and.isPure =>
+//        translate(σ, and.left, pve, c)((tLeft, c1) =>
+//          translate(σ, and.right, pve, c1)((tRight, c2) =>
+//            Q(shapes.And(tLeft, tRight), c2)))
+//
+//      case ast.Implies(e0, e1) if !e.isPure =>
+//        translate(σ, e0, pve, c)((t0, c1) =>
+//          translate(σ, e1, pve, c1)((t1, c2) =>
+//            Q(shapes.Implies(t0, t1), c2)))
+//
+//      case ast.Ite(e0, e1, e2) if !e.isPure =>
+//        translate(σ, e0, pve, c)((t0, c1) =>
+//          translate(σ, e1, pve, c1)((t1, c2) =>
+//            translate(σ, e2, pve, c2)((t2, c3) =>
+//              Q(shapes.Ite(t0, t1, t2), c3))))
+//
+//      case ast.MagicWand(e0, e1) =>
+//        assert(!e.isPure, "Found a pure magic wand ... surprise!")
+//        translate(σ, e0, pve, c)((t0, c1) =>
+//          translate(σ, e1, pve, c1)((t1, c2) =>
+//            Q(shapes.MagicWand(t0, t1), c2)))
+//
+//      case _ if e.isPure =>
+//        eval(σ, e, pve, c)(Q)
+//
+//      case _ => sys.error(s"Assertion $e not yet supported")
+//    }
 
 //  def resolveWand(σ: S, exp: ast.Expression): (ast.MagicWand, Map[ast.LocalVariable, Term]) = {
 //    assert(isDirectWand(exp),
@@ -164,13 +164,16 @@ trait MagicWandSupporter[ST <: Store[ST],
 //   })
 //  }
 
-//  /* TODO: Can we separate it into evaluating a chunk into a ChunkTerm and constructing a chunk carrying
-//   *       that term?
-//   */
-//  def createChunk(γ: ST/*, hPO: H*/, wand: ast.MagicWand) = {
-//    /* Remove all ghost operations and keep only the real rhs of the wand */
-//    val ghostFreeWand = ast.expressions.eraseGhostOperations(wand).asInstanceOf[ast.MagicWand]
-//
+  def createChunk(σ: S, wand: ast.MagicWand, pve: PartialVerificationError, c: C)
+                 (Q: (MagicWandChunk, C) => VerificationResult)
+                 : VerificationResult = {
+
+    val ghostFreeWand = wand.withoutGhostOperations
+    val es = ghostFreeWand.subexpressionsToEvaluate
+
+    evals(σ, es, pve, c)((ts, c1) =>
+      Q(MagicWandChunk(ghostFreeWand, ts), c1))
+
 //    var vs = mutable.ListBuffer[ast.LocalVariable]()
 //    var ts = mutable.ListBuffer[Term]()
 //    var i = 0
@@ -196,7 +199,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 //     * from ghostFreeWand when needed.
 //     */
 ////    MagicWandChunk[H](ghostFreeWand, renamedWand, vs, ts/*, hPO*/)
-//  }
+  }
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
    *       structure. Try to merge the two.

@@ -57,8 +57,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
   private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
-    return Success()
-
     val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
     var result: VerificationResult = Success()
 

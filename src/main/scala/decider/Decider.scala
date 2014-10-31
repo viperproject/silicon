@@ -17,7 +17,6 @@ import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import state.{MagicWandChunk, MagicWandChunkIdentifier, DirectChunk, SymbolConvert}
 import state.terms._
-import state.terms.utils._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
@@ -359,11 +358,11 @@ class DefaultDecider[ST <: Store[ST],
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
     id match {
-      case mwid: MagicWandChunkIdentifier =>
-        val mwchs = h.values.collect{case ch: MagicWandChunk => ch}
-        println(s"mwid = $mwid")
-        println(s"mwchs = $mwchs")
-        mwchs.find(mwch => compareWands(σ, mwid.wand, mwch.wand)).asInstanceOf[Option[CH]]
+      case mwChunkId: MagicWandChunkIdentifier =>
+        val mwChunks = h.values.collect{case ch: MagicWandChunk => ch}
+        println(s"mwChunkId = $mwChunkId")
+        println(s"mwChunks = $mwChunks")
+        mwChunks.find(ch => compareWandChunks(σ, mwChunkId.chunk, ch)).asInstanceOf[Option[CH]]
 
       case _ =>
         val chunks = h.values collect {
@@ -397,23 +396,17 @@ class DefaultDecider[ST <: Store[ST],
 		chunk
 	}
 
-  private def compareWands(σ: S, wand1: shapes.MagicWand, wand2: shapes.MagicWand): Boolean = {
-    def eq(t1: Term, t2: Term): Boolean = (t1, t2) match {
-      case (shapes.And(t11, t12), shapes.And(t21, t22)) =>
-        eq(t11, t21) && eq(t12, t22)
-      case (shapes.Acc(id1, ts1, tp1), shapes.Acc(id2, ts2, tp2)) if id1 == id1 && ts1.length == ts2.length =>
-        check(σ, And(ts1.zip(ts2).map (p => p._1 === p._2) ++ List(tp1 === tp2)))
-      case (shapes.Implies(t11, t12), shapes.Implies(t21, t22)) =>
-        eq(t11, t21) && eq(t12, t22)
-      case (shapes.Ite(t11, t12, t13), shapes.Ite(t21, t22, t23)) =>
-        eq(t11, t21) && eq(t12, t22) && eq(t13, t23)
-      case (_: BooleanTerm, _: BooleanTerm) =>
-        check(σ, t1 === t2)
-      case _ =>
-        false
-    }
-
-    eq(wand1.left, wand2.left) && eq(wand1.right, wand2.right)
+  private def compareWandChunks(σ: S, chWand1: MagicWandChunk, chWand2: MagicWandChunk): Boolean = {
+    println(s"\n[compareWandChunks]")
+    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
+    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
+    var b = chWand1.ghostFreeWand.structurallyMatches(chWand2.ghostFreeWand)
+    println(s"  after structurallyMatches: b = $b")
+    b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
+    println(s"  after comparing evaluatedTerms.length's: b = $b")
+    b = b && check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)))
+    println(s"  after comparing evaluatedTerms: b = $b")
+    b
   }
 
   /* Fresh symbols */

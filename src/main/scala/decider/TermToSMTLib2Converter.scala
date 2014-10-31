@@ -220,7 +220,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case Distinct(symbols) =>
       parens("distinct" <+> ssep(symbols.toSeq map render, space))
 
-    case _: MagicWandChunkTerm | _: Shape =>
+    case _: MagicWandChunkTerm =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
   }
 

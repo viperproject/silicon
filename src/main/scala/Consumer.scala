@@ -258,18 +258,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
         φ match {
           case wand: ast.MagicWand =>
-            eval(σ, wand, pve, c)((tWand, c1) => {
+//            eval(σ, wand, pve, c)((tWand, c1) => {
+            magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
               val ve = pve dueTo MagicWandChunkNotFound(wand)
-              QL(σ, MagicWandChunkIdentifier(tWand.asInstanceOf[shapes.MagicWand]), ve, c1)})
+              QL(σ, chWand.id, ve, c1)})
           case v: ast.LocalVariable =>
-            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
+            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             val ve = pve dueTo NamedMagicWandChunkNotFound(v)
-            QL(σ, MagicWandChunkIdentifier(tWandChunk.wand), ve, c)
+            QL(σ, tWandChunk.id, ve, c)
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
       case pckg @ ast.Packaging(eWand, eIn) =>
-        //        val pve = PackagingFailed(pckg)
+//        val pve = PackagingFailed(pckg)
         /* TODO: Creating a new error reason here will probably yield confusing error
          *       messages if packaging fails as part of exhaling a method's precondition
          *       during a method call.
@@ -284,11 +285,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail, exhaleExt = true)
             val rhs = eWand.right
             consume(σEmp, σEmp.h, FullPerm(), rhs, pve, c2)(scala.Function.untupled(QB))})} /* exhale_ext */
-        ){case (_, _, _, c3) => /* result of exhale_ext, h1 = σUsed' */
-              /* ??? Producing the wand is not an option because we need to pass in σ.h */
-//            val ch = magicWandSupporter.createChunk(σ.γ, /*h,*/ eWand)
-            eval(σ, eWand, pve, c)((tWand, c1) => {
-              val h2 = h + MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand]) /* h2 = σUsed'' */
+        ){case (_, _, _, c1) => /* result of exhale_ext, h1 = σUsed' */
+            magicWandSupporter.createChunk(σ, eWand, pve, c1)((chWand, c3) => {
+              val h2 = h + chWand /* h2 = σUsed'' */
               val σEmp = Σ(σ.γ, Ø, σ.g)
               val c4 = c3.copy(reserveHeaps = (c3.reserveHeaps.head + h2) +: c3.reserveHeaps.drop(2),
                                exhaleExt = c.exhaleExt)
@@ -301,8 +300,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case _eWand: ast.MagicWand =>
             (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info))
           case v: ast.LocalVariable =>
-            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
-            val _eWand = tWandChunk.source
+            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
+            val _eWand = tWandChunk.ghostFreeWand
             (_eWand, ast.And(_eWand.left, v)(v.pos, v.info))
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }

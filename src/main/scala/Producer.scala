@@ -15,6 +15,7 @@ import interfaces.decider.Decider
 import state.terms._
 import state.{DirectChunk, DefaultContext, MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import reporting.Bookkeeper
+import supporters.MagicWandSupporter
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -24,7 +25,8 @@ trait DefaultProducer[ST <: Store[ST],
        with HasLocalState
     { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
                     with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
-                    with Brancher[ST, H, S, DefaultContext[H]] =>
+                    with Brancher[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
@@ -202,10 +204,11 @@ trait DefaultProducer[ST <: Store[ST],
       case wand: ast.MagicWand =>
         println("\n[Producer/MagicWand]")
         println(s"  wand = $wand")
-        eval(σ, wand, pve, c)((tWand, c1) => {
-          println(s"  tWand = $tWand")
-//        val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
-          Q(σ.h + MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand]), c)})
+        // val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
+        // eval(σ, wand, pve, c)((tWand, c1) => {
+        magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
+          println(s"  chWand = $chWand")
+          Q(σ.h + chWand, c)})
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

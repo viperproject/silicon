@@ -20,6 +20,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import viper.silicon.state._
 import state.terms.perms.IsPositive
+import supporters.MagicWandSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -29,7 +30,8 @@ trait DefaultExecutor[ST <: Store[ST],
 		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
 									  with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
 									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-									  with Brancher[ST, H, S, DefaultContext[H]] =>
+									  with Brancher[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
   private type P = DefaultFractionalPermissions
@@ -200,12 +202,20 @@ trait DefaultExecutor[ST <: Store[ST],
             assert(rhs.isInstanceOf[ast.MagicWand], s"Expected magic wand but found $rhs (${rhs.getClass.getName}})")
             val wand = rhs.asInstanceOf[ast.MagicWand]
             val pve = LetWandFailed(ass)
-            eval(σ, wand, pve, c)((tWand, c1) => {
-              decider.getChunk[MagicWandChunk](σ, σ.h, MagicWandChunkIdentifier(tWand.asInstanceOf[shapes.MagicWand])) match {
-                case Some(ch) =>
-                  Q(σ \+ (v, MagicWandChunkTerm(ch.wand, wand)), c)
-                case None =>
-                  Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))}})
+            magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
+              Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
+//            eval(σ, wand, pve, c)((tWand, c1) => {
+//            magicWandSupporter.createChunk(σ, wand, pve, c)((tWandChunk, c1) => {
+//              /* TODO: Instead of looking up tWandChunk in the heap (which can fail if we
+//               *       don't have such a magic wand instance) we could directly assign
+//               *       tWandChunk to v. The failure would then be reported later, namely,
+//               *       when we try to apply v.
+//               */
+//              decider.getChunk[MagicWandChunk](σ, σ.h, tWandChunk.id) match {
+//                case Some(ch) =>
+//                  Q(σ \+ (v, MagicWandChunkTerm(ch.wand, wand)), c)
+//                case None =>
+//                  Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))}})
 
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
@@ -322,7 +332,7 @@ trait DefaultExecutor[ST <: Store[ST],
                   val ncs = dcs flatMap {
                     case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
                     case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
-                    /*case _: MagicWandChunk => None*/}
+                    case _: MagicWandChunk => None}
 
                     /* Producing Access is unfortunately not an option here
                      * since the following would fail due to productions
@@ -367,8 +377,6 @@ trait DefaultExecutor[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
 
-
-
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
         val σEmp = Σ(σ.γ, Ø, σ.g)
@@ -382,9 +390,10 @@ trait DefaultExecutor[ST <: Store[ST],
           consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
             /* TODO: (Still valid?) Producing the wand is not an option because we need to pass in σ.h */
             assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
-            //              val chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
-            eval(σ, wand.withoutGhostOperations, pve, c3)((tWand, c4) => {
-              val chWand = MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand])
+            // val chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
+//            eval(σ, wand.withoutGhostOperations, pve, c3)((tWand, c4) => {
+            magicWandSupporter.createChunk(σ, wand, pve, c3)((chWand, c4) => {
+//              val chWand = MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand])
               val c5 = c4.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
               Q(σ \ (c4.reserveHeaps(2) + chWand), c5)})})})
 
@@ -443,13 +452,10 @@ trait DefaultExecutor[ST <: Store[ST],
               QL(σ1, wand, c1)})
 
           case v: ast.LocalVariable =>
-            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
-            /* TODO: Could get the chunk from the MagicWandChunkTerm and simply subtract if from
-             *       the heap instead of getting it again first via MWChunkIdentifier.
-             */
-            decider.getChunk[MagicWandChunk](σ, σ.h, MagicWandChunkIdentifier(tWandChunk.wand)) match {
+            val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
+            decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id) match {
               case Some(ch) =>
-                QL(σ \- ch, tWandChunk.source, c)
+                QL(σ \- ch, chWand.ghostFreeWand, c)
               case None =>
                 Failure[ST, H, S](pve dueTo NamedMagicWandChunkNotFound(v))}
 
