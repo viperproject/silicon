@@ -1,4 +1,6 @@
 field f: Bool
+field g: Int
+field h: Ref
 
 predicate M(x: Ref) { true }
 predicate B(x: Ref) { acc(x.f) }
@@ -10,88 +12,169 @@ function get(x: Ref, i: Int): Bool
 //{ unfolding acc(B(x)) in x.f }
 { i != 0 }
 
-method test01(x: Ref, i: Int)
-  requires acc(M(x))
+//method test01(x: Ref, i: Int)
+//  requires acc(M(x))
+//{
+//  package true --* (i == 0 ==> acc(M(x)))
+//
+//  assert true --* (i == 0 ==> acc(M(x)))
+//  assert i != 0 ==> acc(M(x))
+//
+//  //:: ExpectedOutput(assert.failed:insufficient.permission)
+//  assert acc(M(x))
+//}
+//
+//method test04(x: Ref, i: Int)
+//  requires acc(T(x)) && acc(E(x))
+//{
+//  package true --* (i == 0 ? acc(T(x)) : acc(E(x)))
+//
+//  //:: ExpectedOutput(assert.failed:insufficient.permission)
+//  assert i == 0 ==> acc(T(x))
+//}
+//
+//method test03(x: Ref, i: Int)
+//  requires acc(T(x)) && acc(E(x))
+//{
+//  package true --* (i == 0 ? acc(T(x)) : acc(E(x)))
+//
+//  assert i != 0 ==> acc(T(x))
+//  assert i == 0 ==> acc(E(x))
+//
+//  assert i == 0 ? acc(E(x)) : acc(T(x))
+//
+//  //:: ExpectedOutput(assert.failed:insufficient.permission)
+//  assert acc(E(x)) && acc(T(x))
+//}
+//
+//method test05(x: Ref, i: Int)
+//  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
+//{
+//  package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//
+//  assert get(x, i) ? acc(E(x)) : acc(T(x))
+//
+//  //:: ExpectedOutput(assert.failed:insufficient.permission)
+//  assert acc(E(x)) && acc(T(x))
+//}
+//
+//method test06(x: Ref, i: Int)
+//  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
+//{
+//  package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//  apply acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//
+//  assert acc(B(x)) && acc(E(x)) && acc(T(x))
+//}
+//
+//method test07(x: Ref, i: Int)
+//  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
+//{
+//  package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//  apply acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//
+//  assert acc(B(x)) && acc(E(x)) && acc(T(x))
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false
+//}
+//
+//method test10(x: Ref, i: Int)
+//  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
+//{
+//  if (i == 0) {
+//    package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//    assert acc(T(x))
+//  } else {
+//    package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//    assert acc(E(x))
+//  }
+//
+//  apply acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+//
+//  assert acc(B(x)) && acc(T(x)) && acc(E(x))
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false
+//}
+
+//method test11(x: Ref, b: Bool)
+//  requires acc(x.g) && acc(x.h)
+//{
+////  package true --* acc(x.g, b ? write : none) && acc(x.h, b ? none : write) /* TODO: Currently not allowed since perm expr have to be positive */
+//  package true --* (b ? acc(x.g) : acc(x.h))
+//
+//  if (b) {
+//    assert perm(x.g) == none && perm(x.h) == write
+//  } else {
+//    assert perm(x.g) == write && perm(x.h) == none
+//  }
+//}
+
+//method test13(x: Ref, b: Bool)
+//  requires acc(x.g) && acc(x.h)
+//{
+//  package true --* acc(x.g, b ? write : 1/10) && acc(x.h, b ? 1/10 : write)
+//
+//  if (b) {
+//    assert perm(x.g) == none && perm(x.h) == 9/10
+//  } else {
+//    assert perm(x.g) == 9/10 && perm(x.h) == none
+//  }
+//}
+
+method test12(x: Ref)
+  requires acc(x.f) && acc(x.g) && acc(x.h)
 {
-  package true --* (i == 0 ==> acc(M(x)))
+  define A acc(x.f)
 
-  assert true --* (i == 0 ==> acc(M(x)))
-  assert i != 0 ==> acc(M(x))
+  define B acc(x.f) && x.f == lhs(x.f) &&
+           acc(x.g, x.f ? write : 1/10) &&
+           acc(x.h, x.f ? 1/10 : write)
+//  package acc(x.f) --* acc(x.f) && (x.f ? acc(x.g) : acc(x.h))
+  package A --* B
 
-  //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert acc(M(x))
-}
+  assert acc(x.f)
+  assert perm(x.g) + perm(x.h) >= 2/10
 
-method test04(x: Ref, i: Int)
-  requires acc(T(x)) && acc(E(x))
-{
-  package true --* (i == 0 ? acc(T(x)) : acc(E(x)))
-
-  //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert i == 0 ==> acc(T(x))
-}
-
-method test03(x: Ref, i: Int)
-  requires acc(T(x)) && acc(E(x))
-{
-  package true --* (i == 0 ? acc(T(x)) : acc(E(x)))
-
-  assert i != 0 ==> acc(T(x))
-  assert i == 0 ==> acc(E(x))
-
-  assert i == 0 ? acc(E(x)) : acc(T(x))
-
-  //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert acc(E(x)) && acc(T(x))
-}
-
-method test05(x: Ref, i: Int)
-  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
-{
-  package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-
-  assert get(x, i) ? acc(E(x)) : acc(T(x))
-
-  //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert acc(E(x)) && acc(T(x))
-}
-
-method test06(x: Ref, i: Int)
-  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
-{
-  package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-  apply acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-
-  assert acc(B(x)) && acc(E(x)) && acc(T(x))
-}
-
-method test07(x: Ref, i: Int)
-  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
-{
-  package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-  apply acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-
-  assert acc(B(x)) && acc(E(x)) && acc(T(x))
-
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
-}
-
-method test10(x: Ref, i: Int)
-  requires acc(M(x)) && acc(B(x)) && acc(T(x)) && acc(E(x))
-{
-  if (i == 0) {
-    package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-    assert acc(T(x))
+  var b: Bool
+  if (b) {
+    x.f := b
+    apply A --* B
+    assert true /* TODO: Triggers a heap compression - should not be necessary */
+    assert acc(x.f) && acc(x.g) && acc(x.h)
   } else {
-    package acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
-    assert acc(E(x))
+    x.f := b
+    apply A --* B
+    assert acc(x.f) && acc(x.g) && acc(x.h)
   }
+}
 
-  apply acc(M(x)) --* acc(B(x)) && (get(x, i) ? acc(T(x)) : acc(E(x)))
+method test14(x: Ref)
+  requires acc(x.f)
+  requires acc(x.f)
+              --*
+           acc(x.f) && x.f == lhs(x.f) &&
+           acc(x.g, x.f ? write : 1/10) &&
+           acc(x.h, x.f ? 1/10 : write)
+{
+  apply acc(x.f)
+           --*
+        acc(x.f) && x.f == lhs(x.f) &&
+        acc(x.g, x.f ? write : 1/10) &&
+        acc(x.h, x.f ? 1/10 : write)
 
-  assert acc(B(x)) && acc(T(x)) && acc(E(x))
+  assert x.f ? perm(x.g) == write : perm(x.h) == write
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
+  assert perm(x.g) == write && perm(x.h) == write
 }
+
+//method testXZY(x: Ref, n: Int)
+//  requires acc(x.g)
+//  requires x.g == n
+//{
+//  package acc(x.g) --* acc(x.g)
+//  apply acc(x.g) --* acc(x.g)
+//  assert x.g == n /* TODO: Currently fails */
+//}

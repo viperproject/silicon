@@ -32,8 +32,8 @@ method test03(xs: Ref) {
 }
 
 method test04(xs: Ref) {
-  while (xs != null) {
-    //:: ExpectedOutput(letwand.failed:wand.not.found)
-    wand w := true --* true
-  }
+  wand w := true --* true
+
+  //:: ExpectedOutput(apply.failed:wand.not.found)
+  apply w
 }
