@@ -171,10 +171,10 @@ trait DefaultProducer[ST <: Store[ST],
           else {
             assume(tRcvr !== Null())
           evalp(σ, gain, pve, c1)((pGain, c2) => {
-            assume(NoPerm() < pGain)
-              val s = sf(toSort(field.typ))
-              val pNettoGain = pGain * p
-              val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
+            assume(perms.IsMaybePositive(pGain) /*NoPerm() < pGain*/)
+            val s = sf(toSort(field.typ))
+            val pNettoGain = pGain * p
+            val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
             assume(t)
             val c3 = c2.snapshotRecorder match {
@@ -188,7 +188,7 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           evalp(σ, gain, pve, c1)((pGain, c2) => {
-            assume(NoPerm() < pGain)
+            assume(perms.IsMaybePositive(pGain) /*NoPerm() < pGain*/)
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = pGain * p
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)

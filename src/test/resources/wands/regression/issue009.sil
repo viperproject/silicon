@@ -1,0 +1,17 @@
+field f: Ref
+
+predicate P(x: Ref) { true }
+predicate Q() { true }
+predicate R(x: Ref) { acc(x.f, 1/2) && acc(P(x.f)) && (acc(x.f, 1/2) && acc(P(x.f)) --* acc(Q())) }
+
+method test01(y: Ref)
+  requires acc(R(y))
+  requires acc(y.f)
+{
+  package
+    true
+      --*
+    unfolding acc(R(y)) in
+    applying (acc(y.f, 1/2) && acc(P(y.f)) --* acc(Q())) in
+    acc(Q())
+}

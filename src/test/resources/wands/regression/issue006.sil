@@ -1,0 +1,18 @@
+field val : Int;
+
+//method test01(l: Ref)
+//  requires acc(l.val)
+//{
+//  var x: Int := l.val
+//  package acc(l.val) && l.val==now(l.val) --* acc(l.val)
+//  apply acc(l.val) && l.val==x --* acc(l.val) // should NOT fail, but does
+//}
+//
+//
+//method test02(l: Ref)
+//  requires acc(l.val)
+//{
+//  var x: Int := l.val
+//  package acc(l.val) && l.val==l.val --* acc(l.val)
+//  apply acc(l.val) && l.val==x --* acc(l.val) // SHOULD fail, and does
+//}

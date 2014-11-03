@@ -7,6 +7,13 @@ predicate B(x: Ref) { acc(x.f) }
 predicate T(x: Ref) { true }
 predicate E(x: Ref) { true }
 
+//method test15(x: Ref, b: Bool)
+//  requires acc(x.f) && acc(x.g)
+//{
+////  package (b ==> acc(x.f)) --* acc(x.g) // TODO: Allow impure conditionals
+//  package acc(x.f, b ? write : none) --* acc(x.g)
+//}
+
 function get(x: Ref, i: Int): Bool
 //  requires acc(B(x))
 //{ unfolding acc(B(x)) in x.f }
@@ -101,8 +108,8 @@ function get(x: Ref, i: Int): Bool
 //method test11(x: Ref, b: Bool)
 //  requires acc(x.g) && acc(x.h)
 //{
-////  package true --* acc(x.g, b ? write : none) && acc(x.h, b ? none : write) /* TODO: Currently not allowed since perm expr have to be positive */
-//  package true --* (b ? acc(x.g) : acc(x.h))
+////  package true --* (b ? acc(x.g) : acc(x.h)) // TODO: Allow impure conditionals
+//  package true --* acc(x.g, b ? write : none) && acc(x.h, b ? none : write)
 //
 //  if (b) {
 //    assert perm(x.g) == none && perm(x.h) == write
@@ -111,64 +118,59 @@ function get(x: Ref, i: Int): Bool
 //  }
 //}
 
-//method test13(x: Ref, b: Bool)
-//  requires acc(x.g) && acc(x.h)
-//{
-//  package true --* acc(x.g, b ? write : 1/10) && acc(x.h, b ? 1/10 : write)
-//
-//  if (b) {
-//    assert perm(x.g) == none && perm(x.h) == 9/10
-//  } else {
-//    assert perm(x.g) == 9/10 && perm(x.h) == none
-//  }
-//}
-
 method test12(x: Ref)
-  requires acc(x.f) && acc(x.g) && acc(x.h)
+  requires acc(x.f) && acc(x.g, 2/3) && acc(x.h, 2/3)
 {
   define A acc(x.f)
 
-  define B acc(x.f) && x.f == lhs(x.f) &&
-           acc(x.g, x.f ? write : 1/10) &&
-           acc(x.h, x.f ? 1/10 : write)
-//  package acc(x.f) --* acc(x.f) && (x.f ? acc(x.g) : acc(x.h))
+  // TODO: Allow impure conditionals
+  define B acc(x.f) /*&& x.f == lhs(x.f)*/ &&
+           acc(x.g, x.f ? 1/2 : none) &&
+           acc(x.h, !x.f ? 2/3 : none)
+
   package A --* B
 
-  assert acc(x.f)
-  assert perm(x.g) + perm(x.h) >= 2/10
+//  assert acc(x.f)
+//  assert perm(x.g) + perm(x.h) == write
 
-  var b: Bool
-  if (b) {
-    x.f := b
-    apply A --* B
-    assert true /* TODO: Triggers a heap compression - should not be necessary */
-    assert acc(x.f) && acc(x.g) && acc(x.h)
-  } else {
-    x.f := b
-    apply A --* B
-    assert acc(x.f) && acc(x.g) && acc(x.h)
-  }
+  apply A --* B
+
+//  assert acc(x.f)
+  assert acc(x.g, 1/2)
+  assert acc(x.h, 2/3)
+
+//  var b: Bool
+//  if (b) {
+//    x.f := b
+//    apply A --* B
+//    assert true /* TODO: Triggers a heap compression - should not be necessary */
+//    assert acc(x.f) && acc(x.g) && acc(x.h)
+//  } else {
+//    x.f := b
+//    apply A --* B
+//    assert acc(x.f) && acc(x.g) && acc(x.h)
+//  }
 }
 
-method test14(x: Ref)
-  requires acc(x.f)
-  requires acc(x.f)
-              --*
-           acc(x.f) && x.f == lhs(x.f) &&
-           acc(x.g, x.f ? write : 1/10) &&
-           acc(x.h, x.f ? 1/10 : write)
-{
-  apply acc(x.f)
-           --*
-        acc(x.f) && x.f == lhs(x.f) &&
-        acc(x.g, x.f ? write : 1/10) &&
-        acc(x.h, x.f ? 1/10 : write)
-
-  assert x.f ? perm(x.g) == write : perm(x.h) == write
-
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert perm(x.g) == write && perm(x.h) == write
-}
+//method test14(x: Ref)
+//  requires acc(x.f)
+//  requires acc(x.f)
+//              --*
+//           acc(x.f) && x.f == lhs(x.f) &&
+//           acc(x.g, x.f ? write : 1/10) &&
+//           acc(x.h, x.f ? 1/10 : write)
+//{
+//  apply acc(x.f)
+//           --*
+//        acc(x.f) && x.f == lhs(x.f) &&
+//        acc(x.g, x.f ? write : 1/10) &&
+//        acc(x.h, x.f ? 1/10 : write)
+//
+//  assert x.f ? perm(x.g) == write : perm(x.h) == write
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert perm(x.g) == write && perm(x.h) == write
+//}
 
 //method testXZY(x: Ref, n: Int)
 //  requires acc(x.g)

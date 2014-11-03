@@ -360,8 +360,8 @@ class DefaultDecider[ST <: Store[ST],
     id match {
       case mwChunkId: MagicWandChunkIdentifier =>
         val mwChunks = h.values.collect{case ch: MagicWandChunk => ch}
-        println(s"mwChunkId = $mwChunkId")
-        println(s"mwChunks = $mwChunks")
+//        println(s"mwChunkId = $mwChunkId")
+//        println(s"mwChunks = $mwChunks")
         mwChunks.find(ch => compareWandChunks(σ, mwChunkId.chunk, ch)).asInstanceOf[Option[CH]]
 
       case _ =>
@@ -397,15 +397,16 @@ class DefaultDecider[ST <: Store[ST],
 	}
 
   private def compareWandChunks(σ: S, chWand1: MagicWandChunk, chWand2: MagicWandChunk): Boolean = {
-    println(s"\n[compareWandChunks]")
-    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
-    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
+//    println(s"\n[compareWandChunks]")
+//    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
+//    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
     var b = chWand1.ghostFreeWand.structurallyMatches(chWand2.ghostFreeWand)
-    println(s"  after structurallyMatches: b = $b")
+//    println(s"  after structurallyMatches: b = $b")
     b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
-    println(s"  after comparing evaluatedTerms.length's: b = $b")
+//    println(s"  after comparing evaluatedTerms.length's: b = $b")
     b = b && check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)))
-    println(s"  after comparing evaluatedTerms: b = $b")
+//    println(s"  after comparing evaluatedTerms: b = $b")
+
     b
   }
 

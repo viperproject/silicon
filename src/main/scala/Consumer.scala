@@ -155,7 +155,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val σC = combine(σ, h, c)
         withChunkIdentifier(σC, locacc, true, pve, c)((id, c1) =>
           evalp(σC, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σC, IsPositive(tPerm)){
+            decider.assert(σC, perms.IsMaybePositive(tPerm) /*IsPositive(tPerm)*/){
               case true =>
                 consumePermissions(σC, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) => {
                   val c4 = c3.snapshotRecorder match {
