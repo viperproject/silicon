@@ -229,7 +229,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             else Stack(h)
 
           magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-            decider.getChunk[MagicWandChunk](σC, h1, id) match {
+            decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
               case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
               case _ => (None, h1, c1)
             }
@@ -309,9 +309,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val σWV = σ //\+ Γ(wandValues)
         val σEmp = Σ(σ.γ, Ø, σ.g)
 //        val eLHSAndWand = ast.And(eWandOrVar.left, eWandOrVar)(eWandOrVar.left.pos, eWandOrVar.left.info)
-        println(s"eLHSAndWand = $eLHSAndWand")
+//        println(s"eLHSAndWand = $eLHSAndWand")
         consume(σEmp \ σWV.γ, h, FullPerm(), eLHSAndWand, pve, c/*.copy(reinterpretWand = false)*/)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
-          println(s"chs1 = $chs1")
+//          println(s"chs1 = $chs1")
           assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
           val ch = chs1.last.asInstanceOf[MagicWandChunk]
           val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)/*.copy(reinterpretWand = c.reinterpretWand)*/
@@ -393,7 +393,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ =>
         val σC = combine(σ, h, c)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
-        decider.tryOrFail[(H, Term, List[CH], C)](σC)((σC1, QS, QF) => {
+        decider.tryOrFail[(H, Term, List[CH], C)](σC, c0)((σC1, QS, QF) => {
           eval(σC1, φ, pve, c0)((t, c1) =>
             decider.assert(σC1, t) {
               case true =>

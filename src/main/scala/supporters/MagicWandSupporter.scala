@@ -3,7 +3,6 @@ package silicon
 package supporters
 
 import com.weiglewilczek.slf4s.Logging
-import scala.collection.mutable
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.InsufficientPermission
 import interfaces.{Evaluator, VerificationResult, Failure}
@@ -169,7 +168,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                  : VerificationResult = {
 
     val ghostFreeWand = wand.withoutGhostOperations
-    val es = ghostFreeWand.subexpressionsToEvaluate
+    val es = ghostFreeWand.subexpressionsToEvaluate(c.program)
+//    println(s"es = $es")
 
     evals(σ, es, pve, c)((ts, c1) =>
       Q(MagicWandChunk(ghostFreeWand, ts), c1))
@@ -309,7 +309,7 @@ trait MagicWandSupporter[ST <: Store[ST],
                                     c: C)
                                    : (H, Option[DirectChunk], P, C) = {
 
-    decider.getChunk[DirectChunk](σ, h, id) match {
+    decider.getChunk[DirectChunk](σ, h, id, c) match {
       case result @ Some(ch) =>
         val (pLost, pKeep, pToConsume) =
           if (decider.check(σ, IsAsPermissive(ch.perm, pLoss)))

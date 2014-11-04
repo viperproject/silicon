@@ -1,0 +1,147 @@
+// TODO: Allow impure conditionals (issue #9)
+
+field f: Bool
+field g: Int
+field h: Ref
+
+method test5a(x: Ref)
+  requires acc(x.f) && acc(x.g, write)
+{
+  define A acc(x.f)
+  define B acc(x.f) && acc(x.g, x.f ? write : none)
+
+    // h: x.f |-> tf # w,  x.g |-> tg # w
+  package A --* B
+    // h: x.f |-> tf # w,  x.g |-> tg # w - (tf' ? w : n)
+  apply A --* B
+    // h: x.f |-> tf'' # w,  x.g |-> tg  # w - (tf' ? w : n),
+    //                       x.g |-> tg' # tf'' ? w : n
+    //
+    // (TODO: Should be tf instead of tf'', this is an incompleteness of the
+    // current implementation of apply A --* B, where A is consumed and B is
+    // produced, which can havoc locations that which all permissions are
+    // consumed as part of A, although permissions are "re-gained" as part of B.)
+    //
+    // The heap is compressed into
+    //
+    // h: x.f |-> tf'' # w,  x.g |-> tg'' # w - (tf' ? w : n) + (tf'' ? w : n)
+    //
+    // and the assumption that  w - (tf' ? w : n) + (tf'' ? w : n) <= w  is
+    // added to the path conditions (and tg'' is conditionally related to tg and tg').
+    //
+    // This implicitly constraints the values of tf' and tf'', namely, by
+    // ruling out that tf' == false and tf'' == true, which would correspond to
+    // acc(x.g) not having been put into the wand, but later on taken out of
+    // it. This leaves enough uncertainty, however, so that we don't know (yet)
+    // whether or not we have permissions to x.g.
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(x.g, 1/1000)
+}
+
+method test5b(x: Ref)
+  requires acc(x.f) && acc(x.g, write)
+{
+  define A acc(x.f)
+  define B acc(x.f) && acc(x.g, x.f ? write : none)
+
+  package A --* B
+  apply A --* B
+
+  /* Up to here, test5b is the same as test5a */
+
+    // h: x.f |-> tf'' # w,  x.g |-> tg # w - (tf' ? w : n) + (tf'' ? w : n)
+  if (x.f) {
+    assert acc(x.g) /* Now we know */
+  }
+}
+
+method test20a(x: Ref)
+  requires acc(x.f) && acc(x.g, write) && acc(x.h, write)
+{
+  define A acc(x.f)
+  define B acc(x.f) && acc(x.g, x.f ? write : none) && acc(x.h, !x.f ? write : none)
+
+    // h: x.f |-> tf # w,  x.g |-> tg # w,  x.h |-> th # w
+  package A --* B
+    // h: x.f |-> tf # w,  x.g |-> tg # w - (tf' ? w : n),  x.h |-> th # w - (!tf' ? w : n)
+  apply A --* B
+    // h: x.f |-> tf'' # w,  x.g |-> tg  # w - (tf' ? w : n),  x.h |-> th  # w - (!tf' ? w : n)
+    //                       x.g |-> tg' # tf'' ? w : n,       x.h |-> th' # !tf'' ? w : n
+    //
+    // After a heap compression:
+    //
+    // h: x.f |-> tf'' # w,  x.g |-> tg'' # w - (tf' ? w : n) + (tf'' ? w : n),
+    //                       x.h |-> th'' # w - (!tf' ? w : n) + (!tf'' ? w : n)
+    //
+    // π: w - (tf' ? w : n) + (tf'' ? w : n) <= 1,
+    //    w - (!tf' ? w : n) + (!tf'' ? w : n) <= 1
+    //
+    // This gives rise to the following table (where t/f denote true/false):
+    //
+    //    tf' | tf'' | permission constraints for x.f, x.g | possible?
+    //   --------------------------------------------------------------
+    //     t  |  t   | w - w + w <= w,  w - n + n <= w     |  yes
+    //     t  |  f   | w - w + n <= w,  w - n + w <= w     |  no
+    //     f  |  t   | w - n + w <= w,  w - w + n <= w     |  no
+    //     f  |  f   | w - n + n <= w,  w - w + w <= w     |  yes
+    //   --------------------------------------------------------------
+    //
+    // Hence, we now know that we either gave permissions to x.f away and got
+    // it back (and kept those to x.g in the meantime), or the other way around.
+
+  assert acc(x.f) && acc(x.g) && acc(x.h)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test20b(x: Ref)
+  requires acc(x.f) && acc(x.g, write) && acc(x.h, write)
+{
+  /* Same wand as in test20a */
+  define A acc(x.f)
+  define B acc(x.f) && acc(x.g, x.f ? write : none) && acc(x.h, !x.f ? write : none)
+
+  package A --* B
+
+  assert    (perm(x.g) == write && perm(x.h) == none)
+         || (perm(x.h) == write && perm(x.g) == none)
+
+  assert    (perm(x.g) == write || perm(x.h) == write)
+         && perm(x.g) + perm(x.h) == write
+
+  if (x.f) {
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert acc(x.h)
+  }
+}
+
+method test30(x: Ref)
+  requires acc(x.f)
+  requires acc(x.f)
+              --*
+           acc(x.f) &&
+           acc(x.g, x.f ? write : none) &&
+           acc(x.h, x.f ? none : write)
+{
+  apply acc(x.f)
+           --*
+        acc(x.f) &&
+        acc(x.g, x.f ? write : none) &&
+        acc(x.h, x.f ? none : write)
+
+  assert x.f ? perm(x.g) == write : perm(x.h) == write
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert perm(x.g) == write && perm(x.h) == write
+}
+
+//method testXZY(x: Ref, n: Int)
+//  requires acc(x.g)
+//  requires x.g == n
+//{
+//  package acc(x.g) --* acc(x.g)
+//  apply acc(x.g) --* acc(x.g)
+//  assert x.g == n /* TODO: Currently fails */
+//}

@@ -50,7 +50,7 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
 
-  protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -276,12 +276,12 @@ trait DefaultExecutor[ST <: Store[ST],
         a match {
           /* "assert true" triggers a heap compression. */
           case _: ast.True =>
-            heapCompressor.compress(σ, σ.h)
+            heapCompressor.compress(σ, σ.h, c)
             Q(σ, c)
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.False =>
-            decider.tryOrFail[(S, C)](σ)((σ1, QS, QF) => {
+            decider.tryOrFail[(S, C)](σ, c)((σ1, QS, QF) => {
               if (decider.checkSmoke())
                 QS(σ1, c)
               else
@@ -354,7 +354,7 @@ trait DefaultExecutor[ST <: Store[ST],
                      *
                      */
                     val id = PredicateChunkIdentifier(predicate.name, tArgs)
-                    val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id) match {
+                    val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id, c3) match {
                       case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
                       case None => (σ1.h, True(), tPerm)}
                     assume(t)
@@ -471,7 +471,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
           case v: ast.LocalVariable =>
             val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
-            decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id) match {
+            decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id, c) match {
               case Some(ch) =>
                 QL(σ \- ch, chWand.ghostFreeWand, c)
               case None =>

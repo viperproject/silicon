@@ -166,7 +166,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, σ.h, id) match {
+          decider.getChunk[DirectChunk](σ, σ.h, id, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
@@ -189,7 +189,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
-      case ast.PackageOld(e0) => ??? // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
+      case ast.PackageOld(e0) => eval(σ, e0, pve, c)(Q) // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
       case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
       /* Strict evaluation of AND */

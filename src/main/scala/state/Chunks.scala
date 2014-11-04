@@ -80,7 +80,14 @@ abstract class MagicWandChunkLike extends {
   val name = "$MagicWandChunk" + ghostFreeWand.hashCode /* TODO: Name just shouldn't be forced upon wand chunks */
   val args = Nil                                        /* TODO: Same for args */
 
-  override val toString = s"wand@${ghostFreeWand.pos}"
+  override lazy val toString = {
+    val pos = ghostFreeWand.pos match {
+      case rp: viper.silver.ast.RealPosition => s"${rp.line}:${rp.column}"
+      case other => other.toString
+    }
+
+    s"wand@$pos[${evaluatedTerms.mkString(",")}]"
+  }
 }
 
 case class MagicWandChunk(ghostFreeWand: ast.MagicWand, evaluatedTerms: Seq[Term])

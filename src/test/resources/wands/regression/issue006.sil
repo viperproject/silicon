@@ -1,18 +1,51 @@
 field val : Int;
 
-//method test01(l: Ref)
-//  requires acc(l.val)
-//{
-//  var x: Int := l.val
-//  package acc(l.val) && l.val==now(l.val) --* acc(l.val)
-//  apply acc(l.val) && l.val==x --* acc(l.val) // should NOT fail, but does
-//}
-//
-//
-//method test02(l: Ref)
-//  requires acc(l.val)
-//{
-//  var x: Int := l.val
-//  package acc(l.val) && l.val==l.val --* acc(l.val)
-//  apply acc(l.val) && l.val==x --* acc(l.val) // SHOULD fail, and does
-//}
+method test03(x: Ref) {
+  var y: Ref := x
+
+  package true --* x == now(x)
+  apply   true --* x == y
+}
+
+method test04() {
+  var b: Bool
+  b := true
+
+  package b --* true
+  b := !b
+  apply !b --* true
+}
+
+method test05(x: Int) {
+  var a: Int := x
+
+  package x == a --* true
+  a := a + 1
+  apply x == a - 1 --* true
+
+  package x == a --* true
+  a := a + 2
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply x == a - 1 --* true
+}
+
+method test01(l: Ref)
+  requires acc(l.val)
+{
+  var x: Int := l.val
+
+  package acc(l.val) && l.val == now(l.val) --* acc(l.val)
+
+  apply   acc(l.val) && l.val == x          --* acc(l.val)
+}
+
+method test02(l: Ref)
+  requires acc(l.val)
+{
+  var x: Int := l.val
+
+  package acc(l.val) && l.val == l.val --* acc(l.val)
+
+  //:: ExpectedOutput(apply.failed:wand.not.found)
+  apply   acc(l.val) && l.val == x     --* acc(l.val)
+}

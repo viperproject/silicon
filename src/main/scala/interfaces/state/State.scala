@@ -76,6 +76,6 @@ trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
 	def format(π: Set[Term]): F
 }
 
-trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
-	def compress(σ: S, h: H)
+trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], C <: Context[C]] {
+	def compress(σ: S, h: H, c: C)
 }

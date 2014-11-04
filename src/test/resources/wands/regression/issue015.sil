@@ -4,7 +4,8 @@ predicate P(x: Ref) {
   acc(x.next) && /* x.next != null && */ acc(Q(x.next))
 }
 
-predicate Q(x: Ref) { acc(x.next) && (x.next != null ==> acc(Q(x.next)))}
+//predicate Q(x: Ref) { acc(x.next) && (x.next != null ==> acc(Q(x.next)))} // TODO: See issue 16
+predicate Q(x: Ref) { acc(x.next) && acc(Q(x.next), x.next != null ? write : none)}
 
 method m(l: Ref) {
   package

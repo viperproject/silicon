@@ -144,7 +144,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
                             val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
                             val stateFactory: StateFactory[ST, H, S])
-		extends HeapCompressor[ST, H, S] with Logging {
+		extends HeapCompressor[ST, H, S, C] with Logging {
 
   import stateFactory.H
 
@@ -152,7 +152,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
     * representation! After compressing the heap, `h` is updated via
     * calling `h.replace(...)`.
     */
-	def compress(σ: S, h: H) {
+	def compress(σ: S, h: H, ctx: C) {
 		var fcs: List[DirectFieldChunk] = Nil
 		var rfcs: List[DirectFieldChunk] = Nil
 
@@ -180,7 +180,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
 		decider.pushScope()
 		do {
-			val result = singleMerge(σ, h1, h2)
+			val result = singleMerge(σ, h1, h2, ctx)
 			rh = result._1
 			rfcs = result._2
 			rts = result._3
@@ -202,7 +202,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
     h.replace(rh.values ++ otherChunk)
 	}
 
-	private def singleMerge(σ: S, h1: H, h2: H): (H, List[DirectFieldChunk], Set[Term]) = {
+	private def singleMerge(σ: S, h1: H, h2: H, ctx: C): (H, List[DirectFieldChunk], Set[Term]) = {
 		bookkeeper.heapMergeIterations += 1
 
 		val (rh, fcs, tSnaps) = {
@@ -218,7 +218,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 				 * ats: accumulating path conditions
 				 * c2: current chunk of the new heap h2
 				 */
-				(decider.getChunk[Chunk](σ, ah, c2.id), c2) match {
+				(decider.getChunk[Chunk](σ, ah, c2.id, ctx), c2) match {
 					case (Some(c1: DirectFieldChunk), c2: DirectFieldChunk) =>
 						val c3 = c1 + c2.perm
 						val t1 = if (c1.value == c2.value) terms.True()
