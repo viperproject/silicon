@@ -140,7 +140,6 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def domainsEmitter: DomainsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S]
-  import ev.symbolConverter
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
@@ -149,7 +148,9 @@ trait AbstractVerifier[ST <: Store[ST],
 
   /* Lifetime */
 
-  def start() { /* Nothing to be done here */ }
+  def start() {
+    statefulSubcomponents foreach (_.start())
+  }
 
   def reset() {
     utils.counter.reset()

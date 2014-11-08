@@ -147,6 +147,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     setLogLevel(config.logLevel())
     verifier = createVerifier()
+
+    verifier.start()
   }
 
   /* TODO: Corresponds partially to code from SilFrontend. The design of command-line parsing should be improved.
@@ -173,7 +175,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     * @return A fully set up verifier, ready to be used.
     */
   private def createVerifier(): V = {
-    val bookkeeper = new Bookkeeper()
+    val bookkeeper = new Bookkeeper(config)
     val decider = new DefaultDecider[ST, H, PC, S, C]()
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
@@ -212,7 +214,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   def stop() {
-    verifier.decider.stop()
+    verifier.stop()
   }
 
   /** Verifies a given SIL program and returns a sequence of verification errors.
