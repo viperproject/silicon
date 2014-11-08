@@ -9,7 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{HeapCompressor, StateFactory, Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
