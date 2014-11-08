@@ -9,14 +9,14 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NonPositivePermission, AssertionFalse}
+import silver.verifier.reasons.{NegativePermission, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
-import state.terms.perms.{IsPositive, IsNoAccess}
+import state.terms.perms.{IsNonNegative, IsNoAccess}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -134,7 +134,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           evalp(σ, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σ, IsPositive(tPerm)){
+            decider.assert(σ, IsNonNegative(tPerm)){
               case true =>
                 consumePermissions(σ, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) => {
                   val c4 = c3.snapshotRecorder match {
@@ -155,7 +155,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       Q(h2, pc.snap, pc :: Nil, c4)}})
 
               case false =>
-                Failure[ST, H, S](pve dueTo NonPositivePermission(perm))}))
+                Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -203,13 +203,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     /* TODO: assert that pLoss > 0 */
 
     if (utils.consumeExactRead(pLoss, c)) {
-      decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c)(ch => {
+      decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
         if (decider.check(σ, IsNoAccess(ch.perm - pLoss))) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      decider.withChunk[DirectChunk](σ, h, id, locacc, pve, c)(ch => {
+      decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
         assume(pLoss < ch.perm)
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }

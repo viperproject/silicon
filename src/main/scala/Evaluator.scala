@@ -11,12 +11,13 @@ import com.weiglewilczek.slf4s.Logging
 import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
-import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NonPositivePermission}
+import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
 import interfaces.decider.Decider
-import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk}
+import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
+    DirectFieldChunk}
 import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
@@ -149,8 +150,9 @@ trait DefaultEvaluator[
       case _: ast.NoPerm => Q(NoPerm(), c)
 
       case ast.FractionalPerm(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => FractionPerm(t0, t1), pve, c)((tFP, c1) =>
-          failIfDivByZero(σ, tFP, e1, tFP.d, TermPerm(0), pve, c1)(Q))
+        var t1: P = null
+        evalPermOp(σ, e0, e1, (t0, _t1) => {t1 = _t1; FractionPerm(t0, t1)}, pve, c)((tFP, c1) =>
+          failIfDivByZero(σ, tFP, e1, t1, TermPerm(0), pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = stateUtils.freshARP()
@@ -166,7 +168,7 @@ trait DefaultEvaluator[
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
-          decider.withChunk[FieldChunk](σ, σ.h, id, fa, pve, c1)(ch => {
+          decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)(ch => {
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
                 c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch.id))))
@@ -397,7 +399,7 @@ trait DefaultEvaluator[
                           QB(tIn, c5)})})})
                   })(Q))
               case false =>
-                Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}})
+                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}})
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)

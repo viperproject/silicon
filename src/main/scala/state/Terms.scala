@@ -533,13 +533,14 @@ sealed trait Equals extends ComparisonTerm with commonnodes.Eq[Term]
 object Equals extends ((Term, Term) => BooleanTerm) {
   def apply(e0: Term, e1: Term) = {
     assert(e0.sort == e1.sort,
-      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+           "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
            .format(e0.sort, e0, e1.sort, e1))
 
     if (e0 == e1)
-        True()
+      True()
     else
       e0.sort match {
+        case sorts.Perm => BuiltinEquals.forPerm(e0, e1)
         case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset => new CustomEquals(e0, e1)
         case _ => new BuiltinEquals(e0, e1)
       }
@@ -555,6 +556,15 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 }
 
 object BuiltinEquals {
+  def forPerm(t1: Term, t2: Term) = (t1, t2) match {
+    case (FullPerm(), NoPerm()) | (NoPerm(), FullPerm()) => False()
+    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => False()
+    case (fp: FractionPerm, NoPerm()) if fp.isDefinitelyPositive => False()
+    case (FullPerm(), fp: FractionPerm) if fp.isLiteral => False()
+    case (fp: FractionPerm, FullPerm()) if fp.isLiteral => False()
+    case _ => new BuiltinEquals(t1, t2)
+  }
+
   def unapply(e: BuiltinEquals) = Some((e.p0, e.p1))
 }
 
@@ -658,8 +668,36 @@ sealed abstract class DefaultFractionalPermissions extends FractionalPermissions
 
 case class NoPerm() extends DefaultFractionalPermissions { override val toString = "Z" }
 case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
-case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
 case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
+
+class FractionPerm(val n: DefaultFractionalPermissions, val d: DefaultFractionalPermissions)
+    extends DefaultFractionalPermissions
+    with commonnodes.StructuralEquality {
+
+  lazy val isDefinitelyPositive = literal match {
+    case Some((i1, i2)) => 0 < i1 * i2
+    case None => false
+  }
+
+  lazy val isLiteral = literal.nonEmpty
+
+  lazy val literal = (n, d) match {
+    case (TermPerm(IntLiteral(i1)), TermPerm(IntLiteral(i2))) => Some((i1, i2))
+    case _ => None
+  }
+
+  val equalityDefiningMembers = n :: d :: Nil
+  override val toString = s"$n/$d"
+}
+
+object FractionPerm extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
+  def apply(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) =
+    if (n == TermPerm(predef.Zero)) NoPerm()
+    else if (n == d) FullPerm()
+    else new FractionPerm(n, d)
+
+  def unapply(fp: FractionPerm) = Some((fp.n, fp.d))
+}
 
 /* TermPerms essentially only exist to please the type system, that is,
  * to use a permission-sorted `Term` where a `DefaultFractionalPermissions`
@@ -749,6 +787,13 @@ object PermPlus extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
     case (NoPerm(), _) => t1
     case (_, NoPerm()) => t0
+
+    case (FractionPerm(TermPerm(n1), TermPerm(d1)), FractionPerm(TermPerm(n2), TermPerm(d2))) if d1 == d2 =>
+      FractionPerm(TermPerm(Plus(n1, n2)), TermPerm(d1))
+
+    case (PermMinus(t00, t01), _) if t01 == t1 => t00
+    case (_, PermMinus(t10, t11)) if t11 == t0 => t10
+
     case (_, _) => new PermPlus(t0, t1)
   }
 
@@ -1510,20 +1555,22 @@ object predef {
 /* Convenience functions */
 
 object perms {
-  def IsNonNegative(p: DefaultFractionalPermissions) = p match {
-    case _: NoPerm | _: FullPerm | _: WildcardPerm => True()
-    case _ => Or(p === NoPerm(), NoPerm() < p)
-  }
+  def IsNonNegative(p: DefaultFractionalPermissions) =
+    Or(p === NoPerm(), IsPositive(p))
+      /* All basic static simplifications should be covered by Equals,
+       * IsPositive and or
+       */
 
   def IsPositive(p: DefaultFractionalPermissions) = p match {
     case _: NoPerm => False()
     case _: FullPerm | _: WildcardPerm => True()
+    case fp: FractionPerm if fp.isDefinitelyPositive => True()
     case _ => NoPerm() < p
   }
 
   def IsAsPermissive(p1: DefaultFractionalPermissions, p2: DefaultFractionalPermissions) =
-    if (p1 == p2) True()
-    else Or(p1 === p2, p2 < p1)
+    /*if (p1 == p2) True()
+    else */Or(p1 === p2, p2 < p1)
 
   def IsNoAccess(p: DefaultFractionalPermissions) = p match {
     case _: NoPerm => True()

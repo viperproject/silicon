@@ -11,7 +11,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{NonPositivePermission, ReceiverNull, AssertionFalse}
+import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -201,7 +201,7 @@ trait DefaultExecutor[ST <: Store[ST],
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, FullPerm(), fa, pve, c2)(fc =>
+                decider.withChunk[DirectChunk](σ, σ.h, id, Some(FullPerm()), fa, pve, c2)(fc =>
                   Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
             case false =>
               Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
@@ -332,7 +332,7 @@ trait DefaultExecutor[ST <: Store[ST],
                     val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
                     Q(σ \ h1, c3)})
                 case false =>
-                  Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
+                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
       case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -346,7 +346,7 @@ trait DefaultExecutor[ST <: Store[ST],
                     produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) =>
                       Q(σ2 \ σ.γ, c4)))
                 case false =>
-                  Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))}))
+                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: silver.ast.Goto

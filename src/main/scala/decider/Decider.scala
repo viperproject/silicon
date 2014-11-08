@@ -17,7 +17,6 @@ import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import state.{DirectChunk, SymbolConvert}
 import state.terms._
-import state.terms.utils._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
@@ -291,7 +290,7 @@ class DefaultDecider[ST <: Store[ST],
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
-    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+//    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
     case _ => false
   }
@@ -337,7 +336,7 @@ class DefaultDecider[ST <: Store[ST],
                (σ: S,
                 h: H,
                 id: ChunkIdentifier,
-                p: P,
+                optPerms: Option[P],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)
@@ -346,8 +345,19 @@ class DefaultDecider[ST <: Store[ST],
 
     tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
       withChunk[CH](σ1, σ1.h, id, locacc, pve, c)(ch => {
-        assert(σ1, IsAsPermissive(ch.perm, p)){
+        val permCheck =  optPerms match {
+          case Some(p) => IsAsPermissive(ch.perm, p)
+          case None => ch.perm !== NoPerm()
+        }
+
+//        if (!isKnownToBeTrue(permCheck)) {
+//          val writer = bookkeeper.logfiles("withChunk")
+//          writer.println(permCheck)
+//        }
+
+        assert(σ1, permCheck) {
           case true =>
+            assume(permCheck)
             QS(ch)
           case false =>
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
