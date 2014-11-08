@@ -41,7 +41,6 @@ package object utils {
   def consumeExactRead(fp: Term, c: DefaultContext): Boolean = fp match {
     case _: WildcardPerm => false
     case v: Var => !c.constrainableARPs.contains(v)
-    case TermPerm(t) => consumeExactRead(t, c)
     case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
     case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)

@@ -21,7 +21,7 @@ import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerifi
     AbortedExceptionally => SilExceptionThrown}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
-import state.terms.{FullPerm, DefaultFractionalPermissions}
+import state.terms.FullPerm
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
@@ -88,7 +88,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
          with SiliconConstants
          with Logging {
 
-  private type P = DefaultFractionalPermissions
   private type ST = MapBackedStore
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions

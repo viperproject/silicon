@@ -63,7 +63,7 @@ trait DefaultBrancher[ST <: Store[ST],
 							        C <: Context[C]]
 		extends Brancher[ST, H, S, C] with HasLocalState {
 
-	val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+	val decider: Decider[ST, H, PC, S, C]
 	import decider.assume
 
 	val bookkeeper: Bookkeeper
@@ -220,7 +220,7 @@ trait DefaultJoiner[ST <: Store[ST],
 
   private type C = DefaultContext
 
-  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+  val decider: Decider[ST, H, PC, S, C]
 
   def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
           (block: ((Term, C) => VerificationResult) => VerificationResult)
@@ -327,9 +327,9 @@ class StateUtils[ST <: Store[ST],
                  PC <: PathConditions[PC],
                  S <: State[ST, H, S],
                  C <: Context[C]]
-                (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
+                (val decider: Decider[ST, H, PC, S, C]) {
 
-  def freshARP(id: String = "$k", upperBound: DefaultFractionalPermissions = FullPerm())
+  def freshARP(id: String = "$k", upperBound: Term = FullPerm())
               : (Var, Term) = {
 
     val permVar = decider.fresh(id, sorts.Perm)

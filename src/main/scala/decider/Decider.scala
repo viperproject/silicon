@@ -26,10 +26,8 @@ class DefaultDecider[ST <: Store[ST],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S],
                      C <: Context[C]]
-		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+		extends Decider[ST, H, PC, S, C]
 		   with Logging {
-
-  protected type P = DefaultFractionalPermissions
 
 	private var z3: Z3ProverStdIO = _
 
@@ -336,7 +334,7 @@ class DefaultDecider[ST <: Store[ST],
                (σ: S,
                 h: H,
                 id: ChunkIdentifier,
-                optPerms: Option[P],
+                optPerms: Option[Term],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)

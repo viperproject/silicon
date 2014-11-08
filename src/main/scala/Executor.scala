@@ -26,15 +26,14 @@ trait DefaultExecutor[ST <: Store[ST],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
 		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-									  with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-									  with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
+									  with Consumer[DirectChunk, ST, H, S, DefaultContext]
+									  with Producer[ST, H, S, DefaultContext]
 									  with Brancher[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
-  private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C]
+	protected val decider: Decider[ST, H, PC, S, C]
 	import decider.{fresh, assume, inScope}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -296,7 +295,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
-            evalp(σ, ePerm, pve, c1)((tPerm, c2) =>
+            eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)){
                 case true =>
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
@@ -326,7 +325,9 @@ trait DefaultExecutor[ST <: Store[ST],
                      */
                     val id = PredicateChunkIdentifier(predicate.name, tArgs)
                     val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id) match {
-                      case Some(pc) => (σ1.h - pc, pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap), pc.perm + tPerm)
+                      case Some(pc) => (σ1.h - pc,
+                                        pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap),
+                                        PermPlus(pc.perm, tPerm))
                       case None => (σ1.h, True(), tPerm)}
                     assume(t)
                     val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
@@ -338,7 +339,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
-            evalp(σ, ePerm, pve, c1)((tPerm, c2) =>
+            eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)){
                 case true =>
                   val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)

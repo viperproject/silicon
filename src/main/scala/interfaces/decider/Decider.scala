@@ -12,12 +12,11 @@ import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
 import interfaces.{Failure, VerificationResult}
 import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import state.terms.{Term, Var, FractionalPermissions, Sort}
+import state.terms.{Term, Var, Sort}
 import state.DirectChunk
 import utils.notNothing._
 
-trait Decider[P <: FractionalPermissions[P],
-              ST <: Store[ST],
+trait Decider[ST <: Store[ST],
               H <: Heap[H],
 						  PC <: PathConditions[PC],
               S <: State[ST, H, S],
@@ -77,7 +76,7 @@ trait Decider[P <: FractionalPermissions[P],
                (σ: S,
                 h: H,
                 id: ChunkIdentifier,
-                optPerms: Option[P],
+                optPerms: Option[Term],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)

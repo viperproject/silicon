@@ -15,7 +15,7 @@ import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
-import state.terms.{sorts, Sort, DefaultFractionalPermissions}
+import state.terms.{sorts, Sort}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
@@ -24,9 +24,9 @@ trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
 														 S <: State[ST, H, S]]
 		extends Logging
-		   with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-		   with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-		   with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+		   with Evaluator[ST, H, S, DefaultContext]
+		   with Producer[ST, H, S, DefaultContext]
+		   with Consumer[DirectChunk, ST, H, S, DefaultContext]
 		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext]
        with FunctionsSupporter[ST, H, PC, S] {
 
@@ -34,7 +34,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
 	/*protected*/ val config: Config
 
-  /*protected*/ val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+  /*protected*/ val decider: Decider[ST, H, PC, S, C]
 	import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
@@ -107,7 +107,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 														 PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
 		(	val config: Config,
-		  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
+		  val decider: Decider[ST, H, PC, S, DefaultContext],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
 			val stateFormatter: StateFormatter[ST, H, S, String],
@@ -130,7 +130,7 @@ trait AbstractVerifier[ST <: Store[ST],
     extends StatefulComponent
        with Logging {
 
-  /*protected*/ def decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext]
+  /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
@@ -264,7 +264,7 @@ class DefaultVerifier[ST <: Store[ST],
                       PC <: PathConditions[PC],
 											S <: State[ST, H, S]]
 		(	val config: Config,
-			val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
+			val decider: Decider[ST, H, PC, S, DefaultContext],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
       val preambleEmitter: PreambleFileEmitter[String, String],

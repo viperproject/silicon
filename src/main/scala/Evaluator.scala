@@ -23,21 +23,19 @@ import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsPositive
 
-trait DefaultEvaluator[
-                       ST <: Store[ST],
+trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
 											 S <: State[ST, H, S]]
-		extends Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext] with HasLocalState
-		{ this: Logging with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
-										with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+		extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
+		{ this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
+										with Producer[ST, H, S, DefaultContext]
 										with Brancher[ST, H, S, DefaultContext]
 										with Joiner[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
-  private type P = DefaultFractionalPermissions
 
-	protected val decider: Decider[P, ST, H, PC, S, C]
+	protected val decider: Decider[ST, H, PC, S, C]
 	import decider.{fresh, assume}
 
 	protected val stateFactory: StateFactory[ST, H, S]
@@ -60,15 +58,6 @@ trait DefaultEvaluator[
 
 		evals2(σ, es, Nil, pve, c)((ts, c1) =>
 			Q(ts, c1))
-
-	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C)
-			     (Q: (P, C) => VerificationResult)
-           : VerificationResult = {
-
-    eval(σ, p, pve, c)((tp, c1) => tp match {
-      case fp: DefaultFractionalPermissions => Q(fp, c1)
-      case _ => Q(TermPerm(tp), c1)})
-  }
 
 	private def evals2(σ: S,
                      es: Seq[ast.Expression],
@@ -150,9 +139,9 @@ trait DefaultEvaluator[
       case _: ast.NoPerm => Q(NoPerm(), c)
 
       case ast.FractionalPerm(e0, e1) =>
-        var t1: P = null
-        evalPermOp(σ, e0, e1, (t0, _t1) => {t1 = _t1; FractionPerm(t0, t1)}, pve, c)((tFP, c1) =>
-          failIfDivByZero(σ, tFP, e1, t1, TermPerm(0), pve, c1)(Q))
+        var t1: Term = null
+        evalBinOp(σ, e0, e1, (t0, _t1) => {t1 = _t1; FractionPerm(t0, t1)}, pve, c)((tFP, c1) =>
+          failIfDivByZero(σ, tFP, e1, t1, predef.Zero, pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = stateUtils.freshARP()
@@ -259,21 +248,21 @@ trait DefaultEvaluator[
       /* Permissions */
 
       case ast.PermPlus(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => t0 + t1, pve, c)(Q)
+        evalBinOp(σ, e0, e1, PermPlus, pve, c)(Q)
 
       case ast.PermMinus(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => t0 - t1, pve, c)(Q)
+        evalBinOp(σ, e0, e1, PermMinus, pve, c)(Q)
 
       case ast.PermTimes(e0, e1) =>
-        evalPermOp(σ, e0, e1, (t0, t1) => t0 * t1, pve, c)(Q)
+        evalBinOp(σ, e0, e1, PermTimes, pve, c)(Q)
 
       case ast.IntPermTimes(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
-          evalp(σ, e1, pve, c1)((t1, c2) =>
+          eval(σ, e1, pve, c1)((t1, c2) =>
             Q(IntPermTimes(t0, t1), c2)))
 
       case ast.PermIntDiv(e0, e1) =>
-        evalp(σ, e0, pve, c)((t0, c1) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
           eval(σ, e1, pve, c1)((t1, c2) =>
             failIfDivByZero(σ, PermIntDiv(t0, t1), e1, t1, 0, pve, c1)(Q)))
 
@@ -381,7 +370,7 @@ trait DefaultEvaluator[
 
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
           val c0a = c.incCycleCounter(predicate)
-          evalp(σ, ePerm, pve, c0a)((tPerm, c1) => {
+          eval(σ, ePerm, pve, c0a)((tPerm, c1) => {
             decider.assert(σ, IsPositive(tPerm)){
               case true =>
                 evals(σ, eArgs, pve, c1)((tArgs, c2) =>
@@ -550,21 +539,6 @@ trait DefaultEvaluator[
       case true => Q(t, c)
       case false => Failure[ST, H, S](pve dueTo DivisionByZero(eDivisor))
     }
-  }
-
-  private def evalPermOp[PO <: P]
-                        (σ: S,
-                         e0: ast.Expression,
-                         e1: ast.Expression,
-                         permOp: (P, P) => PO,
-                         pve: PartialVerificationError,
-                         c: C)
-                        (Q: (PO, C) => VerificationResult)
-                        : VerificationResult = {
-
-    evalp(σ, e0, pve, c)((t0, c1) =>
-      evalp(σ, e1, pve, c1)((t1, c2) =>
-        Q(permOp(t0, t1), c2)))
   }
 
   /* TODO: The CP-style in which Silicon's main components are written makes it hard to work

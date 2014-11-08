@@ -8,7 +8,7 @@ package viper
 package silicon
 package interfaces.state
 
-import state.terms.{Term, FractionalPermissions}
+import state.terms.Term
 
 trait ChunkIdentifier {
   def name: String
@@ -21,11 +21,11 @@ trait Chunk {
   def id: ChunkIdentifier
 }
 
-trait PermissionChunk[P <: FractionalPermissions[P], CH <: PermissionChunk[P, CH]] extends Chunk {
-  val perm: P
-  def +(perm: P): CH
-  def -(perm: P): CH
-  def \(perm: P): CH
+trait PermissionChunk[CH <: PermissionChunk[CH]] extends Chunk {
+  val perm: Term
+  def +(perm: Term): CH
+  def -(perm: Term): CH
+  def \(perm: Term): CH
 }
 
 trait FieldChunk extends Chunk {

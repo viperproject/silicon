@@ -20,16 +20,15 @@ trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
+    extends Producer[ST, H, S, DefaultContext]
         with HasLocalState
-    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-                    with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext]
+                    with Consumer[DirectChunk, ST, H, S, DefaultContext]
                     with Brancher[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
-  private type P = DefaultFractionalPermissions
 
-  protected val decider: Decider[P, ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
@@ -46,7 +45,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   def produce(σ: S,
               sf: Sort => Term,
-              p: P,
+              p: Term,
               φ: ast.Expression,
               pve: PartialVerificationError,
               c: C)
@@ -58,7 +57,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   def produces(σ: S,
                sf: Sort => Term,
-               p: P,
+               p: Term,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
@@ -105,7 +104,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def produce2(σ: S,
                        sf: Sort => Term,
-                       p: P,
+                       p: Term,
                        φ: ast.Expression,
                        pve: PartialVerificationError,
                        c: C)
@@ -157,9 +156,9 @@ trait DefaultProducer[ST <: Store[ST],
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
+          eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
-            val pNettoGain = pGain * p
+            val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
             val c3 = c2.snapshotRecorder match {
@@ -172,9 +171,9 @@ trait DefaultProducer[ST <: Store[ST],
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
+          eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
-            val pNettoGain = pGain * p
+            val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
             val c3 = c2.snapshotRecorder match {

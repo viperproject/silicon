@@ -13,7 +13,7 @@ import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, Sta
     StateFactory}
 import interfaces.decider.Decider
 import ast.Variable
-import terms.{Term, DefaultFractionalPermissions, True, Implies, And}
+import terms.{Term, True, Implies, And, PermPlus}
 import terms.perms.{IsAsPermissive, IsPositive}
 import reporting.Bookkeeper
 import collection.mutable
@@ -138,8 +138,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
 											     	PC <: PathConditions[PC],
                             S <: State[ST, H, S],
 											     	C <: Context[C]]
-                           (val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C],
-                            val distinctnessLowerBound: DefaultFractionalPermissions,
+                           (val decider: Decider[ST, H, PC, S, C],
+                            val distinctnessLowerBound: Term,
                             val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
                             val stateFactory: StateFactory[ST, H, S])
@@ -251,12 +251,12 @@ class DefaultHeapCompressor[ST <: Store[ST],
 				(decider.getChunk[Chunk](σ, ah, c2.id), c2) match {
 					case (Some(c1: DirectFieldChunk), c2: DirectFieldChunk) =>
             val (tSnap, tSnapDef) = combineSnapshots(c1.value, c2.value, c1.perm, c2.perm)
-            val c3 = c1.copy(perm = c1.perm + c2.perm, value = tSnap)
+            val c3 = c1.copy(perm = PermPlus(c1.perm, c2.perm), value = tSnap)
 						(ah - c1 + c3, c3 :: afcs, amatches + (c1 -> c2), ats + tSnapDef)
 
 					case (Some(c1: DirectPredicateChunk), c2: DirectPredicateChunk) =>
             val (tSnap, tSnapDef) = combineSnapshots(c1.snap, c2.snap, c1.perm, c2.perm)
-            val c3 = c1.copy(perm = c1.perm + c2.perm, snap = tSnap)
+            val c3 = c1.copy(perm = PermPlus(c1.perm, c2.perm), snap = tSnap)
             (ah - c1 + c3, afcs, amatches + (c1 -> c2), ats + tSnapDef)
 
 					case (Some(other), _) =>
@@ -270,12 +270,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 		(rh, fcs, matches, tSnaps)
 	}
 
-  private def combineSnapshots(t1: Term,
-                               t2: Term,
-                               p1: DefaultFractionalPermissions,
-                               p2: DefaultFractionalPermissions)
-                              : (Term, Term) = {
-
+  private def combineSnapshots(t1: Term, t2: Term, p1: Term, p2: Term): (Term, Term) = {
 //    var createdFreshSnap = false
 
     val (tSnap, tSnapDef) =
@@ -309,7 +304,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
 		val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
 			if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-          && !decider.check(σ, IsAsPermissive(distinctnessLowerBound, c1.perm + c2.perm)))
+          && !decider.check(σ, IsAsPermissive(distinctnessLowerBound, PermPlus(c1.perm, c2.perm))))
 
 				c1.rcvr !== c2.rcvr
 			else
