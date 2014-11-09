@@ -9,8 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.{VerificationError, PartialVerificationError}
-import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NonPositivePermission, AssertionFalse,
-    MagicWandChunkNotFound, NegativePermission}
+import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NegativePermission, AssertionFalse, MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFactory, StateFormatter, ChunkIdentifier}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -349,7 +348,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
             else
-              Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm))})
+              Failure[ST, H, S](pve dueTo NegativePermission(ePerm))})
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> folding next.P in e} is currently not " +
@@ -380,7 +379,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})}))
             else
-              Failure[ST, H, S](pve dueTo NonPositivePermission(ePerm)))
+              Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
         } else
           sys.error("Recursion that does not go through a function, e.g., a predicate such as " +
             "P {... && next != null ==> unfolding next.P in e} is currently not " +
