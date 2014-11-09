@@ -34,6 +34,9 @@ trait DefaultProducer[ST <: Store[ST],
 
   protected val heapCompressor: HeapCompressor[ST, H, S]
 
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
@@ -164,8 +167,7 @@ trait DefaultProducer[ST <: Store[ST],
             (h + ch, None, ch)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
-            val (h1, matchedChunk, t) = addDirectChunk(h, ch)
-            assume(t)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch)
             (h1, matchedChunk, ch)
           }
 
@@ -189,8 +191,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
-            assume(t)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
@@ -206,11 +207,11 @@ trait DefaultProducer[ST <: Store[ST],
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables,
                         recordPossibleTriggers = true,
                         possibleTriggers = Map())
-        decider.locally[(Set[Term], Term, Term, P, C, Map[ast.Expression, Term])](QB =>
+        decider.locally[(Set[Term], Term, Term, Term, C, Map[ast.Expression, Term])](QB =>
           eval(σQVar, cond, pve, c0)((tCond, c1) => {
             assume(tCond)
             eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
-              evalp(σQVar, gain, pve, c2)((pGain, c3) => {
+              eval(σQVar, gain, pve, c2)((pGain, c3) => {
                 val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
                 val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
                 val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
@@ -221,7 +222,7 @@ trait DefaultProducer[ST <: Store[ST],
           assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val hints = quantifiedChunkHelper.extractHints(Some(tQVar), Some(tCond), tRcvr)
-          val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, pGain * p, tCond)
+          val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond)
           val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
 //          assume(Domain(field.name, snap) === tSet)
           val tDomainQuant = quantifiedChunkHelper.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
@@ -229,9 +230,9 @@ trait DefaultProducer[ST <: Store[ST],
 //                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
 //                       tCond),
 //                   Trigger(Lookup(field.name, snap, tRcvr)))
-          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, tCond, tRcvr, pGain * p)
+          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
           val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr)
-          assume(Set[Term](NoPerm() < pGain, tDomainQuant, tNonNullQuant, tInjectivity))
+          assume(Set[Term](PermLess(NoPerm(), pGain), tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
             if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)

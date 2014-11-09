@@ -183,7 +183,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
         Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
 
       case true =>
-        assert(σ, NoPerm() < permission(h, FieldChunkIdentifier(rcvr, field.name))) {
+        assert(σ, PermLess(NoPerm(), permission(h, FieldChunkIdentifier(rcvr, field.name)))) {
           case false =>
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
@@ -197,13 +197,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
               case ch: QuantifiedChunk if ch.name == field.name =>
                 val freshQVariable = if (needsQuantifying) Some(decider.fresh("r", rcvr.sort)) else None
                 val axiomRecv = if (needsQuantifying) freshQVariable.get else rcvr
-                val permsIndividual = ch.perm.replace(`?r`, axiomRecv).asInstanceOf[DefaultFractionalPermissions]
+                val permsIndividual = ch.perm.replace(`?r`, axiomRecv)
                 val valueIndividual = ch.value.replace(`?r`, axiomRecv)
                 val lookupRcvr = Lookup(field.name, fvf, axiomRecv)
                 val lookupIndividual = Lookup(field.name, valueIndividual, axiomRecv)
 
                 fvfDefs ::=
-                    FvfDefEntry(Implies(permsIndividual > NoPerm(), lookupRcvr === lookupIndividual),
+                    FvfDefEntry(Implies(PermLess(NoPerm(), permsIndividual), lookupRcvr === lookupIndividual),
 //                              Trigger(lookupRcvr :: lookupIndividual :: Nil) :: Nil,
                               Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
                               Domain(field.name, valueIndividual),freshQVariable)
@@ -347,7 +347,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       val candidateLookup = Lookup(field.name, candidateValue, freshQVariable)
 
       fvfDefs ::=
-        FvfDefEntry(Implies(candidatePerms > NoPerm(), fvfLookup === candidateLookup),
+        FvfDefEntry(Implies(PermLess(NoPerm(), candidatePerms), fvfLookup === candidateLookup),
 //                      Trigger(fvfLookup :: candidateLookup :: Nil) :: Nil,
                     Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
                     Domain(field.name, candidateValue), Some(freshQVariable))
@@ -358,7 +358,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
         val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
         val permsTakenAmount = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
-        var permsTaken = permsTakenAmount
+        var permsTaken: Term = permsTakenAmount
 
         if (config.introduceFreshSymbolsForTakenQuantifiedPermissions()) {
           val permsTakenFunc = fresh("permsTaken", sorts.Arrow(`?r`.sort, sorts.Perm))
@@ -368,18 +368,18 @@ class QuantifiedChunkHelper[ST <: Store[ST],
           permsTaken = permsTakenFApp
         }
 
-        permsToTake = permsToTake - permsTaken
+        permsToTake = PermMinus(permsToTake, permsTaken)
 
         if (constrainPermissions) {
           /* TODO: Add triggers (probably needs autoTriggers for terms ) */
           val constrainPermissionQuantifier =
-            Forall(`?r`, Implies(ch.perm !== NoPerm(), conditionalizedFraction < ch.perm), Nil).autoTrigger
+            Forall(`?r`, Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFraction, ch.perm)), Nil).autoTrigger
 
           assume(constrainPermissionQuantifier)
 
-          residue ::= ch.copy(perm = ch.perm - permsTaken)
-        } else  if (!check(σ, Forall(`?r`, ch.perm - permsTaken === NoPerm(), Nil)))
-          residue ::= ch.copy(perm = ch.perm - permsTaken)
+          residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
+        } else  if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil)))
+          residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
 
         success = check(σ, replrecv(permsToTake) === NoPerm())
       }
