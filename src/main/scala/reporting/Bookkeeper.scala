@@ -15,10 +15,11 @@ package reporting
  *         - Not having to add a newly added field to the template
  */
 
+import java.io.{PrintWriter, File}
 import java.text.SimpleDateFormat
 import silver.components.StatefulComponent
 
-class Bookkeeper extends StatefulComponent {
+class Bookkeeper(config: Config) extends StatefulComponent {
 	var branches: Long = 0
 	var heapMergeIterations: Long = 0
 	var objectDistinctnessComputations: Long = 0
@@ -31,6 +32,14 @@ class Bookkeeper extends StatefulComponent {
   var elapsedMillis: Long = 0
   var errors: Long = 0
   var proverStatistics = Map[String, String]()
+
+  var logfiles: scala.collection.immutable.Map[String, PrintWriter] =
+    scala.collection.immutable.Map[String, PrintWriter]().withDefault(name => {
+      val writer = common.io.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
+      logfiles += (name -> writer)
+
+      writer
+    })
 
   def start() { /* Nothing to do here */ }
 
@@ -47,9 +56,17 @@ class Bookkeeper extends StatefulComponent {
     elapsedMillis = 0
     errors = 0
     proverStatistics = Map[String, String]()
+
+    /* Notice that logfiles are not closed, because we want to record data
+     * across multiple runs of Silicon. This is not essential, though, and only
+     * a design decision.
+     */
   }
 
-  def stop() { /* Nothing to do here */ }
+  def stop() {
+    logfiles.values foreach (_.close())
+    logfiles = logfiles.empty
+  }
 
   def formattedStartTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(startTime)
 

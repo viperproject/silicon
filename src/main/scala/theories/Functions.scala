@@ -73,16 +73,16 @@ trait FunctionsSupporter[ST <: Store[ST],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
-            with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-            with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext]
-            with Consumer[DefaultFractionalPermissions, DirectChunk, ST, H, S, DefaultContext] =>
+            with Evaluator[ST, H, S, DefaultContext]
+            with Producer[ST, H, S, DefaultContext]
+            with Consumer[DirectChunk, ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
   private type AxiomGenerator = () => Quantification
 
   val config: Config
 
-  val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]
+  val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, inScope}
 
   val stateFactory: StateFactory[ST, H, S]

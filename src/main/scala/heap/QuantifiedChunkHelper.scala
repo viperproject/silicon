@@ -23,7 +23,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                             H <: Heap[H],
                             PC <: PathConditions[PC],
                             S <: State[ST, H, S]]
-                           (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext],
+                           (decider: Decider[ST, H, PC, S, DefaultContext],
                             symbolConverter: SymbolConvert,
                             stateFactory: StateFactory[ST, H, S],
                             config: Config) {
@@ -53,7 +53,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def createSingletonQuantifiedChunk(rcvr: Term,
                                      field: String,
                                      value: Term,
-                                     perms: DefaultFractionalPermissions)
+                                     perms: Term)
                                     : QuantifiedChunk = {
 
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
@@ -64,17 +64,15 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     QuantifiedChunk(field, value, condPerms)
   }
 
-  def singletonConditionalPermissions(rcvr: Term, perms: DefaultFractionalPermissions)
-                                     : DefaultFractionalPermissions = {
-
-    TermPerm(Ite(`?r` === rcvr, perms, NoPerm()))
+  def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
+    Ite(`?r` === rcvr, perms, NoPerm())
   }
 
   def createQuantifiedChunk(qvar: Var,
                             rcvr: Term,
                             field: Field,
                             value: Term,
-                            perms: DefaultFractionalPermissions,
+                            perms: Term,
                             condition: Term)
                            : QuantifiedChunk = {
 
@@ -93,13 +91,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   def conditionalPermissions(qvar: Var,
                              arbitraryInverseRcvr: Term,
                              qvarSpecificCondition: Term,
-                             perms: DefaultFractionalPermissions)
-                            : DefaultFractionalPermissions = {
+                             perms: Term)
+                            : Term = {
 
     val arbitraryCondition = qvarSpecificCondition.replace(qvar, arbitraryInverseRcvr)
     val arbitraryPerms = perms.replace(qvar, arbitraryInverseRcvr)
 
-    TermPerm(Ite(arbitraryCondition, arbitraryPerms/*perms*/, NoPerm()))
+    Ite(arbitraryCondition, arbitraryPerms/*perms*/, NoPerm())
   }
 
   /* State queries */
@@ -115,10 +113,10 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   /**
     * Computes the total permission amount held in the given heap for the given chunk identifier.
     */
-  def permission(h: H, id: ChunkIdentifier): DefaultFractionalPermissions = {
+  def permission(h: H, id: ChunkIdentifier): Term = {
     val perms = h.values.toSeq.collect {
       case permChunk: QuantifiedChunk if permChunk.name == id.name => permChunk.perm.replace(`?r`, id.args.last)
-    }.asInstanceOf[Iterable[DefaultFractionalPermissions]]
+    }
 
     BigPermSum(perms, Predef.identity)
   }
@@ -264,8 +262,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                           h: H,
                           field: Field,
                           concreteReceiver: Term,
-                          fraction: DefaultFractionalPermissions,
-                          conditionalizedFraction: DefaultFractionalPermissions,
+                          fraction: Term,
+                          conditionalizedFraction: Term,
                           chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                           c: C)
                          (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
@@ -289,8 +287,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                      field: Field,
                      quantifiedReceiver: Term,
                      qvarInReceiver: Var,
-                     fraction: DefaultFractionalPermissions,
-                     conditionalizedFraction: DefaultFractionalPermissions,
+                     fraction: Term,
+                     conditionalizedFraction: Term,
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
@@ -312,8 +310,8 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                     field: Field,
                     arbitraryReceiver: Term,
                     specificReceiver: Term,
-                    fraction: DefaultFractionalPermissions,
-                    conditionalizedFraction: DefaultFractionalPermissions,
+                    fraction: Term,
+                    conditionalizedFraction: Term,
                     chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                     c: C)
                    : (H, QuantifiedChunk, FvfDef, Boolean) = {
@@ -343,7 +341,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
      var fvfDefs: List[FvfDefEntry] = Nil
 
     candidates.foreach(ch => {
-      val candidatePerms = replquant(ch.perm).asInstanceOf[DefaultFractionalPermissions]
+      val candidatePerms = replquant(ch.perm)
       val candidateValue = replquant(ch.value)
       val fvfLookup = Lookup(field.name, fvf, freshQVariable)
       val candidateLookup = Lookup(field.name, candidateValue, freshQVariable)
@@ -360,11 +358,11 @@ class QuantifiedChunkHelper[ST <: Store[ST],
         val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
         val permsTakenAmount = PermMin(permsToTake, Ite(`?r` === specificReceiver, ch.perm, NoPerm()))
-        var permsTaken: DefaultFractionalPermissions = permsTakenAmount
+        var permsTaken = permsTakenAmount
 
         if (config.introduceFreshSymbolsForTakenQuantifiedPermissions()) {
           val permsTakenFunc = fresh("permsTaken", sorts.Arrow(`?r`.sort, sorts.Perm))
-          val permsTakenFApp = TermPerm(Apply(permsTakenFunc, `?r` :: Nil))
+          val permsTakenFApp = Apply(permsTakenFunc, `?r` :: Nil)
           assume(Forall(`?r`, permsTakenFApp === permsTakenAmount, Trigger(permsTakenFApp)))
 
           permsTaken = permsTakenFApp
@@ -431,10 +429,10 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       Nil).autoTrigger
   }
 
-  def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: DefaultFractionalPermissions) = {
+  def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term) = {
     Forall(qvar,
       Implies(
-        And(cond, NoPerm() < perms),
+        And(cond, PermLess(NoPerm(), perms)),
         rcvr !== Null()),
       Nil).autoTrigger
   }
