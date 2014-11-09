@@ -201,8 +201,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
     h.replace(rh.values ++ otherChunk)
 	}
 
-  def merge(σ: S, h: H, ch: Chunk): (H, Option[DirectChunk]) = {
-    val (h1, _, matches, ts) = singleMerge(σ, h, H(ch :: Nil))
+  def merge(σ: S, h: H, ch: Chunk, ctx: C): (H, Option[DirectChunk]) = {
+    val (h1, _, matches, ts) = singleMerge(σ, h, H(ch :: Nil), ctx)
     
     decider.assume(ts)
     
@@ -230,7 +230,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
     * @param h2 Heap into which `h1` will be merged in.
     * @return Result quadruple.
     */
-	private def singleMerge(σ: S, h1: H, h2: H)
+	private def singleMerge(σ: S, h1: H, h2: H, ctx: C)
                          : (H, List[DirectFieldChunk], Map[DirectChunk, DirectChunk], Set[Term]) = {
 
 		bookkeeper.heapMergeIterations += 1

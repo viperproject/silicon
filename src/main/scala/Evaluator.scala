@@ -22,7 +22,7 @@ import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, Sy
 import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
-import state.terms.perms.IsPositive
+import state.terms.perms.IsNonNegative
 import supporters.MagicWandSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
@@ -383,7 +383,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
           val c0a = c.incCycleCounter(predicate)
           eval(σ, ePerm, pve, c0a)((tPerm, c1) => {
-            decider.assert(σ, IsPositive(tPerm)){
+            decider.assert(σ, IsNonNegative(tPerm)){
               case true =>
                 evals(σ, eArgs, pve, c1)((tArgs, c2) =>
                   join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {

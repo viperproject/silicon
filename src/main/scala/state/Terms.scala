@@ -1583,12 +1583,6 @@ object perms {
       /* ATTENTION: This is only sound if both plus operands and the left minus operand are positive! */
     case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))
   }
-
-  def IsMaybePositive(p: DefaultFractionalPermissions) =
-    if (p.existsDefined { case _: NoPerm => })
-      True()
-    else
-      NoPerm() < p
 }
 
 /* Utility functions */

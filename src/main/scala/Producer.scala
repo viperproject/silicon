@@ -9,7 +9,7 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Chunk, StateFactory}
+import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter, Chunk, StateFactory}
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
@@ -33,10 +33,10 @@ trait DefaultProducer[ST <: Store[ST],
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
-  protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
+//  protected val stateFactory: StateFactory[ST, H, S]
+//  import stateFactory._
   
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -175,7 +175,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
@@ -190,7 +190,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))

@@ -17,7 +17,7 @@ trait MagicWandSupporter[ST <: Store[ST],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
-            with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]] =>
+            with Evaluator[ST, H, S, DefaultContext[H]] =>
 
 //class MagicWandSupporter[ST <: Store[ST],
 //                         H <: Heap[H],
@@ -26,11 +26,10 @@ trait MagicWandSupporter[ST <: Store[ST],
 //                         C <: Context[C]]
 //                        (decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, C]) {
 
-  protected val decider: Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]]
+  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
 
   object magicWandSupporter {
 
-  private type P = DefaultFractionalPermissions
   private type C = DefaultContext[H]
 
   def isDirectWand(exp: ast.Expression) = exp match {
@@ -232,7 +231,7 @@ trait MagicWandSupporter[ST <: Store[ST],
   def consumeFromMultipleHeaps(σ: S,
                                hs: Stack[H],
                                id: ChunkIdentifier,
-                               pLoss: P,
+                               pLoss: Term,
                                locacc: ast.LocationAccess,
                                pve: PartialVerificationError,
                                c: C)
@@ -305,17 +304,17 @@ trait MagicWandSupporter[ST <: Store[ST],
   private def consumeMaxPermissions(σ: S,
                                     h: H,
                                     id: ChunkIdentifier,
-                                    pLoss: P,
+                                    pLoss: Term,
                                     c: C)
-                                   : (H, Option[DirectChunk], P, C) = {
+                                   : (H, Option[DirectChunk], Term, C) = {
 
     decider.getChunk[DirectChunk](σ, h, id, c) match {
       case result @ Some(ch) =>
         val (pLost, pKeep, pToConsume) =
           if (decider.check(σ, IsAsPermissive(ch.perm, pLoss)))
-            (pLoss, ch.perm - pLoss, NoPerm())
+            (pLoss, PermMinus(ch.perm, pLoss), NoPerm())
           else
-            (ch.perm, NoPerm(), pLoss - ch.perm)
+            (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
 //        println("  [consumeMaxPermissions]")
 //        println(s"    ch.perm = ${ch.perm}")
 //        println(s"    pLost = $pLost")

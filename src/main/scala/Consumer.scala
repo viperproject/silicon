@@ -10,7 +10,7 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.{VerificationError, PartialVerificationError}
 import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NonPositivePermission, AssertionFalse,
-    MagicWandChunkNotFound}
+    MagicWandChunkNotFound, NegativePermission}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFactory, StateFormatter, ChunkIdentifier}
 import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -24,8 +24,8 @@ import supporters.MagicWandSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
-		extends Consumer[Chunk, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
+		extends Consumer[Chunk, ST, H, S, DefaultContext[H]]
+		{ this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
 									  with Brancher[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
@@ -334,8 +334,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val c0 = c.incCycleCounter(predicate)
           val σC = combine(σ, h, c0)
           val σEmp = Σ(σ.γ, Ø, σ.g)
-          evalp(σC, ePerm, pve, c0)((tPerm, c1) => {
-            if (decider.check(σC, IsPositive(tPerm)))
+          eval(σC, ePerm, pve, c0)((tPerm, c1) => {
+            if (decider.check(σC, IsNonNegative(tPerm)))
               evals(σC, eArgs, pve, c1)((tArgs, c2) => {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
                 consume(σEmp \ insγ, h, FullPerm(), predicate.body, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
@@ -365,8 +365,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val c0 = c.incCycleCounter(predicate)
           val σC = combine(σ, h, c0)
           val σEmp = Σ(σ.γ, Ø, σ.g)
-          evalp(σC, ePerm, pve, c0)((tPerm, c1) =>
-            if (decider.check(σC, IsPositive(tPerm)))
+          eval(σC, ePerm, pve, c0)((tPerm, c1) =>
+            if (decider.check(σC, IsNonNegative(tPerm)))
               evals(σC, eArgs, pve, c1)((tArgs, c2) =>
                 consume(σEmp, h, FullPerm(), acc, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
                   val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, additionalEvalHeap = Some(c3.reserveHeaps.head))

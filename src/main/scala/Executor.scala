@@ -18,8 +18,8 @@ import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
-    DirectChunk, NestedFieldChunk, NestedPredicateChunk, DefaultContext}
+import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk,
+    SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk, DefaultContext}
 import state.terms.perms.IsPositive
 import supporters.MagicWandSupporter
 
