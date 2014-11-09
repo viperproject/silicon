@@ -11,14 +11,13 @@ package interfaces
 import silver.verifier.PartialVerificationError
 import interfaces.state.Context
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
-import silicon.state.terms.{Sort, Term, FractionalPermissions}
+import silicon.state.terms.{Sort, Term}
 
 /*
  * Symbolic execution primitives
  */
 
-trait Evaluator[P <: FractionalPermissions[P],
-                ST <: Store[ST],
+trait Evaluator[ST <: Store[ST],
                 H <: Heap[H],
 								S <: State[ST, H, S],
                 C <: Context[C]] {
@@ -31,10 +30,6 @@ trait Evaluator[P <: FractionalPermissions[P],
 					(Q: (Term, C) => VerificationResult)
           : VerificationResult
 
-	def evalp(σ: S, p: ast.Expression, pve: PartialVerificationError, c: C)
-					 (Q: (P, C) => VerificationResult)
-           : VerificationResult
-
   def withChunkIdentifier(σ: S,
                           locacc: ast.LocationAccess,
                           assertRcvrNonNull: Boolean,
@@ -44,15 +39,14 @@ trait Evaluator[P <: FractionalPermissions[P],
                          : VerificationResult
 }
 
-trait Producer[P <: FractionalPermissions[P],
-               ST <: Store[ST],
+trait Producer[ST <: Store[ST],
                H <: Heap[H],
 							 S <: State[ST, H, S],
                C <: Context[C]] {
 
 	def produce(σ: S,
               sf: Sort => Term,
-              p: P,
+              p: Term,
               φ: ast.Expression,
               pve: PartialVerificationError,
               c: C)
@@ -61,7 +55,7 @@ trait Producer[P <: FractionalPermissions[P],
 
   def produces(σ: S,
                sf: Sort => Term,
-               p: P,
+               p: Term,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
@@ -69,19 +63,18 @@ trait Producer[P <: FractionalPermissions[P],
               : VerificationResult
 }
 
-trait Consumer[P <: FractionalPermissions[P],
-               CH <: Chunk,
+trait Consumer[CH <: Chunk,
                ST <: Store[ST],
                H <: Heap[H],
 							 S <: State[ST, H, S],
                C <: Context[C]] {
 
-	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
+	def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
 						 (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult
 
   def consumes(σ: S,
-               p: P,
+               p: Term,
                φ: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)

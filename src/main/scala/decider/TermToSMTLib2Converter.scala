@@ -144,7 +144,6 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case FullPerm() => "$Perm.Write"
     case NoPerm() => "$Perm.No"
     case WildcardPerm(v) => render(v)
-    case TermPerm(t) => renderAsReal(t)
     case FractionPerm(n, d) => renderBinaryOp("/", renderAsReal(n), renderAsReal(d))
     case PermLess(t0, t1) => renderBinaryOp("<", render(t0), render(t1))
     case PermPlus(t0, t1) => renderBinaryOp("+", renderAsReal(t0), renderAsReal(t1))

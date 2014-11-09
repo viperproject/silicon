@@ -9,9 +9,9 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import state.terms.{Term, DefaultFractionalPermissions}
+import terms.{PermMinus, PermPlus, Term}
 
-sealed trait DirectChunk extends PermissionChunk[DefaultFractionalPermissions, DirectChunk]
+sealed trait DirectChunk extends PermissionChunk[DirectChunk]
 
 case class FieldChunkIdentifier(rcvr: Term, name: String) extends ChunkIdentifier {
   val args = rcvr :: Nil
@@ -19,15 +19,15 @@ case class FieldChunkIdentifier(rcvr: Term, name: String) extends ChunkIdentifie
   override def toString = s"$rcvr.$name"
 }
 
-case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: DefaultFractionalPermissions)
+case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
     extends FieldChunk with DirectChunk {
 
   val args = rcvr :: Nil
   val id = FieldChunkIdentifier(rcvr, name)
 
-	def +(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm + perm)
-	def -(perm: DefaultFractionalPermissions): DirectFieldChunk = this.copy(perm = this.perm - perm)
-  def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
+	def +(perm: Term): DirectFieldChunk = this.copy(perm = PermPlus(this.perm, perm))
+	def -(perm: Term): DirectFieldChunk = this.copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = this.copy(perm = perm)
 
 	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
@@ -39,15 +39,15 @@ case class PredicateChunkIdentifier(name: String, args: List[Term]) extends Chun
 case class DirectPredicateChunk(name: String,
                                 args: List[Term],
                                 snap: Term,
-                                perm: DefaultFractionalPermissions,
+                                perm: Term,
                                 nested: List[NestedChunk] = Nil)
     extends PredicateChunk with DirectChunk {
 
   val id = PredicateChunkIdentifier(name, args)
 
-  def +(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm + perm)
-  def -(perm: DefaultFractionalPermissions): DirectPredicateChunk = this.copy(perm = this.perm - perm)
-  def \(perm: DefaultFractionalPermissions) = this.copy(perm = perm)
+  def +(perm: Term): DirectPredicateChunk = this.copy(perm = PermPlus(this.perm, perm))
+  def -(perm: Term): DirectPredicateChunk = this.copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = this.copy(perm = perm)
 
   override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
 }

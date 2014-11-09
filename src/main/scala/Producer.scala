@@ -21,22 +21,23 @@ trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+    extends Producer[ST, H, S, DefaultContext[H]]
        with HasLocalState
-    { this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
-                    with Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
+                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
-  private type P = DefaultFractionalPermissions
 
-  protected val decider: Decider[P, ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
+
+  protected val heapCompressor: HeapCompressor[ST, H, S]
 
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
-
+  
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
@@ -49,7 +50,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   def produce(σ: S,
               sf: Sort => Term,
-              p: P,
+              p: Term,
               φ: ast.Expression,
               pve: PartialVerificationError,
               c: C)
@@ -61,7 +62,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   def produces(σ: S,
                sf: Sort => Term,
-               p: P,
+               p: Term,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
@@ -108,7 +109,7 @@ trait DefaultProducer[ST <: Store[ST],
 
   private def produce2(σ: S,
                        sf: Sort => Term,
-                       p: P,
+                       p: Term,
                        φ: ast.Expression,
                        pve: PartialVerificationError,
                        c: C)
@@ -170,13 +171,11 @@ trait DefaultProducer[ST <: Store[ST],
             Success()
           else {
             assume(tRcvr !== Null())
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
-            assume(perms.IsMaybePositive(pGain) /*NoPerm() < pGain*/)
+          eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
-            val pNettoGain = pGain * p
+            val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
-            assume(t)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
@@ -187,13 +186,11 @@ trait DefaultProducer[ST <: Store[ST],
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
-          evalp(σ, gain, pve, c1)((pGain, c2) => {
-            assume(perms.IsMaybePositive(pGain) /*NoPerm() < pGain*/)
+          eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
-            val pNettoGain = pGain * p
+            val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk, t) = addDirectChunk(σ.h, ch)
-            assume(t)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
@@ -290,43 +287,6 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
-
-  private def addDirectChunk(h: H, dc: DirectChunk): (H, Option[DirectChunk], Term) = {
-    var matchingChunk: Option[DirectChunk] = None
-    var tEq: Term = True()
-
-    /* Only the first match will be considered. This is incomplete, but sound,
-     * and the underlying assumption is that the input heap is "tidy" in the
-     * sense that there will be at most one chunk that syntactically matches
-     * the given chunk dc.
-     */
-
-    /* TODO: Code duplication is necessary because a FieldChunk has a value
-     *       whereas a predicate chunk has a snap(shot).
-     *       The two should be unified (as VeriFast does).
-     */
-    val chunks = h.values.map {
-      case ch: DirectFieldChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
-        tEq = ch.value === dc.asInstanceOf[DirectFieldChunk].value
-        matchingChunk = Some(ch)
-
-        ch + dc.perm
-
-      case ch: DirectPredicateChunk if matchingChunk.isEmpty && ch.name == dc.name && ch.args == dc.args =>
-        tEq = ch.snap === dc.asInstanceOf[DirectPredicateChunk].snap
-        matchingChunk = Some(ch)
-
-        ch + dc.perm
-
-      case ch => ch
-    }
-
-    val h1 =
-      if (matchingChunk.nonEmpty) H(chunks)
-      else H(chunks) + dc
-
-    (h1, matchingChunk, tEq)
-  }
 
   override def pushLocalState() {
     snapshotCacheFrames = snapshotCache +: snapshotCacheFrames

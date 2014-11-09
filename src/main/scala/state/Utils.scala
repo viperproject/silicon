@@ -125,7 +125,6 @@ package object utils {
     case _: NoPerm | _: FullPerm => Nil
     case wcp: WildcardPerm => List(wcp.v)
     case fp: FractionPerm => List(fp.n, fp.d)
-    case tp: TermPerm => List(tp.t)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
     case app: Apply => List(app.func) ++ app.args
@@ -177,7 +176,6 @@ package object utils {
       case _: NoPerm | _: FullPerm  => term
       case FractionPerm(n, d) => FractionPerm(go(n), go(d))
       case WildcardPerm(v) => WildcardPerm(go(v))
-      case TermPerm(t0) => TermPerm(go(t0))
       case IsValidPermVar(v) => IsValidPermVar(go(v))
       case IsReadPermVar(v, ub) => IsReadPermVar(go(v), go(ub))
       case PermTimes(p0, p1) => PermTimes(go(p0), go(p1))

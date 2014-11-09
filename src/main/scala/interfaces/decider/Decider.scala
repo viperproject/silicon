@@ -12,12 +12,11 @@ import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
 import interfaces.{Failure, VerificationResult}
 import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import state.terms.{Term, Var, FractionalPermissions, Sort}
+import state.terms.{Term, Var, Sort}
 import state.DirectChunk
 import utils.notNothing._
 
-trait Decider[P <: FractionalPermissions[P],
-              ST <: Store[ST],
+trait Decider[ST <: Store[ST],
               H <: Heap[H],
 						  PC <: PathConditions[PC],
               S <: State[ST, H, S],
@@ -67,14 +66,17 @@ trait Decider[P <: FractionalPermissions[P],
                : VerificationResult
 
   /** Try to find a chunk identified by `id`. If not present, or if it comes
-    * with less than `p` permissions, then a failure is returned, otherwise,
+    * with insufficient permissions, then a failure is returned, otherwise,
     * `Q` is invoked with the found chunk.
+    * The found permissions `p2` are considered insufficient if `optPerms` is
+    * `Some(p1)` and `p2` is not at least `p1`, or if `optPerms` is `None` and
+    * `p2` is potentially `none`.
     */
   def withChunk[CH <: DirectChunk : NotNothing : Manifest]
                (σ: S,
                 h: H,
                 id: ChunkIdentifier,
-                p: P,
+                optPerms: Option[Term],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)

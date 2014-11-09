@@ -98,12 +98,12 @@ trait ExpressionTranslator {
 
       case _: ast.FullPerm => FullPerm()
       case _: ast.NoPerm => NoPerm()
-      case ast.FractionalPerm(e0, e1) => FractionPerm(TermPerm(f(e0)), TermPerm(f(e1)))
+      case ast.FractionalPerm(e0, e1) => FractionPerm(f(e0), f(e1))
 
-      case ast.PermPlus(e0, e1) => PermPlus(TermPerm(f(e0)), TermPerm(f(e1)))
-      case ast.PermMinus(e0, e1) => PermMinus(TermPerm(f(e0)), TermPerm(f(e1)))
-      case ast.PermTimes(e0, e1) => PermTimes(TermPerm(f(e0)), TermPerm(f(e1)))
-      case ast.IntPermTimes(e0, e1) => IntPermTimes(f(e0), TermPerm(f(e1)))
+      case ast.PermPlus(e0, e1) => PermPlus(f(e0), f(e1))
+      case ast.PermMinus(e0, e1) => PermMinus(f(e0), f(e1))
+      case ast.PermTimes(e0, e1) => PermTimes(f(e0), f(e1))
+      case ast.IntPermTimes(e0, e1) => IntPermTimes(f(e0), f(e1))
       case ast.PermLE(e0, e1) => AtMost(f(e0), f(e1))
       case ast.PermLT(e0, e1) => Less(f(e0), f(e1))
       case ast.PermGE(e0, e1) => AtLeast(f(e0), f(e1))

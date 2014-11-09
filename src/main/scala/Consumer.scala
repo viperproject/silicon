@@ -19,24 +19,23 @@ import reporting.Bookkeeper
 import viper.silicon.state.{DefaultContext, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk,
     MagicWandChunkIdentifier}
 import state.terms._
-import state.terms.perms.{IsPositive, IsNoAccess}
+import state.terms.perms.{IsNonNegative, IsNoAccess}
 import supporters.MagicWandSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
-		extends Consumer[DefaultFractionalPermissions, Chunk, ST, H, S, DefaultContext[H]]
-		{ this: Logging with Evaluator[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+		extends Consumer[Chunk, ST, H, S, DefaultContext]
+		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
 									  with Brancher[ST, H, S, DefaultContext[H]]
-                    with Producer[DefaultFractionalPermissions, ST, H, S, DefaultContext[H]]
+                    with Producer[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
-  private type P = DefaultFractionalPermissions
   private type CH = Chunk
 
   protected implicit val manifestH: Manifest[H]
 
-  protected val decider: Decider[P, ST, H, PC, S, C]
+	protected val decider: Decider[ST, H, PC, S, C]
   import decider.assume
 
   protected val stateFactory: StateFactory[ST, H, S]
@@ -54,7 +53,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-	def consume(σ: S, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
+	def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult = {
 
@@ -63,7 +62,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   }
 
   def consumes(σ: S,
-               p: P,
+               p: Term,
                φs: Seq[ast.Expression],
                pvef: ast.Expression => PartialVerificationError,
                c: C)
@@ -74,7 +73,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   private def consumes(σ: S,
                        h: H,
-                       p: P,
+                       p: Term,
                        φs: Seq[ast.Expression],
                        pvef: ast.Expression => PartialVerificationError,
                        c: C)
@@ -109,7 +108,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }))
     }
 
-  protected def consume(σ: S, h: H, p: P, φ: ast.Expression, pve: PartialVerificationError, c: C)
+  protected def consume(σ: S, h: H, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[CH], C) => VerificationResult)
                        : VerificationResult = {
 
@@ -154,10 +153,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc, perm) =>
         val σC = combine(σ, h, c)
         withChunkIdentifier(σC, locacc, true, pve, c)((id, c1) =>
-          evalp(σC, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σC, perms.IsMaybePositive(tPerm) /*IsPositive(tPerm)*/){
+          eval(σC, perm, pve, c1)((tPerm, c2) =>
+            decider.assert(σC, perms.IsNonNegative(tPerm) /*IsPositive(tPerm)*/){
               case true =>
-                consumePermissions(σC, h, id, p * tPerm, locacc, pve, c2)((h1, ch, c3, results) => {
+                consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
                   val c4 = c3.snapshotRecorder match {
                     case Some(sr) =>
                       c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
@@ -175,7 +174,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       Q(h2, pc.snap, pc :: Nil, c4)}})
 
               case false =>
-                Failure[ST, H, S](pve dueTo NonPositivePermission(perm))}))
+                Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -411,7 +410,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   private def consumePermissions(σ: S,
                                  h: H,
                                  id: ChunkIdentifier,
-                                 pLoss: P,
+                                 pLoss: Term,
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C)
@@ -427,14 +426,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         Q(h + H(chs), chs.head, c2, pcr)})
 
     if (utils.consumeExactRead(pLoss, c)) {
-      decider.withChunk[DirectChunk](σ, h, id, pLoss, locacc, pve, c)(ch => {
-        if (decider.check(σ, IsNoAccess(ch.perm - pLoss))) {
+      decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
+        if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
           Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
         else
           Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     } else {
-      decider.withChunk[DirectChunk](σ, h, id, locacc, pve, c)(ch => {
-        assume(pLoss < ch.perm)
+      decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
+        assume(PermLess(pLoss, ch.perm))
         Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }
   }

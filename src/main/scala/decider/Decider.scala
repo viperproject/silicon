@@ -25,12 +25,10 @@ class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
-		extends Decider[DefaultFractionalPermissions, ST, H, PC, S, DefaultContext[H]]
+		extends Decider[ST, H, PC, S, DefaultContext[H]]
 		   with Logging {
 
   protected type C = DefaultContext[H]
-  protected type P = DefaultFractionalPermissions
-
 	private var z3: Z3ProverStdIO = _
 
   protected var pathConditionsFactory: PathConditionsFactory[PC] = _
@@ -294,7 +292,7 @@ class DefaultDecider[ST <: Store[ST],
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
-    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
+//    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
     case _ => false
   }
@@ -340,7 +338,7 @@ class DefaultDecider[ST <: Store[ST],
                (σ: S,
                 h: H,
                 id: ChunkIdentifier,
-                p: P,
+                optPerms: Option[Term],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)
@@ -349,8 +347,19 @@ class DefaultDecider[ST <: Store[ST],
 
     tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
       withChunk[CH](σ1, σ1.h, id, locacc, pve, c)(ch => {
-        assert(σ1, IsAsPermissive(ch.perm, p)){
+        val permCheck =  optPerms match {
+          case Some(p) => IsAsPermissive(ch.perm, p)
+          case None => ch.perm !== NoPerm()
+        }
+
+//        if (!isKnownToBeTrue(permCheck)) {
+//          val writer = bookkeeper.logfiles("withChunk")
+//          writer.println(permCheck)
+//        }
+
+        assert(σ1, permCheck) {
           case true =>
+            assume(permCheck)
             QS(ch)
           case false =>
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})

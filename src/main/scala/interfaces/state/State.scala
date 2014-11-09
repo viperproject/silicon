@@ -8,7 +8,8 @@ package viper
 package silicon
 package interfaces.state
 
-import silicon.state.terms.Term
+import state.terms.Term
+import state.DirectChunk
 
 /* Conventions:
  *  - def \(...) should be intended to replace a component/an entry
@@ -78,4 +79,5 @@ trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
 
 trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], C <: Context[C]] {
 	def compress(σ: S, h: H, c: C)
+  def merge(σ: S, h: H, ch: Chunk): (H, Option[DirectChunk])
 }
