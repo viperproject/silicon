@@ -248,7 +248,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 				 * ats: accumulating path conditions
 				 * c2: current chunk of the new heap h2
 				 */
-				(decider.getChunk[Chunk](σ, ah, c2.id), c2) match {
+				(decider.getChunk[DirectChunk](σ, ah, c2.id), c2) match {
 					case (Some(c1: DirectFieldChunk), c2: DirectFieldChunk) =>
             val (tSnap, tSnapDef) = combineSnapshots(c1.value, c2.value, c1.perm, c2.perm)
             val c3 = c1.copy(perm = PermPlus(c1.perm, c2.perm), value = tSnap)
