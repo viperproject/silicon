@@ -1,0 +1,19 @@
+field v: Bool
+
+method test1(x: Ref) {
+  //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/10/)
+  package acc(x.v) && acc(x.v) --* false // Fails, but should not
+}
+
+method test1fix(x: Ref) {
+  package acc(x.v) && acc(x.v) --* acc(x.v) && acc(x.v) && false
+}
+
+method test2(x: Ref, y: Ref) {
+  //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/10/)
+  package acc(x.v) && acc(y.v) --* x != y // Fails, but should not
+}
+
+method test2fix(x: Ref, y: Ref) {
+  package acc(x.v) && acc(y.v) --* acc(x.v) && acc(y.v) && x != y
+}

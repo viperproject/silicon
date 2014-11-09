@@ -14,26 +14,29 @@ import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
+import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
+    FieldChunk, Chunk}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk}
 import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
-import state.terms.perms.IsPositive
+import state.terms.perms.IsNonNegative
+import supporters.MagicWandSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
 											 S <: State[ST, H, S]]
-		extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
-		{ this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
-										with Producer[ST, H, S, DefaultContext]
-										with Brancher[ST, H, S, DefaultContext]
-										with Joiner[ST, H, S, DefaultContext] =>
+		extends Evaluator[ST, H, S, DefaultContext[H]] with HasLocalState
+		{ this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+										with Producer[ST, H, S, DefaultContext[H]]
+										with Brancher[ST, H, S, DefaultContext[H]]
+										with Joiner[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
 	protected val decider: Decider[ST, H, PC, S, C]
 	import decider.{fresh, assume}
@@ -78,7 +81,8 @@ trait DefaultEvaluator[ST <: Store[ST],
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-		eval2(σ, e, pve, c)((t, c1) => {
+		val hEval = c.additionalEvalHeap.map(_ + σ.h).getOrElse(σ.h)
+    eval2(σ \ hEval, e, pve, c)((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
@@ -88,6 +92,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           c1
 			Q(t, c2)})
   }
+
 
   protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
                      (Q: (Term, C) => VerificationResult)
@@ -102,6 +107,9 @@ trait DefaultEvaluator[ST <: Store[ST],
 			case _ =>
         logger.debug(s"\nEVAL ${e.pos}: $e")
 				logger.debug(stateFormatter.format(σ))
+        if (c.reserveHeaps.nonEmpty)
+          logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        c.lhsHeap.map(h => logger.debug("hLHS = " + stateFormatter.format(h)))
         decider.prover.logComment(s"[eval] $e")
 		}
 
@@ -150,7 +158,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, σ.h, id) match {
+          decider.getChunk[DirectChunk](σ, σ.h, id, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
@@ -173,6 +181,8 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
+      case ast.PackageOld(e0) => eval(σ, e0, pve, c)(Q) // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
+      case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -362,6 +372,8 @@ trait DefaultEvaluator[ST <: Store[ST],
               Q(tR, cR)
             })})
 
+      /* TODO: Try to merge the code from Evaluator and Executor for fold/folding and unfold/unfolding. */
+
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
               eIn) =>
@@ -371,7 +383,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
           val c0a = c.incCycleCounter(predicate)
           eval(σ, ePerm, pve, c0a)((tPerm, c1) => {
-            decider.assert(σ, IsPositive(tPerm)){
+            decider.assert(σ, IsNonNegative(tPerm)){
               case true =>
                 evals(σ, eArgs, pve, c1)((tArgs, c2) =>
                   join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
@@ -479,6 +491,31 @@ trait DefaultEvaluator[ST <: Store[ST],
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
+
+      /* Magic wands */
+
+//      case mw: ast.MagicWand =>
+//        magicWandSupporter.translate(σ, mw, pve, c)(Q)
+//        println("\n[Evaluator/MagicWand]")
+//        eval(σ, eLeft, pve, c)((tLeft, c1) =>
+//          eval(σ, eRight, pve, c1)((tRight, c2) => {
+//            println(s"  tLeft = $tLeft")
+//            println(s"  tRight = $tRight")
+//            Q(MagicWand(tLeft, tRight), c2)}))
+
+//      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
+//        println("\n[Evaluator/FAP]")
+//        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+//            Q(Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2)))
+//
+//      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
+//        println("\n[Evaluator/PAP]")
+//        evals(σ, eArgs, pve, c)((ts, c1) =>
+//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
+//            Q(Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
+
+      /* Unexpected nodes */
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e))
@@ -675,7 +712,6 @@ trait DefaultEvaluator[ST <: Store[ST],
           assume(tAux)
           Q(t0, optT1, optInnerC.getOrElse(c1))}})
   }
-
 	override def pushLocalState() {
 		fappCacheFrames = fappCache +: fappCacheFrames
 		super.pushLocalState()

@@ -7,6 +7,7 @@
 package viper
 package silicon
 
+import interfaces.state.Heap
 import state.DefaultContext
 import state.terms._
 
@@ -38,7 +39,7 @@ package object utils {
     code
   }
 
-  def consumeExactRead(fp: Term, c: DefaultContext): Boolean = fp match {
+  def consumeExactRead[H <: Heap[H]](fp: Term, c: DefaultContext[H]): Boolean = fp match {
     case _: WildcardPerm => false
     case v: Var => !c.constrainableARPs.contains(v)
     case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)

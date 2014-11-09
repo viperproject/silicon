@@ -1,0 +1,69 @@
+/* See list_sum.sil for the running example of our APLAS'14 paper (currently
+ * under submission).
+ *
+ * This example is effectively our running example, but without comments and use of
+ * assertion short-hands.
+ */
+
+field val: Int
+field next: Ref
+
+predicate List(ys: Ref) {
+  acc(ys.val) && acc(ys.next) && (ys.next != null ==> acc(List(ys.next)))
+}
+
+function sum_rec(ys: Ref): Int
+  requires acc(List(ys))
+{ unfolding List(ys) in ys.val + (ys.next == null ? 0 : sum_rec(ys.next)) }
+
+method sum_it(ys: Ref) returns (sum: Int)
+  requires ys != null
+  requires acc(List(ys))
+  ensures acc(List(ys))
+  ensures sum == old(sum_rec(ys))
+{
+  var xs: Ref := ys
+  sum := 0
+
+  var old_sum_xs: Int := sum_rec(xs)
+
+  package
+    (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
+      --*
+    (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+
+  while (xs != null)
+    invariant xs != null ==> acc(List(xs))
+    invariant old_sum_xs == (xs == null ? 0 : sum_rec(xs))
+    invariant sum == old(sum_rec(ys)) - old_sum_xs;
+    invariant
+      (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
+        --*
+      (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+  {
+    var zs: Ref := xs
+    var old_sum_xs2: Int := old_sum_xs /* old_sum_xs2 is needed to apply the wand obtained from the invariant */
+
+    unfold List(xs)
+    sum := sum + xs.val
+    xs := xs.next;
+
+    old_sum_xs := (xs == null ? 0 : sum_rec(xs))
+
+    package
+      (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
+        --*
+      folding List(zs) in
+        applying
+          ((zs != null ==> (acc(List(zs)) && sum_rec(zs) == old_sum_xs2))
+            --*
+          (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))))
+        in
+          acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))
+  }
+
+  apply
+    (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
+      --*
+    (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+}

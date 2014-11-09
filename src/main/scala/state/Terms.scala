@@ -9,8 +9,11 @@ package silicon
 package state.terms
 
 import scala.reflect._
-import ast.commonnodes
 import silver.ast.utility.{GenericTriggerGenerator, Visitor}
+import ast.commonnodes
+import state.MagicWandChunk
+import interfaces.state.Heap
+
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -145,6 +148,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
     Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
 
+  /** @see [[Visitor.shallowCollect()]] */
+  def shallowCollect[R](f: PartialFunction[Term, R]): Seq[R] =
+    Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
+
   /** @see [[Visitor.find()]] */
   def find[R](f: PartialFunction[Term, R]): Option[R] =
     Visitor.find(this, state.utils.subterms)(f)
@@ -173,6 +180,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
 
 sealed trait Symbol {
   def id: String
+}
+
+case class PlainSymbol(id: String) extends Symbol {
+  override val toString = id
 }
 
 case class Var(id: String, sort: Sort) extends Symbol with Term {
@@ -446,7 +457,7 @@ class And(val ts: Seq[Term]) extends BooleanTerm
 
 object And {
   def apply(ts: Term*) = createAnd(ts)
-  def apply(ts: Set[Term]) = createAnd(ts.toSeq)
+  def apply(ts: Iterable[Term]) = createAnd(ts.toSeq)
 
   @inline
   def createAnd(_ts: Seq[Term]): Term = {
@@ -1465,6 +1476,43 @@ object SortWrapper {
 
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
 }
+
+/* Magic wands */
+
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+  override val sort = sorts.Unit
+  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
+}
+
+//sealed trait Shape
+
+//case class MagicWand(left: Term, right: Term) extends Term /*with Shape*/ {
+//  override val sort = sorts.Unit
+//  override val toString = s"$left --* $right"
+//}
+
+///* TODO: Consider using regular And/Implies/Ite (Acc is most likely needed in any case) */
+//object shapes {
+//  case class Acc(id: Symbol, args: Seq[Term], perms: DefaultFractionalPermissions) extends Term with Shape {
+//    override val sort = sorts.Unit
+//
+//    override val toString =
+//      if (args.length == 1)
+//        s"acc(${args.head}.$id, $perms)"
+//      else
+//        s"acc($id(${args.mkString(", ")}), $perms)"
+//  }
+//
+//  case class And(p0: Term, p1: Term) extends BooleanTerm with commonnodes.And[Term] with Shape
+//
+//  case class Implies(p0: Term, p1: Term) extends BooleanTerm with commonnodes.Implies[Term] with Shape
+//
+//  case class Ite(p0: Term, p1: Term, p2: Term) extends BooleanTerm with Shape {
+//    override lazy val toString = s"$p0 ? $p1 : $p2"
+//  }
+//
+//
+//}
 
 /* Trigger-related terms */
 

@@ -1,0 +1,151 @@
+field f: Int
+field g: Int
+field h: Int
+
+method test06(x: Ref) {
+  package acc(x.f, write) --* acc(x.f, write)
+  package acc(x.f, write) --* acc(x.f, 1/2)
+}
+
+method test07(x: Ref) {
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package acc(x.f, 1/2) --* acc(x.f, write)
+}
+
+method test01(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  //:: ExpectedOutput(package.failed:assertion.false)
+  package acc(x.f, 1/2) --* (acc(x.f, 1/2) && x.f == 0)
+}
+
+method test09(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+  assert acc(x.f, 1/2)
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(x.f, 2/3)
+}
+
+method test08(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 0
+  package true --* (acc(x.f, 1/3) && x.f == 0)
+}
+
+method test03(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 1
+  //:: ExpectedOutput(package.failed:assertion.false)
+  package acc(x.f, 1/2) --* (acc(x.f, write) && x.f == 0)
+}
+
+method test04(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 1
+  package (acc(x.f, 1/2) && x.f == 0) --* (acc(x.f, 1/2) && x.f == 0)
+}
+
+method test05(x: Ref)
+  requires acc(x.f, 1/2) && x.f == 1
+{
+  //:: ExpectedOutput(package.failed:assertion.false)
+  package (acc(x.f, 1/2) && x.f == 0) --* false
+}
+
+method test10(x: Ref)
+  requires acc(x.f, write)
+{
+  x.f := 1
+
+  package true --* (acc(x.f, write) && x.f == 1)
+  package (acc(x.g, write) && x.g == 1) --* (acc(x.g, write) && x.g == 1)
+}
+
+method test11(x: Ref)
+  requires acc(x.f, write)
+  requires acc(x.g, write)
+{
+  x.f := 1
+
+  package
+    (acc(x.g, write) && x.g == 1)
+      --*
+    (acc(x.g, write) && x.g == 1 && acc(x.f, write) && x.f == 1)
+}
+
+/* Tests about intermediate states */
+
+method test12(x: Ref)
+  requires acc(x.f)
+{
+  package false --* false
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test13(x: Ref)
+  requires acc(x.f)
+{
+  //:: ExpectedOutput(package.failed:assertion.false)
+  package acc(x.f)
+            --*
+          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
+          false)
+}
+
+method test14(x: Ref) {
+  //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/00/)
+  package acc(x.f) && acc(x.f) --* false
+  // :: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test15(x: Ref)
+  requires acc(x.f)
+{
+  /* yields acc(x.f) --* true */
+  package acc(x.f)
+            --*
+          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
+          true)
+
+  assert acc(x.f) --* true
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test16(x: Ref)
+  requires acc(x.f)
+{
+  /* yields acc(x.f) --* false */
+  package acc(x.f)
+            --*
+          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
+          (applying (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
+           false))
+
+//  assert acc(x.f) --* false
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test17(x: Ref)
+  requires acc(x.f)
+{
+  /* yields acc(x.f) --* false */
+  package acc(x.f)
+            --*
+          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
+          (applying (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
+          false))
+
+  //:: ExpectedOutput(apply.failed:insufficient.permission)
+  apply acc(x.f) --* false
+}

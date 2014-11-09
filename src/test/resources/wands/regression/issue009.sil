@@ -1,0 +1,15 @@
+field f: Ref
+
+predicate P(x: Ref) { acc(x.f) && acc(x.f.f) }
+predicate Q(y: Ref) { acc(y.f) }
+
+method test01(z: Ref)
+  requires acc(P(z))
+{
+  package
+    acc(P(z))
+      --*
+    unfolding acc(P(z)) in
+    folding acc(Q(z.f)) in
+    acc(z.f) && acc(Q(z.f))
+}

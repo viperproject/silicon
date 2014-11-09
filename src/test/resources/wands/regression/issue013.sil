@@ -1,0 +1,6 @@
+predicate P(x: Ref) { x != null }
+predicate Q(x: Ref) { x != null }
+
+method test1(l: Ref) {
+  package acc(P(l)) --* unfolding P(l) in folding Q(l) in true
+}

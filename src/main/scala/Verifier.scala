@@ -8,37 +8,41 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed}
+import util.control.Breaks._
+import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
+    PredicateNotWellformed, MagicWandNotWellformed}
 import silver.components.StatefulComponent
-import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
+import silver.ast.utility.{Nodes, Visitor}
+import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
 import interfaces.state.factoryUtils.Ø
-import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
+import state.{DefaultContext, terms, SymbolConvert}
 import state.terms.{sorts, Sort}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
+import supporters.MagicWandSupporter
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
 														 S <: State[ST, H, S]]
 		extends Logging
-		   with Evaluator[ST, H, S, DefaultContext]
-		   with Producer[ST, H, S, DefaultContext]
-		   with Consumer[DirectChunk, ST, H, S, DefaultContext]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+		   with Evaluator[ST, H, S, DefaultContext[H]]
+		   with Producer[ST, H, S, DefaultContext[H]]
+		   with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
        with FunctionsSupporter[ST, H, PC, S] {
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
-	/*protected*/ val config: Config
+  /*protected*/ val config: Config
 
   /*protected*/ val decider: Decider[ST, H, PC, S, C]
-	import decider.{fresh, inScope}
+  import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  import stateFactory._
 
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
@@ -52,7 +56,60 @@ trait AbstractElementVerifier[ST <: Store[ST],
     }
   }
 
-	def verify(method: ast.Method, c: C): VerificationResult = {
+  private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
+    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
+    var result: VerificationResult = Success()
+
+//    println("\n[checkWandsAreSelfFraming]")
+
+    breakable {
+      wands foreach {wand =>
+        val err = MagicWandNotWellformed(wand)
+        val left = wand.left
+        val right = wand.withoutGhostOperations.right
+        val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.Variable => v}
+        val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
+        val σ1 = Σ(γ1, Ø, g)
+        val c1 = c/*.copy(poldHeap = Some(σ.h))*/
+
+//        println(s"  left = $left")
+//        println(s"  right = $right")
+//        println(s"  s1.γ = ${σ1.γ}")
+//        println(s"  s1.h = ${σ1.h}")
+//        println(s"  s1.g = ${σ1.g}")
+
+        var σInner: S = null
+
+        result =
+          inScope {
+//            println("  checking left")
+            produce(σ1, fresh, terms.FullPerm(), left, err, c1)((σ2, c2) => {
+              σInner = σ2
+//              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
+//              val σ3 = σ1
+              Success()})
+          } && inScope {
+//            println("  checking right")
+            produce(σ1, fresh, terms.FullPerm(), right, err, c1.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
+              Success())}
+
+//        println(s"  result = $result")
+
+        result match {
+          case failure: Failure[ST@unchecked, H@unchecked, S@unchecked] =>
+            /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
+            result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
+            break()
+
+          case _: Success => /* Nothing needs to be done*/
+        }
+      }
+    }
+
+    result
+  }
+
+  def verify(method: ast.Method, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
@@ -71,21 +128,25 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
     val postViolated = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, method)
 
-		/* Combined the well-formedness check and the execution of the body, which are two separate
-		 * rules in Smans' paper.
-		 */
+    /* Combined the well-formedness check and the execution of the body, which are two separate
+     * rules in Smans' paper.
+     */
     inScope {
 			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
-				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-			 (inScope {
-         produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
-           Success())}
-					&&
-        inScope {
-          exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-            consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
-              Success()))})})}
-	}
+        val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
+           (inScope {
+              /* TODO: Checking self-framingness here fails if pold(e) reads a location
+               *       to which access is not required by the precondition.
+               */
+              checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
+        && inScope {
+              produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
+                Success())}
+        && inScope {
+              exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
+                consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
+                  Success()))})})}
+  }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
@@ -96,31 +157,36 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val γ = Γ(ins.map(v => (v, fresh(v))))
     val σ = Σ(γ, Ø, Ø)
 
-    inScope {
-      produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c)((_, c1) =>
-        Success())}
+       (inScope {
+          checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
+    && inScope {
+          produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c)((_, c1) =>
+            Success())})
   }
 }
 
 class DefaultElementVerifier[ST <: Store[ST],
                              H <: Heap[H],
-														 PC <: PathConditions[PC],
+                             PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
-		(	val config: Config,
-		  val decider: Decider[ST, H, PC, S, DefaultContext],
-			val stateFactory: StateFactory[ST, H, S],
-			val symbolConverter: SymbolConvert,
-			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
-			val bookkeeper: Bookkeeper)
+    (val config: Config,
+     val decider: Decider[ST, H, PC, S, DefaultContext[H]],
+     val stateFactory: StateFactory[ST, H, S],
+     val symbolConverter: SymbolConvert,
+     val stateFormatter: StateFormatter[ST, H, S, String],
+     val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
+//     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
+     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
+     val bookkeeper: Bookkeeper)
+    (protected implicit val manifestH: Manifest[H])
 		extends AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S, DefaultContext]
+       with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
        with DefaultJoiner[ST, H, PC, S]
+       with MagicWandSupporter[ST, H, PC, S]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -130,7 +196,7 @@ trait AbstractVerifier[ST <: Store[ST],
     extends StatefulComponent
        with Logging {
 
-  /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext]
+  /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext[H]]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
@@ -170,7 +236,7 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-    val c = DefaultContext(program)
+    val c = DefaultContext[H](program)
 
     val members = program.members.filterNot {
       case func: ast.ProgramFunction => true
@@ -260,27 +326,28 @@ trait AbstractVerifier[ST <: Store[ST],
 }
 
 class DefaultVerifier[ST <: Store[ST],
-                      H <: Heap[H],
+                      H <: Heap[H] : Manifest,
                       PC <: PathConditions[PC],
 											S <: State[ST, H, S]]
-		(	val config: Config,
-			val decider: Decider[ST, H, PC, S, DefaultContext],
-			val stateFactory: StateFactory[ST, H, S],
-			val symbolConverter: SymbolConvert,
-      val preambleEmitter: PreambleFileEmitter[String, String],
-      val sequencesEmitter: SequencesEmitter,
-      val setsEmitter: SetsEmitter,
-      val multisetsEmitter: MultisetsEmitter,
-			val domainsEmitter: DomainsEmitter,
-			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
-			val bookkeeper: Bookkeeper)
+    (val config: Config,
+     val decider: Decider[ST, H, PC, S, DefaultContext[H]],
+     val stateFactory: StateFactory[ST, H, S],
+     val symbolConverter: SymbolConvert,
+     val preambleEmitter: PreambleFileEmitter[String, String],
+     val sequencesEmitter: SequencesEmitter,
+     val setsEmitter: SetsEmitter,
+     val multisetsEmitter: MultisetsEmitter,
+     val domainsEmitter: DomainsEmitter,
+     val stateFormatter: StateFormatter[ST, H, S, String],
+     val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
+//     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
+     val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
+     val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]
-			 with Logging {
+       with Logging {
 
-	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      stateUtils, bookkeeper)
+  val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
+                                      /*magicWandSupporter,*/ stateUtils, bookkeeper)
 
   override def reset() {
     super.reset()

@@ -1,0 +1,25 @@
+field next: Ref
+
+predicate P(x: Ref) {
+  acc(x.next) && /* x.next != null && */ acc(Q(x.next))
+}
+
+//predicate Q(x: Ref) { acc(x.next) && (x.next != null ==> acc(Q(x.next)))} // TODO: See issue 16
+predicate Q(x: Ref) { acc(x.next) && acc(Q(x.next), x.next != null ? write : none)}
+
+method m(l: Ref) {
+  package
+    acc(P(l))
+      --*
+    unfolding P(l)
+    in folding Q(l)
+    in acc(Q(l))
+
+  inhale acc(P(l))
+  apply acc(P(l)) --* acc(Q(l))
+
+  unfold acc(Q(l))
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

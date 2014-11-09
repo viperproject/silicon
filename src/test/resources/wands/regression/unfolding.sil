@@ -1,0 +1,76 @@
+field f: Int
+field g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f) && acc(this.g)
+}
+
+function sum(p: Ref): Int
+  requires acc(Pair(p))
+{
+  unfolding acc(Pair(p)) in (p.f) + (p.g)
+}
+
+method test06(p: Ref) {
+  package
+    //:: ExpectedOutput(wand.not.wellformed)
+    (acc(Pair(p)) && sum(p) == 10)
+      --*
+    unfolding acc(Pair(p)) in p.f + p.g == 10 // rhs is not self-framing
+}
+
+method test07(p: Ref) {
+  package
+    (acc(Pair(p)) && sum(p) == 10)
+      --*
+    acc(Pair(p)) && unfolding acc(Pair(p)) in p.f + p.g == 10
+
+  inhale acc(Pair(p))
+  unfold Pair(p)
+  p.f := 5
+  p.g := p.f
+  fold Pair(p)
+
+  apply acc(Pair(p)) && sum(p) == 10 --* acc(Pair(p)) && unfolding acc(Pair(p)) in p.f + p.g == 10
+  assert unfolding acc(Pair(p)) in p.f + p.g == 10
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test01() {
+  var p: Ref
+  p := new(f, g)
+
+  p.f := 3; p.g := 7
+  fold acc(Pair(p))
+
+  package
+    (acc(Pair(p)) && sum(p) == 10)
+      --*
+    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g) && p.f + p.g == 10
+
+  apply acc(Pair(p)) && sum(p) == 10 --* acc(p.f) && acc(p.g) && p.f + p.g == 10
+  fold acc(Pair(p))
+  assert sum(p) == 10
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02(p: Ref) {
+  inhale acc(Pair(p), 1/2)
+
+  package
+    acc(Pair(p), 1/2)
+      --*
+    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g)
+}
+
+method test03(p: Ref) {
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package
+    acc(Pair(p), 1/2)
+      --*
+    unfolding acc(Pair(p)) in acc(p.f) && acc(p.g)
+}

@@ -1,0 +1,164 @@
+/* Consistency checks (performed on the real Silver AST, not the parser AST) */
+
+field f: Int
+field g: Int
+
+predicate Pair(this: Ref) {
+  acc(this.f) && acc(this.g)
+}
+
+
+/* Wands outside of package/packaging must be ghost-operation-free */
+
+method test01(p: Ref)
+  //:: ExpectedOutput(typechecker.error)
+  requires acc(p.f) --* folding Pair(p) in true
+{}
+
+method test04(p: Ref)
+  requires acc(p.f) --* acc(Pair(p))
+{
+  exhale
+    acc(p.f)
+      --*
+    //:: ExpectedOutput(typechecker.error)
+    (applying (acc(p.f) --* acc(Pair(p))) in true)
+}
+
+method test10(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  assert applying ((folding Pair(p) in true) --* true) in true
+}
+
+
+/* (Un)folding outside of package/packaging must be pure */
+
+method test02(p: Ref)
+  requires acc(Pair(p))
+  //:: ExpectedOutput(typechecker.error)
+  requires unfolding Pair(p) in acc(p.f)
+
+{}
+
+method test03() {
+  var p: Ref
+  p := new()
+
+  //:: ExpectedOutput(typechecker.error)
+  assert folding Pair(p) in acc(Pair(p))
+}
+
+
+/* Applying/packaging must occur inside wands */
+
+function foobar(x: Ref): Int
+  requires true --* acc(x.f)
+{
+  //:: ExpectedOutput(typechecker.error)
+  applying (true --* acc(x.f)) in x.f
+}
+
+method test17(x: Ref)
+  //:: ExpectedOutput(typechecker.error)
+  requires packaging (true --* true) in true
+{}
+
+predicate test18(x: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  acc(x.f) && (acc(x.f) --* acc(x.g)) && applying (acc(x.f) --* acc(x.g)) in true
+}
+
+
+/* Ghost operations on the left of a wand are not supported (and not
+ * necessary, they could be performed outside of the wand)
+ */
+
+method test08(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  package (folding Pair(p) in true) --* true
+
+}
+
+method test05(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  apply (folding Pair(p) in true) --* true
+
+}
+
+method test11(p: Ref) {
+  //:: ExpectedOutput(typechecker.error)
+  assert packaging ((folding Pair(p) in true) --* true) in true
+
+}
+
+
+/* RHS of wands inside package/packaging must be a chain of ghost operations
+ * with a final in-clause (that may contain pure ghost operations)
+ */
+
+method test12(x: Ref)
+  requires acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* acc(x.f) && applying (true --* acc(x.g)) in true
+}
+
+method test13(x: Ref)
+  requires acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* (applying (true --* acc(x.g)) in true) && acc(x.f)
+}
+
+method test14(x: Ref)
+  requires true --* acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* (applying (true --* acc(x.f)) in acc(x.f)) && (applying (true --* acc(x.g)) in acc(x.g))
+}
+
+method test15(x: Ref, b: Bool)
+  requires true --* acc(x.f)
+  requires true --* acc(x.g)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* (b ? (applying (true --* acc(x.g)) in acc(x.g)) : (applying (true --* acc(x.f)) in acc(x.f)))
+}
+
+method test16(x: Ref, b: Bool)
+  requires true --* acc(x.f)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package true --* (b ==> (applying (true --* acc(x.f)) in acc(x.f)))
+}
+
+/* Was a test in packaging.sil */
+field h: Int
+method test19(x: Ref)
+  requires acc(x.f) && acc(x.g) && acc(x.h)
+{
+  //:: ExpectedOutput(typechecker.error)
+  package acc(x.f)
+            --*
+             (acc(x.f)
+          && (packaging
+                (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h))
+              in
+                acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)))
+
+/*
+  assert acc(x.f) && acc(x.g)
+  assert acc(x.f) --* (acc(x.f) && (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)))
+
+  apply acc(x.f) --* acc(x.f) && (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h))
+  apply acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)
+
+  assert acc(x.f) && acc(x.g) && acc(x.h)
+
+  // :: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+*/
+}

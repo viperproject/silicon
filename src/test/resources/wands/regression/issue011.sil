@@ -1,0 +1,7 @@
+field next: Ref;
+
+predicate P(x: Ref) { acc(x.next) }
+
+method m(l: Ref) {
+  package acc(P(l)) --* unfolding P(l) in acc(l.next) && true
+}

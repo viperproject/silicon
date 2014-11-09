@@ -1,0 +1,17 @@
+field f: Ref
+
+define A true
+define INV(x, v) acc(x.f) && x.f == v
+
+//:: ExpectedOutput(typechecker.error)
+define FOO(x) acc(foo.f)
+
+method test01() {
+  //:: ExpectedOutput(typechecker.error)
+  inhale A --* B
+}
+
+method test03(a: Ref) {
+  /* TODO: Error location should be here, not above */
+  inhale FOO(a)
+}

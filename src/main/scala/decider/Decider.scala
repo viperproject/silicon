@@ -15,7 +15,7 @@ import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
-import state.{DirectChunk, SymbolConvert}
+import state.{DefaultContext, MagicWandChunk, MagicWandChunkIdentifier, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
@@ -24,11 +24,11 @@ import silicon.utils.notNothing._
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
-                     S <: State[ST, H, S],
-                     C <: Context[C]]
-		extends Decider[ST, H, PC, S, C]
+                     S <: State[ST, H, S]]
+		extends Decider[ST, H, PC, S, DefaultContext[H]]
 		   with Logging {
 
+  protected type C = DefaultContext[H]
 	private var z3: Z3ProverStdIO = _
 
   protected var pathConditionsFactory: PathConditionsFactory[PC] = _
@@ -36,7 +36,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var bookkeeper: Bookkeeper = _
   protected var pathConditions: PC = _
   protected var symbolConverter: SymbolConvert = _
-  protected var heapCompressor: HeapCompressor[ST, H, S] = _
+  protected var heapCompressor: HeapCompressor[ST, H, S, C] = _
 
   private sealed trait State
 
@@ -68,7 +68,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   def init(pathConditionsFactory: PathConditionsFactory[PC],
-           heapCompressor: HeapCompressor[ST, H, S],
+           heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
            bookkeeper: Bookkeeper)
           : Option[DependencyNotFoundError] = {
@@ -207,7 +207,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def checkSmoke() = prover.check() == Unsat
 
-  def tryOrFail[R](σ: S)
+  def tryOrFail[R](σ: S, c: C)
                   (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
@@ -229,7 +229,11 @@ class DefaultDecider[ST <: Store[ST],
       if (failure.isEmpty)
         r
       else {
-        heapCompressor.compress(σ, σ.h)
+//        println("BEFORE COMPRESSION")
+//        println(s"  σ.h = ${σ.h}")
+        heapCompressor.compress(σ, σ.h, c)
+//        println("AFTER COMPRESSION")
+//        println(s"  σ.h = ${σ.h}")
         block(σ, r => Q(r), f => f)
       }
 
@@ -317,8 +321,8 @@ class DefaultDecider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult = {
 
-    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
-      getChunk[CH](σ1, σ1.h, id) match {
+    tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
+      getChunk[CH](σ1, σ1.h, id, c) match {
       case Some(chunk) =>
         QS(chunk)
 
@@ -341,7 +345,7 @@ class DefaultDecider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult =
 
-    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
+    tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
       withChunk[CH](σ1, σ1.h, id, locacc, pve, c)(ch => {
         val permCheck =  optPerms match {
           case Some(p) => IsAsPermissive(ch.perm, p)
@@ -361,11 +365,21 @@ class DefaultDecider[ST <: Store[ST],
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
     )(Q)
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
-    val chunks = h.values collect {
-      case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]}
+	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
+    id match {
+      case mwChunkId: MagicWandChunkIdentifier =>
+        val mwChunks = h.values.collect{case ch: MagicWandChunk => ch}
+//        println(s"mwChunkId = $mwChunkId")
+//        println(s"mwChunks = $mwChunks")
+        mwChunks.find(ch => compareWandChunks(σ, mwChunkId.chunk, ch, c)).asInstanceOf[Option[CH]]
 
-    getChunk(σ, chunks, id)
+      case _ =>
+        val chunks = h.values collect {
+          case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]
+        }
+
+        getChunk(σ, chunks, id)
+    }
   }
 
 	private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
@@ -390,6 +404,20 @@ class DefaultDecider[ST <: Store[ST],
 
 		chunk
 	}
+
+  private def compareWandChunks(σ: S, chWand1: MagicWandChunk, chWand2: MagicWandChunk, c: C): Boolean = {
+//    println(s"\n[compareWandChunks]")
+//    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
+//    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
+    var b = chWand1.ghostFreeWand.structurallyMatches(chWand2.ghostFreeWand, c.program)
+//    println(s"  after structurallyMatches: b = $b")
+    b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
+//    println(s"  after comparing evaluatedTerms.length's: b = $b")
+    b = b && check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)))
+//    println(s"  after comparing evaluatedTerms: b = $b")
+
+    b
+  }
 
   /* Fresh symbols */
 

@@ -1,0 +1,31 @@
+field f: Int;
+
+method test01(x: Ref)
+  requires acc(x.f)
+{
+  x.f := 3
+
+  //:: ExpectedOutput(wand.not.wellformed)
+  package true --* x.f == 3
+  x.f := x.f + 1
+  apply true --* x.f == 3 // Malformed as well
+  assert false
+}
+
+method test02(x: Ref)
+  requires acc(x.f)
+{
+  //:: ExpectedOutput(wand.not.wellformed)
+  package acc(x.f) && x.f == 0 --* x.f == 0
+  x.f := 0
+
+  test03(x)
+}
+
+method test03(x: Ref)
+  requires acc(x.f) && x.f == 0
+  //:: ExpectedOutput(wand.not.wellformed)
+  requires acc(x.f) && x.f == 0 --* x.f == 0
+{
+  apply acc(x.f) && x.f == 0 --* x.f == 0 // Malformed as well
+}

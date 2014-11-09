@@ -8,6 +8,7 @@ package viper
 package silicon
 package ast
 
+import silver.utility.SilNameGenerator
 import silicon.utils.mapReduceLeft
 
 package object utils {
@@ -19,4 +20,17 @@ package object utils {
                   f,
                   (e0: ast.Expression, e1: ast.Expression) => ast.And(e0, e1)(e0.pos, e0.info),
                   ast.True()(emptyPos))
+
+  val nameGenerator = new SilNameGenerator()
+
+  /* TODO: Does Sil already provide this functionality? If not, move it into Sil. Same for BigAnd? */
+  def fresh(name: String,
+            typ: ast.Type,
+            pos: silver.ast.Position = NoPosition,
+            info: silver.ast.Info = silver.ast.NoInfo) =
+
+    ast.LocalVariable(nameGenerator.createIdentifier(name))(typ, pos, info)
+
+  def fresh(lv: ast.Variable) =
+    ast.LocalVariable(nameGenerator.createIdentifier(lv.name))(lv.typ, lv.pos, lv.info)
 }

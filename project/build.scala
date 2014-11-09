@@ -30,15 +30,15 @@ object SiliconBuild extends Build {
 
   lazy val silicon = {
     var p = Project(
-      id = "silicon",
+      id = "silicon-magic-wands",
       base = file("."),
       settings = (
            baseSettings
         ++ assemblySettings
         ++ Seq(
-              name := "Silicon",
+              name := "Silicon-Wands",
               mainClass in assembly := Some("viper.silicon.Silicon"),
-              jarName in assembly := "silicon.jar",
+              jarName in assembly := "silicon-magic-wands.jar",
               // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
               fork := true,
                 /* Fork Silicon when run and tested. Avoids problems with file
@@ -102,7 +102,7 @@ object SiliconBuild extends Build {
     base = file("common"),
     settings = (
          baseSettings
-      ++ Seq(name := "Silicon-Common",
+      ++ Seq(name := "Silicon-Magic-Wands-Common",
              javacOptions ++= Seq("-source", "1.7", "-target", "1.7"))))
 
   /* On the build-server, we cannot have all project in the same directory, and
@@ -132,7 +132,7 @@ object SiliconBuild extends Build {
       "org.jgrapht" % "jgrapht-core" % "0.9.0",
       "org.jgrapht" % "jgrapht-ext" % "0.9.0")
 
-    lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
+    lazy val sil = "viper" %% "silver-magic-wands" %  "0.1-SNAPSHOT"
     lazy val silSrc = RootProject(new java.io.File("../silver"))
   }
 }

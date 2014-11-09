@@ -1,0 +1,44 @@
+field f: Ref
+
+method test01() {
+  define A true
+  define B true
+
+  //:: ExpectedOutput(assert.failed:wand.not.found)
+  assert A --* B
+}
+
+define X true
+
+method test02() {
+  define A true
+
+  package X --* A
+  apply A --* X
+
+  //:: ExpectedOutput(assert.failed:wand.not.found)
+  assert X --* A
+}
+
+method test03(x: Ref)
+  requires acc(x.f)
+{
+  define A acc(x.f)
+
+  package A --* X
+
+  //:: ExpectedOutput(apply.failed:wand.not.found)
+  apply X --* A
+}
+
+define P(x, v) acc(x.f) && x.f == v
+
+method test04(x: Ref)
+{
+  inhale P(x, null)
+  var y: Ref := x
+  var z: Ref
+  z := new(f)
+  y.f := z
+  exhale P(y, z) && acc(y.f.f)
+}

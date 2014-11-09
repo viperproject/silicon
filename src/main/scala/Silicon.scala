@@ -26,6 +26,7 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
+import supporters.MagicWandSupporter
 import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
     DefaultDomainsTranslator}
 import ast.Consistency
@@ -92,7 +93,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type V = DefaultVerifier[ST, H, PC, S]
   private type Failure = SiliconFailure[ST, H, S]
 
@@ -175,7 +176,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     */
   private def createVerifier(): V = {
     val bookkeeper = new Bookkeeper(config)
-    val decider = new DefaultDecider[ST, H, PC, S, C]()
+    val decider = new DefaultDecider[ST, H, PC, S]()
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()
@@ -183,6 +184,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
+//    val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[H]](decider)
 
     val dlb = FullPerm()
 
@@ -200,9 +202,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, stateUtils,
-      bookkeeper)
+                                      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+                                      stateFormatter, heapCompressor, /*magicWandSupporter,*/ stateUtils,
+                                      bookkeeper)
   }
 
   private def reset() {
@@ -474,7 +476,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some("OFF"),
     noshort = true,
     hidden = Silicon.hideInternalOptions
-  )
+  )(singleArgConverter(level => level.toUpperCase))
 
   val timeout = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "

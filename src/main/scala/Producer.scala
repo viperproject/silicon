@@ -9,30 +9,35 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter}
-import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter, Chunk, StateFactory}
+import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
-import reporting.Bookkeeper
-import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import state.{DirectChunk, DefaultContext, MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
+import reporting.Bookkeeper
+import supporters.MagicWandSupporter
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[ST, H, S, DefaultContext]
-        with HasLocalState
-    { this: Logging with Evaluator[ST, H, S, DefaultContext]
-                    with Consumer[DirectChunk, ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext] =>
+    extends Producer[ST, H, S, DefaultContext[H]]
+       with HasLocalState
+    { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
+                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+                    with Brancher[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
-  protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
+//  protected val stateFactory: StateFactory[ST, H, S]
+//  import stateFactory._
+  
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
@@ -154,13 +159,23 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
-          assume(tRcvr !== Null())
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+          /* Assuming receiver non-null might contradict current path conditions
+           * and we would like to detect that as early as possible.
+           * We could try to assert false after the assumption, but it seems likely
+           * that 'tRcvr === Null()' syntactically occurs in the path conditions if
+           * it is true. Hence, we assert it here, which (should) syntactically look
+           * for the term before calling Z3.
+           */
+          if (decider.check(σ, tRcvr === Null())) /* TODO: Benchmark performance impact */
+            Success()
+          else {
+            assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
@@ -175,13 +190,22 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
                 c2.copy(snapshotRecorder = Some(sr1))
               case _ => c2}
             Q(h1, c3)}))
+
+      case wand: ast.MagicWand =>
+//        println("\n[Producer/MagicWand]")
+//        println(s"  wand = $wand")
+        // val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
+        // eval(σ, wand, pve, c)((tWand, c1) => {
+        magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
+//          println(s"  chWand = $chWand")
+          Q(σ.h + chWand, c)})
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
