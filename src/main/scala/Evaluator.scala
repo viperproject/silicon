@@ -326,8 +326,8 @@ trait DefaultEvaluator[ST <: Store[ST],
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
-                               possibleTriggers = c.possibleTriggers,
-                               additionalTriggers = c.additionalTriggers)
+                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
+                               additionalTriggers = c.additionalTriggers ++ (if (c.recordPossibleTriggers) c2.additionalTriggers else Nil))
               QB(πAux, tQuant, c3)})})
         }){case (πAux, tQuant, c1) =>
           assume(πAux)
