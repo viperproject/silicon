@@ -1553,7 +1553,7 @@ object Distinct {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var("s", sorts.Snap) // with SnapshotTerm
+  val `?s` = Var("s@$", sorts.Snap) // with SnapshotTerm
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)
