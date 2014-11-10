@@ -21,7 +21,7 @@ import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerifi
     AbortedExceptionally => SilExceptionThrown}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
-import state.terms.{FullPerm, DefaultFractionalPermissions}
+import state.terms.FullPerm
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
@@ -88,7 +88,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
          with SiliconConstants
          with Logging {
 
-  private type P = DefaultFractionalPermissions
   private type ST = MapBackedStore
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
@@ -147,6 +146,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     setLogLevel(config.logLevel())
     verifier = createVerifier()
+
+    verifier.start()
   }
 
   /* TODO: Corresponds partially to code from SilFrontend. The design of command-line parsing should be improved.
@@ -173,7 +174,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     * @return A fully set up verifier, ready to be used.
     */
   private def createVerifier(): V = {
-    val bookkeeper = new Bookkeeper()
+    val bookkeeper = new Bookkeeper(config)
     val decider = new DefaultDecider[ST, H, PC, S, C]()
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
@@ -212,7 +213,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   def stop() {
-    verifier.decider.stop()
+    verifier.stop()
   }
 
   /** Verifies a given SIL program and returns a sequence of verification errors.

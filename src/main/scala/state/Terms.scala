@@ -332,7 +332,7 @@ class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
     with ForbiddenInTrigger
 
 object Plus extends Function2[Term, Term, Term] {
-	val Zero = IntLiteral(0)
+	import predef.Zero
 
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => t0
@@ -349,7 +349,7 @@ class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
     with ForbiddenInTrigger
 
 object Minus extends Function2[Term, Term, Term] {
-	val Zero = IntLiteral(0)
+	import predef.Zero
 
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => t0
@@ -366,8 +366,7 @@ class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
     with ForbiddenInTrigger
 
 object Times extends Function2[Term, Term, Term] {
-	val Zero = IntLiteral(0)
-	val One = IntLiteral(1)
+	import predef.{Zero, One}
 
 	def apply(e0: Term, e1: Term) = (e0, e1) match {
 		case (t0, Zero) => Zero
@@ -534,13 +533,14 @@ sealed trait Equals extends ComparisonTerm with commonnodes.Eq[Term]
 object Equals extends ((Term, Term) => BooleanTerm) {
   def apply(e0: Term, e1: Term) = {
     assert(e0.sort == e1.sort,
-      "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
+           "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
            .format(e0.sort, e0, e1.sort, e1))
 
     if (e0 == e1)
-        True()
+      True()
     else
       e0.sort match {
+        case sorts.Perm => BuiltinEquals.forPerm(e0, e1)
         case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset => new CustomEquals(e0, e1)
         case _ => new BuiltinEquals(e0, e1)
       }
@@ -556,6 +556,15 @@ class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 }
 
 object BuiltinEquals {
+  def forPerm(t1: Term, t2: Term) = (t1, t2) match {
+    case (FullPerm(), NoPerm()) | (NoPerm(), FullPerm()) => False()
+    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => False()
+    case (fp: FractionPerm, NoPerm()) if fp.isDefinitelyPositive => False()
+    case (FullPerm(), fp: FractionPerm) if fp.isLiteral => False()
+    case (fp: FractionPerm, FullPerm()) if fp.isLiteral => False()
+    case _ => new BuiltinEquals(t1, t2)
+  }
+
   def unapply(e: BuiltinEquals) = Some((e.p0, e.p1))
 }
 
@@ -639,69 +648,59 @@ object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ Function2[
  * Permissions
  */
 
-sealed trait FractionalPermissions[P <: FractionalPermissions[P]] extends Term {
-  def +(other: P): P
-  def -(other: P): P
-  def *(other: P): P
-  def <(other: P): Term
-  def >(other: P): Term
-}
-
-sealed abstract class DefaultFractionalPermissions extends FractionalPermissions[DefaultFractionalPermissions] {
+sealed trait Permissions extends Term {
   val sort = sorts.Perm
-
-  def +(other: DefaultFractionalPermissions) = PermPlus(this, other)
-  def -(other: DefaultFractionalPermissions) = PermMinus(this, other)
-  def *(other: DefaultFractionalPermissions) = PermTimes(this, other)
-  def <(other: DefaultFractionalPermissions) = PermLess(this, other)
-  def >(other: DefaultFractionalPermissions) = PermLess(other, this)
 }
 
-case class NoPerm() extends DefaultFractionalPermissions { override val toString = "Z" }
-case class FullPerm() extends DefaultFractionalPermissions { override val toString = "W" }
-case class FractionPerm(n: DefaultFractionalPermissions, d: DefaultFractionalPermissions) extends DefaultFractionalPermissions { override val toString = s"$n/$d" }
-case class WildcardPerm(v: Var) extends DefaultFractionalPermissions { override val toString = v.toString }
+case class NoPerm() extends Permissions { override val toString = "Z" }
+case class FullPerm() extends Permissions { override val toString = "W" }
+case class WildcardPerm(v: Var) extends Permissions { override val toString = v.toString }
 
-/* TermPerms essentially only exist to please the type system, that is,
- * to use a permission-sorted `Term` where a `DefaultFractionalPermissions`
- * is expected.
- *
- * As a consequence, TermPerms can be ignored by trigger generators.
- */
-class TermPerm(val t: Term) extends DefaultFractionalPermissions
-    with commonnodes.StructuralEquality {
+class FractionPerm(val n: Term, val d: Term)
+    extends Permissions
+       with commonnodes.StructuralEquality {
 
-  utils.assertSort(t, "term", List(sorts.Perm, sorts.Int))
-
-  val equalityDefiningMembers = t :: Nil
-  override val toString = t.toString
-}
-
-object TermPerm extends Function1[Term, DefaultFractionalPermissions] {
-  def apply(t: Term) = t match {
-    case dfp: DefaultFractionalPermissions => dfp
-    case _ => new TermPerm(t)
+  lazy val isDefinitelyPositive = literal match {
+    case Some((i1, i2)) => 0 < i1 * i2
+    case None => false
   }
 
-  def unapply(tp: TermPerm) = Some(tp.t)
+  lazy val isLiteral = literal.nonEmpty
+
+  lazy val literal = (n, d) match {
+    case (IntLiteral(i1), IntLiteral(i2)) => Some((i1, i2))
+    case _ => None
+  }
+
+  val equalityDefiningMembers = n :: d :: Nil
+  override val toString = s"$n/$d"
+}
+
+object FractionPerm extends ((Term, Term) => Permissions) {
+  def apply(n: Term, d: Term) =
+    if (n == predef.Zero) NoPerm()
+    else if (n == d) FullPerm()
+    else new FractionPerm(n, d)
+
+  def unapply(fp: FractionPerm) = Some((fp.n, fp.d))
 }
 
 case class IsValidPermVar(v: Var) extends BooleanTerm {
   override val toString = s"PVar($v)"
 }
 
-case class IsReadPermVar(v: Var, ub: DefaultFractionalPermissions) extends BooleanTerm {
+case class IsReadPermVar(v: Var, ub: Term) extends BooleanTerm {
   override val toString = s"RdVar($v, $ub)"
 }
 
-class PermTimes(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
-    extends DefaultFractionalPermissions
-       with commonnodes.Times[DefaultFractionalPermissions]
-       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions]
+class PermTimes(val p0: Term, val p1: Term)
+    extends Permissions
+       with commonnodes.Times[Term]
+       with commonnodes.StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger
 
-object PermTimes extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
-  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
+object PermTimes extends ((Term, Term) => Term) {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (FullPerm(), t) => t
     case (t, FullPerm()) => t
     case (NoPerm(), _) => NoPerm()
@@ -712,17 +711,16 @@ object PermTimes extends ((DefaultFractionalPermissions, DefaultFractionalPermis
   def unapply(pt: PermTimes) = Some((pt.p0, pt.p1))
 }
 
-class IntPermTimes(val p0: Term, val p1: DefaultFractionalPermissions)
-    extends DefaultFractionalPermissions
+class IntPermTimes(val p0: Term, val p1: Term)
+    extends Permissions
        with commonnodes.Times[Term]
        with commonnodes.StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger
 
-object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
-  val Zero = IntLiteral(0)
-  val One = IntLiteral(1)
+object IntPermTimes extends ((Term, Term) => Term) {
+  import predef.{Zero, One}
 
-  def apply(t0: Term, t1: DefaultFractionalPermissions) = (t0, t1) match {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (Zero, t) => NoPerm()
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
@@ -732,26 +730,39 @@ object IntPermTimes extends ((Term, DefaultFractionalPermissions) => DefaultFrac
   def unapply(pt: IntPermTimes) = Some((pt.p0, pt.p1))
 }
 
-class PermPlus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
-    extends DefaultFractionalPermissions
-       with commonnodes.Plus[DefaultFractionalPermissions]
-       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions]
+case class PermIntDiv(p0: Term, p1: Term)
+    extends Permissions
+       with commonnodes.Div[Term]
+//    with commonnodes.StructuralEqualityBinaryOp[Term]
+       with ForbiddenInTrigger {
+
+  utils.assertSort(p1, "Second term", sorts.Int)
+}
+
+class PermPlus(val p0: Term, val p1: Term)
+    extends Permissions
+       with commonnodes.Plus[Term]
+       with commonnodes.StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger
 
-object PermPlus extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
-  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
+object PermPlus extends ((Term, Term) => Term) {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (NoPerm(), _) => t1
     case (_, NoPerm()) => t0
+    case (FractionPerm(n1, d1), FractionPerm(n2, d2)) if d1 == d2 => FractionPerm(Plus(n1, n2), d1)
+    case (PermMinus(t00, t01), _) if t01 == t1 => t00
+    case (_, PermMinus(t10, t11)) if t11 == t0 => t10
+
     case (_, _) => new PermPlus(t0, t1)
   }
 
   def unapply(pp: PermPlus) = Some((pp.p0, pp.p1))
 }
 
-class PermMinus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
-    extends DefaultFractionalPermissions
-       with commonnodes.Minus[DefaultFractionalPermissions]
-       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions]
+class PermMinus(val p0: Term, val p1: Term)
+    extends Permissions
+       with commonnodes.Minus[Term]
+       with commonnodes.StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger {
 
   override val toString = p1 match {
@@ -760,8 +771,8 @@ class PermMinus(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalP
   }
 }
 
-object PermMinus extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => DefaultFractionalPermissions) {
-  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = (t0, t1) match {
+object PermMinus extends ((Term, Term) => Term) {
+  def apply(t0: Term, t1: Term) = (t0, t1) match {
     case (_, NoPerm()) => t0
     case (p0, p1) if p0 == p1 => NoPerm()
     case (p0, PermMinus(p1, p2)) if p0 == p1 => p2
@@ -773,27 +784,27 @@ object PermMinus extends ((DefaultFractionalPermissions, DefaultFractionalPermis
   def unapply(pm: PermMinus) = Some((pm.p0, pm.p1))
 }
 
-class PermLess(val p0: DefaultFractionalPermissions, val p1: DefaultFractionalPermissions)
+class PermLess(val p0: Term, val p1: Term)
     extends BooleanTerm
-       with commonnodes.Less[DefaultFractionalPermissions]
-       with commonnodes.StructuralEqualityBinaryOp[DefaultFractionalPermissions]
+       with commonnodes.Less[Term]
+       with commonnodes.StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger {
 
   override val toString = "(%s) < (%s)".format(p0, p1)
 }
 
-object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermissions) => Term) {
-  def apply(t0: DefaultFractionalPermissions, t1: DefaultFractionalPermissions) = {
+object PermLess extends ((Term, Term) => Term) {
+  def apply(t0: Term, t1: Term): Term = {
     (t0, t1) match {
       case _ if t0 == t1 => False()
       case (NoPerm(), FullPerm()) => True()
       case (FullPerm(), _: WildcardPerm) => False()
 
-      case (`t0`, TermPerm(Ite(tCond, tIf, tElse))) =>
+      case (`t0`, Ite(tCond, tIf, tElse)) =>
         /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
          * Pushing the comparisons into the ite allows further simplifications.
          */
-        Ite(tCond, t0 < TermPerm(tIf), t0 < TermPerm(tElse))
+        Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
 
       case _ => new PermLess(t0, t1)
     }
@@ -802,7 +813,7 @@ object PermLess extends ((DefaultFractionalPermissions, DefaultFractionalPermiss
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
-case class PermMin(p0: Term, p1: Term) extends DefaultFractionalPermissions
+case class PermMin(p0: Term, p1: Term) extends Permissions
     with commonnodes.BinaryOp[Term]
     with PossibleBinaryOpTrigger[Term] {
 
@@ -1494,48 +1505,45 @@ object Distinct {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var("s", sorts.Snap) // with SnapshotTerm
+  val `?s` = Var("s@$", sorts.Snap) // with SnapshotTerm
+
+  val Zero = IntLiteral(0)
+  val One = IntLiteral(1)
 }
 
 /* Convenience functions */
 
 object perms {
-  def IsNonNegative(p: DefaultFractionalPermissions) = p match {
-    case _: NoPerm | _: FullPerm | _: WildcardPerm => True()
-    case _ => Or(p === NoPerm(), NoPerm() < p)
-  }
+  def IsNonNegative(p: Term) =
+    Or(p === NoPerm(), IsPositive(p))
+      /* All basic static simplifications should be covered by Equals,
+       * IsPositive and or
+       */
 
-  def IsPositive(p: DefaultFractionalPermissions) = p match {
+  def IsPositive(p: Term) = p match {
     case _: NoPerm => False()
     case _: FullPerm | _: WildcardPerm => True()
-    case _ => NoPerm() < p
+    case fp: FractionPerm if fp.isDefinitelyPositive => True()
+    case _ => PermLess(NoPerm(), p)
   }
 
-  def IsAsPermissive(p1: DefaultFractionalPermissions, p2: DefaultFractionalPermissions) =
-    if (p1 == p2) True()
-    else Or(p1 === p2, p2 < p1)
+  def IsAsPermissive(p1: Term, p2: Term) = Or(p1 === p2, PermLess(p2, p1))
 
-  def IsNoAccess(p: DefaultFractionalPermissions) = p match {
+  def IsNoAccess(p: Term) = p match {
     case _: NoPerm => True()
     case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False()
       /* ATTENTION: This is only sound if both plus operands and the left minus operand are positive! */
-    case _ => Or(p === NoPerm(), p < NoPerm())
+    case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))
   }
 }
 
 /* Utility functions */
 
 object utils {
-//  def BigAnd(it: Iterable[Term], f: Term => Term = t => t) =
-//    silicon.utils.mapReduceLeft[Term](it, f, (t1, t2) => new And(t1 :: t2 :: Nil), True())
-
   def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, Or, True())
 
-  def BigPermSum(it: Iterable[DefaultFractionalPermissions],
-                 f: DefaultFractionalPermissions => DefaultFractionalPermissions = t => t)
-                : DefaultFractionalPermissions =
-
+  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
