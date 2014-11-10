@@ -167,7 +167,15 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case bop: SeqAt => renderBinaryOp("$Seq.index", bop)
     case bop: SeqTake => renderBinaryOp("$Seq.take", bop)
     case bop: SeqDrop => renderBinaryOp("$Seq.drop", bop)
-    case bop: SeqIn => renderBinaryOp("$Seq.contains", bop)
+    case bop: SeqIn /*@ SeqIn(tSeq, tElem)*/ =>
+      /* This would rewrite SeqIn in triggers as well, resulting in illegal triggers */
+//      tSeq match {
+//        case SeqRanged(tMin, tMax) =>
+//          val inequalities = And(AtMost(tMin, tElem), Less(tElem, tMax))
+//          render(inequalities)
+//        case _ => renderBinaryOp("$Seq.contains", bop)
+//      }
+      renderBinaryOp("$Seq.contains", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("$Seq.update", t0, t1, t2)
 
     /* Sets */
