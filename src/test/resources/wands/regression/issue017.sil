@@ -1,0 +1,20 @@
+predicate P(x: Ref) { true }
+
+function fun(x: Ref, y: Int): Int
+  requires acc(P(x))
+{ -y }
+
+method test01(x: Ref) {
+  inhale acc(P(x)) --* true
+  var y: Ref := x
+  exhale acc(P(y)) --* true
+}
+
+method test02(x: Ref, y: Int)
+  requires acc(P(x))
+{
+  inhale acc(P(x)) && fun(x, y) == -y --* true
+  var zx: Ref := x
+  var zy: Int := y
+  exhale acc(P(zx)) && fun(zx, zy) == -y --* true
+}
