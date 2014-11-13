@@ -420,6 +420,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     if (c.exhaleExt) /* Function "transfer" from wands paper */
       /* Permissions are transferred from the stack of heaps to σUsed, which is h in the current context */
       return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
+//        println(s"locacc = $locacc")
+//        println(s"c.reserveHeaps = ${c.reserveHeaps}")
+//        println(s"chs = $chs")
         val c2 = c1.copy(reserveHeaps = hs)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
         Q(h + H(chs), chs.head, c2, pcr)})

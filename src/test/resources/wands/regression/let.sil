@@ -1,0 +1,23 @@
+field f: Ref
+field g: Int
+
+method test00() {
+  assert let y == (0) in y == 0
+}
+
+method test01(x: Int) {
+  assert let y == (x + x) in y == 2*x
+  assert 2*x == let y == (x + x) in y
+}
+
+predicate P(x: Ref) { acc(x.g) && x.g == 1 }
+
+function fun(x: Ref): Int
+  requires acc(P(x), wildcard)
+  ensures result > 0
+{ unfolding acc(P(x), wildcard) in x.g }
+
+method test02(x: Ref) {
+  inhale acc(P(x))
+  assert let y == (fun(x)) in y*y+y > 0
+}

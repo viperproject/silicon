@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon-wands/issue/9/)
-
 field f: Int
 field g: Int
 
@@ -29,105 +27,108 @@ function sum(p: Ref): Int
 //  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
 //}
 
-method test03(x: Ref, v: Int)
-  requires acc(x.f) && x.f == v
-  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-{
-  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-}
-
-method test04(x: Ref, v: Int)
-  requires acc(x.f) && x.f == v
-  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-{
-  x.f := 0
-  //:: ExpectedOutput(apply.failed:assertion.false)
-  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-}
-
-method test05(x: Ref, y: Ref)
-  requires acc(Pair(x))
-  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
-  ensures acc(y.f)
-{
-  unfold acc(Pair(x))
-  fold acc(Pair(x))
-
-  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
-}
-
-method test07(x: Ref, y: Ref)
-  requires acc(Pair(x))
-  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
-  ensures acc(y.f)
-{
-  unfold acc(Pair(x))
-  x.f := x.g
-  fold acc(Pair(x))
-
-  //:: ExpectedOutput(apply.failed:assertion.false)
-  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
-}
-
-method test08(x: Ref)
-  requires acc(x.f) && acc(x.g)
-{
-  define A acc(x.f)
-  define B acc(Pair(x)) && sum(x) == (lhs(x.f) + now(x.g))
-
-  package A --* folding acc(Pair(x)) in B
-  apply A --* B
-
-  unfold acc(Pair(x))
-
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false
-}
-
-//method test09(x: Ref)
+//method test03(x: Ref, v: Int)
+//  requires acc(x.f) && x.f == v
+//  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//{
+//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//}
+//
+//method test04(x: Ref, v: Int)
+//  requires acc(x.f) && x.f == v
+//  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//{
+//  x.f := 0
+//  //:: ExpectedOutput(apply.failed:assertion.false)
+//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
+//}
+//
+//method test05(x: Ref, y: Ref)
+//  requires acc(Pair(x))
+//  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
+//  ensures acc(y.f)
+//{
+//  unfold acc(Pair(x))
+//  fold acc(Pair(x))
+//
+//  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
+//}
+//
+//method test07(x: Ref, y: Ref)
+//  requires acc(Pair(x))
+//  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
+//  ensures acc(y.f)
+//{
+//  unfold acc(Pair(x))
+//  x.f := x.g
+//  fold acc(Pair(x))
+//
+//  //:: ExpectedOutput(apply.failed:assertion.false)
+//  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
+//}
+//
+//method test08(x: Ref)
 //  requires acc(x.f) && acc(x.g)
 //{
 //  define A acc(x.f)
-//  define B acc(Pair(x)) && sum(x) == lhs(x.f) + unfolding acc(Pair(x)) in x.g
+//  define B acc(Pair(x)) && sum(x) == (lhs(x.f) + now(x.g))
 //
 //  package A --* folding acc(Pair(x)) in B
 //  apply A --* B
-//    /* TODO: Ghost expressions are currently only allowed inside wands when these are packaged */
+//
 //  unfold acc(Pair(x))
 //
 //  //:: ExpectedOutput(assert.failed:assertion.false)
 //  assert false
 //}
+//
+////method test09(x: Ref)
+////  requires acc(x.f) && acc(x.g)
+////{
+////  define A acc(x.f)
+////  define B acc(Pair(x)) && sum(x) == lhs(x.f) + unfolding acc(Pair(x)) in x.g
+////
+////  package A --* folding acc(Pair(x)) in B
+////  apply A --* B
+////    /* TODO: Ghost expressions are currently only allowed inside wands when these are packaged */
+////  unfold acc(Pair(x))
+////
+////  //:: ExpectedOutput(assert.failed:assertion.false)
+////  assert false
+////}
 
 method test10(b: Bool, x: Ref)
   requires x != null
   requires acc(x.f)
 {
-  package acc(x.f) && x.f > now(x.f) --* true
-  exhale acc(x.f) && x.f > now(x.f) --* true
+//  package acc(x.f) && x.f > now(x.f) --* true
+//  exhale acc(x.f) && x.f > now(x.f) --* true
 
   x.f := 1
-  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
-  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
+//  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) //&& x.f == 0
+  package let a == (x.f)
+          in acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) //&& x.f == 0
 
-  x.f := 1
-  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
-  x.f := 10
-  //:: ExpectedOutput(exhale.failed:wand.outdated)
-  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
+//  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
+//
+//  x.f := 1
+//  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
+//  x.f := 10
+//  //:: ExpectedOutput(exhale.failed:wand.outdated)
+//  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
 }
 
-method test11(b: Bool, x: Ref)
-  requires x != null
-  requires acc(x.f)
-{
-  package acc(x.f) && x.f > now(x.f) --* acc(x.f)
-  x.f := x.f + 1
-  apply acc(x.f) && x.f > now(x.f) --* acc(x.f)
-
-  package acc(x.f) && x.f > now(x.f) --* acc(x.f)
-  x.f := x.f + 1
-  //:: ExpectedOutput(exhale.failed:wand.outdated)
-  exhale acc(x.f) && x.f > now(x.f) --* acc(x.f)
-    /* TODO: Can we do better? Requiring that polds haven't changed seems to restrictive. */
-}
+//method test11(b: Bool, x: Ref)
+//  requires x != null
+//  requires acc(x.f)
+//{
+//  package acc(x.f) && x.f > now(x.f) --* acc(x.f)
+//  x.f := x.f + 1
+//  apply acc(x.f) && x.f > now(x.f) --* acc(x.f)
+//
+//  package acc(x.f) && x.f > now(x.f) --* acc(x.f)
+//  x.f := x.f + 1
+//  //:: ExpectedOutput(exhale.failed:wand.outdated)
+//  exhale acc(x.f) && x.f > now(x.f) --* acc(x.f)
+//    /* TODO: Can we do better? Requiring that polds haven't changed seems to restrictive. */
+//}

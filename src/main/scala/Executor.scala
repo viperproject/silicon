@@ -426,8 +426,14 @@ trait DefaultExecutor[ST <: Store[ST],
        * final heap of the second branch will be used for the rest of the
        * execution, which is unsound.
        */
-      case pckg @ ast.Package(wand) =>
+      case pckg @ ast.Package(wandExp) =>
         val pve = PackageFailed(pckg)
+
+        wandExp match {
+          case ast.Let(v, exp, body) =>
+          case ast.MagicWand
+        }
+
         val σEmp = Σ(σ.γ, Ø, σ.g)
 
         decider.locally[(MagicWandChunk, H, C)](QB => {

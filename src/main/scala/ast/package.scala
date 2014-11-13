@@ -53,6 +53,8 @@ package object ast {
   val Ite = silver.ast.CondExp
   type MagicWand = silver.ast.MagicWand
   val MagicWand = silver.ast.MagicWand
+  type Let = silver.ast.Let
+  val Let = silver.ast.Let
 
   type NullLiteral = silver.ast.NullLit
   val NullLiteral = silver.ast.NullLit

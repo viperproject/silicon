@@ -276,6 +276,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 //    println(s"  X heapsToVisit = $heapsToVisit")
 //    println(s"  X visitedHeaps = $visitedHeaps")
 //    println(s"  X chunks = $chunks")
+//    println(s"  X done? ${decider.check(σ, IsNoAccess(toLose))}")
 
     if (decider.check(σ, IsNoAccess(toLose))) {
       val tEqs =
