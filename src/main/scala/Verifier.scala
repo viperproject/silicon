@@ -186,6 +186,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultExecutor[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
        with DefaultJoiner[ST, H, PC, S]
+       with DefaultLetHandler[ST, H, S, DefaultContext[H]]
        with MagicWandSupporter[ST, H, PC, S]
        with Logging
 

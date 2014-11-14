@@ -13,7 +13,7 @@ import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, Sta
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import state.terms._
-import state.{DirectChunk, DefaultContext, MagicWandChunk, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
+import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import reporting.Bookkeeper
 import supporters.MagicWandSupporter
 
@@ -37,7 +37,7 @@ trait DefaultProducer[ST <: Store[ST],
 
 //  protected val stateFactory: StateFactory[ST, H, S]
 //  import stateFactory._
-  
+
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 

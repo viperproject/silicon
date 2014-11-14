@@ -33,7 +33,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 		{ this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
 										with Producer[ST, H, S, DefaultContext[H]]
 										with Brancher[ST, H, S, DefaultContext[H]]
-										with Joiner[ST, H, S, DefaultContext[H]]
+										with Joiner[DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
@@ -184,12 +184,10 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.PackageOld(e0) => eval(σ, e0, pve, c)(Q) // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
       case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
-      case ast.Let(bindings, body) =>
-
-//      case ast.Let(v, e0, e1) =>
-//        eval(σ, e0, pve, c)((t0, c1) =>
-//          eval(σ \+ (v.localVar, t0), e1, pve, c1)((t1, c2) =>
-//            Q(t1, c2)))
+      case ast.Let(v, e0, e1) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
+          eval(σ \+ (v.localVar, t0), e1, pve, c1)((t1, c2) =>
+            Q(t1, c2)))
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>

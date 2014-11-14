@@ -9,31 +9,36 @@ function sum(p: Ref): Int
   requires acc(Pair(p))
 { unfolding acc(Pair(p)) in (p.f) + (p.g) }
 
-//method test01(x: Ref, v: Int)
-//  requires acc(x.f) && x.f == v
-//  ensures acc(x.f) && x.f == v
-//{
-//  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//}
+method test01(x: Ref, v: Int)
+  requires acc(x.f) && x.f == v
+  ensures acc(x.f) && x.f == v
+{
+  package let a == (x.f)
+          in acc(x.f) && x.f == a --* acc(x.f) && x.f == v
 
-//method test02(x: Ref, v: Int)
-//  requires acc(x.f) && x.f == v
-//  ensures acc(x.f) && x.f == v
-//{
-//  package (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//  x.f := 0
-//  //:: ExpectedOutput(apply.failed:assertion.false)
-//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//}
+  apply acc(x.f) && x.f == v --* acc(x.f) && x.f == v
+}
 
-//method test03(x: Ref, v: Int)
-//  requires acc(x.f) && x.f == v
-//  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//{
-//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//}
-//
+method test02(x: Ref, v: Int)
+  requires acc(x.f) && x.f == v
+  ensures acc(x.f) && x.f == v
+{
+  package let a == (x.f)
+          in acc(x.f) && x.f == a --* acc(x.f) && x.f == v
+
+  x.f := 0
+
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply acc(x.f) && x.f == v --* acc(x.f) && x.f == v
+}
+
+method test03(x: Ref, v: Int)
+  requires acc(x.f) && x.f == v
+  requires let a == (x.f) in acc(x.f) && x.f == a --* acc(x.f) && x.f == v
+{
+  apply acc(x.f) && x.f == v --* acc(x.f) && x.f == v
+}
+
 //method test04(x: Ref, v: Int)
 //  requires acc(x.f) && x.f == v
 //  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
@@ -101,21 +106,20 @@ method test10(b: Bool, x: Ref)
   requires x != null
   requires acc(x.f)
 {
-//  package acc(x.f) && x.f > now(x.f) --* true
-//  exhale acc(x.f) && x.f > now(x.f) --* true
-
   x.f := 1
-//  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) //&& x.f == 0
-  package let a == (x.f)
-          in acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) //&& x.f == 0
 
-//  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
-//
-//  x.f := 1
-//  package acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
-//  x.f := 10
-//  //:: ExpectedOutput(exhale.failed:wand.outdated)
-//  exhale acc(x.f) && x.f == now(x.f) - 1 --* acc(x.f) && x.f == 0
+  package let a == (x.f)
+          in acc(x.f) && x.f == a - 1 --* acc(x.f) && x.f == 0
+
+  exhale acc(x.f) && x.f == 0 --* acc(x.f) && x.f == 0
+
+  package let a == (x.f)
+          in acc(x.f) && x.f == a - 1 --* acc(x.f) && x.f == 0
+
+  x.f := 10
+
+  //:: ExpectedOutput(exhale.failed:wand.not.found)
+  exhale acc(x.f) && x.f == 10 --* acc(x.f) && x.f == 0
 }
 
 //method test11(b: Bool, x: Ref)
