@@ -332,7 +332,7 @@ axiom (forall<T> s: Seq T, n: int :: { Seq#Length(Seq#Take(s,n)) }
   0 <= n ==>
     (n <= Seq#Length(s) ==> Seq#Length(Seq#Take(s,n)) == n) &&
     (Seq#Length(s) < n ==> Seq#Length(Seq#Take(s,n)) == Seq#Length(s)));
-axiom (forall<T> s: Seq T, n: int, j: int :: { Seq#Index(Seq#Take(s,n), j) } {:weight 25}
+axiom (forall<T> s: Seq T, n: int, j: int :: { Seq#Index(Seq#Take(s,n), j) }
   0 <= j && j < n && j < Seq#Length(s) ==>
     Seq#Index(Seq#Take(s,n), j) == Seq#Index(s, j));
 
@@ -341,7 +341,7 @@ axiom (forall<T> s: Seq T, n: int :: { Seq#Length(Seq#Drop(s,n)) }
   0 <= n ==>
     (n <= Seq#Length(s) ==> Seq#Length(Seq#Drop(s,n)) == Seq#Length(s) - n) &&
     (Seq#Length(s) < n ==> Seq#Length(Seq#Drop(s,n)) == 0));
-axiom (forall<T> s: Seq T, n: int, j: int :: { Seq#Index(Seq#Drop(s,n), j) } {:weight 25}
+axiom (forall<T> s: Seq T, n: int, j: int :: { Seq#Index(Seq#Drop(s,n), j) }
   0 <= n && 0 <= j && j < Seq#Length(s)-n ==>
     Seq#Index(Seq#Drop(s,n), j) == Seq#Index(s, j+n));
 
