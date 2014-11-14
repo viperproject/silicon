@@ -39,26 +39,26 @@ method test03(x: Ref, v: Int)
   apply acc(x.f) && x.f == v --* acc(x.f) && x.f == v
 }
 
-//method test04(x: Ref, v: Int)
-//  requires acc(x.f) && x.f == v
-//  requires (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//{
-//  x.f := 0
-//  //:: ExpectedOutput(apply.failed:assertion.false)
-//  apply (acc(x.f) && x.f == now(x.f)) --* (acc(x.f) && x.f == v)
-//}
-//
-//method test05(x: Ref, y: Ref)
-//  requires acc(Pair(x))
-//  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
-//  ensures acc(y.f)
-//{
-//  unfold acc(Pair(x))
-//  fold acc(Pair(x))
-//
-//  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
-//}
-//
+method test04(x: Ref, v: Int)
+  requires acc(x.f) && x.f == v
+  requires let a == (x.f) in acc(x.f) && x.f == a --* acc(x.f) && x.f == v
+{
+  x.f := 0
+  //:: ExpectedOutput(apply.failed:assertion.false)
+  apply acc(x.f) && x.f == v --* acc(x.f) && x.f == v
+}
+
+method test05(x: Ref, y: Ref)
+  requires acc(Pair(x))
+  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
+  ensures acc(y.f)
+{
+  unfold acc(Pair(x))
+  fold acc(Pair(x))
+
+  apply (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
+}
+
 //method test07(x: Ref, y: Ref)
 //  requires acc(Pair(x))
 //  requires (acc(Pair(x)) && sum(x) == now(sum(x))) --* acc(y.f)
