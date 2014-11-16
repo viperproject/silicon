@@ -27,7 +27,7 @@ case class DefaultContext[H <: Heap[H]]
                           exhaleExt: Boolean = false,
                           // poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
                           lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
-                          additionalEvalHeap: Option[H] = None
+                          evalHeap: Option[H] = None
                           // footprintHeap: Option[H] = None,
                           /*reinterpretWand: Boolean = true*/)
     extends Context[DefaultContext[H]] {
@@ -61,12 +61,12 @@ case class DefaultContext[H <: Heap[H]]
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1,
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
-                        reserveHeaps1, exhaleExt1, lhsHeap1, additionalEvalHeap1) =>
+                        reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1) =>
 
       other match {
         case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`,
                             additionalTriggers2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
-                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `additionalEvalHeap1`) =>
+                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
           val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)

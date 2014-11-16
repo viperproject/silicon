@@ -13,3 +13,13 @@ method test01(z: Ref)
     folding acc(Q(z.f)) in
     acc(z.f) && acc(Q(z.f))
 }
+
+//method test02(z: Ref)
+//  requires true --* acc(z.f) && acc(z.f.f)
+//{
+//  package true
+//            --*
+//          applying (true --* acc(z.f) && acc(z.f.f)) in
+//          folding acc(Q(z.f)) in
+//          acc(z.f) && acc(Q(z.f))
+//}

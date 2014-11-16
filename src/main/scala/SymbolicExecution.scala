@@ -325,12 +325,12 @@ trait LetHandler[ST <: Store[ST],
 
   def handle[E <: ast.Expression]
             (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
-            (Q: (S, E, C) => VerificationResult)
+            (Q: (ST, E, C) => VerificationResult)
             : VerificationResult
 
   def handle[E <: ast.Expression]
             (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
-            (Q: (S, E, C) => VerificationResult)
+            (Q: (ST, E, C) => VerificationResult)
             : VerificationResult
 }
 
@@ -343,18 +343,18 @@ trait DefaultLetHandler[ST <: Store[ST],
 
   def handle[E <: ast.Expression]
             (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
-            (Q: (S, E, C) => VerificationResult)
+            (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
 
     e match {
       case let: ast.Let => handle(σ, let, pve, c)(Q)
-      case _ => Q(σ, e.asInstanceOf[E], c)
+      case _ => Q(σ.γ, e.asInstanceOf[E], c)
     }
   }
 
   def handle[E <: ast.Expression]
             (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
-            (Q: (S, E, C) => VerificationResult)
+            (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
 
     val ast.Let(v, exp, body) = let
@@ -363,7 +363,7 @@ trait DefaultLetHandler[ST <: Store[ST],
       val σ1 = σ \+ (v.localVar, t)
       body match {
         case nestedLet: ast.Let => handle(σ1, nestedLet, pve, c1)(Q)
-        case _ => Q(σ1, body.asInstanceOf[E], c1)}})
+        case _ => Q(σ1.γ, body.asInstanceOf[E], c1)}})
   }
 }
 

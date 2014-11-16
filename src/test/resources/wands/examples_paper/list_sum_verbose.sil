@@ -28,6 +28,7 @@ method sum_it(ys: Ref) returns (sum: Int)
   var old_sum_xs: Int := sum_rec(xs)
 
   package
+    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
       --*
     (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
@@ -37,6 +38,7 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant old_sum_xs == (xs == null ? 0 : sum_rec(xs))
     invariant sum == old(sum_rec(ys)) - old_sum_xs;
     invariant
+      //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
       (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
         --*
       (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
@@ -51,10 +53,12 @@ method sum_it(ys: Ref) returns (sum: Int)
     old_sum_xs := (xs == null ? 0 : sum_rec(xs))
 
     package
+      //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
       (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
         --*
       folding List(zs) in
         applying
+          //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
           ((zs != null ==> (acc(List(zs)) && sum_rec(zs) == old_sum_xs2))
             --*
           (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))))
@@ -63,6 +67,7 @@ method sum_it(ys: Ref) returns (sum: Int)
   }
 
   apply
+    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     (xs != null ==> (acc(List(xs)) && sum_rec(xs) == old_sum_xs))
       --*
     (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))

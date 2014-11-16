@@ -8,7 +8,7 @@ predicate Pair(this: Ref) {
 function sum(p: Ref): Int
   requires acc(Pair(p))
 {
-  unfolding acc(Pair(p)) in (p.f) + (p.g)
+  unfolding acc(Pair(p)) in p.f + p.g
 }
 
 method test02(p: Ref)
@@ -41,24 +41,24 @@ method test04(p: Ref)
 }
 
 method test01(p: Ref)
-  requires acc(p.f, 1/2) --* (acc(p.f) && p.f > 0)
+  requires acc(p.f, 1/2) --* acc(p.f) && p.f > 0
   requires acc(p.f, 1/2)
   requires acc(p.g)
 {
   p.g := 1;
 
   package
-    (acc(p.g, 1/2) && acc(p.f, 1/2))
+    acc(p.g, 1/2) && acc(p.f, 1/2)
       --*
     (applying
-      (acc(p.f, 1/2) --* (acc(p.f) && p.f > 0))
+      (acc(p.f, 1/2) --* acc(p.f) && p.f > 0)
      in
-      (acc(p.f) && acc(p.g) && ((p.f) + (p.g) > 0)))
+      acc(p.f) && acc(p.g) && p.f + p.g > 0)
 
   apply
-    (acc(p.g, 1/2) && acc(p.f, 1/2))
+    acc(p.g, 1/2) && acc(p.f, 1/2)
       --*
-    (acc(p.f) && acc(p.g) && ((p.f) + (p.g) > 0))
+    acc(p.f) && acc(p.g) && p.f + p.g > 0
 
   fold acc(Pair(p))
   assert sum(p) > 0

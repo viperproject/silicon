@@ -21,7 +21,3 @@ method test02(x: Ref) {
   inhale acc(P(x))
   assert let y == (fun(x)) in y*y+y > 0
 }
-
-method test03() {
-  package let a == (1) in a > 1 --* true
-}

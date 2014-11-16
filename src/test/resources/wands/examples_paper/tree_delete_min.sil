@@ -56,6 +56,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 
     z := p.r
   } else {
+    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     package A --* folding acc(Tree(p)) in B
 
     while (unfolding acc(Tree(p.l)) in p.l.l != null)
@@ -69,6 +70,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
       p := p.l
       plvs := vals(p.l)
 
+      //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
       package A --* folding Tree(p) in applying w in B
     }
 

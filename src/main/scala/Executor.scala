@@ -430,14 +430,18 @@ trait DefaultExecutor[ST <: Store[ST],
       case pckg @ ast.Package(exp) =>
         val pve = PackageFailed(pckg)
 
-        handle[ast.MagicWand](σ, exp, pve, c)((σ0: S, wand: ast.MagicWand, c0: C) => {
+//        handle[ast.MagicWand](σ, exp, pve, c)((σ0: S, wand: ast.MagicWand, c0: C) => {
+          val σ0 = σ
+          val c0 = c
+          val wand = exp
           val σEmp = Σ(σ0.γ, Ø, σ0.g)
 
           decider.locally[(MagicWandChunk, H, C)](QB => {
             produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
               val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
                                exhaleExt = true,
-                               lhsHeap = Some(σLhs.h) /*, reinterpretWand = false*/)
+                               lhsHeap = Some(σLhs.h)
+                               /*evalHeap = Some(σLhs.h)*/ /*, reinterpretWand = false*/)
   //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
               val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
               consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
@@ -450,7 +454,7 @@ trait DefaultExecutor[ST <: Store[ST],
           }){case (chWand, h1, c1) =>
             Q(σ0 \ (γ = σ.γ, h = h1 + chWand), c1)
           }
-        })
+//        })
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)

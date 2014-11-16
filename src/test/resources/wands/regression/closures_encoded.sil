@@ -27,25 +27,23 @@ method triple_not_nested(x: Ref)
   inhale acc(c3_post(x))
 }
 
-// /silicon/issue/9/
-/*
 method call_triple_not_nested() {
   var x: Ref
   x := new(f)
 
   x.f := 1
+  var w: Int := x.f
 
-  package (acc(x.f) && (x.f) == (now(x.f) - 2)) --* acc(x.f)
-  package (acc(x.f) && (x.f) == (now(x.f) + 1)) --* (acc(x.f) && (x.f) > 0)
+  package acc(x.f) && x.f == w - 2 --* acc(x.f)
+  package acc(x.f) && x.f == w + 1 --* acc(x.f) && x.f > 0
 
   x.f := -10
 
   // :: ExpectedOutput(exhale.failed:wand.outdated)
   exhale     acc(x.f)
-         && ((acc(x.f) && (x.f) == (now(x.f) + 1)) --* (acc(x.f) && (x.f) > 0))
-         && ((acc(x.f) && (x.f) == (now(x.f) - 2)) --* acc(x.f))
+         && (acc(x.f) && x.f == w + 1 --* acc(x.f) && x.f > 0)
+         && (acc(x.f) && x.f == w - 2 --* acc(x.f))
 }
-*/
 
 method triple_nested(x: Ref)
   requires acc(c1_pre(x))
@@ -70,18 +68,18 @@ method triple_nested(x: Ref)
   inhale acc(c3_post(x))
 }
 
-// /silicon/issue/9/
-/*
-
 method call_triple_nested() {
   var x: Ref
   x := new(f)
 
   x.f := 1
+  var a: Int := x.f
 
-  package (acc(x.f) && (x.f) == (now(x.f) + 1)) --* (acc(x.f) && (x.f) > 0)
-  wand w := (acc(x.f) && (x.f) == (now(x.f) + 1)) --* (acc(x.f) && (x.f) > 0)
+//  package acc(x.f) && x.f == a + 1 --* acc(x.f) && x.f > 0
+//  wand w := acc(x.f) && x.f == a + 1 --* acc(x.f) && x.f > 0
 
-  package acc(x.f) && (x.f) == (now(x.f) - 2) --* acc(x.f) && w
+  package true --* true
+  wand w := true --* true
+  package true --* w
+//  package acc(x.f) && x.f == a - 2 --* acc(x.f) && w
 }
-*/

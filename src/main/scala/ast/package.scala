@@ -114,8 +114,6 @@ package object ast {
 
   type Old = silver.ast.Old
   val Old = silver.ast.Old
-  type PackageOld = silver.ast.PackageOld
-  val PackageOld = silver.ast.PackageOld
   type ApplyOld = silver.ast.ApplyOld
   val ApplyOld = silver.ast.ApplyOld
 

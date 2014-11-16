@@ -14,8 +14,7 @@ import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory,
-    FieldChunk, Chunk}
+import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, Chunk}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk}
@@ -81,8 +80,24 @@ trait DefaultEvaluator[ST <: Store[ST],
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-		val hEval = c.additionalEvalHeap.map(_ + σ.h).getOrElse(σ.h)
-    eval2(σ \ hEval, e, pve, c)((t, c1) => {
+    /* For debugging only */
+    e match {
+      case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
+            | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
+            | _: ast.WildcardPerm /*| _: ast.FieldAccess*/ =>
+
+      case _ =>
+        logger.debug(s"\nEVAL ${e.pos}: $e")
+        logger.debug(stateFormatter.format(σ))
+        if (c.reserveHeaps.nonEmpty)
+          logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        if (c.evalHeap.nonEmpty)
+          logger.debug("hE = " + c.evalHeap.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        c.lhsHeap.map(h => logger.debug("hLHS = " + stateFormatter.format(h)))
+        decider.prover.logComment(s"[eval] $e")
+    }
+
+    eval2(σ \ c.evalHeap.getOrElse(σ.h), e, pve, c)((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
@@ -93,25 +108,9 @@ trait DefaultEvaluator[ST <: Store[ST],
 			Q(t, c2)})
   }
 
-
   protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
-
-		/* For debugging only */
-		e match {
-			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
-          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
-          | _: ast.WildcardPerm | _: ast.FieldAccess =>
-
-			case _ =>
-        logger.debug(s"\nEVAL ${e.pos}: $e")
-				logger.debug(stateFormatter.format(σ))
-        if (c.reserveHeaps.nonEmpty)
-          logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
-        c.lhsHeap.map(h => logger.debug("hLHS = " + stateFormatter.format(h)))
-        decider.prover.logComment(s"[eval] $e")
-		}
 
     /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
      * might be tempting to think that we don't need to locally evaluate
@@ -181,7 +180,6 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
-      case ast.PackageOld(e0) => eval(σ, e0, pve, c)(Q) // eval(σ \ c.poldHeap.get, e0, pve, c, tv)(Q)
       case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
       case ast.Let(v, e0, e1) =>
@@ -496,29 +494,6 @@ trait DefaultEvaluator[ST <: Store[ST],
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
-
-      /* Magic wands */
-
-//      case mw: ast.MagicWand =>
-//        magicWandSupporter.translate(σ, mw, pve, c)(Q)
-//        println("\n[Evaluator/MagicWand]")
-//        eval(σ, eLeft, pve, c)((tLeft, c1) =>
-//          eval(σ, eRight, pve, c1)((tRight, c2) => {
-//            println(s"  tLeft = $tLeft")
-//            println(s"  tRight = $tRight")
-//            Q(MagicWand(tLeft, tRight), c2)}))
-
-//      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), ePerms) =>
-//        println("\n[Evaluator/FAP]")
-//        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
-//            Q(Acc(PlainSymbol(field.name), tRcvr :: Nil, tPerms), c2)))
-//
-//      case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerms) =>
-//        println("\n[Evaluator/PAP]")
-//        evals(σ, eArgs, pve, c)((ts, c1) =>
-//          evalp(σ, ePerms, pve, c1)((tPerms, c2) =>
-//            Q(Acc(PlainSymbol(predicateName), ts, tPerms), c2)))
 
       /* Unexpected nodes */
 

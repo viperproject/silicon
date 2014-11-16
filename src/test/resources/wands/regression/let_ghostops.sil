@@ -1,0 +1,54 @@
+field f: Int
+field g: Int
+field h: Ref
+
+predicate Pair(x: Ref) { acc(x.f) && acc(x.g) }
+predicate F(x: Ref) { acc(x.f) }
+
+function fun(x: Ref): Int
+  requires acc(F(x))
+{ unfolding acc(F(x)) in x.f }
+
+method test02(x: Ref) {
+  package
+    acc(Pair(x))
+      --*
+    unfolding acc(Pair(x)) in
+    let xf == (x.f) in
+    acc(x.f)
+}
+
+//method test00(x: Ref) {
+//  package
+//    acc(Pair(x))
+//      --*
+//    unfolding acc(Pair(x)) in
+//    let xf == (x.f) in
+//    folding acc(F(x)) in
+//    acc(F(x)) && fun(x) == xf
+//}
+
+
+
+
+//method test01(x: Ref, v: Int)
+//  requires acc(x.f)
+//  requires true --* acc(x.f) && x.f == v
+//{
+//  package true
+//            --*
+//          applying (true --* acc(x.f) && x.f == v) in
+//          let xf == (x.f) in
+//          folding acc(P(x)) in
+//
+//  package
+//    acc(P(x))
+//      --*
+//    unfolding acc(P(x)) in
+//
+//
+//    let xh == (x.h) in
+//    folding (acc(H(x))) in
+//    folding (acc(Pair(a))) in
+//    acc(H(x)) && acc(Pair(xh)) && sum(xh) == a
+//}

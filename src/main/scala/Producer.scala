@@ -162,8 +162,8 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case let: ast.Let if !let.isPure =>
-        handle[ast.Expression](σ, let, pve, c)((σ1, body, c1) =>
-          produce2(σ1, sf, p, body, pve, c1)(Q))
+        handle[ast.Expression](σ, let, pve, c)((γ1, body, c1) =>
+          produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>

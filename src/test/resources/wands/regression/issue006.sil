@@ -3,7 +3,7 @@ field val : Int;
 method test03(x: Ref) {
   var y: Ref := x
 
-  package true --* x == now(x)
+  package true --* x == x
   apply   true --* x == y
 }
 
@@ -34,7 +34,7 @@ method test01(l: Ref)
 {
   var x: Int := l.val
 
-  package acc(l.val) && l.val == now(l.val) --* acc(l.val)
+  package acc(l.val) && l.val == old(l.val) --* acc(l.val)
 
   apply   acc(l.val) && l.val == x          --* acc(l.val)
 }

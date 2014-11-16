@@ -8,6 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast.Position
 import util.control.Breaks._
 import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
     PredicateNotWellformed, MagicWandNotWellformed}
@@ -63,8 +64,24 @@ trait AbstractElementVerifier[ST <: Store[ST],
 //    println("\n[checkWandsAreSelfFraming]")
 
     breakable {
-      wands foreach {wand =>
-        val err = MagicWandNotWellformed(wand)
+      wands foreach {_wand =>
+        val err = MagicWandNotWellformed(_wand)
+
+        /* TODO: How to handle magic wand chunk terms (e.g., wand w := ...) when
+         * checking self-framingness of wands? This also raises the question of
+         * how to produce such terms in general, which could happen when
+         * checking self-framingness of wands, but also, if such terms appear
+         * on the left of a wand that is packaged.
+         *
+         * The problem is currently avoided by replacing occurences of wand
+         * chunk terms with the trivial wand true --* true. Not sure if this is
+         * sound, though.
+         */
+        val trivialWand = (p: Position) => ast.MagicWand(ast.True()(p), ast.True()(p))(p)
+        val wand = _wand.transform {
+          case v: ast.Variable if v.typ == ast.types.Wand => trivialWand(v.pos)
+        }()
+
         val left = wand.left
         val right = wand.withoutGhostOperations.right
         val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.Variable => v}

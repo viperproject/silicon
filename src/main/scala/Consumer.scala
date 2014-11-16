@@ -27,7 +27,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		{ this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
 									  with Brancher[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
-                    with MagicWandSupporter[ST, H, PC, S] =>
+                    with MagicWandSupporter[ST, H, PC, S]
+                    with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
   private type CH = Chunk
@@ -41,7 +42,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   import stateFactory._
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-//  protected val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -136,21 +136,26 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-        val σC = combine(σ, h, c)
+        val σC = σ \ getEvalHeap(σ, h, c)
 				eval(σC, e0, pve, c)((t0, c1) =>
 					branch(σC, t0, c1,
 						(c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
 						(c2: C) => Q(h, Unit, Nil, c2)))
 
       case ast.Ite(e0, a1, a2) if !φ.isPure =>
-        val σC = combine(σ, h, c)
+        val σC = σ \ getEvalHeap(σ, h, c)
         eval(σC, e0, pve, c)((t0, c1) =>
           branch(σC, t0, c1,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
+      case let: ast.Let if !let.isPure =>
+        val σC = σ \ getEvalHeap(σ, h, c)
+        handle[ast.Expression](σC, let, pve, c)((γ1, body, c1) =>
+          consume(σ \+ γ1, h, p, body, pve, c1)(Q))
+
       case ast.AccessPredicate(locacc, perm) =>
-        val σC = combine(σ, h, c)
+        val σC = σ \ getEvalHeap(σ, h, c)
         withChunkIdentifier(σC, locacc, true, pve, c)((id, c1) =>
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm) /*IsPositive(tPerm)*/){
@@ -182,7 +187,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
 //        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
-//        val σC = combine(σ \+ Γ(wandValues), h, c)
+//        val σC = getEvalHeap(σ \+ Γ(wandValues), h, c)
 
         /* Checks that the value of package-old expressions hasn't changed
          * w.r.t. the state in which the wand was produced.
@@ -221,7 +226,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //        val id = magicWandSupporter.createChunk(σC.γ, /*σC.h,*/ wand).id
 
         def QL(σ: S, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
-          val σC = combine(σ /*\+ Γ(wandValues)*/, h, c)
+          val σC = σ \ getEvalHeap(σ /*\+ Γ(wandValues)*/, h, c)
           val hs =
             if (c.exhaleExt) c.reserveHeaps
             else Stack(h)
@@ -287,7 +292,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             magicWandSupporter.createChunk(σ, eWand, pve, c1)((chWand, c3) => {
               val h2 = h + chWand /* h2 = σUsed'' */
               val σEmp = Σ(σ.γ, Ø, σ.g)
-              val c4 = c3.copy(reserveHeaps = (c3.reserveHeaps.head + h2) +: c3.reserveHeaps.drop(2),
+              val topReserveHeap = c3.reserveHeaps.head + h2
+              val c4 = c3.copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.drop(2),
                                exhaleExt = c.exhaleExt)
               consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4)((h3, _, _, c5) =>
                 Q(h3, decider.fresh(sorts.Snap), Nil, c5))})}
@@ -318,9 +324,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
             val c2a = c2.copy(lhsHeap = Some(h1))
             produce(σWV \ h2, decider.fresh, FullPerm(), eWand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
-              val c3a = c3.copy(reserveHeaps = (c1.reserveHeaps.head + σ3.h) +: c1.reserveHeaps.tail,
+              val topReserveHeap = c1.reserveHeaps.head + σ3.h
+              val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
                                 exhaleExt = c1.exhaleExt,
-                                lhsHeap = c2.lhsHeap)
+                                lhsHeap = c2.lhsHeap
+                                /*additionalEvalHeap = Some(topReserveHeap)*/)
               decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
               consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
                 Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
@@ -331,20 +339,32 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val predicate = c.program.findPredicate(predicateName)
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0 = c.incCycleCounter(predicate)
-          val σC = combine(σ, h, c0)
+          val σC = σ \ getEvalHeap(σ, h, c0)
           val σEmp = Σ(σ.γ, Ø, σ.g)
           eval(σC, ePerm, pve, c0)((tPerm, c1) => {
             if (decider.check(σC, IsNonNegative(tPerm)))
               evals(σC, eArgs, pve, c1)((tArgs, c2) => {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
                 consume(σEmp \ insγ, h, FullPerm(), predicate.body, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, additionalEvalHeap = Some(c3.reserveHeaps.head))
-                  consume(σ \ h1 \ insγ, h1, FullPerm(), predicate.body, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.fold */
-                    produce(σ \ h2, s => snap.convert(s), tPerm, acc, pve, c3b)((σ2, c4) => { /* σ2.h = σUsed'' */
+                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false/*, additionalEvalHeap = Some(c3.reserveHeaps.head)*/)
+//                  println(s"\nh1 = $h1")
+//                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
+//                  println(s"c3.evalHeap = ${c3.evalHeap}")
+                  consume(σ \ (γ = insγ, h = h1), h1, FullPerm(), predicate.body, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.fold */
+                    /* TODO: Produce evaluated eArgs again - in evalHeap, which
+                     * we otherwise shouldn't need. We could avoid this by
+                     *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
+                     *      (to improve error reporting, a map from new to original node could be added to the context)
+                     *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
+                     *       evaluator s.t. the mapping is used, if it exists
+                     */
+                    produce(σ \ h2, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ2, c4) => { /* σ2.h = σUsed'' */
+                      val topReserveHeap = c3.reserveHeaps.head + σ2.h
                       val c4a = c4.decCycleCounter(predicate)
-                                  .copy(reserveHeaps = (c3.reserveHeaps.head + σ2.h) +: c3.reserveHeaps.tail,
+                                  .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                         exhaleExt = c3.exhaleExt,
-                                        additionalEvalHeap = c3.additionalEvalHeap)
+                                        evalHeap = None
+                                        /*additionalEvalHeap = Some(topReserveHeap)*//*c3.additionalEvalHeap*/)
                       consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
             else
@@ -362,20 +382,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val predicate = c.program.findPredicate(predicateName)
         if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
           val c0 = c.incCycleCounter(predicate)
-          val σC = combine(σ, h, c0)
+          val σC = σ \ getEvalHeap(σ, h, c0)
           val σEmp = Σ(σ.γ, Ø, σ.g)
           eval(σC, ePerm, pve, c0)((tPerm, c1) =>
             if (decider.check(σC, IsNonNegative(tPerm)))
               evals(σC, eArgs, pve, c1)((tArgs, c2) =>
                 consume(σEmp, h, FullPerm(), acc, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, additionalEvalHeap = Some(c3.reserveHeaps.head))
-                  consume(σ \ h1, h1, FullPerm(), acc, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.unfold */
+                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false/*, additionalEvalHeap = Some(c3.reserveHeaps.head)*/)
+//                  println(s"\nh1 = $h1")
+//                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
+                  consume(σ \ c3.reserveHeaps.head, h1, FullPerm(), acc, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.unfold */
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                     produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b)((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                      val topReserveHeap = c3.reserveHeaps.head + σ2.h
                       val c4a = c4.decCycleCounter(predicate)
-                                  .copy(reserveHeaps = (c3.reserveHeaps.head + σ2.h) +: c3.reserveHeaps.tail,
-                                        exhaleExt = c3.exhaleExt,
-                                        additionalEvalHeap = c3.additionalEvalHeap)
+                                  .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                        exhaleExt = c3.exhaleExt
+                                        /*additionalEvalHeap = Some(topReserveHeap)*//*c3.additionalEvalHeap*/)
                       consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})}))
             else
@@ -389,7 +412,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 			/* Any regular Expressions, i.e. boolean and arithmetic */
       case _ =>
-        val σC = combine(σ, h, c)
+        val σC = σ \ getEvalHeap(σ, h, c)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
         decider.tryOrFail[(H, Term, List[CH], C)](σC, c0)((σC1, QS, QF) => {
           eval(σC1, φ, pve, c0)((t, c1) =>
@@ -418,7 +441,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
     if (c.exhaleExt) /* Function "transfer" from wands paper */
-      /* Permissions are transferred from the stack of heaps to σUsed, which is h in the current context */
+      /* Permissions are transferred from the stack of heaps to σUsed, which is
+       * h in the current context
+       */
       return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
 //        println(s"locacc = $locacc")
 //        println(s"c.reserveHeaps = ${c.reserveHeaps}")
@@ -446,11 +471,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    *       be better to do as suggested in the formalisation, that is, to
    *       replace the formal arguments with terms, for example
    *         σUsed'.fold(P(t))
-   *       where t := eval(e) if P(e).
+   *       where t := eval(e), e from P(e). This could be achieved by adding
+   *       fresh variables v_i to the state, binding v_i to e_i, and then
+   *       replacing P(e_i) by P(v_i).
    *       */
-  private def combine(σ: S, h: H, c: C): S = {
-    val hCombined = c.reserveHeaps.headOption.fold(σ.h)(h + _)
-    σ \ hCombined
+  private def getEvalHeap(σ: S, h: H, c: C): H = {
+//    val evalHeap =
+    if (c.exhaleExt) c.reserveHeaps.headOption.fold(h)(h + _)
+    else σ.h
+
+//    σ \ evalHeap
   }
 }
 

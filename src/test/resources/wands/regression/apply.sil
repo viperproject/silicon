@@ -8,11 +8,11 @@ method test04(x: Ref)
 }
 
 method test02(x: Ref)
-  requires acc(x.f, 1/2) --* (acc(x.f) && x.f == 0)
+  requires acc(x.f, 1/2) --* acc(x.f) && x.f == 0
   requires acc(x.f, 1/2)
   ensures acc(x.f) && x.f == 0
 {
-  apply acc(x.f, 1/2) --* (acc(x.f) && x.f == 0)
+  apply acc(x.f, 1/2) --* acc(x.f) && x.f == 0
 }
 
 method test03(x: Ref, y: Ref)
