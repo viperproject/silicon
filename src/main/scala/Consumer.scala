@@ -225,29 +225,25 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case pckg @ ast.Packaging(eWand, eIn) =>
 //        val pve = PackagingFailed(pckg)
-        /* TODO: Creating a new error reason here will probably yield confusing error
-         *       messages if packaging fails as part of exhaling a method's precondition
-         *       during a method call.
-         *       I expected the error message to be "Packaging ... failed because ... (line N)",
-         *       where N denotes the line in which the method precondition can be found.
-         *       The message should be "Method ... failed because packaging failed ... because ...
-         */
-        val σEmp = Σ(σ.γ, Ø, σ.g)
-        val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
-        decider.locally[(H, Term, List[CH], C)](QB => {
-          produce(σEmp, decider.fresh, FullPerm(), eWand.left, pve, c0)((σLhs, c1) => {
-            val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail, exhaleExt = true)
-            val rhs = eWand.right
-            consume(σEmp, σEmp.h, FullPerm(), rhs, pve, c2)(scala.Function.untupled(QB))})} /* exhale_ext */
-        ){case (_, _, _, c1) => /* result of exhale_ext, h1 = σUsed' */
-            magicWandSupporter.createChunk(σ, eWand, pve, c1)((chWand, c3) => {
-              val h2 = h + chWand /* h2 = σUsed'' */
-              val σEmp = Σ(σ.γ, Ø, σ.g)
-              val topReserveHeap = c3.reserveHeaps.head + h2
-              val c4 = c3.copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.drop(2),
-                               exhaleExt = c.exhaleExt)
-              consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4)((h3, _, _, c5) =>
-                Q(h3, decider.fresh(sorts.Snap), Nil, c5))})}
+        magicWandSupporter.packageWand(σ, eWand, pve, c)((chWand, c1) => {
+          val h2 = h + chWand /* h2 = σUsed'' */
+          val topReserveHeap = c1.reserveHeaps.head + h2
+          val c2 = c1.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
+                           exhaleExt = c.exhaleExt,
+                           lhsHeap = None)
+          val σEmp = Σ(σ.γ, Ø, σ.g)
+          consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, _, c3) =>
+            Q(h3, decider.fresh(sorts.Snap), Nil, c3))})
+
+//      case ast.Applying(eWandOrVar, eIn) =>
+//        magicWandSupporter.applyWand(σ, eWandOrVar, pve, c)((h1, c1) => {
+//          val topReserveHeap = c1.reserveHeaps.head + h1
+//          val c2 = c1.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+//                           exhaleExt = c.exhaleExt,
+//                           lhsHeap = c.lhsHeap)
+//          val σEmp = Σ(σ.γ, Ø, σ.g)
+//          consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, _, c3) =>
+//            Q(h3, decider.fresh(sorts.Snap), Nil, c3))})
 
       case ast.Applying(eWandOrVar, eIn) =>
         val (eWand, eLHSAndWand) = eWandOrVar match {
@@ -334,12 +330,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             if (decider.check(σC, IsNonNegative(tPerm)))
               evals(σC, eArgs, pve, c1)((tArgs, c2) =>
                 consume(σEmp, h, FullPerm(), acc, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
+                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
 //                  println(s"\nh1 = $h1")
 //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
-                  consume(σ \ c3.reserveHeaps.head, h1, FullPerm(), acc, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.unfold */
+                  consume(σ, h1, FullPerm(), acc, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.unfold */
                     val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b)((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                    produce(σ \ h2 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
                       val topReserveHeap = c3.reserveHeaps.head + σ2.h
                       val c4a = c4.decCycleCounter(predicate)
                                   .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,

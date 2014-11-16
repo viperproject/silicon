@@ -367,36 +367,16 @@ trait DefaultExecutor[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
-      /* decider.locally {...} will "abort" branching executions without properly
-       * joining them (which we don't really know how to handle for heaps anyway).
-       * I.e., if an impure conditional occurs on the right of a wand, only the
-       * final heap of the second branch will be used for the rest of the
-       * execution, which is unsound.
-       */
-      case pckg @ ast.Package(exp) =>
+      case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
-
-//        handle[ast.MagicWand](σ, exp, pve, c)((σ0: S, wand: ast.MagicWand, c0: C) => {
-          val σ0 = σ
-          val c0 = c
-          val wand = exp
-          val σEmp = Σ(σ0.γ, Ø, σ0.g)
-
-          decider.locally[(MagicWandChunk, H, C)](QB => {
-            produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
-              val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
-                               exhaleExt = true,
-                               lhsHeap = Some(σLhs.h))
-              val rhs = wand.right
-              consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
-                assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
-                magicWandSupporter.createChunk(σ0, wand, pve, c3)((chWand, c4) => {
-                  val c5 = c4.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None)
-                  QB(chWand, c4.reserveHeaps(2), c5)})})})
-          }){case (chWand, h1, c1) =>
-            Q(σ0 \ (γ = σ.γ, h = h1 + chWand), c1)
-          }
-//        })
+        val c0 = c.copy(reserveHeaps = H() :: σ.h :: Nil)
+        magicWandSupporter.packageWand(σ, wand, pve, c0)((chWand, c1) => {
+          assert(c1.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c1.reserveHeaps.length}")
+          val h1 = c1.reserveHeaps(2)
+          val c2 = c1.copy(reserveHeaps = Nil,
+                           exhaleExt = false,
+                           lhsHeap = None)
+          Q(σ \ (h1 + chWand), c2)})
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
