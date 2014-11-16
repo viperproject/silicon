@@ -184,7 +184,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
     val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
-//    val magicWandSupporter = new MagicWandSupporter[ST, H, PC, S, DefaultContext[H]](decider)
 
     val dlb = FullPerm()
 
@@ -203,7 +202,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
                                       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-                                      stateFormatter, heapCompressor, /*magicWandSupporter,*/ stateUtils,
+                                      stateFormatter, heapCompressor, stateUtils,
                                       bookkeeper)
   }
 

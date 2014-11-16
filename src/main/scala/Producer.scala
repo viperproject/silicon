@@ -208,8 +208,6 @@ trait DefaultProducer[ST <: Store[ST],
       case wand: ast.MagicWand =>
 //        println("\n[Producer/MagicWand]")
 //        println(s"  wand = $wand")
-        // val ch = magicWandSupporter.createChunk(σ.γ, /*σ.h,*/ wand)
-        // eval(σ, wand, pve, c)((tWand, c1) => {
         magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
 //          println(s"  chWand = $chWand")
           Q(σ.h + chWand, c)})

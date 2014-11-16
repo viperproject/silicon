@@ -87,7 +87,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
         val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.Variable => v}
         val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
         val σ1 = Σ(γ1, Ø, g)
-        val c1 = c/*.copy(poldHeap = Some(σ.h))*/
 
 //        println(s"  left = $left")
 //        println(s"  right = $right")
@@ -100,14 +99,14 @@ trait AbstractElementVerifier[ST <: Store[ST],
         result =
           inScope {
 //            println("  checking left")
-            produce(σ1, fresh, terms.FullPerm(), left, err, c1)((σ2, c2) => {
+            produce(σ1, fresh, terms.FullPerm(), left, err, c)((σ2, c2) => {
               σInner = σ2
 //              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
 //              val σ3 = σ1
               Success()})
           } && inScope {
 //            println("  checking right")
-            produce(σ1, fresh, terms.FullPerm(), right, err, c1.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
+            produce(σ1, fresh, terms.FullPerm(), right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
               Success())}
 
 //        println(s"  result = $result")
@@ -192,7 +191,6 @@ class DefaultElementVerifier[ST <: Store[ST],
      val symbolConverter: SymbolConvert,
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
-//     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
     (protected implicit val manifestH: Manifest[H])
@@ -358,14 +356,13 @@ class DefaultVerifier[ST <: Store[ST],
      val domainsEmitter: DomainsEmitter,
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
-//     val magicWandSupporter: MagicWandSupporter[ST, H, PC, S, DefaultContext[H]],
      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      /*magicWandSupporter,*/ stateUtils, bookkeeper)
+                                      stateUtils, bookkeeper)
 
   override def reset() {
     super.reset()

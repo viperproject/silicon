@@ -205,19 +205,6 @@ trait DefaultExecutor[ST <: Store[ST],
             val pve = LetWandFailed(ass)
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
               Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
-//            eval(σ, wand, pve, c)((tWand, c1) => {
-//            magicWandSupporter.createChunk(σ, wand, pve, c)((tWandChunk, c1) => {
-//              /* TODO: Instead of looking up tWandChunk in the heap (which can fail if we
-//               *       don't have such a magic wand instance) we could directly assign
-//               *       tWandChunk to v. The failure would then be reported later, namely,
-//               *       when we try to apply v.
-//               */
-//              decider.getChunk[MagicWandChunk](σ, σ.h, tWandChunk.id) match {
-//                case Some(ch) =>
-//                  Q(σ \+ (v, MagicWandChunkTerm(ch.wand, wand)), c)
-//                case None =>
-//                  Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))}})
-
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
               Q(σ \+ (v, tRhs), c1))
@@ -292,12 +279,12 @@ trait DefaultExecutor[ST <: Store[ST],
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, FullPerm(), a, pve, c/*.copy(reinterpretWand = false)*/)((σ1, _, _, c1) =>
+                consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
                   Success())
               r && Q(σ, c)
             } else
-              consume(σ, FullPerm(), a, pve, c/*.copy(reinterpretWand = false)*/)((σ1, _, _, c1) =>
-                Q(σ, c1/*.copy(reinterpretWand = true)*/))
+              consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+                Q(σ, c1))
         }
 
       case call @ ast.Call(methodName, eArgs, lhs) =>
@@ -380,47 +367,6 @@ trait DefaultExecutor[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
-//      case pckg @ ast.Package(wand) =>
-//        val pve = PackageFailed(pckg)
-//        val σEmp = Σ(σ.γ, Ø, σ.g)
-//
-//        produce(σEmp, fresh, FullPerm(), wand.left, pve, c)((σLhs, c1) => {
-//          val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
-//                           exhaleExt = true,
-//                           lhsHeap = Some(σLhs.h) /*, reinterpretWand = false*/)
-//          //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
-//          val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
-//          consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
-//            assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
-//            // val chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
-////            eval(σ, wand.withoutGhostOperations, pve, c3)((tWand, c4) => {
-//            magicWandSupporter.createChunk(σ, wand, pve, c3)((chWand, c4) => {
-////              val chWand = MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand])
-//              val c5 = c4.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
-//              Q(σ \ (c4.reserveHeaps(2) + chWand), c5)})})})
-
-//      case pckg @ ast.Package(wand) =>
-//        val pve = PackageFailed(pckg)
-//        val σEmp = Σ(σ.γ, Ø, σ.g)
-//
-//        var heaps = List[H]()
-//
-//        decider.pushScope()
-//        produce(σEmp, fresh, FullPerm(), wand.left, pve, c)((σLhs, c1) => {
-//          val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
-//                           exhaleExt = true,
-//                           lhsHeap = Some(σLhs.h) /*, reinterpretWand = false*/)
-//          //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
-//          val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
-//          consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
-//            assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
-//            // val chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
-////            eval(σ, wand.withoutGhostOperations, pve, c3)((tWand, c4) => {
-//            magicWandSupporter.createChunk(σ, wand, pve, c3)((chWand, c4) => {
-////              val chWand = MagicWandChunk(tWand.asInstanceOf[shapes.MagicWand])
-//              val c5 = c4.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
-//              Q(σ \ (c4.reserveHeaps(2) + chWand), c5)})})})
-
       /* decider.locally {...} will "abort" branching executions without properly
        * joining them (which we don't really know how to handle for heaps anyway).
        * I.e., if an impure conditional occurs on the right of a wand, only the
@@ -440,16 +386,12 @@ trait DefaultExecutor[ST <: Store[ST],
             produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
               val c2 = c1.copy(reserveHeaps = σEmp.h :: σLhs.h :: σ.h :: Nil,
                                exhaleExt = true,
-                               lhsHeap = Some(σLhs.h)
-                               /*evalHeap = Some(σLhs.h)*/ /*, reinterpretWand = false*/)
-  //              givenHeap = Some(σLhs.h), footprintHeap = Some(H()),
-              val rhs = wand.right // magicWandSupporter.injectExhalingExp(wand.right)
+                               lhsHeap = Some(σLhs.h))
+              val rhs = wand.right
               consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) => {
                 assert(c3.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c3.reserveHeaps.length}")
-                // val chWand = magicWandSupporter.createChunk(σ.γ, /*σ.h*/ wand)
-                //            eval(σ, wand.withoutGhostOperations, pve, c3)((tWand, c4) => {
                 magicWandSupporter.createChunk(σ0, wand, pve, c3)((chWand, c4) => {
-                  val c5 = c4.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None/*, reinterpretWand = true*/)
+                  val c5 = c4.copy(reserveHeaps = Nil, exhaleExt = false, lhsHeap = None)
                   QB(chWand, c4.reserveHeaps(2), c5)})})})
           }){case (chWand, h1, c1) =>
             Q(σ0 \ (γ = σ.γ, h = h1 + chWand), c1)
@@ -460,23 +402,20 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = ApplyFailed(apply)
 
         def QL(σ1: S, wand: ast.MagicWand, c1: C) = {
-//          /* The given heap is not σ.h, but rather the consumed portion only. However,
-//           * using σ.h should not be a problem as long as the heap that is used as
-//           * the given-heap while checking self-framingness of the wand is the heap
-//           * described by the left-hand side.
-//           */
-          val c1a = c1/*poldHeap = Some(ch.hPO), reinterpretWand = true*/
-          consume(σ1, FullPerm(), wand.left, pve, c1a)((σ2, _, _, c2) => {
+          /* The given heap is not σ.h, but rather the consumed portion only. However,
+           * using σ.h should not be a problem as long as the heap that is used as
+           * the given-heap while checking self-framingness of the wand is the heap
+           * described by the left-hand side.
+           */
+          consume(σ1, FullPerm(), wand.left, pve, c1)((σ2, _, _, c2) => {
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
-              val c4 = c3.copy(lhsHeap = None/*, poldHeap = None*/)
+              val c4 = c3.copy(lhsHeap = None)
               Q(σ3, c4)})})}
 
         e match {
           case wand: ast.MagicWand =>
-            consume(σ /*\+ Γ(wandValues)*/, FullPerm(), wand, pve, c/*.copy(reinterpretWand = false)*/)((σ1, _, chs, c1) => {
-//              assert(chs.size == 1 && chs(0).isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs")
-//              val ch = chs(0).asInstanceOf[MagicWandChunk]
+            consume(σ, FullPerm(), wand, pve, c)((σ1, _, chs, c1) => {
               QL(σ1, wand, c1)})
 
           case v: ast.LocalVariable =>

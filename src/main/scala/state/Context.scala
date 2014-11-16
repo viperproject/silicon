@@ -25,11 +25,8 @@ case class DefaultContext[H <: Heap[H]]
 
                           reserveHeaps: Stack[H] = Nil,
                           exhaleExt: Boolean = false,
-                          // poldHeap: Option[H] = None,  /* Used to interpret e in PackageOld(e) */
                           lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
-                          evalHeap: Option[H] = None
-                          // footprintHeap: Option[H] = None,
-                          /*reinterpretWand: Boolean = true*/)
+                          evalHeap: Option[H] = None)
     extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)

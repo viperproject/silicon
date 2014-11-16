@@ -117,7 +117,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
       if (c.reserveHeaps.nonEmpty)
         logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
-//      c.lhsHeap.map(h => logger.debug("hLHS = " + stateFormatter.format(h)))
     }
 
 		val consumed = φ match {
@@ -185,48 +184,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
-        /* Resolve wand and get mapping from (possibly renamed) local variables to their values. */
-//        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, φ)
-//        val σC = getEvalHeap(σ \+ Γ(wandValues), h, c)
-
-        /* Checks that the value of package-old expressions hasn't changed
-         * w.r.t. the state in which the wand was produced.
-         *
-         * TODO: It would be nice if this method could be moved into the MagicWandSupporter,
-         *       but it is not obvious how to call eval(...) from there.
-         *       This would be possible if MagicWandSupporter were a trait whose self-type
-         *       required it to be mixed into an Evaluator.
-         */
-//        def reinterpret(ch: MagicWandChunk, c: C)
-//                       (Q: C => VerificationResult)
-//                       : VerificationResult = {
-//
-//          /* Collect pold-expressions together with conditional guards they are nested in.
-//           * For example, b ==> pold(e) will be returned as (b, pold(e)).
-//           */
-//          val pathConditionedPOlds = magicWandSupporter.pathConditionedPOlds(wand)
-//          /* Extract e from pold(e) and turn the list of pairs (b, pold(e)) into a list
-//           * of terms of the shape b && e == pold(e).
-//           */
-//          val eqs = pathConditionedPOlds.map{case (pc, po) =>
-//            val eq = ast.Equals(po.exp, po)(po.pos, po.info)
-//            ast.Implies(pc, eq)(pc.pos, pc.info)
-//          }
-//          val eSame = ast.utils.BigAnd(eqs)
-//          /* Check the generated equalities. */
-//          eval(σC, eSame, pve, c/*.copy(poldHeap = Some(ch.hPO))*/)((tSame, c1) =>
-//            decider.assert(σC, tSame) {
-//              case true =>
-//                Q(c1/*.copy(poldHeap = c.poldHeap)*/)
-//              case false =>
-//                Failure[ST, H, S](pve dueTo MagicWandChunkOutdated(wand))})
-//        }
-
-//        /* TODO: Getting id by first creating a chunk is not elegant. */
-//        val id = magicWandSupporter.createChunk(σC.γ, /*σC.h,*/ wand).id
-
         def QL(σ: S, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
-          val σC = σ \ getEvalHeap(σ /*\+ Γ(wandValues)*/, h, c)
+          val σC = σ \ getEvalHeap(σ, h, c)
           val hs =
             if (c.exhaleExt) c.reserveHeaps
             else Stack(h)
@@ -248,20 +207,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               Q(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
             }
 
-          //            if (!c.reinterpretWand)
-          //              Q(hs.head, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs.tail))
-          //            else
-          //              reinterpret(ch, c1.copy(reserveHeaps = hs.tail))(c2 =>
-          //                Q(hs.head, decider.fresh(sorts.Snap), List(ch), c2))
-          case _ =>
-//            Failure[ST, H, S](pve dueTo MagicWandChunkNotFound(wand))
-            Failure[ST, H, S](ve)
+          case _ => Failure[ST, H, S](ve)
           }
         }
 
         φ match {
           case wand: ast.MagicWand =>
-//            eval(σ, wand, pve, c)((tWand, c1) => {
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
               val ve = pve dueTo MagicWandChunkNotFound(wand)
               QL(σ, chWand.id, ve, c1)})
@@ -299,7 +250,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 Q(h3, decider.fresh(sorts.Snap), Nil, c5))})}
 
       case ast.Applying(eWandOrVar, eIn) =>
-//        val (wand, wandValues) = magicWandSupporter.resolveWand(σ, eWandOrVar)
         val (eWand, eLHSAndWand) = eWandOrVar match {
           case _eWand: ast.MagicWand =>
             (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info))
@@ -310,25 +260,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
-        val σWV = σ //\+ Γ(wandValues)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-//        val eLHSAndWand = ast.And(eWandOrVar.left, eWandOrVar)(eWandOrVar.left.pos, eWandOrVar.left.info)
 //        println(s"eLHSAndWand = $eLHSAndWand")
-        consume(σEmp \ σWV.γ, h, FullPerm(), eLHSAndWand, pve, c/*.copy(reinterpretWand = false)*/)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
+        consume(σEmp, h, FullPerm(), eLHSAndWand, pve, c)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
 //          println(s"chs1 = $chs1")
           assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
           val ch = chs1.last.asInstanceOf[MagicWandChunk]
-          val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)/*.copy(reinterpretWand = c.reinterpretWand)*/
-          consume(σWV \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a/*.copy(reinterpretWand = false)*/)((h2, _, chs2, c2) => { /* σUsed'.apply */
+          val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
+          consume(σ \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a)((h2, _, chs2, c2) => { /* σUsed'.apply */
             assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
             assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
             val c2a = c2.copy(lhsHeap = Some(h1))
-            produce(σWV \ h2, decider.fresh, FullPerm(), eWand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
+            produce(σ \ h2, decider.fresh, FullPerm(), eWand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
               val topReserveHeap = c1.reserveHeaps.head + σ3.h
               val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
                                 exhaleExt = c1.exhaleExt,
-                                lhsHeap = c2.lhsHeap
-                                /*additionalEvalHeap = Some(topReserveHeap)*/)
+                                lhsHeap = c2.lhsHeap)
               decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
               consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
                 Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
@@ -346,7 +293,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               evals(σC, eArgs, pve, c1)((tArgs, c2) => {
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
                 consume(σEmp \ insγ, h, FullPerm(), predicate.body, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false/*, additionalEvalHeap = Some(c3.reserveHeaps.head)*/)
+                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
 //                  println(s"\nh1 = $h1")
 //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
 //                  println(s"c3.evalHeap = ${c3.evalHeap}")
@@ -363,8 +310,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       val c4a = c4.decCycleCounter(predicate)
                                   .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                         exhaleExt = c3.exhaleExt,
-                                        evalHeap = None
-                                        /*additionalEvalHeap = Some(topReserveHeap)*//*c3.additionalEvalHeap*/)
+                                        evalHeap = None)
                       consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
             else
@@ -388,7 +334,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             if (decider.check(σC, IsNonNegative(tPerm)))
               evals(σC, eArgs, pve, c1)((tArgs, c2) =>
                 consume(σEmp, h, FullPerm(), acc, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false/*, additionalEvalHeap = Some(c3.reserveHeaps.head)*/)
+                  val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
 //                  println(s"\nh1 = $h1")
 //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
                   consume(σ \ c3.reserveHeaps.head, h1, FullPerm(), acc, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.unfold */
@@ -397,8 +343,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       val topReserveHeap = c3.reserveHeaps.head + σ2.h
                       val c4a = c4.decCycleCounter(predicate)
                                   .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                                        exhaleExt = c3.exhaleExt
-                                        /*additionalEvalHeap = Some(topReserveHeap)*//*c3.additionalEvalHeap*/)
+                                        exhaleExt = c3.exhaleExt)
                       consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
                         Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})}))
             else
@@ -465,22 +410,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
   }
 
-  /* TODO: Remove and use DefaultContext.additionalEvalHeap instead.
-   *       On the other hand, if additionalEvalHeap is only necessary
-   *       to evaluate receivers when executing σUsed'.(un)fold, then it might
-   *       be better to do as suggested in the formalisation, that is, to
-   *       replace the formal arguments with terms, for example
-   *         σUsed'.fold(P(t))
-   *       where t := eval(e), e from P(e). This could be achieved by adding
-   *       fresh variables v_i to the state, binding v_i to e_i, and then
-   *       replacing P(e_i) by P(v_i).
-   *       */
   private def getEvalHeap(σ: S, h: H, c: C): H = {
-//    val evalHeap =
     if (c.exhaleExt) c.reserveHeaps.headOption.fold(h)(h + _)
     else σ.h
-
-//    σ \ evalHeap
   }
 }
 
