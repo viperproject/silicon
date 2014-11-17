@@ -226,69 +226,68 @@ trait DefaultJoiner[ST <: Store[ST],
           (block: ((Term, C) => VerificationResult) => VerificationResult)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
-          
+
     val πPre: Set[Term] = decider.π
     var localResults: List[LocalEvaluationResult] = Nil
 
-//    decider.pushScope()
-      /* Note: Executing the block in its own scope may result in incompletenesses:
-       *   1. Let A be an assumption, e.g., a combine-term, that is added during
-       *      the execution of block, but before block's execution branches
-       *   2. When the leaves of block's execution are combined, A will be placed
-       *      under the guards corresponding to the individual leaves; but A should
-       *      be unconditional since it was added to the path conditions before
-       *      the branching took place.
-       */
+    //    decider.pushScope()
+    /* Note: Executing the block in its own scope may result in incompletenesses:
+     *   1. Let A be an assumption, e.g., a combine-term, that is added during
+     *      the execution of block, but before block's execution branches
+     *   2. When the leaves of block's execution are combined, A will be placed
+     *      under the guards corresponding to the individual leaves; but A should
+     *      be unconditional since it was added to the path conditions before
+     *      the branching took place.
+     */
 
     val oldGuards = currentGuards
     currentGuards = Set()
 
     val r =
-      block((tR, cR)  => {
+      block((tR, cR) => {
         localResults ::= LocalEvaluationResult(guards, tR, decider.π -- πPre, cR)
         Success()
       })
 
     currentGuards = oldGuards
 
-//    decider.popScope()
-                    
+    //    decider.popScope()
+
     r && {
-        var tJoined: Term = null
-        var cJoined: C = null
+      //        var tJoined: Term = null
+      //        var cJoined: C = null
 
-        localResults match {
-          case List() =>
-            /* Should imply that Silicon is exploring an infeasible proof branch,
-             * but hasn't noticed that yet.
-             */
-            tJoined = True()
-            cJoined = c
+      localResults match {
+        case List() =>
+          /* Should imply that Silicon is exploring an infeasible proof branch */
+          Success()
 
-          case List(localResult) =>
-//            assert(localResult.πGuards.isEmpty,
-//                   s"Joining single branch, expected no guard, but found ${localResult.πGuards}")
+        case List(localResult) =>
+          //            assert(localResult.πGuards.isEmpty,
+          //                   s"Joining single branch, expected no guard, but found ${localResult.πGuards}")
 
-            decider.assume(localResult.auxiliaryTerms)
+          decider.assume(localResult.auxiliaryTerms)
 
-            tJoined = localResult.actualResult
-            cJoined = localResult.context
+          val tJoined = localResult.actualResult
+          val cJoined = localResult.context
+          Q(tJoined, cJoined)
 
-          case _ =>
-            val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
-            val actualResultFuncSort = sorts.Arrow(quantifiedVarsSorts, joinSort)
-            val summarySymbol = decider.fresh(joinFunctionName, actualResultFuncSort)
-            val tActualVar = Apply(summarySymbol, joinFunctionArgs)
-            val (tActualResult: Term, tAuxResult: Set[Term], cOpt) = combine(localResults, tActualVar === _)
-            val c1 = cOpt.getOrElse(c)
+        case _ =>
+          val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
+          val actualResultFuncSort = sorts.Arrow(quantifiedVarsSorts, joinSort)
+          val summarySymbol = decider.fresh(joinFunctionName, actualResultFuncSort)
+          val tActualVar = Apply(summarySymbol, joinFunctionArgs)
+          val (tActualResult: Term, tAuxResult: Set[Term], cOpt) = combine(localResults, tActualVar === _)
+          val c1 = cOpt.getOrElse(c)
 
-            decider.assume(tAuxResult + tActualResult)
+          decider.assume(tAuxResult + tActualResult)
 
-            tJoined = tActualVar
-            cJoined = c1.copy(additionalTriggers = tActualVar :: c1.additionalTriggers)
-        }
+          val tJoined = tActualVar
+          val cJoined = c1.copy(additionalTriggers = tActualVar :: c1.additionalTriggers)
 
-      Q(tJoined, cJoined)}
+          Q(tJoined, cJoined)
+      }
+    }
   }
 
   private case class LocalEvaluationResult(πGuards: Set[Term],
