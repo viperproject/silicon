@@ -271,7 +271,11 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             if (ee.getCause != null) ee.getCause
             else ee
 
-          logger.debug(ex.toString + "\n" + ex.getStackTraceString)
+          config.logLevel().toUpperCase match {
+            case "DEBUG" | "TRACE" | "ALL" => throw ex
+            case _ =>
+          }
+
           result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
         case ex: Exception =>
