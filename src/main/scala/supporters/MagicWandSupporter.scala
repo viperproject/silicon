@@ -5,13 +5,13 @@ package supporters
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.InsufficientPermission
-import interfaces.{Consumer, Producer, Evaluator, VerificationResult, Failure}
+import viper.silicon.interfaces._
 import interfaces.decider.Decider
 import interfaces.state.{StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
 import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
-import state.terms._
-import state.terms.perms.{IsNoAccess, IsAsPermissive}
+import viper.silicon.state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.perms.{IsNoAccess, IsAsPermissive}
 
 trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
@@ -247,5 +247,46 @@ trait MagicWandSupporter[ST <: Store[ST],
 //                  evalHeap = None)
 //            consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
 //              Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
+
+    def tryWithHeuristic[I, O]
+                        (input: I)
+                        (action: (I, O => VerificationResult, Failure[ST, H, S] => VerificationResult)
+                                 => VerificationResult)
+                        (reactions: Seq[I => I])
+                        (Q: O => VerificationResult)
+                        : VerificationResult = {
+
+      var currentInput = input
+      var remainingReactions = reactions
+      var actionFailure: Option[Failure[ST, H, S]] = None
+      var result: VerificationResult = Success()
+      var continue = false
+
+      println(s"\n[tryWithHeuristic]")
+
+      do {
+        println(s"  input = $input")
+
+        result = action(
+          input,
+          output => Q(output),
+          failure => {
+            println(s"  action failed: $failure")
+            actionFailure = Some(failure)
+            failure
+          })
+
+        if (actionFailure.nonEmpty && remainingReactions.nonEmpty) {
+          println(s"  applying heuristics")
+          currentInput = remainingReactions.head.apply(input)
+          remainingReactions = remainingReactions.tail
+          continue = true
+        }
+      } while (continue)
+
+      println(s"  tryWithHeuristic finished: $result")
+
+      result
+    }
   }
 }

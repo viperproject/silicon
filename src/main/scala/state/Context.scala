@@ -77,6 +77,8 @@ case class DefaultContext[H <: Heap[H]]
           sys.error("Unexpected mismatch between contexts")
       }
   }
+
+  override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
 object DefaultContext {

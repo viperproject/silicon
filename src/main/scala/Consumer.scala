@@ -11,7 +11,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.{VerificationError, PartialVerificationError}
 import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NegativePermission, AssertionFalse, MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFactory, StateFormatter, ChunkIdentifier}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
+import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
 import reporting.Bookkeeper
@@ -184,42 +184,86 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
-        def QL(σ: S, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
-          val σC = σ \ getEvalHeap(σ, h, c)
-          val hs =
-            if (c.exhaleExt) c.reserveHeaps
-            else Stack(h)
+        def QL(σ: S, h: H, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
+          magicWandSupporter.tryWithHeuristic[(S, H, C), (H, Term, List[CH], C)](σ, h, c)((input, QS, QF) => {
+            val (σ, h, c) = input
+            val σC = σ \ getEvalHeap(σ, h, c)
+            val hs =
+              if (c.exhaleExt) c.reserveHeaps
+              else Stack(h)
 
-          magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-            decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
-              case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
-              case _ => (None, h1, c1)
+            magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
+              decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
+                case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
+                case _ => (None, h1, c1)
+              }
+            ){case (Some(ch), hs1, c1) =>
+                assert(c1.exhaleExt == c.exhaleExt)
+                if (c.exhaleExt) {
+                  /* transfer: move ch into h = σUsed*/
+                  assert(hs1.size == c.reserveHeaps.size)
+                  QS(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
+                } else {
+                  assert(hs1.size == 1)
+                  assert(c.reserveHeaps == c1.reserveHeaps)
+                  QS(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
+                }
+
+              case _ => QF(Failure[ST, H, S](ve))
             }
-          ){case (Some(ch), hs1, c1) =>
-            assert(c1.exhaleExt == c.exhaleExt)
-            if (c.exhaleExt) {
-              /* transfer: move ch into h = σUsed*/
-              assert(hs1.size == c.reserveHeaps.size)
-              Q(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
-            } else {
-              assert(hs1.size == 1)
-              assert(c.reserveHeaps == c1.reserveHeaps)
-              Q(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
+          }){
+            val heuristic1: ((S, H, C)) => ((S, H, C)) = { case (σ: S, h: H, c: C) =>
+              val node = ast.Packaging(φ.asInstanceOf[ast.MagicWand], ast.True()())()
+              var _h2: H = h
+              var _c2: C = c
+
+              consume(σ, h, p, node, pve, c)((h2, _, _, c2) => {
+                _h2 = h2
+                _c2 = c2
+                Success()
+              })
+
+              (σ, _h2, _c2)
             }
 
-          case _ => Failure[ST, H, S](ve)
-          }
+            Seq(heuristic1)
+          }(Q.tupled)
+
+//          val σC = σ \ getEvalHeap(σ, h, c)
+//          val hs =
+//            if (c.exhaleExt) c.reserveHeaps
+//            else Stack(h)
+//
+//          magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
+//            decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
+//              case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
+//              case _ => (None, h1, c1)
+//            }
+//          ){case (Some(ch), hs1, c1) =>
+//              assert(c1.exhaleExt == c.exhaleExt)
+//              if (c.exhaleExt) {
+//                /* transfer: move ch into h = σUsed*/
+//                assert(hs1.size == c.reserveHeaps.size)
+//                Q(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
+//              } else {
+//                assert(hs1.size == 1)
+//                assert(c.reserveHeaps == c1.reserveHeaps)
+//                Q(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
+//              }
+//
+//            case _ => Failure[ST, H, S](ve)
+//          }
         }
 
         φ match {
           case wand: ast.MagicWand =>
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
               val ve = pve dueTo MagicWandChunkNotFound(wand)
-              QL(σ, chWand.id, ve, c1)})
+              QL(σ, h, chWand.id, ve, c1)})
           case v: ast.LocalVariable =>
             val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             val ve = pve dueTo NamedMagicWandChunkNotFound(v)
-            QL(σ, tWandChunk.id, ve, c)
+            QL(σ, h, tWandChunk.id, ve, c)
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 

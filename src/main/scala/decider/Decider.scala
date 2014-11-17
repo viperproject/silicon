@@ -244,7 +244,7 @@ class DefaultDecider[ST <: Store[ST],
        *       an expression has a lasting effect even after the evaluation,
        *       although eval doesn't return a heap.
        *       HOWEVER, it violates the assumption that the heap is immutable,
-       *       which is likely to cause problems, next next paragraph.
+       *       which is likely to cause problems, see next paragraph.
        *       It would probably be better to have methods that potentially
        *       compress heaps explicitly pass on a new heap.
        *       If tryOrFail would do that, then every method using it would
