@@ -20,11 +20,10 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 		val g = format(σ.g, "g")
 
     val π =
-      if (config.logLevel.apply() == "TRACE" || config.logLevel.apply() == "ALL")
+      if (config.logLevel().equalsIgnoreCase("TRACE") || config.logLevel().equalsIgnoreCase("ALL"))
 		    s"  ${format(σ.π)}\n"
       else
         ""
-
 
 		"σ(\n  %s, \n  %s, \n  %s, \n%s)".format(γ, h, g, π)
 	}
