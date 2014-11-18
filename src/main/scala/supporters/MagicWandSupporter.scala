@@ -249,26 +249,27 @@ trait MagicWandSupporter[ST <: Store[ST],
 //              Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
 
     def tryWithHeuristic[I, O]
-                        (input: I)
+                        (c: C, input: I)
                         (action: (I, O => VerificationResult, Failure[ST, H, S] => VerificationResult)
                                  => VerificationResult)
-                        (reactions: Seq[I => I])
+                        (reactions: Seq[I => Either[Failure[ST, H, S], I]])
                         (Q: O => VerificationResult)
                         : VerificationResult = {
 
       var currentInput = input
       var remainingReactions = reactions
+      var initialActionFailure: Option[Failure[ST, H, S]] = None
       var actionFailure: Option[Failure[ST, H, S]] = None
-      var result: VerificationResult = Success()
+      var actionResult: VerificationResult = Success()
       var continue = false
 
       println(s"\n[tryWithHeuristic]")
 
       do {
-        println(s"  input = $input")
+        println(s"\n  current input = $currentInput")
 
-        result = action(
-          input,
+        actionResult = action(
+          currentInput,
           output => Q(output),
           failure => {
             println(s"  action failed: $failure")
@@ -276,17 +277,50 @@ trait MagicWandSupporter[ST <: Store[ST],
             failure
           })
 
-        if (actionFailure.nonEmpty && remainingReactions.nonEmpty) {
-          println(s"  applying heuristics")
-          currentInput = remainingReactions.head.apply(input)
-          remainingReactions = remainingReactions.tail
-          continue = true
+//        println(s"\n  actionResult = $actionResult")
+//        println(s"\n  actionFailure = $actionFailure")
+//        println(s"\n  initialActionFailure = $initialActionFailure")
+
+//        continue = actionFailure.nonEmpty && remainingReactions.nonEmpty
+
+        actionFailure match {
+          case None =>
+            continue = false
+
+          case Some(_) =>
+            if (initialActionFailure.isEmpty)
+              initialActionFailure = actionFailure
+
+            var heuristicResult: Either[Failure[ST, H, S], I] = Left(null)
+
+            while (   heuristicResult.isLeft
+                   && remainingReactions.nonEmpty
+                   && c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))) {
+
+              println(s"  applying next heuristic")
+              heuristicResult = remainingReactions.head.apply(input)
+              println(s"  heuristic actionResult: $heuristicResult")
+
+              remainingReactions = remainingReactions.tail
+            }
+
+            heuristicResult match {
+              case Left(_) =>
+                continue = false
+
+              case Right(newInput) =>
+                currentInput = newInput
+                continue = true
+            }
         }
       } while (continue)
 
-      println(s"  tryWithHeuristic finished: $result")
+      println(s"  tryWithHeuristic finished: $actionResult")
 
-      result
+      if (actionResult.isFatal) {
+        initialActionFailure.getOrElse(actionResult)
+      } else
+        actionResult
     }
   }
 }

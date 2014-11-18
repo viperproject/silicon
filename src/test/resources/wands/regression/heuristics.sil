@@ -1,48 +1,58 @@
+field __CONFIG_HEURISTICS: Bool
+
 field f: Ref
 field g: Int
 field h: Int
 
 /* Packaging wands */
 
-//method test00()
-//  requires true --* true
-//{
-//  exhale true --* true
-//}
+method test00()
+  requires true --* true
+{
+  exhale true --* true
+}
 
 method test01() {
   exhale true --* true
 }
 
-//method test02(x: Ref)
-//  requires acc(x.f) && acc(x.g)
-//  ensures acc(x.f) && acc(x.f) --* acc(x.g)
-//{}
-//
-//method test03(x: Ref)
-//  requires acc(x.f) && acc(x.g)
-//  ensures acc(x.f) --* acc(x.g) && acc(x.f)
-//  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
-//  ensures acc(x.g)
-//{}
-//
-//method test04(x: Ref)
-//  requires acc(x.f)
-//  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
-//  ensures true --* acc(x.g)
-//{}
-//
-//method test05(x: Ref)
-//  requires acc(x.f) && acc(x.g)
-//  ensures acc(x.g) --* acc(x.f) && acc(x.g)
-//{}
+method test02(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.f) && acc(x.f) --* acc(x.g)
+{}
+
+/* See wand-silicon/issue/19/ for a discussion of which error(s) to report */
+method test03(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  //:: ExpectedOutput(postcondition.violated:wand.not.found)
+  ensures acc(x.f) --* acc(x.g) && acc(x.f)
+  ensures acc(x.g)
+{}
+
+method test04(x: Ref)
+  requires acc(x.f)
+  //:: ExpectedOutput(postcondition.violated:wand.not.found)
+  ensures true --* acc(x.g)
+{}
+
+method test05a(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.g) --* acc(x.f) && acc(x.g)
+  ensures acc(x.g)
+{}
+
+method test05b(x: Ref)
+  requires acc(x.f) && acc(x.g)
+  ensures acc(x.g)
+  ensures acc(x.g) --* acc(x.f) && acc(x.g)
+{}
 
 //method test06(x: Ref)
 //  requires acc(x.f) && acc(x.g)
 //  ensures acc(x.f) --* (acc(x.g) --* acc(x.f) && acc(x.g))
-//  ensures acc(x.f) && acc(x.g)
+////  ensures acc(x.f) && acc(x.g)
 //{}
-//
+
 //method test07(x: Ref)
 //  ensures acc(x.f) --* (acc(x.g) --* acc(x.f) && acc(x.g))
 //  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
