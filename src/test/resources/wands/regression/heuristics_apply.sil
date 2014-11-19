@@ -1,0 +1,71 @@
+field __CONFIG_HEURISTICS: Bool
+
+field f: Ref
+field g: Int
+field h: Int
+
+//method test20(x: Ref, y: Ref)
+//  requires true --* x == y
+//{
+//  exhale x == y
+//  exhale true --* x == y /* Packaging-heuristics should take care of this */
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false
+//}
+//
+//method test21(x: Ref)
+//  requires x != null
+//    /* TODO: Should not be necessary because it is implied by acc(x.f) from the
+//     *       wand's RHS. With an explicit 'apply true --* acc(x.f)' in the
+//     *       method body, the additional precondition is indeed not necessary.
+//     *       However, in the absence of the additional precondition, the post-
+//     *       condition will fail with "receiver might be null", which won't
+//     *       trigger the heuristics of applying wands.
+//     */
+//
+//  requires true --* acc(x.f)
+//  ensures acc(x.f)
+//{}
+//
+//method test22(x: Ref)
+//  requires x != null
+//  requires acc(x.f) --* acc(x.g) --* acc(x.h)
+//  requires acc(x.f) && acc(x.g)
+//{
+////  apply acc(x.f) --* acc(x.g) --* acc(x.h)
+////  apply acc(x.g) --* acc(x.h)
+//
+//  exhale acc(x.h)
+//}
+//
+///* Currying-Uncurrying Example */
+//
+//predicate P() { true }
+//predicate Q() { true }
+//predicate R() { true }
+//
+///* A * B --* C  ==>  A --* B --* C */
+//method curry() {
+//  define A acc(P()); define B acc(Q()); define C acc(R())
+//  inhale A && B --* C
+//
+//  // package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+//
+//  exhale A --* (B --* C)
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false /* Never trust your own implementation */
+//}
+//
+//method uncurry(x: Ref) {
+//  define A acc(P()); define B acc(Q()); define C acc(R())
+//  inhale A --* (B --* C)
+//
+////  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+//
+//  package A && B --* C
+////  exhale A && B --* C
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false /* Never trust your own implementation */
+//}

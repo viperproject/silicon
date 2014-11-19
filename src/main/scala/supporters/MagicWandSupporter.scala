@@ -266,11 +266,15 @@ trait MagicWandSupporter[ST <: Store[ST],
       println(s"\n[tryWithHeuristic]")
 
       do {
-        println(s"\n  current input = $currentInput")
+//        println(s"\n  current input = $currentInput")
 
         actionResult = action(
           currentInput,
-          output => Q(output),
+          output => {
+            println(s"  action succeeded")
+            actionFailure = None
+            Q(output)
+          },
           failure => {
             println(s"  action failed: $failure")
             actionFailure = Some(failure)
@@ -299,7 +303,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 
               println(s"  applying next heuristic")
               heuristicResult = remainingReactions.head.apply(input)
-              println(s"  heuristic actionResult: $heuristicResult")
+              println(s"  heuristic actionResult: ${heuristicResult.getClass.getSimpleName}")
 
               remainingReactions = remainingReactions.tail
             }

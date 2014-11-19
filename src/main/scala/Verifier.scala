@@ -32,7 +32,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		   with Evaluator[ST, H, S, DefaultContext[H]]
 		   with Producer[ST, H, S, DefaultContext[H]]
 		   with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
+		   with Executor[ST, H, S, DefaultContext[H]]
        with FunctionsSupporter[ST, H, PC, S] {
 
   private type C = DefaultContext[H]

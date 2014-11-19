@@ -11,7 +11,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.{VerificationError, PartialVerificationError}
 import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NegativePermission, AssertionFalse, MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFactory, StateFormatter, ChunkIdentifier}
-import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure, Success}
+import interfaces.{Executor, Producer, Consumer, Evaluator, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
 import reporting.Bookkeeper
@@ -28,7 +28,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 									  with Brancher[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
-                    with LetHandler[ST, H, S, DefaultContext[H]] =>
+                    with LetHandler[ST, H, S, DefaultContext[H]]
+                    with Executor[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
   private type CH = Chunk
@@ -192,10 +193,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               if (c.exhaleExt) c.reserveHeaps
               else Stack(h)
 
-            println(s"c.exhaleExt = ${c.exhaleExt}")
-            println(s"σ.h = ${σ.h}")
-            println(s"h = $h")
-            println(s"hs = $hs")
+//            println(s"c.exhaleExt = ${c.exhaleExt}")
+//            println(s"σ.h = ${σ.h}")
+//            println(s"h = $h")
+//            println(s"hs = $hs")
 
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
               decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
@@ -219,27 +220,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }){
             val heuristic1: ((S, H, C)) => Either[Failure[ST, H, S], ((S, H, C))] = { case (σ: S@unchecked, h: H, c: C) =>
               val wand = φ.asInstanceOf[ast.MagicWand]
-//              val packagingExp = ast.Packaging(wand, ast.True()())()
               var inputAfterHeuristic: Option[(S, H, C)] = None
 
               val r =
                 if (c.exhaleExt) {
-//                  ???
-//                  println(s"  heuristic: packaging $wand")
-//                  consume(σ, h, p, packagingExp, pve, c)((h2, _, _, c2) => {
-//                    Success()})
-                  inputAfterHeuristic = Some((σ, h, c))
+                  println(s"  heuristic: packaging $wand")
+                  val packagingExp = ast.Packaging(wand, ast.True()())()
+                  consume(σ, h, p, packagingExp, pve, c)((h2, _, _, c2) => {
+                    inputAfterHeuristic = Some((σ \ h2, h2, c2))
+                    Success()})
                 } else {
                   println(s"  heuristic: package $wand")
-                  val c0 = c.copy(reserveHeaps = H() :: /*σ.*/h :: Nil)
-                  magicWandSupporter.packageWand(σ, wand, pve, c0)((chWand, c1) => {
-                    assert(c1.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c1.reserveHeaps.length}")
-                    val h1 = c1.reserveHeaps(2)
-                    val c2 = c1.copy(reserveHeaps = Nil,
-                                     exhaleExt = false,
-                                     lhsHeap = None)
-                    val h2 = h1 + chWand
-                    inputAfterHeuristic = Some((σ \ h2, h2, c2))
+                  val packageStmt = ast.Package(wand)()
+                  exec(σ \ h, packageStmt, c)((σ1, c1) => {
+                    inputAfterHeuristic = Some((σ1, σ1.h, c1))
                     Success()})
                 }
 
@@ -256,31 +250,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
             Seq(heuristic1)
           }(Q.tupled)
-
-//          val σC = σ \ getEvalHeap(σ, h, c)
-//          val hs =
-//            if (c.exhaleExt) c.reserveHeaps
-//            else Stack(h)
-//
-//          magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-//            decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
-//              case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
-//              case _ => (None, h1, c1)
-//            }
-//          ){case (Some(ch), hs1, c1) =>
-//              assert(c1.exhaleExt == c.exhaleExt)
-//              if (c.exhaleExt) {
-//                /* transfer: move ch into h = σUsed*/
-//                assert(hs1.size == c.reserveHeaps.size)
-//                Q(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
-//              } else {
-//                assert(hs1.size == 1)
-//                assert(c.reserveHeaps == c1.reserveHeaps)
-//                Q(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
-//              }
-//
-//            case _ => Failure[ST, H, S](ve)
-//          }
         }
 
         φ match {

@@ -27,7 +27,7 @@ trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext[H]]
+		extends Executor[ST, H, S, DefaultContext[H]]
 		{ this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
 									  with Consumer[Chunk, ST, H, S, DefaultContext[H]]
 									  with Producer[ST, H, S, DefaultContext[H]]
@@ -169,19 +169,19 @@ trait DefaultExecutor[ST <: Store[ST],
     }
   }
 
-  private def exec(σ: S, stmts: Seq[ast.Statement], c: C)
-                  (Q: (S, C) => VerificationResult)
-                  : VerificationResult =
+  def execs(σ: S, stmts: Seq[ast.Statement], c: C)
+           (Q: (S, C) => VerificationResult)
+           : VerificationResult =
 
     if(stmts.nonEmpty)
       exec(σ, stmts.head, c)((σ1, c1) =>
-        exec(σ1, stmts.tail, c1)(Q))
+        execs(σ1, stmts.tail, c1)(Q))
     else
       Q(σ, c)
 
-  private def exec(σ: S, stmt: ast.Statement, c: C)
-			            (Q: (S, C) => VerificationResult)
-                  : VerificationResult = {
+  def exec(σ: S, stmt: ast.Statement, c: C)
+			    (Q: (S, C) => VerificationResult)
+          : VerificationResult = {
 
     /* For debugging-purposes only */
     stmt match {
@@ -195,7 +195,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
 		val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
-        exec(σ, stmts, c)(Q)
+        execs(σ, stmts, c)(Q)
 
       case ass @ ast.Assignment(v, rhs) =>
         v.typ match {
