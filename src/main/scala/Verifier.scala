@@ -23,7 +23,7 @@ import state.terms.{sorts, Sort}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
-import supporters.MagicWandSupporter
+import supporters.{HeuristicsSupporter, MagicWandSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
@@ -203,6 +203,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext[H]]
        with MagicWandSupporter[ST, H, PC, S]
+       with HeuristicsSupporter[ST, H, PC, S]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],

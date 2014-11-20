@@ -19,7 +19,7 @@ import state.{DefaultContext, DirectChunk, DirectFieldChunk, DirectPredicateChun
     MagicWandChunkIdentifier}
 import state.terms._
 import state.terms.perms.{IsNonNegative, IsNoAccess}
-import supporters.MagicWandSupporter
+import supporters.{HeuristicsSupporter, MagicWandSupporter}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -28,6 +28,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 									  with Brancher[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
+                    with HeuristicsSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]]
                     with Executor[ST, H, S, DefaultContext[H]] =>
 
@@ -186,13 +187,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
-//          magicWandSupporter.tryWithHeuristic[(S, H, C), (H, Term, List[CH], C)](c, (σ, h, c))(
-          magicWandSupporter.tryWithHeuristic(new magicWandSupporter.ConsumerActionWithHeuristics(σ, h, c)(
+          heuristicsSupporter.tryWithHeuristic(σ, h, c)(
             action = (σ, h, c, QS, QF) => {
               val σC = σ \ getEvalHeap(σ, h, c)
               val hs =
                 if (c.exhaleExt) c.reserveHeaps
                 else Stack(h)
+
+  //            println(s"c.exhaleExt = ${c.exhaleExt}")
+  //            println(s"σ.h = ${σ.h}")
+  //            println(s"h = $h")
+  //            println(s"hs = $hs")
 
               magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
                 decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
@@ -212,8 +217,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   }
 
                 case _ => QF(Failure[ST, H, S](ve))
-              }
-            },
+              }},
             heuristics = {
               val heuristic1: (S, H, C) => Either[Failure[ST, H, S], (S, H, C)] = (σ, h, c) => {
                 val wand = φ.asInstanceOf[ast.MagicWand]
@@ -236,9 +240,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
                 assert(!(r == Success() && inputAfterHeuristic == None))
 
-                //              println(s"  heuristic has been applied")
-                //              println(s"    result = $r")
-                //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
+  //              println(s"  heuristic has been applied")
+  //              println(s"    result = $r")
+  //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
                 inputAfterHeuristic match {
                   case Some(newInput) => Right(newInput)
                   case None => Left(r.asInstanceOf[Failure[ST, H, S]])
@@ -246,76 +250,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               }
 
               Seq(heuristic1)
-            },
-            Q = Q))
+          })(Q)
         }
-
-//        def QL(σ: S, h: H, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
-//          magicWandSupporter.tryWithHeuristic[(S, H, C), (H, Term, List[CH], C)](c, (σ, h, c))((input, QS, QF) => {
-//            val (σ, h, c) = input
-//            val σC = σ \ getEvalHeap(σ, h, c)
-//            val hs =
-//              if (c.exhaleExt) c.reserveHeaps
-//              else Stack(h)
-//
-////            println(s"c.exhaleExt = ${c.exhaleExt}")
-////            println(s"σ.h = ${σ.h}")
-////            println(s"h = $h")
-////            println(s"hs = $hs")
-//
-//            magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-//              decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
-//                case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
-//                case _ => (None, h1, c1)
-//              }
-//            ){case (Some(ch), hs1, c1) =>
-//                assert(c1.exhaleExt == c.exhaleExt)
-//                if (c.exhaleExt) {
-//                  /* transfer: move ch into h = σUsed*/
-//                  assert(hs1.size == c.reserveHeaps.size)
-//                  QS(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
-//                } else {
-//                  assert(hs1.size == 1)
-//                  assert(c.reserveHeaps == c1.reserveHeaps)
-//                  QS(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
-//                }
-//
-//              case _ => QF(Failure[ST, H, S](ve))
-//            }
-//          }){
-//            val heuristic1: ((S, H, C)) => Either[Failure[ST, H, S], ((S, H, C))] = { case (σ: S@unchecked, h: H, c: C) =>
-//              val wand = φ.asInstanceOf[ast.MagicWand]
-//              var inputAfterHeuristic: Option[(S, H, C)] = None
-//
-//              val r =
-//                if (c.exhaleExt) {
-//                  println(s"  heuristic: packaging $wand")
-//                  val packagingExp = ast.Packaging(wand, ast.True()())()
-//                  consume(σ, h, p, packagingExp, pve, c)((h2, _, _, c2) => {
-//                    inputAfterHeuristic = Some((σ \ h2, h2, c2))
-//                    Success()})
-//                } else {
-//                  println(s"  heuristic: package $wand")
-//                  val packageStmt = ast.Package(wand)()
-//                  exec(σ \ h, packageStmt, c)((σ1, c1) => {
-//                    inputAfterHeuristic = Some((σ1, σ1.h, c1))
-//                    Success()})
-//                }
-//
-//              assert(!(r == Success() && inputAfterHeuristic == None))
-//
-////              println(s"  heuristic has been applied")
-////              println(s"    result = $r")
-////              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
-//              inputAfterHeuristic match {
-//                case Some(newInput) => Right(newInput)
-//                case None => Left(r.asInstanceOf[Failure[ST, H, S]])
-//              }
-//            }
-//
-//            Seq(heuristic1)
-//          }(Q.tupled)
-//        }
 
         φ match {
           case wand: ast.MagicWand =>
