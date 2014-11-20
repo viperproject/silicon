@@ -32,33 +32,22 @@ predicate P() { true }
 predicate Q() { true }
 predicate R() { true }
 
+/* Define short-hands for the sake of readability */
+define A acc(P())
+define B acc(Q())
+define C acc(R())
+
 /* A --* B --* C  ==>  A * B --* C */
-//method uncurry() {
-//
-//  /* Define short-hands for the sake of readability (global short-hands are
-//   * currently not supported)
-//   */
-//  define A acc(P())
-//  define B acc(Q())
-//  define C acc(R())
-//
-//  inhale A --* (B --* C) /* requires */
-//
-//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
-//
-//  exhale A && B --* C /* ensures */
-//}
+method uncurry() {
+  inhale A --* (B --* C) /* requires */
+
+  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+
+  exhale A && B --* C /* ensures */
+}
 
 /* A * B --* C  ==>  A --* B --* C */
 method curry() {
-
-  /* Define short-hands for the sake of readability (global short-hands are
-   * currently not supported)
-   */
-  define A acc(P())
-  define B acc(Q())
-  define C acc(R())
-
   inhale A && B --* C /* requires */
 
   package A --* packaging (B --* applying (A && B --* C) in C) in B --* C

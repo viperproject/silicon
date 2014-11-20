@@ -4,6 +4,11 @@ field f: Ref
 field g: Int
 field h: Int
 
+method test01(x: Ref) {
+  inhale true --* acc(x.f)
+  exhale acc(x.f)
+}
+
 //method test20(x: Ref, y: Ref)
 //  requires true --* x == y
 //{
