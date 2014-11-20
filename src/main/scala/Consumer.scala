@@ -29,8 +29,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     with Producer[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
                     with HeuristicsSupporter[ST, H, PC, S]
-                    with LetHandler[ST, H, S, DefaultContext[H]]
-                    with Executor[ST, H, S, DefaultContext[H]] =>
+                    with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
   private type CH = Chunk
@@ -186,7 +185,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
-        def QL(σ: S, h: H, id: MagicWandChunkIdentifier, ve: VerificationError, c: C) = {
+        def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
           heuristicsSupporter.tryWithHeuristic(σ, h, c)(
             action = (σ, h, c, QS, QF) => {
               val σC = σ \ getEvalHeap(σ, h, c)
@@ -218,50 +217,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
                 case _ => QF(Failure[ST, H, S](ve))
               }},
-            heuristics = {
-              val heuristic1: (S, H, C) => Either[Failure[ST, H, S], (S, H, C)] = (σ, h, c) => {
-                val wand = φ.asInstanceOf[ast.MagicWand]
-                var inputAfterHeuristic: Option[(S, H, C)] = None
-
-                val r =
-                  if (c.exhaleExt) {
-                    println(s"  heuristic: packaging $wand")
-                    val packagingExp = ast.Packaging(wand, ast.True()())()
-                    consume(σ, h, p, packagingExp, pve, c)((h2, _, _, c2) => {
-                      inputAfterHeuristic = Some((σ \ h2, h2, c2))
-                      Success()})
-                  } else {
-                    println(s"  heuristic: package $wand")
-                    val packageStmt = ast.Package(wand)()
-                    exec(σ \ h, packageStmt, c)((σ1, c1) => {
-                      inputAfterHeuristic = Some((σ1, σ1.h, c1))
-                      Success()})
-                  }
-
-                assert(!(r == Success() && inputAfterHeuristic == None))
-
-  //              println(s"  heuristic has been applied")
-  //              println(s"    result = $r")
-  //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
-                inputAfterHeuristic match {
-                  case Some(newInput) => Right(newInput)
-                  case None => Left(r.asInstanceOf[Failure[ST, H, S]])
-                }
-              }
-
-              Seq(heuristic1)
-          })(Q)
+            heuristics = Seq(heuristicsSupporter.packageWand(wand, pve))
+          )(Q)
         }
 
         φ match {
           case wand: ast.MagicWand =>
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
               val ve = pve dueTo MagicWandChunkNotFound(wand)
-              QL(σ, h, chWand.id, ve, c1)})
+              QL(σ, h, chWand.id, wand, ve, c1)})
           case v: ast.LocalVariable =>
             val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             val ve = pve dueTo NamedMagicWandChunkNotFound(v)
-            QL(σ, h, tWandChunk.id, ve, c)
+            QL(σ, h, tWandChunk.id, tWandChunk.ghostFreeWand, ve, c)
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
