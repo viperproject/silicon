@@ -154,5 +154,38 @@ trait HeuristicsSupporter[ST <: Store[ST],
         case None => Left(r.asInstanceOf[Failure[ST, H, S]])
       }
     }
+
+    def applyWand(wand: ast.MagicWand, pve: PartialVerificationError)
+                 (σ: S, h: H, c: C)
+                 : Either[Failure[ST, H, S], (S, H, C)] = {
+
+      val p = FullPerm()
+      var inputAfterHeuristic: Option[(S, H, C)] = None
+
+      val r =
+        if (c.exhaleExt) {
+          println(s"  heuristic: applying $wand")
+          val applyingExp = ast.Applying(wand, ast.True()())()
+          consume(σ \ h, p, applyingExp, pve, c)((σ2, _, _, c2) => {
+            inputAfterHeuristic = Some((σ2, σ2.h, c2))
+            Success()})
+        } else {
+          println(s"  heuristic: apply $wand")
+          val applyStmt = ast.Apply(wand)()
+          exec(σ \ h, applyStmt, c)((σ1, c1) => {
+            inputAfterHeuristic = Some((σ1, σ1.h, c1))
+            Success()})
+        }
+
+      assert(!(r == Success() && inputAfterHeuristic == None))
+
+      //              println(s"  heuristic has been applied")
+      //              println(s"    result = $r")
+      //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
+      inputAfterHeuristic match {
+        case Some(newInput) => Right(newInput)
+        case None => Left(r.asInstanceOf[Failure[ST, H, S]])
+      }
+    }
   }
 }

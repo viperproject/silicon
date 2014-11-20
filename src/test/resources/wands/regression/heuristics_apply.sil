@@ -6,6 +6,12 @@ field h: Int
 
 method test01(x: Ref) {
   inhale true --* acc(x.f)
+
+  inhale x != null /* TODO: Without it, the subsequent exhale fails because x
+                    *       might be null, which doesn't trigger applying the
+                    *       wand (which would gain the assumption that x != null)
+                    */
+
   exhale acc(x.f)
 }
 
