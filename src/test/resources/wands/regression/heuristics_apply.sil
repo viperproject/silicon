@@ -9,7 +9,7 @@ method test01(x: Ref) {
 
   inhale x != null /* TODO: Without it, the subsequent exhale fails because x
                     *       might be null, which doesn't trigger applying the
-                    *       wand (which would gain the assumption that x != null)
+                    *       wand (which would yield the assumption that x != null)
                     */
 
   exhale acc(x.f)

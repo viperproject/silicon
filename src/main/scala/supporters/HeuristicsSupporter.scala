@@ -4,11 +4,10 @@ package supporters
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import viper.silicon.interfaces._
-//import interfaces.decider.Decider
+import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure, Success}
 import interfaces.state.{/*StateFactory,*/ Chunk, State, PathConditions, Heap, Store}
-import viper.silicon.state.DefaultContext
-import viper.silicon.state.terms._
+import state.{DirectPredicateChunk, DefaultContext}
+import state.terms._
 
 trait HeuristicsSupporter[ST <: Store[ST],
                         H <: Heap[H],
@@ -183,6 +182,40 @@ trait HeuristicsSupporter[ST <: Store[ST],
         case Some(newInput) => Right(newInput)
         case None => Left(r.asInstanceOf[Failure[ST, H, S]])
       }
+    }
+
+    /* Helpers */
+
+    def predicateInstancesMentioningLocation(σ: S, h: H, location: ast.Location, c: C): Seq[ast.PredicateAccessPredicate] = {
+      val predicateChunks =
+        h.values.collect {
+          case ch: DirectPredicateChunk =>
+            val body = c.program.findPredicate(ch.name)
+
+            body.existsDefined {
+              case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(c.program) == location =>
+            } match {
+              case true => Some(ch)
+              case _ => None
+            }
+        }.flatten
+
+
+      val pcs =
+        predicateChunks.map {
+          case DirectPredicateChunk(name, args, _, _, _) =>
+            val reversedArgs: Seq[ast.Expression] =
+              args map {
+                case True() => ast.True()()
+                case False() => ast.False()()
+                case IntLiteral(n) => ast.IntegerLiteral(n)()
+                case t => σ.γ.values.find(p => p._2 == t).get._1
+              }
+
+            ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())()
+        }
+
+      pcs.toSeq
     }
   }
 }
