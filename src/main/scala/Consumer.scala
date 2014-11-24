@@ -160,22 +160,28 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm) /*IsPositive(tPerm)*/){
               case true =>
-                consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
-                  val c4 = c3.snapshotRecorder match {
-                    case Some(sr) =>
-                      c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-                    case _ => c3}
-                  ch match {
-                    case fc: DirectFieldChunk =>
-                      val snap = fc.value.convert(sorts.Snap)
-                      Q(h1, snap, fc :: Nil, c4)
-                    case pc: DirectPredicateChunk =>
-                      val h2 =
-                        if (results.consumedCompletely)
-                          pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
-                        else
-                          h1
-                      Q(h2, pc.snap, pc :: Nil, c4)}})
+                heuristicsSupporter.tryWithHeuristic(σ, h, c)(
+                  action = (σ, h, c, QS) => {
+                    consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
+                      val c4 = c3.snapshotRecorder match {
+                        case Some(sr) =>
+                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
+                        case _ => c3}
+                      ch match {
+                        case fc: DirectFieldChunk =>
+                          val snap = fc.value.convert(sorts.Snap)
+                          Q(h1, snap, fc :: Nil, c4)
+                        case pc: DirectPredicateChunk =>
+                          val h2 =
+                            if (results.consumedCompletely)
+                              pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
+                            else
+                              h1
+                          QS(h2, pc.snap, pc :: Nil, c4)}})},
+                  heuristics = {
+                    val wands = heuristicsSupporter.wandInstancesMentioningLocation(σC, h, locacc.loc(c.program), c2)
+                    wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
+                  })(Q)
 
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))

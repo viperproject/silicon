@@ -15,7 +15,16 @@ method test01(x: Ref) {
   exhale acc(x.f)
 }
 
-//method test20(x: Ref, y: Ref)
+method test02(x: Ref)
+  requires true --* acc(x.f)
+  requires x != null /* TODO: Try to make redundant */
+{
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(x.f)
+  exhale true --* acc(x.f) // This assertion fails after the heuristic applied the wand
+}
+
+//method test03(x: Ref, y: Ref)
 //  requires true --* x == y
 //{
 //  exhale x == y
@@ -23,22 +32,8 @@ method test01(x: Ref) {
 //  //:: ExpectedOutput(assert.failed:assertion.false)
 //  assert false
 //}
-//
-//method test21(x: Ref)
-//  requires x != null
-//    /* TODO: Should not be necessary because it is implied by acc(x.f) from the
-//     *       wand's RHS. With an explicit 'apply true --* acc(x.f)' in the
-//     *       method body, the additional precondition is indeed not necessary.
-//     *       However, in the absence of the additional precondition, the post-
-//     *       condition will fail with "receiver might be null", which won't
-//     *       trigger the heuristics of applying wands.
-//     */
-//
-//  requires true --* acc(x.f)
-//  ensures acc(x.f)
-//{}
-//
-//method test22(x: Ref)
+
+//method test04(x: Ref)
 //  requires x != null
 //  requires acc(x.f) --* acc(x.g) --* acc(x.h)
 //  requires acc(x.f) && acc(x.g)
@@ -48,35 +43,39 @@ method test01(x: Ref) {
 //
 //  exhale acc(x.h)
 //}
-//
-///* Currying-Uncurrying Example */
-//
-//predicate P() { true }
-//predicate Q() { true }
-//predicate R() { true }
-//
-///* A * B --* C  ==>  A --* B --* C */
+
+/* Currying-Uncurrying Example */
+
+predicate P() { true }
+predicate Q() { true }
+predicate R() { true }
+
+define A acc(P())
+define B acc(Q())
+define C acc(R())
+
+method test05() {
+  inhale true --* B
+
+//  package A --* applying A
+
+  exhale A --* B
+}
+
+/* A * B --* C  ==>  A --* B --* C */
 //method curry() {
-//  define A acc(P()); define B acc(Q()); define C acc(R())
 //  inhale A && B --* C
 //
-//  // package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+////  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
 //
 //  exhale A --* (B --* C)
-//
-//  //:: ExpectedOutput(assert.failed:assertion.false)
-//  assert false /* Never trust your own implementation */
 //}
-//
+
 //method uncurry(x: Ref) {
-//  define A acc(P()); define B acc(Q()); define C acc(R())
 //  inhale A --* (B --* C)
 //
 ////  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
 //
 //  package A && B --* C
 ////  exhale A && B --* C
-//
-//  //:: ExpectedOutput(assert.failed:assertion.false)
-//  assert false /* Never trust your own implementation */
 //}

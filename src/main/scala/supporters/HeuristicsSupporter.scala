@@ -6,7 +6,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure, Success}
 import interfaces.state.{/*StateFactory,*/ Chunk, State, PathConditions, Heap, Store}
-import state.{DirectPredicateChunk, DefaultContext}
+import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
 
 trait HeuristicsSupporter[ST <: Store[ST],
@@ -57,15 +57,15 @@ trait HeuristicsSupporter[ST <: Store[ST],
                   Q(output)
                 }))
 
-//                println(s"\n  globalActionResult = $globalActionResult")
-//                println(s"\n  actionLocallySucceeded = $actionLocallySucceeded")
-//                println(s"\n  initialActionFailure = $initialActionFailure")
+        println(s"\n  globalActionResult = $globalActionResult")
+        println(s"  actionLocallySucceeded = $actionLocallySucceeded")
+        println(s"  initialActionFailure = $initialActionFailure\n")
 
         //        continueApplyingHeuristics = actionFailure.nonEmpty && remainingReactions.nonEmpty
 
         globalActionResult match {
-          case Success() | _ if actionLocallySucceeded =>
-            continueApplyingHeuristics = false
+          case _: Success => continueApplyingHeuristics = false
+          case _ if actionLocallySucceeded => continueApplyingHeuristics = false
 
           case failure: Failure[ST, H, S] =>
             if (initialActionFailure.isEmpty)
@@ -175,9 +175,9 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       assert(!(r == Success() && inputAfterHeuristic == None))
 
-      //              println(s"  heuristic has been applied")
-      //              println(s"    result = $r")
-      //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
+//      println(s"  heuristic has been applied")
+//      println(s"    result = $r")
+//      println(s"    inputAfterHeuristic = $inputAfterHeuristic")
       inputAfterHeuristic match {
         case Some(newInput) => Right(newInput)
         case None => Left(r.asInstanceOf[Failure[ST, H, S]])
@@ -201,7 +201,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
         }.flatten
 
 
-      val pcs =
+      val predicateAccesses =
         predicateChunks.map {
           case DirectPredicateChunk(name, args, _, _, _) =>
             val reversedArgs: Seq[ast.Expression] =
@@ -213,9 +213,31 @@ trait HeuristicsSupporter[ST <: Store[ST],
               }
 
             ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())()
-        }
+        }.toSeq
 
-      pcs.toSeq
+      println("[predicateInstancesMentioningLocation]")
+      println(s"  predicateAccesses = $predicateAccesses")
+
+      predicateAccesses
+    }
+
+    def wandInstancesMentioningLocation(σ: S, h: H, location: ast.Location, c: C): Seq[ast.MagicWand] = {
+      val allChunks = σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)
+
+      val wands = allChunks.collect {
+        case ch: MagicWandChunk =>
+          ch.ghostFreeWand.existsDefined {
+            case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(c.program) == location =>
+          } match {
+            case true => Some(ch.ghostFreeWand)
+            case _ => None
+          }
+      }.flatten.toSeq
+
+      println("[wandInstancesMentioningLocation]")
+      println(s"  wands = $wands")
+
+      wands
     }
   }
 }
