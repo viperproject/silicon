@@ -8,11 +8,11 @@ method test00()
   requires true --* true
 {
   exhale true --* true
-//  assert false
 }
 
 method test01() {
   exhale true --* true
+//  assert false
 }
 
 method test02(x: Ref)

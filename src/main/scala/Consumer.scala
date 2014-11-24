@@ -187,7 +187,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
           heuristicsSupporter.tryWithHeuristic(σ, h, c)(
-            action = (σ, h, c, QS, QF) => {
+            action = (σ, h, c, QS) => {
               val σC = σ \ getEvalHeap(σ, h, c)
               val hs =
                 if (c.exhaleExt) c.reserveHeaps
@@ -215,7 +215,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     QS(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
                   }
 
-                case _ => QF(Failure[ST, H, S](ve))
+                case _ => Failure[ST, H, S](ve)
               }},
             heuristics = Seq(heuristicsSupporter.packageWand(wand, pve))
           )(Q)
