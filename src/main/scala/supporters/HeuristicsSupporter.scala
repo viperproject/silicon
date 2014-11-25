@@ -47,7 +47,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       println(s"\n[tryWithHeuristic]")
 
       do {
-        //        println(s"\n  current input = $currentInput")
+        println(s"\n  current input = $currentInput")
 
         globalActionResult = (
           action(currentInput)
@@ -61,8 +61,6 @@ trait HeuristicsSupporter[ST <: Store[ST],
         println(s"  actionLocallySucceeded = $actionLocallySucceeded")
         println(s"  initialActionFailure = $initialActionFailure\n")
 
-        //        continueApplyingHeuristics = actionFailure.nonEmpty && remainingReactions.nonEmpty
-
         globalActionResult match {
           case _: Success => continueApplyingHeuristics = false
           case _ if actionLocallySucceeded => continueApplyingHeuristics = false
@@ -74,8 +72,8 @@ trait HeuristicsSupporter[ST <: Store[ST],
             var heuristicResult: Either[Failure[ST, H, S], I] = Left(null)
 
             while (   heuristicResult.isLeft
-              && remainingReactions.nonEmpty
-              && c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))) {
+                   && remainingReactions.nonEmpty
+                   && c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))) {
 
               println(s"  applying next heuristic")
               heuristicResult = remainingReactions.head.apply(input)
@@ -163,6 +161,9 @@ trait HeuristicsSupporter[ST <: Store[ST],
           println(s"  heuristic: applying $wand")
           val applyingExp = ast.Applying(wand, ast.True()())()
           consume(σ \ h, p, applyingExp, pve, c)((σ2, _, _, c2) => {
+            println(s"  finished consuming $applyingExp")
+            println(s"  s2.h = ${σ2.h}")
+            println(s"  s2.reserveHeaps = ${c2.reserveHeaps}")
             inputAfterHeuristic = Some((σ2, σ2.h, c2))
             Success()})
         } else {

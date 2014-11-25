@@ -160,8 +160,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm) /*IsPositive(tPerm)*/){
               case true =>
-                heuristicsSupporter.tryWithHeuristic(σ, h, c)(
-                  action = (σ, h, c, QS) => {
+                heuristicsSupporter.tryWithHeuristic(σC, h, c2)(
+                  action = (σC, h, c2, QS) => {
+                    println(s"[consumePermissions]")
+                    println(s"  sC.h = ${σC.h}")
+                    println(s"  h = ${h}")
+                    println(s"  c2.reserveHeaps = ${c2.reserveHeaps}")
                     consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
                       val c4 = c3.snapshotRecorder match {
                         case Some(sr) =>

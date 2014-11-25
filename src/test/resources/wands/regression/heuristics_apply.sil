@@ -57,25 +57,25 @@ define C acc(R())
 method test05() {
   inhale true --* B
 
-//  package A --* applying A
+//  package A --* /* applying (true --* B) in */ B
 
   exhale A --* B
 }
 
 /* A * B --* C  ==>  A --* B --* C */
-//method curry() {
-//  inhale A && B --* C
-//
-////  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
-//
-//  exhale A --* (B --* C)
-//}
+method curry() {
+  inhale A && B --* C
 
-//method uncurry(x: Ref) {
-//  inhale A --* (B --* C)
-//
-////  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
-//
-//  package A && B --* C
-////  exhale A && B --* C
-//}
+//  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+
+  exhale A --* (B --* C)
+}
+
+method uncurry(x: Ref) {
+  inhale A --* (B --* C)
+
+//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+
+  package A && B --* C
+//  exhale A && B --* C
+}
