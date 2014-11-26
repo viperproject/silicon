@@ -39,7 +39,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       var currentInput = input
       var remainingReactions = heuristics
       var initialActionFailure: Option[Failure[ST, H, S]] = None
-      var actionFailure: Option[Failure[ST, H, S]] = None
+//      var actionFailure: Option[Failure[ST, H, S]] = None
       var globalActionResult: VerificationResult = Success()
       var actionLocallySucceeded = false
       var continueApplyingHeuristics = false
@@ -222,14 +222,16 @@ trait HeuristicsSupporter[ST <: Store[ST],
       predicateAccesses
     }
 
-    def wandInstancesMentioningLocation(σ: S, h: H, location: ast.Location, c: C): Seq[ast.MagicWand] = {
+//    def wandInstancesMentioningLocation(σ: S, h: H, location: ast.Location, c: C): Seq[ast.MagicWand] = {
+
+    def wandInstancesMatching(σ: S, h: H, c: C, f: PartialFunction[silver.ast.Node, _]): Seq[ast.MagicWand] = {
       val allChunks = σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)
 
       val wands = allChunks.collect {
         case ch: MagicWandChunk =>
-          ch.ghostFreeWand.existsDefined {
+          ch.ghostFreeWand.existsDefined(f)/* {
             case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(c.program) == location =>
-          } match {
+          }*/ match {
             case true => Some(ch.ghostFreeWand)
             case _ => None
           }
@@ -239,6 +241,16 @@ trait HeuristicsSupporter[ST <: Store[ST],
       println(s"  wands = $wands")
 
       wands
+    }
+
+    object matchers {
+      def location(loc: ast.Location, program: ast.Program): PartialFunction[silver.ast.Node, Any] = {
+        case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(program) == loc =>
+      }
+
+      def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[silver.ast.Node, Any] = {
+        case other: ast.MagicWand if wand.structurallyMatches(other, program) =>
+      }
     }
   }
 }

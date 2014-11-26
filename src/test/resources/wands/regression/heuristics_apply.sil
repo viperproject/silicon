@@ -1,28 +1,29 @@
 field __CONFIG_HEURISTICS: Bool
 
-field f: Ref
-field g: Int
-field h: Int
+//field f: Ref
+//field g: Int
+//field h: Int
+//
+//method test01(x: Ref) {
+//  inhale true --* acc(x.f)
+//
+//  inhale x != null /* TODO: Without it, the subsequent exhale fails because x
+//                    *       might be null, which doesn't trigger applying the
+//                    *       wand (which would yield the assumption that x != null)
+//                    */
+//
+//  exhale acc(x.f)
+//}
+//
+//method test02(x: Ref)
+//  requires true --* acc(x.f)
+//  requires x != null /* TODO: Try to make redundant */
+//{
+//  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+//  exhale acc(x.f)
+//  exhale true --* acc(x.f) // This assertion fails after the heuristic applied the wand
+//}
 
-method test01(x: Ref) {
-  inhale true --* acc(x.f)
-
-  inhale x != null /* TODO: Without it, the subsequent exhale fails because x
-                    *       might be null, which doesn't trigger applying the
-                    *       wand (which would yield the assumption that x != null)
-                    */
-
-  exhale acc(x.f)
-}
-
-method test02(x: Ref)
-  requires true --* acc(x.f)
-  requires x != null /* TODO: Try to make redundant */
-{
-  //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  exhale acc(x.f)
-  exhale true --* acc(x.f) // This assertion fails after the heuristic applied the wand
-}
 
 //method test03(x: Ref, y: Ref)
 //  requires true --* x == y
@@ -54,28 +55,48 @@ define A acc(P())
 define B acc(Q())
 define C acc(R())
 
-method test05() {
-  inhale true --* B
-
-//  package A --* /* applying (true --* B) in */ B
-
-  exhale A --* B
-}
-
 /* A * B --* C  ==>  A --* B --* C */
-method curry() {
-  inhale A && B --* C
+//method curry() {
+//  inhale A && B --* C
+//
+////  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+//
+//  exhale A --* (B --* C)
+//}
+//
+//method uncurry(x: Ref) {
+//  inhale A --* (B --* C)
+//
+//  package A && B --* /*applying (A --* (B --* C)) in*/ applying (B --* C) in C
+////  package A && B --* C
+//
+////  exhale A && B --* C
+//}
 
-//  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+/* Simplified curry/uncurry tests */
 
-  exhale A --* (B --* C)
-}
+//method test05 () {
+//  inhale true --* B
+//
+////  package A --* /* applying (true --* B) in */ B
+//
+//  exhale A --* B
+//}
+//
+//method test06 (x: Ref) {
+//  inhale true --* (true --* C)
+//
+////  package true --* /*applying (true --* (true --* C)) in*/ applying (true --* C) in C
+////  package A && B --* C
+//
+//  exhale true --* C
+//}
 
-method uncurry(x: Ref) {
-  inhale A --* (B --* C)
+method test07(x: Ref) {
+  inhale A --* (true --* C)
 
-//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+  package A --* /*applying (A --* (true --* C)) in*/ /*applying (true --* C) in*/ C
+//  package A && B --* C
 
-  package A && B --* C
-//  exhale A && B --* C
+//  exhale A --* C
 }

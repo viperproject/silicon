@@ -183,7 +183,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                               h1
                           QS(h2, pc.snap, pc :: Nil, c4)}})},
                   heuristics = {
-                    val wands = heuristicsSupporter.wandInstancesMentioningLocation(σC, h, locacc.loc(c.program), c2)
+                    val locationMatcher = heuristicsSupporter.matchers.location(locacc.loc(c.program), c.program)
+                    val wands = heuristicsSupporter.wandInstancesMatching(σC, h, c2, locationMatcher)
                     wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
                   })(Q)
 
@@ -227,8 +228,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
                 case _ => Failure[ST, H, S](ve)
               }},
-            heuristics = Seq(heuristicsSupporter.packageWand(wand, pve))
-          )(Q)
+            heuristics = {
+              val structureMatcher = heuristicsSupporter.matchers.structure(wand, c.program)
+              val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, structureMatcher)
+              val applyWandHeuristics = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
+
+              applyWandHeuristics ++ Seq(heuristicsSupporter.packageWand(wand, pve) _)
+            })(Q)
         }
 
         φ match {
