@@ -4,6 +4,8 @@ package supporters
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
+import silver.verifier.errors.Internal
+import silver.verifier.reasons.MagicWandChunkNotFound
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure, Success}
 import interfaces.state.{/*StateFactory,*/ Chunk, State, PathConditions, Heap, Store}
 import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
@@ -29,160 +31,237 @@ trait HeuristicsSupporter[ST <: Store[ST],
     private type C = DefaultContext[H]
     private type CH = Chunk
 
-    def tryWithHeuristic[I, O]
-                        (c: C, input: I)
-                        (action: I => (O => VerificationResult) /*=> (Failure[ST, H, S] => VerificationResult)*/ => VerificationResult,
-                         heuristics: Seq[I => Either[Failure[ST, H, S], I]])
-                        (Q: O => VerificationResult)
-                        : VerificationResult = {
+//    private type I = (S, H, C)
+//      /* TODO: We probably cannot really be generic because reactions simply
+//       *       require certain inputs (and return certain outputs)
+//       */
 
-      var currentInput = input
-      var remainingReactions = heuristics
-      var initialActionFailure: Option[Failure[ST, H, S]] = None
-//      var actionFailure: Option[Failure[ST, H, S]] = None
-      var globalActionResult: VerificationResult = Success()
-      var actionLocallySucceeded = false
-      var continueApplyingHeuristics = false
+    @inline
+    def tryOperation//[I, O]
+                    (σ: S, h: H, c: C)
+                    (action: (S, H, C, (H, Term, List[CH], C) => VerificationResult) => VerificationResult)
+                    (Q: (H, Term, List[CH], C) => VerificationResult)
+                    : VerificationResult = {
 
-      println(s"\n[tryWithHeuristic]")
-
-      do {
-        println(s"\n  current input = $currentInput")
-
-        globalActionResult = (
-          action(currentInput)
-                (output => {
-                  println(s"  action succeeded locally")
-                  actionLocallySucceeded = true
-                  Q(output)
-                }))
-
-        println(s"\n  globalActionResult = $globalActionResult")
-        println(s"  actionLocallySucceeded = $actionLocallySucceeded")
-        println(s"  initialActionFailure = $initialActionFailure\n")
-
-        globalActionResult match {
-          case _: Success => continueApplyingHeuristics = false
-          case _ if actionLocallySucceeded => continueApplyingHeuristics = false
-
-          case failure: Failure[ST, H, S] =>
-            if (initialActionFailure.isEmpty)
-              initialActionFailure = Some(failure)
-
-            var heuristicResult: Either[Failure[ST, H, S], I] = Left(null)
-
-            while (   heuristicResult.isLeft
-                   && remainingReactions.nonEmpty
-                   && c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))) {
-
-              println(s"  applying next heuristic")
-              heuristicResult = remainingReactions.head.apply(input)
-              println(s"  heuristic globalActionResult: ${heuristicResult.getClass.getSimpleName}")
-
-              remainingReactions = remainingReactions.tail
-            }
-
-            heuristicResult match {
-              case Left(_) =>
-                continueApplyingHeuristics = false
-
-              case Right(newInput) =>
-                currentInput = newInput
-                continueApplyingHeuristics = true
-            }
-        }
-      } while (continueApplyingHeuristics)
-
-      println(s"  tryWithHeuristic finished with global action result $globalActionResult")
-//      println(s"initialActionFailure = $initialActionFailure")
-
-      if (globalActionResult.isFatal) {
-        initialActionFailure.getOrElse(globalActionResult)
-      } else
-        globalActionResult
+      tryWithReactions(σ, h, c)(action, None, 1)(Q)
     }
 
-    /* Type-specific instances of tryWithHeuristic */
-
-    def tryWithHeuristic(σ: S, h: H, c: C)
+    def tryWithReactions//[I, O]
+                        (σ: S, h: H, c: C)
                         (action: (S, H, C, (H, Term, List[CH], C) => VerificationResult) => VerificationResult,
-                         heuristics: Seq[(S, H, C) => Either[Failure[ST, H, S], (S, H, C)]])
-                        (Q: (H, Term, List[CH], C) => VerificationResult) =
+                         initialFailure: Option[Failure[ST, H, S]]/*,
+                         reactions: Seq[I => (I => VerificationResult) => VerificationResult]*/,
+                         depth: Int)
+                        (Q: (H, Term, List[CH], C) => VerificationResult)
+                        : VerificationResult = {
 
-      tryWithHeuristic[(S, H, C), (H, Term, List[CH], C)](c, (σ, h, c))(
-        action = triple => QS => action(triple._1, triple._2, triple._3,  scala.Function.untupled(QS)),
-        heuristics = heuristics.map(_.tupled)
-      )(Q.tupled)
+//      var currentInput = input
+//      var remainingReactions = heuristics
+//      var initialActionFailure: Option[Failure[ST, H, S]] = None
+//      var actionFailure: Option[Failure[ST, H, S]] = None
+//      var globalActionResult: VerificationResult = Success()
+      var localActionSuccess = false
+//      var continue = false
+
+      println(s"\n[tryWithReactions] depth = $depth")
+//      println(s"\n  current input = $currentInput")
+
+//      do {
+        val globalActionResult =
+          action(σ, h, c, (h1, snap, chs, c1) => {
+            println(s"  action succeeded locally")
+            localActionSuccess = true
+            Q(h1, snap, chs, c1)})
+
+  //        println(s"\n  globalActionResult = $globalActionResult")
+  //        println(s"  localActionSuccess = $localActionSuccess")
+  //        println(s"  initialActionFailure = $initialActionFailure\n")
+
+      var reactionResult: VerificationResult = globalActionResult
+        /* A bit hacky, but having an initial result here simplifies things quite a bit */
+
+        globalActionResult match {
+          case _ if    !c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
+                    || localActionSuccess
+                    || globalActionResult == Success() =>
+
+            return globalActionResult
+
+          //          continue = false
+
+          case actionFailure: Failure[ST, H, S] =>
+            //            val heuristics = generateReactions(input, actionFailure)
+            var remainingReactions = generateReactions(σ, h, c, actionFailure)
+            var triedReactions = 0
+
+            while (reactionResult != Success() && remainingReactions.nonEmpty) {
+              println(s"  trying next reaction ($triedReactions out of ${triedReactions + remainingReactions.length}})")
+
+              reactionResult = remainingReactions.head.apply(σ, h, c)((σ1, h1, c1) =>
+                tryWithReactions(σ1, h1, c1)(action, initialFailure.orElse(Some(actionFailure)), depth + 1)(Q))
+
+              println(s"  returned from reaction $triedReactions (out of ${triedReactions + remainingReactions.length}})")
+              //              println(s"    reactionResult = $reactionResult")
+
+              triedReactions += 1
+
+//              reactionResult match {
+//                case Success() =>
+//                  return reactionResult
+//
+//                case reactionFailure: Failure[ST, H, S] =>
+                  remainingReactions = remainingReactions.tail
+//              }
+            }
+        }
+
+        reactionResult match {
+          case Success() =>
+            reactionResult
+
+          case reactionFailure: Failure[ST, H, S] =>
+            initialFailure.getOrElse(globalActionResult)
+        }
+
+//      } while (continue)
+//
+//      println(s"  tryWithHeuristic finished with global action result $globalActionResult")
+////      println(s"initialActionFailure = $initialActionFailure")
+//
+//      if (globalActionResult.isFatal) {
+//        initialActionFailure.getOrElse(globalActionResult)
+//      } else
+//        globalActionResult
+    }
+
+//    def generateReactions[I](input: I, cause: Failure[ST, H, S]): Seq[I => Either[Failure[ST, H, S], I]] = {
+    def generateReactions/*[I]*/
+                         (σ: S, h: H, c: C, cause: Failure[ST, H, S])
+                         : Seq[(S, H, C) => ((S, H, C) => VerificationResult) => VerificationResult] = {
+
+      /* HS1: Apply/unfold if wand/pred containing missing wand or acc
+       * HS2: package/fold missing wand/pred
+       * HS3: Apply/unfold all other wands/preds
+       */
+
+//  heuristics = {
+//    val locationMatcher = heuristicsSupporter.matchers.location(locacc.loc(c.program), c.program)
+//    val wands = heuristicsSupporter.wandInstancesMatching(σC, h, c2, locationMatcher)
+//    wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
+//  }
+
+//  heuristics = {
+//    val structureMatcher = heuristicsSupporter.matchers.structure(wand, c.program)
+//    val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, structureMatcher)
+//    val applyWandHeuristics = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
+//
+//    applyWandHeuristics ++ Seq(heuristicsSupporter.packageWand(wand, pve) _)
+//  }
+      val pve = Internal(ast.True()())
+
+      cause.message.reason match {
+        case reason: MagicWandChunkNotFound =>
+          /* HS1 */
+          val wand = reason.offendingNode
+          val structureMatcher = heuristicsSupporter.matchers.structure(wand, c.program)
+          val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, structureMatcher)
+          val applyWandReactions = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
+
+          /* HS1 */
+          val packageReaction = heuristicsSupporter.packageWand(wand, pve) _
+
+          applyWandReactions ++ Seq(packageReaction)
+      }
+    }
+
+//    /* Type-specific instances of tryWithHeuristic */
+//
+//    def tryOperation(σ: S, h: H, c: C)
+//                    (action: (S, H, C, (H, Term, List[CH], C) => VerificationResult) => VerificationResult)
+//                    (Q: (H, Term, List[CH], C) => VerificationResult) = (
+//
+//      tryOperation[(S, H, C), (H, Term, List[CH], C)]
+//                  ((σ, h, c), c.program)
+//                  (action = triple => QS => action(triple._1, triple._2, triple._3,  scala.Function.untupled(QS)))
+//                  (Q.tupled)
+//    )
 
     /* Heuristics */
 
     def packageWand(wand: ast.MagicWand, pve: PartialVerificationError)
                    (σ: S, h: H, c: C)
-                   : Either[Failure[ST, H, S], (S, H, C)] = {
+                   (Q: (S, H, C) => VerificationResult)
+                   : VerificationResult = {
 
       val p = FullPerm()
-      var inputAfterHeuristic: Option[(S, H, C)] = None
-
-      val r =
+//      var inputAfterHeuristic: Option[(S, H, C)] = None
+//
+//      val r =
         if (c.exhaleExt) {
-          println(s"  heuristic: packaging $wand")
+          println(s"  reaction: packaging $wand")
           val packagingExp = ast.Packaging(wand, ast.True()())()
           consume(σ \ h, p, packagingExp, pve, c)((σ2, _, _, c2) => {
-            inputAfterHeuristic = Some((σ2, σ2.h, c2))
-            Success()})
+//            inputAfterHeuristic = Some((σ2, σ2.h, c2))
+//            Success()})
+            Q(σ2, σ2.h, c2)})
         } else {
-          println(s"  heuristic: package $wand")
+          println(s"  reaction: package $wand")
           val packageStmt = ast.Package(wand)()
           exec(σ \ h, packageStmt, c)((σ1, c1) => {
-            inputAfterHeuristic = Some((σ1, σ1.h, c1))
-            Success()})
+            Q(σ1, σ1.h, c1)})
+//            inputAfterHeuristic = Some((σ1, σ1.h, c1))
+//            Success()})
         }
 
-      assert(!(r == Success() && inputAfterHeuristic == None))
-
-      //              println(s"  heuristic has been applied")
-      //              println(s"    result = $r")
-      //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
-      inputAfterHeuristic match {
-        case Some(newInput) => Right(newInput)
-        case None => Left(r.asInstanceOf[Failure[ST, H, S]])
-      }
+//      assert(!(r == Success() && inputAfterHeuristic == None))
+//
+//      //              println(s"  heuristic has been applied")
+//      //              println(s"    result = $r")
+//      //              println(s"    inputAfterHeuristic = $inputAfterHeuristic")
+//      inputAfterHeuristic match {
+//        case Some(newInput) => Right(newInput)
+//        case None => Left(r.asInstanceOf[Failure[ST, H, S]])
+//      }
     }
 
     def applyWand(wand: ast.MagicWand, pve: PartialVerificationError)
                  (σ: S, h: H, c: C)
-                 : Either[Failure[ST, H, S], (S, H, C)] = {
+                 (Q: (S, H, C) => VerificationResult)
+                 : VerificationResult = {
+//                 : Either[Failure[ST, H, S], (S, H, C)] = {
 
       val p = FullPerm()
-      var inputAfterHeuristic: Option[(S, H, C)] = None
-
-      val r =
+//      var inputAfterHeuristic: Option[(S, H, C)] = None
+//
+//      val r =
         if (c.exhaleExt) {
-          println(s"  heuristic: applying $wand")
+          println(s"  reaction: applying $wand")
           val applyingExp = ast.Applying(wand, ast.True()())()
           consume(σ \ h, p, applyingExp, pve, c)((σ2, _, _, c2) => {
-            println(s"  finished consuming $applyingExp")
-            println(s"  s2.h = ${σ2.h}")
-            println(s"  s2.reserveHeaps = ${c2.reserveHeaps}")
-            inputAfterHeuristic = Some((σ2, σ2.h, c2))
-            Success()})
+//            println(s"  finished consuming $applyingExp")
+//            println(s"  s2.h = ${σ2.h}")
+//            println(s"  s2.reserveHeaps = ${c2.reserveHeaps}")
+//            inputAfterHeuristic = Some((σ2, σ2.h, c2))
+//            Success()})
+              Q(σ2, σ2.h, c2)})
         } else {
-          println(s"  heuristic: apply $wand")
+          println(s"  reaction: apply $wand")
           val applyStmt = ast.Apply(wand)()
           exec(σ \ h, applyStmt, c)((σ1, c1) => {
-            inputAfterHeuristic = Some((σ1, σ1.h, c1))
-            Success()})
+//            inputAfterHeuristic = Some((σ1, σ1.h, c1))
+//            Success()})
+            Q(σ1, σ1.h, c1)})
         }
 
-      assert(!(r == Success() && inputAfterHeuristic == None))
-
-//      println(s"  heuristic has been applied")
-//      println(s"    result = $r")
-//      println(s"    inputAfterHeuristic = $inputAfterHeuristic")
-      inputAfterHeuristic match {
-        case Some(newInput) => Right(newInput)
-        case None => Left(r.asInstanceOf[Failure[ST, H, S]])
-      }
+//      assert(!(r == Success() && inputAfterHeuristic == None))
+//
+////      println(s"  heuristic has been applied")
+////      println(s"    result = $r")
+////      println(s"    inputAfterHeuristic = $inputAfterHeuristic")
+//      inputAfterHeuristic match {
+//        case Some(newInput) => Right(newInput)
+//        case None => Left(r.asInstanceOf[Failure[ST, H, S]])
+//      }
     }
 
     /* Helpers */

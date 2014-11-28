@@ -160,12 +160,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm) /*IsPositive(tPerm)*/){
               case true =>
-                heuristicsSupporter.tryWithHeuristic(σC, h, c2)(
-                  action = (σC, h, c2, QS) => {
-                    println(s"[consumePermissions]")
-                    println(s"  sC.h = ${σC.h}")
-                    println(s"  h = ${h}")
-                    println(s"  c2.reserveHeaps = ${c2.reserveHeaps}")
+                heuristicsSupporter.tryOperation(σC, h, c2)((σC, h, c2, QS) => {
+//                    println(s"[consumePermissions]")
+//                    println(s"  sC.h = ${σC.h}")
+//                    println(s"  h = $h")
+//                    println(s"  c2.reserveHeaps = ${c2.reserveHeaps}")
                     consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
                       val c4 = c3.snapshotRecorder match {
                         case Some(sr) =>
@@ -181,12 +180,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                               pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                             else
                               h1
-                          QS(h2, pc.snap, pc :: Nil, c4)}})},
-                  heuristics = {
-                    val locationMatcher = heuristicsSupporter.matchers.location(locacc.loc(c.program), c.program)
-                    val wands = heuristicsSupporter.wandInstancesMatching(σC, h, c2, locationMatcher)
-                    wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
-                  })(Q)
+                          QS(h2, pc.snap, pc :: Nil, c4)}})
+                })(Q)
 
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
@@ -197,8 +192,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
-          heuristicsSupporter.tryWithHeuristic(σ, h, c)(
-            action = (σ, h, c, QS) => {
+          heuristicsSupporter.tryOperation(σ, h, c)((σ, h, c, QS) => {
               val σC = σ \ getEvalHeap(σ, h, c)
               val hs =
                 if (c.exhaleExt) c.reserveHeaps
@@ -226,15 +220,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     QS(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
                   }
 
-                case _ => Failure[ST, H, S](ve)
-              }},
-            heuristics = {
-              val structureMatcher = heuristicsSupporter.matchers.structure(wand, c.program)
-              val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, structureMatcher)
-              val applyWandHeuristics = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
-
-              applyWandHeuristics ++ Seq(heuristicsSupporter.packageWand(wand, pve) _)
-            })(Q)
+                case _ => Failure[ST, H, S](ve)}
+          })(Q)
         }
 
         φ match {
