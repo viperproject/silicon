@@ -198,6 +198,31 @@ trait MagicWandSupporter[ST <: Store[ST],
             magicWandSupporter.createChunk(σ, wand, pve, c3)(scala.Function.untupled(QB)))})
       })(Q.tupled)
     }
+    
+    def applyingWand(σ: S, /*h: H,*/ wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
+                    (QI: (S, H, C) => VerificationResult)
+                    : VerificationResult = {
+      
+      val σEmp = Σ(σ.γ, Ø, σ.g)
+      //        println(s"eLHSAndWand = $eLHSAndWand")
+      consume(σEmp \ σ.h, /*h,*/ FullPerm(), lhsAndWand, pve, c)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
+        //          println(s"chs1 = $chs1")
+        assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
+        val ch = chs1.last.asInstanceOf[MagicWandChunk]
+        val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
+        consume(σ \ σ1.h, /*σ1.h,*/ FullPerm(), lhsAndWand, pve, c1a)((σ2, _, chs2, c2) => { /* σUsed'.apply */
+          assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
+          assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
+          val c2a = c2.copy(lhsHeap = Some(σ1.h))
+          produce(σ \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
+          val topReserveHeap = c1.reserveHeaps.head + σ3.h
+            val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+                              exhaleExt = c1.exhaleExt,
+                              lhsHeap = c2.lhsHeap)
+            QI(σEmp, σEmp.h, c3a)
+            /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
+              Q(h4, decider.fresh(sorts.Snap), Nil, c4))*/})})})
+    }
 
 //    def execGhostOp(σ: S/*, h: H*/, expToConsume: ast.Expression, expToProduce: ast.Expression, pve: PartialVerificationError, c: C)
 //                   (Q: (H, C) => VerificationResult)

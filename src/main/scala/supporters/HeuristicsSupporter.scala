@@ -5,7 +5,7 @@ package supporters
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.Internal
-import silver.verifier.reasons.MagicWandChunkNotFound
+import silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure, Success}
 import interfaces.state.{/*StateFactory,*/ Chunk, State, PathConditions, Heap, Store}
 import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
@@ -19,13 +19,16 @@ trait HeuristicsSupporter[ST <: Store[ST],
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-            with Executor[ST, H, S, DefaultContext[H]] =>
+            with Executor[ST, H, S, DefaultContext[H]]
+            with MagicWandSupporter[ST, H, PC, S] =>
 
 //  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
 //  import decider.fresh
 //
 //  protected val stateFactory: StateFactory[ST, H, S]
 //  import stateFactory._
+
+  protected val config: Config
 
   object heuristicsSupporter {
     private type C = DefaultContext[H]
@@ -64,54 +67,60 @@ trait HeuristicsSupporter[ST <: Store[ST],
 //      var continue = false
 
       println(s"\n[tryWithReactions] depth = $depth")
-//      println(s"\n  current input = $currentInput")
+//      println(s"  s.h = ${σ.h.values}")
+//      println(s"  h = ${h.values}")
+//      println(s"  c.reserveHeaps = ${c.reserveHeaps}")
+//      println(s"  c.exhaleExt = ${c.exhaleExt}")
 
 //      do {
-        val globalActionResult =
-          action(σ, h, c, (h1, snap, chs, c1) => {
-            println(s"  action succeeded locally")
-            localActionSuccess = true
-            Q(h1, snap, chs, c1)})
+      val globalActionResult =
+        action(σ, h, c, (h1, snap, chs, c1) => {
+          println(s"  action succeeded locally")
+//            println(s"\n  s = $σ")
+//          println(s"  h1 = ${h1.values}")
+//          println(s"  chs = $chs")
+//          println(s"  c1.reserveHeaps = ${c1.reserveHeaps}")
+//          println(s"  c1.exhaleExt = ${c1.exhaleExt}")
+          localActionSuccess = true
+          Q(h1, snap, chs, c1)})
 
-  //        println(s"\n  globalActionResult = $globalActionResult")
-  //        println(s"  localActionSuccess = $localActionSuccess")
-  //        println(s"  initialActionFailure = $initialActionFailure\n")
+//      println(s"\n  globalActionResult (at depth $depth) = $globalActionResult")
+//          println(s"  localActionSuccess = $localActionSuccess")
+//          println(s"  initialActionFailure = $initialActionFailure\n")
 
       var reactionResult: VerificationResult = globalActionResult
         /* A bit hacky, but having an initial result here simplifies things quite a bit */
 
         globalActionResult match {
-          case _ if    !c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
-                    || localActionSuccess
-                    || globalActionResult == Success() =>
-
+          case _ if localActionSuccess || globalActionResult == Success() =>
             return globalActionResult
 
-          //          continue = false
-
           case actionFailure: Failure[ST, H, S] =>
-            //            val heuristics = generateReactions(input, actionFailure)
-            var remainingReactions = generateReactions(σ, h, c, actionFailure)
-            var triedReactions = 0
+            if (   c.program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
+                && depth <= config.maxHeuristicsDepth()) {
 
-            while (reactionResult != Success() && remainingReactions.nonEmpty) {
-              println(s"  trying next reaction ($triedReactions out of ${triedReactions + remainingReactions.length}})")
+              var remainingReactions = generateReactions(σ, h, c, actionFailure)
+              var triedReactions = 0
 
-              reactionResult = remainingReactions.head.apply(σ, h, c)((σ1, h1, c1) =>
-                tryWithReactions(σ1, h1, c1)(action, initialFailure.orElse(Some(actionFailure)), depth + 1)(Q))
+              while (reactionResult != Success() && remainingReactions.nonEmpty) {
+                println(s"  trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length}})")
 
-              println(s"  returned from reaction $triedReactions (out of ${triedReactions + remainingReactions.length}})")
-              //              println(s"    reactionResult = $reactionResult")
+                reactionResult = remainingReactions.head.apply(σ, h, c)((σ1, h1, c1) =>
+                  tryWithReactions(σ1, h1, c1)(action, initialFailure.orElse(Some(actionFailure)), depth + 1)(Q))
 
-              triedReactions += 1
+                println(s"  returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length}})")
+                //              println(s"    reactionResult = $reactionResult")
 
-//              reactionResult match {
-//                case Success() =>
-//                  return reactionResult
-//
-//                case reactionFailure: Failure[ST, H, S] =>
-                  remainingReactions = remainingReactions.tail
-//              }
+                triedReactions += 1
+
+                //              reactionResult match {
+                //                case Success() =>
+                //                  return reactionResult
+                //
+                //                case reactionFailure: Failure[ST, H, S] =>
+                remainingReactions = remainingReactions.tail
+                //              }
+              }
             }
         }
 
@@ -144,33 +153,30 @@ trait HeuristicsSupporter[ST <: Store[ST],
        * HS3: Apply/unfold all other wands/preds
        */
 
-//  heuristics = {
-//    val locationMatcher = heuristicsSupporter.matchers.location(locacc.loc(c.program), c.program)
-//    val wands = heuristicsSupporter.wandInstancesMatching(σC, h, c2, locationMatcher)
-//    wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
-//  }
-
-//  heuristics = {
-//    val structureMatcher = heuristicsSupporter.matchers.structure(wand, c.program)
-//    val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, structureMatcher)
-//    val applyWandHeuristics = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
-//
-//    applyWandHeuristics ++ Seq(heuristicsSupporter.packageWand(wand, pve) _)
-//  }
       val pve = Internal(ast.True()())
 
       cause.message.reason match {
         case reason: MagicWandChunkNotFound =>
-          /* HS1 */
+          /* HS1 (wands) */
           val wand = reason.offendingNode
           val structureMatcher = heuristicsSupporter.matchers.structure(wand, c.program)
           val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, structureMatcher)
           val applyWandReactions = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
 
-          /* HS1 */
+          /* HS2 */
           val packageReaction = heuristicsSupporter.packageWand(wand, pve) _
 
           applyWandReactions ++ Seq(packageReaction)
+
+        case reason: InsufficientPermission =>
+          /* HS1 (wands) */
+          val locationMatcher = heuristicsSupporter.matchers.location(reason.offendingNode.loc(c.program), c.program)
+          val wands = heuristicsSupporter.wandInstancesMatching(σ, h, c, locationMatcher)
+          val applyWandReactions = wands map (wand => heuristicsSupporter.applyWand(wand, pve) _)
+
+          applyWandReactions
+
+        case _ => Nil
       }
     }
 
@@ -236,14 +242,17 @@ trait HeuristicsSupporter[ST <: Store[ST],
 //      val r =
         if (c.exhaleExt) {
           println(s"  reaction: applying $wand")
-          val applyingExp = ast.Applying(wand, ast.True()())()
-          consume(σ \ h, p, applyingExp, pve, c)((σ2, _, _, c2) => {
+          val lhsAndWand = ast.And(wand.left, wand)()
+          magicWandSupporter.applyingWand(σ \ h, wand, lhsAndWand, pve, c)(Q)
+//          val applyingExp = ast.Applying(wand, ast.True()())()
+//          consume(σ \ h, p, applyingExp, pve, c)((σ2, _, _, c2) => {
 //            println(s"  finished consuming $applyingExp")
 //            println(s"  s2.h = ${σ2.h}")
 //            println(s"  s2.reserveHeaps = ${c2.reserveHeaps}")
-//            inputAfterHeuristic = Some((σ2, σ2.h, c2))
-//            Success()})
-              Q(σ2, σ2.h, c2)})
+//            println(s"  c2.exhaleExt = ${c2.exhaleExt}")
+////            inputAfterHeuristic = Some((σ2, σ2.h, c2))
+////            Success()})
+//              Q(σ2, σ2.h, c2)})
         } else {
           println(s"  reaction: apply $wand")
           val applyStmt = ast.Apply(wand)()
@@ -308,7 +317,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       val wands = allChunks.collect {
         case ch: MagicWandChunk =>
-          ch.ghostFreeWand.existsDefined(f)/* {
+          ch.ghostFreeWand.right.existsDefined(f)/* {
             case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(c.program) == location =>
           }*/ match {
             case true => Some(ch.ghostFreeWand)

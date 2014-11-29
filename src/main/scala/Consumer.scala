@@ -269,25 +269,30 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
-        val σEmp = Σ(σ.γ, Ø, σ.g)
-//        println(s"eLHSAndWand = $eLHSAndWand")
-        consume(σEmp, h, FullPerm(), eLHSAndWand, pve, c)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
-//          println(s"chs1 = $chs1")
-          assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
-          val ch = chs1.last.asInstanceOf[MagicWandChunk]
-          val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
-          consume(σ \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a)((h2, _, chs2, c2) => { /* σUsed'.apply */
-            assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
-            assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
-            val c2a = c2.copy(lhsHeap = Some(h1))
-            produce(σ \ h2, decider.fresh, FullPerm(), eWand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
-              val topReserveHeap = c1.reserveHeaps.head + σ3.h
-              val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
-                                exhaleExt = c1.exhaleExt,
-                                lhsHeap = c2.lhsHeap)
-              decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
-              consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
-                Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
+        magicWandSupporter.applyingWand(σ, eWand, eLHSAndWand, pve, c)((σ1, h1, c1) => {
+          decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
+          consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
+            Q(h4, decider.fresh(sorts.Snap), Nil, c4))})
+
+//        val σEmp = Σ(σ.γ, Ø, σ.g)
+////        println(s"eLHSAndWand = $eLHSAndWand")
+//        consume(σEmp, h, FullPerm(), eLHSAndWand, pve, c)((h1, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
+////          println(s"chs1 = $chs1")
+//          assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
+//          val ch = chs1.last.asInstanceOf[MagicWandChunk]
+//          val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
+//          consume(σ \ h1, h1, FullPerm(), eLHSAndWand, pve, c1a)((h2, _, chs2, c2) => { /* σUsed'.apply */
+//            assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
+//            assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
+//            val c2a = c2.copy(lhsHeap = Some(h1))
+//            produce(σ \ h2, decider.fresh, FullPerm(), eWand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
+//              val topReserveHeap = c1.reserveHeaps.head + σ3.h
+//              val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+//                                exhaleExt = c1.exhaleExt,
+//                                lhsHeap = c2.lhsHeap)
+//              decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
+//              consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
+//                Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
 
       case ast.Folding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                        eIn) =>

@@ -519,6 +519,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
+  val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
+    descr = "Maximal number of nested heuristics applications (default: 4)",
+    default = Some(4),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
   validateOpt(timeout){
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
     case _ => Right(Unit)

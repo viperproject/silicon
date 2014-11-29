@@ -63,15 +63,16 @@ define C acc(R())
 //
 //  exhale A --* (B --* C)
 //}
-//
-//method uncurry(x: Ref) {
-//  inhale A --* (B --* C)
-//
-//  package A && B --* /*applying (A --* (B --* C)) in*/ applying (B --* C) in C
-////  package A && B --* C
-//
-////  exhale A && B --* C
-//}
+
+/* A --* B --* C  ==>  A * B --* C */
+method uncurry(x: Ref) {
+  inhale A --* (B --* C)
+
+  package A && B --* /*applying (A --* (B --* C)) in*/ applying (B --* C) in true //C
+//  package A && B --* C
+
+//  exhale A && B --* C
+}
 
 /* Simplified curry/uncurry tests */
 
@@ -79,6 +80,7 @@ define C acc(R())
 //  inhale true --* B
 //
 ////  package A --* /* applying (true --* B) in */ B
+////  package A --* B
 //
 //  exhale A --* B
 //}
@@ -91,12 +93,12 @@ define C acc(R())
 //
 //  exhale true --* C
 //}
-
-method test07(x: Ref) {
-  inhale A --* (true --* C)
-
-  package A --* /*applying (A --* (true --* C)) in*/ /*applying (true --* C) in*/ C
-//  package A && B --* C
-
+//
+//method test07(x: Ref) {
+//  inhale A --* (true --* C)
+//
+////  package A --* /*applying (A --* (true --* C)) in*/ /*applying (true --* C) in*/ C
+////  package A && B --* C
+//
 //  exhale A --* C
-}
+//}
