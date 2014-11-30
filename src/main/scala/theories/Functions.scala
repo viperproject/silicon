@@ -224,7 +224,9 @@ trait FunctionsSupporter[ST <: Store[ST],
       decider.prover.logComment("Declaring program functions")
       declareFunctions()
 
-      val c = DefaultContext[H](program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
+      val c = DefaultContext[H](program = program,
+                                snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)),
+                                applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS")))
 
       functionData.keys.flatMap(function => handleFunction(function, c)).toList
     }

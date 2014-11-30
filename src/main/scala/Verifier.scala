@@ -253,7 +253,8 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-    val c = DefaultContext[H](program)
+    val c = DefaultContext[H](program,
+                              applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS")))
 
     val members = program.members.filterNot {
       case func: ast.ProgramFunction => true

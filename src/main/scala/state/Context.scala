@@ -26,7 +26,9 @@ case class DefaultContext[H <: Heap[H]]
                           reserveHeaps: Stack[H] = Nil,
                           exhaleExt: Boolean = false,
                           lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
-                          evalHeap: Option[H] = None)
+                          evalHeap: Option[H] = None,
+                          applyHeuristics: Boolean = false)
+
     extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)
@@ -58,12 +60,12 @@ case class DefaultContext[H <: Heap[H]]
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1,
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
-                        reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1) =>
+                        reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1, applyHeuristics1) =>
 
       other match {
         case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`,
                             additionalTriggers2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
-                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`) =>
+                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`, `applyHeuristics1`) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
           val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)

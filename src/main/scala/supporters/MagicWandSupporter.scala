@@ -4,14 +4,14 @@ package supporters
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.InsufficientPermission
-import viper.silicon.interfaces._
+import silver.verifier.reasons.{NegativePermission, InsufficientPermission}
+import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
 import interfaces.state.factoryUtils.Ø
-import viper.silicon.state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
-import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.{IsNoAccess, IsAsPermissive}
+import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
+import state.terms._
+import state.terms.perms.{IsNoAccess, IsAsPermissive, IsNonNegative}
 
 trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
@@ -27,6 +27,11 @@ trait MagicWandSupporter[ST <: Store[ST],
 
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
+
+//  protected val symbolConverter: SymbolConvert
+//  import symbolConverter.toSort
+
+  protected val config: Config
 
   object magicWandSupporter {
     private type C = DefaultContext[H]
@@ -199,14 +204,25 @@ trait MagicWandSupporter[ST <: Store[ST],
       })(Q.tupled)
     }
     
-    def applyingWand(σ: S, /*h: H,*/ wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
+    def applyingWand(σ: S, wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
                     (QI: (S, H, C) => VerificationResult)
                     : VerificationResult = {
       
       val σEmp = Σ(σ.γ, Ø, σ.g)
-      //        println(s"eLHSAndWand = $eLHSAndWand")
+      val c0a = c.copy(applyHeuristics = false)
+        /* Triggering heuristics, in particular, ghost operations (apply-/packag-/(un)folding)
+         * during the first consumption of lhsAndWand doesn't work because the ghost operations
+         * potentially affect the reserve heaps, and not σ1.h. Since the latter is used by
+         * the second consumption of lhsAndWand, this might fail again. However, triggering
+         * heuristics in this situation won't help much, since only σ1.h is available during
+         * this consumption (but not the reserve heaps). Hence the second consumption is
+         * likely to fail anyway.
+         * Instead, the the whole invocation of applyingWand should be wrapped in a
+         * tryOperation. This will ensure that the effect of ghost operations triggered by
+         * heuristics are available to both consumes.
+         */
+
       consume(σEmp \ σ.h, /*h,*/ FullPerm(), lhsAndWand, pve, c)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
-        //          println(s"chs1 = $chs1")
         assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
         val ch = chs1.last.asInstanceOf[MagicWandChunk]
         val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
@@ -216,61 +232,98 @@ trait MagicWandSupporter[ST <: Store[ST],
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
           produce(σ \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + σ3.h
-            val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
-                              exhaleExt = c1.exhaleExt,
-                              lhsHeap = c2.lhsHeap)
-            QI(σEmp, σEmp.h, c3a)
-            /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
-              Q(h4, decider.fresh(sorts.Snap), Nil, c4))*/})})})
+          val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+                            exhaleExt = c1.exhaleExt,
+                            lhsHeap = c2.lhsHeap,
+                            applyHeuristics = c.applyHeuristics)
+          QI(σEmp, σEmp.h, c3a)})})})
     }
 
-//    def execGhostOp(σ: S/*, h: H*/, expToConsume: ast.Expression, expToProduce: ast.Expression, pve: PartialVerificationError, c: C)
-//                   (Q: (H, C) => VerificationResult)
-//                   : VerificationResult = {
-//
-//      assert(c.exhaleExt, s"Expected c.exhaleExt to be true, but was ${c.exhaleExt}")
-//
-//      val σEmp = Σ(σ.γ, Ø, σ.g)
-//      //        println(s"eLHSAndWand = $eLHSAndWand")
-//      consume(σEmp, FullPerm(), expToConsume, pve, c)((σ1/*h1*/, _, chs1, c1) => { /* exhale_ext, h1 = σUsed' */
-//        //          println(s"chs1 = $chs1")
-////        assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
-////        val ch = chs1.last.asInstanceOf[MagicWandChunk]
-//        val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
-//        consume(σ \ σ1.h/*, h1*/, FullPerm(), expToConsume, pve, c1a)((σ2/*h2*/, _, _, c2) => { /* σUsed'.apply */
-////          assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
-////          assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
-//          val c2a = c2.copy(lhsHeap = Some(σ1.h/*h1*/))
-//          produce(σ \ σ2.h/*h2*/, decider.fresh, FullPerm(), expToProduce, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
-//          val topReserveHeap = c1.reserveHeaps.head + σ3.h
-//            val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
-//              exhaleExt = c1.exhaleExt,
-//              lhsHeap = c2.lhsHeap)
-//            decider.prover.logComment(s"in consume/apply after producing RHS ${eWand.right}}, before consuming $eIn")
-//            consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c3a)((h4, _, _, c4) =>
-//              Q(h4, decider.fresh(sorts.Snap), Nil, c4))})})})
-//    }
-//
-//    consume(σEmp \ insγ, h, FullPerm(), predicate.body, pve, c2)((h1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-//      val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
-//        //                  println(s"\nh1 = $h1")
-//        //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
-//        //                  println(s"c3.evalHeap = ${c3.evalHeap}")
-//        consume(σ \ (γ = insγ, h = h1), h1, FullPerm(), predicate.body, pve, c3a)((h2, snap, _, c3b) => { /* σUsed'.fold */
-//          /* TODO: Produce evaluated eArgs again - in evalHeap, which
-//           * we otherwise shouldn't need. We could avoid this by
-//           *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
-//           *      (to improve error reporting, a map from new to original node could be added to the context)
-//           *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
-//           *       evaluator s.t. the mapping is used, if it exists
-//           */
-//          produce(σ \ h2, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ2, c4) => { /* σ2.h = σUsed'' */
-//          val topReserveHeap = c3.reserveHeaps.head + σ2.h
-//            val c4a = c4.decCycleCounter(predicate)
-//                .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-//                  exhaleExt = c3.exhaleExt,
-//                  evalHeap = None)
-//            consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
-//              Q(h3, decider.fresh(sorts.Snap), Nil, c5))})})})})
+    def unfoldingPredicate(σ: S, acc: ast.PredicateAccessPredicate, pve: PartialVerificationError, c: C)
+                          (QI: (S, H, C) => VerificationResult)
+                          : VerificationResult = {
+
+      val ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm) = acc
+      val predicate = c.program.findPredicate(predicateName)
+
+      if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
+        val c0 = c.incCycleCounter(predicate)
+        val σC = σ \ getEvalHeap(σ, σ.h/*h*/, c0)
+        val σEmp = Σ(σ.γ, Ø, σ.g)
+        eval(σC, ePerm, pve, c0)((tPerm, c1) =>
+          if (decider.check(σC, IsNonNegative(tPerm)))
+            evals(σC, eArgs, pve, c1)((tArgs, c2) =>
+              consume(σEmp \ σ.h, /*h,*/ FullPerm(), acc, pve, c2)((σ1/*h1*/, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+              val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
+                //                  println(s"\nh1 = $h1")
+                //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
+                consume(σ \ σ1.h, /*h1,*/ FullPerm(), acc, pve, c3a)((σ2/*h2*/, snap, _, c3b) => { /* σUsed'.unfold */
+                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                  produce(σ \ σ2.h/*h2*/ \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                  val topReserveHeap = c3.reserveHeaps.head + σ2.h
+                  val c4a = c4.decCycleCounter(predicate)
+                              .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                    exhaleExt = c3.exhaleExt)
+                  QI(σEmp, σEmp.h, c4a)
+                    /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
+                      Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})}))
+          else
+            Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
+      } else {
+        ???
+//        val unknownValue = fresh("recunf", toSort(eIn.typ))
+//        Q(unknownValue, c)
+      }
+    }
+
+    def foldingPredicate(σ: S, acc: ast.PredicateAccessPredicate, pve: PartialVerificationError, c: C)
+                        (QI: (S, H, C) => VerificationResult)
+                        : VerificationResult = {
+
+      val ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm) = acc
+      val predicate = c.program.findPredicate(predicateName)
+
+      if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+        val c0 = c.incCycleCounter(predicate)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, σ.h/*h*/, c0)
+        val σEmp = Σ(σ.γ, Ø, σ.g)
+        eval(σC, ePerm, pve, c0)((tPerm, c1) => {
+          if (decider.check(σC, IsNonNegative(tPerm)))
+            evals(σC, eArgs, pve, c1)((tArgs, c2) => {
+              val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
+              consume(σEmp \ σ.h \ insγ, /*h,*/ FullPerm(), predicate.body, pve, c2)((σ1/*h1*/, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+              val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
+                //                  println(s"\nh1 = $h1")
+                //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
+                //                  println(s"c3.evalHeap = ${c3.evalHeap}")
+                consume(σ \ (γ = insγ, h = σ1.h/*h1*/), /*h1,*/ FullPerm(), predicate.body, pve, c3a)((σ2/*h2*/, snap, _, c3b) => { /* σUsed'.fold */
+                  /* TODO: Produce evaluated eArgs again - in evalHeap, which
+                   * we otherwise shouldn't need. We could avoid this by
+                   *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
+                   *      (to improve error reporting, a map from new to original node could be added to the context)
+                   *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
+                   *       evaluator s.t. the mapping is used, if it exists
+                   */
+                  produce(σ \ σ2.h/*h2*/, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ2, c4) => { /* σ2.h = σUsed'' */
+                  val topReserveHeap = c3.reserveHeaps.head + σ2.h
+                  val c4a = c4.decCycleCounter(predicate)
+                              .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                    exhaleExt = c3.exhaleExt,
+                                    evalHeap = None)
+                  QI(σEmp, σEmp.h, c4a)
+                    /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
+                      Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})})})
+          else
+            Failure[ST, H, S](pve dueTo NegativePermission(ePerm))})
+      } else
+        ???
+        //        val unknownValue = fresh("recunf", toSort(eIn.typ))
+        //        Q(unknownValue, c)
+    }
+
+    def getEvalHeap(σ: S, h: H, c: C): H = {
+      if (c.exhaleExt) c.reserveHeaps.headOption.fold(h)(h + _)
+      else σ.h
+    }
   }
 }

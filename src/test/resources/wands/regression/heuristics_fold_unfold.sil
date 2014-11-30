@@ -1,0 +1,18 @@
+field __CONFIG_HEURISTICS: Bool
+
+field f: Ref
+field g: Int
+field h: Int
+
+predicate P(x: Ref) { acc(x.f) }
+predicate Q(x: Ref) { acc(Q(x)) && acc(x.g) }
+
+method test01(x: Ref) {
+  inhale x != null /* TODO: Should not be necessary */
+
+  exhale acc(P(x)) --* acc(x.f)
+}
+
+method test02(x: Ref) {
+  exhale acc(x.f) --* acc(P(x))
+}
