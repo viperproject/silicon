@@ -1,0 +1,22 @@
+field __CONFIG_HEURISTICS: Bool
+
+field f: Ref
+field g: Int
+field h: Int
+
+predicate P(x: Ref, v: Int) { acc(x.g) && x.g == v }
+
+method test01(x: Ref, v: Int) {
+  inhale acc(x.f) && acc(P(x.f, v))
+  inhale x.f != null /* TODO: Should not be necessary */
+
+  assert acc(x.f.g)
+}
+
+method test02(x: Ref) {
+  inhale acc(x.f) && acc(x.f.g)
+  var v: Int := x.f.g
+  x.f.g := x.f.g + 1
+
+  assert acc(P(x.f, v + 1))
+}

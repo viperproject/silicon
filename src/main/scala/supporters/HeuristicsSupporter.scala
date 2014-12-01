@@ -7,7 +7,7 @@ import silver.verifier.PartialVerificationError
 import silver.verifier.errors.Internal
 import silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure, Success}
-import interfaces.state.{Chunk, State, PathConditions, Heap, Store}
+import interfaces.state.{Chunk, State, PathConditions, Heap, Store, FieldChunk}
 import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
 
@@ -239,17 +239,36 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
 
       val predicateAccesses =
-        predicateChunks.map {
+        predicateChunks.flatMap {
           case DirectPredicateChunk(name, args, _, _, _) =>
+            var success = true
+
             val reversedArgs: Seq[ast.Expression] =
               args map {
                 case True() => ast.True()()
                 case False() => ast.False()()
                 case IntLiteral(n) => ast.IntegerLiteral(n)()
-                case t => σ.γ.values.find(p => p._2 == t).get._1
+                case t =>
+                  σ.γ.values.find(p => p._2 == t).map(_._1)
+                      /* Found a local variable v s.t. v |-> t */
+                    .orElse(
+                      allChunks.collectFirst {
+                        case fc: FieldChunk if fc.value == t =>
+                          σ.γ.values.find(p => p._2 == fc.args(0))
+                                    .map(_._1)
+                                    .map(v => ast.FieldAccess(v, c.program.findField(fc.name))())
+                      }.flatten
+                        /* Found a local variable v and a field f s.t. v.f |-> t */
+                    ).getOrElse {
+                      success = false
+                      ast.True()() /* Dummy value */
+                    }
               }
 
-            ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())()
+            if (success)
+              Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())())
+            else
+              None
         }.toSeq
 
       predicateAccesses
