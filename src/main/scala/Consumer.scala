@@ -11,14 +11,14 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.{VerificationError, PartialVerificationError}
 import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NegativePermission, AssertionFalse, MagicWandChunkNotFound}
 import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFactory, StateFormatter, ChunkIdentifier}
-import interfaces.{Executor, Producer, Consumer, Evaluator, VerificationResult, Failure, Success}
+import interfaces.{Producer, Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectChunk, DirectFieldChunk, DirectPredicateChunk, MagicWandChunk,
     MagicWandChunkIdentifier}
 import state.terms._
-import state.terms.perms.{IsNonNegative, IsNoAccess}
+import state.terms.perms.IsNoAccess
 import supporters.{HeuristicsSupporter, MagicWandSupporter}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
