@@ -1,5 +1,3 @@
-// TODO: Allow impure conditionals (issue #9)
-
 field f: Bool
 field g: Int
 field h: Ref

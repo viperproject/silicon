@@ -199,9 +199,11 @@ trait MagicWandSupporter[ST <: Store[ST],
       cntXXX += 1
       println(s"\n[start packageWand] $cntXXX")
       println(s"  wand = $wand")
+      println(s"  last reserve heap = ${c.reserveHeaps.last}")
 
       decider.pushScope()
-      var consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil
+//      var consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil
+      var consumedChunks: MMap[Stack[Term], MSet[DirectChunk]] = MMap()
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
 
@@ -217,7 +219,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                              consumedChunks = c.consumedChunks)
             magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
-              consumedChunks ++= c3.consumedChunks
+              c3.consumedChunks.foreach { case (guards, chunk) =>
+                consumedChunks.getOrElseUpdate(guards, MSet()).add(chunk)}
               contexts :+= c5
               Success()})})})
 
@@ -226,7 +229,9 @@ trait MagicWandSupporter[ST <: Store[ST],
 //      logger.debug(stateFormatter.format(σ))
 //      logger.debug("h = " + stateFormatter.format(h))
       println(s"  produced chunk $magicWandChunk")
-      println(s"  consumed $consumedChunks")
+      println(s"  consumed ${consumedChunks.size} chunks (under different guards)")
+      consumedChunks.foreach{case (guards, ch) =>
+        println(s"    ${guards.mkString(",")}  ->  $ch")}
       println(s"  recorded ${contexts.length} contexts")
       contexts.foreach(c =>
         println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", "")))
@@ -235,7 +240,35 @@ trait MagicWandSupporter[ST <: Store[ST],
       cntXXX -= 1
 
       r && {
-        Q(magicWandChunk, contexts(0))
+        val reserveHeaps = contexts.map(_.reserveHeaps)
+        assert(reserveHeaps.map(_.length).toSet.size == 1)
+        assert(reserveHeaps.tail.forall(_.init.zipWithIndex.forall{case (h, n) => h == reserveHeaps.head(n)}))
+
+        val h1 = consumedChunks.foldLeft(c.reserveHeaps.last.values){case (accChunks, (guards, chunks)) =>
+          chunks.foldLeft(accChunks)((accChunks1, ch) => {
+            val pLoss = Ite(And(guards), ch.perm, NoPerm())
+
+            ch match {
+              case fc: DirectFieldChunk =>
+                accChunks1.map {
+                  case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name => fc.copy(perm = PermMinus(ch1.perm, pLoss))
+                  case ch1 => ch1
+                }
+
+              case pc: DirectPredicateChunk =>
+                accChunks1.map {
+                  case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name => pc.copy(perm = PermMinus(ch1.perm, pLoss))
+                  case ch1 => ch1
+                }
+            }
+          })
+        }
+
+        /* TODO: Merge contexts */
+        /* TODO: Join path conditions */
+        val c1 = contexts(0).copy(reserveHeaps = contexts(0).reserveHeaps.init :+ H(h1))
+
+        Q(magicWandChunk, c1)
       }
 
 //      /* decider.locally {...} will "abort" branching executions without properly

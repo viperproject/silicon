@@ -322,13 +322,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val c2 = c1.copy(reserveHeaps = hs)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
 
+        /* The last heap in the stack should be the one corresponding to the
+         * pre-package heap. It should be sufficient to record consumptions
+         * from this heap in order to be able to join branches after executing
+         * a package-statement.
+         */
         val c3 = chs.last match {
           case Some(ch) if c2.recordConsumedChunks =>
-            /* The last heap in the stack should be the one corresponding to the
-             * pre-package heap. It should be sufficient to record consumptions
-             * from this heap in order to be able to join branches after
-             * executing a package-statement.
-             */
             c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
           case None => c2
         }
