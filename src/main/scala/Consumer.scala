@@ -310,9 +310,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                 : VerificationResult = {
 
     /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
-    if (c.exhaleExt) /* Function "transfer" from wands paper */
-      /* Permissions are transferred from the stack of heaps to σUsed, which is
-       * h in the current context
+    if (c.exhaleExt)
+      /* Function "transfer" from wands paper.
+       * Permissions are transferred from the stack of heaps to σUsed, which is
+       * h in the current context.
        */
       return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
 //        println(s"locacc = $locacc")
@@ -320,7 +321,24 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 //        println(s"chs = $chs")
         val c2 = c1.copy(reserveHeaps = hs)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
-        Q(h + H(chs), chs.head, c2, pcr)})
+
+        val c3 = chs.last match {
+          case Some(ch) if c2.recordConsumedChunks =>
+            /* The last heap in the stack should be the one corresponding to the
+             * pre-package heap. It should be sufficient to record consumptions
+             * from this heap in order to be able to join branches after
+             * executing a package-statement.
+             */
+            c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
+          case None => c2
+        }
+
+        val usedChunks = chs.flatten
+        /* Returning any of the usedChunks should be fine w.r.t to the snapshot
+         * of the chunk, since consumeFromMultipleHeaps should have equated the
+         * snapshots of all usedChunks.
+         */
+        Q(h + H(usedChunks), usedChunks.head, c3, pcr)})
 
     if (utils.consumeExactRead(pLoss, c)) {
       decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {

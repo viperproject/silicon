@@ -5,9 +5,9 @@ package supporters
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{NegativePermission, InsufficientPermission}
-import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure}
+import interfaces.{Success, Evaluator, Consumer, Producer, VerificationResult, Failure}
 import interfaces.decider.Decider
-import interfaces.state.{StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
+import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
 import interfaces.state.factoryUtils.Ø
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
 import state.terms._
@@ -31,6 +31,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 //  protected val symbolConverter: SymbolConvert
 //  import symbolConverter.toSort
 
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
   object magicWandSupporter {
@@ -89,16 +90,18 @@ trait MagicWandSupporter[ST <: Store[ST],
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C)
-                                (Q: (Stack[H], List[DirectChunk], C) => VerificationResult)
+                                (Q: (Stack[H], Stack[Option[DirectChunk]], C) => VerificationResult)
                                 : VerificationResult = {
 
       var toLose = pLoss
       var heapsToVisit = hs
       var visitedHeaps: List[H] = Nil
-      var chunks: List[DirectChunk] = Nil
+//      var chunks: List[DirectChunk] = Nil
       var cCurr = c
+      val consumedChunks: Array[Option[DirectChunk]] = Array.fill(hs.length)(None)
 
-  //    println("\n[consumeFromMultipleHeaps]")
+//      println("\n[consumeFromMultipleHeaps]")
+//      println(s"  heaps = ${hs.length}")
   //    println(s"  toLose = $toLose")
   //    println(s"  heapsToVisit = $heapsToVisit")
   //    println(s"  visitedHeaps = $visitedHeaps")
@@ -113,13 +116,16 @@ trait MagicWandSupporter[ST <: Store[ST],
   //      println(s"  h1 = $h1")
   //      println(s"  optCh1 = $optCh1")
   //      println(s"  toLose1 = $toLose1")
+
         visitedHeaps = h1 :: visitedHeaps
-        chunks =
-          optCh1 match {
-            case None => chunks
-  //          case Some(ch) => (ch, visitedHeaps.length  - 1) :: chunks
-            case Some(ch) => ch :: chunks
-          }
+//        chunks =
+//          optCh1 match {
+//            case None => chunks
+//  //          case Some(ch) => (ch, visitedHeaps.length  - 1) :: chunks
+//            case Some(ch) => ch :: chunks
+//          }
+        assert(consumedChunks(hs.length - 1 - heapsToVisit.length).isEmpty)
+        consumedChunks(hs.length - 1 - heapsToVisit.length) = optCh1
         toLose = toLose1
         cCurr = c1
       }
@@ -132,17 +138,17 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       if (decider.check(σ, IsNoAccess(toLose))) {
         val tEqs =
-          chunks.sliding(2).map {
+          consumedChunks.flatten.sliding(2).map {
   //          case List((fc1: DirectFieldChunk, _), (fc2: DirectFieldChunk, _)) => fc1.value === fc2.value
-            case List(fc1: DirectFieldChunk, fc2: DirectFieldChunk) => fc1.value === fc2.value
+            case Array(fc1: DirectFieldChunk, fc2: DirectFieldChunk) => fc1.value === fc2.value
   //          case List((pc1: DirectPredicateChunk, _), (pc2: DirectPredicateChunk, _)) => pc1.snap === pc2.snap
-            case List(pc1: DirectPredicateChunk, pc2: DirectPredicateChunk) => pc1.snap === pc2.snap
+            case Array(pc1: DirectPredicateChunk, pc2: DirectPredicateChunk) => pc1.snap === pc2.snap
             case _ => True()
           }
 
         decider.assume(toSet(tEqs))
 
-        Q(visitedHeaps.reverse ++ heapsToVisit, chunks.reverse, cCurr)
+        Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
       } else {
         Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
       }
@@ -181,33 +187,78 @@ trait MagicWandSupporter[ST <: Store[ST],
       }
     }
 
+    var cntXXX: Int = 0
+
     def packageWand(σ: S, wand: ast.MagicWand, pve: PartialVerificationError, c: C)
                    (Q: (MagicWandChunk, C) => VerificationResult)
                    : VerificationResult = {
 
       val σEmp = Σ(σ.γ, Ø, σ.g)
       val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
-      /* decider.locally {...} will "abort" branching executions without properly
-       * joining them (which we don't really know how to handle for heaps anyway).
-       * I.e., if an impure conditional occurs on the right of a wand, only the
-       * final heap of the second branch will be used for the rest of the
-       * execution, which is unsound.
-       */
-      decider.locally[(MagicWandChunk, C)](QB => {
+
+      cntXXX += 1
+      println(s"\n[start packageWand] $cntXXX")
+      println(s"  wand = $wand")
+
+      decider.pushScope()
+      var consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil
+      var contexts: Seq[C] = Nil
+      var magicWandChunk: MagicWandChunk = null
+
+      val r =
         produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
           val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail,
                            exhaleExt = true,
-                           lhsHeap = Some(σLhs.h))
-          val rhs = wand.right
-          consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) =>
-            magicWandSupporter.createChunk(σ, wand, pve, c3)(scala.Function.untupled(QB)))})
-      })(Q.tupled)
+                           lhsHeap = Some(σLhs.h),
+                           recordConsumedChunks = true,
+                           consumedChunks = Nil)
+          consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
+            val c4 = c3.copy(recordConsumedChunks = c.recordConsumedChunks,
+                             consumedChunks = c.consumedChunks)
+            magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
+              magicWandChunk = ch
+              consumedChunks ++= c3.consumedChunks
+              contexts :+= c5
+              Success()})})})
+
+      decider.popScope()
+
+//      logger.debug(stateFormatter.format(σ))
+//      logger.debug("h = " + stateFormatter.format(h))
+      println(s"  produced chunk $magicWandChunk")
+      println(s"  consumed $consumedChunks")
+      println(s"  recorded ${contexts.length} contexts")
+      contexts.foreach(c =>
+        println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", "")))
+
+      println(s"[end packageWand] $cntXXX")
+      cntXXX -= 1
+
+      r && {
+        Q(magicWandChunk, contexts(0))
+      }
+
+//      /* decider.locally {...} will "abort" branching executions without properly
+//       * joining them (which we don't really know how to handle for heaps anyway).
+//       * I.e., if an impure conditional occurs on the right of a wand, only the
+//       * final heap of the second branch will be used for the rest of the
+//       * execution, which is unsound.
+//       */
+//      decider.locally[(MagicWandChunk, C)](QB => {
+//        produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
+//          val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail,
+//                           exhaleExt = true,
+//                           lhsHeap = Some(σLhs.h))
+//          val rhs = wand.right
+//          consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) =>
+//            magicWandSupporter.createChunk(σ, wand, pve, c3)(scala.Function.untupled(QB)))})
+//      })(Q.tupled)
     }
-    
+
     def applyingWand(σ: S, wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
                     (QI: (S, H, C) => VerificationResult)
                     : VerificationResult = {
-      
+
       val σEmp = Σ(σ.γ, Ø, σ.g)
       val c0a = c.copy(applyHeuristics = false)
         /* Triggering heuristics, in particular, ghost operations (apply-/packag-/(un)folding)

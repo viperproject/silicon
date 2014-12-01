@@ -370,6 +370,6 @@ class DefaultVerifier[ST <: Store[ST],
     super.reset()
     ev.fappCache = Map()
     ev.fappCacheFrames = Stack()
-    ev.currentGuards = Set()
+    ev.currentGuards = Stack()
   }
 }
