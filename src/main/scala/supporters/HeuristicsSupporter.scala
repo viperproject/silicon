@@ -176,10 +176,12 @@ trait HeuristicsSupporter[ST <: Store[ST],
                  (Q: (S, H, C) => VerificationResult)
                  : VerificationResult = {
 
+      /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
+
       if (c.exhaleExt) {
 //        println(s"  reaction: applying $wand")
         val lhsAndWand = ast.And(wand.left, wand)()
-        magicWandSupporter.applyingWand(σ \ h, wand, lhsAndWand, pve, c)(Q)
+        magicWandSupporter.applyingWand(σ \ h, σ.γ, wand, lhsAndWand, pve, c)(Q)
       } else {
 //        println(s"  reaction: apply $wand")
         val applyStmt = ast.Apply(wand)()

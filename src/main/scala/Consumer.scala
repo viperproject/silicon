@@ -249,18 +249,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             Q(h3, decider.fresh(sorts.Snap), Nil, c3))})
 
       case ast.Applying(eWandOrVar, eIn) =>
-        val (eWand, eLHSAndWand) = eWandOrVar match {
+        val (eWand, eLHSAndWand, γ1) = eWandOrVar match {
           case _eWand: ast.MagicWand =>
-            (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info))
+            (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info), σ.γ)
           case v: ast.LocalVariable =>
-            val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
-            val _eWand = tWandChunk.ghostFreeWand
-            (_eWand, ast.And(_eWand.left, v)(v.pos, v.info))
+            val tChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
+            val _eWand = tChunk.chunk.ghostFreeWand
+            (_eWand, ast.And(_eWand.left, _eWand)(v.pos, v.info), Γ(tChunk.bindings))
+              /* Note that wand reference v is most likely not bound in tChunk.bindings.
+               * Since wands cannot be recursive, this shouldn't be a problem,
+               * as long as v doesn't need to be looked during
+               * magicWandSupporter.applyingWand (for whatever reason).
+               */
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
         heuristicsSupporter.tryOperation[(S, H, C)](s"applying $eWand")(σ, h, c)((σ, h, c, QS) =>
-          magicWandSupporter.applyingWand(σ, eWand, eLHSAndWand, pve, c)(scala.Function.untupled(QS))){case (σ1, h1, c1) =>
+          magicWandSupporter.applyingWand(σ, γ1, eWand, eLHSAndWand, pve, c)(scala.Function.untupled(QS))){case (σ1, h1, c1) =>
             consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 

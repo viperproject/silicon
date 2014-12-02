@@ -204,7 +204,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val wand = rhs.asInstanceOf[ast.MagicWand]
             val pve = LetWandFailed(ass)
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
-              Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
+              Q(σ \+ (v, MagicWandChunkTerm(chWand, σ.γ.values)), c))
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
               Q(σ \+ (v, tRhs), c1))
@@ -379,30 +379,33 @@ trait DefaultExecutor[ST <: Store[ST],
           Q(σ \ (h1 + chWand), c2)})
 
       case apply @ ast.Apply(e) =>
+        /* TODO: Try to unify this code with that from DefaultConsumer/applying */
+
         val pve = ApplyFailed(apply)
 
-        def QL(σ1: S, wand: ast.MagicWand, c1: C) = {
+        def QL(σ1: S, γ: ST, wand: ast.MagicWand, c1: C) = {
           /* The given heap is not σ.h, but rather the consumed portion only. However,
            * using σ.h should not be a problem as long as the heap that is used as
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          consume(σ1, FullPerm(), wand.left, pve, c1)((σ2, _, _, c2) => {
+          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, _, c2) => {
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
               val c4 = c3.copy(lhsHeap = None)
-              Q(σ3, c4)})})}
+              Q(σ3 \ σ1.γ, c4)})})}
 
         e match {
           case wand: ast.MagicWand =>
             consume(σ, FullPerm(), wand, pve, c)((σ1, _, chs, c1) => {
-              QL(σ1, wand, c1)})
+              QL(σ1, σ1.γ, wand, c1)})
 
           case v: ast.LocalVariable =>
-            val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
+            val tChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
+            val chWand = tChunk.chunk
             decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id, c) match {
               case Some(ch) =>
-                QL(σ \- ch, chWand.ghostFreeWand, c)
+                QL(σ \- ch, Γ(tChunk.bindings), chWand.ghostFreeWand, c)
               case None =>
                 Failure[ST, H, S](pve dueTo NamedMagicWandChunkNotFound(v))}
 

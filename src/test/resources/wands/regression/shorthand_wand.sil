@@ -37,3 +37,34 @@ method test04(xs: Ref) {
   //:: ExpectedOutput(apply.failed:wand.not.found)
   apply w
 }
+
+predicate P(x: Ref) { true }
+
+method test05(r: Ref) {
+  var x: Ref
+  var y: Ref
+
+  inhale acc(P(x)) --* true
+  wand w := acc(P(x)) --* true
+
+  inhale acc(P(x))
+
+  y := x
+  x := r
+
+  assert acc(P(y))
+  apply w
+}
+
+method test06(r: Ref) {
+  var x: Ref
+  var y: Ref
+
+  inhale acc(P(x)) --* true
+  wand w := acc(P(x)) --* true
+
+  y := x
+  x := r
+
+  package true --* folding P(y) in applying w in true
+}

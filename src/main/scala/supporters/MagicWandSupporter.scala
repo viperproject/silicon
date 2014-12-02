@@ -203,7 +203,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       decider.pushScope()
 //      var consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil
-      var consumedChunks: MMap[Stack[Term], MSet[DirectChunk]] = MMap()
+      val consumedChunks: MMap[Stack[Term], MSet[DirectChunk]] = MMap()
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
 
@@ -215,7 +215,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                            recordConsumedChunks = true,
                            consumedChunks = Nil)
           consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
-            val c4 = c3.copy(recordConsumedChunks = c.recordConsumedChunks,
+            val c4 = c3.copy(exhaleExt = false,
+                             recordConsumedChunks = c.recordConsumedChunks,
                              consumedChunks = c.consumedChunks)
             magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
@@ -226,18 +227,19 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       decider.popScope()
 
-//      logger.debug(stateFormatter.format(σ))
-//      logger.debug("h = " + stateFormatter.format(h))
+      println(s"[end packageWand] $cntXXX")
+      cntXXX -= 1
+      //      logger.debug(stateFormatter.format(σ))
+      //      logger.debug("h = " + stateFormatter.format(h))
+//      println(s"  r = $r")
       println(s"  produced chunk $magicWandChunk")
       println(s"  consumed ${consumedChunks.size} chunks (under different guards)")
       consumedChunks.foreach{case (guards, ch) =>
         println(s"    ${guards.mkString(",")}  ->  $ch")}
       println(s"  recorded ${contexts.length} contexts")
       contexts.foreach(c =>
-        println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", "")))
+      println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", "")))
 
-      println(s"[end packageWand] $cntXXX")
-      cntXXX -= 1
 
       r && {
         val reserveHeaps = contexts.map(_.reserveHeaps)
@@ -288,11 +290,12 @@ trait MagicWandSupporter[ST <: Store[ST],
 //      })(Q.tupled)
     }
 
-    def applyingWand(σ: S, wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
+    def applyingWand(σ: S, γ: ST, wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
                     (QI: (S, H, C) => VerificationResult)
                     : VerificationResult = {
 
-      val σEmp = Σ(σ.γ, Ø, σ.g)
+      val σ0 = σ \ γ
+      val σEmp = Σ(σ0.γ, Ø, σ0.g)
       val c0a = c.copy(applyHeuristics = false)
         /* Triggering heuristics, in particular, ghost operations (apply-/packag-/(un)folding)
          * during the first consumption of lhsAndWand doesn't work because the ghost operations
@@ -306,21 +309,21 @@ trait MagicWandSupporter[ST <: Store[ST],
          * heuristics are available to both consumes.
          */
 
-      consume(σEmp \ σ.h, /*h,*/ FullPerm(), lhsAndWand, pve, c)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
+      consume(σEmp \ σ0.h, /*h,*/ FullPerm(), lhsAndWand, pve, c)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
         assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
         val ch = chs1.last.asInstanceOf[MagicWandChunk]
         val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
-        consume(σ \ σ1.h, /*σ1.h,*/ FullPerm(), lhsAndWand, pve, c1a)((σ2, _, chs2, c2) => { /* σUsed'.apply */
+        consume(σ0 \ σ1.h, /*σ1.h,*/ FullPerm(), lhsAndWand, pve, c1a)((σ2, _, chs2, c2) => { /* σUsed'.apply */
           assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
           assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
-          produce(σ \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
+          produce(σ0 \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + σ3.h
           val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
                             exhaleExt = c1.exhaleExt,
                             lhsHeap = c2.lhsHeap,
                             applyHeuristics = c.applyHeuristics)
-          QI(σEmp, σEmp.h, c3a)})})})
+          QI(σEmp \ σ.γ, σEmp.h, c3a)})})})
     }
 
     def unfoldingPredicate(σ: S, acc: ast.PredicateAccessPredicate, pve: PartialVerificationError, c: C)

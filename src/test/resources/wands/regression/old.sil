@@ -1,0 +1,11 @@
+field f: Int
+
+function fun(x: Ref): Bool
+  requires acc(x.f)
+{ true }
+
+method test01(x: Ref)
+  requires acc(x.f)
+{
+  package true --* acc(x.f) && old(fun(x))
+}

@@ -10,9 +10,9 @@ package state.terms
 
 import scala.reflect._
 import silver.ast.utility.{GenericTriggerGenerator, Visitor}
+import interfaces.state.{Store, Heap}
 import ast.commonnodes
 import state.MagicWandChunk
-import interfaces.state.Heap
 
 
 /* Why not have a Term[S <: Sort]?
@@ -1479,7 +1479,7 @@ object SortWrapper {
 
 /* Magic wands */
 
-case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+case class MagicWandChunkTerm(chunk: MagicWandChunk, bindings: Map[ast.Variable, Term]) extends Term {
   override val sort = sorts.Unit
   override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
 }
