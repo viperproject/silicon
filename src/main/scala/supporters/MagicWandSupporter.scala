@@ -48,11 +48,13 @@ trait MagicWandSupporter[ST <: Store[ST],
                    (Q: (MagicWandChunk, C) => VerificationResult)
                    : VerificationResult = {
 
+      val c0 = c.copy(exhaleExt = false)
       val ghostFreeWand = wand.withoutGhostOperations
       val es = ghostFreeWand.subexpressionsToEvaluate(c.program)
 
-      evals(σ, es, pve, c)((ts, c1) =>
-        Q(MagicWandChunk(ghostFreeWand, ts), c1))
+      evals(σ, es, pve, c0)((ts, c1) => {
+        val c2 = c1.copy(exhaleExt = c.exhaleExt)
+        Q(MagicWandChunk(ghostFreeWand, ts), c2)})
     }
 
     /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
@@ -215,8 +217,7 @@ trait MagicWandSupporter[ST <: Store[ST],
                            recordConsumedChunks = true,
                            consumedChunks = Nil)
           consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
-            val c4 = c3.copy(exhaleExt = false,
-                             recordConsumedChunks = c.recordConsumedChunks,
+            val c4 = c3.copy(recordConsumedChunks = c.recordConsumedChunks,
                              consumedChunks = c.consumedChunks)
             magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
