@@ -28,6 +28,7 @@ case class DefaultContext[H <: Heap[H]]
                           lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
                           evalHeap: Option[H] = None,
                           applyHeuristics: Boolean = false,
+                          heuristicsDepth: Int = 0,
 
                           recordConsumedChunks: Boolean = false,
                           consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil)
@@ -63,13 +64,14 @@ case class DefaultContext[H <: Heap[H]]
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1,
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
-                        reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1, applyHeuristics1,
+                        reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1, applyHeuristics1, heuristicsDepth1,
                         recordConsumedChunks1, consumedChunks1) =>
 
       other match {
         case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`,
                             additionalTriggers2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`, `applyHeuristics1`,
+                            `heuristicsDepth1`,
                             `recordConsumedChunks1`, consumedChunks2) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2

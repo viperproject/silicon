@@ -160,7 +160,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm)){
               case true =>
-                heuristicsSupporter.tryOperation[(H, Term, List[Chunk], C)](s"consumePermissions $φ")(σC, h, c2)((σC, h, c2, QS) => {
+                heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consumePermissions $φ")(σC, h, c2)((σC, h, c2, QS) => {
 //                  println(s"[consumePermissions]")
 //                  println(s"  sC.h = ${σC.h}")
 //                  println(s"  h = $h")
@@ -180,8 +180,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
                           else
                             h1
-                        QS((h2, pc.snap, pc :: Nil, c4))}})
-                })(Q.tupled)
+                        QS(h2, pc.snap, pc :: Nil, c4)}})
+                })(Q)
 
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
@@ -192,7 +192,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
-          heuristicsSupporter.tryOperation[(H, Term, List[Chunk], C)](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
+          heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
             val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
             val hs =
               if (c.exhaleExt) c.reserveHeaps
@@ -221,7 +221,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 }
 
               case _ => Failure[ST, H, S](ve)}
-          })(Q.tupled)
+          })(Q)
         }
 
         φ match {
@@ -264,24 +264,24 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
-        heuristicsSupporter.tryOperation[(S, H, C)](s"applying $eWand")(σ, h, c)((σ, h, c, QS) =>
-          magicWandSupporter.applyingWand(σ, γ1, eWand, eLHSAndWand, pve, c)(scala.Function.untupled(QS))){case (σ1, h1, c1) =>
+        heuristicsSupporter.tryOperation[S, H](s"applying $eWand")(σ, h, c)((σ, h, c, QS) =>
+          magicWandSupporter.applyingWand(σ, γ1, eWand, eLHSAndWand, pve, c)(QS)){case (σ1, h1, c1) =>
             consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 
       case ast.Folding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                        eIn) =>
 
-        heuristicsSupporter.tryOperation[(S, H, C)](s"folding $acc")(σ, h, c)((σ, h, c, QS) =>
-          magicWandSupporter.foldingPredicate(σ, acc, pve, c)(scala.Function.untupled(QS))){case (σ1, h1, c1) =>
+        heuristicsSupporter.tryOperation[S, H](s"folding $acc")(σ, h, c)((σ, h, c, QS) =>
+          magicWandSupporter.foldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
           consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
             Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 
       case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                        eIn) if c.exhaleExt && !φ.isPure =>
 
-        heuristicsSupporter.tryOperation[(S, H, C)](s"unfolding $acc")(σ, h, c)((σ, h, c, QS) =>
-          magicWandSupporter.unfoldingPredicate(σ, acc, pve, c)(scala.Function.untupled(QS))){case (σ1, h1, c1) =>
+        heuristicsSupporter.tryOperation[S, H](s"unfolding $acc")(σ, h, c)((σ, h, c, QS) =>
+          magicWandSupporter.unfoldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
           consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
             Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 

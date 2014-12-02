@@ -4,8 +4,8 @@ package supporters
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.errors.Internal
-import silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import silver.verifier.errors.{HeuristicsFailed, Internal}
+import silver.verifier.reasons.{InternalReason, InsufficientPermission, MagicWandChunkNotFound}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure, Success}
 import interfaces.state.{Chunk, State, PathConditions, Heap, Store, FieldChunk}
 import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
@@ -29,38 +29,83 @@ trait HeuristicsSupporter[ST <: Store[ST],
     private type CH = Chunk
 
     @inline
-    def tryOperation[O]
+    def tryOperation[O1, O2]
                     (description: String)
                     (σ: S, h: H, c: C)
-                    (action: (S, H, C, O => VerificationResult) => VerificationResult)
-                    (Q: O => VerificationResult)
+                    (action: (S, H, C, (O1, O2, C) => VerificationResult) => VerificationResult)
+                    (Q: (O1, O2, C) => VerificationResult)
                     : VerificationResult = {
 
-      tryWithReactions(description)(σ, h, c)(action, None, 1)(Q)
+      val tupledAction = (σ1: S, h1: H, c1: C, QS: ((O1, O2), C) => VerificationResult) =>
+        action(σ1, h1, c1, (o1: O1, o2: O2, c2) => QS((o1, o2), c2))
+
+      val tupledQ = (os: (O1, O2), c1: C) => Q(os._1, os._2, c1)
+
+      tryWithReactions[(O1, O2)](description)(σ, h, c)(tupledAction, None)(tupledQ)
     }
 
-    def tryWithReactions[O]
-                        (description: String)
-                        (σ: S, h: H, c: C)
-                        (action: (S, H, C, O => VerificationResult) => VerificationResult,
-                         initialFailure: Option[Failure[ST, H, S]],
-                         depth: Int)
-                        (Q: O => VerificationResult)
-                        : VerificationResult = {
+    @inline
+    def tryOperation[O1, O2, O3]
+                    (description: String)
+                    (σ: S, h: H, c: C)
+                    (action: (S, H, C, (O1, O2, O3, C) => VerificationResult) => VerificationResult)
+                    (Q: (O1, O2, O3, C) => VerificationResult)
+                    : VerificationResult = {
+
+      val tupledAction = (σ1: S, h1: H, c1: C, QS: ((O1, O2, O3), C) => VerificationResult) =>
+          action(σ1, h1, c1, (o1: O1, o2: O2, o3: O3, c2) => QS((o1, o2, o3), c2))
+
+      val tupledQ = (os: (O1, O2, O3), c1: C) => Q(os._1, os._2, os._3, c1)
+
+      tryWithReactions[(O1, O2, O3)](description)(σ, h, c)(tupledAction, None)(tupledQ)
+    }
+
+    @inline
+    def tryOperation[O1, O2, O3, O4]
+                    (description: String)
+                    (σ: S, h: H, c: C)
+                    (action: (S, H, C, (O1, O2, O3, O4, C) => VerificationResult) => VerificationResult)
+                    (Q: (O1, O2, O3, O4, C) => VerificationResult)
+                    : VerificationResult = {
+
+      val tupledAction = (σ1: S, h1: H, c1: C, QS: ((O1, O2, O3, O4), C) => VerificationResult) =>
+        action(σ1, h1, c1, (o1: O1, o2: O2, o3: O3, o4: O4, c2) => QS((o1, o2, o3, o4), c2))
+
+      val tupledQ = (os: (O1, O2, O3, O4), c1: C) => Q(os._1, os._2, os._3, os._4, c1)
+
+      tryWithReactions[(O1, O2, O3, O4)](description)(σ, h, c)(tupledAction, None)(tupledQ)
+    }
+
+    private def tryWithReactions[O]
+                                (description: String)
+                                (σ: S, h: H, _c: C)
+                                (action: (S, H, C, (O, C) => VerificationResult) => VerificationResult,
+                                 initialFailure: Option[Failure[ST, H, S]])
+                                (Q: (O, C) => VerificationResult)
+                                : VerificationResult = {
+
+      val c = _c
+//        if (_c.heuristicsDepth < config.maxHeuristicsDepth())
+//          _c.copy(heuristicsDepth = _c.heuristicsDepth + 1)
+//        else
+//          _c.copy(applyHeuristics = false)
 
       var localActionSuccess = false
 
-//      println(s"\n[tryWithReactions]")
-//      println(s" depth = $depth")
-//      println(s" description = $description")
+      println(s"\n[tryWithReactions]")
+      println(s" depth = ${c.heuristicsDepth}")
+      println(s" applyHeuristics = ${c.applyHeuristics}")
+      println(s" description = $description")
+//      Thread.sleep(500)
 
       val globalActionResult =
-        action(σ, h, c, output => {
-//          println(s"  action succeeded locally")
+        action(σ, h, c, (outputs, c1) => {
+          println(s"  action succeeded locally")
           localActionSuccess = true
-          Q(output)})
+          val c2 = c1.copy(/*applyHeuristics = _c.applyHeuristics,*/ heuristicsDepth = 0)
+          Q(outputs, c2)})
 
-//      println(s"  globalActionResult ($depth, $description) = $globalActionResult")
+      println(s"  globalActionResult (${c.heuristicsDepth}, $description) = $globalActionResult")
 //      println(s"  localActionSuccess = $localActionSuccess")
 
       var reactionResult: VerificationResult = globalActionResult
@@ -71,17 +116,18 @@ trait HeuristicsSupporter[ST <: Store[ST],
             return globalActionResult
 
           case actionFailure: Failure[ST, H, S] =>
-            if (c.applyHeuristics && depth <= config.maxHeuristicsDepth()) {
+            if (c.applyHeuristics && c.heuristicsDepth <= config.maxHeuristicsDepth()) {
               var remainingReactions = generateReactions(σ, h, c, actionFailure)
               var triedReactions = 0
 
               while (reactionResult != Success() && remainingReactions.nonEmpty) {
-//                println(s"  trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length}})")
+                println(s"  trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length}})")
 
-                reactionResult = remainingReactions.head.apply(σ, h, c)((σ1, h1, c1) =>
-                  tryWithReactions(description)(σ1, h1, c1)(action, initialFailure.orElse(Some(actionFailure)), depth + 1)(Q))
+                val c1 = c.copy(heuristicsDepth = c.heuristicsDepth + 1)
+                reactionResult = remainingReactions.head.apply(σ, h, c1)((σ1, h1, c2) => {
+                  tryWithReactions(description)(σ1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
 
-//                println(s"  returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length}})")
+                println(s"  returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length}})")
 
                 triedReactions += 1
 
@@ -91,7 +137,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
         }
 
         reactionResult match {
-          case Success() =>
+          case _ if !reactionResult.isFatal =>
             reactionResult
 
           case reactionFailure: Failure[ST, H, S] =>
@@ -107,7 +153,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
        * HS3: Apply/unfold all other wands/preds
        */
 
-      val pve = Internal(ast.True()())
+      val pve = HeuristicsFailed(ast.True()()) /* TODO: Use a meaningful node */
 
       cause.message.reason match {
         case reason: MagicWandChunkNotFound =>
@@ -120,7 +166,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
           /* HS2 */
           val packageReaction = packageWand(wand, pve) _
 
-          applyWandReactions ++ Seq(packageReaction)
+          applyWandReactions /*++ Seq(packageReaction)*/
 
         case reason: InsufficientPermission =>
           val locationMatcher = matchers.location(reason.offendingNode.loc(c.program), c.program)
@@ -143,7 +189,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
               case _ => None
             }
 
-          applyWandReactions ++ unfoldPredicateReactions ++ foldPredicateReaction.toSeq
+          applyWandReactions /*++ unfoldPredicateReactions ++ foldPredicateReaction.toSeq*/
 
         case _ => Nil
       }
@@ -159,12 +205,12 @@ trait HeuristicsSupporter[ST <: Store[ST],
       val p = FullPerm()
 
       if (c.exhaleExt) {
-//        println(s"  reaction: packaging $wand")
+        println(s"  reaction: packaging $wand")
         val packagingExp = ast.Packaging(wand, ast.True()())()
         consume(σ \ h, p, packagingExp, pve, c)((σ2, _, _, c2) => {
           Q(σ2, σ2.h, c2)})
       } else {
-//        println(s"  reaction: package $wand")
+        println(s"  reaction: package $wand")
         val packageStmt = ast.Package(wand)()
         exec(σ \ h, packageStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
@@ -179,11 +225,11 @@ trait HeuristicsSupporter[ST <: Store[ST],
       /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
 
       if (c.exhaleExt) {
-//        println(s"  reaction: applying $wand")
+        println(s"  reaction: applying $wand")
         val lhsAndWand = ast.And(wand.left, wand)()
         magicWandSupporter.applyingWand(σ \ h, σ.γ, wand, lhsAndWand, pve, c)(Q)
       } else {
-//        println(s"  reaction: apply $wand")
+        println(s"  reaction: apply $wand")
         val applyStmt = ast.Apply(wand)()
         exec(σ \ h, applyStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
@@ -197,10 +243,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
 
       if (c.exhaleExt) {
-//        println(s"  reaction: unfolding $acc")
+        println(s"  reaction: unfolding $acc")
         magicWandSupporter.unfoldingPredicate(σ \ h, acc, pve, c)(Q)
       } else {
-//        println(s"  reaction: unfold $acc")
+        println(s"  reaction: unfold $acc")
         val unfoldStmt = ast.Unfold(acc)()
         exec(σ \ h, unfoldStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
@@ -213,10 +259,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
                      : VerificationResult = {
 
       if (c.exhaleExt) {
-//        println(s"  reaction: folding $acc")
+        println(s"  reaction: folding $acc")
         magicWandSupporter.foldingPredicate(σ \ h, acc, pve, c)(Q)
       } else {
-//        println(s"  reaction: fold $acc")
+        println(s"  reaction: fold $acc")
         val foldStmt = ast.Fold(acc)()
         exec(σ \ h, foldStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
