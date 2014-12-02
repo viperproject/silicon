@@ -5,9 +5,9 @@
  * a value into a linked list. A magic wand is used to book-keep permissions.
  *
  * Notes:
- *  - In previous versions, it took Silicon quite a while to verify this example, 
- *    which is due to a problem with our sequence axiomatisation that can sometimes 
- *    down Z3 considerably. However, a version of this example without the 
+ *  - In previous versions, it took Silicon quite a while to verify this example,
+ *    which is due to a problem with our sequence axiomatisation that can sometimes
+ *    slow down Z3 considerably. However, a version of this example without the
  *    sequence-related specifications (but with the same use of magic wands) is
  *    provided in list_insert_noseq.sil, which consistently verifies quickly.
  *  - The additional two asserts are currently necessary because of a known
