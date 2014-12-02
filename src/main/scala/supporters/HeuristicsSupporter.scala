@@ -67,7 +67,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
         /* A bit hacky, but having an initial result here simplifies things quite a bit */
 
         globalActionResult match {
-          case _ if localActionSuccess || globalActionResult == Success() =>
+          case _ if localActionSuccess || !globalActionResult.isFatal =>
             return globalActionResult
 
           case actionFailure: Failure[ST, H, S] =>
