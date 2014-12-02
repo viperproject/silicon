@@ -330,7 +330,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val c3 = chs.last match {
           case Some(ch) if c2.recordConsumedChunks =>
             c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
-          case None => c2
+          case _ => c2
         }
 
         val usedChunks = chs.flatten
