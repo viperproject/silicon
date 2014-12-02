@@ -5,15 +5,17 @@
  * a value into a linked list. A magic wand is used to book-keep permissions.
  *
  * Notes:
+ *
  *  - In previous versions, it took Silicon quite a while to verify this example,
  *    which is due to a problem with our sequence axiomatisation that can sometimes
  *    slow down Z3 considerably. However, a version of this example without the
  *    sequence-related specifications (but with the same use of magic wands) is
  *    provided in list_insert_noseq.sil, which consistently verifies quickly.
+ *
  *  - The additional two asserts are currently necessary because of a known
- *    incompleteness of Silicon related to recursive functions.
- *  - See list_insert_noseq.sil for a version from which all sequences have
- *    been removed.
+ *    incompleteness of Silicon related to recursive functions (again, see
+ *    list_insert_noseq.sil for a version from which all sequences have been
+ *    removed).
  */
 
 field val: Int
@@ -78,7 +80,6 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     package A --* folding List(prev) in applying w in B
   }
 

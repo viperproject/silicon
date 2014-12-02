@@ -70,7 +70,6 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     package A --* folding List(prev) in applying w in B
   }
 

@@ -45,7 +45,7 @@ method sum_it(ys: Ref) returns (sum: Int)
    * sum of the original list (sum_rec(ys) == old(sum_rec(ys))).
    */
   old_sum_xs := sum_rec(xs)
-  //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
+
   package A --* B
 
   /* Iteratively compute the sum.
@@ -61,11 +61,9 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant xs != null ==> acc(List(xs))
     invariant old_sum_xs == (xs == null ? 0 : sum_rec(xs))
     invariant sum == old(sum_rec(ys)) - old_sum_xs;
-    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     invariant A --* B
   {
     /* Bind w to the magic wand instance that we currently hold in our state */
-    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
     wand w := A --* B
 
     /* Let zs point to the *current* current node, update the sum and advance
@@ -81,7 +79,7 @@ method sum_it(ys: Ref) returns (sum: Int)
      * footprint of the packaged magic wand instance.
      */
     old_sum_xs := (xs == null ? 0 : sum_rec(xs))
-    //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
+
     package A --* folding List(zs) in applying w in B
   }
 
@@ -90,6 +88,5 @@ method sum_it(ys: Ref) returns (sum: Int)
    * intuitively, the permissions to each node in the list has been
    * packaged into the wand while the loop executed.
    */
-  //:: UnexpectedOutput(typechecker.error, /silicon-wands/issue/16/)
   apply A --* B
 }
