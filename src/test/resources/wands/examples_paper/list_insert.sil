@@ -18,6 +18,8 @@
  *    removed).
  */
 
+field __CONFIG_HEURISTICS: Bool
+
 field val: Int
 field next: Ref
 
@@ -56,7 +58,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   crt := xs
   nxt := xs.next
 
-  package A --* B
+//  package A --* B
 
 	/* Find the appropriate position for x in the linked-list. After the loop,
 	 * crt points to the first node in the list s.t. crt.next is either null,
@@ -80,7 +82,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    package A --* folding List(prev) in applying w in B
+//    package A --* /*folding List(prev) in applying w in*/ B
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */
@@ -100,5 +102,5 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 	/* Give up the sublist starting at crt and get back the original list *with*
 	 * the newly inserted value.
 	 */
-  apply A --* B
+//  apply A --* B
 }

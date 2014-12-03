@@ -520,8 +520,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
-    descr = "Maximal number of nested heuristics applications (default: 4)",
-    default = Some(4),
+    descr = "Maximal number of nested heuristics applications (default: 3)",
+    default = Some(3),
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )

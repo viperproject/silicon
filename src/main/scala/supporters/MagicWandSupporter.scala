@@ -4,7 +4,7 @@ package supporters
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NegativePermission, InsufficientPermission}
+import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
 import interfaces.{Success, Evaluator, Consumer, Producer, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
@@ -54,7 +54,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       evals(σ, es, pve, c0)((ts, c1) => {
         val c2 = c1.copy(exhaleExt = c.exhaleExt)
-        Q(MagicWandChunk(ghostFreeWand, ts), c2)})
+        Q(MagicWandChunk(ghostFreeWand, σ.γ.values, ts), c2)})
     }
 
     /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
@@ -189,7 +189,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       }
     }
 
-    var cntXXX: Int = 0
+//    var cntXXX: Int = 0
 
     def packageWand(σ: S, wand: ast.MagicWand, pve: PartialVerificationError, c: C)
                    (Q: (MagicWandChunk, C) => VerificationResult)
@@ -198,13 +198,12 @@ trait MagicWandSupporter[ST <: Store[ST],
       val σEmp = Σ(σ.γ, Ø, σ.g)
       val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
 
-      cntXXX += 1
-      println(s"\n[start packageWand] $cntXXX")
-      println(s"  wand = $wand")
-      println(s"  last reserve heap = ${c.reserveHeaps.last}")
+//      cntXXX += 1
+//      println(s"\n[start packageWand] $cntXXX")
+//      println(s"  wand = $wand")
+//      println(s"  last reserve heap = ${c.reserveHeaps.last}")
 
       decider.pushScope()
-//      var consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil
       val consumedChunks: MMap[Stack[Term], MSet[DirectChunk]] = MMap()
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
@@ -228,19 +227,15 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       decider.popScope()
 
-      println(s"[end packageWand] $cntXXX")
-      cntXXX -= 1
-      //      logger.debug(stateFormatter.format(σ))
-      //      logger.debug("h = " + stateFormatter.format(h))
-//      println(s"  r = $r")
-      println(s"  produced chunk $magicWandChunk")
-      println(s"  consumed ${consumedChunks.size} chunks (under different guards)")
-      consumedChunks.foreach{case (guards, ch) =>
-        println(s"    ${guards.mkString(",")}  ->  $ch")}
-      println(s"  recorded ${contexts.length} contexts")
-      contexts.foreach(c =>
-      println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", "")))
-
+//      println(s"[end packageWand] $cntXXX")
+//      cntXXX -= 1
+//      println(s"  produced chunk $magicWandChunk")
+//      println(s"  consumed ${consumedChunks.size} chunks (under different guards)")
+//      consumedChunks.foreach{case (guards, ch) =>
+//        println(s"    ${guards.mkString(",")}  ->  $ch")}
+//      println(s"  recorded ${contexts.length} contexts")
+//      contexts.foreach(c =>
+//      println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", "")))
 
       r && {
         val reserveHeaps = contexts.map(_.reserveHeaps)
@@ -273,22 +268,6 @@ trait MagicWandSupporter[ST <: Store[ST],
 
         Q(magicWandChunk, c1)
       }
-
-//      /* decider.locally {...} will "abort" branching executions without properly
-//       * joining them (which we don't really know how to handle for heaps anyway).
-//       * I.e., if an impure conditional occurs on the right of a wand, only the
-//       * final heap of the second branch will be used for the rest of the
-//       * execution, which is unsound.
-//       */
-//      decider.locally[(MagicWandChunk, C)](QB => {
-//        produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
-//          val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail,
-//                           exhaleExt = true,
-//                           lhsHeap = Some(σLhs.h))
-//          val rhs = wand.right
-//          consume(σEmp, FullPerm(), rhs, pve, c2)((_, _, _, c3) =>
-//            magicWandSupporter.createChunk(σ, wand, pve, c3)(scala.Function.untupled(QB)))})
-//      })(Q.tupled)
     }
 
     def applyingWand(σ: S, γ: ST, wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
@@ -358,9 +337,7 @@ trait MagicWandSupporter[ST <: Store[ST],
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
       } else {
-        ???
-//        val unknownValue = fresh("recunf", toSort(eIn.typ))
-//        Q(unknownValue, c)
+        Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested unfolding ghost operations."))
       }
     }
 
@@ -371,7 +348,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       val ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm) = acc
       val predicate = c.program.findPredicate(predicateName)
 
-      if (c.cycles(predicate) < 2 * config.unrollFunctions()) {
+      if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
         val c0 = c.incCycleCounter(predicate)
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, σ.h/*h*/, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
@@ -404,9 +381,7 @@ trait MagicWandSupporter[ST <: Store[ST],
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm))})
       } else
-        ???
-        //        val unknownValue = fresh("recunf", toSort(eIn.typ))
-        //        Q(unknownValue, c)
+        Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
     }
 
     def getEvalHeap(σ: S, h: H, c: C): H = {

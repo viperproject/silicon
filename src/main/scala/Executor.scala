@@ -204,7 +204,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val wand = rhs.asInstanceOf[ast.MagicWand]
             val pve = LetWandFailed(ass)
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
-              Q(σ \+ (v, MagicWandChunkTerm(chWand, σ.γ.values)), c))
+              Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
               Q(σ \+ (v, tRhs), c1))
@@ -401,11 +401,10 @@ trait DefaultExecutor[ST <: Store[ST],
               QL(σ1, σ1.γ, wand, c1)})
 
           case v: ast.LocalVariable =>
-            val tChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
-            val chWand = tChunk.chunk
+            val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id, c) match {
               case Some(ch) =>
-                QL(σ \- ch, Γ(tChunk.bindings), chWand.ghostFreeWand, c)
+                QL(σ \- ch, Γ(chWand.bindings), chWand.ghostFreeWand, c)
               case None =>
                 Failure[ST, H, S](pve dueTo NamedMagicWandChunkNotFound(v))}
 

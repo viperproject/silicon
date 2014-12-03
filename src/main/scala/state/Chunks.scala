@@ -77,7 +77,7 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
 abstract class MagicWandChunkLike extends {
   val ghostFreeWand: ast.MagicWand
   val evaluatedTerms: Seq[Term]
-  val name = "$MagicWandChunk" + ghostFreeWand.hashCode /* TODO: Name just shouldn't be forced upon wand chunks */
+  val name = "$MagicWandChunk" + ghostFreeWand.hashCode /* TODO: Name just shouldn't be required for wand chunks */
   val args = Nil                                        /* TODO: Same for args */
 
   override lazy val toString = {
@@ -90,32 +90,14 @@ abstract class MagicWandChunkLike extends {
   }
 }
 
-case class MagicWandChunk(ghostFreeWand: ast.MagicWand, evaluatedTerms: Seq[Term])
+case class MagicWandChunk(ghostFreeWand: ast.MagicWand, bindings: Map[ast.Variable, Term], evaluatedTerms: Seq[Term])
     extends MagicWandChunkLike with Chunk {
 
-  lazy val id = MagicWandChunkIdentifier(ghostFreeWand, evaluatedTerms)
+  lazy val id = MagicWandChunkIdentifier(ghostFreeWand, bindings, evaluatedTerms)
 }
 
-case class MagicWandChunkIdentifier(ghostFreeWand: ast.MagicWand, evaluatedTerms: Seq[Term])
+case class MagicWandChunkIdentifier(ghostFreeWand: ast.MagicWand, bindings: Map[ast.Variable, Term], evaluatedTerms: Seq[Term])
     extends MagicWandChunkLike with ChunkIdentifier {
 
-  lazy val chunk = MagicWandChunk(ghostFreeWand, evaluatedTerms)
+  lazy val chunk = MagicWandChunk(ghostFreeWand, bindings, evaluatedTerms)
 }
-
-//private object MagicWandChunkUtils {
-//  def name(wand: ast.MagicWand) = "$MagicWandChunk" + wand.hashCode /* TODO: Hack! Equality should be used to compare wands syntactically! */
-//}
-
-//abstract class MagicWandChunkLike extends {
-//  val wand: shapes.MagicWand
-//  val name = wand.toString
-//  val args = Nil
-//
-//  override val toString = wand.toString
-//}
-//
-//case class MagicWandChunk(wand: shapes.MagicWand) extends MagicWandChunkLike with Chunk {
-//  val id = MagicWandChunkIdentifier(wand)
-//}
-//
-//case class MagicWandChunkIdentifier(wand: shapes.MagicWand) extends MagicWandChunkLike with ChunkIdentifier

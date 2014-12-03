@@ -24,7 +24,6 @@ method test02(x: Ref)
   exhale true --* acc(x.f) // This assertion fails after the heuristic applied the wand
 }
 
-
 //method test03(x: Ref, y: Ref)
 //  requires true --* x == y
 //{
@@ -61,6 +60,7 @@ method curry() {
 
 //  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
 
+  /* Requires three nested levels of heuristics (package -> packaging -> applying) */
   exhale A --* (B --* C)
 }
 

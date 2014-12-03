@@ -1,25 +1,38 @@
 field __CONFIG_HEURISTICS: Bool
 
-//field f: Ref
-//field g: Int
-//field h: Int
-//
-//predicate P(x: Ref, v: Int) { acc(x.g) && x.g == v }
-//
-//method test01(x: Ref, v: Int) {
-//  inhale acc(x.f) && acc(P(x.f, v))
-//  inhale x.f != null /* TODO: Should not be necessary */
-//
-//  assert acc(x.f.g)
-//}
-//
-//method test02(x: Ref) {
-//  inhale acc(x.f) && acc(x.f.g)
-//  var v: Int := x.f.g
-//  x.f.g := x.f.g + 1
-//
-//  assert acc(P(x.f, v + 1))
-//}
+field f: Ref
+field g: Int
+field h: Int
+
+predicate P(x: Ref, v: Int) { acc(x.g) && x.g == v }
+
+method test01(x: Ref, v: Int) {
+  inhale acc(x.f) && acc(P(x.f, v))
+  inhale x.f != null /* TODO: Should not be necessary */
+
+  assert acc(x.f.g)
+}
+
+method test02(x: Ref) {
+  inhale acc(x.f) && acc(x.f.g)
+  var v: Int := x.f.g
+  x.f.g := x.f.g + 1
+
+  assert acc(P(x.f, v + 1))
+}
+
+method test04() {
+  var x: Ref
+  var y: Ref
+  var r: Ref
+
+  inhale acc(P(x, 0)) --* acc(P(y, 0))
+
+  var oldx: Ref := x
+  x := r
+
+  package acc(P(oldx, 0)) --* acc(P(y, 0))
+}
 
 /* From the list_insert example */
 
@@ -27,7 +40,11 @@ field val: Int
 field next: Ref
 
 predicate List(xs: Ref) {
-	acc(xs.val) && acc(xs.next) && (xs.next != null ==> acc(List(xs.next)))
+//	acc(xs.next) && acc(List(xs.next))
+//	acc(xs.val) && acc(xs.next) && acc(List(xs.next))
+//  acc(xs.next) && (xs.next != null ==> acc(List(xs.next)))
+//  acc(xs.next) && acc(List(xs.next), xs.next != null ? write : none)
+  acc(xs.val) && acc(xs.next) && (xs.next != null ==> acc(List(xs.next)))
 }
 
 method test03() {
@@ -39,7 +56,8 @@ method test03() {
   define B acc(List(xs))
 
   inhale xs != null && nxt != null
-  inhale acc(crt.val) && acc(crt.next)
+  inhale acc(crt.val)
+  inhale acc(crt.next)
   inhale nxt == crt.next
   inhale acc(List(nxt))
   inhale A --* B
@@ -50,9 +68,10 @@ method test03() {
   crt := nxt
   nxt := nxt.next
 
-  package A --* folding List(prev) in /*applying w in*/ B
+//  package A --* /*folding List(prev) in*/ /*applying w in*/ B
 
-  assert acc(crt.val) && acc(crt.next)
+  assert acc(crt.val)
+  assert acc(crt.next)
   assert nxt == crt.next
   assert nxt != null ==> acc(List(nxt))
   assert A --* B

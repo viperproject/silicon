@@ -160,7 +160,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm)){
               case true =>
-                heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consumePermissions $φ")(σC, h, c2)((σC, h, c2, QS) => {
+                heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consumePermissions ${φ.pos}: $φ")(σC, h, c2)((σC, h, c2, QS) => {
 //                  println(s"[consumePermissions]")
 //                  println(s"  sC.h = ${σC.h}")
 //                  println(s"  h = $h")
@@ -173,7 +173,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     ch match {
                       case fc: DirectFieldChunk =>
                         val snap = fc.value.convert(sorts.Snap)
-                        Q(h1, snap, fc :: Nil, c4)
+                        QS(h1, snap, fc :: Nil, c4)
                       case pc: DirectPredicateChunk =>
                         val h2 =
                           if (results.consumedCompletely)
@@ -253,9 +253,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case _eWand: ast.MagicWand =>
             (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info), σ.γ)
           case v: ast.LocalVariable =>
-            val tChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm]
-            val _eWand = tChunk.chunk.ghostFreeWand
-            (_eWand, ast.And(_eWand.left, _eWand)(v.pos, v.info), Γ(tChunk.bindings))
+            val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
+            val _eWand = chWand.ghostFreeWand
+            (_eWand, ast.And(_eWand.left, _eWand)(v.pos, v.info), Γ(chWand.bindings))
               /* Note that wand reference v is most likely not bound in tChunk.bindings.
                * Since wands cannot be recursive, this shouldn't be a problem,
                * as long as v doesn't need to be looked during
@@ -274,16 +274,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
         heuristicsSupporter.tryOperation[S, H](s"folding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.foldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
-          consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
-            Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
+            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
+              Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 
       case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                        eIn) if c.exhaleExt && !φ.isPure =>
 
         heuristicsSupporter.tryOperation[S, H](s"unfolding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.unfoldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
-          consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
-            Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
+            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
+              Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 
 			/* Any regular Expressions, i.e. boolean and arithmetic */
       case _ =>
