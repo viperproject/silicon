@@ -25,6 +25,8 @@
  * which in turn enables us to apply the given wand A * B --* C.
  */
 
+field __CONFIG_HEURISTICS: Bool
+
 /* The predicate bodies can be arbitrary since the proofs never unfold the
  * predicates.
  */
@@ -41,7 +43,7 @@ define C acc(R())
 method uncurry() {
   inhale A --* (B --* C) /* requires */
 
-  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+//  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
 
   exhale A && B --* C /* ensures */
 }
@@ -50,7 +52,7 @@ method uncurry() {
 method curry() {
   inhale A && B --* C /* requires */
 
-  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+//  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
 
   exhale A --* (B --* C) /* ensures */
 }

@@ -4,6 +4,8 @@
  * permissions in the loop.
  */
 
+field __CONFIG_HEURISTICS: Bool
+
 field val: Int
 field next: Ref
 
@@ -46,7 +48,7 @@ method sum_it(ys: Ref) returns (sum: Int)
    */
   old_sum_xs := sum_rec(xs)
 
-  package A --* B
+//  package A --* B
 
   /* Iteratively compute the sum.
    * The loop invariant states that
@@ -64,7 +66,7 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant A --* B
   {
     /* Bind w to the magic wand instance that we currently hold in our state */
-    wand w := A --* B
+//    wand w := A --* B
 
     /* Let zs point to the *current* current node, update the sum and advance
      * the current node pointer.
@@ -80,7 +82,7 @@ method sum_it(ys: Ref) returns (sum: Int)
      */
     old_sum_xs := (xs == null ? 0 : sum_rec(xs))
 
-    package A --* folding List(zs) in applying w in B
+//    package A --* folding List(zs) in applying w in B
   }
 
   /* Use the promise to get back the unchanged list starting at ys.
@@ -88,5 +90,5 @@ method sum_it(ys: Ref) returns (sum: Int)
    * intuitively, the permissions to each node in the list has been
    * packaged into the wand while the loop executed.
    */
-  apply A --* B
+//  apply A --* B
 }
