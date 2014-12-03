@@ -2,7 +2,7 @@ package viper
 package silicon
 package supporters
 
-import com.weiglewilczek.slf4s.Logging
+import com.weiglewilczek.slf4s.{Logger, Logging}
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.HeuristicsFailed
 import silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -85,6 +85,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
     private var cnt = 0L
     private var stack = Stack[Long]()
+    private var heuristicsLogger = Logger("heuristics")
 
     private def tryWithReactions[O]
                                 (description: String)
@@ -98,20 +99,20 @@ trait HeuristicsSupporter[ST <: Store[ST],
       var printedHeader = false
 
       def lnsay(msg: String, ident: Int = 1) {
-        println()
+//        println()
         say(msg, ident)
       }
 
       def say(msg: String, ident: Int = 1) {
         if (!printedHeader) {
-          println("\n[tryWithReactions]")
+          heuristicsLogger.debug("\n[tryWithReactions]")
           printedHeader = true
         }
 
         val ws = "  "
         val s1 = if (ident == 0) "" else ws
         val s2 = ws * (ident - 1)
-        println(s"$s1($myId)$s2 $msg")
+        heuristicsLogger.debug(s"$s1($myId)$s2 $msg")
       }
 
       var localActionSuccess = false
@@ -293,7 +294,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       val p = FullPerm()
 
       if (c.exhaleExt) {
-        println(s"  reaction: packaging $wand")
+        heuristicsLogger.debug(s"  reaction: packaging $wand")
         /* TODO: The next block is an exact copy of the corresponding case in the DefaultConsumer. Reuse code! */
         magicWandSupporter.packageWand(σ \ h, wand, pve, c)((chWand, c1) => {
           val h2 = h + chWand /* h2 = σUsed'' */
@@ -307,7 +308,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 //        consume(σ \ h, p, packagingExp, pve, c)((σ2, _, _, c2) => {
 //          Q(σ2, σ2.h, c2)})
       } else {
-        println(s"  reaction: package $wand")
+        heuristicsLogger.debug(s"  reaction: package $wand")
         val packageStmt = ast.Package(wand)()
         exec(σ \ h, packageStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
@@ -322,11 +323,11 @@ trait HeuristicsSupporter[ST <: Store[ST],
       /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
 
       if (c.exhaleExt) {
-        println(s"  reaction: applying $wand")
+        heuristicsLogger.debug(s"  reaction: applying $wand")
         val lhsAndWand = ast.And(wand.left, wand)()
         magicWandSupporter.applyingWand(σ \ h, Γ(bindings), wand, lhsAndWand, pve, c)(Q)
       } else {
-        println(s"  reaction: apply $wand")
+        heuristicsLogger.debug(s"  reaction: apply $wand")
         val applyStmt = ast.Apply(wand)()
         exec(σ \ h \ Γ(bindings), applyStmt, c)((σ1, c1) => {
           Q(σ1 \ σ.γ, σ1.h, c1)})
@@ -340,10 +341,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
 
       if (c.exhaleExt) {
-        println(s"  reaction: unfolding $acc")
+        heuristicsLogger.debug(s"  reaction: unfolding $acc")
         magicWandSupporter.unfoldingPredicate(σ \ h, acc, pve, c)(Q)
       } else {
-        println(s"  reaction: unfold $acc")
+        heuristicsLogger.debug(s"  reaction: unfold $acc")
         val unfoldStmt = ast.Unfold(acc)()
         exec(σ \ h, unfoldStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
@@ -356,10 +357,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
                      : VerificationResult = {
 
       if (c.exhaleExt) {
-        println(s"  reaction: folding $acc")
+        heuristicsLogger.debug(s"  reaction: folding $acc")
         magicWandSupporter.foldingPredicate(σ \ h, acc, pve, c)(Q)
       } else {
-        println(s"  reaction: fold $acc")
+        heuristicsLogger.debug(s"  reaction: fold $acc")
         val foldStmt = ast.Fold(acc)()
         exec(σ \ h, foldStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
