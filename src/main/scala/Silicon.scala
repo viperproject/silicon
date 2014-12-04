@@ -56,12 +56,16 @@ object Silicon extends SiliconConstants {
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
       case (k, v) =>
-        val kStr = s"--$k"
-        val vStr = v.toString
+        if (k.head.isUpper) {
+          Seq(s"-$k=$v")
+        } else {
+          val kStr = s"--$k"
+          val vStr = v.toString
 
-        vStr.toLowerCase match {
-          case "true" | "false" => Seq(kStr)
-          case _ => Seq(kStr, vStr)
+          vStr.toLowerCase match {
+            case "true" | "false" => Seq(kStr)
+            case _ => Seq(kStr, vStr)
+          }
         }
     }.toSeq
 

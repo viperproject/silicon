@@ -85,7 +85,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
     private var cnt = 0L
     private var stack = Stack[Long]()
-    private var heuristicsLogger = Logger("heuristics")
+    private val heuristicsLogger = Logger("heuristics")
 
     private def tryWithReactions[O]
                                 (description: String)
@@ -96,23 +96,27 @@ trait HeuristicsSupporter[ST <: Store[ST],
                                 : VerificationResult = {
 
       val myId = cnt; cnt += 1
+      val baseIdent = "  "
       var printedHeader = false
 
       def lnsay(msg: String, ident: Int = 1) {
-//        println()
-        say(msg, ident)
+        val prefix = "\n" + (if (ident == 0) "" else baseIdent)
+        dosay(prefix, msg, ident - 1)
       }
 
       def say(msg: String, ident: Int = 1) {
+        val prefix = if (ident == 0) "" else baseIdent
+        dosay(prefix, msg, ident - 1)
+      }
+
+      def dosay(prefix: String, msg: String, ident: Int) {
         if (!printedHeader) {
           heuristicsLogger.debug("\n[tryWithReactions]")
           printedHeader = true
         }
 
-        val ws = "  "
-        val s1 = if (ident == 0) "" else ws
-        val s2 = ws * (ident - 1)
-        heuristicsLogger.debug(s"$s1($myId)$s2 $msg")
+        val messagePrefix = baseIdent * (ident - 1)
+        heuristicsLogger.debug(s"$prefix($myId)$messagePrefix $msg")
       }
 
       var localActionSuccess = false
