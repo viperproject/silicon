@@ -71,7 +71,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
       p := p.l
       plvs := vals(p.l)
 
-      package A --* /*folding Tree(p) in*/ applying w in B
+//      package A --* folding Tree(p) in applying w in B
     }
 
     assert vals(p.l) == unfolding acc(Tree(p.l)) in vals(p.l.l) ++ Seq(p.l.v) ++ vals(p.l.r)

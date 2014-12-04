@@ -152,7 +152,10 @@ trait MagicWandSupporter[ST <: Store[ST],
 
         Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
       } else {
-        Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
+        val f = Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
+        f.load = id.args
+
+        f
       }
     }
 
@@ -289,7 +292,11 @@ trait MagicWandSupporter[ST <: Store[ST],
          * heuristics are available to both consumes.
          */
 
-      consume(σEmp \ σ0.h, /*h,*/ FullPerm(), lhsAndWand, pve, c)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
+      /* TODO: Actually use c0a. Probably means that all uses of applyingWand have to be wrapped in tryOperation
+       * TODO: The same for unfoldingPredicate, foldingPredicate
+       * TODO: What about packageWand?
+       */
+      consume(σEmp \ σ0.h, /*h,*/ FullPerm(), lhsAndWand, pve, c0a)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
         assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
         val ch = chs1.last.asInstanceOf[MagicWandChunk]
         val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
@@ -298,12 +305,12 @@ trait MagicWandSupporter[ST <: Store[ST],
           assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
           produce(σ0 \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
-          val topReserveHeap = c1.reserveHeaps.head + σ3.h
-          val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
-                            exhaleExt = c1.exhaleExt,
-                            lhsHeap = c2.lhsHeap,
-                            applyHeuristics = c.applyHeuristics)
-          QI(σEmp \ σ.γ, σEmp.h, c3a)})})})
+            val topReserveHeap = c1.reserveHeaps.head + σ3.h
+            val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+                              exhaleExt = c1.exhaleExt,
+                              lhsHeap = c2.lhsHeap,
+                              applyHeuristics = c.applyHeuristics)
+            QI(σEmp \ σ.γ, σEmp.h, c3a)})})})
     }
 
     def unfoldingPredicate(σ: S, acc: ast.PredicateAccessPredicate, pve: PartialVerificationError, c: C)
@@ -326,14 +333,14 @@ trait MagicWandSupporter[ST <: Store[ST],
                 //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
                 consume(σ \ σ1.h, /*h1,*/ FullPerm(), acc, pve, c3a)((σ2/*h2*/, snap, _, c3b) => { /* σUsed'.unfold */
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  produce(σ \ σ2.h/*h2*/ \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ2, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
-                  val topReserveHeap = c3.reserveHeaps.head + σ2.h
-                  val c4a = c4.decCycleCounter(predicate)
-                              .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                                    exhaleExt = c3.exhaleExt)
-                  QI(σEmp, σEmp.h, c4a)
-                    /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
-                      Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})}))
+                  produce(σ \ σ2.h/*h2*/ \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                    val topReserveHeap = c3.reserveHeaps.head + σ3.h
+                    val c4a = c4.decCycleCounter(predicate)
+                                .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                      exhaleExt = c3.exhaleExt)
+                    QI(σEmp, σEmp.h, c4a)
+                      /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
+                        Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})}))
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
       } else {
@@ -369,15 +376,15 @@ trait MagicWandSupporter[ST <: Store[ST],
                    *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
                    *       evaluator s.t. the mapping is used, if it exists
                    */
-                  produce(σ \ σ2.h/*h2*/, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ2, c4) => { /* σ2.h = σUsed'' */
-                  val topReserveHeap = c3.reserveHeaps.head + σ2.h
-                  val c4a = c4.decCycleCounter(predicate)
-                              .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                                    exhaleExt = c3.exhaleExt,
-                                    evalHeap = None)
-                  QI(σEmp, σEmp.h, c4a)
-                    /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
-                      Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})})})
+                  produce(σ \ σ2.h/*h2*/, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ3, c4) => { /* σ3.h = σUsed'' */
+                    val topReserveHeap = c3.reserveHeaps.head + σ3.h
+                    val c4a = c4.decCycleCounter(predicate)
+                                .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                      exhaleExt = c3.exhaleExt,
+                                      evalHeap = None)
+                    QI(σEmp, σEmp.h, c4a)
+                      /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
+                        Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})})})
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm))})
       } else

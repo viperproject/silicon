@@ -115,7 +115,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
           printedHeader = true
         }
 
-        val messagePrefix = baseIdent * (ident - 1)
+        val messagePrefix = baseIdent * ident
         heuristicsLogger.debug(s"$prefix($myId)$messagePrefix $msg")
       }
 
@@ -124,7 +124,13 @@ trait HeuristicsSupporter[ST <: Store[ST],
         if (_c.triggerAction == null) _c.copy(triggerAction = action)
         else _c
 
-      if (initialFailure.nonEmpty) lnsay(s"retrying $description")
+      if (initialFailure.nonEmpty) {
+        lnsay(s"retrying $description")
+        say(s"s.h = ${σ.h}")
+        say(s"h = $h")
+        say(s"c.reserveHeaps:")
+        c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
+      }
 
       val globalActionResult =
         action(σ, h, c, (outputs, c1) => {
@@ -197,9 +203,20 @@ trait HeuristicsSupporter[ST <: Store[ST],
             lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
 
             val c1 = c.copy(heuristicsDepth = c.heuristicsDepth + 1)
-            reactionResult = remainingReactions.head.apply(σ, h, c1)((σ1, h1, c2) => {
-              say(s"reaction ${triedReactions + 1} locally succeeded")
-              tryWithReactions(description)(σ1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
+
+            reactionResult =
+              heuristicsSupporter.tryOperation[S, H](s"applying heuristic ($myId)")(σ \ h, h, c1)((σ1, h1, c2, QS) =>
+//                      magicWandSupporter.applyingWand(σ \ h, Γ(bindings), wand, lhsAndWand, pve, c)(QS)
+//                    )(Q)
+                remainingReactions.head.apply(σ1, h1, c2)((σ2, h2, c3) => {
+                  say(s"reaction ${triedReactions + 1} locally succeeded")
+                  say(s"s2.h = ${σ2.h}")
+                  say(s"h2 = $h2")
+                  say(s"c3.reserveHeaps:")
+                  c3.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
+                  QS(σ2, h2, c3)})
+              )((σ1, h1, c2) => {
+                  tryWithReactions(description)(σ1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
 
             lnsay(s"returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length})")
             say(s"reactionResult = $reactionResult")
@@ -239,10 +256,12 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       cause.message.reason match {
         case reason: MagicWandChunkNotFound =>
+          val chunks = (σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)).toSeq
+
           /* HS1 (wands) */
           val wand = reason.offendingNode
           val structureMatcher = matchers.structure(wand, c.program)
-          val wandChunks = wandInstancesMatching(σ, h, c, structureMatcher)
+          val wandChunks = wandInstancesMatching(chunks, structureMatcher)
           val applyWandReactions = wandChunks flatMap {
             case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
             case _ => None
@@ -257,9 +276,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
         case reason: InsufficientPermission =>
           val locationMatcher = matchers.location(reason.offendingNode.loc(c.program), c.program)
+          val chunks = (σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)).toSeq
 
           /* HS1 (wands) */
-          val wandChunks = wandInstancesMatching(σ, h, c, locationMatcher)
+          val wandChunks = wandInstancesMatching(chunks, locationMatcher)
           val applyWandReactions = wandChunks flatMap {
             case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
             case _ => None
@@ -273,16 +293,27 @@ trait HeuristicsSupporter[ST <: Store[ST],
           }
 
           /* HS2 (predicates) */
-          val foldPredicateReaction =
+          val foldPredicateReactions =
             reason.offendingNode match {
               case pa: ast.PredicateAccess if ok(pa) =>
-                val acc = ast.PredicateAccessPredicate(pa, ast.FullPerm()())()
-                Some(foldPredicate(acc, pve) _)
+                val accByExp = ast.PredicateAccessPredicate(pa, ast.FullPerm()())()
 
-              case _ => None
+                val accByTerm =
+                  cause.load match {
+                    case ts: Seq[Term] =>
+                      assert(pa.args.length == ts.length)
+                      val reversedArgs = backtranslate(σ.γ.values, chunks, ts, c.program)
+                      Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(pa.predicateName))(), ast.FullPerm()())())
+
+                    case _ => None
+                  }
+
+                accByTerm.map(acc => foldPredicate(acc, pve) _).toSeq :+ foldPredicate(accByExp, pve) _
+
+              case _ => Nil
             }
 
-          applyWandReactions ++ unfoldPredicateReactions ++ foldPredicateReaction
+          applyWandReactions ++ unfoldPredicateReactions ++ foldPredicateReactions
 
         case _ => Nil
       }
@@ -391,31 +422,29 @@ trait HeuristicsSupporter[ST <: Store[ST],
       val predicateAccesses =
         predicateChunks.flatMap {
           case DirectPredicateChunk(name, args, _, _, _) =>
-            var success = true
+            val reversedArgs: Seq[ast.Expression] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
+//              args map {
+//                case True() => ast.True()()
+//                case False() => ast.False()()
+//                case IntLiteral(n) => ast.IntegerLiteral(n)()
+//                case t =>
+//                  σ.γ.values.find(p => p._2 == t).map(_._1)
+//                      /* Found a local variable v s.t. v |-> t */
+//                    .orElse(
+//                      allChunks.collectFirst {
+//                        case fc: FieldChunk if fc.value == t =>
+//                          σ.γ.values.find(p => p._2 == fc.args(0))
+//                                    .map(_._1)
+//                                    .map(v => ast.FieldAccess(v, c.program.findField(fc.name))())
+//                      }.flatten
+//                        /* Found a local variable v and a field f s.t. v.f |-> t */
+//                    ).getOrElse {
+//                      success = false
+//                      ast.True()() /* Dummy value */
+//                    }
+//              }
 
-            val reversedArgs: Seq[ast.Expression] =
-              args map {
-                case True() => ast.True()()
-                case False() => ast.False()()
-                case IntLiteral(n) => ast.IntegerLiteral(n)()
-                case t =>
-                  σ.γ.values.find(p => p._2 == t).map(_._1)
-                      /* Found a local variable v s.t. v |-> t */
-                    .orElse(
-                      allChunks.collectFirst {
-                        case fc: FieldChunk if fc.value == t =>
-                          σ.γ.values.find(p => p._2 == fc.args(0))
-                                    .map(_._1)
-                                    .map(v => ast.FieldAccess(v, c.program.findField(fc.name))())
-                      }.flatten
-                        /* Found a local variable v and a field f s.t. v.f |-> t */
-                    ).getOrElse {
-                      success = false
-                      ast.True()() /* Dummy value */
-                    }
-              }
-
-            if (success)
+            if (args.length == reversedArgs.length)
               Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())())
             else
               None
@@ -424,11 +453,9 @@ trait HeuristicsSupporter[ST <: Store[ST],
       predicateAccesses
     }
 
-    def wandInstancesMatching(σ: S, h: H, c: C, f: PartialFunction[silver.ast.Node, _]): Seq[MagicWandChunk] = {
-      val allChunks = σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)
-
+    def wandInstancesMatching(chunks: Seq[Chunk], f: PartialFunction[silver.ast.Node, _]): Seq[MagicWandChunk] = {
       val wands =
-        allChunks.collect {
+        chunks.collect {
           case ch: MagicWandChunk =>
             ch.ghostFreeWand.right.existsDefined(f) match {
               case true => Some(ch)
@@ -447,6 +474,30 @@ trait HeuristicsSupporter[ST <: Store[ST],
       def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[silver.ast.Node, Any] = {
         case other: ast.MagicWand if wand.structurallyMatches(other, program) =>
       }
+    }
+
+    private def backtranslate(bindings: Map[ast.Variable, Term], chunks: Seq[Chunk], ts: Seq[Term], program: ast.Program)
+                             : Seq[ast.Expression] = {
+
+      val optEs =
+        ts map {
+          case True() => Some(ast.True()())
+          case False() => Some(ast.False()())
+          case IntLiteral(n) => Some(ast.IntegerLiteral(n)())
+          case t =>
+            bindings.find(p => p._2 == t).map(_._1)
+                      /* Found a local variable v s.t. v |-> t */
+                    .orElse(
+                      chunks.collectFirst {
+                        case fc: FieldChunk if fc.value == t =>
+                          bindings.find(p => p._2 == fc.args(0))
+                                  .map(_._1)
+                                  .map(v => ast.FieldAccess(v, program.findField(fc.name))())
+                      }.flatten)
+                      /* Found a local variable v and a field f s.t. v.f |-> t */
+        }
+
+      optEs.flatten
     }
   }
 }

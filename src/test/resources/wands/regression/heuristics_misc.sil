@@ -76,3 +76,33 @@ method test03() {
   assert nxt != null ==> acc(List(nxt))
   assert A --* B
 }
+
+/* From the tree_delete_min example */
+
+field l: Ref
+//field r: Ref
+
+predicate Tree(x: Ref) {
+     acc(x.l) && acc(Tree(x.l))
+  //&& acc(x.r) && acc(Tree(x.r))
+}
+
+method test05(x: Ref) {
+  var p: Ref
+
+  define A acc(p.l) && acc(Tree(p.l))
+  define B acc(Tree(x))
+
+  inhale p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
+  inhale A --* B
+
+  wand w := A --* B
+
+  unfold acc(Tree(p.l))
+  p := p.l
+
+//  package A --* /*folding Tree(p) in*/ /*applying w in*/ B
+
+  exhale p != null && acc(p.l) && acc(Tree(p.l))
+  exhale A --* B
+}

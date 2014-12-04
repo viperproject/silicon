@@ -78,5 +78,8 @@ case class Failure[ST <: Store[ST],
                   (message: VerificationError)
 		extends FatalResult {
 
+	/* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
+	var load: AnyRef = null
+
   override lazy val toString = message.readableMessage
 }
