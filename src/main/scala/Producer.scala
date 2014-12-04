@@ -206,11 +206,8 @@ trait DefaultProducer[ST <: Store[ST],
             Q(h1, c3)}))
 
       case wand: ast.MagicWand =>
-//        println("\n[Producer/MagicWand]")
-//        println(s"  wand = $wand")
-        magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
-//          println(s"  chWand = $chWand")
-          Q(σ.h + chWand, c)})
+        magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
+          Q(σ.h + chWand, c))
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))

@@ -161,10 +161,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             decider.assert(σC, perms.IsNonNegative(tPerm)){
               case true =>
                 heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consumePermissions ${φ.pos}: $φ")(σC, h, c2)((σC, h, c2, QS) => {
-//                  println(s"[consumePermissions]")
-//                  println(s"  sC.h = ${σC.h}")
-//                  println(s"  h = $h")
-//                  println(s"  c2.reserveHeaps = ${c2.reserveHeaps}")
                   consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
                     val c4 = c3.snapshotRecorder match {
                       case Some(sr) =>
@@ -197,11 +193,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val hs =
               if (c.exhaleExt) c.reserveHeaps
               else Stack(h)
-
-//            println(s"c.exhaleExt = ${c.exhaleExt}")
-//            println(s"σ.h = ${σ.h}")
-//            println(s"h = $h")
-//            println(s"hs = $hs")
 
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
               decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
@@ -321,9 +312,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
        * h in the current context.
        */
       return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
-//        println(s"locacc = $locacc")
-//        println(s"c.reserveHeaps = ${c.reserveHeaps}")
-//        println(s"chs = $chs")
         val c2 = c1.copy(reserveHeaps = hs)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
 

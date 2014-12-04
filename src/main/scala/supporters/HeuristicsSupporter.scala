@@ -339,9 +339,6 @@ trait HeuristicsSupporter[ST <: Store[ST],
                            lhsHeap = None)
           val σEmp = Σ(σ.γ, H(), σ.g)
           Q(σEmp, σEmp.h, c2)})
-//        val packagingExp = ast.Packaging(wand, ast.True()())()
-//        consume(σ \ h, p, packagingExp, pve, c)((σ2, _, _, c2) => {
-//          Q(σ2, σ2.h, c2)})
       } else {
         heuristicsLogger.debug(s"  reaction: package $wand")
         val packageStmt = ast.Package(wand)()
@@ -423,26 +420,6 @@ trait HeuristicsSupporter[ST <: Store[ST],
         predicateChunks.flatMap {
           case DirectPredicateChunk(name, args, _, _, _) =>
             val reversedArgs: Seq[ast.Expression] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
-//              args map {
-//                case True() => ast.True()()
-//                case False() => ast.False()()
-//                case IntLiteral(n) => ast.IntegerLiteral(n)()
-//                case t =>
-//                  σ.γ.values.find(p => p._2 == t).map(_._1)
-//                      /* Found a local variable v s.t. v |-> t */
-//                    .orElse(
-//                      allChunks.collectFirst {
-//                        case fc: FieldChunk if fc.value == t =>
-//                          σ.γ.values.find(p => p._2 == fc.args(0))
-//                                    .map(_._1)
-//                                    .map(v => ast.FieldAccess(v, c.program.findField(fc.name))())
-//                      }.flatten
-//                        /* Found a local variable v and a field f s.t. v.f |-> t */
-//                    ).getOrElse {
-//                      success = false
-//                      ast.True()() /* Dummy value */
-//                    }
-//              }
 
             if (args.length == reversedArgs.length)
               Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())())

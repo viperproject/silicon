@@ -296,11 +296,11 @@ trait MagicWandSupporter[ST <: Store[ST],
        * TODO: The same for unfoldingPredicate, foldingPredicate
        * TODO: What about packageWand?
        */
-      consume(σEmp \ σ0.h, /*h,*/ FullPerm(), lhsAndWand, pve, c0a)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
+      consume(σEmp \ σ0.h, FullPerm(), lhsAndWand, pve, c0a)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
         assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
         val ch = chs1.last.asInstanceOf[MagicWandChunk]
         val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
-        consume(σ0 \ σ1.h, /*σ1.h,*/ FullPerm(), lhsAndWand, pve, c1a)((σ2, _, chs2, c2) => { /* σUsed'.apply */
+        consume(σ0 \ σ1.h, FullPerm(), lhsAndWand, pve, c1a)((σ2, _, chs2, c2) => { /* σUsed'.apply */
           assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
           assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
@@ -322,25 +322,21 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
         val c0 = c.incCycleCounter(predicate)
-        val σC = σ \ getEvalHeap(σ, σ.h/*h*/, c0)
+        val σC = σ \ getEvalHeap(σ, σ.h, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
         eval(σC, ePerm, pve, c0)((tPerm, c1) =>
           if (decider.check(σC, IsNonNegative(tPerm)))
             evals(σC, eArgs, pve, c1)((tArgs, c2) =>
-              consume(σEmp \ σ.h, /*h,*/ FullPerm(), acc, pve, c2)((σ1/*h1*/, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+              consume(σEmp \ σ.h, FullPerm(), acc, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
               val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
-                //                  println(s"\nh1 = $h1")
-                //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
-                consume(σ \ σ1.h, /*h1,*/ FullPerm(), acc, pve, c3a)((σ2/*h2*/, snap, _, c3b) => { /* σUsed'.unfold */
+                consume(σ \ σ1.h, FullPerm(), acc, pve, c3a)((σ2, snap, _, c3b) => { /* σUsed'.unfold */
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  produce(σ \ σ2.h/*h2*/ \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                  produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
                     val topReserveHeap = c3.reserveHeaps.head + σ3.h
                     val c4a = c4.decCycleCounter(predicate)
                                 .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                       exhaleExt = c3.exhaleExt)
-                    QI(σEmp, σEmp.h, c4a)
-                      /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
-                        Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})}))
+                    QI(σEmp, σEmp.h, c4a)})})}))
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
       } else {
@@ -357,18 +353,15 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
         val c0 = c.incCycleCounter(predicate)
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, σ.h/*h*/, c0)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, σ.h, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
         eval(σC, ePerm, pve, c0)((tPerm, c1) => {
           if (decider.check(σC, IsNonNegative(tPerm)))
             evals(σC, eArgs, pve, c1)((tArgs, c2) => {
               val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
-              consume(σEmp \ σ.h \ insγ, /*h,*/ FullPerm(), predicate.body, pve, c2)((σ1/*h1*/, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+              consume(σEmp \ σ.h \ insγ, FullPerm(), predicate.body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
               val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
-                //                  println(s"\nh1 = $h1")
-                //                  println(s"c3.reserveHeaps.head = ${c3.reserveHeaps.head}")
-                //                  println(s"c3.evalHeap = ${c3.evalHeap}")
-                consume(σ \ (γ = insγ, h = σ1.h/*h1*/), /*h1,*/ FullPerm(), predicate.body, pve, c3a)((σ2/*h2*/, snap, _, c3b) => { /* σUsed'.fold */
+                consume(σ \ (γ = insγ, h = σ1.h), FullPerm(), predicate.body, pve, c3a)((σ2, snap, _, c3b) => { /* σUsed'.fold */
                   /* TODO: Produce evaluated eArgs again - in evalHeap, which
                    * we otherwise shouldn't need. We could avoid this by
                    *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
@@ -376,15 +369,13 @@ trait MagicWandSupporter[ST <: Store[ST],
                    *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
                    *       evaluator s.t. the mapping is used, if it exists
                    */
-                  produce(σ \ σ2.h/*h2*/, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ3, c4) => { /* σ3.h = σUsed'' */
+                  produce(σ \ σ2.h, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ3, c4) => { /* σ3.h = σUsed'' */
                     val topReserveHeap = c3.reserveHeaps.head + σ3.h
                     val c4a = c4.decCycleCounter(predicate)
                                 .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                       exhaleExt = c3.exhaleExt,
                                       evalHeap = None)
-                    QI(σEmp, σEmp.h, c4a)
-                      /*consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c4a)((h3, _, _, c5) =>
-                        Q(h3, decider.fresh(sorts.Snap), Nil, c5))*/})})})})
+                    QI(σEmp, σEmp.h, c4a)})})})})
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm))})
       } else
