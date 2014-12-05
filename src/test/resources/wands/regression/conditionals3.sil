@@ -1,0 +1,15 @@
+field f: Bool
+field g: Int
+field h: Ref
+
+method test01(x: Ref, b1: Bool, b2: Bool) {
+  inhale acc(x.f) && acc(x.g)
+
+  package
+    (b1 ? acc(x.f, 1/10) : acc(x.g, 1/10))
+      --* true
+//       !b1 ? (acc(x.f, 1/10) && acc(x.f, 1/10))
+//           : (acc(x.g, 1/10) && acc(x.g, 1/10))
+//    &&  b2 ? acc(x.f, 2/10)
+//           : acc(x.g, 2/10)
+}
