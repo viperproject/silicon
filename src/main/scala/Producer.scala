@@ -7,15 +7,13 @@
 package viper
 package silicon
 
-import java.beans.Expression
-
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter, Chunk, StateFactory}
+import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter, Chunk}
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
+import state.{DirectChunk, DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
-import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import reporting.Bookkeeper
 import supporters.MagicWandSupporter
 
@@ -183,12 +181,14 @@ trait DefaultProducer[ST <: Store[ST],
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
             val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
-            Q(h1, c3)})})
+            val c3 = recordSnapshot(c2, matchedChunk, ch)
+            val c4 = recordProducedChunk(c3, ch, guards)
+//            val c3 = c2.snapshotRecorder match {
+//              case Some(sr) =>
+//                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
+//                c2.copy(snapshotRecorder = Some(sr1))
+//              case _ => c2}
+            Q(h1, c4)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -198,12 +198,14 @@ trait DefaultProducer[ST <: Store[ST],
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
             val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
-            Q(h1, c3)}))
+            val c3 = recordSnapshot(c2, matchedChunk, ch)
+            val c4 = recordProducedChunk(c3, ch, guards)
+//            val c3 = c2.snapshotRecorder match {
+//              case Some(sr) =>
+//                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
+//                c2.copy(snapshotRecorder = Some(sr1))
+//              case _ => c2}
+            Q(h1, c4)}))
 
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
@@ -221,6 +223,20 @@ trait DefaultProducer[ST <: Store[ST],
 
     produced
   }
+
+  private def recordSnapshot(c: C, matchedChunk: Option[DirectChunk], producedChunk: DirectChunk): C =
+    c.snapshotRecorder match {
+      case Some(sr) =>
+        val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(producedChunk).id -> sr.currentSnap))
+        c.copy(snapshotRecorder = Some(sr1))
+      case _ => c
+    }
+
+  private def recordProducedChunk(c: C, producedChunk: DirectChunk, guards: Stack[Term]): C =
+    c.recordEffects match {
+      case true => c.copy(producedChunks = c.producedChunks :+ (guards -> producedChunk))
+      case false => c
+    }
 
   private def getOptimalSnapshotSort(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil)
                                     : (Sort, Boolean) =

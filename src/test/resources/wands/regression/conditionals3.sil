@@ -2,14 +2,116 @@ field f: Bool
 field g: Int
 field h: Ref
 
-method test01(x: Ref, b1: Bool, b2: Bool) {
-  inhale acc(x.f) && acc(x.g)
+//method test01(x: Ref, b1: Bool, b2: Bool) {
+//  inhale acc(x.f) && acc(x.g)
+//
+//  package (b1 ? acc(x.f, 1/10) : acc(x.g, 1/10)) --* true
+//}
+//
+//method test03(x: Ref, b1: Bool, b2: Bool) {
+//  inhale acc(x.f) && acc(x.g)
+//
+//  package
+//    true
+//      --*
+//    (b1 ==> acc(x.g, 1/10) && acc(x.g, 1/10))
+//
+//  assert perm(x.g) == (!b1 ? write : 8/10)
+//}
+//
+//method test05(x: Ref, b: Bool) {
+//  inhale acc(x.f) && acc(x.g)
+//
+//  package true --*    acc(x.f, 1/10)
+//                   && acc(x.g, 1/10)
+//                   && acc(x.f, 1/10)
+//                   && (b ==> acc(x.g, 1/10))
+//                   && acc(x.f, 1/10)
+//
+//  assert perm(x.f) == 7/10
+//  assert perm(x.g) ==(b ? 8/10 : 9/10)
+//}
+//
+//method test02(x: Ref, b1: Bool, b2: Bool) {
+//  inhale acc(x.f) && acc(x.g)
+//
+//  package
+//    (b1 ? acc(x.f, 1/10) : acc(x.g, 1/10))
+//      --*
+//       (!b1 ? (acc(x.f, 1/10) && acc(x.f, 1/10))
+//            : (acc(x.g, 1/10) && acc(x.g, 1/10)))
+//    && ( b2 ? acc(x.f, 2/10)
+//            : acc(x.g, 2/10))
+//
+//  assert  b1 &&  b2 ==> perm(x.f) ==  9/10 && perm(x.g) ==  8/10
+//  assert  b1 && !b2 ==> perm(x.f) == 10/10 && perm(x.g) ==  6/10
+//  assert !b1 &&  b2 ==> perm(x.f) ==  6/10 && perm(x.g) == 10/10
+//  assert !b1 && !b2 ==> perm(x.f) ==  8/10 && perm(x.g) ==  9/10
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert false
+//}
+//
+predicate P(x: Ref, b: Bool) { b ? acc(x.f, 5/10) : acc(x.g, 5/10) }
+//
+//method test04(x: Ref, b1: Bool, b2: Bool, b3: Bool) {
+//  inhale acc(x.f, 5/10) && acc(x.g, 5/10)
+//  inhale acc(P(x, b2))
+//
+//  package
+//    (b1 ? acc(x.f, 1/10) : acc(x.g, 1/10))
+//      --*
+//    unfolding P(x, b2) in    acc(x.f, 2/10)
+//                          && acc(x.g, 2/10)
+//                          && (b3 ? acc(x.f, 3/10) : acc(x.g, 3/10))
+//
+//  assert  b1 &&  b2 &&  b3 ==> perm(x.f) == 5/10 && perm(x.g) == 3/10
+//  assert  b1 &&  b2 && !b3 ==> perm(x.f) == 5/10 && perm(x.g) == none
+//  assert  b1 && !b2 &&  b3 ==> perm(x.f) == 1/10 && perm(x.g) == 5/10
+//  assert  b1 && !b2 && !b3 ==> perm(x.f) == 4/10 && perm(x.g) == 5/10
+//
+//  assert !b1 &&  b2 &&  b3 ==> perm(x.f) == 5/10 && perm(x.g) == 4/10
+//  assert !b1 &&  b2 && !b3 ==> perm(x.f) == 5/10 && perm(x.g) == 1/10
+//  assert !b1 && !b2 &&  b3 ==> perm(x.f) == none && perm(x.g) == 5/10
+//  assert !b1 && !b2 && !b3 ==> perm(x.f) == 3/10 && perm(x.g) == 5/10
+//
+//  //:: ExpectedOutput(assert.failed:assertion.false)
+//  assert !b1 && !b2 && !b3 ==> false
+//}
+
+method test07(x: Ref, b2: Bool, b3: Bool) {
+  inhale acc(x.f, 5/10)
+  inhale acc(P(x, b2))
 
   package
-    (b1 ? acc(x.f, 1/10) : acc(x.g, 1/10))
-      --* true
-//       !b1 ? (acc(x.f, 1/10) && acc(x.f, 1/10))
-//           : (acc(x.g, 1/10) && acc(x.g, 1/10))
-//    &&  b2 ? acc(x.f, 2/10)
-//           : acc(x.g, 2/10)
+    true //(b1 ==> acc(x.f, 1/10))
+      --*
+    unfolding acc(P(x, b2)) in
+    packaging (true --* (b3 ==> acc(x.f, 2/10))) in
+    b2 ==> acc(x.f, 8/10)
+
+  assert  b2 &&  b3 ==> perm(x.f) == none
+  assert  b2 && !b3 ==> perm(x.f) == 3/10
 }
+
+//method test06(x: Ref, b1: Bool, b2: Bool, b3: Bool) {
+//  inhale acc(x.f, 5/10) && acc(x.g, 5/10)
+//  inhale acc(P(x, b2))
+//
+//  package
+//    (b1 ? acc(x.f, 1/10) : acc(x.g, 1/10))
+//      --*
+//    unfolding acc(P(x, b2)) in
+//    packaging ((b2 ==> acc(x.g, 1/10)) --* (b3 ? acc(x.f, 2/10) : acc(x.g, 1/10))) in
+//    (b1 && b2) ? acc(x.f, 8/10) : acc(x.g, 3/10)
+//
+////  assert  b1 &&  b2 &&  b3 ==>
+////  assert  b1 &&  b2 && !b3 ==>
+////  assert  b1 && !b2 &&  b3 ==>
+////  assert  b1 && !b2 && !b3 ==>
+////
+////  assert !b1 &&  b2 &&  b3 ==>
+////  assert !b1 &&  b2 && !b3 ==>
+////  assert !b1 && !b2 &&  b3 ==>
+////  assert !b1 && !b2 && !b3 ==>
+//}

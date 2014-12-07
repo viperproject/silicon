@@ -32,8 +32,9 @@ case class DefaultContext[H <: Heap[H]]
                           heuristicsDepth: Int = 0,
                           triggerAction: AnyRef = null,
 
-                          recordConsumedChunks: Boolean = false,
-                          consumedChunks: Seq[(Stack[Term], DirectChunk)] = Nil)
+                          recordEffects: Boolean = false,
+                          producedChunks: Seq[(Stack[Term], DirectChunk)] = Nil,
+                          consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] = Nil)
 
     extends Context[DefaultContext[H]] {
 
@@ -68,14 +69,14 @@ case class DefaultContext[H <: Heap[H]]
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
-                        recordConsumedChunks1, consumedChunks1) =>
+                        recordConsumedChunks1, producedChunks1, consumedChunks1) =>
 
       other match {
         case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`,
                             additionalTriggers2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                            `recordConsumedChunks1`, consumedChunks2) =>
+                            `recordConsumedChunks1`, `producedChunks1`, `consumedChunks1`) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
           val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
@@ -83,8 +84,7 @@ case class DefaultContext[H <: Heap[H]]
 
           copy(additionalTriggers = additionalTriggers3,
                snapshotRecorder = snapshotRecorder3,
-               possibleTriggers = possibleTriggers3,
-               consumedChunks = consumedChunks1 ++ consumedChunks2)
+               possibleTriggers = possibleTriggers3)
 
         case _ =>
           sys.error("Unexpected mismatch between contexts")

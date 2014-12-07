@@ -77,7 +77,7 @@ method test20a(x: Ref)
     //
     // This gives rise to the following table (where t/f denote true/false):
     //
-    //    tf' | tf'' | permission constraints for x.f, x.g | possible?
+    //    tf' | tf'' | permission constraints for x.f, x.h | possible?
     //   --------------------------------------------------------------
     //     t  |  t   | w - w + w <= w,  w - n + n <= w     |  yes
     //     t  |  f   | w - w + n <= w,  w - n + w <= w     |  no
@@ -85,9 +85,10 @@ method test20a(x: Ref)
     //     f  |  f   | w - n + n <= w,  w - w + w <= w     |  yes
     //   --------------------------------------------------------------
     //
-    // Hence, we now know that we either gave permissions to x.f away and got
-    // it back (and kept those to x.g in the meantime), or the other way around.
+    // Hence, we now know that we either gave permissions to x.g away and got
+    // it back (and kept those to x.h in the meantime), or the other way around.
 
+  assert acc(x.g)
   assert acc(x.f) && acc(x.g) && acc(x.h)
 
   //:: ExpectedOutput(assert.failed:assertion.false)

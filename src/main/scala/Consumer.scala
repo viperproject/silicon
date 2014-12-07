@@ -315,16 +315,27 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val c2 = c1.copy(reserveHeaps = hs)
         val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
 
-        /* The last heap in the stack should be the one corresponding to the
-         * pre-package heap. It should be sufficient to record consumptions
-         * from this heap in order to be able to join branches after executing
-         * a package-statement.
-         */
-        val c3 = chs.last match {
-          case Some(ch) if c2.recordConsumedChunks =>
-            c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
-          case _ => c2
-        }
+        val c3 =
+          if (c2.recordEffects) {
+            assert(chs.length == c2.consumedChunks.length)
+
+            val consumedChunks3 =
+              chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], DirectChunk)]]()) {
+                case (accConsumedChunks, (optCh, consumed)) =>
+                  optCh match {
+                    case Some(ch) => ((guards -> ch) +: consumed) :: accConsumedChunks
+                    case None => consumed :: accConsumedChunks
+                }
+            }.reverse
+
+            c2.copy(consumedChunks = consumedChunks3)
+          } else
+              c2
+//        val c3 = chs.last match {
+//          case Some(ch) if c2.recordEffects =>
+//            c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
+//          case _ => c2
+//        }
 
         val usedChunks = chs.flatten
         /* Returning any of the usedChunks should be fine w.r.t to the snapshot
