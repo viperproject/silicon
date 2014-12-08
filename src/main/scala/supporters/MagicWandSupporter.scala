@@ -202,34 +202,59 @@ trait MagicWandSupporter[ST <: Store[ST],
       val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
 
 //      cntXXX += 1
-//      println(s"\n[start packageWand]")
-//      println(s"  wand = $wand")
-//      println(s"  last reserve heap = ${c.reserveHeaps.last}")
+      println(s"\n[start packageWand]")
+      println(s"  wand = $wand")
+//      println(s"  c.reserveHeaps.length = ${c.reserveHeaps.length}")
+      println("  c.reserveHeaps:")
+      println("    " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n    ", ""))
 
-      decider.pushScope()
-      val stackSize = c.reserveHeaps.length + 1 /* Match size of c2.reserveHeaps below */
+      val stackSize = c.reserveHeaps.length + 1 /* IMPORTANT: Must match size of reserveHeaps at [CTX] below */
       val allConsumedChunks: MStack[MMap[Stack[Term], MList[DirectChunk]]] = MStack()
-      println(s"c.reserveHeaps.length = ${c.reserveHeaps.length}")
+      val allProducedChunks: MMap[Stack[Term], MList[DirectChunk]] = MMap()
+
       0.until(stackSize).foreach(_ => allConsumedChunks.push(MMap()))
 
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
 
+      decider.pushScope()
+
       val r =
         produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
-          val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail,
+          val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail, /* [CTX] */
                            exhaleExt = true,
                            lhsHeap = Some(σLhs.h),
                            recordEffects = true,
+                           producedChunks = Nil,
                            consumedChunks = Stack().padTo(stackSize, Nil))
           consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
             val c4 = c3.copy(recordEffects = c.recordEffects,
+                             producedChunks = c.producedChunks,
                              consumedChunks = c.consumedChunks)
             magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
 
-              println(s"  c3.consumedChunks:")
-              println("    " + c3.consumedChunks.mkString("", ",\n    ", ""))
+              println(s"\n  -- end of branch")
+              println(s"    c3.producedChunks = ${c3.producedChunks}")
+
+              val producedChunks: MMap[Stack[Term], MList[DirectChunk]] = MMap()
+
+              c3.producedChunks.foreach{ case (guards, chunk) =>
+                producedChunks.getOrElseUpdate(guards, MList()) += chunk}
+
+              println(s"    producedChunks = $producedChunks")
+
+              producedChunks.foreach{ case (guards, chunks) =>
+                allProducedChunks.get(guards) match {
+                  case Some(chunks1) => assert(chunks1 == chunks)
+                  case None => allProducedChunks(guards) = chunks
+                }
+              }
+
+              println(s"    allProducedChunks = $allProducedChunks")
+
+              println(s"    c3.consumedChunks:")
+              println("      " + c3.consumedChunks.mkString("", ",\n      ", ""))
 
               assert(c3.consumedChunks.length == allConsumedChunks.length)
 //              val consumedChunks: Stack[MMap[Stack[Term], MList[DirectChunk]]] = Stack()
@@ -245,8 +270,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                   cchs
                 })
 
-              println(s"  consumedChunks:")
-              println("    " + consumedChunks.mkString("", ",\n    ", ""))
+              println(s"    consumedChunks:")
+              println("      " + consumedChunks.mkString("", ",\n      ", ""))
 
               assert(consumedChunks.length == allConsumedChunks.length)
 
@@ -259,8 +284,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                 }
               }
 
-              println(s"  allConsumedChunks:")
-              println("    " + allConsumedChunks.mkString("", ",\n    ", ""))
+              println(s"    allConsumedChunks:")
+              println("      " + allConsumedChunks.mkString("", ",\n      ", ""))
 
                   //              c3.consumedChunks.foreach { case (guards, chunk) =>
                   //                val recordedChunks = consumedChunks.get(guards) match {
@@ -275,9 +300,10 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       decider.popScope()
 
-      println(s"[end packageWand]")
+      println(s"\n[end packageWand]")
 //      cntXXX -= 1
       println(s"  produced magic wand chunk $magicWandChunk")
+      println(s"  allProducedChunks = $allProducedChunks")
       println(s"  allConsumedChunks:")
       println("    " + allConsumedChunks.mkString("", ",\n    ", ""))
       println(s"  recorded ${contexts.length} contexts")
@@ -286,14 +312,91 @@ trait MagicWandSupporter[ST <: Store[ST],
 //        println(s"    consumedChunks = ${c.consumedChunks}")}
 
       r && {
-        val reserveHeaps = contexts.map(_.reserveHeaps)
-        assert(reserveHeaps.map(_.length).toSet.size == 1)
+        assert(contexts.map(_.reserveHeaps).map(_.length).toSet.size == 1)
 
 //        assert(reserveHeaps.tail.forall(_.init.zipWithIndex.forall { case (h, n) =>
 //          n == 1 || h == reserveHeaps.head(n)
 //        }))
 
-        val h1 = c.reserveHeaps.last.values
+        val joinedReserveHeaps: Stack[MList[Chunk]] = ( /* IMPORTANT: Must match structure of [CTX] above */
+               (MList() ++ c.reserveHeaps.head.values)
+            +: MList[Chunk]() /* σLhs.h at [CTX] above */
+            +: c.reserveHeaps.tail.map(h => MList() ++ h.values)
+          )
+
+        assert(joinedReserveHeaps.length == stackSize)
+
+        println("\n  Computing joined reserve heaps. Initial stack:")
+        println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
+
+        allProducedChunks.foreach { case (guards, chunks) =>
+          chunks.foreach(ch => {
+            val pGain = Ite(And(guards), ch.perm, NoPerm())
+            var added = false
+
+            ch match {
+              case fc: DirectFieldChunk =>
+                joinedReserveHeaps.head.transform {
+                  case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
+                    added = true
+                    fc.copy(perm = PermPlus(ch1.perm, pGain))
+                  case ch1 => ch1
+                }
+
+              case pc: DirectPredicateChunk =>
+                joinedReserveHeaps.head.transform {
+                  case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
+                    added = true
+                    pc.copy(perm = PermPlus(ch1.perm, pGain))
+                  case ch1 => ch1
+                }
+            }
+
+            if (!added) joinedReserveHeaps.head += ch
+          })
+        }
+
+        println("\n  Stack after adding allProducedChunks:")
+        println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
+
+        joinedReserveHeaps.zip(allConsumedChunks).foreach { case (hR, allcchs) =>
+          allcchs.foreach { case (guards, chunks) =>
+            println("")
+            chunks.foreach(ch => {
+              val pLoss = Ite(And(guards), ch.perm, NoPerm())
+              var matched = false
+
+              ch match {
+                case fc: DirectFieldChunk =>
+                  hR.transform {
+                    case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
+                      matched = true
+                      fc.copy(perm = PermMinus(ch1.perm, pLoss))
+                    case ch1 => ch1
+                  }
+
+                case pc: DirectPredicateChunk =>
+                  hR.transform {
+                    case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
+                      matched = true
+                      pc.copy(perm = PermMinus(ch1.perm, pLoss))
+                    case ch1 => ch1
+                  }
+              }
+
+              if (!matched) {
+                println(s"  Couldn't find a match for $ch")
+                println(s"    hR = $hR")
+                println(s"    guards = $guards")
+                println(s"    chunks = $chunks")
+                assert(matched)
+              }
+            })
+        }}
+
+        println("\n  Finished joined reserve heaps. Final stack:")
+        println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
+
 //        val h1 = allConsumedChunks.foldLeft(c.reserveHeaps.last.values){case (accChunks, (guards, chunks)) =>
 //          chunks.foldLeft(accChunks)((accChunks1, ch) => {
 //            val pLoss = Ite(And(guards), ch.perm, NoPerm())
@@ -315,8 +418,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 //        }
 
         /* TODO: Merge contexts */
-        /* TODO: Join path conditions */
-        val c1 = contexts(0).copy(reserveHeaps = contexts(0).reserveHeaps.init :+ H(h1))
+        val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)))
 
         Q(magicWandChunk, c1)
       }

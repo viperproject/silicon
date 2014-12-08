@@ -161,22 +161,30 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             decider.assert(σC, perms.IsNonNegative(tPerm)){
               case true =>
                 heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consumePermissions ${φ.pos}: $φ")(σC, h, c2)((σC, h, c2, QS) => {
-                  consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
-                    val c4 = c3.snapshotRecorder match {
-                      case Some(sr) =>
-                        c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-                      case _ => c3}
-                    ch match {
-                      case fc: DirectFieldChunk =>
-                        val snap = fc.value.convert(sorts.Snap)
-                        QS(h1, snap, fc :: Nil, c4)
-                      case pc: DirectPredicateChunk =>
-                        val h2 =
-                          if (results.consumedCompletely)
-                            pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
-                          else
-                            h1
-                        QS(h2, pc.snap, pc :: Nil, c4)}})
+                  consumePermissions(σC, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, optCh, c3, results) =>
+                    optCh match {
+                      case Some(ch) =>
+                        val c4 = c3.snapshotRecorder match {
+                          case Some(sr) =>
+                            c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
+                          case _ => c3}
+                        ch match {
+                          case fc: DirectFieldChunk =>
+                            val snap = fc.value.convert(sorts.Snap)
+                            QS(h1, snap, fc :: Nil, c4)
+                          case pc: DirectPredicateChunk =>
+                            val h2 =
+                              if (results.consumedCompletely)
+                                pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
+                              else
+                                h1
+                            QS(h2, pc.snap, pc :: Nil, c4)}
+                      case None =>
+                        /* Not having consumed anything could mean that we are in an infeasable
+                         * branch, or that the permission amount to consume was zero.
+                         */
+                        QS(h1, Unit, Nil, c3)
+                    })
                 })(Q)
 
               case false =>
@@ -302,7 +310,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C)
-                                (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
+                                (Q: (H, Option[DirectChunk], C, PermissionsConsumptionResult) => VerificationResult)
                                 : VerificationResult = {
 
     /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
@@ -342,18 +350,18 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          * of the chunk, since consumeFromMultipleHeaps should have equated the
          * snapshots of all usedChunks.
          */
-        Q(h + H(usedChunks), usedChunks.head, c3, pcr)})
+        Q(h + H(usedChunks), usedChunks.headOption, c3, pcr)})
 
     if (utils.consumeExactRead(pLoss, c)) {
       decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
         if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
-          Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
+          Q(h - ch, Some(ch), c, PermissionsConsumptionResult(true))}
         else
-          Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
+          Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
     } else {
       decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
         assume(PermLess(pLoss, ch.perm))
-        Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
+        Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
     }
   }
 }
