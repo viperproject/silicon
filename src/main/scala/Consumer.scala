@@ -240,8 +240,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         magicWandSupporter.packageWand(σ, eWand, pve, c)((chWand, c1) => {
           val h2 = h + chWand /* h2 = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + h2
-          val c2 = c1.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
-                           exhaleExt = c.exhaleExt,
+          val c2 = c1.copy(exhaleExt = c.exhaleExt,
+                           reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
+                           consumedChunks = c1.consumedChunks.head +: c1.consumedChunks.drop(2),
                            lhsHeap = None)
           val σEmp = Σ(σ.γ, Ø, σ.g)
           consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, _, c3) =>

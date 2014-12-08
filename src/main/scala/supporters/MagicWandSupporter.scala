@@ -205,6 +205,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       println(s"\n[start packageWand]")
       println(s"  wand = $wand")
 //      println(s"  c.reserveHeaps.length = ${c.reserveHeaps.length}")
+//      println(s"  c.producedChunks = ${c.producedChunks}")
       println("  c.reserveHeaps:")
       println("    " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n    ", ""))
 
@@ -226,11 +227,12 @@ trait MagicWandSupporter[ST <: Store[ST],
                            lhsHeap = Some(σLhs.h),
                            recordEffects = true,
                            producedChunks = Nil,
+//                           consumedChunks = c.consumedChunks.head +: Stack() +: c.consumedChunks.tail)
                            consumedChunks = Stack().padTo(stackSize, Nil))
           consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
-            val c4 = c3.copy(recordEffects = c.recordEffects,
-                             producedChunks = c.producedChunks,
-                             consumedChunks = c.consumedChunks)
+            val c4 = c3.copy(recordEffects = false, //c.recordEffects,
+                             producedChunks = Nil, //c.producedChunks,
+                             consumedChunks = Stack() /*c.consumedChunks*/)
             magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
 
@@ -359,7 +361,13 @@ trait MagicWandSupporter[ST <: Store[ST],
         println("\n  Stack after adding allProducedChunks:")
         println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
 
-        joinedReserveHeaps.zip(allConsumedChunks).foreach { case (hR, allcchs) =>
+        /* Replace the second top-most layer of allConsumedChunks with Nil
+         * because we don't want to (and din't need to) replay the effects on
+         * the that layer since it corresponds to the LHS heap.
+         * The corresponding level in joinedReserveHeaps is empty, and we thus
+         * cannot consume from it anyway.
+         */
+        joinedReserveHeaps.zip(allConsumedChunks.head +: Nil +: allConsumedChunks.drop(2)).foreach { case (hR, allcchs) =>
           allcchs.foreach { case (guards, chunks) =>
             println("")
             chunks.foreach(ch => {
@@ -417,8 +425,24 @@ trait MagicWandSupporter[ST <: Store[ST],
 //          })
 //        }
 
+        assert(allConsumedChunks.length == c.consumedChunks.length + 1)
+
+        val consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] =
+          allConsumedChunks.zip(c.consumedChunks.head +: Nil +: c.consumedChunks.tail).map { case (allcchs, cchs) =>
+            cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
+
+//        val consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] =
+//          allConsumedChunks.map(allcchs =>
+//            allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))})
+
+        println("\n  Exiting packageWand. Final consumedChunks:")
+        println("    " + consumedChunks.mkString("", ",\n    ", ""))
+
         /* TODO: Merge contexts */
-        val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)))
+        val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
+                                  recordEffects = c.recordEffects,
+                                  producedChunks = c.producedChunks,
+                                  consumedChunks = consumedChunks)
 
         Q(magicWandChunk, c1)
       }
