@@ -82,7 +82,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/9/)
+    //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/21/)
     package A --* folding List(prev) in applying w in B
   }
 

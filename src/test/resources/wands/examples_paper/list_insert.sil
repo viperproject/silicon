@@ -76,7 +76,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     assert old(elems(xs))[i+1] == elems(nxt)[0]
 
 //    wand w := A --* B
-    var prev: Ref := crt
+    var prev: Ref := crt /* TODO: See issue 22 */
     unfold List(nxt)
     crt := nxt
     nxt := nxt.next
