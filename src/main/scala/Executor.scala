@@ -11,27 +11,26 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, MagicWandChunkNotFound,
-    NamedMagicWandChunkNotFound}
+import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, NamedMagicWandChunkNotFound}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{MagicWandChunk, PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk,
-    SymbolConvert, DirectChunk, NestedFieldChunk, NestedPredicateChunk, DefaultContext}
+import state.{MagicWandChunk, FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsPositive
-import supporters.MagicWandSupporter
+import silicon.supporters.{PredicateSupporter, MagicWandSupporter}
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
-											PC <: PathConditions[PC],
+                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ST, H, S, DefaultContext[H]]
-		{ this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
-									  with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-									  with Producer[ST, H, S, DefaultContext[H]]
-									  with Brancher[ST, H, S, DefaultContext[H]]
+    extends Executor[ST, H, S, DefaultContext[H]]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
+                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+                    with Producer[ST, H, S, DefaultContext[H]]
+                    with PredicateSupporter[ST, H, PC, S]
+                    with Brancher[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
@@ -39,20 +38,20 @@ trait DefaultExecutor[ST <: Store[ST],
 
   protected implicit val manifestH: Manifest[H]
 
-	protected val decider: Decider[ST, H, PC, S, C]
-	import decider.{fresh, assume, inScope}
+  protected val decider: Decider[ST, H, PC, S, C]
+  import decider.{fresh, assume, inScope}
 
-	protected val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
-	protected val symbolConverter: SymbolConvert
+  protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
 
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
   private def follow(σ: S, edge: ast.CFGEdge, c: C)
@@ -180,7 +179,7 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   def exec(σ: S, stmt: ast.Statement, c: C)
-			    (Q: (S, C) => VerificationResult)
+          (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
     /* For debugging-purposes only */
@@ -193,7 +192,7 @@ trait DefaultExecutor[ST <: Store[ST],
         decider.prover.logComment(stmt.toString)
     }
 
-		val executed = stmt match {
+    val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
 
@@ -315,55 +314,18 @@ trait DefaultExecutor[ST <: Store[ST],
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)){
                 case true =>
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ \ insγ, tPerm, predicate.body, pve, c2)((σ1, snap, dcs, c3) => {
-                  val ncs = dcs flatMap {
-                    case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
-                    case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
-                    case _: MagicWandChunk => None}
-
-                    /* Producing Access is unfortunately not an option here
-                     * since the following would fail due to productions
-                     * starting in an empty heap:
-                     *
-                     *   predicate V { acc(x) }
-                     *
-                     *   function f(a: int): int
-                     *	   requires rd(x)
-                     * 	 { x + a }
-                     *
-                     *   method test(a: int)
-                     *     requires ... ensures ...
-                     *   { fold acc(V, f(a)) }
-                     *
-                     * Fold would fail since acc(V, f(a)) is produced in an
-                     * empty and thus f(a) fails due to missing permissions to
-                     * read x.
-                     *
-                     */
-                    val id = PredicateChunkIdentifier(predicate.name, tArgs)
-                    val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id, c3) match {
-                      case Some(pc) => (σ1.h - pc,
-                                        pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap),
-                                        PermPlus(pc.perm, tPerm))
-                      case None => (σ1.h, True(), tPerm)}
-                    assume(t)
-                    val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
-                    Q(σ \ h1, c3)})
+                  predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
-      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
+      case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsPositive(tPerm)){
                 case true =>
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) =>
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) =>
-                      Q(σ2 \ σ.γ, c4)))
+                  predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
@@ -422,8 +384,8 @@ trait DefaultExecutor[ST <: Store[ST],
            | _: silver.ast.Seqn
            | _: silver.ast.Constraining
            | _: silver.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
-		}
+    }
 
-		executed
-	}
+    executed
+  }
 }

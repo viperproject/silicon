@@ -10,8 +10,8 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.ast.Position
 import util.control.Breaks._
-import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Internal, FunctionNotWellformed,
-    PredicateNotWellformed, MagicWandNotWellformed}
+import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed,
+    MagicWandNotWellformed}
 import silver.components.StatefulComponent
 import silver.ast.utility.{Nodes, Visitor}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
@@ -23,16 +23,16 @@ import state.terms.{sorts, Sort}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
-import supporters.{HeuristicsSupporter, MagicWandSupporter}
+import supporters.{ChunkSupporter, PredicateSupporter, HeuristicsSupporter, MagicWandSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
-														 H <: Heap[H], PC <: PathConditions[PC],
-														 S <: State[ST, H, S]]
-		extends Logging
-		   with Evaluator[ST, H, S, DefaultContext[H]]
-		   with Producer[ST, H, S, DefaultContext[H]]
-		   with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-		   with Executor[ST, H, S, DefaultContext[H]]
+                             H <: Heap[H], PC <: PathConditions[PC],
+                             S <: State[ST, H, S]]
+    extends Logging
+       with Evaluator[ST, H, S, DefaultContext[H]]
+       with Producer[ST, H, S, DefaultContext[H]]
+       with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+       with Executor[ST, H, S, DefaultContext[H]]
        with FunctionsSupporter[ST, H, PC, S] {
 
   private type C = DefaultContext[H]
@@ -148,7 +148,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
      * rules in Smans' paper.
      */
     inScope {
-			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
+      produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
         val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
            (inScope {
               /* TODO: Checking self-framingness here fails if pold(e) reads a location
@@ -194,11 +194,13 @@ class DefaultElementVerifier[ST <: Store[ST],
      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
     (protected implicit val manifestH: Manifest[H])
-		extends AbstractElementVerifier[ST, H, PC, S]
+    extends AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
+       with ChunkSupporter[ST, H, PC, S]
+       with PredicateSupporter[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext[H]]
@@ -346,7 +348,7 @@ trait AbstractVerifier[ST <: Store[ST],
 class DefaultVerifier[ST <: Store[ST],
                       H <: Heap[H] : Manifest,
                       PC <: PathConditions[PC],
-											S <: State[ST, H, S]]
+                      S <: State[ST, H, S]]
     (val config: Config,
      val decider: Decider[ST, H, PC, S, DefaultContext[H]],
      val stateFactory: StateFactory[ST, H, S],
@@ -360,7 +362,7 @@ class DefaultVerifier[ST <: Store[ST],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
-		extends AbstractVerifier[ST, H, PC, S]
+    extends AbstractVerifier[ST, H, PC, S]
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
