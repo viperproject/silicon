@@ -2,7 +2,7 @@ package viper
 package silicon
 package supporters
 
-import com.weiglewilczek.slf4s.Logging
+import com.weiglewilczek.slf4s.{Logger, Logging}
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
 import interfaces.{Success, Evaluator, Consumer, Producer, VerificationResult, Failure}
@@ -192,7 +192,8 @@ trait MagicWandSupporter[ST <: Store[ST],
       }
     }
 
-//    var cntXXX: Int = 0
+    private var cnt = 0L
+    private val packageLogger = Logger("package")
 
     def packageWand(σ: S, wand: ast.MagicWand, pve: PartialVerificationError, c: C)
                    (Q: (MagicWandChunk, C) => VerificationResult)
@@ -201,19 +202,39 @@ trait MagicWandSupporter[ST <: Store[ST],
       val σEmp = Σ(σ.γ, Ø, σ.g)
       val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
 
-//      cntXXX += 1
-      println(s"\n[start packageWand]")
-      println(s"  wand = $wand")
-//      println(s"  c.reserveHeaps.length = ${c.reserveHeaps.length}")
-//      println(s"  c.producedChunks = ${c.producedChunks}")
-      println("  c.reserveHeaps:")
-      println("    " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n    ", ""))
+      /* TODO: Logging code is very similar to that in HeuristicsSupporter. Unify. */
+      val myId = cnt; cnt += 1
+      val baseIdent = "  "
+      var printedHeader = false
+
+      def lnsay(msg: String, ident: Int = 1) {
+        val prefix = "\n" + (if (ident == 0) "" else baseIdent)
+        dosay(prefix, msg, ident - 1)
+      }
+
+      def say(msg: String, ident: Int = 1) {
+        val prefix = if (ident == 0) "" else baseIdent
+        dosay(prefix, msg, ident - 1)
+      }
+
+      def dosay(prefix: String, msg: String, ident: Int) {
+        if (!printedHeader) {
+          packageLogger.debug(s"\n[packageWand $myId]")
+          printedHeader = true
+        }
+
+        val messagePrefix = baseIdent * ident
+        packageLogger.debug(s"$prefix$messagePrefix $msg")
+      }
+
+      say(s"wand = $wand")
+      say(s"c.producedChunks = ${c.producedChunks}")
+      say("c.reserveHeaps:")
+      c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
 
       val stackSize = c.reserveHeaps.length + 1 /* IMPORTANT: Must match size of reserveHeaps at [CTX] below */
-      val allConsumedChunks: MStack[MMap[Stack[Term], MList[DirectChunk]]] = MStack()
       val allProducedChunks: MMap[Stack[Term], MList[DirectChunk]] = MMap()
-
-      0.until(stackSize).foreach(_ => allConsumedChunks.push(MMap()))
+      val allConsumedChunks: Stack[MMap[Stack[Term], MList[DirectChunk]]] = Stack.fill(stackSize)(MMap())
 
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
@@ -227,24 +248,23 @@ trait MagicWandSupporter[ST <: Store[ST],
                            lhsHeap = Some(σLhs.h),
                            recordEffects = true,
                            producedChunks = Nil,
-//                           consumedChunks = c.consumedChunks.head +: Stack() +: c.consumedChunks.tail)
-                           consumedChunks = Stack().padTo(stackSize, Nil))
+                           consumedChunks = Stack.fill(stackSize)(Nil))
           consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
-            val c4 = c3.copy(recordEffects = false, //c.recordEffects,
-                             producedChunks = Nil, //c.producedChunks,
-                             consumedChunks = Stack() /*c.consumedChunks*/)
+            val c4 = c3.copy(recordEffects = false,
+                             producedChunks = Nil,
+                             consumedChunks = Stack())
             magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
 
-              println(s"\n  -- end of branch")
-              println(s"    c3.producedChunks = ${c3.producedChunks}")
+              lnsay(s"-- reached local end of packageWand $myId --")
+              say(s"c3.producedChunks = ${c3.producedChunks}", 2)
 
               val producedChunks: MMap[Stack[Term], MList[DirectChunk]] = MMap()
 
               c3.producedChunks.foreach{ case (guards, chunk) =>
                 producedChunks.getOrElseUpdate(guards, MList()) += chunk}
 
-              println(s"    producedChunks = $producedChunks")
+              say(s"producedChunks = $producedChunks", 2)
 
               producedChunks.foreach{ case (guards, chunks) =>
                 allProducedChunks.get(guards) match {
@@ -253,13 +273,11 @@ trait MagicWandSupporter[ST <: Store[ST],
                 }
               }
 
-              println(s"    allProducedChunks = $allProducedChunks")
-
-              println(s"    c3.consumedChunks:")
-              println("      " + c3.consumedChunks.mkString("", ",\n      ", ""))
+              say(s"allProducedChunks = $allProducedChunks", 2)
+              lnsay(s"c3.consumedChunks:", 2)
+              c3.consumedChunks.foreach(x => say(x.toString(), 3))
 
               assert(c3.consumedChunks.length == allConsumedChunks.length)
-//              val consumedChunks: Stack[MMap[Stack[Term], MList[DirectChunk]]] = Stack()
 
               val consumedChunks: Stack[MMap[Stack[Term], MList[DirectChunk]]] =
                 c3.consumedChunks.map(pairs => {
@@ -272,8 +290,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                   cchs
                 })
 
-              println(s"    consumedChunks:")
-              println("      " + consumedChunks.mkString("", ",\n      ", ""))
+              say(s"consumedChunks:", 2)
+              consumedChunks.foreach(x => say(x.toString(), 3))
 
               assert(consumedChunks.length == allConsumedChunks.length)
 
@@ -286,39 +304,26 @@ trait MagicWandSupporter[ST <: Store[ST],
                 }
               }
 
-              println(s"    allConsumedChunks:")
-              println("      " + allConsumedChunks.mkString("", ",\n      ", ""))
+              say(s"allConsumedChunks:", 2)
+              allConsumedChunks.foreach(x => say(x.toString(), 3))
 
-                  //              c3.consumedChunks.foreach { case (guards, chunk) =>
-                  //                val recordedChunks = consumedChunks.get(guards) match {
-                  ////                  case Some(chunks) =>
-                  ////                    assert(chunks == )
-                  ////                    chunks
-                  ////                  case None => MList()
-                  ////                }
-                  //                consumedChunks.getOrElseUpdate(guards, MList()) += chunk}
               contexts :+= c5
               Success()})})})
 
       decider.popScope()
 
-      println(s"\n[end packageWand]")
-//      cntXXX -= 1
-      println(s"  produced magic wand chunk $magicWandChunk")
-      println(s"  allProducedChunks = $allProducedChunks")
-      println(s"  allConsumedChunks:")
-      println("    " + allConsumedChunks.mkString("", ",\n    ", ""))
-      println(s"  recorded ${contexts.length} contexts")
-      contexts.foreach{c =>
-        println("    hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n         ", ""))}
-//        println(s"    consumedChunks = ${c.consumedChunks}")}
+      cnt -= 1
+      lnsay(s"[end packageWand $myId]")
+
+      say(s"produced magic wand chunk $magicWandChunk")
+      say(s"allProducedChunks = $allProducedChunks")
+      say(s"allConsumedChunks:")
+      allConsumedChunks.foreach(x => say(x.toString(), 2))
+      say(s"recorded ${contexts.length} contexts")
+      contexts.foreach(c => c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2)))
 
       r && {
         assert(contexts.map(_.reserveHeaps).map(_.length).toSet.size == 1)
-
-//        assert(reserveHeaps.tail.forall(_.init.zipWithIndex.forall { case (h, n) =>
-//          n == 1 || h == reserveHeaps.head(n)
-//        }))
 
         val joinedReserveHeaps: Stack[MList[Chunk]] = ( /* IMPORTANT: Must match structure of [CTX] above */
                (MList() ++ c.reserveHeaps.head.values)
@@ -328,8 +333,8 @@ trait MagicWandSupporter[ST <: Store[ST],
 
         assert(joinedReserveHeaps.length == stackSize)
 
-        println("\n  Computing joined reserve heaps. Initial stack:")
-        println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
+        lnsay("Computing joined reserve heaps. Initial stack:")
+        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
         allProducedChunks.foreach { case (guards, chunks) =>
           chunks.foreach(ch => {
@@ -358,8 +363,8 @@ trait MagicWandSupporter[ST <: Store[ST],
           })
         }
 
-        println("\n  Stack after adding allProducedChunks:")
-        println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
+        lnsay("Stack after adding allProducedChunks:")
+        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
         /* Replace the second top-most layer of allConsumedChunks with Nil
          * because we don't want to (and din't need to) replay the effects on
@@ -369,7 +374,6 @@ trait MagicWandSupporter[ST <: Store[ST],
          */
         joinedReserveHeaps.zip(allConsumedChunks.head +: Nil +: allConsumedChunks.drop(2)).foreach { case (hR, allcchs) =>
           allcchs.foreach { case (guards, chunks) =>
-            println("")
             chunks.foreach(ch => {
               val pLoss = Ite(And(guards), ch.perm, NoPerm())
               var matched = false
@@ -393,37 +397,17 @@ trait MagicWandSupporter[ST <: Store[ST],
               }
 
               if (!matched) {
-                println(s"  Couldn't find a match for $ch")
-                println(s"    hR = $hR")
-                println(s"    guards = $guards")
-                println(s"    chunks = $chunks")
+                say(s"Couldn't find a match for $ch!")
+                say(s"hR = $hR", 2)
+                say(s"guards = $guards", 2)
+                say(s"chunks = $chunks", 2)
                 assert(matched)
               }
             })
         }}
 
-        println("\n  Finished joined reserve heaps. Final stack:")
-        println("    " + joinedReserveHeaps.mkString("", ",\n    ", ""))
-
-//        val h1 = allConsumedChunks.foldLeft(c.reserveHeaps.last.values){case (accChunks, (guards, chunks)) =>
-//          chunks.foldLeft(accChunks)((accChunks1, ch) => {
-//            val pLoss = Ite(And(guards), ch.perm, NoPerm())
-//
-//            ch match {
-//              case fc: DirectFieldChunk =>
-//                accChunks1.map {
-//                  case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name => fc.copy(perm = PermMinus(ch1.perm, pLoss))
-//                  case ch1 => ch1
-//                }
-//
-//              case pc: DirectPredicateChunk =>
-//                accChunks1.map {
-//                  case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name => pc.copy(perm = PermMinus(ch1.perm, pLoss))
-//                  case ch1 => ch1
-//                }
-//            }
-//          })
-//        }
+        lnsay("Finished joined reserve heaps. Final stack:")
+        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
         assert(allConsumedChunks.length == c.consumedChunks.length + 1)
 
@@ -431,12 +415,8 @@ trait MagicWandSupporter[ST <: Store[ST],
           allConsumedChunks.zip(c.consumedChunks.head +: Nil +: c.consumedChunks.tail).map { case (allcchs, cchs) =>
             cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
 
-//        val consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] =
-//          allConsumedChunks.map(allcchs =>
-//            allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))})
-
-        println("\n  Exiting packageWand. Final consumedChunks:")
-        println("    " + consumedChunks.mkString("", ",\n    ", ""))
+        lnsay(s"Exiting packageWand $myId. Final consumedChunks:")
+        consumedChunks.foreach(x => say(x.toString(), 2))
 
         /* TODO: Merge contexts */
         val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)),

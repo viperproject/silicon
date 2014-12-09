@@ -335,8 +335,9 @@ trait HeuristicsSupporter[ST <: Store[ST],
           val h2 = h + chWand /* h2 = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + h2
           val c2 = c1.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
+                           lhsHeap = None,
                            exhaleExt = c.exhaleExt,
-                           lhsHeap = None)
+                           consumedChunks = Nil +: c1.consumedChunks.drop(2))
           val σEmp = Σ(σ.γ, H(), σ.g)
           Q(σEmp, σEmp.h, c2)})
       } else {

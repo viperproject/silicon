@@ -7,16 +7,12 @@ predicate P() { true }
 predicate Q() { true }
 predicate R() { true }
 
+define A acc(P())
+define B acc(Q())
+define C acc(R())
+
 /* A --* B --* C  ==>  A * B --* C */
 method uncurry() {
-
-  /* Define short-hands for the sake of readability (global short-hands are
-   * currently not implemented)
-   */
-  define A acc(P())
-  define B acc(Q())
-  define C acc(R())
-
   inhale A --* (B --* C) /* requires */
 
   package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
@@ -24,19 +20,11 @@ method uncurry() {
   exhale A && B --* C /* ensures */
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false /* Never trust your own implementation */
+  assert false
 }
 
 /* A * B --* C  ==>  A --* B --* C */
 method curry() {
-
-  /* Define short-hands for the sake of readability (global short-hands are
-   * currently not implemented)
-   */
-  define A acc(P())
-  define B acc(Q())
-  define C acc(R())
-
   inhale A && B --* C /* requires */
 
   package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
@@ -44,13 +32,13 @@ method curry() {
   exhale A --* (B --* C) /* ensures */
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert false /* Never trust your own implementation */
+  assert false
 }
 
 
 /* Regression tests */
 
-method wrong_curry01(x: Ref)
+method curry_test01(x: Ref)
   requires (acc(P()) && acc(Q())) --* acc(R())
   ensures acc(P()) --* (acc(Q()) --* acc(R()))
 {
@@ -60,7 +48,7 @@ method wrong_curry01(x: Ref)
   apply (acc(P()) && acc(Q())) --* acc(R())
 }
 
-method wrong_curry02(x: Ref)
+method curry_test02(x: Ref)
   requires (acc(P()) && acc(Q())) --* acc(R())
   ensures acc(P()) --* (acc(Q()) --* acc(R()))
 {
@@ -70,4 +58,17 @@ method wrong_curry02(x: Ref)
 
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale acc(P())
+}
+
+method curry_test03() {
+  inhale C
+  inhale true --* C
+
+  package true --* packaging (true --* applying (true --* C) in C) in true
+
+  exhale true --* true
+  exhale C
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
 }

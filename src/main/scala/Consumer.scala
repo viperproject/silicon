@@ -242,8 +242,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val topReserveHeap = c1.reserveHeaps.head + h2
           val c2 = c1.copy(exhaleExt = c.exhaleExt,
                            reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
-                           consumedChunks = c1.consumedChunks.head +: c1.consumedChunks.drop(2),
-                           lhsHeap = None)
+                           lhsHeap = None,
+                           consumedChunks = Nil +: c1.consumedChunks.drop(2))
           val σEmp = Σ(σ.γ, Ø, σ.g)
           consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, _, c3) =>
             Q(h3, decider.fresh(sorts.Snap), Nil, c3))})

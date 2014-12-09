@@ -2,6 +2,8 @@ field f: Bool
 field g: Int
 field h: Ref
 
+predicate P(x: Ref, b: Bool) { b ? acc(x.f, 5/10) : acc(x.g, 5/10) }
+
 method test01(x: Ref, b1: Bool, b2: Bool) {
   inhale acc(x.f) && acc(x.g)
 
@@ -51,8 +53,6 @@ method test02(x: Ref, b1: Bool, b2: Bool) {
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
-
-predicate P(x: Ref, b: Bool) { b ? acc(x.f, 5/10) : acc(x.g, 5/10) }
 
 method test04(x: Ref, b1: Bool, b2: Bool, b3: Bool) {
   inhale acc(x.f, 5/10) && acc(x.g, 5/10)
@@ -133,6 +133,22 @@ method test07(x: Ref, b1: Bool, b2: Bool) {
   assert !b1 &&  b2 ==> perm(x.f) == 3/10
   assert !b1 && !b2 ==> perm(x.f) == 5/10
 }
+
+method curry_test03(x: Ref) {
+  define C acc(x.f)
+
+  inhale C
+  inhale true --* C
+
+  package true --* packaging (true --* applying (true --* C) in C) in true
+
+  exhale true --* true
+  exhale C
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
 
 method test06(x: Ref, b1: Bool, b2: Bool, b3: Bool) {
   inhale acc(x.f, 5/10) && acc(x.g, 5/10)
