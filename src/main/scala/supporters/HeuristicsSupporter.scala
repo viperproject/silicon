@@ -303,7 +303,11 @@ trait HeuristicsSupporter[ST <: Store[ST],
                     case ts: Seq[Term] =>
                       assert(pa.args.length == ts.length)
                       val reversedArgs = backtranslate(σ.γ.values, chunks, ts, c.program)
-                      Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(pa.predicateName))(), ast.FullPerm()())())
+
+                      if (ts.length == reversedArgs.length)
+                        Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(pa.predicateName))(), ast.FullPerm()())())
+                      else
+                        None
 
                     case _ => None
                   }
