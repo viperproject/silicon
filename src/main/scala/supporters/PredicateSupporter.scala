@@ -47,6 +47,7 @@ trait PredicateSupporter[ST <: Store[ST],
           case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
           case _: MagicWandChunk => None}
         val id = PredicateChunkIdentifier(predicate.name, tArgs)
+
         /* TODO: Chunk should be produced (or added via ChunkSupporter)! */
         val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id, c1) match {
           case Some(pc) =>
@@ -57,6 +58,7 @@ trait PredicateSupporter[ST <: Store[ST],
             (σ1.h, True(), tPerm)}
         decider.assume(t)
         val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
+
         Q(σ \ h1, c1)})
     }
 
@@ -66,15 +68,31 @@ trait PredicateSupporter[ST <: Store[ST],
                tPerm: Term,
                pve: PartialVerificationError,
                c: C,
-               locacc: ast.LocationAccess)
+               predAcc: ast.PredicateAccess)
               (Q: (S, C) => VerificationResult)
               : VerificationResult = {
 
-      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      /* [2014-12-10 Malte] Changing the store (insγ) doesn't play nicely with the
+       * snapshot recorder because it might result in the same local variable
+       * being bound to different terms, e.g., in the case of fun3 at the end of
+       * functions/unfolding.sil, where the formal predicate argument x is bound
+       * to y and y.n.
+       */
+
+//      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val id = PredicateChunkIdentifier(predicate.name, tArgs)
-      chunkSupporter.consume(σ, σ.h, id, tPerm, pve, c, locacc)((h1, snap, _, c1) =>
-        produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c1)((σ2, c2) =>
-          Q(σ2 \ σ.γ, c2)))
+      chunkSupporter.consume(σ, σ.h, id, tPerm, pve, c, predAcc)((h1, snap, chs, c1) => {
+        /* [2014-12-10 Malte] The snapshot recorder used to be updated in
+         * DefaultConsumer:Unfolding, but it seems that the old value of currentSnap
+         * always corresponds to the new value. I am not sure why, though.
+         */
+//        val c1a = c1.snapshotRecorder match {
+//          case Some(sr) =>
+//            c1.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
+//          case _ => c1}
+        val body = predAcc.predicateBody(c.program) // predicate.body
+        produce(σ \ h1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) =>
+          Q(σ2 /*\ σ.γ*/, c2))})
     }
   }
 }
