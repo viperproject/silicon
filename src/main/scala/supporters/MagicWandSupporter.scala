@@ -255,11 +255,12 @@ trait MagicWandSupporter[ST <: Store[ST],
                            recordEffects = true,
                            producedChunks = Nil,
                            consumedChunks = Stack.fill(stackSize)(Nil))
-          consume(σEmp, FullPerm(), wand.right, pve, c2)((_, _, _, c3) => {
+          consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, _, c3) => {
             val c4 = c3.copy(recordEffects = false,
                              producedChunks = Nil,
-                             consumedChunks = Stack())
-            magicWandSupporter.createChunk(σ, wand, pve, c4)((ch, c5) => {
+                             consumedChunks = Stack(),
+                             letBoundVars = Nil)
+            magicWandSupporter.createChunk(σ \+ Γ(c3.letBoundVars), wand, pve, c4)((ch, c5) => {
               magicWandChunk = ch
 
               lnsay(s"-- reached local end of packageWand $myId --")

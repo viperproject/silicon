@@ -10,7 +10,7 @@ package silicon
 import silver.verifier.PartialVerificationError
 import interfaces.{Success, VerificationResult, Unreachable, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, Context}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, Context}
 import state.terms._
 import state.DefaultContext
 import reporting.Bookkeeper
@@ -340,14 +340,17 @@ trait DefaultLetHandler[ST <: Store[ST],
     extends LetHandler[ST, H, S, C]
     { this: Evaluator[ST, H, S, C] =>
 
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
   def handle[E <: ast.Expression]
             (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
 
     e match {
-      case let: ast.Let => handle(σ, let, pve, c)(Q)
-      case _ => Q(σ.γ, e.asInstanceOf[E], c)
+      case let: ast.Let => handle(σ, Nil, let, pve, c)(Q)
+      case _ => Q(Γ(), e.asInstanceOf[E], c)
     }
   }
 
@@ -356,13 +359,22 @@ trait DefaultLetHandler[ST <: Store[ST],
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
 
+    handle(σ, Nil, let, pve, c)(Q)
+  }
+
+  private def handle[E <: ast.Expression]
+                    (σ: S, bindings: Seq[(ast.Variable, Term)], let: ast.Let, pve: PartialVerificationError, c: C)
+                    (Q: (ST, E, C) => VerificationResult)
+                    : VerificationResult = {
+
     val ast.Let(v, exp, body) = let
 
     eval(σ, exp, pve, c)((t, c1) => {
+      val bindings1 = bindings :+ (v.localVar, t)
       val σ1 = σ \+ (v.localVar, t)
       body match {
-        case nestedLet: ast.Let => handle(σ1, nestedLet, pve, c1)(Q)
-        case _ => Q(σ1.γ, body.asInstanceOf[E], c1)}})
+        case nestedLet: ast.Let => handle(σ1, bindings1, nestedLet, pve, c1)(Q)
+        case _ => Q(Γ(bindings1), body.asInstanceOf[E], c1)}})
   }
 }
 

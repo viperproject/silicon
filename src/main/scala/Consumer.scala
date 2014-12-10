@@ -149,8 +149,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case let: ast.Let if !let.isPure =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
-        handle[ast.Expression](σC, let, pve, c)((γ1, body, c1) =>
-          consume(σ \+ γ1, h, p, body, pve, c1)(Q))
+        handle[ast.Expression](σC, let, pve, c)((γ1, body, c1) => {
+          val c2 =
+            if (c1.recordEffects)
+              c1.copy(letBoundVars = c1.letBoundVars ++ γ1.values)
+            else
+              c1
+          consume(σ \+ γ1, h, p, body, pve, c2)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
