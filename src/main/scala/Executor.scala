@@ -18,7 +18,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{MagicWandChunk, FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
-import state.terms.perms.IsPositive
+import state.terms.perms.IsNonNegative
 import silicon.supporters.{PredicateSupporter, MagicWandSupporter}
 
 trait DefaultExecutor[ST <: Store[ST],
@@ -312,7 +312,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsPositive(tPerm)){
+              decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
@@ -323,7 +323,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsPositive(tPerm)){
+              decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
                   predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>
