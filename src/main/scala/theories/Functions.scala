@@ -187,12 +187,17 @@ trait FunctionsSupporter[ST <: Store[ST],
     lazy val axiom = {
       val translatedBody = expressionTranslator.translate(program, programFunction, locToSnap, fappToSnap)
 
-      val nonNulls = And(
-        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
-                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
-                           .distinct: _*)
+      /* TODO: We may only add non-null assumptions about receivers that are
+       * definitely dereferenced inside functions. That is, the receivers of
+       * field accesses that occur under a conditional may not be assumed to
+       * be non-null!
+       */
+//      val nonNulls = And(
+//        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
+//                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
+//                           .distinct: _*)
 
-      Quantification(Forall, args, Implies(translatedPre, And(fapp === translatedBody, nonNulls)), triggers)
+      Quantification(Forall, args, Implies(translatedPre, And(fapp === translatedBody/*, nonNulls*/)), triggers)
     }
 
     lazy val postAxiom = {
