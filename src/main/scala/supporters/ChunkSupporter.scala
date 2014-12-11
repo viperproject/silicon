@@ -65,6 +65,7 @@ trait ChunkSupporter[ST <: Store[ST],
               val c3 = c2.snapshotRecorder match {
                 case Some(sr) =>
                   c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
+//                  c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
                 case _ => c2}
               ch match {
                 case fc: DirectFieldChunk =>

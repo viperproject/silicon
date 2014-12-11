@@ -80,7 +80,8 @@ case class DefaultContext[H <: Heap[H]]
                             `recordConsumedChunks1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
-          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
+//          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
+          val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
           val snapshotRecorder3 = DefaultContext.merge(snapshotRecorder1, snapshotRecorder2)
 
           copy(additionalTriggers = additionalTriggers3,
