@@ -31,7 +31,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
-  protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -160,12 +160,13 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
+            val c3 = recordSnapshot(c2, matchedChunk, ch)
+//            val c3 = c2.snapshotRecorder match {
+//              case Some(sr) =>
+//                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
+//                c2.copy(snapshotRecorder = Some(sr1))
+//              case _ => c2}
             Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
@@ -175,12 +176,13 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
+            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch, c2)
+            val c3 = recordSnapshot(c2, matchedChunk, ch)
+//            val c3 = c2.snapshotRecorder match {
+//              case Some(sr) =>
+//                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
+//                c2.copy(snapshotRecorder = Some(sr1))
+//              case _ => c2}
             Q(h1, c3)}))
 
       case _: ast.InhaleExhale =>
@@ -195,6 +197,14 @@ trait DefaultProducer[ST <: Store[ST],
 
     produced
   }
+
+  private def recordSnapshot(c: C, matchedChunk: Option[DirectChunk], producedChunk: DirectChunk): C =
+    c.snapshotRecorder match {
+      case Some(sr) =>
+        val sr1 = sr.addChunkToSnap(matchedChunk.getOrElse(producedChunk).id, guards, sr.currentSnap)
+        c.copy(snapshotRecorder = Some(sr1))
+      case _ => c
+    }
 
   private def getOptimalSnapshotSort(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil)
                                     : (Sort, Boolean) =

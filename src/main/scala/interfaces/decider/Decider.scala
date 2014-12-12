@@ -43,7 +43,7 @@ trait Decider[ST <: Store[ST],
   def assume(t: Term)
   def assume(ts: Set[Term])
 
-  def tryOrFail[R](σ: S)
+  def tryOrFail[R](σ: S, c: C)
                   (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
@@ -83,7 +83,7 @@ trait Decider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult
 
-  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH]
+  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH]
 
   def fresh(id: String, s: Sort): Var
   def fresh(s: Sort): Var

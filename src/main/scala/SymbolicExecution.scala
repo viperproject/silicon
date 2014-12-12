@@ -49,7 +49,7 @@ trait Brancher[ST <: Store[ST],
                    (Q: (Option[Term], Option[Term], C) => VerificationResult)
                    : VerificationResult
 
-  def guards: Set[Term]
+  def guards: Stack[Term]
 }
 
 /*
@@ -69,7 +69,7 @@ trait DefaultBrancher[ST <: Store[ST],
 	val bookkeeper: Bookkeeper
 
 
-  /*private*/ var currentGuards: Set[Term] = Set()
+  /*private*/ var currentGuards: Stack[Term] = Stack()
   def guards = this.currentGuards
 
 	def branch(σ: S,
@@ -104,7 +104,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
 		((if (exploreTrueBranch) {
 			pushLocalState()
-      currentGuards = currentGuards + guardsTrue
+      currentGuards = guardsTrue +: currentGuards
 
       val result =
         decider.inScope {
@@ -113,7 +113,7 @@ trait DefaultBrancher[ST <: Store[ST],
           fTrue(c)
         }
 
-      currentGuards = currentGuards - guardsTrue
+      currentGuards = currentGuards.tail
       popLocalState()
 
 			result
@@ -124,7 +124,7 @@ trait DefaultBrancher[ST <: Store[ST],
 			&&
 		(if (exploreFalseBranch) {
 			pushLocalState()
-      currentGuards = currentGuards + guardsFalse
+      currentGuards = guardsFalse +: currentGuards
 
       val result =
         decider.inScope {
@@ -133,7 +133,7 @@ trait DefaultBrancher[ST <: Store[ST],
           fFalse(c)
         }
 
-      currentGuards = currentGuards - guardsFalse
+      currentGuards = currentGuards.tail
       popLocalState()
 
 			result
@@ -241,7 +241,7 @@ trait DefaultJoiner[ST <: Store[ST],
      */
 
     val oldGuards = currentGuards
-    currentGuards = Set()
+    currentGuards = Stack()
 
     val r =
       block((tR, cR) => {
@@ -290,7 +290,7 @@ trait DefaultJoiner[ST <: Store[ST],
     }
   }
 
-  private case class LocalEvaluationResult(πGuards: Set[Term],
+  private case class LocalEvaluationResult(πGuards: Stack[Term],
                                            actualResult: Term,
                                            auxiliaryTerms: Set[Term],
                                            context: C)

@@ -145,6 +145,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
     Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
 
+  /** @see [[Visitor.shallowCollect()]] */
+  def shallowCollect[R](f: PartialFunction[Term, R]): Seq[R] =
+    Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
+
   /** @see [[Visitor.find()]] */
   def find[R](f: PartialFunction[Term, R]): Option[R] =
     Visitor.find(this, state.utils.subterms)(f)
@@ -446,7 +450,7 @@ class And(val ts: Seq[Term]) extends BooleanTerm
 
 object And {
   def apply(ts: Term*) = createAnd(ts)
-  def apply(ts: Set[Term]) = createAnd(ts.toSeq)
+  def apply(ts: Iterable[Term]) = createAnd(ts.toSeq)
 
   @inline
   def createAnd(_ts: Seq[Term]): Term = {

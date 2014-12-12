@@ -30,6 +30,9 @@ package object silicon {
 
   /* Mutable collections with a deterministic iteration order */
 
+  type MList[A] = collection.mutable.ListBuffer[A]
+  val MList = collection.mutable.ListBuffer
+
   type MSet[A] = collection.mutable.LinkedHashSet[A]
   val MSet = collection.mutable.LinkedHashSet
 
