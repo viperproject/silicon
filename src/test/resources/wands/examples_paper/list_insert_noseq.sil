@@ -66,7 +66,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 
 //    wand w := A --* B
 
-    var prev: Ref := crt
+//    var prev: Ref := crt
     unfold List(nxt)
     crt := nxt
     nxt := nxt.next

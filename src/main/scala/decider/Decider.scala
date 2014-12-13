@@ -330,7 +330,7 @@ class DefaultDecider[ST <: Store[ST],
         if (checkSmoke())
           Success() /* TODO: Mark branch as dead? */
         else
-          QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}
+          QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args))}
     )(Q)
   }
 
@@ -362,7 +362,7 @@ class DefaultDecider[ST <: Store[ST],
             assume(permCheck)
             QS(ch)
           case false =>
-            QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
+            QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args))}})
     )(Q)
 
 	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {

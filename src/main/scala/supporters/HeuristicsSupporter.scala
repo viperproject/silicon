@@ -26,6 +26,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[Chunk, ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
+            with PredicateSupporter[ST, H, PC, S]
             with MagicWandSupporter[ST, H, PC, S] =>
 
       protected val stateFactory: StateFactory[ST, H, S]
@@ -302,23 +303,18 @@ trait HeuristicsSupporter[ST <: Store[ST],
           val foldPredicateReactions =
             reason.offendingNode match {
               case pa: ast.PredicateAccess if ok(pa) =>
-                val accByExp = ast.PredicateAccessPredicate(pa, ast.FullPerm()())()
+                val foldMissing = foldPredicate(ast.PredicateAccessPredicate(pa, ast.FullPerm()())(), pve) _
 
-                val accByTerm =
+                val optFoldLoad =
                   cause.load match {
-                    case ts: Seq[Term] =>
+                    case Some(ts) =>
                       assert(pa.args.length == ts.length)
-                      val reversedArgs = backtranslate(σ.γ.values, chunks, ts, c.program)
-
-                      if (ts.length == reversedArgs.length)
-                        Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(pa.predicateName))(), ast.FullPerm()())())
-                      else
-                        None
+                      Some(foldPredicate(c.program.findPredicate(pa.predicateName), ts.toList, FullPerm(), pve) _)
 
                     case _ => None
                   }
 
-                accByTerm.map(acc => foldPredicate(acc, pve) _).toSeq :+ foldPredicate(accByExp, pve) _
+                optFoldLoad.toSeq :+ foldMissing
 
               case _ => Nil
             }
@@ -407,6 +403,21 @@ trait HeuristicsSupporter[ST <: Store[ST],
         val foldStmt = ast.Fold(acc)()
         exec(σ \ h, foldStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
+      }
+    }
+
+    def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
+                     (σ: S, h: H, c: C)
+                     (Q: (S, H, C) => VerificationResult)
+                     : VerificationResult = {
+
+      if (c.exhaleExt) {
+        heuristicsLogger.debug(s"  reaction: folding ${predicate.name}(${tArgs.mkString(",")})")
+        magicWandSupporter.foldingPredicate(σ \ h, predicate, tArgs, tPerm, pve, c)(Q)
+      } else {
+        heuristicsLogger.debug(s"  reaction: fold ${predicate.name}(${tArgs.mkString(",")})")
+        predicateSupporter.fold(σ \ h, predicate, tArgs, tPerm, pve, c)((σ1, c1) =>
+          Q(σ1, σ1.h, c1))
       }
     }
 

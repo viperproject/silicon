@@ -71,7 +71,7 @@ method sum_it(ys: Ref) returns (sum: Int)
     /* Let zs point to the *current* current node, update the sum and advance
      * the current node pointer.
      */
-    var zs: Ref := xs
+//    var zs: Ref := xs
     unfold List(xs)
     sum := sum + xs.val
     xs := xs.next

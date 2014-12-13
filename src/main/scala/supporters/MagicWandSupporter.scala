@@ -159,12 +159,8 @@ trait MagicWandSupporter[ST <: Store[ST],
         decider.assume(toSet(tEqs))
 
         Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
-      } else {
-        val f = Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
-        f.load = id.args
-
-        f
-      }
+      } else
+        Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args)
     }
 
     /* TODO: This is similar, but not as general, as the consumption algorithm
@@ -531,7 +527,7 @@ trait MagicWandSupporter[ST <: Store[ST],
         Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
     }
 
-      def foldingPredicate(σ: S,
+    def foldingPredicate(σ: S,
                          predicate: ast.Predicate,
                          tArgs: List[Term],
                          tPerm: Term,
@@ -541,22 +537,31 @@ trait MagicWandSupporter[ST <: Store[ST],
                         (Q: (S, H, C) => VerificationResult)
                         : VerificationResult = {
 
-      val body = optPA match {
-        case Some(pa) => pa.predicateBody(c.program)
-        case None =>
-          val args = predicate.formalArgs.map(fa => ast.utils.fresh(fa.localVar))
-          Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
-      }
-      val σEmp = Σ(σ.γ, Ø, σ.g)
-      val c2 = c
-      consume(σEmp \ σ.h, tPerm, body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, σ1 = σUsed' */
-      val c4 = c3.copy(reserveHeaps = Nil, exhaleExt = false)
-        predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c4)((σ2, c5) => { /* σ2.h = σUsed'' */
-        val topReserveHeap = c3.reserveHeaps.head + σ2.h
-          val c6 = c5.copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                           exhaleExt = c3.exhaleExt,
+      /* [2014-12-13 Malte] Changing the store doesn't interact well with the
+       * snapshot recorder, see the comment in PredicateSupporter.unfold.
+       * However, since folding cannot (yet) be used inside functions, we can
+       * still overwrite the binding of local variables in the store.
+       * An alternative would be to introduce fresh local variables, and to
+       * inject them into the predicate body. See commented code below.
+       *
+       * Note: If fresh local variables are introduced here, we should avoid
+       * introducing another sequence of local variables inside predicateSupporter.fold!
+       */
+      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val body = predicate.body
+      val σEmp = Σ(σ.γ + insγ, Ø, σ.g)
+      //      val args = predicate.formalArgs.map(fa => ast.utils.fresh(fa.localVar))
+      //      val body = Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
+      //      val σEmp = Σ(σ.γ + Γ(args.zip(tArgs)), Ø, σ.g)
+
+      consume(σEmp \ σ.h, tPerm, body, pve, c)((σ1, _, _, c1) => { /* exhale_ext, σ1 = σUsed' */
+      val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false)
+        predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c2)((σ2, c3) => { /* σ2.h = σUsed'' */
+          val topReserveHeap = c1.reserveHeaps.head + σ2.h
+          val c4 = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+                           exhaleExt = c1.exhaleExt,
                            evalHeap = None)
-          Q(σEmp, σEmp.h, c6)})})
+          Q(σEmp \ σ.γ, σEmp.h, c4)})})
     }
 
     def getEvalHeap(σ: S, h: H, c: C): H = {

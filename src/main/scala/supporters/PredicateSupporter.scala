@@ -40,6 +40,7 @@ trait PredicateSupporter[ST <: Store[ST],
             (Q: (S, C) => VerificationResult)
             : VerificationResult = {
 
+      /* [2014-12-13 Malte] See comment about insγ in MagicWandSupporter.foldingPredicate*/
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       consume(σ \ insγ, tPerm, predicate.body, pve, c)((σ1, snap, dcs, c1) => {
         val ncs = dcs flatMap {
