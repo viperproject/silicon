@@ -58,7 +58,7 @@ trait PredicateSupporter[ST <: Store[ST],
                tPerm: Term,
                pve: PartialVerificationError,
                c: C,
-               predAcc: ast.PredicateAccess)
+               pa: ast.PredicateAccess /* TODO: Make optional (as in magicWandSupporter.foldingPredicate) */)
               (Q: (S, C) => VerificationResult)
               : VerificationResult = {
 
@@ -71,7 +71,7 @@ trait PredicateSupporter[ST <: Store[ST],
 
 //      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val id = PredicateChunkIdentifier(predicate.name, tArgs)
-      chunkSupporter.consume(σ, σ.h, id, tPerm, pve, c, predAcc)((h1, snap, chs, c1) => {
+      chunkSupporter.consume(σ, σ.h, id, tPerm, pve, c, pa)((h1, snap, chs, c1) => {
         /* [2014-12-10 Malte] The snapshot recorder used to be updated in
          * DefaultConsumer:Unfolding, but it seems that the old value of currentSnap
          * always corresponds to the new value. I am not sure why, though.
@@ -80,7 +80,7 @@ trait PredicateSupporter[ST <: Store[ST],
 //          case Some(sr) =>
 //            c1.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
 //          case _ => c1}
-        val body = predAcc.predicateBody(c.program) // predicate.body
+        val body = pa.predicateBody(c.program) // predicate.body
         produce(σ \ h1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) =>
           Q(σ2 /*\ σ.γ*/, c2))})
     }
