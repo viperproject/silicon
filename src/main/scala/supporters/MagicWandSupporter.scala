@@ -26,7 +26,8 @@ trait MagicWandSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+            with PredicateSupporter[ST, H, PC, S] =>
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   import decider.fresh
@@ -517,29 +518,44 @@ trait MagicWandSupporter[ST <: Store[ST],
         val c0 = c.incCycleCounter(predicate)
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, σ.h, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-        eval(σC, ePerm, pve, c0)((tPerm, c1) => {
-          if (decider.check(σC, IsNonNegative(tPerm)))
-            evals(σC, eArgs, pve, c1)((tArgs, c2) => {
-              val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
-              consume(σEmp \ σ.h \ insγ, FullPerm(), predicate.body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-              val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
-                consume(σ \ (γ = insγ, h = σ1.h), FullPerm(), predicate.body, pve, c3a)((σ2, snap, _, c3b) => { /* σUsed'.fold */
-                  /* TODO: Produce evaluated eArgs again - in evalHeap, which
-                   * we otherwise shouldn't need. We could avoid this by
-                   *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
-                   *      (to improve error reporting, a map from new to original node could be added to the context)
-                   *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
-                   *       evaluator s.t. the mapping is used, if it exists
-                   */
-                  produce(σ \ σ2.h, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ3, c4) => { /* σ3.h = σUsed'' */
-                    val topReserveHeap = c3.reserveHeaps.head + σ3.h
-                    val c4a = c4.decCycleCounter(predicate)
-                                .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                                      exhaleExt = c3.exhaleExt,
-                                      evalHeap = None)
-                    QI(σEmp, σEmp.h, c4a)})})})})
-          else
-            Failure[ST, H, S](pve dueTo NegativePermission(ePerm))})
+        evals(σC, eArgs, pve, c0)((tArgs, c1) =>
+          eval(σC, ePerm, pve, c1)((tPerm, c2) =>
+            decider.assert(σ, IsNonNegative(tPerm)) {
+              case true =>
+                val body = acc.loc.predicateBody(c2.program) // predicate.body
+                consume(σEmp \ σ.h /*\ insγ*/, /*FullPerm()*/tPerm, body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+                  val c4 = c3.copy(reserveHeaps = Nil, exhaleExt = false)
+                  predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c4)((σ2, c5) => {
+                    val topReserveHeap = c3.reserveHeaps.head + σ2.h
+                    val c6 = c5.decCycleCounter(predicate)
+                               .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                     exhaleExt = c3.exhaleExt,
+                                     evalHeap = None)
+                    QI(σEmp, σEmp.h, c6)})})
+
+
+
+////                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
+//                val body = acc.loc.predicateBody(c2.program) // predicate.body
+//                consume(σEmp \ σ.h /*\ insγ*/, FullPerm(), body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+//                val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
+//                  consume(σ \ σ1.h/*(γ = insγ, h = σ1.h)*/, FullPerm(), body, pve, c3a)((σ2, snap, _, c3b) => /* σUsed'.fold */
+//                    /* TODO: Produce evaluates eArgs again - in evalHeap, which
+//                     * we otherwise shouldn't need. We could avoid this by
+//                     *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
+//                     *      (to improve error reporting, a map from new to original node could be added to the context)
+//                     *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
+//                     *       evaluator s.t. the mapping is used, if it exists
+//                     */
+//                    produce(σ \ σ2.h, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ3, c4) => { /* σ3.h = σUsed'' */
+//                      val topReserveHeap = c3.reserveHeaps.head + σ3.h
+//                      val c4a = c4.decCycleCounter(predicate)
+//                                  .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+//                                        exhaleExt = c3.exhaleExt,
+//                                        evalHeap = None)
+//                      QI(σEmp, σEmp.h, c4a)}))})
+            case false =>
+              Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
       } else
         Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
     }
