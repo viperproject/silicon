@@ -12,7 +12,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.state.{StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
+import interfaces.state.{HeapCompressor, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk}
 import state.terms._
 import state.terms.perms.IsNoAccess
@@ -34,6 +34,8 @@ trait ChunkSupporter[ST <: Store[ST],
 
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
+
+  protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
 
   object chunkSupporter {
     private type C = DefaultContext[H]
@@ -148,5 +150,28 @@ trait ChunkSupporter[ST <: Store[ST],
           Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
       }
     }
+
+    def produce(σ: S, h: H, ch: DirectChunk, c: C): (H, C) = {
+      val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
+      val c1 = recordSnapshot(c, matchedChunk, ch)
+      val c2 = recordProducedChunk(c1, ch, guards)
+
+      (h1, c2)
+    }
+
+    private def recordSnapshot(c: C, matchedChunk: Option[DirectChunk], producedChunk: DirectChunk): C =
+      c.snapshotRecorder match {
+        case Some(sr) =>
+          val sr1 = sr.addChunkToSnap(matchedChunk.getOrElse(producedChunk).id, guards, sr.currentSnap)
+          c.copy(snapshotRecorder = Some(sr1))
+        case _ => c
+      }
+
+    private def recordProducedChunk(c: C, producedChunk: DirectChunk, guards: Stack[Term]): C =
+      c.recordEffects match {
+        case true => c.copy(producedChunks = c.producedChunks :+ (guards -> producedChunk))
+        case false => c
+      }
+
   }
 }

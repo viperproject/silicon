@@ -46,20 +46,10 @@ trait PredicateSupporter[ST <: Store[ST],
           case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
           case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
           case _: MagicWandChunk => None}
-        val id = PredicateChunkIdentifier(predicate.name, tArgs)
-
-        /* TODO: Chunk should be produced (or added via ChunkSupporter)! */
-        val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id, c1) match {
-          case Some(pc) =>
-            (σ1.h - pc,
-             pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap),
-             PermPlus(pc.perm, tPerm))
-          case None =>
-            (σ1.h, True(), tPerm)}
-        decider.assume(t)
-        val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
-
-        Q(σ \ h1, c1)})
+        val ch = DirectPredicateChunk(predicate.name, tArgs, snap, tPerm, ncs)
+        val (h1, c2) = chunkSupporter.produce(σ1, σ1.h, ch, c1)
+        val h2 = h1 + H(ncs)
+        Q(σ \ h2, c2)})
     }
 
     def unfold(σ: S,
