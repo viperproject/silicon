@@ -16,6 +16,7 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.state.{StateFactory, Chunk, State, PathConditions, Heap, Store, FieldChunk}
 import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
+import reporting.Bookkeeper
 
 trait HeuristicsSupporter[ST <: Store[ST],
                         H <: Heap[H],
@@ -33,6 +34,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       import stateFactory._
 
   protected val config: Config
+  protected val bookkeeper: Bookkeeper
 
   object heuristicsSupporter {
     private type C = DefaultContext[H]
@@ -185,7 +187,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
           /* TODO: Remove */
           if (stack.size >= 10 * config.maxHeuristicsDepth()) {
             logger.debug("[tryWithReactions] ******************* Heuristics stack grew too large ***************** ")
-            Thread.sleep(2500)
+//            Thread.sleep(2500)
           }
 
         case actionFailure: Failure[ST, H, S] =>
@@ -210,11 +212,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
             lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
 
             val c1 = c.copy(heuristicsDepth = c.heuristicsDepth + 1)
+            bookkeeper.appliedHeuristicReactions += 1
 
             reactionResult =
               heuristicsSupporter.tryOperation[S, H](s"applying heuristic ($myId)")(σ \ h, h, c1)((σ1, h1, c2, QS) =>
-//                      magicWandSupporter.applyingWand(σ \ h, Γ(bindings), wand, lhsAndWand, pve, c)(QS)
-//                    )(Q)
                 remainingReactions.head.apply(σ1, h1, c2)((σ2, h2, c3) => {
                   say(s"reaction ${triedReactions + 1} locally succeeded")
                   say(s"s2.h = ${σ2.h}")
