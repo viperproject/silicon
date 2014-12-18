@@ -75,14 +75,14 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   {
     assert old(elems(xs))[i+1] == elems(nxt)[0]
 
-//    wand w := A --* B
-    var prev: Ref := crt /* TODO: See issue 22 */
+    wand w := A --* B
+//    var prev: Ref := crt /* TODO: See issue 22 */
     unfold List(nxt)
     crt := nxt
     nxt := nxt.next
     i := i + 1
 
-//    package A --* /*folding List(prev) in applying w in*/ B
+//    package A --* /*folding List(prev) in*/ applying w in B
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */

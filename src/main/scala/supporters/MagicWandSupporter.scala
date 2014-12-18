@@ -9,6 +9,7 @@ package silicon
 package supporters
 
 import com.weiglewilczek.slf4s.{Logger, Logging}
+import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
 import interfaces.{Success, Evaluator, Consumer, Producer, VerificationResult, Failure}
@@ -158,12 +159,8 @@ trait MagicWandSupporter[ST <: Store[ST],
         decider.assume(toSet(tEqs))
 
         Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
-      } else {
-        val f = Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
-        f.load = id.args
-
-        f
-      }
+      } else
+        Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args)
     }
 
     /* TODO: This is similar, but not as general, as the consumption algorithm
@@ -522,42 +519,49 @@ trait MagicWandSupporter[ST <: Store[ST],
           eval(σC, ePerm, pve, c1)((tPerm, c2) =>
             decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
-                val body = acc.loc.predicateBody(c2.program) // predicate.body
-                consume(σEmp \ σ.h /*\ insγ*/, /*FullPerm()*/tPerm, body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-                  val c4 = c3.copy(reserveHeaps = Nil, exhaleExt = false)
-                  predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c4)((σ2, c5) => {
-                    val topReserveHeap = c3.reserveHeaps.head + σ2.h
-                    val c6 = c5.decCycleCounter(predicate)
-                               .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                                     exhaleExt = c3.exhaleExt,
-                                     evalHeap = None)
-                    QI(σEmp, σEmp.h, c6)})})
-
-
-
-////                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs) /* TODO: Substitute args in body */
-//                val body = acc.loc.predicateBody(c2.program) // predicate.body
-//                consume(σEmp \ σ.h /*\ insγ*/, FullPerm(), body, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
-//                val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
-//                  consume(σ \ σ1.h/*(γ = insγ, h = σ1.h)*/, FullPerm(), body, pve, c3a)((σ2, snap, _, c3b) => /* σUsed'.fold */
-//                    /* TODO: Produce evaluates eArgs again - in evalHeap, which
-//                     * we otherwise shouldn't need. We could avoid this by
-//                     *   i) replacing each eArg by a fresh variable which we bind to the corresponding tArg
-//                     *      (to improve error reporting, a map from new to original node could be added to the context)
-//                     *   ii) or by adding a map from eArg to tArg to the context, and by modifying the
-//                     *       evaluator s.t. the mapping is used, if it exists
-//                     */
-//                    produce(σ \ σ2.h, s => snap.convert(s), tPerm, acc, pve, c3b.copy(evalHeap = Some(c3.reserveHeaps.head)))((σ3, c4) => { /* σ3.h = σUsed'' */
-//                      val topReserveHeap = c3.reserveHeaps.head + σ3.h
-//                      val c4a = c4.decCycleCounter(predicate)
-//                                  .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-//                                        exhaleExt = c3.exhaleExt,
-//                                        evalHeap = None)
-//                      QI(σEmp, σEmp.h, c4a)}))})
+                foldingPredicate(σ, predicate, tArgs, tPerm, pve, c2, Some(pa))((σ1, h1, c3) =>
+                  QI(σEmp, σEmp.h, c3.decCycleCounter(predicate)))
             case false =>
               Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
       } else
         Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
+    }
+
+    def foldingPredicate(σ: S,
+                         predicate: ast.Predicate,
+                         tArgs: List[Term],
+                         tPerm: Term,
+                         pve: PartialVerificationError,
+                         c: C,
+                         optPA: Option[ast.PredicateAccess] = None)
+                        (Q: (S, H, C) => VerificationResult)
+                        : VerificationResult = {
+
+      /* [2014-12-13 Malte] Changing the store doesn't interact well with the
+       * snapshot recorder, see the comment in PredicateSupporter.unfold.
+       * However, since folding cannot (yet) be used inside functions, we can
+       * still overwrite the binding of local variables in the store.
+       * An alternative would be to introduce fresh local variables, and to
+       * inject them into the predicate body. See commented code below.
+       *
+       * Note: If fresh local variables are introduced here, we should avoid
+       * introducing another sequence of local variables inside predicateSupporter.fold!
+       */
+      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val body = predicate.body
+      val σEmp = Σ(σ.γ + insγ, Ø, σ.g)
+      //      val args = predicate.formalArgs.map(fa => ast.utils.fresh(fa.localVar))
+      //      val body = Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
+      //      val σEmp = Σ(σ.γ + Γ(args.zip(tArgs)), Ø, σ.g)
+
+      consume(σEmp \ σ.h, tPerm, body, pve, c)((σ1, _, _, c1) => { /* exhale_ext, σ1 = σUsed' */
+      val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false)
+        predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c2)((σ2, c3) => { /* σ2.h = σUsed'' */
+          val topReserveHeap = c1.reserveHeaps.head + σ2.h
+          val c4 = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
+                           exhaleExt = c1.exhaleExt,
+                           evalHeap = None)
+          Q(σEmp \ σ.γ, σEmp.h, c4)})})
     }
 
     def getEvalHeap(σ: S, h: H, c: C): H = {

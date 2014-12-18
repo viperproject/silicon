@@ -43,8 +43,8 @@ method sum_it(ys: Ref) returns (sum: Int)
         --*
       (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
   {
-    var zs: Ref := xs
-    var old_sum_xs2: Int := old_sum_xs /* old_sum_xs2 is needed to apply the wand obtained from the invariant */
+//    var zs: Ref := xs
+//    var old_sum_xs2: Int := old_sum_xs /* old_sum_xs2 is needed to apply the wand obtained from the invariant */
 
     unfold List(xs)
     sum := sum + xs.val

@@ -32,6 +32,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   var elapsedMillis: Long = 0
   var errors: Long = 0
   var proverStatistics = Map[String, String]()
+  var appliedHeuristicReactions: Long = 0
 
   var logfiles: scala.collection.immutable.Map[String, PrintWriter] =
     scala.collection.immutable.Map[String, PrintWriter]().withDefault(name => {
@@ -56,6 +57,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
     elapsedMillis = 0
     errors = 0
     proverStatistics = Map[String, String]()
+    appliedHeuristicReactions = 0
 
     /* Notice that logfiles are not closed, because we want to record data
      * across multiple runs of Silicon. This is not essential, though, and only
@@ -86,7 +88,8 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       functionBodyEvaluations,
       assumptionCounter,
       assertionCounter,
-      freshSymbols)
+      freshSymbols,
+      appliedHeuristicReactions)
 
     args = args ++ proverStatistics.flatMap{case (k,v) => List(k, v)}
 
@@ -109,6 +112,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       |Silicon prover assumptions: %d
       |Silicon prover assertions: %d
       |Silicon fresh prover symbols: %d
+      |Silicon applied heuristic reactions: %d
     """ + placeholderLines).trim.stripMargin
   }
 
@@ -128,7 +132,8 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       |  "silicon_functionBodyEvaluations": %d,
       |  "silicon_assumptionCounter": %d,
       |  "silicon_assertionCounter": %d,
-      |  "silicon_freshSymbols": %d""" + (if (proverStatistics.size == 0) "\n" else ",\n")
+      |  "silicon_freshSymbols": %d,
+      |  "silicon_appliedHeuristicReactions": %d""" + (if (proverStatistics.size == 0) "\n" else ",\n")
     + placeholderLines + "\n}").trim.stripMargin
   }
 }

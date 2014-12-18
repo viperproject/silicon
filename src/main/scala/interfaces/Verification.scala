@@ -10,6 +10,7 @@ package interfaces
 
 import silver.verifier.VerificationError
 import state.{Store, Heap, State}
+import silicon.state.terms.Term
 
 /*
  * Results
@@ -79,7 +80,11 @@ case class Failure[ST <: Store[ST],
 		extends FatalResult {
 
 	/* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
-	var load: AnyRef = null
+	var load: Option[Seq[Term]] = None
+	def withLoad(load: Seq[Term]) = {
+		this.load = Some(load)
+		this
+	}
 
   override lazy val toString = message.readableMessage
 }

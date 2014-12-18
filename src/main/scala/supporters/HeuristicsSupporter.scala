@@ -16,6 +16,7 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.state.{StateFactory, Chunk, State, PathConditions, Heap, Store, FieldChunk}
 import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
+import reporting.Bookkeeper
 
 trait HeuristicsSupporter[ST <: Store[ST],
                         H <: Heap[H],
@@ -26,12 +27,14 @@ trait HeuristicsSupporter[ST <: Store[ST],
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[Chunk, ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
+            with PredicateSupporter[ST, H, PC, S]
             with MagicWandSupporter[ST, H, PC, S] =>
 
       protected val stateFactory: StateFactory[ST, H, S]
       import stateFactory._
 
   protected val config: Config
+  protected val bookkeeper: Bookkeeper
 
   object heuristicsSupporter {
     private type C = DefaultContext[H]
@@ -184,7 +187,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
           /* TODO: Remove */
           if (stack.size >= 10 * config.maxHeuristicsDepth()) {
             logger.debug("[tryWithReactions] ******************* Heuristics stack grew too large ***************** ")
-            Thread.sleep(2500)
+//            Thread.sleep(2500)
           }
 
         case actionFailure: Failure[ST, H, S] =>
@@ -209,11 +212,10 @@ trait HeuristicsSupporter[ST <: Store[ST],
             lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
 
             val c1 = c.copy(heuristicsDepth = c.heuristicsDepth + 1)
+            bookkeeper.appliedHeuristicReactions += 1
 
             reactionResult =
               heuristicsSupporter.tryOperation[S, H](s"applying heuristic ($myId)")(σ \ h, h, c1)((σ1, h1, c2, QS) =>
-//                      magicWandSupporter.applyingWand(σ \ h, Γ(bindings), wand, lhsAndWand, pve, c)(QS)
-//                    )(Q)
                 remainingReactions.head.apply(σ1, h1, c2)((σ2, h2, c3) => {
                   say(s"reaction ${triedReactions + 1} locally succeeded")
                   say(s"s2.h = ${σ2.h}")
@@ -302,23 +304,18 @@ trait HeuristicsSupporter[ST <: Store[ST],
           val foldPredicateReactions =
             reason.offendingNode match {
               case pa: ast.PredicateAccess if ok(pa) =>
-                val accByExp = ast.PredicateAccessPredicate(pa, ast.FullPerm()())()
+                val foldMissing = foldPredicate(ast.PredicateAccessPredicate(pa, ast.FullPerm()())(), pve) _
 
-                val accByTerm =
+                val optFoldLoad =
                   cause.load match {
-                    case ts: Seq[Term] =>
+                    case Some(ts) =>
                       assert(pa.args.length == ts.length)
-                      val reversedArgs = backtranslate(σ.γ.values, chunks, ts, c.program)
-
-                      if (ts.length == reversedArgs.length)
-                        Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(pa.predicateName))(), ast.FullPerm()())())
-                      else
-                        None
+                      Some(foldPredicate(c.program.findPredicate(pa.predicateName), ts.toList, FullPerm(), pve) _)
 
                     case _ => None
                   }
 
-                accByTerm.map(acc => foldPredicate(acc, pve) _).toSeq :+ foldPredicate(accByExp, pve) _
+                optFoldLoad.toSeq :+ foldMissing
 
               case _ => Nil
             }
@@ -407,6 +404,21 @@ trait HeuristicsSupporter[ST <: Store[ST],
         val foldStmt = ast.Fold(acc)()
         exec(σ \ h, foldStmt, c)((σ1, c1) => {
           Q(σ1, σ1.h, c1)})
+      }
+    }
+
+    def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
+                     (σ: S, h: H, c: C)
+                     (Q: (S, H, C) => VerificationResult)
+                     : VerificationResult = {
+
+      if (c.exhaleExt) {
+        heuristicsLogger.debug(s"  reaction: folding ${predicate.name}(${tArgs.mkString(",")})")
+        magicWandSupporter.foldingPredicate(σ \ h, predicate, tArgs, tPerm, pve, c)(Q)
+      } else {
+        heuristicsLogger.debug(s"  reaction: fold ${predicate.name}(${tArgs.mkString(",")})")
+        predicateSupporter.fold(σ \ h, predicate, tArgs, tPerm, pve, c)((σ1, c1) =>
+          Q(σ1, σ1.h, c1))
       }
     }
 
