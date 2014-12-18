@@ -25,3 +25,10 @@ method test03(x: Ref)
   //:: ExpectedOutput(apply.failed:insufficient.permission)
   apply acc(x.f) --* acc(x.f)
 }
+
+method test04(x: Ref)
+  requires acc(x.f)
+{
+  //:: ExpectedOutput(package.failed:insufficient.permission)
+  package true --* packaging (true --* acc(x.f)) in acc(x.f) && (true --* acc(x.f))
+}
