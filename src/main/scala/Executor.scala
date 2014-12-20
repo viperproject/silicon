@@ -363,6 +363,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
               val c4 = c3.copy(lhsHeap = None)
+              heapCompressor.compress(σ3, σ3.h, c4)
               Q(σ3 \ σ1.γ, c4)})})}
 
         e match {
