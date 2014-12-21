@@ -1,8 +1,6 @@
-/* This example is a version of list_insert.sil from which all
- * sequence-related assertions have been erased (in previous versions
- * of Silicon, the sequence axiomatisation had a problem that could
- * slow down Z3 significantly).
- */
+/* See list_insert_noseq.sil */
+
+field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
 
 field val: Int
 field next: Ref
@@ -42,8 +40,6 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   crt := xs
   nxt := xs.next
 
-  package A --* B
-
 	/* Find the appropriate position for x in the linked-list. After the loop,
 	 * crt points to the first node in the list for which crt.next is either null,
 	 * or crt.next.val >= x. The variable nxt is always equal to crt.next.
@@ -59,15 +55,10 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   {
     // assert old(elems(xs))[i+1] == elems(nxt)[0]
 
-    wand w := A --* B
-    var prev: Ref := crt
-
     unfold List(nxt)
     crt := nxt
     nxt := nxt.next
     i := i + 1
-
-    package A --* folding List(prev) in applying w in B
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */
@@ -82,9 +73,4 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 	/* Append the new node (and its tail) to the current node. */
   crt.next := node
   fold List(crt)
-
-	/* Give up the sublist starting at crt and get back the original list *with*
-	 * the newly inserted value.
-	 */
-  apply A --* B
 }

@@ -1,7 +1,6 @@
-/* This example encodes and specifies an iterative computation of the
- * sum of a recursively defined linked-list. Magic wands are used to
- * book-keep permissions in the loop.
- */
+/* See list_sum.sil */
+
+field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
 
 field val: Int
 field next: Ref
@@ -45,8 +44,6 @@ method sum_it(ys: Ref) returns (sum: Int)
    */
   old_sum_xs := sum_rec(xs)
 
-  package A --* B
-
   /* Iteratively compute the sum.
    * The loop invariant states that
    *  1. we have permissions to the list starting at the current node xs (if
@@ -62,30 +59,10 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant sum == old(sum_rec(ys)) - old_sum_xs;
     invariant A --* B
   {
-    /* Bind w to the magic wand instance that we currently hold in our state */
-    wand w := A --* B
-
-    /* Let zs point to the *current* current node, update the sum and advance
-     * the current node pointer.
-     */
-    var zs: Ref := xs
     unfold List(xs)
     sum := sum + xs.val
     xs := xs.next
 
-    /* Update the promise. This exhales access to the fields of the *previous*
-     * current node zs, and the magic wand instance w, since they belong to the
-     * footprint of the packaged magic wand instance.
-     */
     old_sum_xs := (xs == null ? 0 : sum_rec(xs))
-
-    package A --* folding List(zs) in applying w in B
   }
-
-  /* Use the promise to get back the unchanged list starting at ys.
-   * xs is null, so nothing is given up, but that is correct because
-   * intuitively, the permissions to each node in the list has been
-   * packaged into the wand while the loop executed.
-   */
-  apply A --* B
 }

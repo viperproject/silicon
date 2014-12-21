@@ -1,24 +1,23 @@
-/* See loop_sum.sil for the running example of our APLAS'14 paper (currently
- * under submission).
- *
- * This example encodes and specifies an iterative implementation of inserting
- * a value into a linked list. A magic wand is used to book-keep permissions.
+/* This example encodes and specifies an iterative implementation of
+ * inserting a value into a linked list. A magic wand is used to
+ * book-keep permissions.
  *
  * Notes:
  *
- *  - In previous versions, it took Silicon quite a while to verify this example,
- *    which is due to a problem with our sequence axiomatisation that can sometimes
- *    slow down Z3 considerably. However, a version of this example without the
- *    sequence-related specifications (but with the same use of magic wands) is
- *    provided in list_insert_noseq.sil, which consistently verifies quickly.
+ *  - In previous versions of Silicon, the sequence axiomatisation
+ *    had a problem that could slow down Z3 significantly. This is
+ *    orthogonal to our work on magic wands. Should you experience
+ *    verification runs that take much longer than the timing
+ *    information included in our paper, please try
+ *    list_insert_noseq.sil, which is a version of this example from
+ *    which all sequence-related assertions have been erased (the
+ *    wands are still included).
  *
- *  - The additional two asserts are currently necessary because of a known
- *    incompleteness of Silicon related to recursive functions (again, see
- *    list_insert_noseq.sil for a version from which all sequences have been
- *    removed).
+ *  - The additional two asserts are currently necessary because of a
+ *    known incompleteness of Silicon (again, see list_insert_noseq.sil
+ *    for a version from which all sequence-related assertions have
+ *    been removed).
  */
-
-field __CONFIG_HEURISTICS: Bool
 
 field val: Int
 field next: Ref
@@ -58,7 +57,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   crt := xs
   nxt := xs.next
 
-//  package A --* B
+  package A --* B
 
 	/* Find the appropriate position for x in the linked-list. After the loop,
 	 * crt points to the first node in the list s.t. crt.next is either null,
@@ -76,13 +75,14 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     assert old(elems(xs))[i+1] == elems(nxt)[0]
 
     wand w := A --* B
-//    var prev: Ref := crt /* TODO: See issue 22 */
+    var prev: Ref := crt
+
     unfold List(nxt)
     crt := nxt
     nxt := nxt.next
     i := i + 1
 
-//    package A --* /*folding List(prev) in*/ applying w in B
+   package A --* folding List(prev) in applying w in B
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */
@@ -102,5 +102,5 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 	/* Give up the sublist starting at crt and get back the original list *with*
 	 * the newly inserted value.
 	 */
-//  apply A --* B
+  apply A --* B
 }

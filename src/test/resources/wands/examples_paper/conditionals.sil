@@ -1,9 +1,7 @@
-/* See loop_sum.sil for the running example of our ECOOP'15 paper (currently
- * under submission).
- *
- * This example illustrates the behaviour of conditionals on the RHS of a wand,
- * in particular, which uncertainties are caused when the footprint of a wand
- * is affected by locations to which permissions are provided by the LHS.
+/* This example illustrates the behaviour of conditionals on the RHS
+ * of a wand, in particular, which uncertainties are caused when the
+ * footprint of a wand is affected by locations to which permissions
+ * are provided by the LHS.
  */
 
 field f: Bool

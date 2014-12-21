@@ -1,7 +1,4 @@
-/* See list_sum.sil for the running example of our APLAS'14 paper (currently
- * under submission).
- *
- * This example is effectively our running example, but without comments and use of
+/* This example is effectively our running example, but without comments and use of
  * assertion short-hands.
  */
 

@@ -1,7 +1,4 @@
-/* See loop_sum.sil for the running example of our APLAS'14 paper (currently
- * under submission).
- *
- * This example encodes and specifies an iterative implementation of inserting
+/* This example encodes and specifies an iterative implementation of inserting
  * a value into a linked list. A magic wand is used to book-keep permissions.
  *
  * Notes:

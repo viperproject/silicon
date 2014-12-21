@@ -1,0 +1,27 @@
+/* See un_currying.sil */
+
+field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
+
+/* The predicate bodies can be arbitrary since the proofs never unfold
+ * the predicates.
+ */
+predicate P() { true }
+predicate Q() { true }
+predicate R() { true }
+
+/* Define short-hands for the sake of readability */
+define A acc(P())
+define B acc(Q())
+define C acc(R())
+
+/* A --* B --* C  ==>  A * B --* C */
+method uncurry() {
+  inhale A --* (B --* C)
+  exhale A && B --* C
+}
+
+/* A * B --* C  ==>  A --* B --* C */
+method curry() {
+  inhale A && B --* C
+  exhale A --* (B --* C)
+}
