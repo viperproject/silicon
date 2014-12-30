@@ -9,6 +9,7 @@ package silicon
 package supporters
 
 import com.weiglewilczek.slf4s.{Logger, Logging}
+import silver.ast
 import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
@@ -46,9 +47,9 @@ trait MagicWandSupporter[ST <: Store[ST],
     private type C = DefaultContext[H]
     private type CH = Chunk
 
-    def isDirectWand(exp: ast.Expression) = exp match {
+    def isDirectWand(exp: ast.Exp) = exp match {
       case wand: ast.MagicWand => true
-      case v: ast.LocalVariable => v.typ == ast.types.Wand
+      case v: ast.AbstractLocalVar => v.typ == ast.Wand
       case _ => false
     }
 
@@ -433,7 +434,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       }
     }
 
-    def applyingWand(σ: S, γ: ST, wand: ast.MagicWand, lhsAndWand: ast.Expression, pve: PartialVerificationError, c: C)
+    def applyingWand(σ: S, γ: ST, wand: ast.MagicWand, lhsAndWand: ast.Exp, pve: PartialVerificationError, c: C)
                     (QI: (S, H, C) => VerificationResult)
                     : VerificationResult = {
 

@@ -77,14 +77,14 @@ trait AbstractElementVerifier[ST <: Store[ST],
          * chunk terms with the trivial wand true --* true. Not sure if this is
          * sound, though.
          */
-        val trivialWand = (p: Position) => ast.MagicWand(ast.True()(p), ast.True()(p))(p)
+        val trivialWand = (p: ast.Position) => ast.MagicWand(ast.TrueLit()(p), ast.TrueLit()(p))(p)
         val wand = _wand.transform {
-          case v: ast.Variable if v.typ == ast.types.Wand => trivialWand(v.pos)
+          case v: ast.AbstractLocalVar if v.typ == ast.Wand => trivialWand(v.pos)
         }()
 
         val left = wand.left
         val right = wand.withoutGhostOperations.right
-        val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.Variable => v}
+        val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.AbstractLocalVar => v}
         val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
         val σ1 = Σ(γ1, Ø, g)
 

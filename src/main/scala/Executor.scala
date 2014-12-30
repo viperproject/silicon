@@ -124,7 +124,7 @@ trait DefaultExecutor[ST <: Store[ST],
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val wvs = lb.writtenVars filterNot (_.typ == ast.types.Wand)
+        val wvs = lb.writtenVars filterNot (_.typ == ast.Wand)
           /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
@@ -199,7 +199,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case ass @ ast.LocalVarAssign(v, rhs) =>
         v.typ match {
-          case ast.types.Wand =>
+          case ast.Wand =>
             assert(rhs.isInstanceOf[ast.MagicWand], s"Expected magic wand but found $rhs (${rhs.getClass.getName}})")
             val wand = rhs.asInstanceOf[ast.MagicWand]
             val pve = LetWandFailed(ass)
@@ -372,7 +372,7 @@ trait DefaultExecutor[ST <: Store[ST],
             consume(σ, FullPerm(), wand, pve, c)((σ1, _, chs, c1) => {
               QL(σ1, σ1.γ, wand, c1)})
 
-          case v: ast.LocalVariable =>
+          case v: ast.AbstractLocalVar =>
             val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id, c) match {
               case Some(ch) =>

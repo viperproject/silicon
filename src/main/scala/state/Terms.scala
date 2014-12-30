@@ -11,7 +11,6 @@ package state.terms
 import scala.reflect._
 import silver.ast.utility.{GenericTriggerGenerator, Visitor}
 import interfaces.state.{Store, Heap}
-import ast.commonnodes
 import state.MagicWandChunk
 
 

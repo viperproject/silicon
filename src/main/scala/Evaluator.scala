@@ -29,12 +29,12 @@ trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
-		extends Evaluator[ST, H, S, DefaultContext[H]] with HasLocalState
-		{ this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-										with Producer[ST, H, S, DefaultContext[H]]
+    extends Evaluator[ST, H, S, DefaultContext[H]] with HasLocalState
+    { this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+                    with Producer[ST, H, S, DefaultContext[H]]
                     with PredicateSupporter[ST, H, PC, S]
-										with Brancher[ST, H, S, DefaultContext[H]]
-										with Joiner[DefaultContext[H]]
+                    with Brancher[ST, H, S, DefaultContext[H]]
+                    with Joiner[DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]

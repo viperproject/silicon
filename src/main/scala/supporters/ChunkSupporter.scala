@@ -13,7 +13,7 @@ import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.state.{HeapCompressor, ChunkIdentifier, State, PathConditions, Heap, Store}
+import interfaces.state.{Chunk, StateFactory, HeapCompressor, ChunkIdentifier, State, PathConditions, Heap, Store}
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk}
 import state.terms._
 import state.terms.perms.IsNoAccess
@@ -51,7 +51,7 @@ trait ChunkSupporter[ST <: Store[ST],
                 pve: PartialVerificationError,
                 c: C,
                 locacc: ast.LocationAccess,
-                optNode: Option[ast.Node] = None)
+                optNode: Option[ast.Node with ast.Positioned] = None)
                (Q: (H, Term, List[CH], C) => VerificationResult)
                : VerificationResult = {
 

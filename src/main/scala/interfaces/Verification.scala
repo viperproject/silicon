@@ -79,12 +79,12 @@ case class Failure[ST <: Store[ST],
                   (message: VerificationError)
     extends FatalResult {
 
-	/* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
-	var load: Option[Seq[Term]] = None
-	def withLoad(load: Seq[Term]) = {
-		this.load = Some(load)
-		this
-	}
+  /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
+  var load: Option[Seq[Term]] = None
+  def withLoad(load: Seq[Term]) = {
+    this.load = Some(load)
+    this
+  }
 
   override lazy val toString = message.readableMessage
 }

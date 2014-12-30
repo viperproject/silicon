@@ -9,8 +9,8 @@ package silicon
 package state
 
 import silver.ast
-import interfaces.state.{Context, Mergeable}
-import terms.{Var, FApp, Term}
+import interfaces.state.{Heap, Context, Mergeable}
+import terms.{Var, Term}
 import theories.SnapshotRecorder
 
 case class DefaultContext[H <: Heap[H]]
@@ -36,8 +36,7 @@ case class DefaultContext[H <: Heap[H]]
                           recordEffects: Boolean = false,
                           producedChunks: Seq[(Stack[Term], DirectChunk)] = Nil,
                           consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] = Nil,
-                          letBoundVars: Seq[(ast.Variable, Term)] = Nil)
-
+                          letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil)
     extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)

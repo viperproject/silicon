@@ -378,7 +378,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
       log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
     }
-	}
+  }
 }
 
 

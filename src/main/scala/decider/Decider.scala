@@ -26,7 +26,7 @@ class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
-		extends Decider[ST, H, PC, S, DefaultContext[H]]
+    extends Decider[ST, H, PC, S, DefaultContext[H]]
        with Logging {
 
   protected type C = DefaultContext[H]

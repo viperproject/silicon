@@ -8,6 +8,7 @@ package viper
 package silicon
 package state
 
+import silver.ast
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
 import terms.{PermMinus, PermPlus, Term}
 
@@ -90,13 +91,13 @@ abstract class MagicWandChunkLike extends {
   }
 }
 
-case class MagicWandChunk(ghostFreeWand: ast.MagicWand, bindings: Map[ast.Variable, Term], evaluatedTerms: Seq[Term])
+case class MagicWandChunk(ghostFreeWand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], evaluatedTerms: Seq[Term])
     extends MagicWandChunkLike with Chunk {
 
   lazy val id = MagicWandChunkIdentifier(ghostFreeWand, bindings, evaluatedTerms)
 }
 
-case class MagicWandChunkIdentifier(ghostFreeWand: ast.MagicWand, bindings: Map[ast.Variable, Term], evaluatedTerms: Seq[Term])
+case class MagicWandChunkIdentifier(ghostFreeWand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], evaluatedTerms: Seq[Term])
     extends MagicWandChunkLike with ChunkIdentifier {
 
   lazy val chunk = MagicWandChunk(ghostFreeWand, bindings, evaluatedTerms)

@@ -9,6 +9,7 @@ package silicon
 package supporters
 
 import com.weiglewilczek.slf4s.{Logger, Logging}
+import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.HeuristicsFailed
 import silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
@@ -253,9 +254,9 @@ trait HeuristicsSupporter[ST <: Store[ST],
     def generateReactions(σ: S, h: H, c: C, cause: Failure[ST, H, S])
                          : Seq[(S, H, C) => ((S, H, C) => VerificationResult) => VerificationResult] = {
 
-      val pve = HeuristicsFailed(ast.True()()) /* TODO: Use a meaningful node */
+      val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
 
-      def ok(e: ast.Expression) = !e.existsDefined { case lv: ast.LocalVariable if σ.γ.get(lv).isEmpty => }
+      def ok(e: ast.Exp) = !e.existsDefined { case lv: ast.AbstractLocalVar if σ.γ.get(lv).isEmpty => }
 
       /* HS1: Apply/unfold if wand/pred containing missing wand or acc
        * HS2: package/fold missing wand/pred
@@ -355,7 +356,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       }
     }
 
-    def applyWand(wand: ast.MagicWand, bindings: Map[ast.Variable, Term], pve: PartialVerificationError)
+    def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)
                  (σ: S, h: H, c: C)
                  (Q: (S, H, C) => VerificationResult)
                  : VerificationResult = {
@@ -442,7 +443,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       val predicateAccesses =
         predicateChunks.flatMap {
           case DirectPredicateChunk(name, args, _, _, _) =>
-            val reversedArgs: Seq[ast.Expression] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
+            val reversedArgs: Seq[ast.Exp] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
 
             if (args.length == reversedArgs.length)
               Some(ast.PredicateAccessPredicate(ast.PredicateAccess(reversedArgs, c.program.findPredicate(name))(), ast.FullPerm()())())
@@ -476,14 +477,14 @@ trait HeuristicsSupporter[ST <: Store[ST],
       }
     }
 
-    private def backtranslate(bindings: Map[ast.Variable, Term], chunks: Seq[Chunk], ts: Seq[Term], program: ast.Program)
-                             : Seq[ast.Expression] = {
+    private def backtranslate(bindings: Map[ast.AbstractLocalVar, Term], chunks: Seq[Chunk], ts: Seq[Term], program: ast.Program)
+                             : Seq[ast.Exp] = {
 
       val optEs =
         ts map {
-          case True() => Some(ast.True()())
-          case False() => Some(ast.False()())
-          case IntLiteral(n) => Some(ast.IntegerLiteral(n)())
+          case True() => Some(ast.TrueLit()())
+          case False() => Some(ast.FalseLit()())
+          case IntLiteral(n) => Some(ast.IntLit(n)())
           case t =>
             bindings.find(p => p._2 == t).map(_._1)
                       /* Found a local variable v s.t. v |-> t */

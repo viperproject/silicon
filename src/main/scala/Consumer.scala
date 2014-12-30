@@ -9,9 +9,9 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
-import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NegativePermission, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
+import silver.verifier.{VerificationError, PartialVerificationError}
+import silver.verifier.reasons.{NamedMagicWandChunkNotFound, MagicWandChunkNotFound, NegativePermission, AssertionFalse}
+import interfaces.state.{StateFactory, Chunk, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
@@ -171,7 +171,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Handle wands or wand-typed variables */
-      case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>
+      case _ if φ.typ == ast.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
           heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
             val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
@@ -205,7 +205,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
               val ve = pve dueTo MagicWandChunkNotFound(wand)
               QL(σ, h, chWand.id, wand, ve, c1)})
-          case v: ast.LocalVariable =>
+          case v: ast.AbstractLocalVar =>
             val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             val ve = pve dueTo NamedMagicWandChunkNotFound(v)
             QL(σ, h, tWandChunk.id, tWandChunk.ghostFreeWand, ve, c)
@@ -229,7 +229,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val (eWand, eLHSAndWand, γ1) = eWandOrVar match {
           case _eWand: ast.MagicWand =>
             (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info), σ.γ)
-          case v: ast.LocalVariable =>
+          case v: ast.AbstractLocalVar =>
             val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             val _eWand = chWand.ghostFreeWand
             (_eWand, ast.And(_eWand.left, _eWand)(v.pos, v.info), Γ(chWand.bindings))
