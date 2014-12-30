@@ -9,6 +9,7 @@ package silicon
 package interfaces.state
 
 import scala.language.implicitConversions
+import silver.ast
 import silicon.state.terms.Term
 
 object factoryUtils {
@@ -20,9 +21,9 @@ trait StoreFactory[ST <: Store[ST]] {
 	implicit def ØToEmptyStore(ø: factoryUtils.Ø): ST = Γ()
 
 	def Γ(): ST
-	def Γ(store: Map[ast.Variable, Term]): ST
-	def Γ(pair: (ast.Variable, Term)): ST
-	def Γ(pairs: Iterable[(ast.Variable, Term)]): ST
+	def Γ(store: Map[ast.AbstractLocalVar, Term]): ST
+	def Γ(pair: (ast.AbstractLocalVar, Term)): ST
+	def Γ(pairs: Iterable[(ast.AbstractLocalVar, Term)]): ST
 }
 
 trait PathConditionsFactory[PC <: PathConditions[PC]] {

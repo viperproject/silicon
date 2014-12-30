@@ -7,6 +7,7 @@
 package viper
 package silicon
 
+import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Success, VerificationResult, Unreachable, Evaluator}
 import interfaces.decider.Decider
@@ -322,12 +323,12 @@ trait LetHandler[ST <: Store[ST],
                  S <: State[ST, H, S],
                  C <: Context[C]] {
 
-  def handle[E <: ast.Expression]
-            (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+  def handle[E <: ast.Exp]
+            (σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult
 
-  def handle[E <: ast.Expression]
+  def handle[E <: ast.Exp]
             (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult
@@ -343,8 +344,8 @@ trait DefaultLetHandler[ST <: Store[ST],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-  def handle[E <: ast.Expression]
-            (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+  def handle[E <: ast.Exp]
+            (σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
 
@@ -354,7 +355,7 @@ trait DefaultLetHandler[ST <: Store[ST],
     }
   }
 
-  def handle[E <: ast.Expression]
+  def handle[E <: ast.Exp]
             (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
@@ -362,8 +363,8 @@ trait DefaultLetHandler[ST <: Store[ST],
     handle(σ, Nil, let, pve, c)(Q)
   }
 
-  private def handle[E <: ast.Expression]
-                    (σ: S, bindings: Seq[(ast.Variable, Term)], let: ast.Let, pve: PartialVerificationError, c: C)
+  private def handle[E <: ast.Exp]
+                    (σ: S, bindings: Seq[(ast.AbstractLocalVar, Term)], let: ast.Let, pve: PartialVerificationError, c: C)
                     (Q: (ST, E, C) => VerificationResult)
                     : VerificationResult = {
 

@@ -8,6 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
@@ -17,8 +18,7 @@ import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
-    DirectChunk, NestedFieldChunk, NestedPredicateChunk, DefaultContext}
+import state.{FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
 import supporters.PredicateSupporter
 
@@ -51,7 +51,7 @@ trait DefaultExecutor[ST <: Store[ST],
 	protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
-  private def follow(σ: S, edge: ast.CFGEdge, c: C)
+  private def follow(σ: S, edge: ast.Edge, c: C)
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
 
@@ -67,7 +67,7 @@ trait DefaultExecutor[ST <: Store[ST],
     }
   }
 
-  private def follows(σ: S, edges: Seq[ast.CFGEdge], c: C)
+  private def follows(σ: S, edges: Seq[ast.Edge], c: C)
                      (Q: (S, C) => VerificationResult)
                      : VerificationResult = {
 
@@ -77,7 +77,7 @@ trait DefaultExecutor[ST <: Store[ST],
       follows2(σ, edges, c)(Q)
   }
 
-  private def follows2(σ: S, edges: Seq[ast.CFGEdge], c: C)
+  private def follows2(σ: S, edges: Seq[ast.Edge], c: C)
                       (Q: (S, C) => VerificationResult)
                       : VerificationResult = {
 
@@ -88,14 +88,14 @@ trait DefaultExecutor[ST <: Store[ST],
     }
   }
 
-  private def leave(σ: S, block: ast.CFGBlock, c: C)
+  private def leave(σ: S, block: ast.Block, c: C)
                    (Q: (S, C) => VerificationResult)
                    : VerificationResult = {
 
     follows(σ, block.succs, c)(Q)
   }
 
-  def exec(σ: S, block: ast.CFGBlock, c: C)
+  def exec(σ: S, block: ast.Block, c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
@@ -112,7 +112,7 @@ trait DefaultExecutor[ST <: Store[ST],
          *       AST again.
          */
         val loopStmt = lb.toAst.asInstanceOf[ast.While]
-        val inv = ast.utils.BigAnd(lb.invs, Predef.identity, lb.pos)
+        val inv = utils.ast.BigAnd(lb.invs, Predef.identity, lb.pos)
         val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
         val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
         val invAndNotGuard = ast.And(inv, notGuard)(inv.pos, inv.info)
@@ -163,7 +163,7 @@ trait DefaultExecutor[ST <: Store[ST],
     }
   }
 
-  def execs(σ: S, stmts: Seq[ast.Statement], c: C)
+  def execs(σ: S, stmts: Seq[ast.Stmt], c: C)
                   (Q: (S, C) => VerificationResult)
                   : VerificationResult =
 
@@ -173,7 +173,7 @@ trait DefaultExecutor[ST <: Store[ST],
     else
       Q(σ, c)
 
-  def exec(σ: S, stmt: ast.Statement, c: C)
+  def exec(σ: S, stmt: ast.Stmt, c: C)
 			            (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
 
@@ -184,18 +184,18 @@ trait DefaultExecutor[ST <: Store[ST],
         logger.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
         logger.debug(stateFormatter.format(σ))
         decider.prover.logComment("[exec]")
-        decider.prover.logComment(stmt.toString)
+        decider.prover.logComment(stmt.toString())
     }
 
 		val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
 
-      case ass @ ast.Assignment(v, rhs) =>
+      case ass @ ast.LocalVarAssign(v, rhs) =>
         eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
-      case ass @ ast.FieldWrite(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           decider.assert(σ, tRcvr !== Null()){
@@ -207,7 +207,7 @@ trait DefaultExecutor[ST <: Store[ST],
             case false =>
               Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
 
-      case ast.New(v, fields) =>
+      case ast.NewStmt(v, fields) =>
         val t = fresh(v)
         assume(t !== Null())
         val newh = H(fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
@@ -230,7 +230,7 @@ trait DefaultExecutor[ST <: Store[ST],
         Q(σ \ γ1, c)
 
       case inhale @ ast.Inhale(a) => a match {
-        case _: ast.False =>
+        case _: ast.FalseLit =>
           /* We're done */
           Success()
         case _ =>
@@ -248,12 +248,12 @@ trait DefaultExecutor[ST <: Store[ST],
 
         a match {
           /* "assert true" triggers a heap compression. */
-          case _: ast.True =>
+          case _: ast.TrueLit =>
             heapCompressor.compress(σ, σ.h, c)
             Q(σ, c)
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
-          case _: ast.False =>
+          case _: ast.FalseLit =>
             decider.tryOrFail[(S, C)](σ, c)((σ1, QS, QF) => {
             if (decider.checkSmoke())
                 QS(σ1, c)
@@ -272,7 +272,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 Q(σ, c1))
         }
 
-      case call @ ast.Call(methodName, eArgs, lhs) =>
+      case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = c.program.findMethod(methodName)
         val pve = PreconditionInCallFalse(call)
           /* TODO: Used to be MethodCallFailed. Is also passed on to producing the postcondition, during which
@@ -282,12 +282,12 @@ trait DefaultExecutor[ST <: Store[ST],
 
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          val pre = ast.utils.BigAnd(meth.pres)
+          val pre = utils.ast.BigAnd(meth.pres)
           consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            val post = ast.utils.BigAnd(meth.posts)
+            val post = utils.ast.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)

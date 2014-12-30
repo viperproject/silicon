@@ -8,6 +8,7 @@ package viper
 package silicon
 package theories
 
+import silver.ast
 import interfaces.decider.Prover
 import interfaces.PreambleEmitter
 import state.terms
@@ -62,7 +63,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     collectDomainMembers(concreteDomainMemberInstances)
   }
 
-  private def collectDomainSorts(domainTypes: Set[ast.types.DomainType]) {
+  private def collectDomainSorts(domainTypes: Set[ast.DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -157,12 +158,12 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
    * @return The set of concrete domain types that are used in the given program. For all `dt` in
    *         the returned set, `dt.isConcrete` holds.
    */
-  private def collectConcreteDomainTypes(program: ast.Program): Set[ast.types.DomainType] = {
-    var domains: Set[ast.types.DomainType] = Set()
-    var newDomains: Set[ast.types.DomainType] = Set()
+  private def collectConcreteDomainTypes(program: ast.Program): Set[ast.DomainType] = {
+    var domains: Set[ast.DomainType] = Set()
+    var newDomains: Set[ast.DomainType] = Set()
 
-    var ds: Iterable[ast.types.DomainType] =
-      program.domains filter (_.typVars.isEmpty) map (ast.types.DomainType(_, Map.empty[ast.TypeVar, ast.Type]))
+    var ds: Iterable[ast.DomainType] =
+      program.domains filter (_.typVars.isEmpty) map (ast.DomainType(_, Map.empty[ast.TypeVar, ast.Type]))
 
     domains ++= ds
 
@@ -186,13 +187,13 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
   }
 
   private def collectConcreteDomainTypes(node: ast.Node, typeVarsMap: Map[ast.TypeVar, ast.Type])
-                                        : Set[ast.types.DomainType] = {
+                                        : Set[ast.DomainType] = {
 
-    var domains: Set[ast.types.DomainType] = Set()
+    var domains: Set[ast.DomainType] = Set()
 
     node visit {
       case t: ast.Typed => t.typ match {
-        case dt: ast.types.DomainType =>
+        case dt: ast.DomainType =>
           val substitutedDt = dt.substitute(typeVarsMap)
           if (substitutedDt.isConcrete) domains += substitutedDt
 
@@ -203,7 +204,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     domains
   }
 
-  private def collectConcreteDomainMemberInstances(program: ast.Program, concreteDomainTypes: Set[ast.types.DomainType])
+  private def collectConcreteDomainMemberInstances(program: ast.Program, concreteDomainTypes: Set[ast.DomainType])
                                                   : Map[ast.Domain, Set[DomainMemberInstance]] = {
 
     val membersWithSource = domainMembers(program)
@@ -289,7 +290,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
           instances.addBinding(membersWithSource(func), DomainFunctionInstance(func, combinedTypeVarsMap))
         }
 
-      case df: ast.DomainFunction if df.freeTypeVariables forall typeVarsMap.contains =>
+      case df: ast.DomainFunc if df.freeTypeVariables forall typeVarsMap.contains =>
         instances.addBinding(membersWithSource(df), DomainFunctionInstance(df, typeVarsMap))
 
       case da: ast.DomainAxiom if da.freeTypeVariables forall typeVarsMap.contains =>
@@ -313,7 +314,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     override lazy val toString = s"$member where $typeVarsMap"
   }
 
-  private case class DomainFunctionInstance(member: ast.DomainFunction, typeVarsMap: Map[ast.TypeVar, ast.Type])
+  private case class DomainFunctionInstance(member: ast.DomainFunc, typeVarsMap: Map[ast.TypeVar, ast.Type])
     extends DomainMemberInstance
 
   private case class DomainAxiomInstance(member: ast.DomainAxiom, typeVarsMap: Map[ast.TypeVar, ast.Type])
@@ -355,7 +356,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
 object DomainPrettyPrinter {
   def show(d: ast.Domain) = d.name + d.typVars.mkString("[",",","]")
 
-  def show(dt: ast.types.DomainType, program: ast.Program) =
+  def show(dt: ast.DomainType, program: ast.Program) =
     dt.domainName + program.findDomain(dt.domainName).typVars.mkString("[",",","]") + " where " + dt.typVarsMap
 }
 

@@ -10,6 +10,7 @@ package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
 import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
@@ -399,7 +400,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def fresh(s: Sort) = prover_fresh("$t", s)
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
-  def fresh(v: ast.Variable) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
+  def fresh(v: ast.AbstractLocalVar) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
 
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1

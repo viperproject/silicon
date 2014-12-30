@@ -9,6 +9,7 @@ package silicon
 package supporters
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider

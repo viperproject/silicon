@@ -9,10 +9,10 @@ package silicon
 package state
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor,
     StateFactory}
 import interfaces.decider.Decider
-import ast.Variable
 import terms.{Term, True, Implies, And, PermPlus}
 import terms.perms.{IsAsPermissive, IsPositive}
 import reporting.Bookkeeper
@@ -26,17 +26,17 @@ import collection.mutable
  * State components
  */
 
-case class MapBackedStore(private val map: Map[Variable, Term])
+case class MapBackedStore(private val map: Map[ast.AbstractLocalVar, Term])
 		extends Store[MapBackedStore] {
 
-	def this() = this(Map[Variable, Term]())
-	def this(pair: (Variable, Term)) = this(Map(pair))
+	def this() = this(Map[ast.AbstractLocalVar, Term]())
+	def this(pair: (ast.AbstractLocalVar, Term)) = this(Map(pair))
 
 	val values = map
 	def empty = new MapBackedStore()
-	def apply(key: Variable) = map(key)
-	def get(key: Variable) = map.get(key)
-	def +(entry: (Variable, Term)) = MapBackedStore(map + entry)
+	def apply(key: ast.AbstractLocalVar) = map(key)
+	def get(key: ast.AbstractLocalVar) = map.get(key)
+	def +(entry: (ast.AbstractLocalVar, Term)) = MapBackedStore(map + entry)
 	def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
 
@@ -116,7 +116,7 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
 
 	def \(γ: ST) = this.copy(γ = γ)
 	def \+(γ: ST) = this.copy(γ = this.γ + γ)
-	def \+(v: Variable, t: Term) = this.copy(γ = this.γ + (v, t))
+	def \+(v: ast.AbstractLocalVar, t: Term) = this.copy(γ = this.γ + (v, t))
 
 	def \(h: H) = this.copy(h = h)
 	def \(h: H, g: H) = this.copy(h = h, g = g)

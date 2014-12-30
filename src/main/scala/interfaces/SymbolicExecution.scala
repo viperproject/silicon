@@ -8,6 +8,7 @@ package viper
 package silicon
 package interfaces
 
+import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.state.Context
 import state.{ChunkIdentifier, Store, Heap, State, Chunk}
@@ -22,11 +23,11 @@ trait Evaluator[ST <: Store[ST],
 								S <: State[ST, H, S],
                 C <: Context[C]] {
 
-	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C)
+	def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
 					 (Q: (List[Term], C) => VerificationResult)
            : VerificationResult
 
-	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+	def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
 					(Q: (Term, C) => VerificationResult)
           : VerificationResult
 
@@ -47,7 +48,7 @@ trait Producer[ST <: Store[ST],
 	def produce(σ: S,
               sf: Sort => Term,
               p: Term,
-              φ: ast.Expression,
+              φ: ast.Exp,
               pve: PartialVerificationError,
               c: C)
 						 (Q: (S, C) => VerificationResult)
@@ -56,8 +57,8 @@ trait Producer[ST <: Store[ST],
   def produces(σ: S,
                sf: Sort => Term,
                p: Term,
-               φs: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φs: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, C) => VerificationResult)
               : VerificationResult
@@ -69,14 +70,14 @@ trait Consumer[CH <: Chunk,
 							 S <: State[ST, H, S],
                C <: Context[C]] {
 
-	def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+	def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
 						 (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult
 
   def consumes(σ: S,
                p: Term,
-               φ: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φ: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, List[CH], C) => VerificationResult)
               : VerificationResult
@@ -88,16 +89,16 @@ trait Executor[ST <: Store[ST],
                C <: Context[C]] {
 
   def exec(σ: S,
-           x: ast.CFGBlock,
+           x: ast.Block,
            c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult
 
-  def exec(σ: S, stmt: ast.Statement, c: C)
+  def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult
 
-  def execs(σ: S, stmts: Seq[ast.Statement], c: C)
+  def execs(σ: S, stmts: Seq[ast.Stmt], c: C)
            (Q: (S, C) => VerificationResult)
            : VerificationResult
 }

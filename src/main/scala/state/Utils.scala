@@ -9,7 +9,6 @@ package silicon
 package state
 
 import interfaces.state.{PredicateChunk, FieldChunk, Heap, Store, State}
-import ast.commonnodes
 import terms._
 
 package object utils {
@@ -118,8 +117,8 @@ package object utils {
 
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal => Nil
-    case op: commonnodes.BinaryOp[Term@unchecked] => List(op.p0, op.p1)
-    case op: commonnodes.UnaryOp[Term@unchecked] => List(op.p)
+    case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
+    case op: UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
     case and: And => and.ts
     case _: NoPerm | _: FullPerm => Nil

@@ -8,6 +8,7 @@ package viper
 package silicon
 package interfaces.state
 
+import silver.ast
 import state.terms.Term
 import state.DirectChunk
 
@@ -22,10 +23,10 @@ import state.DirectChunk
 
 trait Store[S <: Store[S]] {
 	def empty: S
-	def values: Map[ast.Variable, Term]
-	def apply(key: ast.Variable): Term
-	def get(key: ast.Variable): Option[Term]
-	def +(kv: (ast.Variable, Term)): S
+	def values: Map[ast.AbstractLocalVar, Term]
+	def apply(key: ast.AbstractLocalVar): Term
+	def get(key: ast.AbstractLocalVar): Option[Term]
+	def +(kv: (ast.AbstractLocalVar, Term)): S
 	def +(other: S): S
 }
 
@@ -56,7 +57,7 @@ trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
   def γ: ST
   def \(γ: ST): S
   def \+(γ: ST): S
-  def \+(v: ast.Variable, t: Term): S
+  def \+(v: ast.AbstractLocalVar, t: Term): S
 
   def h: H
   def g: H

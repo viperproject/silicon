@@ -8,12 +8,12 @@ package viper
 package silicon
 package interfaces
 
+import silver.ast
 import silver.components.StatefulComponent
-import ast.Program
 import silicon.state.terms.{Sort, Function}
 
 trait PreambleEmitter extends StatefulComponent {
-  def analyze(program: Program)
+  def analyze(program: ast.Program)
   def sorts: Set[Sort]
   def symbols: Option[Set[Function]]
   def declareSorts()

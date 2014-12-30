@@ -8,6 +8,7 @@ package viper
 package silicon
 package state
 
+import silver.ast
 import interfaces.state.{Context, Mergeable}
 import terms.{Var, FApp, Term}
 import theories.SnapshotRecorder
@@ -20,7 +21,7 @@ case class DefaultContext(program: ast.Program,
                           additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
-                          possibleTriggers: Map[ast.Expression, Term] = Map())
+                          possibleTriggers: Map[ast.Exp, Term] = Map())
     extends Context[DefaultContext] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)

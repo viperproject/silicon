@@ -8,15 +8,16 @@ package viper
 package silicon
 package state
 
+import silver.ast
 import interfaces.state.{Chunk, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory}
 import interfaces.state.factoryUtils.Ø
 import state.terms.Term
 
 trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
 	def Γ() = new MapBackedStore()
-	def Γ(pair: (ast.Variable, Term)) = new MapBackedStore(pair)
-	def Γ(pairs: Iterable[(ast.Variable, Term)]) = new MapBackedStore(toMap(pairs))
-	def Γ(store: Map[ast.Variable, Term]) = MapBackedStore(store)
+	def Γ(pair: (ast.AbstractLocalVar, Term)) = new MapBackedStore(pair)
+	def Γ(pairs: Iterable[(ast.AbstractLocalVar, Term)]) = new MapBackedStore(toMap(pairs))
+	def Γ(store: Map[ast.AbstractLocalVar, Term]) = MapBackedStore(store)
 }
 
 trait DefaultHeapFactory extends HeapFactory[ListBackedHeap] {
@@ -39,7 +40,7 @@ class DefaultPathConditionsFactory
 		extends PathConditionsFactory[MutableSetBackedPathConditions] {
 
 	def Π() = new MutableSetBackedPathConditions()
-	def Π(term: Term) = (new MutableSetBackedPathConditions()).push(term)
+	def Π(term: Term) = new MutableSetBackedPathConditions().push(term)
 
 	def Π(terms: Set[Term]) = {
 		val π = new MutableSetBackedPathConditions()

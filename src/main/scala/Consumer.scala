@@ -8,6 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{NegativePermission, AssertionFalse}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
@@ -41,7 +42,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-	def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+	def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult =
 
@@ -50,8 +51,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   def consumes(σ: S,
                p: Term,
-               φs: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φs: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
               : VerificationResult =
@@ -61,8 +62,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   private def consumes(σ: S,
                        h: H,
                        p: Term,
-                       φs: Seq[ast.Expression],
-                       pvef: ast.Expression => PartialVerificationError,
+                       φs: Seq[ast.Exp],
+                       pvef: ast.Exp => PartialVerificationError,
                        c: C)
                        (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
@@ -95,7 +96,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }))
     }
 
-  protected def consume(σ: S, h: H, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+  protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult = {
 
@@ -126,14 +127,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 						(c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
 						(c2: C) => Q(h, Unit, Nil, c2)))
 
-      case ast.Ite(e0, a1, a2) if !φ.isPure =>
+      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
       case let: ast.Let if !let.isPure =>
-        handle[ast.Expression](σ, let, pve, c)((γ1, body, c1) =>
+        handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
           consume(σ \+ γ1, h, p, body, pve, c1)(Q))
 
       case ast.AccessPredicate(locacc, perm) =>
@@ -145,8 +146,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
-      case _: ast.InhaleExhale =>
-        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+      case _: ast.InhaleExhaleExp =>
+        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
 			/* Any regular Expressions, i.e. boolean and arithmetic.
 			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
