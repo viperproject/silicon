@@ -51,7 +51,8 @@ trait PredicateSupporter[ST <: Store[ST],
       consume(σ \ insγ, tPerm, predicate.body, pve, c)((σ1, snap, dcs, c1) => {
         val ncs = dcs flatMap {
           case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
-          case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))}
+          case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
+          case _: MagicWandChunk => None}
         val ch = DirectPredicateChunk(predicate.name, tArgs, snap, tPerm, ncs)
         val (h1, c2) = chunkSupporter.produce(σ1, σ1.h, ch, c1)
         val h2 = h1 + H(ncs)
