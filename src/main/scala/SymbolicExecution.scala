@@ -7,12 +7,13 @@
 package viper
 package silicon
 
-import interfaces.{VerificationResult, Unreachable, Success}
+import silver.verifier.PartialVerificationError
+import interfaces.{Success, VerificationResult, Unreachable, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, Context}
-import reporting.Bookkeeper
-import state.DefaultContext
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, Context}
 import state.terms._
+import state.DefaultContext
+import reporting.Bookkeeper
 
 /* TODO: Move interfaces into interfaces package */
 
@@ -314,6 +315,68 @@ trait DefaultJoiner[ST <: Store[ST],
   }
 }
 
+/* LetHandler */
+
+trait LetHandler[ST <: Store[ST],
+                 H <: Heap[H],
+                 S <: State[ST, H, S],
+                 C <: Context[C]] {
+
+  def handle[E <: ast.Expression]
+            (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+            (Q: (ST, E, C) => VerificationResult)
+            : VerificationResult
+
+  def handle[E <: ast.Expression]
+            (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
+            (Q: (ST, E, C) => VerificationResult)
+            : VerificationResult
+}
+
+trait DefaultLetHandler[ST <: Store[ST],
+                        H <: Heap[H],
+                        S <: State[ST, H, S],
+                        C <: Context[C]]
+    extends LetHandler[ST, H, S, C]
+    { this: Evaluator[ST, H, S, C] =>
+
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
+  def handle[E <: ast.Expression]
+            (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+            (Q: (ST, E, C) => VerificationResult)
+            : VerificationResult = {
+
+    e match {
+      case let: ast.Let => handle(σ, Nil, let, pve, c)(Q)
+      case _ => Q(Γ(), e.asInstanceOf[E], c)
+    }
+  }
+
+  def handle[E <: ast.Expression]
+            (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
+            (Q: (ST, E, C) => VerificationResult)
+            : VerificationResult = {
+
+    handle(σ, Nil, let, pve, c)(Q)
+  }
+
+  private def handle[E <: ast.Expression]
+                    (σ: S, bindings: Seq[(ast.Variable, Term)], let: ast.Let, pve: PartialVerificationError, c: C)
+                    (Q: (ST, E, C) => VerificationResult)
+                    : VerificationResult = {
+
+    val ast.Let(v, exp, body) = let
+
+    eval(σ, exp, pve, c)((t, c1) => {
+      val bindings1 = bindings :+ (v.localVar, t)
+      val σ1 = σ \+ (v.localVar, t)
+      body match {
+        case nestedLet: ast.Let => handle(σ1, bindings1, nestedLet, pve, c1)(Q)
+        case _ => Q(Γ(bindings1), body.asInstanceOf[E], c1)}})
+  }
+}
 
 /* TODO: Remove this class */
 

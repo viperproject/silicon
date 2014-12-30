@@ -26,7 +26,8 @@ trait DefaultProducer[ST <: Store[ST],
     { this: Logging with Evaluator[ST, H, S, DefaultContext]
                     with Consumer[DirectChunk, ST, H, S, DefaultContext]
                     with Brancher[ST, H, S, DefaultContext]
-                    with ChunkSupporter[ST, H, PC, S] =>
+                    with ChunkSupporter[ST, H, PC, S]
+                    with LetHandler[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
 
@@ -152,6 +153,10 @@ trait DefaultProducer[ST <: Store[ST],
           branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
+
+      case let: ast.Let if !let.isPure =>
+        handle[ast.Expression](σ, let, pve, c)((γ1, body, c1) =>
+          produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {

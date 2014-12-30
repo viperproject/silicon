@@ -52,6 +52,8 @@ package object ast {
   val Implies = silver.ast.Implies
   type Ite = silver.ast.CondExp
   val Ite = silver.ast.CondExp
+  type Let = silver.ast.Let
+  val Let = silver.ast.Let
 
   type NullLiteral = silver.ast.NullLit
   val NullLiteral = silver.ast.NullLit

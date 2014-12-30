@@ -124,6 +124,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with PredicateSupporter[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S, DefaultContext]
        with DefaultJoiner[ST, H, PC, S]
+       with DefaultLetHandler[ST, H, S, DefaultContext]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],

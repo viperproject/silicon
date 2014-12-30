@@ -10,13 +10,12 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{NegativePermission, AssertionFalse}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
+import state.{DirectChunk, DefaultContext}
 import state.terms._
-import state.terms.perms.{IsNonNegative, IsNoAccess}
 import supporters.ChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
@@ -24,7 +23,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 		extends Consumer[DirectChunk, ST, H, S, DefaultContext]
 		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
 									  with Brancher[ST, H, S, DefaultContext]
-                    with ChunkSupporter[ST, H, PC, S] =>
+                    with ChunkSupporter[ST, H, PC, S]
+                    with LetHandler[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
 
@@ -131,6 +131,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           branch(σ, t0, c,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
+
+      case let: ast.Let if !let.isPure =>
+        handle[ast.Expression](σ, let, pve, c)((γ1, body, c1) =>
+          consume(σ \+ γ1, h, p, body, pve, c1)(Q))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
