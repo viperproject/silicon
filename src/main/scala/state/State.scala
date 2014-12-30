@@ -143,7 +143,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
                             val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
                             val stateFactory: StateFactory[ST, H, S])
-		extends HeapCompressor[ST, H, S] with Logging {
+		extends HeapCompressor[ST, H, S, C] with Logging {
 
   import stateFactory.H
 
@@ -151,7 +151,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
     * representation! After compressing the heap, `h` is updated via
     * calling `h.replace(...)`.
     */
-	def compress(σ: S, h: H) {
+	def compress(σ: S, h: H, ctx: C) {
 		var fcs: List[DirectFieldChunk] = Nil
 		var rfcs: List[DirectFieldChunk] = Nil
 
@@ -179,7 +179,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
 		decider.pushScope()
 		do {
-			val result = singleMerge(σ, h1, h2)
+			val result = singleMerge(σ, h1, h2, ctx)
 			rh = result._1
 			rfcs = result._2
 			rts = result._4
@@ -201,8 +201,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
     h.replace(rh.values ++ otherChunk)
 	}
 
-  def merge(σ: S, h: H, ch: Chunk): (H, Option[DirectChunk]) = {
-    val (h1, _, matches, ts) = singleMerge(σ, h, H(ch :: Nil))
+  def merge(σ: S, h: H, ch: Chunk, ctx: C): (H, Option[DirectChunk]) = {
+    val (h1, _, matches, ts) = singleMerge(σ, h, H(ch :: Nil), ctx)
     
     decider.assume(ts)
     
@@ -230,7 +230,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
     * @param h2 Heap into which `h1` will be merged in.
     * @return Result quadruple.
     */
-	private def singleMerge(σ: S, h1: H, h2: H)
+	private def singleMerge(σ: S, h1: H, h2: H, ctx: C)
                          : (H, List[DirectFieldChunk], Map[DirectChunk, DirectChunk], Set[Term]) = {
 
 		bookkeeper.heapMergeIterations += 1
@@ -248,7 +248,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 				 * ats: accumulating path conditions
 				 * c2: current chunk of the new heap h2
 				 */
-				(decider.getChunk[DirectChunk](σ, ah, c2.id), c2) match {
+				(decider.getChunk[DirectChunk](σ, ah, c2.id, ctx), c2) match {
 					case (Some(c1: DirectFieldChunk), c2: DirectFieldChunk) =>
             val (tSnap, tSnapDef) = combineSnapshots(c1.value, c2.value, c1.perm, c2.perm)
             val c3 = c1.copy(perm = PermPlus(c1.perm, c2.perm), value = tSnap)

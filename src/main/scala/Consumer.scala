@@ -149,7 +149,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 			 * not in the partially consumed heap (h).
 			 */
       case _ =>
-        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ, c)((σ1, QS, QF) => {
           eval(σ1, φ, pve, c)((t, c) =>
             decider.assert(σ1, t) {
               case true =>

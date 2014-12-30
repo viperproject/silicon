@@ -153,7 +153,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, σ.h, id) match {
+          decider.getChunk[DirectChunk](σ, σ.h, id, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })

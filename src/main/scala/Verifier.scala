@@ -112,7 +112,7 @@ class DefaultElementVerifier[ST <: Store[ST],
 			val stateFactory: StateFactory[ST, H, S],
 			val symbolConverter: SymbolConvert,
 			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S],
+			val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
 			val bookkeeper: Bookkeeper)
 		extends AbstractElementVerifier[ST, H, PC, S]
@@ -276,7 +276,7 @@ class DefaultVerifier[ST <: Store[ST],
       val multisetsEmitter: MultisetsEmitter,
 			val domainsEmitter: DomainsEmitter,
 			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S],
+			val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
 			val bookkeeper: Bookkeeper)
 		extends AbstractVerifier[ST, H, PC, S]
