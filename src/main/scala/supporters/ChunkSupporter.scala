@@ -29,7 +29,7 @@ trait ChunkSupporter[ST <: Store[ST],
           with Brancher[ST, H, S, DefaultContext]  =>
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext]
-  protected val heapCompressor: HeapCompressor[ST, H, S]
+  protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext]
 
   object chunkSupporter {
     private type C = DefaultContext
@@ -98,7 +98,7 @@ trait ChunkSupporter[ST <: Store[ST],
     }
 
     def produce(σ: S, h: H, ch: DirectChunk, c: C): (H, C) = {
-      val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch)
+      val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
       val c1 = recordSnapshot(c, matchedChunk, ch)
 
       (h1, c1)
