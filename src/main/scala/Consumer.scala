@@ -20,21 +20,21 @@ import state.terms._
 import supporters.ChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
-											PC <: PathConditions[PC], S <: State[ST, H, S]]
-		extends Consumer[DirectChunk, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
-									  with Brancher[ST, H, S, DefaultContext]
+                      PC <: PathConditions[PC], S <: State[ST, H, S]]
+    extends Consumer[DirectChunk, ST, H, S, DefaultContext]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext]
+                    with Brancher[ST, H, S, DefaultContext]
                     with ChunkSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
 
-	protected val decider: Decider[ST, H, PC, S, C]
-	import decider.assume
+  protected val decider: Decider[ST, H, PC, S, C]
+  import decider.assume
 
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
-	protected val bookkeeper: Bookkeeper
-	protected val config: Config
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val bookkeeper: Bookkeeper
+  protected val config: Config
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -42,7 +42,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-	def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+  def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult =
 
@@ -106,10 +106,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
     }
 
-		val consumed = φ match {
+    val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
-				consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
+        consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
+          consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = c1.snapshotRecorder.get
@@ -119,13 +119,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
               case _ => c2}
 
-						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-				eval(σ, e0, pve, c)((t0, c1) =>
-					branch(σ, t0, c,
-						(c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
-						(c2: C) => Q(h, Unit, Nil, c2)))
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c,
+            (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
+            (c2: C) => Q(h, Unit, Nil, c2)))
 
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -149,10 +149,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
-			/* Any regular Expressions, i.e. boolean and arithmetic.
-			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
-			 * not in the partially consumed heap (h).
-			 */
+      /* Any regular Expressions, i.e. boolean and arithmetic.
+       * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
+       * not in the partially consumed heap (h).
+       */
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ, c)((σ1, QS, QF) => {
           eval(σ1, φ, pve, c)((t, c) =>
@@ -174,8 +174,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             case false =>
               Failure[ST, H, S](pve dueTo AssertionFalse(φ))})
 */
-		}
+    }
 
-		consumed
-	}
+    consumed
+  }
 }

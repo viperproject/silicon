@@ -14,11 +14,11 @@ import state.DefaultContext
 import state.terms._
 
 package object utils {
-	def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
-		if (it.isEmpty)
-			unit
-		else
-			it.map(f).reduceLeft((t1, t2) => op(t1, t2))
+  def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
+    if (it.isEmpty)
+      unit
+    else
+      it.map(f).reduceLeft((t1, t2) => op(t1, t2))
 
   def conflictFreeUnion[K, V](m1: Map[K, V], m2: Map[K, V]): Either[Seq[(K, V, V)], Map[K, V]] = {
     m1 flatMap { case (k1, v1) => m2.get(k1) match {

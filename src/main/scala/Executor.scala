@@ -24,31 +24,31 @@ import supporters.PredicateSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
-											PC <: PathConditions[PC],
+                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
-									  with Consumer[DirectChunk, ST, H, S, DefaultContext]
-									  with Producer[ST, H, S, DefaultContext]
+    extends Executor[ST, H, S, DefaultContext]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext]
+                    with Consumer[DirectChunk, ST, H, S, DefaultContext]
+                    with Producer[ST, H, S, DefaultContext]
                     with PredicateSupporter[ST, H, PC, S]
-									  with Brancher[ST, H, S, DefaultContext] =>
+                    with Brancher[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
 
-	protected val decider: Decider[ST, H, PC, S, C]
-	import decider.{fresh, assume, inScope}
+  protected val decider: Decider[ST, H, PC, S, C]
+  import decider.{fresh, assume, inScope}
 
-	protected val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
-	protected val symbolConverter: SymbolConvert
+  protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
   import stateUtils.freshARP
 
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
   private def follow(σ: S, edge: ast.Edge, c: C)
@@ -174,7 +174,7 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   def exec(σ: S, stmt: ast.Stmt, c: C)
-			            (Q: (S, C) => VerificationResult)
+                  (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
 
     /* For debugging-purposes only */
@@ -187,7 +187,7 @@ trait DefaultExecutor[ST <: Store[ST],
         decider.prover.logComment(stmt.toString())
     }
 
-		val executed = stmt match {
+    val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
 
@@ -322,8 +322,8 @@ trait DefaultExecutor[ST <: Store[ST],
            | _: silver.ast.Seqn
            | _: silver.ast.Constraining
            | _: silver.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
-		}
+    }
 
-		executed
-	}
+    executed
+  }
 }

@@ -22,31 +22,31 @@ import state.DirectChunk
  */
 
 trait Store[S <: Store[S]] {
-	def empty: S
-	def values: Map[ast.AbstractLocalVar, Term]
-	def apply(key: ast.AbstractLocalVar): Term
-	def get(key: ast.AbstractLocalVar): Option[Term]
-	def +(kv: (ast.AbstractLocalVar, Term)): S
-	def +(other: S): S
+  def empty: S
+  def values: Map[ast.AbstractLocalVar, Term]
+  def apply(key: ast.AbstractLocalVar): Term
+  def get(key: ast.AbstractLocalVar): Option[Term]
+  def +(kv: (ast.AbstractLocalVar, Term)): S
+  def +(other: S): S
 }
 
 trait Heap[S <: Heap[S]] {
-	def empty: S
-	def values: Iterable[Chunk]
+  def empty: S
+  def values: Iterable[Chunk]
   def replace(values: Iterable[Chunk])
-	def +(chunk: Chunk): S
-	def +(other: S): S
-	def -(chunk: Chunk): S
+  def +(chunk: Chunk): S
+  def +(other: S): S
+  def -(chunk: Chunk): S
 }
 
 trait PathConditions[S <: PathConditions[S]] {
-	def empty: S
-	def values: Set[Term]
-	def contains(t: Term): Boolean
-	def push(term: Term): S
-	def pop(): S
-	def pushScope(): S
-	def popScope(): S
+  def empty: S
+  def values: Set[Term]
+  def contains(t: Term): Boolean
+  def push(term: Term): S
+  def pop(): S
+  def pushScope(): S
+  def popScope(): S
 }
 
 /*
@@ -68,17 +68,17 @@ trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
   def \-(c: Chunk): S
 
   def π: Set[Term]
-	def \(γ: ST = γ, h: H = h, g: H = g): S
+  def \(γ: ST = γ, h: H = h, g: H = g): S
 }
 
 trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
-	def format(σ: S): F
-	def format(γ: ST): F
-	def format(h: H): F
-	def format(π: Set[Term]): F
+  def format(σ: S): F
+  def format(γ: ST): F
+  def format(h: H): F
+  def format(π: Set[Term]): F
 }
 
 trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], C <: Context[C]] {
-	def compress(σ: S, h: H, c: C)
+  def compress(σ: S, h: H, c: C)
   def merge(σ: S, h: H, ch: Chunk, ctx: C): (H, Option[DirectChunk])
 }

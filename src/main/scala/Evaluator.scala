@@ -28,41 +28,41 @@ import supporters.PredicateSupporter
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
-											 S <: State[ST, H, S]]
-		extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
-		{ this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
-										with Producer[ST, H, S, DefaultContext]
+                       S <: State[ST, H, S]]
+    extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
+    { this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
+                    with Producer[ST, H, S, DefaultContext]
                     with PredicateSupporter[ST, H, PC, S]
-										with Brancher[ST, H, S, DefaultContext]
-										with Joiner[DefaultContext] =>
+                    with Brancher[ST, H, S, DefaultContext]
+                    with Joiner[DefaultContext] =>
 
   private type C = DefaultContext
 
-	protected val decider: Decider[ST, H, PC, S, C]
-	import decider.{fresh, assume}
+  protected val decider: Decider[ST, H, PC, S, C]
+  import decider.{fresh, assume}
 
-	protected val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
-	protected val symbolConverter: SymbolConvert
-	import symbolConverter.toSort
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
   protected val stateUtils: StateUtils[ST, H, PC, S, C]
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
-	protected val config: Config
-	protected val bookkeeper: Bookkeeper
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val config: Config
+  protected val bookkeeper: Bookkeeper
 
-	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
-	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
+  /*private*/ var fappCache: Map[Term, Set[Term]] = Map()
+  /*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
 
-	def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
-			     (Q: (List[Term], C) => VerificationResult)
+  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+           (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
 
-		evals2(σ, es, Nil, pve, c)((ts, c1) =>
-			Q(ts, c1))
+    evals2(σ, es, Nil, pve, c)((ts, c1) =>
+      Q(ts, c1))
 
-	private def evals2(σ: S,
+  private def evals2(σ: S,
                      es: Seq[ast.Exp],
                      ts: List[Term],
                      pve: PartialVerificationError,
@@ -70,31 +70,31 @@ trait DefaultEvaluator[ST <: Store[ST],
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
 
-		if (es.isEmpty)
-			Q(ts.reverse, c)
-		else
-			eval(σ, es.head, pve, c)((t, c1) =>
-				evals2(σ, es.tail, t :: ts, pve, c1)(Q))
-	}
+    if (es.isEmpty)
+      Q(ts.reverse, c)
+    else
+      eval(σ, es.head, pve, c)((t, c1) =>
+        evals2(σ, es.tail, t :: ts, pve, c1)(Q))
+  }
 
-	def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
+  def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
 
-		/* For debugging only */
-		e match {
-			case  _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
+    /* For debugging only */
+    e match {
+      case  _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
           | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
-			case _ =>
+      case _ =>
         logger.debug(s"\nEVAL ${e.pos}: $e")
-				logger.debug(stateFormatter.format(σ))
+        logger.debug(stateFormatter.format(σ))
         decider.prover.logComment(s"[eval] $e")
-		}
+    }
 
-		eval2(σ, e, pve, c)((t, c1) => {
+    eval2(σ, e, pve, c)((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
@@ -102,7 +102,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             case _ => c1}
         else
           c1
-			Q(t, c2)})
+      Q(t, c2)})
   }
 
   protected def eval2(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
@@ -504,10 +504,10 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
-		}
+    }
 
     resultTerm
-	}
+  }
 
   def withChunkIdentifier(σ: S,
                           locacc: ast.LocationAccess,
@@ -532,19 +532,19 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
     }
 
-	private def evalBinOp[T <: Term]
+  private def evalBinOp[T <: Term]
                        (σ: S,
-			                  e0: ast.Exp,
+                        e0: ast.Exp,
                         e1: ast.Exp,
                         termOp: (Term, Term) => T,
                         pve: PartialVerificationError,
-			                  c: C)
+                        c: C)
                        (Q: (T, C) => VerificationResult)
                        : VerificationResult = {
 
-		eval(σ, e0, pve, c)((t0, c1) =>
-			eval(σ, e1, pve, c1)((t1, c2) =>
-				Q(termOp(t0, t1), c2)))
+    eval(σ, e0, pve, c)((t0, c1) =>
+      eval(σ, e1, pve, c1)((t1, c2) =>
+        Q(termOp(t0, t1), c2)))
   }
 
   private def failIfDivByZero(σ: S,
@@ -698,14 +698,14 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(t0, optT1, optInnerC.getOrElse(c1))}})
   }
 
-	override def pushLocalState() {
-		fappCacheFrames = fappCache +: fappCacheFrames
-		super.pushLocalState()
-	}
+  override def pushLocalState() {
+    fappCacheFrames = fappCache +: fappCacheFrames
+    super.pushLocalState()
+  }
 
-	override def popLocalState() {
-		fappCache = fappCacheFrames.head
-		fappCacheFrames = fappCacheFrames.tail
-		super.popLocalState()
-	}
+  override def popLocalState() {
+    fappCache = fappCacheFrames.head
+    fappCacheFrames = fappCacheFrames.tail
+    super.popLocalState()
+  }
 }

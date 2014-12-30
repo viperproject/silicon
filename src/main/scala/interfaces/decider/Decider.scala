@@ -19,16 +19,16 @@ import utils.notNothing._
 
 trait Decider[ST <: Store[ST],
               H <: Heap[H],
-						  PC <: PathConditions[PC],
+              PC <: PathConditions[PC],
               S <: State[ST, H, S],
               C <: Context[C]]
 
     extends StatefulComponent {
 
-	def prover: Prover
-	def π: Set[Term]
+  def prover: Prover
+  def π: Set[Term]
 
-	def checkSmoke(): Boolean
+  def checkSmoke(): Boolean
 
   def pushScope()
   def popScope()

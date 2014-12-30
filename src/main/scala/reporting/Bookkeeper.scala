@@ -20,14 +20,14 @@ import java.text.SimpleDateFormat
 import silver.components.StatefulComponent
 
 class Bookkeeper(config: Config) extends StatefulComponent {
-	var branches: Long = 0
-	var heapMergeIterations: Long = 0
-	var objectDistinctnessComputations: Long = 0
-	var functionApplications: Long = 0
-	var functionBodyEvaluations: Long = 0
-	var assumptionCounter: Long = 0
-	var assertionCounter: Long = 0
-	var freshSymbols: Long = 0
+  var branches: Long = 0
+  var heapMergeIterations: Long = 0
+  var objectDistinctnessComputations: Long = 0
+  var functionApplications: Long = 0
+  var functionBodyEvaluations: Long = 0
+  var assumptionCounter: Long = 0
+  var assertionCounter: Long = 0
+  var freshSymbols: Long = 0
   var startTime: Long = 0
   var elapsedMillis: Long = 0
   var errors: Long = 0

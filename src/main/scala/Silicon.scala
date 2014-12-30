@@ -224,7 +224,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     * @param program The program to be verified.
     * @return The verification result.
     */
-	def verify(program: ast.Program): SilVerificationResult = {
+  def verify(program: ast.Program): SilVerificationResult = {
     lifetimeState match {
       case LifetimeState.Instantiated => sys.error("Silicon hasn't been configured yet")
       case LifetimeState.Configured => sys.error("Silicon hasn't been started yet")
@@ -234,7 +234,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Running
 
-		logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     val consistencyErrors = utils.consistency.check(program)
 
@@ -292,19 +292,19 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
     }
-	}
+  }
 
-	private def runVerifier(program: ast.Program): List[Failure] = {
-		/* TODO:
-		 *  - Since there doesn't seem to be a need for Success to carry a message,
-		 *    the hierarchy should be changed s.t. it doesn't has that field any
-		 *    more.
-		 */
+  private def runVerifier(program: ast.Program): List[Failure] = {
+    /* TODO:
+     *  - Since there doesn't seem to be a need for Success to carry a message,
+     *    the hierarchy should be changed s.t. it doesn't has that field any
+     *    more.
+     */
 
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
-		val results = verifier.verify(program)
+    val results = verifier.verify(program)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
@@ -328,7 +328,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
 
-		if (config.showStatistics.isDefined) {
+    if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()
 
       verifier.bookkeeper.proverStatistics = proverStats
@@ -347,16 +347,16 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
         case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }
-		}
+    }
 
     failures foreach (f => logFailure(f, s => logger.info(s)))
 
-		logger.info("\nVerification finished in %s with %s error(s)".format(
+    logger.info("\nVerification finished in %s with %s error(s)".format(
         silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
-				failures.length))
+        failures.length))
 
     failures
-	}
+  }
 
   private def convertFailures(failures: List[Failure]): SilVerificationResult = {
     failures match {
@@ -365,18 +365,18 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     }
   }
 
-	private def logFailure(failure: Failure, log: String => Unit) {
-		log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
-	}
+  private def logFailure(failure: Failure, log: String => Unit) {
+    log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
+  }
 
-	private def setLogLevelsFromConfig() {
+  private def setLogLevelsFromConfig() {
     val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
-		log4jlogger.setLevel(org.apache.log4j.Level.toLevel(config.logLevel()))
+    log4jlogger.setLevel(org.apache.log4j.Level.toLevel(config.logLevel()))
 
     config.logger.foreach { case (loggerName, level) =>
       val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
-		  log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
-	  }
+      log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
+    }
   }
 }
 

@@ -23,24 +23,24 @@ import decider.PreambleFileEmitter
 import supporters.{PredicateSupporter, ChunkSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
-														 H <: Heap[H], PC <: PathConditions[PC],
-														 S <: State[ST, H, S]]
-		extends Logging
-		   with Evaluator[ST, H, S, DefaultContext]
-		   with Producer[ST, H, S, DefaultContext]
-		   with Consumer[DirectChunk, ST, H, S, DefaultContext]
-		   with Executor[ST, H, S, DefaultContext]
+                             H <: Heap[H], PC <: PathConditions[PC],
+                             S <: State[ST, H, S]]
+    extends Logging
+       with Evaluator[ST, H, S, DefaultContext]
+       with Producer[ST, H, S, DefaultContext]
+       with Consumer[DirectChunk, ST, H, S, DefaultContext]
+       with Executor[ST, H, S, DefaultContext]
        with FunctionsSupporter[ST, H, PC, S] {
 
   private type C = DefaultContext
 
-	/*protected*/ val config: Config
+  /*protected*/ val config: Config
 
   /*protected*/ val decider: Decider[ST, H, PC, S, C]
-	import decider.{fresh, inScope}
+  import decider.{fresh, inScope}
 
   /*protected*/ val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  import stateFactory._
 
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
@@ -54,7 +54,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     }
   }
 
-	def verify(method: ast.Method, c: C): VerificationResult = {
+  def verify(method: ast.Method, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
@@ -73,21 +73,21 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
     val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
-		/* Combined the well-formedness check and the execution of the body, which are two separate
-		 * rules in Smans' paper.
-		 */
+    /* Combined the well-formedness check and the execution of the body, which are two separate
+     * rules in Smans' paper.
+     */
     inScope {
-			produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
-				val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-			 (inScope {
+      produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
+        val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
+       (inScope {
          produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
            Success())}
-					&&
+          &&
         inScope {
           exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
             consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
               Success()))})})}
-	}
+  }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
@@ -106,17 +106,17 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
 class DefaultElementVerifier[ST <: Store[ST],
                              H <: Heap[H],
-														 PC <: PathConditions[PC],
+                             PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
-		(	val config: Config,
-		  val decider: Decider[ST, H, PC, S, DefaultContext],
-			val stateFactory: StateFactory[ST, H, S],
-			val symbolConverter: SymbolConvert,
-			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
+    (  val config: Config,
+      val decider: Decider[ST, H, PC, S, DefaultContext],
+      val stateFactory: StateFactory[ST, H, S],
+      val symbolConverter: SymbolConvert,
+      val stateFormatter: StateFormatter[ST, H, S, String],
+      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
-			val bookkeeper: Bookkeeper)
-		extends AbstractElementVerifier[ST, H, PC, S]
+      val bookkeeper: Bookkeeper)
+    extends AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
@@ -267,24 +267,24 @@ trait AbstractVerifier[ST <: Store[ST],
 class DefaultVerifier[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
-											S <: State[ST, H, S]]
-		(	val config: Config,
-			val decider: Decider[ST, H, PC, S, DefaultContext],
-			val stateFactory: StateFactory[ST, H, S],
-			val symbolConverter: SymbolConvert,
+                      S <: State[ST, H, S]]
+    (  val config: Config,
+      val decider: Decider[ST, H, PC, S, DefaultContext],
+      val stateFactory: StateFactory[ST, H, S],
+      val symbolConverter: SymbolConvert,
       val preambleEmitter: PreambleFileEmitter[String, String],
       val sequencesEmitter: SequencesEmitter,
       val setsEmitter: SetsEmitter,
       val multisetsEmitter: MultisetsEmitter,
-			val domainsEmitter: DomainsEmitter,
-			val stateFormatter: StateFormatter[ST, H, S, String],
-			val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
+      val domainsEmitter: DomainsEmitter,
+      val stateFormatter: StateFormatter[ST, H, S, String],
+      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
       val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
-			val bookkeeper: Bookkeeper)
-		extends AbstractVerifier[ST, H, PC, S]
-			 with Logging {
+      val bookkeeper: Bookkeeper)
+    extends AbstractVerifier[ST, H, PC, S]
+       with Logging {
 
-	val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
+  val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
                                       stateUtils, bookkeeper)
 
   override def reset() {

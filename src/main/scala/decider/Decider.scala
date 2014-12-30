@@ -27,10 +27,10 @@ class DefaultDecider[ST <: Store[ST],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S],
                      C <: Context[C]]
-		extends Decider[ST, H, PC, S, C]
-		   with Logging {
+    extends Decider[ST, H, PC, S, C]
+       with Logging {
 
-	private var z3: Z3ProverStdIO = _
+  private var z3: Z3ProverStdIO = _
 
   protected var pathConditionsFactory: PathConditionsFactory[PC] = _
   protected var config: Config = _
@@ -273,7 +273,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def check(σ: S, t: Term) = assert(σ, t, null)
 
-	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
+  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
     val success = assert(σ, t, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
@@ -285,11 +285,11 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-	protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
-		val asserted = isKnownToBeTrue(t)
+  protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
+    val asserted = isKnownToBeTrue(t)
 
-		asserted || proverAssert(t, logSink)
-	}
+    asserted || proverAssert(t, logSink)
+  }
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
@@ -366,35 +366,35 @@ class DefaultDecider[ST <: Store[ST],
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
     )(Q)
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
+  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
     val chunks = h.values collect {
       case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]}
 
     getChunk(σ, chunks, id)
   }
 
-	private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
-		findChunk(σ, chunks, id)
+  private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
+    findChunk(σ, chunks, id)
 
-	private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
-					 findChunkLiterally(chunks, id)
-		orElse findChunkWithProver(σ, chunks, id))
+  private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
+           findChunkLiterally(chunks, id)
+    orElse findChunkWithProver(σ, chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
-		chunks find (ch => ch.args == id.args)
+  private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+    chunks find (ch => ch.args == id.args)
 
   /**
     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
     */
-	private def findChunkWithProver[CH <: Chunk: NotNothing]
+  private def findChunkWithProver[CH <: Chunk: NotNothing]
                                  (σ: S, chunks: Iterable[CH], id: ChunkIdentifier)
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-		val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
+    val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
-		chunk
-	}
+    chunk
+  }
 
   /* Fresh symbols */
 

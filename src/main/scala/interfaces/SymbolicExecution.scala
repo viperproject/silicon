@@ -20,15 +20,15 @@ import silicon.state.terms.{Sort, Term}
 
 trait Evaluator[ST <: Store[ST],
                 H <: Heap[H],
-								S <: State[ST, H, S],
+                S <: State[ST, H, S],
                 C <: Context[C]] {
 
-	def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
-					 (Q: (List[Term], C) => VerificationResult)
+  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+           (Q: (List[Term], C) => VerificationResult)
            : VerificationResult
 
-	def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
-					(Q: (Term, C) => VerificationResult)
+  def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
+          (Q: (Term, C) => VerificationResult)
           : VerificationResult
 
   def withChunkIdentifier(σ: S,
@@ -42,16 +42,16 @@ trait Evaluator[ST <: Store[ST],
 
 trait Producer[ST <: Store[ST],
                H <: Heap[H],
-							 S <: State[ST, H, S],
+               S <: State[ST, H, S],
                C <: Context[C]] {
 
-	def produce(σ: S,
+  def produce(σ: S,
               sf: Sort => Term,
               p: Term,
               φ: ast.Exp,
               pve: PartialVerificationError,
               c: C)
-						 (Q: (S, C) => VerificationResult)
+             (Q: (S, C) => VerificationResult)
              : VerificationResult
 
   def produces(σ: S,
@@ -67,11 +67,11 @@ trait Producer[ST <: Store[ST],
 trait Consumer[CH <: Chunk,
                ST <: Store[ST],
                H <: Heap[H],
-							 S <: State[ST, H, S],
+               S <: State[ST, H, S],
                C <: Context[C]] {
 
-	def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
-						 (Q: (S, Term, List[CH], C) => VerificationResult)
+  def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+             (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult
 
   def consumes(σ: S,
