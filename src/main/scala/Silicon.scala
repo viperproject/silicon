@@ -55,12 +55,16 @@ object Silicon extends SiliconConstants {
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
       case (k, v) =>
+        if (k.head.isUpper) {
+          Seq(s"-$k=$v")
+        } else {
         val kStr = s"--$k"
         val vStr = v.toString
 
         vStr.toLowerCase match {
           case "true" | "false" => Seq(kStr)
           case _ => Seq(kStr, vStr)
+        }
         }
     }.toSeq
 
@@ -144,7 +148,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
          *       or --dependencies is can be shared.
          */
 
-    setLogLevel(config.logLevel())
+    setLogLevelsFromConfig()
     verifier = createVerifier()
 
     verifier.start()
@@ -366,10 +370,15 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 		log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
 	}
 
-	private def setLogLevel(level: String) {
+	private def setLogLevelsFromConfig() {
     val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
-		log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
-	}
+		log4jlogger.setLevel(org.apache.log4j.Level.toLevel(config.logLevel()))
+
+    config.logger.foreach { case (loggerName, level) =>
+      val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
+		  log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
+	  }
+  }
 }
 
 
@@ -478,7 +487,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some("OFF"),
     noshort = true,
     hidden = Silicon.hideInternalOptions
-  )
+  )(singleArgConverter(level => level.toUpperCase))
+
+  val logger = props[String]('L',
+    descr = "Set level of certain internal loggers",
+    keyName = "logger",
+    valueName = "level",
+    hidden = Silicon.hideInternalOptions)
 
   val timeout = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "

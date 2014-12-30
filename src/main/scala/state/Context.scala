@@ -16,6 +16,7 @@ case class DefaultContext(program: ast.Program,
                           visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
+
                           additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
@@ -57,7 +58,8 @@ case class DefaultContext(program: ast.Program,
                             snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
-          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
+//          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
+          val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
           val snapshotRecorder3 = DefaultContext.merge(snapshotRecorder1, snapshotRecorder2)
 
           copy(additionalTriggers = additionalTriggers3,
@@ -68,6 +70,8 @@ case class DefaultContext(program: ast.Program,
           sys.error("Unexpected mismatch between contexts")
       }
   }
+
+  override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
 object DefaultContext {

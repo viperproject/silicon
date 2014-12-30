@@ -17,12 +17,14 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
 import state.terms._
 import state.terms.perms.{IsNonNegative, IsNoAccess}
+import supporters.ChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 											PC <: PathConditions[PC], S <: State[ST, H, S]]
 		extends Consumer[DirectChunk, ST, H, S, DefaultContext]
 		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
-									  with Brancher[ST, H, S, DefaultContext] =>
+									  with Brancher[ST, H, S, DefaultContext]
+                    with ChunkSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext
 
@@ -133,26 +135,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σ, IsNonNegative(tPerm)){
+            decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
-                consumePermissions(σ, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
-                  val c4 = c3.snapshotRecorder match {
-                    case Some(sr) =>
-                      c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-                    case _ => c3}
-                  ch match {
-                    case fc: DirectFieldChunk =>
-                      val snap = fc.value.convert(sorts.Snap)
-                      Q(h1, snap, fc :: Nil, c4)
-
-                    case pc: DirectPredicateChunk =>
-                      val h2 =
-                        if (results.consumedCompletely)
-                          pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
-                        else
-                          h1
-                      Q(h2, pc.snap, pc :: Nil, c4)}})
-
+                chunkSupporter.consume(σ, h, id, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
@@ -188,31 +173,4 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
 		consumed
 	}
-
-  private def consumePermissions(σ: S,
-                                 h: H,
-                                 id: ChunkIdentifier,
-                                 pLoss: Term,
-                                 locacc: ast.LocationAccess,
-                                 pve: PartialVerificationError,
-                                 c: C)
-                                (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
-                                :VerificationResult = {
-
-    /* TODO: assert that pLoss > 0 */
-
-    if (utils.consumeExactRead(pLoss, c)) {
-      decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
-        if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
-          Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
-        else
-          Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
-    } else {
-      decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
-        assume(PermLess(pLoss, ch.perm))
-        Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
-    }
-  }
 }
-
-private case class PermissionsConsumptionResult(consumedCompletely: Boolean)

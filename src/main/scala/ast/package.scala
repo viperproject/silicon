@@ -15,6 +15,7 @@ package object ast {
 
   type Program = silver.ast.Program
   type Member = silver.ast.Member
+  type Location = silver.ast.Location
   type Method = silver.ast.Method
   type Function = silver.ast.FuncLike
   type ProgramFunction = silver.ast.Function

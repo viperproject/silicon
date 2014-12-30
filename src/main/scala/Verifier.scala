@@ -19,6 +19,7 @@ import state.terms.{sorts, Sort}
 import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
+import supporters.{PredicateSupporter, ChunkSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
 														 H <: Heap[H], PC <: PathConditions[PC],
@@ -27,7 +28,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 		   with Evaluator[ST, H, S, DefaultContext]
 		   with Producer[ST, H, S, DefaultContext]
 		   with Consumer[DirectChunk, ST, H, S, DefaultContext]
-		   with Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+		   with Executor[ST, H, S, DefaultContext]
        with FunctionsSupporter[ST, H, PC, S] {
 
   private type C = DefaultContext
@@ -119,6 +120,8 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
+       with ChunkSupporter[ST, H, PC, S]
+       with PredicateSupporter[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S, DefaultContext]
        with DefaultJoiner[ST, H, PC, S]
        with Logging
@@ -286,6 +289,6 @@ class DefaultVerifier[ST <: Store[ST],
     super.reset()
     ev.fappCache = Map()
     ev.fappCacheFrames = Stack()
-    ev.currentGuards = Set()
+    ev.currentGuards = Stack()
   }
 }

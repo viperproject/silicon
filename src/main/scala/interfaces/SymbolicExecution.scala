@@ -82,15 +82,22 @@ trait Consumer[CH <: Chunk,
               : VerificationResult
 }
 
-trait Executor[X,
-               ST <: Store[ST],
+trait Executor[ST <: Store[ST],
                H <: Heap[H],
                S <: State[ST, H, S],
                C <: Context[C]] {
 
   def exec(σ: S,
-           x: X,
+           x: ast.CFGBlock,
            c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult
+
+  def exec(σ: S, stmt: ast.Statement, c: C)
+          (Q: (S, C) => VerificationResult)
+          : VerificationResult
+
+  def execs(σ: S, stmts: Seq[ast.Statement], c: C)
+           (Q: (S, C) => VerificationResult)
+           : VerificationResult
 }

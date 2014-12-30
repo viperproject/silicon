@@ -14,23 +14,70 @@ import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
 import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
 import interfaces.decider.Decider
-import interfaces.state.{ChunkIdentifier, StateFactory, State, PathConditions, Heap, Store, Mergeable}
+import interfaces.state.{Chunk, ChunkIdentifier, StateFactory, State, PathConditions, Heap, Store, Mergeable}
 import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, SymbolConvert, DirectChunk}
+import state.{DirectChunk, DefaultContext, SymbolConvert}
 import state.terms.{utils => _, _}
 import state.terms.predef._
 
 case class SnapshotRecorder(currentSnap: Term = null,
                             locToChunk: Map[ast.LocationAccess, ChunkIdentifier] = Map(),
-                            chunkToSnap: Map[ChunkIdentifier, Term] = Map(),
+                            chunksToSnaps: Map[ChunkIdentifier, Set[(Stack[Term], Term)]] = Map(),
                             fappToSnap: Map[ast.FuncApp, Term] = Map())
     extends Mergeable[SnapshotRecorder]
        with Logging {
 
-  def locToSnap = locToChunk.map{case (loc, ch) => loc -> chunkToSnap(ch)}
+//  private def locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] =
+//    locToChunk.map{case (loc, ch) => loc -> chunksToSnaps(ch)}
+
+  def locToSnap: Map[ast.LocationAccess, Term] = {
+    locToChunk.map { case (loc, id) => loc -> chunkToSnap(id) }
+//    locToChunk.map { case (loc, ch) =>
+//      val guardsToSnap = chunksToSnaps(ch)
+//      assert(guardsToSnap.nonEmpty)
+//
+//      /* We make the snap of the head pair (guards -> snap) of guardsToSnap the
+//       * inner-most else-clause, i.e., we drop the guards. This should not be a
+//       * problem, but it would be safer to make an unknown value the else-clause.
+//       */
+//      val conditionalSnap =
+//        guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
+//          Ite(And(guards.toSet), snap, tailSnap)
+//        }
+//
+//      loc -> conditionalSnap
+//    }
+  }
+
+  def chunkToSnap(id: ChunkIdentifier): Term = {
+    val guardsToSnap = chunksToSnaps(id)
+    assert(guardsToSnap.nonEmpty)
+
+    /* We make the snap of the head pair (guards -> snap) of guardsToSnap the
+     * inner-most else-clause, i.e., we drop the guards. This should not be a
+     * problem, but it would be safer to make an unknown value the else-clause.
+     */
+    val conditionalSnap =
+      guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
+        Ite(And(guards.toSet), snap, tailSnap)
+      }
+
+    conditionalSnap
+  }
+
+  def addChunkToSnap(id: ChunkIdentifier, guards: Stack[Term], snap: Term) = {
+    val guardsToSnaps = chunksToSnaps.getOrElse(id, Set()) + (guards -> snap)
+    copy(chunksToSnaps = chunksToSnaps + (id -> guardsToSnaps))
+  }
 
   def merge(other: SnapshotRecorder): SnapshotRecorder = {
-    val combinedCtsOrConflicts = utils.conflictFreeUnion(chunkToSnap, other.chunkToSnap)
+//    val combinedCtsOrConflicts = utils.conflictFreeUnion(chunksToSnaps, other.chunksToSnaps)
+    val cts =
+      other.chunksToSnaps.foldLeft(chunksToSnaps){case (accCts, (id, guardsToSnaps)) =>
+        val guardsToSnaps1 = accCts.getOrElse(id, Set()) ++ guardsToSnaps
+        accCts + (id -> guardsToSnaps1)
+      }
+
     val combinedLtcOrConflicts = utils.conflictFreeUnion(locToChunk, other.locToChunk)
 
     val combinedFtsOrConflicts = utils.conflictFreeUnion(fappToSnap, other.fappToSnap) match {
@@ -50,10 +97,9 @@ case class SnapshotRecorder(currentSnap: Term = null,
         else Left((resolved, unresolved))
     }
 
-    (combinedCtsOrConflicts, combinedLtcOrConflicts, combinedFtsOrConflicts) match {
-      case (Right(cts), Right(ltc), Right(fts)) /*if currentSnap == other.currentSnap*/ =>
-
-        copy(chunkToSnap = cts, locToChunk = ltc, fappToSnap = fts)
+    (/*combinedCtsOrConflicts, */combinedLtcOrConflicts, combinedFtsOrConflicts) match {
+      case (/*Right(cts),*/ Right(ltc), Right(fts)) /*if currentSnap == other.currentSnap*/ =>
+        copy(chunksToSnaps = cts, locToChunk = ltc, fappToSnap = fts)
 
       case p3 =>
 //        p3.productIterator.zip[String](Seq("cts", "ltc", "fts").iterator).foreach{case (a,b) =>
@@ -110,7 +156,7 @@ case class SnapshotRecorder(currentSnap: Term = null,
 
   override lazy val toString = {
     val ltcStrs = locToChunk map {case (k, v) => s"$k  |==>  $v"}
-    val ctsStrs = chunkToSnap map {case (k, v) => s"$k  |==>  $v"}
+    val ctsStrs = chunksToSnaps map {case (k, v) => s"$k  |==>  $v"}
     val ltsStrs = locToSnap map {case (k, v) => s"$k  |==>  $v"}
     val ftsStrs = fappToSnap map {case (k, v) => s"$k  |==>  $v"}
 
@@ -118,7 +164,7 @@ case class SnapshotRecorder(currentSnap: Term = null,
        |  currentSnap: $currentSnap
        |  locToChunk:
        |    ${ltcStrs.mkString("\n    ")}
-       |  chunkToSnap:
+       |  chunksToSnaps:
        |    ${ctsStrs.mkString("\n    ")}
        |  locToSnap:
        |    ${ltsStrs.mkString("\n    ")}

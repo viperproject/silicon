@@ -9,12 +9,13 @@ package silicon
 
 import com.weiglewilczek.slf4s.Logging
 import silver.verifier.PartialVerificationError
-import interfaces.state.{HeapCompressor, Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import supporters.ChunkSupporter
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -24,14 +25,13 @@ trait DefaultProducer[ST <: Store[ST],
         with HasLocalState
     { this: Logging with Evaluator[ST, H, S, DefaultContext]
                     with Consumer[DirectChunk, ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext] =>
+                    with Brancher[ST, H, S, DefaultContext]
+                    with ChunkSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
-
-  protected val heapCompressor: HeapCompressor[ST, H, S]
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -160,12 +160,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
+            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
@@ -175,12 +170,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
+            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
       case _: ast.InhaleExhale =>

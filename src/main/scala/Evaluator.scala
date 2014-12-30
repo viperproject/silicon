@@ -21,7 +21,8 @@ import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, Sy
 import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
-import state.terms.perms.IsPositive
+import state.terms.perms.IsNonNegative
+import supporters.PredicateSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -30,8 +31,9 @@ trait DefaultEvaluator[ST <: Store[ST],
 		extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
 		{ this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
 										with Producer[ST, H, S, DefaultContext]
+                    with PredicateSupporter[ST, H, PC, S]
 										with Brancher[ST, H, S, DefaultContext]
-										with Joiner[ST, H, S, DefaultContext] =>
+										with Joiner[DefaultContext] =>
 
   private type C = DefaultContext
 
@@ -78,6 +80,19 @@ trait DefaultEvaluator[ST <: Store[ST],
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
+
+		/* For debugging only */
+		e match {
+			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
+          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
+          | _: ast.WildcardPerm | _: ast.FieldAccess =>
+
+			case _ =>
+        logger.debug(s"\nEVAL ${e.pos}: $e")
+				logger.debug(stateFormatter.format(σ))
+        decider.prover.logComment(s"[eval] $e")
+		}
+
 		eval2(σ, e, pve, c)((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
@@ -92,18 +107,6 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
-
-		/* For debugging only */
-		e match {
-			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
-          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
-          | _: ast.WildcardPerm | _: ast.FieldAccess =>
-
-			case _ =>
-        logger.debug(s"\nEVAL ${e.pos}: $e")
-				logger.debug(stateFormatter.format(σ))
-        decider.prover.logComment(s"[eval] $e")
-		}
 
     /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
      * might be tempting to think that we don't need to locally evaluate
@@ -369,26 +372,37 @@ trait DefaultEvaluator[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
-          val c0a = c.incCycleCounter(predicate)
-          eval(σ, ePerm, pve, c0a)((tPerm, c1) => {
-            decider.assert(σ, IsPositive(tPerm)){
+          val c0 = c.incCycleCounter(predicate)
+
+          evals(σ, eArgs, pve, c0)((tArgs, c1) =>
+            eval(σ, ePerm, pve, c1)((tPerm, c2) =>
+              decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
-                evals(σ, eArgs, pve, c1)((tArgs, c2) =>
-                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
+                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
+                      /* [2014-12-10 Malte] The commented code should replace the code following
+                       * it, but using it slows down RingBufferRd.sil significantly. The generated
+                       * Z3 output looks nearly identical, so my guess is that it is some kind
+                       * of triggering problem, probably related to sequences.
+                       */
+//                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
+//                      val c4 = c3.decCycleCounter(predicate)
+//                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
+//                        QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
-                      val c3a = c3.snapshotRecorder match {
-                        case Some(sr) =>
-                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
-                        case _ => c3}
+//                      val c3a = c3.snapshotRecorder match {
+//                        case Some(sr) =>
+//                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
+//                        case _ => c3}
+//                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c.program)
-                      produce(σ1, s => snap.convert(s), tPerm, body, pve, c3a)((σ2, c4) => {
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 \ (g = σ.g)
-                        eval(σ3, eIn, pve, c4a)((tIn, c5) => {
+                        val σ3 = σ2 //\ (g = σ.g)
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
                           QB(tIn, c5)})})})
-                  })(Q))
+                  )(Q)
               case false =>
-                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}})
+                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)
@@ -479,6 +493,8 @@ trait DefaultEvaluator[ST <: Store[ST],
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
+
+      /* Unexpected nodes */
 
       case _: ast.InhaleExhale =>
         Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e))

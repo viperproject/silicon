@@ -19,16 +19,18 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{PredicateChunkIdentifier, FieldChunkIdentifier, DirectFieldChunk, DirectPredicateChunk, SymbolConvert,
     DirectChunk, NestedFieldChunk, NestedPredicateChunk, DefaultContext}
-import state.terms.perms.IsPositive
+import state.terms.perms.IsNonNegative
+import supporters.PredicateSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
 											PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-		extends Executor[ast.CFGBlock, ST, H, S, DefaultContext]
+		extends Executor[ST, H, S, DefaultContext]
 		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
 									  with Consumer[DirectChunk, ST, H, S, DefaultContext]
 									  with Producer[ST, H, S, DefaultContext]
+                    with PredicateSupporter[ST, H, PC, S]
 									  with Brancher[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
@@ -161,17 +163,17 @@ trait DefaultExecutor[ST <: Store[ST],
     }
   }
 
-  private def exec(σ: S, stmts: Seq[ast.Statement], c: C)
+  def execs(σ: S, stmts: Seq[ast.Statement], c: C)
                   (Q: (S, C) => VerificationResult)
                   : VerificationResult =
 
     if(stmts.nonEmpty)
       exec(σ, stmts.head, c)((σ1, c1) =>
-        exec(σ1, stmts.tail, c1)(Q))
+        execs(σ1, stmts.tail, c1)(Q))
     else
       Q(σ, c)
 
-  private def exec(σ: S, stmt: ast.Statement, c: C)
+  def exec(σ: S, stmt: ast.Statement, c: C)
 			            (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
 
@@ -187,7 +189,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
 		val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
-        exec(σ, stmts, c)(Q)
+        execs(σ, stmts, c)(Q)
 
       case ass @ ast.Assignment(v, rhs) =>
         eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
@@ -296,56 +298,20 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsPositive(tPerm)){
+              decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ \ insγ, tPerm, predicate.body, pve, c2)((σ1, snap, dcs, c3) => {
-                    val ncs = dcs.map {
-                      case fc: DirectFieldChunk => new NestedFieldChunk(fc)
-                      case pc: DirectPredicateChunk => new NestedPredicateChunk(pc)
-                    }
-                    /* Producing Access is unfortunately not an option here
-                     * since the following would fail due to productions
-                     * starting in an empty heap:
-                     *
-                     *   predicate V { acc(x) }
-                     *
-                     *   function f(a: int): int
-                     *	   requires rd(x)
-                     * 	 { x + a }
-                     *
-                     *   method test(a: int)
-                     *     requires ... ensures ...
-                     *   { fold acc(V, f(a)) }
-                     *
-                     * Fold would fail since acc(V, f(a)) is produced in an
-                     * empty and thus f(a) fails due to missing permissions to
-                     * read x.
-                     *
-                     */
-                    val id = PredicateChunkIdentifier(predicate.name, tArgs)
-                    val (h, t, tPerm1) = decider.getChunk[DirectPredicateChunk](σ, σ1.h, id) match {
-                      case Some(pc) => (σ1.h - pc,
-                                        pc.snap.convert(sorts.Snap) === snap.convert(sorts.Snap),
-                                        PermPlus(pc.perm, tPerm))
-                      case None => (σ1.h, True(), tPerm)}
-                    assume(t)
-                    val h1 = h + DirectPredicateChunk(predicate.name, tArgs, snap, tPerm1, ncs) + H(ncs)
-                    Q(σ \ h1, c3)})
+                  predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
-      case unfold @ ast.Unfold(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
+      case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsPositive(tPerm)){
+              decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
-                  val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, _, c3) =>
-                    produce(σ1 \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3)((σ2, c4) =>
-                      Q(σ2 \ σ.γ, c4)))
+                  predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
