@@ -53,11 +53,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    */
   def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[CH], C) => VerificationResult)
-             : VerificationResult = {
+             : VerificationResult =
 
     consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>
       Q(σ \ h1, t, dcs, c1))
-  }
 
   def consumes(σ: S,
                p: Term,

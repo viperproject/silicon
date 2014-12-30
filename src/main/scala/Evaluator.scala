@@ -85,7 +85,7 @@ trait DefaultEvaluator[ST <: Store[ST],
     e match {
       case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
             | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
-            | _: ast.WildcardPerm /*| _: ast.FieldAccess*/ =>
+          | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
       case _ =>
         logger.debug(s"\nEVAL ${e.pos}: $e")
