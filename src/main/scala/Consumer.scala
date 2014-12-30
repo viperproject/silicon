@@ -18,6 +18,7 @@ import reporting.Bookkeeper
 import state.{DefaultContext, MagicWandChunk, MagicWandChunkIdentifier}
 import state.terms._
 import supporters.{ChunkSupporter, HeuristicsSupporter, MagicWandSupporter}
+import supporters.ChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]

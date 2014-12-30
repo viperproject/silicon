@@ -40,13 +40,18 @@ trait PredicateSupporter[ST <: Store[ST],
             (Q: (S, C) => VerificationResult)
             : VerificationResult = {
 
-      /* [2014-12-13 Malte] See comment about insγ in MagicWandSupporter.foldingPredicate*/
+      /* [2014-12-13 Malte] Changing the store doesn't interact well with the
+       * snapshot recorder, see the comment in PredicateSupporter.unfold.
+       * However, since folding cannot (yet) be used inside functions, we can
+       * still overwrite the binding of local variables in the store.
+       * An alternative would be to introduce fresh local variables, and to
+       * inject them into the predicate body. See commented code below.
+       */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       consume(σ \ insγ, tPerm, predicate.body, pve, c)((σ1, snap, dcs, c1) => {
         val ncs = dcs flatMap {
           case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
-          case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
-          case _: MagicWandChunk => None}
+          case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))}
         val ch = DirectPredicateChunk(predicate.name, tArgs, snap, tPerm, ncs)
         val (h1, c2) = chunkSupporter.produce(σ1, σ1.h, ch, c1)
         val h2 = h1 + H(ncs)
