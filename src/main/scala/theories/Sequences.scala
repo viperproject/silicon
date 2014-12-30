@@ -8,6 +8,7 @@ package viper
 package silicon
 package theories
 
+import silver.ast
 import interfaces.PreambleEmitter
 import interfaces.decider.Prover
 import decider.PreambleFileEmitter
@@ -45,15 +46,15 @@ class DefaultSequencesEmitter(prover: Prover,
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var sequenceTypes = Set[ast.types.Seq]()
+    var sequenceTypes = Set[ast.SeqType]()
 
     program visit { case t: silver.ast.Typed =>
       t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
-        case s: ast.types.Seq =>
+        case s: ast.SeqType =>
           sequenceTypes += s
-        case s: ast.types.Multiset =>
+        case s: ast.MultisetType =>
           /* Sequences depend on multisets */
-          sequenceTypes += ast.types.Seq(s.elementType)
+          sequenceTypes += ast.SeqType(s.elementType)
         case _ =>
         /* Ignore other types */
       }

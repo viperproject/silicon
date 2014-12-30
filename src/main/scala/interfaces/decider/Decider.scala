@@ -8,6 +8,7 @@ package viper
 package silicon
 package interfaces.decider
 
+import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
 import interfaces.{Failure, VerificationResult}
@@ -18,16 +19,16 @@ import utils.notNothing._
 
 trait Decider[ST <: Store[ST],
               H <: Heap[H],
-						  PC <: PathConditions[PC],
+              PC <: PathConditions[PC],
               S <: State[ST, H, S],
               C <: Context[C]]
 
     extends StatefulComponent {
 
-	def prover: Prover
-	def π: Set[Term]
+  def prover: Prover
+  def π: Set[Term]
 
-	def checkSmoke(): Boolean
+  def checkSmoke(): Boolean
 
   def pushScope()
   def popScope()
@@ -87,7 +88,7 @@ trait Decider[ST <: Store[ST],
 
   def fresh(id: String, s: Sort): Var
   def fresh(s: Sort): Var
-  def fresh(v: ast.Variable): Var
+  def fresh(v: ast.AbstractLocalVar): Var
 
   def statistics(): Map[String, String]
 }

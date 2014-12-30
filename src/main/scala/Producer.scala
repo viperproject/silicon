@@ -8,6 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter, Chunk}
 import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
@@ -48,7 +49,7 @@ trait DefaultProducer[ST <: Store[ST],
   def produce(σ: S,
               sf: Sort => Term,
               p: Term,
-              φ: ast.Expression,
+              φ: ast.Exp,
               pve: PartialVerificationError,
               c: C)
              (Q: (S, C) => VerificationResult)
@@ -60,8 +61,8 @@ trait DefaultProducer[ST <: Store[ST],
   def produces(σ: S,
                sf: Sort => Term,
                p: Term,
-               φs: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φs: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, C) => VerificationResult)
               : VerificationResult = {
@@ -107,7 +108,7 @@ trait DefaultProducer[ST <: Store[ST],
   private def produce2(σ: S,
                        sf: Sort => Term,
                        p: Term,
-                       φ: ast.Expression,
+                       φ: ast.Exp,
                        pve: PartialVerificationError,
                        c: C)
                       (Q: (H, C) => VerificationResult)
@@ -149,14 +150,14 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
             (c2: C) => Q(σ.h, c2)))
 
-      case ast.Ite(e0, a1, a2) if !φ.isPure =>
+      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
       case let: ast.Let if !let.isPure =>
-        handle[ast.Expression](σ, let, pve, c)((γ1, body, c1) =>
+        handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
           produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
@@ -193,8 +194,8 @@ trait DefaultProducer[ST <: Store[ST],
         magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
           Q(σ.h + chWand, c))
 
-      case _: ast.InhaleExhale =>
-        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+      case _: ast.InhaleExhaleExp =>
+        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
@@ -206,7 +207,7 @@ trait DefaultProducer[ST <: Store[ST],
     produced
   }
 
-  private def getOptimalSnapshotSort(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil)
+  private def getOptimalSnapshotSort(φ: ast.Exp, program: ast.Program, visited: Seq[String] = Nil)
                                     : (Sort, Boolean) =
 
     φ match {
@@ -235,7 +236,7 @@ trait DefaultProducer[ST <: Store[ST],
         /* At least one of φ1, φ2 must be impure, otherwise ... */
         getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), program, visited)
 
-      case ast.Ite(_, φ1, φ2) =>
+      case ast.CondExp(_, φ1, φ2) =>
         /* At least one of φ1, φ2 must be impure, otherwise ... */
 
         def findCommonSort() = {
@@ -256,8 +257,8 @@ trait DefaultProducer[ST <: Store[ST],
         (sorts.Snap, false)
     }
 
-  private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
-                                             φ2: ast.Expression,
+  private def getOptimalSnapshotSortFromPair(φ1: ast.Exp,
+                                             φ2: ast.Exp,
                                              fIfBothPure: () => (Sort, Boolean),
                                              program: ast.Program,
                                              visited: Seq[String])
@@ -268,7 +269,7 @@ trait DefaultProducer[ST <: Store[ST],
     else fIfBothPure()
   }
 
-  private def mkSnap(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil): Term =
+  private def mkSnap(φ: ast.Exp, program: ast.Program, visited: Seq[String] = Nil): Term =
     getOptimalSnapshotSort(φ, program, visited) match {
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)

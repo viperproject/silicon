@@ -8,6 +8,7 @@ package viper
 package silicon
 package state
 
+import silver.ast
 import terms.{Sort, sorts}
 
 /* TODO: Move to interfaces package */
@@ -16,26 +17,26 @@ trait SymbolConvert {
 
   def toSortSpecificId(id: String, sorts: Seq[Sort]): String
 
-  def toFunction(function: ast.DomainFunction): terms.Function
-  def toFunction(function: ast.DomainFunction, sorts: Seq[Sort]): terms.Function
+  def toFunction(function: ast.DomainFunc): terms.Function
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.Function
 
-  def toFunction(function: ast.ProgramFunction): terms.Function
+  def toFunction(function: ast.Function): terms.Function
 }
 
 class DefaultSymbolConvert extends SymbolConvert {
   def toSort(typ: ast.Type) = typ match {
-    case ast.types.Bool => sorts.Bool
-    case ast.types.Int => sorts.Int
-    case ast.types.Perm => sorts.Perm
-    case ast.types.Ref => sorts.Ref
+    case ast.Bool => sorts.Bool
+    case ast.Int => sorts.Int
+    case ast.Perm => sorts.Perm
+    case ast.Ref => sorts.Ref
 
-    case ast.types.Seq(elementType) => sorts.Seq(toSort(elementType))
-    case ast.types.Set(elementType) => sorts.Set(toSort(elementType))
-    case ast.types.Multiset(elementType) => sorts.Multiset(toSort(elementType))
+    case ast.SeqType(elementType) => sorts.Seq(toSort(elementType))
+    case ast.SetType(elementType) => sorts.Set(toSort(elementType))
+    case ast.MultisetType(elementType) => sorts.Multiset(toSort(elementType))
 
-    case dt: ast.types.DomainType =>
+    case dt: ast.DomainType =>
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
-      sorts.UserSort(dt.toString)
+      sorts.UserSort(dt.toString())
 
     case silver.ast.Pred | _: silver.ast.TypeVar | silver.ast.Wand =>
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
@@ -44,14 +45,14 @@ class DefaultSymbolConvert extends SymbolConvert {
   def toSortSpecificId(id: String, sorts: Seq[Sort]) =
     id + sorts.mkString("[",",","]")
 
-  def toFunction(function: ast.DomainFunction) = {
+  def toFunction(function: ast.DomainFunc) = {
     val inSorts = function.formalArgs map (_.typ) map toSort
     val outSort = toSort(function.typ)
 
     toFunction(function, inSorts :+ outSort)
   }
 
-  def toFunction(function: ast.DomainFunction, sorts: Seq[Sort]) = {
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]) = {
     assert(sorts.nonEmpty, "Expected at least one sort, but found none")
 
     val inSorts = sorts.init
@@ -61,7 +62,7 @@ class DefaultSymbolConvert extends SymbolConvert {
     terms.Function(id, inSorts, outSort)
   }
 
-  def toFunction(function: ast.ProgramFunction) = {
+  def toFunction(function: ast.Function) = {
     val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
     val outSort = toSort(function.typ)
 

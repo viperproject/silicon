@@ -10,6 +10,7 @@ package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
 import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
@@ -26,10 +27,10 @@ class DefaultDecider[ST <: Store[ST],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
 		extends Decider[ST, H, PC, S, DefaultContext[H]]
-		   with Logging {
+       with Logging {
 
   protected type C = DefaultContext[H]
-	private var z3: Z3ProverStdIO = _
+  private var z3: Z3ProverStdIO = _
 
   protected var pathConditionsFactory: PathConditionsFactory[PC] = _
   protected var config: Config = _
@@ -272,7 +273,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def check(σ: S, t: Term) = assert(σ, t, null)
 
-	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
+  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
     val success = assert(σ, t, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
@@ -284,11 +285,11 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-	protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
-		val asserted = isKnownToBeTrue(t)
+  protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
+    val asserted = isKnownToBeTrue(t)
 
-		asserted || proverAssert(t, logSink)
-	}
+    asserted || proverAssert(t, logSink)
+  }
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
@@ -365,7 +366,7 @@ class DefaultDecider[ST <: Store[ST],
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args))}})
     )(Q)
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
+  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
     id match {
       case mwChunkId: MagicWandChunkIdentifier =>
         val mwChunks = h.values.collect{case ch: MagicWandChunk => ch}
@@ -382,28 +383,28 @@ class DefaultDecider[ST <: Store[ST],
     }
   }
 
-	private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
-		findChunk(σ, chunks, id)
+  private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
+    findChunk(σ, chunks, id)
 
-	private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
-					 findChunkLiterally(chunks, id)
-		orElse findChunkWithProver(σ, chunks, id))
+  private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
+           findChunkLiterally(chunks, id)
+    orElse findChunkWithProver(σ, chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
-		chunks find (ch => ch.args == id.args)
+  private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+    chunks find (ch => ch.args == id.args)
 
   /**
     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
     */
-	private def findChunkWithProver[CH <: Chunk: NotNothing]
+  private def findChunkWithProver[CH <: Chunk: NotNothing]
                                  (σ: S, chunks: Iterable[CH], id: ChunkIdentifier)
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-		val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
+    val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
-		chunk
-	}
+    chunk
+  }
 
   private def compareWandChunks(σ: S, chWand1: MagicWandChunk, chWand2: MagicWandChunk, c: C): Boolean = {
 //    println(s"\n[compareWandChunks]")
@@ -423,7 +424,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def fresh(s: Sort) = prover_fresh("$t", s)
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
-  def fresh(v: ast.Variable) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
+  def fresh(v: ast.AbstractLocalVar) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
 
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1

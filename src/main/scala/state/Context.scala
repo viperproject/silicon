@@ -8,8 +8,9 @@ package viper
 package silicon
 package state
 
-import interfaces.state.{Heap, Context, Mergeable}
-import terms.{Var, Term}
+import silver.ast
+import interfaces.state.{Context, Mergeable}
+import terms.{Var, FApp, Term}
 import theories.SnapshotRecorder
 
 case class DefaultContext[H <: Heap[H]]
@@ -21,7 +22,7 @@ case class DefaultContext[H <: Heap[H]]
                           additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
-                          possibleTriggers: Map[ast.Expression, Term] = Map(),
+                          possibleTriggers: Map[ast.Exp, Term] = Map(),
 
                           reserveHeaps: Stack[H] = Nil,
                           exhaleExt: Boolean = false,

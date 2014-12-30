@@ -9,10 +9,11 @@ package silicon
 package supporters
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.state.{HeapCompressor, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
+import interfaces.state.{HeapCompressor, ChunkIdentifier, State, PathConditions, Heap, Store}
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk}
 import state.terms._
 import state.terms.perms.IsNoAccess

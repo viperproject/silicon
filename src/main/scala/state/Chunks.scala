@@ -25,11 +25,11 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
   val args = rcvr :: Nil
   val id = FieldChunkIdentifier(rcvr, name)
 
-	def +(perm: Term): DirectFieldChunk = this.copy(perm = PermPlus(this.perm, perm))
-	def -(perm: Term): DirectFieldChunk = this.copy(perm = PermMinus(this.perm, perm))
+  def +(perm: Term): DirectFieldChunk = this.copy(perm = PermPlus(this.perm, perm))
+  def -(perm: Term): DirectFieldChunk = this.copy(perm = PermMinus(this.perm, perm))
   def \(perm: Term) = this.copy(perm = perm)
 
-	override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
+  override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {

@@ -7,6 +7,7 @@
 package viper
 package silicon
 
+import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Success, VerificationResult, Unreachable, Evaluator}
 import interfaces.decider.Decider
@@ -18,8 +19,8 @@ import reporting.Bookkeeper
 /* TODO: Move interfaces into interfaces package */
 
 trait HasLocalState {
-	def pushLocalState() {}
-	def popLocalState() {}
+  def pushLocalState() {}
+  def popLocalState() {}
 }
 
 trait Brancher[ST <: Store[ST],
@@ -27,19 +28,19 @@ trait Brancher[ST <: Store[ST],
                S <: State[ST, H, S],
                C <: Context[C]] {
 
-	def branch(σ: S,
+  def branch(σ: S,
              ts: Term,
              c: C,
              fTrue: C => VerificationResult,
-						 fFalse: C => VerificationResult)
+             fFalse: C => VerificationResult)
             : VerificationResult
 
   /* TODO: Remove this method, keep only the above */
-	def branch(σ: S,
+  def branch(σ: S,
              ts: List[Term],
              c: C,
              fTrue: C => VerificationResult,
-						 fFalse: C => VerificationResult)
+             fFalse: C => VerificationResult)
             : VerificationResult
 
   def branchAndJoin(σ: S,
@@ -59,25 +60,25 @@ trait Brancher[ST <: Store[ST],
 
 trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
-							        PC <: PathConditions[PC],
+                      PC <: PathConditions[PC],
                       S <: State[ST, H, S],
-							        C <: Context[C]]
-		extends Brancher[ST, H, S, C] with HasLocalState {
+                      C <: Context[C]]
+    extends Brancher[ST, H, S, C] with HasLocalState {
 
-	val decider: Decider[ST, H, PC, S, C]
-	import decider.assume
+  val decider: Decider[ST, H, PC, S, C]
+  import decider.assume
 
-	val bookkeeper: Bookkeeper
+  val bookkeeper: Bookkeeper
 
 
   /*private*/ var currentGuards: Stack[Term] = Stack()
   def guards = this.currentGuards
 
-	def branch(σ: S,
+  def branch(σ: S,
              t: Term,
              c: C,
              fTrue: C => VerificationResult,
-						 fFalse: C => VerificationResult)
+             fFalse: C => VerificationResult)
             : VerificationResult =
 
     branch(σ, t :: Nil, c, fTrue, fFalse)
@@ -89,22 +90,22 @@ trait DefaultBrancher[ST <: Store[ST],
              fFalse: C => VerificationResult)
             : VerificationResult = {
 
-		val guardsTrue = And(ts: _*)
-		val guardsFalse = And(ts map (t => Not(t)): _*)
+    val guardsTrue = And(ts: _*)
+    val guardsFalse = And(ts map (t => Not(t)): _*)
 
     val exploreTrueBranch = !decider.check(σ, guardsFalse)
     val exploreFalseBranch = !decider.check(σ, guardsTrue)
 
-		val additionalPaths =
-			if (exploreTrueBranch && exploreFalseBranch) 1
-			else 0
+    val additionalPaths =
+      if (exploreTrueBranch && exploreFalseBranch) 1
+      else 0
 
-		bookkeeper.branches += additionalPaths
+    bookkeeper.branches += additionalPaths
 
     val cnt = utils.counter.next()
 
-		((if (exploreTrueBranch) {
-			pushLocalState()
+    ((if (exploreTrueBranch) {
+      pushLocalState()
       currentGuards = guardsTrue +: currentGuards
 
       val result =
@@ -117,14 +118,14 @@ trait DefaultBrancher[ST <: Store[ST],
       currentGuards = currentGuards.tail
       popLocalState()
 
-			result
-		} else {
+      result
+    } else {
       decider.prover.logComment(s"[dead then-branch $cnt] $guardsTrue")
       Unreachable()
     })
-			&&
-		(if (exploreFalseBranch) {
-			pushLocalState()
+      &&
+    (if (exploreFalseBranch) {
+      pushLocalState()
       currentGuards = guardsFalse +: currentGuards
 
       val result =
@@ -137,12 +138,12 @@ trait DefaultBrancher[ST <: Store[ST],
       currentGuards = currentGuards.tail
       popLocalState()
 
-			result
-		} else {
+      result
+    } else {
       decider.prover.logComment(s"[dead else-branch $cnt] $guardsFalse")
       Unreachable()
     }))
-	}
+  }
 
   def branchAndJoin(σ: S,
                     guard: Term,
@@ -322,12 +323,12 @@ trait LetHandler[ST <: Store[ST],
                  S <: State[ST, H, S],
                  C <: Context[C]] {
 
-  def handle[E <: ast.Expression]
-            (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+  def handle[E <: ast.Exp]
+            (σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult
 
-  def handle[E <: ast.Expression]
+  def handle[E <: ast.Exp]
             (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult
@@ -343,8 +344,8 @@ trait DefaultLetHandler[ST <: Store[ST],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-  def handle[E <: ast.Expression]
-            (σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+  def handle[E <: ast.Exp]
+            (σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
 
@@ -354,7 +355,7 @@ trait DefaultLetHandler[ST <: Store[ST],
     }
   }
 
-  def handle[E <: ast.Expression]
+  def handle[E <: ast.Exp]
             (σ: S, let: ast.Let, pve: PartialVerificationError, c: C)
             (Q: (ST, E, C) => VerificationResult)
             : VerificationResult = {
@@ -362,8 +363,8 @@ trait DefaultLetHandler[ST <: Store[ST],
     handle(σ, Nil, let, pve, c)(Q)
   }
 
-  private def handle[E <: ast.Expression]
-                    (σ: S, bindings: Seq[(ast.Variable, Term)], let: ast.Let, pve: PartialVerificationError, c: C)
+  private def handle[E <: ast.Exp]
+                    (σ: S, bindings: Seq[(ast.AbstractLocalVar, Term)], let: ast.Let, pve: PartialVerificationError, c: C)
                     (Q: (ST, E, C) => VerificationResult)
                     : VerificationResult = {
 

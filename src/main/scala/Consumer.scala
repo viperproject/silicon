@@ -8,9 +8,10 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.verifier.{VerificationError, PartialVerificationError}
-import silver.verifier.reasons.{NamedMagicWandChunkNotFound, NegativePermission, AssertionFalse, MagicWandChunkNotFound}
-import interfaces.state.{Store, Heap, PathConditions, State, Chunk, StateFactory, StateFormatter}
+import silver.ast
+import silver.verifier.PartialVerificationError
+import silver.verifier.reasons.{NegativePermission, AssertionFalse}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
@@ -18,7 +19,6 @@ import reporting.Bookkeeper
 import state.{DefaultContext, MagicWandChunk, MagicWandChunkIdentifier}
 import state.terms._
 import supporters.{ChunkSupporter, HeuristicsSupporter, MagicWandSupporter}
-import supporters.ChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -52,7 +52,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-  def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+  def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[CH], C) => VerificationResult)
              : VerificationResult =
 
@@ -61,8 +61,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   def consumes(σ: S,
                p: Term,
-               φs: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φs: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, List[CH], C) => VerificationResult)
               : VerificationResult =
@@ -72,8 +72,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   private def consumes(σ: S,
                        h: H,
                        p: Term,
-                       φs: Seq[ast.Expression],
-                       pvef: ast.Expression => PartialVerificationError,
+                       φs: Seq[ast.Exp],
+                       pvef: ast.Exp => PartialVerificationError,
                        c: C)
                        (Q: (S, Term, List[CH], C) => VerificationResult)
                        : VerificationResult =
@@ -106,7 +106,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }))
     }
 
-  protected def consume(σ: S, h: H, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+  protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[CH], C) => VerificationResult)
                        : VerificationResult = {
 
@@ -140,7 +140,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
             (c2: C) => Q(h, Unit, Nil, c2)))
 
-      case ast.Ite(e0, a1, a2) if !φ.isPure =>
+      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
         eval(σC, e0, pve, c)((t0, c1) =>
           branch(σC, t0, c1,
@@ -149,7 +149,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case let: ast.Let if !let.isPure =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
-        handle[ast.Expression](σC, let, pve, c)((γ1, body, c1) => {
+        handle[ast.Exp](σC, let, pve, c)((γ1, body, c1) => {
           val c2 =
             if (c1.recordEffects)
               c1.copy(letBoundVars = c1.letBoundVars ++ γ1.values)
@@ -167,8 +167,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
-      case _: ast.InhaleExhale =>
-        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+      case _: ast.InhaleExhaleExp =>
+        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.types.Wand && magicWandSupporter.isDirectWand(φ) =>

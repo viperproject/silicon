@@ -9,6 +9,7 @@ package silicon
 package theories
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.ast.utility.Functions
 import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
@@ -200,7 +201,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   private val expressionTranslator =
     new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, limitedFunction)
 
-  private class FunctionData(val programFunction: ast.ProgramFunction, val program: ast.Program) {
+  private class FunctionData(val programFunction: ast.Function, val program: ast.Program) {
     val func = symbolConverter.toFunction(programFunction)
     val formalArgs = programFunction.formalArgs map (v => Var(v.name, symbolConverter.toSort(v.typ)))
     val args = Seq(`?s`) ++ formalArgs
@@ -225,7 +226,7 @@ trait FunctionsSupporter[ST <: Store[ST],
     def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
 
     lazy val translatedPre = {
-      val pre = ast.utils.BigAnd(programFunction.pres)
+      val pre = utils.ast.BigAnd(programFunction.pres)
 
       expressionTranslator.translatePrecondition(program, pre, locToSnap, fappToSnap)
     }
@@ -248,7 +249,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     lazy val postAxiom = {
       if (programFunction.posts.nonEmpty) {
-        val post = ast.utils.BigAnd(programFunction.posts)
+        val post = utils.ast.BigAnd(programFunction.posts)
 
         val translatedPost =
           expressionTranslator.translatePostcondition(program, post, locToSnap, fappToSnap, limitedFapp)
@@ -265,7 +266,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   object functionsSupporter extends StatefulComponent {
     private var program: ast.Program = null
 
-    private var functionData = Map[ast.ProgramFunction, FunctionData]()
+    private var functionData = Map[ast.Function, FunctionData]()
 
     def handleFunctions(program: ast.Program): List[VerificationResult] =  {
       reset()
@@ -288,7 +289,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       functionData = toMap(heights.map{case (f, _) => f -> new FunctionData(f, program)})
     }
 
-    private def handleFunction(function: ast.ProgramFunction, c: C): List[VerificationResult] = {
+    private def handleFunction(function: ast.Function, c: C): List[VerificationResult] = {
       val data = functionData(function)
 
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
@@ -314,7 +315,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       }
     }
 
-    private def checkSpecificationsWellDefined(function: ast.ProgramFunction, c: C): VerificationResult = {
+    private def checkSpecificationsWellDefined(function: ast.Function, c: C): VerificationResult = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + " (specs well-defined) " + ("-" * 10)
       logger.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
@@ -345,7 +346,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       result
     }
 
-    private def verifyAndAxiomatize(function: ast.ProgramFunction, c: C): VerificationResult = {
+    private def verifyAndAxiomatize(function: ast.Function, c: C): VerificationResult = {
       val comment = "-" * 10 + " FUNCTION " + function.name + "-" * 10
       logger.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
@@ -356,11 +357,11 @@ trait FunctionsSupporter[ST <: Store[ST],
       val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
       val σ = Σ(γ, Ø, Ø)
 
-      val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
+      val postError = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
 
       val data = functionData(function)
       var recorders = List[SnapshotRecorder]()
-      val pres = ast.utils.BigAnd(function.pres)
+      val pres = utils.ast.BigAnd(function.pres)
 
       val result =
         inScope {
@@ -419,7 +420,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     /* Debugging */
 
-    private def show(functionData: Map[ast.ProgramFunction, FunctionData]) =
+    private def show(functionData: Map[ast.Function, FunctionData]) =
       functionData.map { case (fun, fd) => (
         fun.name,    // Function name only
 //        s"${fun.name}(${fun.formalArgs.mkString(", ")}}): ${fun.typ}",    // Function name and signature
@@ -438,12 +439,12 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   private var program: ast.Program = null
   private var locToSnap: Map[ast.LocationAccess, Term] = null
   private var fappToSnap: Map[ast.FuncApp, Term] = null
-  private var parentFunc: ast.ProgramFunction = null
+  private var parentFunc: ast.Function = null
   private var resultReplacement: FApp = null
   private var ignoreAccessPredicates = false
 
   def translate(program: ast.Program,
-                func: ast.ProgramFunction,
+                func: ast.Function,
                 locToSnap: Map[ast.LocationAccess, Term],
                 fappToSnap: Map[ast.FuncApp, Term]): Term = {
 
@@ -459,7 +460,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   }
 
   def translate(program: ast.Program,
-                exp: ast.Expression,
+                exp: ast.Exp,
                 locToSnap: Map[ast.LocationAccess, Term],
                 fappToSnap: Map[ast.FuncApp, Term]): Term = {
 
@@ -485,7 +486,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   }
 
   def translatePostcondition(program: ast.Program,
-                             post: ast.Expression,
+                             post: ast.Exp,
                              locToSnap: Map[ast.LocationAccess, Term],
                              fappToSnap: Map[ast.FuncApp, Term],
                              resultReplacement: FApp): Term = {
@@ -506,7 +507,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   }
 
   def translatePrecondition(program: ast.Program,
-                            pre: ast.Expression,
+                            pre: ast.Exp,
                             locToSnap: Map[ast.LocationAccess, Term],
                             fappToSnap: Map[ast.FuncApp, Term]): Term = {
 
@@ -530,7 +531,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
    * See public `translate` methods.
    */
   override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
-                                  (e: ast.Expression)
+                                  (e: ast.Exp)
                                   : Term =
 
     e match {
@@ -539,7 +540,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val pre = ast.utils.BigAnd(silverFunc.pres)
+        val pre = utils.ast.BigAnd(silverFunc.pres)
 
         val func = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(program, arg, locToSnap, fappToSnap))
@@ -558,7 +559,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
           fapp
 
       case _: ast.AccessPredicate if ignoreAccessPredicates => True()
-      case _: ast.ResultLiteral => resultReplacement
+      case _: ast.Result => resultReplacement
       case _ => super.translate(toSort)(e)
     }
 

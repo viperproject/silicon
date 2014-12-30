@@ -8,7 +8,7 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
-import silver.ast.Position
+import silver.ast
 import util.control.Breaks._
 import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed,
     MagicWandNotWellformed}
@@ -51,7 +51,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   def verify(program: ast.Program, member: ast.Member, c: C): VerificationResult = {
     member match {
       case m: ast.Method => verify(m, c)
-      case f: ast.ProgramFunction => sys.error("Functions unexpected at this point, should have been handled already")
+      case f: ast.Function => sys.error("Functions unexpected at this point, should have been handled already")
       case p: ast.Predicate => verify(p, c)
       case _: ast.Domain | _: ast.Field => Success()
     }
@@ -142,7 +142,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val posts = method.posts
     val body = method.body.toCfg
 
-    val postViolated = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, method)
+    val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
     /* Combined the well-formedness check and the execution of the body, which are two separate
      * rules in Smans' paper.
@@ -259,7 +259,7 @@ trait AbstractVerifier[ST <: Store[ST],
                               applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS")))
 
     val members = program.members.filterNot {
-      case func: ast.ProgramFunction => true
+      case func: ast.Function => true
       case m => filter(m.name)
     }
 
