@@ -188,6 +188,11 @@ trait DefaultEvaluator[ST <: Store[ST],
           eval(σ \+ (v.localVar, t0), e1, pve, c1)((t1, c2) =>
             Q(t1, c2)))
 
+      case ast.Let(v, e0, e1) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
+          eval(σ \+ (v.localVar, t0), e1, pve, c1)((t1, c2) =>
+            Q(t1, c2)))
+
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
         evalBinOp(σ, e0, e1, (t1, t2) => And(t1, t2), pve, c)(Q)
