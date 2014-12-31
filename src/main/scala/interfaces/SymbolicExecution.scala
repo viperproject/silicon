@@ -102,3 +102,8 @@ trait Executor[ST <: Store[ST],
            (Q: (S, C) => VerificationResult)
            : VerificationResult
 }
+
+trait HasLocalState {
+  def pushLocalState() {}
+  def popLocalState() {}
+}

@@ -11,6 +11,11 @@ import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import state.DefaultContext
+import supporters.DefaultDomainsEmitter
+import supporters.DefaultDomainsTranslator
+import supporters.DefaultMultisetsEmitter
+import supporters.DefaultSequencesEmitter
+import supporters.DefaultSetsEmitter
 
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
@@ -27,8 +32,7 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
-import theories.{DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter, DefaultSequencesEmitter,
-    DefaultDomainsTranslator}
+import supporters.DefaultSetsEmitter
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -185,7 +189,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
-    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
 
     val dlb = FullPerm()
 
@@ -204,8 +207,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, stateUtils,
-      bookkeeper)
+      stateFormatter, heapCompressor, bookkeeper)
   }
 
   private def reset() {

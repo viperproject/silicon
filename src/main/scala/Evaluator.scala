@@ -14,7 +14,7 @@ import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
-import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
+import interfaces.{HasLocalState, Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
@@ -23,7 +23,7 @@ import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import supporters.PredicateSupporter
+import supporters.{Joiner, Brancher, PredicateSupporter}
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -47,7 +47,6 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
@@ -148,7 +147,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           failIfDivByZero(σ, tFP, e1, t1, predef.Zero, pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
-        val (tVar, tConstraints) = stateUtils.freshARP()
+        val (tVar, tConstraints) = decider.freshARP()
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
 

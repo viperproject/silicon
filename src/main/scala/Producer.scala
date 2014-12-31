@@ -11,19 +11,19 @@ import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
-import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.{HasLocalState, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
-import supporters.ChunkSupporter
+import supporters.{LetHandler, Brancher, ChunkSupporter}
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Producer[ST, H, S, DefaultContext]
-        with HasLocalState
+       with HasLocalState
     { this: Logging with Evaluator[ST, H, S, DefaultContext]
                     with Consumer[DirectChunk, ST, H, S, DefaultContext]
                     with Brancher[ST, H, S, DefaultContext]

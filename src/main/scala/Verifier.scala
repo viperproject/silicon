@@ -17,10 +17,10 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
 import interfaces.state.factoryUtils.Ø
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort}
-import theories.{FunctionsSupporter, DomainsEmitter, SetsEmitter, MultisetsEmitter, SequencesEmitter}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
-import supporters.{PredicateSupporter, ChunkSupporter}
+import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter, MultisetsEmitter, SetsEmitter,
+    SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
@@ -30,7 +30,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
        with Producer[ST, H, S, DefaultContext]
        with Consumer[DirectChunk, ST, H, S, DefaultContext]
        with Executor[ST, H, S, DefaultContext]
-       with FunctionsSupporter[ST, H, PC, S] {
+       with FunctionSupporter[ST, H, PC, S] {
 
   private type C = DefaultContext
 
@@ -114,7 +114,6 @@ class DefaultElementVerifier[ST <: Store[ST],
       val symbolConverter: SymbolConvert,
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
       val bookkeeper: Bookkeeper)
     extends AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
@@ -279,13 +278,12 @@ class DefaultVerifier[ST <: Store[ST],
       val domainsEmitter: DomainsEmitter,
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
-      val stateUtils: StateUtils[ST, H, PC, S, DefaultContext],
       val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      stateUtils, bookkeeper)
+                                      bookkeeper)
 
   override def reset() {
     super.reset()

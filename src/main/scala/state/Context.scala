@@ -10,8 +10,9 @@ package state
 
 import silver.ast
 import interfaces.state.{Context, Mergeable}
+import supporters.SnapshotRecorder
+import supporters.SnapshotRecorder
 import terms.{Var, FApp, Term}
-import theories.SnapshotRecorder
 
 case class DefaultContext(program: ast.Program,
                           visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */

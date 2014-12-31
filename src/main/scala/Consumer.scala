@@ -17,7 +17,7 @@ import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
-import supporters.ChunkSupporter
+import supporters.{LetHandler, Brancher, ChunkSupporter}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
