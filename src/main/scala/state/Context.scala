@@ -10,12 +10,12 @@ package state
 
 import silver.ast
 import interfaces.state.{Context, Mergeable}
+import terms.{Var, Term}
 import supporters.SnapshotRecorder
-import supporters.SnapshotRecorder
-import terms.{Var, FApp, Term}
 
 case class DefaultContext(program: ast.Program,
                           visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */
+                          branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
 
@@ -52,11 +52,11 @@ case class DefaultContext(program: ast.Program,
    */
 
   def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1, additionalTriggers1,
-                        snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1) =>
+    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
+                        additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1) =>
 
       other match {
-        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`, additionalTriggers2,
+        case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`, additionalTriggers2,
                             snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2

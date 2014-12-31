@@ -14,7 +14,7 @@ import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
-import interfaces.{HasLocalState, Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
+import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
@@ -29,7 +29,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
-    extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
+    extends Evaluator[ST, H, S, DefaultContext]
     { this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
                     with Producer[ST, H, S, DefaultContext]
                     with PredicateSupporter[ST, H, PC, S]
@@ -50,9 +50,6 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
-
-  /*private*/ var fappCache: Map[Term, Set[Term]] = Map()
-  /*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
 
   def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -694,17 +691,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         r && {
           val tAux = πAux
           assume(tAux)
-          Q(t0, optT1, optInnerC.getOrElse(c1))}})
-  }
-
-  override def pushLocalState() {
-    fappCacheFrames = fappCache +: fappCacheFrames
-    super.pushLocalState()
-  }
-
-  override def popLocalState() {
-    fappCache = fappCacheFrames.head
-    fappCacheFrames = fappCacheFrames.tail
-    super.popLocalState()
+          val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
+          Q(t0, optT1, c2)}})
   }
 }

@@ -26,16 +26,16 @@ trait DefaultJoiner[ST <: Store[ST],
                     PC <: PathConditions[PC],
                     S <: State[ST, H, S]]
     extends Joiner[DefaultContext]
-{ this: DefaultBrancher[ST, H, PC, S, DefaultContext] =>
+{ this: DefaultBrancher[ST, H, PC, S] =>
 
-  private type C = DefaultContext
+  private[this] type C = DefaultContext
 
   val decider: Decider[ST, H, PC, S, C]
 
   def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
           (block: ((Term, C) => VerificationResult) => VerificationResult)
           (Q: (Term, C) => VerificationResult)
-  : VerificationResult = {
+          : VerificationResult = {
 
     val πPre: Set[Term] = decider.π
     var localResults: List[LocalEvaluationResult] = Nil
@@ -43,23 +43,27 @@ trait DefaultJoiner[ST <: Store[ST],
     //    decider.pushScope()
     /* Note: Executing the block in its own scope may result in incompletenesses:
      *   1. Let A be an assumption, e.g., a combine-term, that is added during
-     *      the execution of block, but before block's execution branches
-     *   2. When the leaves of block's execution are combined, A will be placed
+     *      the execution of block, but before the block's execution branches
+     *   2. When the leaves of the block's execution are combined, A will be placed
      *      under the guards corresponding to the individual leaves; but A should
      *      be unconditional since it was added to the path conditions before
      *      the branching took place.
      */
 
-    val oldGuards = currentGuards
-    currentGuards = Stack()
-
     val r =
       block((tR, cR) => {
-        localResults ::= LocalEvaluationResult(guards, tR, decider.π -- πPre, cR)
+        localResults ::= LocalEvaluationResult(cR.branchConditions.filterNot(c.branchConditions.contains),
+                                               tR,
+                                               decider.π -- πPre,
+                                               cR.copy(branchConditions = c.branchConditions))
+            /* TODO: Storing a copy of cR with modified branchConditions is only necessary
+             *       because DefaultContext.merge (correctly) insists on equal branchConditions,
+             *       which cannot be circumvented/special-cased when merging contexts here (more
+             *       precisely, a bit further down via combine(localResults, ...)).
+             *       See DefaultBrancher.branchAndJoin for a similar comment.
+             */
         Success()
       })
-
-    currentGuards = oldGuards
 
     //    decider.popScope()
 
@@ -79,7 +83,7 @@ trait DefaultJoiner[ST <: Store[ST],
           decider.assume(localResult.auxiliaryTerms)
 
           val tJoined = localResult.actualResult
-          val cJoined = localResult.context
+          val cJoined = localResult.context.copy(branchConditions = c.branchConditions)
           Q(tJoined, cJoined)
 
         case _ =>
@@ -93,8 +97,8 @@ trait DefaultJoiner[ST <: Store[ST],
           decider.assume(tAuxResult + tActualResult)
 
           val tJoined = tActualVar
-          val cJoined = c1.copy(additionalTriggers = tActualVar :: c1.additionalTriggers)
-
+          val cJoined = c1.copy(branchConditions = c.branchConditions,
+                                additionalTriggers = tActualVar :: c1.additionalTriggers)
           Q(tJoined, cJoined)
       }
     }

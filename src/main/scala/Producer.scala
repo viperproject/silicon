@@ -11,7 +11,7 @@ import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
-import interfaces.{HasLocalState, Failure, Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
@@ -23,7 +23,6 @@ trait DefaultProducer[ST <: Store[ST],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Producer[ST, H, S, DefaultContext]
-       with HasLocalState
     { this: Logging with Evaluator[ST, H, S, DefaultContext]
                     with Consumer[DirectChunk, ST, H, S, DefaultContext]
                     with Brancher[ST, H, S, DefaultContext]
@@ -41,9 +40,6 @@ trait DefaultProducer[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
-
-  private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
-  private var snapshotCache: Map[Term, (Term, Term)] = Map()
 
   def produce(σ: S,
               sf: Sort => Term,
@@ -259,15 +255,4 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
-
-  override def pushLocalState() {
-    snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
-    super.pushLocalState()
-  }
-
-  override def popLocalState() {
-    snapshotCache = snapshotCacheFrames.head
-    snapshotCacheFrames = snapshotCacheFrames.tail
-    super.popLocalState()
-  }
 }

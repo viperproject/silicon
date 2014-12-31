@@ -8,11 +8,12 @@ package viper
 package silicon
 package supporters
 
-import interfaces.{HasLocalState, Success, Unreachable, VerificationResult}
+import interfaces.{Success, Unreachable, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.state.{PathConditions, Context, State, Heap, Store}
 import reporting.Bookkeeper
 import state.terms.{Ite, True, Not, And, Term}
+import viper.silicon.state.DefaultContext
 
 trait Brancher[ST <: Store[ST],
                H <: Heap[H],
@@ -41,8 +42,6 @@ trait Brancher[ST <: Store[ST],
                     fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
                    (Q: (Option[Term], Option[Term], C) => VerificationResult)
                    : VerificationResult
-
-  def guards: Stack[Term]
 }
 
 /*
@@ -52,18 +51,15 @@ trait Brancher[ST <: Store[ST],
 trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
-                      S <: State[ST, H, S],
-                      C <: Context[C]]
-    extends Brancher[ST, H, S, C] with HasLocalState {
+                      S <: State[ST, H, S]]
+    extends Brancher[ST, H, S, DefaultContext] {
+
+  private[this] type C = DefaultContext
 
   val decider: Decider[ST, H, PC, S, C]
   import decider.assume
 
   val bookkeeper: Bookkeeper
-
-
-  /*private*/ var currentGuards: Stack[Term] = Stack()
-  def guards = this.currentGuards
 
   def branch(σ: S,
              t: Term,
@@ -96,18 +92,14 @@ trait DefaultBrancher[ST <: Store[ST],
     val cnt = utils.counter.next()
 
     ((if (exploreTrueBranch) {
-      pushLocalState()
-      currentGuards = guardsTrue +: currentGuards
+      val cTrue = c.copy(branchConditions = guardsTrue +: c.branchConditions)
 
       val result =
         decider.inScope {
           decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
           assume(guardsTrue)
-          fTrue(c)
+          fTrue(cTrue)
         }
-
-      currentGuards = currentGuards.tail
-      popLocalState()
 
       result
     } else {
@@ -116,18 +108,14 @@ trait DefaultBrancher[ST <: Store[ST],
     })
       &&
     (if (exploreFalseBranch) {
-      pushLocalState()
-      currentGuards = guardsFalse +: currentGuards
+      val cFalse = c.copy(branchConditions = guardsFalse +: c.branchConditions)
 
       val result =
         decider.inScope {
           decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
           assume(guardsFalse)
-          fFalse(c)
+          fFalse(cFalse)
         }
-
-      currentGuards = currentGuards.tail
-      popLocalState()
 
       result
     } else {
@@ -180,13 +168,21 @@ trait DefaultBrancher[ST <: Store[ST],
       assume(tAuxIte)
 
       val cJoined = (cThen, cElse) match {
-        case (Some(_cThen), Some(_cElse)) => _cThen.merge(_cElse)
+        case (Some(_cThen), Some(_cElse)) =>
+          val cThen0 = _cThen.copy(branchConditions = c.branchConditions)
+          val cElse0 = _cElse.copy(branchConditions = c.branchConditions)
+          /* TODO: Modifying the branchConditions before merging contexts is only necessary
+           *       because DefaultContext.merge (correctly) insists on equal branchConditions,
+           *       which cannot be circumvented/special-cased when merging contexts here.
+           *       See DefaultJoiner.join for a similar comment.
+           */
+          cThen0.merge(cElse0)
         case (None, Some(_cElse)) => _cElse
         case (Some(_cThen), None) => _cThen
         case (None, None) => c
       }
 
-      Q(tThen, tElse, cJoined)
+      Q(tThen, tElse, cJoined.copy(branchConditions = c.branchConditions))
     }
   }
 }

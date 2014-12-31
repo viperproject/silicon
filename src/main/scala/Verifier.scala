@@ -122,7 +122,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultExecutor[ST, H, PC, S]
        with ChunkSupporter[ST, H, PC, S]
        with PredicateSupporter[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S, DefaultContext]
+       with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext]
        with Logging
@@ -287,8 +287,5 @@ class DefaultVerifier[ST <: Store[ST],
 
   override def reset() {
     super.reset()
-    ev.fappCache = Map()
-    ev.fappCacheFrames = Stack()
-    ev.currentGuards = Stack()
   }
 }

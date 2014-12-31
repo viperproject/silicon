@@ -108,7 +108,7 @@ trait ChunkSupporter[ST <: Store[ST],
     private def recordSnapshot(c: C, matchedChunk: Option[DirectChunk], producedChunk: DirectChunk): C =
       c.snapshotRecorder match {
         case Some(sr) =>
-          val sr1 = sr.addChunkToSnap(matchedChunk.getOrElse(producedChunk).id, guards, sr.currentSnap)
+          val sr1 = sr.addChunkToSnap(matchedChunk.getOrElse(producedChunk).id, c.branchConditions, sr.currentSnap)
           c.copy(snapshotRecorder = Some(sr1))
         case _ => c
       }
