@@ -13,7 +13,7 @@ import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
 import interfaces.{Failure, VerificationResult}
 import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import state.terms.{Term, Var, Sort}
+import viper.silicon.state.terms.{FullPerm, Term, Var, Sort}
 import state.DirectChunk
 import utils.notNothing._
 
@@ -89,6 +89,7 @@ trait Decider[ST <: Store[ST],
   def fresh(id: String, s: Sort): Var
   def fresh(s: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
+  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
 
   def statistics(): Map[String, String]
 }

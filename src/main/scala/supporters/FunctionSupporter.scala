@@ -6,20 +6,20 @@
 
 package viper
 package silicon
-package theories
+package supporters
 
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.ast.utility.Functions
 import silver.components.StatefulComponent
-import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
-import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
+import silver.verifier.errors.{Internal, PostconditionViolated, FunctionNotWellformed}
+import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{Chunk, ChunkIdentifier, StateFactory, State, PathConditions, Heap, Store, Mergeable}
+import interfaces.state.{State, StateFactory, PathConditions, Heap, Store, ChunkIdentifier, Mergeable}
 import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, SymbolConvert}
+import state.{SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{utils => _, _}
-import state.terms.predef._
+import state.terms.predef.`?s`
 
 case class SnapshotRecorder(currentSnap: Term = null,
                             locToChunk: Map[ast.LocationAccess, ChunkIdentifier] = Map(),
@@ -176,16 +176,16 @@ case class SnapshotRecorder(currentSnap: Term = null,
   }
 }
 
-trait FunctionsSupporter[ST <: Store[ST],
+trait FunctionSupporter[ST <: Store[ST],
                          H <: Heap[H],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
-            with Evaluator[ST, H, S, DefaultContext[H]]
-            with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+            with Evaluator[ST, H, S, DefaultContext]
+            with Producer[ST, H, S, DefaultContext]
+            with Consumer[DirectChunk, ST, H, S, DefaultContext] =>
 
-  private type C = DefaultContext[H]
+  private type C = DefaultContext
   private type AxiomGenerator = () => Quantification
 
   val config: Config
@@ -276,9 +276,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       decider.prover.logComment("Declaring program functions")
       declareFunctions()
 
-      val c = DefaultContext[H](program = program,
-                                snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)),
-                                applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS")))
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
 
       functionData.keys.flatMap(function => handleFunction(function, c)).toList
     }

@@ -426,6 +426,13 @@ class DefaultDecider[ST <: Store[ST],
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
   def fresh(v: ast.AbstractLocalVar) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
 
+  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term) = {
+    val permVar = fresh(id, sorts.Perm)
+    val permVarConstraints = IsReadPermVar(permVar, upperBound)
+
+    (permVar, permVarConstraints)
+  }
+
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1
 

@@ -29,7 +29,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
-    extends Evaluator[ST, H, S, DefaultContext[H]] with HasLocalState
+    extends Evaluator[ST, H, S, DefaultContext[H]]
     { this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with PredicateSupporter[ST, H, PC, S]
@@ -48,13 +48,9 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
-
-  /*private*/ var fappCache: Map[Term, Set[Term]] = Map()
-  /*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
 
   def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -153,7 +149,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           failIfDivByZero(σ, tFP, e1, t1, predef.Zero, pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
-        val (tVar, tConstraints) = stateUtils.freshARP()
+        val (tVar, tConstraints) = decider.freshARP()
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
 
@@ -701,16 +697,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         r && {
           val tAux = πAux
           assume(tAux)
-          Q(t0, optT1, optInnerC.getOrElse(c1))}})
-  }
-  override def pushLocalState() {
-    fappCacheFrames = fappCache +: fappCacheFrames
-    super.pushLocalState()
-  }
-
-  override def popLocalState() {
-    fappCache = fappCacheFrames.head
-    fappCacheFrames = fappCacheFrames.tail
-    super.popLocalState()
+          val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
+          Q(t0, optT1, c2)}})
   }
 }

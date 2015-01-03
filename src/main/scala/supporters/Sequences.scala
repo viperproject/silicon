@@ -6,7 +6,7 @@
 
 package viper
 package silicon
-package theories
+package supporters
 
 import silver.ast
 import interfaces.PreambleEmitter
@@ -15,16 +15,14 @@ import decider.PreambleFileEmitter
 import state.SymbolConvert
 import state.terms
 
-trait MultisetsEmitter extends PreambleEmitter
+trait SequencesEmitter extends PreambleEmitter
 
-/* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
+class DefaultSequencesEmitter(prover: Prover,
+                             symbolConverter: SymbolConvert,
+                             preambleFileEmitter: PreambleFileEmitter[String, String])
+    extends SequencesEmitter {
 
-class DefaultMultisetsEmitter(prover: Prover,
-                              symbolConverter: SymbolConvert,
-                              preambleFileEmitter: PreambleFileEmitter[String, String])
-    extends MultisetsEmitter {
-
-  private var collectedSorts = Set[terms.sorts.Multiset]()
+  private var collectedSorts = Set[terms.sorts.Seq]()
 
   def sorts = toSet(collectedSorts)
 
@@ -48,21 +46,21 @@ class DefaultMultisetsEmitter(prover: Prover,
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var multisetTypes = Set[ast.MultisetType]()
+    var sequenceTypes = Set[ast.SeqType]()
 
     program visit { case t: silver.ast.Typed =>
       t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
-        case s: ast.MultisetType =>
-          multisetTypes += s
         case s: ast.SeqType =>
+          sequenceTypes += s
+        case s: ast.MultisetType =>
           /* Sequences depend on multisets */
-          multisetTypes += ast.MultisetType(s.elementType)
+          sequenceTypes += ast.SeqType(s.elementType)
         case _ =>
-          /* Ignore other types */
+        /* Ignore other types */
       }
     }
 
-    collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Multiset])
+    collectedSorts = sequenceTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Seq])
   }
 
   def declareSorts() {
@@ -72,8 +70,15 @@ class DefaultMultisetsEmitter(prover: Prover,
   def declareSymbols() {
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
-      val declarations = "/dafny_axioms/multisets_declarations_dafny.smt2"
+      val declarations = "/dafny_axioms/sequences_declarations_dafny.smt2"
       prover.logComment(s"$declarations [${s.elementsSort}]")
+      preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
+    }
+
+    if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
+      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
+      val declarations = "/dafny_axioms/sequences_int_declarations_dafny.smt2"
+      prover.logComment(declarations)
       preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
     }
   }
@@ -81,8 +86,15 @@ class DefaultMultisetsEmitter(prover: Prover,
   def emitAxioms() {
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
-      val axioms = "/dafny_axioms/multisets_axioms_dafny.smt2"
+      val axioms = "/dafny_axioms/sequences_axioms_dafny.smt2"
       prover.logComment(s"$axioms [${s.elementsSort}]")
+      preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
+    }
+
+    if (collectedSorts contains terms.sorts.Seq(terms.sorts.Int)) {
+      val substitutions = Map("$S$" -> prover.termConverter.convert(terms.sorts.Int))
+      val axioms = "/dafny_axioms/sequences_int_axioms_dafny.smt2"
+      prover.logComment(axioms)
       preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }
   }

@@ -6,7 +6,7 @@
 
 package viper
 package silicon
-package theories
+package supporters
 
 import silver.ast
 import interfaces.PreambleEmitter

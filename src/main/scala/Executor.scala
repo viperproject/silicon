@@ -48,9 +48,6 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-  import stateUtils.freshARP
-
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
@@ -233,7 +230,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case ast.Fresh(vars) =>
         val (arps, arpConstraints) =
-          vars.map(v => (v, freshARP()))
+          vars.map(v => (v, decider.freshARP()))
               .map{case (variable, (value, constrain)) => ((variable, value), constrain)}
               .unzip
         val γ1 = Γ(σ.γ.values ++ arps)

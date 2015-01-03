@@ -6,16 +6,13 @@
 
 package viper
 package silicon
-package theories
+package supporters
 
 import silver.ast
-import interfaces.decider.Prover
 import interfaces.PreambleEmitter
-import state.terms
+import interfaces.decider.Prover
+import state.{SymbolConvert, terms}
 import state.terms.Term
-import state.SymbolConvert
-import state.terms.implicits._
-import reporting.VerificationException
 import implicits._
 
 trait DomainsEmitter extends PreambleEmitter {

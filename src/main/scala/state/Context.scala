@@ -11,11 +11,12 @@ package state
 import silver.ast
 import interfaces.state.{Heap, Context, Mergeable}
 import terms.{Var, Term}
-import theories.SnapshotRecorder
+import supporters.SnapshotRecorder
 
 case class DefaultContext[H <: Heap[H]]
                          (program: ast.Program,
                           visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */
+                          branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
 
@@ -66,14 +67,14 @@ case class DefaultContext[H <: Heap[H]]
    */
 
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
-    case DefaultContext(program1, visited1, constrainableARPs1, quantifiedVariables1,
+    case DefaultContext(program1, visited1m branchConditions1, constrainableARPs1, quantifiedVariables1,
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
                         recordConsumedChunks1, producedChunks1, consumedChunks1, letBoundVars1) =>
 
       other match {
-        case DefaultContext(`program1`, `visited1`, `constrainableARPs1`, `quantifiedVariables1`,
+        case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`,
                             additionalTriggers2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
