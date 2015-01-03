@@ -18,7 +18,7 @@ import interfaces.state.factoryUtils.Ø
 import reporting.Bookkeeper
 import state.{DefaultContext, MagicWandChunk, MagicWandChunkIdentifier}
 import state.terms._
-import supporters.{ChunkSupporter, HeuristicsSupporter, MagicWandSupporter}
+import supporters.{LetHandler, Brancher, ChunkSupporter, HeuristicsSupporter, MagicWandSupporter}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -41,7 +41,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config

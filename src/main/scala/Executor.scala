@@ -20,7 +20,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{MagicWandChunk, FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
-import silicon.supporters.{PredicateSupporter, MagicWandSupporter}
+import supporters.{LetHandler, Brancher, PredicateSupporter, MagicWandSupporter}
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],

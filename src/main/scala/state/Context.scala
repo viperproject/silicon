@@ -67,7 +67,7 @@ case class DefaultContext[H <: Heap[H]]
    */
 
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
-    case DefaultContext(program1, visited1m branchConditions1, constrainableARPs1, quantifiedVariables1,
+    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,

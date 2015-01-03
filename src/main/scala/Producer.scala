@@ -16,7 +16,7 @@ import interfaces.decider.Decider
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
-import supporters.{ChunkSupporter, MagicWandSupporter}
+import supporters.{LetHandler, Brancher, ChunkSupporter, MagicWandSupporter}
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],

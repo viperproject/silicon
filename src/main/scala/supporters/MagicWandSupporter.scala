@@ -428,7 +428,8 @@ trait MagicWandSupporter[ST <: Store[ST],
         val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
                                   recordEffects = c.recordEffects,
                                   producedChunks = c.producedChunks,
-                                  consumedChunks = consumedChunks)
+                                  consumedChunks = consumedChunks,
+                                  branchConditions = c.branchConditions)
 
         Q(magicWandChunk, c1)
       }

@@ -118,7 +118,7 @@ trait ChunkSupporter[ST <: Store[ST],
                 chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], DirectChunk)]]()) {
                   case (accConsumedChunks, (optCh, consumed)) =>
                     optCh match {
-                      case Some(ch) => ((guards -> ch) +: consumed) :: accConsumedChunks
+                      case Some(ch) => ((c2.branchConditions -> ch) +: consumed) :: accConsumedChunks
                       case None => consumed :: accConsumedChunks
                     }
                 }.reverse
@@ -155,7 +155,7 @@ trait ChunkSupporter[ST <: Store[ST],
     def produce(σ: S, h: H, ch: DirectChunk, c: C): (H, C) = {
       val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
       val c1 = recordSnapshot(c, matchedChunk, ch)
-      val c2 = recordProducedChunk(c1, ch, guards)
+      val c2 = recordProducedChunk(c1, ch, c.branchConditions)
 
       (h1, c2)
     }

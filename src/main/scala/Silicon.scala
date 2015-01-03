@@ -207,7 +207,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
                                       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-                                      stateFormatter, heapCompressor, stateUtils,
+                                      stateFormatter, heapCompressor,
                                       bookkeeper)
   }
 

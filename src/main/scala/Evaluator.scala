@@ -23,7 +23,7 @@ import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import supporters.{PredicateSupporter, MagicWandSupporter}
+import viper.silicon.supporters.{Joiner, Brancher, PredicateSupporter, MagicWandSupporter}
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],

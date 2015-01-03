@@ -16,9 +16,9 @@ import silver.components.StatefulComponent
 import silver.ast.utility.{Nodes, Visitor}
 import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
+import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, terms, SymbolConvert}
+import viper.silicon.state.{DefaultContext, terms, SymbolConvert}
 import state.terms.{sorts, Sort}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
@@ -200,7 +200,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultExecutor[ST, H, PC, S]
        with ChunkSupporter[ST, H, PC, S]
        with PredicateSupporter[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S, DefaultContext[H]]
+       with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext[H]]
        with MagicWandSupporter[ST, H, PC, S]

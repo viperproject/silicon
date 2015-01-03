@@ -15,9 +15,9 @@ import silver.components.StatefulComponent
 import silver.verifier.errors.{Internal, PostconditionViolated, FunctionNotWellformed}
 import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{State, StateFactory, PathConditions, Heap, Store, ChunkIdentifier, Mergeable}
+import interfaces.state.{Chunk, State, StateFactory, PathConditions, Heap, Store, ChunkIdentifier, Mergeable}
 import interfaces.state.factoryUtils.Ø
-import state.{SymbolConvert, DirectChunk, DefaultContext}
+import state.{SymbolConvert, DefaultContext}
 import state.terms.{utils => _, _}
 import state.terms.predef.`?s`
 
@@ -181,11 +181,11 @@ trait FunctionSupporter[ST <: Store[ST],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
-            with Evaluator[ST, H, S, DefaultContext]
-            with Producer[ST, H, S, DefaultContext]
-            with Consumer[DirectChunk, ST, H, S, DefaultContext] =>
+            with Evaluator[ST, H, S, DefaultContext[H]]
+            with Producer[ST, H, S, DefaultContext[H]]
+            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification
 
   val config: Config
@@ -276,7 +276,7 @@ trait FunctionSupporter[ST <: Store[ST],
       decider.prover.logComment("Declaring program functions")
       declareFunctions()
 
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
+      val c = DefaultContext[H](program = program, snapshotRecorder = Some(SnapshotRecorder(currentSnap = `?s`)))
 
       functionData.keys.flatMap(function => handleFunction(function, c)).toList
     }
