@@ -20,8 +20,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
-import supporters.{Brancher, PredicateSupporter}
-import heap.QuantifiedChunkHelper
+import supporters.{Brancher, PredicateSupporter, QuantifiedChunkSupporter}
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -46,7 +45,7 @@ trait DefaultExecutor[ST <: Store[ST],
   import symbolConverter.toSort
 
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -195,8 +194,8 @@ trait DefaultExecutor[ST <: Store[ST],
           Q(σ \+ (v, tRhs), c1))
 
       /* Assignment for a field that contains quantified chunks */
-      case ass @ ast.FieldWrite(fa @ ast.FieldAccess(eRcvr, field), rhs)
-              if quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name) =>
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
+              if quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name) =>
 
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
@@ -205,12 +204,12 @@ trait DefaultExecutor[ST <: Store[ST],
               case false =>
                 Failure[ST, H, S](pve dueTo ReceiverNull(fa))
               case true =>
-                val condPerms = quantifiedChunkHelper.singletonConditionalPermissions(tRcvr, FullPerm())
-                val hints = quantifiedChunkHelper.extractHints(None, None, tRcvr)
-                val chunkOrderHeuristics = quantifiedChunkHelper.hintBasedChunkOrderHeuristic(hints)
-                quantifiedChunkHelper.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2){
+                val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, FullPerm())
+                val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+                val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2){
                   case Some((h1, ch, c3)) =>
-                    val (fvf, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, tRcvr, tRhs)
+                    val (fvf, fvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
                     assume(fvfDef)
                     Q(σ \ h1 \+ ch.copy(value = fvf, aux = ch.aux.copy(hints = hints)), c3)
                   case None =>

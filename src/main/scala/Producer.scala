@@ -10,14 +10,13 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
-import supporters.{LetHandler, Brancher, ChunkSupporter}
-import heap.QuantifiedChunkHelper
+import supporters.{LetHandler, Brancher, ChunkSupporter, QuantifiedChunkSupporter}
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -35,13 +34,13 @@ trait DefaultProducer[ST <: Store[ST],
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
-//  protected val stateFactory: StateFactory[ST, H, S]
-//  import stateFactory._
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -161,26 +160,24 @@ trait DefaultProducer[ST <: Store[ST],
           produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-/*
-        def addNewChunk(h: H, rcvr: Term, s: Term, p: Term): (H, Option[Chunk], Chunk) =
-          if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
-            val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
+        def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
+          if (quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) {
+            val (s1, fvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
             assume(fvfDef)
-            val ch = quantifiedChunkHelper.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
-            (h + ch, None, ch)
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
+            (h + ch, c)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch)
-            (h1, matchedChunk, ch)
+            val (h1, c1) = chunkSupporter.produce(σ, h, ch, c)
+            (h1, c1)
           }
-*/
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
-            val (h1, matchedChunk, ch) = addNewChunk(σ.h, tRcvr, s, pNettoGain)
-            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
+            val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
             Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
@@ -193,15 +190,15 @@ trait DefaultProducer[ST <: Store[ST],
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
-      case QuantifiedChunkHelper.ForallRef(qvar, cond, rcvr, field, gain, _, _) =>
+      case QuantifiedChunkSupporter.ForallRef(qvar, cond, rcvr, field, gain, _, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
-        val γQVar = Γ(ast.LocalVariable(qvar.name)(qvar.typ), tQVar)
+        val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
         val πPre = decider.π
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables,
                         recordPossibleTriggers = true,
                         possibleTriggers = Map())
-        decider.locally[(Set[Term], Term, Term, Term, C, Map[ast.Expression, Term])](QB =>
+        decider.locally[(Set[Term], Term, Term, Term, C, Map[ast.Exp, Term])](QB =>
           eval(σQVar, cond, pve, c0)((tCond, c1) => {
             assume(tCond)
             eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
@@ -215,21 +212,21 @@ trait DefaultProducer[ST <: Store[ST],
         ){case (πAux, tCond, tRcvr, pGain, c1, possibleTriggersInCondAndRcvr) =>
           assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
-          val hints = quantifiedChunkHelper.extractHints(Some(tQVar), Some(tCond), tRcvr)
-          val ch = quantifiedChunkHelper.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond)
+          val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+          val ch = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond)
           val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
 //          assume(Domain(field.name, snap) === tSet)
-          val tDomainQuant = quantifiedChunkHelper.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
+          val tDomainQuant = quantifiedChunkSupporter.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
 //            Forall(tQVar,
 //                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
 //                       tCond),
 //                   Trigger(Lookup(field.name, snap, tRcvr)))
-          val tNonNullQuant = quantifiedChunkHelper.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
-          val tInjectivity = quantifiedChunkHelper.injectivityAxiom(tQVar, tCond, tRcvr)
+          val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
+          val tInjectivity = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
           assume(Set[Term](PermLess(NoPerm(), pGain), tDomainQuant, tNonNullQuant, tInjectivity))
           val (h, ts) =
-            if(quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
-            else quantifiedChunkHelper.quantifyChunksForField(σ.h, field)
+            if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
+            else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)
           assume(ts)
           Q(h + ch1, c1)}
 

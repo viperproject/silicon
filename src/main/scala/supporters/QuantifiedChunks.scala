@@ -6,27 +6,99 @@
 
 package viper
 package silicon
-package heap
+package supporters
 
+import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
-import ast.{Field, LocationAccess}
-import interfaces.{VerificationResult, Failure}
+import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.interfaces.{PreambleEmitter, VerificationResult, Failure}
 import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
-import interfaces.decider.Decider
+import interfaces.decider.{Decider, Prover}
 import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
 import state.terms.utils.BigPermSum
+import state.terms
 import state.terms._
 import state.terms.predef.`?r`
 
-class QuantifiedChunkHelper[ST <: Store[ST],
-                            H <: Heap[H],
-                            PC <: PathConditions[PC],
-                            S <: State[ST, H, S]]
-                           (decider: Decider[ST, H, PC, S, DefaultContext],
-                            symbolConverter: SymbolConvert,
-                            stateFactory: StateFactory[ST, H, S],
-                            config: Config) {
+trait FieldValueFunctionsEmitter extends PreambleEmitter
+
+class DefaultFieldValueFunctionsEmitter(prover: Prover,
+                                        symbolConverter: SymbolConvert,
+                                        preambleFileEmitter: PreambleFileEmitter[String, String])
+    extends FieldValueFunctionsEmitter {
+
+  private var collectedFields = Set[ast.Field]()
+  private var collectedSorts = Set[terms.sorts.FieldValueFunction]()
+
+  def sorts: Set[Sort] = toSet(collectedSorts)
+    /* Scala's immutable sets are invariant in their element type, hence
+     * Set[FVF] is not a subtype of Set[Sort], although FVF is one of Sort.
+     */
+
+  def analyze(program: ast.Program) {
+    program visit {
+      case QuantifiedChunkSupporter.ForallRef(qvar, cond, rcvr, f, _, forall, _) =>
+        collectedFields ++= QuantifiedChunkSupporter.fieldAccesses(forall)
+    }
+
+    collectedSorts = (
+        toSet(collectedFields map (f => terms.sorts.FieldValueFunction(symbolConverter.toSort(f.typ))))
+      + terms.sorts.FieldValueFunction(terms.sorts.Ref))
+  }
+
+  /* Symbols are taken from a file, there currently isn't a way of retrieving them */
+  def symbols: Option[Set[Function]] = None
+
+  def declareSorts() {
+    collectedSorts foreach (s => prover.declare(SortDecl(s)))
+  }
+
+  def declareSymbols() {
+    collectedFields foreach { f =>
+      val sort = symbolConverter.toSort(f.typ)
+      val id = f.name
+      val substitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
+
+      val fvfDeclarations = "/field_value_functions_declarations.smt2"
+      prover.logComment(s"$fvfDeclarations [$id: $sort]")
+      preambleFileEmitter.emitParametricAssertions(fvfDeclarations, substitutions)
+    }
+  }
+
+  def emitAxioms() {
+    /* Axioms that have to be emitted for each field that is dereferenced from
+     * a quantified receiver
+     */
+    collectedFields foreach { f =>
+      val sort = symbolConverter.toSort(f.typ)
+      val id = f.name
+      val fvfSubstitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
+      val fvfAxioms = "/field_value_functions_axioms.smt2"
+
+      prover.logComment(s"$fvfAxioms [$id: $sort]")
+      preambleFileEmitter.emitParametricAssertions(fvfAxioms, fvfSubstitutions)
+    }
+  }
+
+  /* Lifetime */
+
+  def reset() {
+    collectedFields = collectedFields.empty
+  }
+
+  def stop() {}
+  def start() {}
+}
+
+class QuantifiedChunkSupporter[ST <: Store[ST],
+                               H <: Heap[H],
+                               PC <: PathConditions[PC],
+                               S <: State[ST, H, S]]
+                              (decider: Decider[ST, H, PC, S, DefaultContext],
+                               symbolConverter: SymbolConvert,
+                               stateFactory: StateFactory[ST, H, S],
+                               config: Config) {
 
   import symbolConverter.toSort
   import stateFactory._
@@ -36,7 +108,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain, quantVar: Option[Var])
 
-  private case class FvfDef(field: Field, fvf: Term, entries: Seq[FvfDefEntry]) {
+  private case class FvfDef(field: ast.Field, fvf: Term, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
     def quantifiedValues =
@@ -70,7 +142,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   def createQuantifiedChunk(qvar: Var,
                             rcvr: Term,
-                            field: Field,
+                            field: ast.Field,
                             value: Term,
                             perms: Term,
                             condition: Term)
@@ -141,9 +213,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                                      h: H,
                                      rcvr: Term,
                                      optQVarInRcvr: Option[Var],
-                                     field: Field,
+                                     field: ast.Field,
                                      pve: PartialVerificationError,
-                                     locacc: LocationAccess,
+                                     locacc: ast.LocationAccess,
                                      c: C)
                                     (Q: Lookup => VerificationResult)
                                     : VerificationResult = {
@@ -171,9 +243,9 @@ class QuantifiedChunkHelper[ST <: Store[ST],
                         h: H,
                         rcvr: Term,
                         needsQuantifying: Boolean,
-                        field: Field,
+                        field: ast.Field,
                         pve: PartialVerificationError,
-                        locacc: LocationAccess,
+                        locacc: ast.LocationAccess,
                         c: C)
                        (Q: (Lookup, FvfDef) => VerificationResult)
                        : VerificationResult = {
@@ -234,7 +306,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
     *         chunks. `ts` is the set of assumptions axiomatising the fresh
     *         field value function `fvf`.
     */
-  def quantifyChunksForField(h: H, field: Field): (H, Set[Term]) = {
+  def quantifyChunksForField(h: H, field: ast.Field): (H, Set[Term]) = {
     val (chunks, ts) =
       h.values.map {
         case ch: DirectFieldChunk if ch.name == field.name =>
@@ -260,7 +332,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   def splitSingleLocation(σ: S,
                           h: H,
-                          field: Field,
+                          field: ast.Field,
                           concreteReceiver: Term,
                           fraction: Term,
                           conditionalizedFraction: Term,
@@ -284,7 +356,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   def splitLocations(σ: S,
                      h: H,
-                     field: Field,
+                     field: ast.Field,
                      quantifiedReceiver: Term,
                      qvarInReceiver: Var,
                      fraction: Term,
@@ -307,7 +379,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   private def split(σ: S,
                     h: H,
-                    field: Field,
+                    field: ast.Field,
                     arbitraryReceiver: Term,
                     specificReceiver: Term,
                     fraction: Term,
@@ -395,7 +467,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
 
   /* Misc */
 
-  def createFieldValueFunction(field: Field, rcvr: Term, value: Term): (Term, Term) = value.sort match {
+  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Term) = value.sort match {
     case _: sorts.FieldValueFunction =>
       /* The value is already a field value function, in which case we don't create a fresh one. */
       (value, True())
@@ -407,7 +479,7 @@ class QuantifiedChunkHelper[ST <: Store[ST],
       (fvf, fvfDef)
   }
 
-  def domainDefinitionAxiom(field: Field, qvar: Var, cond: Term, rcvr: Term, snap: Term) = {
+  def domainDefinitionAxiom(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, snap: Term) = {
     Forall(qvar,
       Iff(
         SetIn(rcvr, Domain(field.name, snap)),
@@ -466,13 +538,13 @@ class QuantifiedChunkHelper[ST <: Store[ST],
   }
 }
 
-object QuantifiedChunkHelper {
+object QuantifiedChunkSupporter {
   object ForallRef {
-    def unapply(n: ast.Node): Option[(ast.LocalVariable,  /* Quantified variable */
-                                      ast.Expression,     /* Condition */
-                                      ast.Expression,     /* Receiver e of acc(e.f, p) */
+    def unapply(n: ast.Node): Option[(ast.LocalVar,  /* Quantified variable */
+                                      ast.Exp,     /* Condition */
+                                      ast.Exp,     /* Receiver e of acc(e.f, p) */
                                       ast.Field,          /* Field f of acc(e.f, p) */
-                                      ast.Expression,     /* Permissions p of acc(e.f, p) */
+                                      ast.Exp,     /* Permissions p of acc(e.f, p) */
                                       ast.Forall,         /* AST node of the forall (for error reporting) */
                                       ast.FieldAccess)] = /* AST node for e.f (for error reporting) */
 

@@ -10,12 +10,6 @@ package silicon
 import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
-import state.DefaultContext
-import supporters.DefaultDomainsEmitter
-import supporters.DefaultDomainsTranslator
-import supporters.DefaultMultisetsEmitter
-import supporters.DefaultSequencesEmitter
-import supporters.DefaultSetsEmitter
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
@@ -26,13 +20,13 @@ import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerifi
     AbortedExceptionally => SilExceptionThrown}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
+import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import state.terms.FullPerm
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
-    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
-import decider.{SMTLib2PreambleEmitter, DefaultDecider}
+    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
+import supporters.{DefaultFieldValueFunctionsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator,
+    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, QuantifiedChunkSupporter}
 import reporting.{VerificationException, Bookkeeper}
-import supporters.DefaultSetsEmitter
-import heap.QuantifiedChunkHelper
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -193,7 +187,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val dlb = FullPerm()
 
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-    val quantifiedChunkHelper = new QuantifiedChunkHelper[ST, H, PC, S](decider, symbolConverter, stateFactory, config)
+    val quantifiedChunkSupporter = new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, config)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -211,7 +205,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
-      stateFormatter, heapCompressor, quantifiedChunkHelper, bookkeeper)
+      stateFormatter, heapCompressor, quantifiedChunkSupporter, bookkeeper)
   }
 
   private def reset() {

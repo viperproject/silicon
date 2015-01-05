@@ -23,8 +23,7 @@ import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import supporters.{Joiner, Brancher, PredicateSupporter}
-import heap.QuantifiedChunkHelper
+import supporters.{Joiner, Brancher, PredicateSupporter, QuantifiedChunkSupporter}
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -51,8 +50,8 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
-  
-  protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
+
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
 
   def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -158,12 +157,12 @@ trait DefaultEvaluator[ST <: Store[ST],
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess if quantifiedChunkHelper.isQuantifiedFor(σ.h, fa.field.name) =>
+      case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
           eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
           assert(qvarsInRcvr.length <= 1,
                  s"Expected receiver to contain at most one quantified variable, but found $qvarsInRcvr in $tRcvr")
-          quantifiedChunkHelper.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, qvarsInRcvr.headOption, fa.field, pve, fa, c1)((t) => {
+          quantifiedChunkSupporter.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, qvarsInRcvr.headOption, fa.field, pve, fa, c1)((t) => {
 //          val c2 = c1.snapshotRecorder match {
 //            case Some(sr) =>
 //              c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> t))))

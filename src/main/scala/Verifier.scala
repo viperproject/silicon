@@ -15,13 +15,13 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
+import decider.PreambleFileEmitter
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort}
+import supporters.{FieldValueFunctionsEmitter, DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter,
+    QuantifiedChunkSupporter}
 import reporting.Bookkeeper
-import heap.QuantifiedChunkHelper
-import decider.PreambleFileEmitter
-import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter, MultisetsEmitter, SetsEmitter,
-    SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
@@ -115,7 +115,7 @@ class DefaultElementVerifier[ST <: Store[ST],
       val symbolConverter: SymbolConvert,
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S],
+      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
       val bookkeeper: Bookkeeper)
     extends AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
@@ -287,13 +287,13 @@ class DefaultVerifier[ST <: Store[ST],
       val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
-      val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S],
+      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
       val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkHelper, bookkeeper)
+                                      quantifiedChunkSupporter, bookkeeper)
 
   override def reset() {
     super.reset()
