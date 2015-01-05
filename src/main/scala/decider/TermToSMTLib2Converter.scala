@@ -11,7 +11,6 @@ package decider
 import org.kiama.output.PrettyPrinter
 import interfaces.decider.TermConverter
 import state.terms._
-import ast.commonnodes.{UnaryOp, BinaryOp}
 
 class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, String, String] {
   override val defaultIndent = 2

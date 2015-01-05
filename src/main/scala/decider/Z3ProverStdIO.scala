@@ -17,11 +17,11 @@ import reporting.{Bookkeeper, Z3InteractionFailed}
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) extends Prover with Logging {
   val termConverter = new TermToSMTLib2Converter()
-	import termConverter._
+  import termConverter._
 
-	private var scopeCounter = 0
-	private val scopeLabels = new MMap[String, MStack[Int]]()
-	private var isLoggingCommentsEnabled: Boolean = true
+  private var scopeCounter = 0
+  private val scopeLabels = new MMap[String, MStack[Int]]()
+  private var isLoggingCommentsEnabled: Boolean = true
   private var logfile: PrintWriter = _
   private var z3: Process = _
   private var input: BufferedReader = _
@@ -91,49 +91,49 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     }
   }
 
-	def	push(label: String) {
-		val stack =
-			scopeLabels.getOrElse(
-				label,
-				{val s = new MStack[Int](); scopeLabels(label) = s; s})
+  def  push(label: String) {
+    val stack =
+      scopeLabels.getOrElse(
+        label,
+        {val s = new MStack[Int](); scopeLabels(label) = s; s})
 
-		stack.push(scopeCounter)
-		push()
-	}
-
-	def	pop(label: String) {
-		val stack = scopeLabels(label)
-		val n = scopeCounter - stack.head
-		stack.pop()
-		pop(n)
-	}
-
-	def push(n: Int = 1) {
-		scopeCounter += n
-		val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + scopeCounter
-    writeLine(cmd)
-		readSuccess()
-	}
-
-  def pop(n: Int = 1) {
-		val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + scopeCounter
-		scopeCounter -= n
-    writeLine(cmd)
-		readSuccess()
+    stack.push(scopeCounter)
+    push()
   }
 
-	def write(content: String) {
+  def  pop(label: String) {
+    val stack = scopeLabels(label)
+    val n = scopeCounter - stack.head
+    stack.pop()
+    pop(n)
+  }
+
+  def push(n: Int = 1) {
+    scopeCounter += n
+    val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + scopeCounter
+    writeLine(cmd)
+    readSuccess()
+  }
+
+  def pop(n: Int = 1) {
+    val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + scopeCounter
+    scopeCounter -= n
+    writeLine(cmd)
+    readSuccess()
+  }
+
+  def write(content: String) {
     writeLine(content)
-		readSuccess()
-	}
+    readSuccess()
+  }
 
   def assume(term: Term) = assume(convert(term))
 
   def assume(term: String) {
-		bookkeeper.assumptionCounter += 1
+    bookkeeper.assumptionCounter += 1
 
-		writeLine("(assert " + term + ")")
-		readSuccess()
+    writeLine("(assert " + term + ")")
+    readSuccess()
   }
 
   def assert(goal: Term) = assert(convert(goal))
@@ -141,28 +141,28 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   def assert(goal: String) = {
     bookkeeper.assertionCounter += 1
 
-		push()
-		writeLine("(assert (not " + goal + "))")
-		readSuccess()
+    push()
+    writeLine("(assert (not " + goal + "))")
+    readSuccess()
     val startTime = System.currentTimeMillis()
     writeLine("(check-sat)")
-		val r = readUnsat()
+    val r = readUnsat()
     val endTime = System.currentTimeMillis()
     logComment(s"${common.format.formatMillisReadably(endTime - startTime)}")
-		pop()
+    pop()
 
-		r
+    r
   }
 
-	def check() = {
-		writeLine("(check-sat)")
+  def check() = {
+    writeLine("(check-sat)")
 
-		readLine() match {
-			case "sat" => Sat
-			case "unsat" => Unsat
-			case "unknown" => Unknown
-		}
-	}
+    readLine() match {
+      case "sat" => Sat
+      case "unsat" => Unsat
+      case "unknown" => Unknown
+    }
+  }
 
   def statistics(): Map[String, String]= {
     var repeat = true
@@ -192,9 +192,9 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     toMap(stats)
   }
 
-	def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
+  def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
 
-	def logComment(str: String) =
+  def logComment(str: String) =
     if (isLoggingCommentsEnabled) {
       val sanitisedStr =
         str.replaceAll("\r", "")
@@ -203,7 +203,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
       log("; " + sanitisedStr)
     }
 
-	private def freshId(prefix: String) = prefix + "@" + counter.next()
+  private def freshId(prefix: String) = prefix + "@" + counter.next()
 
   /* TODO: Could we decouple fresh from Var, e.g. return the used freshId, without
    *       losing conciseness at call-site?
@@ -238,57 +238,57 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     resetAssumptionCounter()
   }
 
-	/* TODO: Handle multi-line output, e.g. multiple error messages. */
+  /* TODO: Handle multi-line output, e.g. multiple error messages. */
 
-	private def readSuccess() {
-		val answer = readLine()
+  private def readSuccess() {
+    val answer = readLine()
 
-		if (answer != "success")
+    if (answer != "success")
       throw new Z3InteractionFailed(s"Unexpected output of Z3. Expected 'success' but found: $answer")
-	}
+  }
 
-	private def readUnsat(): Boolean = readLine() match {
-		case "unsat" => true
-		case "sat" => false
-		case "unknown" => false
+  private def readUnsat(): Boolean = readLine() match {
+    case "unsat" => true
+    case "sat" => false
+    case "unknown" => false
 
     case result =>
       throw new Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
-	}
+  }
 
   private def readLine(): String = {
-		var repeat = true
-		var result = ""
+    var repeat = true
+    var result = ""
 
-		while (repeat) {
-			result = input.readLine()
-			if (result.toLowerCase != "success") logComment(result)
+    while (repeat) {
+      result = input.readLine()
+      if (result.toLowerCase != "success") logComment(result)
 
-			repeat = result.startsWith("WARNING")
-		}
+      repeat = result.startsWith("WARNING")
+    }
 
     result
   }
 
-	private def log(str: String) {
-		if (logfile != null) logfile.println(str)
-	}
+  private def log(str: String) {
+    if (logfile != null) logfile.println(str)
+  }
 
   private def writeLine(out: String) = {
     log(out)
     output.println(out)
   }
 
-	private object counter {
-		private var value = 0
+  private object counter {
+    private var value = 0
 
-		def next() = {
-			value = value + 1
-			value
-		}
+    def next() = {
+      value = value + 1
+      value
+    }
 
     def reset() {
       value = 0
     }
-	}
+  }
 }

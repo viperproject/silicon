@@ -6,24 +6,24 @@
 
 package viper
 package silicon
-package theories
+package supporters
 
+import silver.ast
 import interfaces.PreambleEmitter
 import interfaces.decider.Prover
 import decider.PreambleFileEmitter
-import state.SymbolConvert
-import state.terms
+import state.{SymbolConvert, terms}
 
-trait SetsEmitter extends PreambleEmitter
+trait MultisetsEmitter extends PreambleEmitter
 
 /* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
 
-class DefaultSetsEmitter(prover: Prover,
-                         symbolConverter: SymbolConvert,
-                         preambleFileEmitter: PreambleFileEmitter[String, String])
-    extends SetsEmitter {
+class DefaultMultisetsEmitter(prover: Prover,
+                              symbolConverter: SymbolConvert,
+                              preambleFileEmitter: PreambleFileEmitter[String, String])
+    extends MultisetsEmitter {
 
-  private var collectedSorts = Set[terms.sorts.Set]()
+  private var collectedSorts = Set[terms.sorts.Multiset]()
 
   def sorts = toSet(collectedSorts)
 
@@ -47,32 +47,21 @@ class DefaultSetsEmitter(prover: Prover,
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var setTypes = Set[ast.types.Set]()
-    var foundQuantifiedPermissions = false
+    var multisetTypes = Set[ast.MultisetType]()
 
-    program visit {
-      case q: ast.Quantified if !foundQuantifiedPermissions && !q.isPure =>
-        /* Axioms generated for quantified permissions depend on sets */
-        foundQuantifiedPermissions = true
-        program.fields foreach {f => setTypes += ast.types.Set(f.typ)}
-        setTypes += ast.types.Set(ast.types.Ref) /* $FVF.domain_f is ref-typed */
-
-      case t: silver.ast.Typed =>
-        t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
-          case s: ast.types.Set =>
-            setTypes += s
-          case s: ast.types.Multiset =>
-            /* Multisets depend on sets */
-            setTypes += ast.types.Set(s.elementType)
-          case s: ast.types.Seq =>
-            /* Sequences depend on multisets, which in turn depend on sets */
-            setTypes += ast.types.Set(s.elementType)
-          case _ =>
+    program visit { case t: silver.ast.Typed =>
+      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
+        case s: ast.MultisetType =>
+          multisetTypes += s
+        case s: ast.SeqType =>
+          /* Sequences depend on multisets */
+          multisetTypes += ast.MultisetType(s.elementType)
+        case _ =>
           /* Ignore other types */
-        }
+      }
     }
 
-    collectedSorts = setTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Set])
+    collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Multiset])
   }
 
   def declareSorts() {
@@ -82,7 +71,7 @@ class DefaultSetsEmitter(prover: Prover,
   def declareSymbols() {
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
-      val declarations = "/dafny_axioms/sets_declarations_dafny.smt2"
+      val declarations = "/dafny_axioms/multisets_declarations_dafny.smt2"
       prover.logComment(s"$declarations [${s.elementsSort}]")
       preambleFileEmitter.emitParametricAssertions(declarations, substitutions)
     }
@@ -91,7 +80,7 @@ class DefaultSetsEmitter(prover: Prover,
   def emitAxioms() {
     collectedSorts foreach {s =>
       val substitutions = Map("$S$" -> prover.termConverter.convert(s.elementsSort))
-      val axioms = "/dafny_axioms/sets_axioms_dafny.smt2"
+      val axioms = "/dafny_axioms/multisets_axioms_dafny.smt2"
       prover.logComment(s"$axioms [${s.elementsSort}]")
       preambleFileEmitter.emitParametricAssertions(axioms, substitutions)
     }

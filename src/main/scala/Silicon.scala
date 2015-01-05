@@ -11,9 +11,15 @@ import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import state.DefaultContext
+import supporters.DefaultDomainsEmitter
+import supporters.DefaultDomainsTranslator
+import supporters.DefaultMultisetsEmitter
+import supporters.DefaultSequencesEmitter
+import supporters.DefaultSetsEmitter
 import scala.language.postfixOps
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{ValueConverter, singleArgConverter}
+import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
     TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
@@ -25,11 +31,8 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
-import theories.{DefaultFieldValueFunctionsEmitter, DefaultMultisetsEmitter, DefaultDomainsEmitter, DefaultSetsEmitter,
-    DefaultSequencesEmitter, DefaultDomainsTranslator}
+import supporters.DefaultSetsEmitter
 import heap.QuantifiedChunkHelper
-import ast.Consistency
-
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -55,12 +58,16 @@ object Silicon extends SiliconConstants {
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
       case (k, v) =>
+        if (k.head.isUpper) {
+          Seq(s"-$k=$v")
+        } else {
         val kStr = s"--$k"
         val vStr = v.toString
 
         vStr.toLowerCase match {
           case "true" | "false" => Seq(kStr)
           case _ => Seq(kStr, vStr)
+        }
         }
     }.toSeq
 
@@ -144,7 +151,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
          *       or --dependencies is can be shared.
          */
 
-    setLogLevel(config.logLevel())
+    setLogLevelsFromConfig()
     verifier = createVerifier()
 
     verifier.start()
@@ -182,7 +189,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
-    val stateUtils = new StateUtils[ST, H, PC, S, C](decider)
 
     val dlb = FullPerm()
 
@@ -205,7 +211,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
-      stateFormatter, heapCompressor, quantifiedChunkHelper, stateUtils, bookkeeper)
+      stateFormatter, heapCompressor, quantifiedChunkHelper, bookkeeper)
   }
 
   private def reset() {
@@ -224,7 +230,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     * @param program The program to be verified.
     * @return The verification result.
     */
-	def verify(program: ast.Program): SilVerificationResult = {
+  def verify(program: ast.Program): SilVerificationResult = {
     lifetimeState match {
       case LifetimeState.Instantiated => sys.error("Silicon hasn't been configured yet")
       case LifetimeState.Configured => sys.error("Silicon hasn't been started yet")
@@ -234,9 +240,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Running
 
-		logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
-    val consistencyErrors = Consistency.check(program)
+    val consistencyErrors = utils.consistency.check(program)
 
     if (consistencyErrors.nonEmpty) {
       SilFailure(consistencyErrors)
@@ -292,19 +298,19 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
     }
-	}
+  }
 
-	private def runVerifier(program: ast.Program): List[Failure] = {
-		/* TODO:
-		 *  - Since there doesn't seem to be a need for Success to carry a message,
-		 *    the hierarchy should be changed s.t. it doesn't has that field any
-		 *    more.
-		 */
+  private def runVerifier(program: ast.Program): List[Failure] = {
+    /* TODO:
+     *  - Since there doesn't seem to be a need for Success to carry a message,
+     *    the hierarchy should be changed s.t. it doesn't has that field any
+     *    more.
+     */
 
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
-		val results = verifier.verify(program)
+    val results = verifier.verify(program)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
@@ -328,7 +334,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
               case ((ss, rs), r) => (ss, r :: rs)}
            ._2
 
-		if (config.showStatistics.isDefined) {
+    if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()
 
       verifier.bookkeeper.proverStatistics = proverStats
@@ -347,16 +353,16 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
         case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }
-		}
+    }
 
     failures foreach (f => logFailure(f, s => logger.info(s)))
 
-		logger.info("\nVerification finished in %s with %s error(s)".format(
+    logger.info("\nVerification finished in %s with %s error(s)".format(
         silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
-				failures.length))
+        failures.length))
 
     failures
-	}
+  }
 
   private def convertFailures(failures: List[Failure]): SilVerificationResult = {
     failures match {
@@ -365,14 +371,19 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     }
   }
 
-	private def logFailure(failure: Failure, log: String => Unit) {
-		log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
-	}
+  private def logFailure(failure: Failure, log: String => Unit) {
+    log("\n" + failure.message.readableMessage(withId = true, withPosition = true))
+  }
 
-	private def setLogLevel(level: String) {
+  private def setLogLevelsFromConfig() {
     val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
-		log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
-	}
+    log4jlogger.setLevel(org.apache.log4j.Level.toLevel(config.logLevel()))
+
+    config.logger.foreach { case (loggerName, level) =>
+      val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
+      log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
+    }
+  }
 }
 
 
@@ -481,7 +492,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some("OFF"),
     noshort = true,
     hidden = Silicon.hideInternalOptions
-  )
+  )(singleArgConverter(level => level.toUpperCase))
+
+  val logger = props[String]('L',
+    descr = "Set level of certain internal loggers",
+    keyName = "logger",
+    valueName = "level",
+    hidden = Silicon.hideInternalOptions)
 
   val timeout = opt[Int]("timeout",
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "

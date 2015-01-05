@@ -8,13 +8,15 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.PartialVerificationError
-import interfaces.state.{HeapCompressor, Chunk, StateFactory, Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import supporters.{LetHandler, Brancher, ChunkSupporter}
 import heap.QuantifiedChunkHelper
 
 trait DefaultProducer[ST <: Store[ST],
@@ -22,20 +24,19 @@ trait DefaultProducer[ST <: Store[ST],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Producer[ST, H, S, DefaultContext]
-        with HasLocalState
     { this: Logging with Evaluator[ST, H, S, DefaultContext]
                     with Consumer[DirectChunk, ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext] =>
+                    with Brancher[ST, H, S, DefaultContext]
+                    with ChunkSupporter[ST, H, PC, S]
+                    with LetHandler[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
-  protected val heapCompressor: HeapCompressor[ST, H, S]
-
-  protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
+//  protected val stateFactory: StateFactory[ST, H, S]
+//  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -45,13 +46,10 @@ trait DefaultProducer[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val config: Config
 
-  private var snapshotCacheFrames: Stack[Map[Term, (Term, Term)]] = Stack()
-  private var snapshotCache: Map[Term, (Term, Term)] = Map()
-
   def produce(σ: S,
               sf: Sort => Term,
               p: Term,
-              φ: ast.Expression,
+              φ: ast.Exp,
               pve: PartialVerificationError,
               c: C)
              (Q: (S, C) => VerificationResult)
@@ -63,8 +61,8 @@ trait DefaultProducer[ST <: Store[ST],
   def produces(σ: S,
                sf: Sort => Term,
                p: Term,
-               φs: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φs: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, C) => VerificationResult)
               : VerificationResult = {
@@ -110,7 +108,7 @@ trait DefaultProducer[ST <: Store[ST],
   private def produce2(σ: S,
                        sf: Sort => Term,
                        p: Term,
-                       φ: ast.Expression,
+                       φ: ast.Exp,
                        pve: PartialVerificationError,
                        c: C)
                       (Q: (H, C) => VerificationResult)
@@ -152,13 +150,18 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
             (c2: C) => Q(σ.h, c2)))
 
-      case ast.Ite(e0, a1, a2) if !φ.isPure =>
+      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
 
+      case let: ast.Let if !let.isPure =>
+        handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
+          produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
+
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+/*
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term): (H, Option[Chunk], Chunk) =
           if (quantifiedChunkHelper.isQuantifiedFor(σ.h, field.name)) {
             val (s1, fvfDef) = quantifiedChunkHelper.createFieldValueFunction(field, rcvr, s)
@@ -170,18 +173,14 @@ trait DefaultProducer[ST <: Store[ST],
             val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch)
             (h1, matchedChunk, ch)
           }
-
+*/
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val (h1, matchedChunk, ch) = addNewChunk(σ.h, tRcvr, s, pNettoGain)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
+            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
@@ -191,12 +190,7 @@ trait DefaultProducer[ST <: Store[ST],
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
-            val (h1, matchedChunk) = heapCompressor.merge(σ, σ.h, ch)
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = sr.copy(chunkToSnap = sr.chunkToSnap + (matchedChunk.getOrElse(ch).id -> sr.currentSnap))
-                c2.copy(snapshotRecorder = Some(sr1))
-              case _ => c2}
+            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
       case QuantifiedChunkHelper.ForallRef(qvar, cond, rcvr, field, gain, _, _) =>
@@ -239,8 +233,8 @@ trait DefaultProducer[ST <: Store[ST],
           assume(ts)
           Q(h + ch1, c1)}
 
-      case _: ast.InhaleExhale =>
-        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+ case _: ast.InhaleExhaleExp =>
+        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
@@ -252,7 +246,7 @@ trait DefaultProducer[ST <: Store[ST],
     produced
   }
 
-  private def getOptimalSnapshotSort(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil)
+  private def getOptimalSnapshotSort(φ: ast.Exp, program: ast.Program, visited: Seq[String] = Nil)
                                     : (Sort, Boolean) =
 
     φ match {
@@ -281,7 +275,7 @@ trait DefaultProducer[ST <: Store[ST],
         /* At least one of φ1, φ2 must be impure, otherwise ... */
         getOptimalSnapshotSortFromPair(φ1, φ2, () => (sorts.Snap, false), program, visited)
 
-      case ast.Ite(_, φ1, φ2) =>
+      case ast.CondExp(_, φ1, φ2) =>
         /* At least one of φ1, φ2 must be impure, otherwise ... */
 
         def findCommonSort() = {
@@ -301,8 +295,8 @@ trait DefaultProducer[ST <: Store[ST],
         (sorts.Snap, false)
     }
 
-  private def getOptimalSnapshotSortFromPair(φ1: ast.Expression,
-                                             φ2: ast.Expression,
+  private def getOptimalSnapshotSortFromPair(φ1: ast.Exp,
+                                             φ2: ast.Exp,
                                              fIfBothPure: () => (Sort, Boolean),
                                              program: ast.Program,
                                              visited: Seq[String])
@@ -313,20 +307,9 @@ trait DefaultProducer[ST <: Store[ST],
     else fIfBothPure()
     }
 
-  private def mkSnap(φ: ast.Expression, program: ast.Program, visited: Seq[String] = Nil): Term =
+  private def mkSnap(φ: ast.Exp, program: ast.Program, visited: Seq[String] = Nil): Term =
     getOptimalSnapshotSort(φ, program, visited) match {
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
-
-  override def pushLocalState() {
-    snapshotCacheFrames = snapshotCache +: snapshotCacheFrames
-    super.pushLocalState()
-  }
-
-  override def popLocalState() {
-    snapshotCache = snapshotCacheFrames.head
-    snapshotCacheFrames = snapshotCacheFrames.tail
-    super.popLocalState()
-  }
 }

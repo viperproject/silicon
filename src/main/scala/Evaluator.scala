@@ -8,105 +8,105 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, FieldChunk}
+import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk}
 import state.terms._
 import state.terms.predef.`?s`
 import state.terms.implicits._
-import state.terms.perms.IsPositive
+import state.terms.perms.IsNonNegative
+import supporters.{Joiner, Brancher, PredicateSupporter}
 import heap.QuantifiedChunkHelper
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
-											 S <: State[ST, H, S]]
-		extends Evaluator[ST, H, S, DefaultContext] with HasLocalState
-		{ this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
-										with Producer[ST, H, S, DefaultContext]
-										with Brancher[ST, H, S, DefaultContext]
-										with Joiner[ST, H, S, DefaultContext] =>
+                       S <: State[ST, H, S]]
+    extends Evaluator[ST, H, S, DefaultContext]
+    { this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
+                    with Producer[ST, H, S, DefaultContext]
+                    with PredicateSupporter[ST, H, PC, S]
+                    with Brancher[ST, H, S, DefaultContext]
+                    with Joiner[DefaultContext] =>
 
   private type C = DefaultContext
 
-	protected val decider: Decider[ST, H, PC, S, C]
-	import decider.{fresh, assume}
+  protected val decider: Decider[ST, H, PC, S, C]
+  import decider.{fresh, assume}
 
-	protected val stateFactory: StateFactory[ST, H, S]
-	import stateFactory._
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
 
-	protected val symbolConverter: SymbolConvert
-	import symbolConverter.toSort
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
-  protected val stateUtils: StateUtils[ST, H, PC, S, C]
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
-	protected val config: Config
-	protected val bookkeeper: Bookkeeper
-
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val config: Config
+  protected val bookkeeper: Bookkeeper
+  
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
 
-	/*private*/ var fappCache: Map[Term, Set[Term]] = Map()
-	/*private*/ var fappCacheFrames: Stack[Map[Term, Set[Term]]] = Stack()
-
-	def evals(σ: S, es: Seq[ast.Expression], pve: PartialVerificationError, c: C)
-			     (Q: (List[Term], C) => VerificationResult)
+  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+           (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
 
-		evals2(σ, es, Nil, pve, c)((ts, c1) =>
-			Q(ts, c1))
+    evals2(σ, es, Nil, pve, c)((ts, c1) =>
+      Q(ts, c1))
 
-	private def evals2(σ: S,
-                     es: Seq[ast.Expression],
+  private def evals2(σ: S,
+                     es: Seq[ast.Exp],
                      ts: List[Term],
                      pve: PartialVerificationError,
                      c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
 
-		if (es.isEmpty)
-			Q(ts.reverse, c)
-		else
-			eval(σ, es.head, pve, c)((t, c1) =>
-				evals2(σ, es.tail, t :: ts, pve, c1)(Q))
-	}
+    if (es.isEmpty)
+      Q(ts.reverse, c)
+    else
+      eval(σ, es.head, pve, c)((t, c1) =>
+        evals2(σ, es.tail, t :: ts, pve, c1)(Q))
+  }
 
-	def eval(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+  def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-		eval2(σ, e, pve, c)((t, c1) => {
+
+    /* For debugging only */
+    e match {
+      case  _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
+          | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
+          | _: ast.WildcardPerm | _: ast.FieldAccess =>
+
+      case _ =>
+        logger.debug(s"\nEVAL ${e.pos}: $e")
+        logger.debug(stateFormatter.format(σ))
+        decider.prover.logComment(s"[eval] $e")
+    }
+
+    eval2(σ, e, pve, c)((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
-            case pt: silver.ast.PossibleTrigger => c1.copy(possibleTriggers = c1.possibleTriggers + (pt -> t))
+            case pt: ast.PossibleTrigger => c1.copy(possibleTriggers = c1.possibleTriggers + (pt -> t))
             case _ => c1}
         else
           c1
-			Q(t, c2)})
+      Q(t, c2)})
   }
 
-  protected def eval2(σ: S, e: ast.Expression, pve: PartialVerificationError, c: C)
+  protected def eval2(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
-
-		/* For debugging only */
-		e match {
-			case  _: ast.True | _: ast.False | _: ast.NullLiteral | _: ast.IntegerLiteral | _: ast.FullPerm | _: ast.NoPerm
-          | _: ast.Variable | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.ResultLiteral
-          | _: ast.WildcardPerm | _: ast.FieldAccess =>
-
-			case _ =>
-        logger.debug(s"\nEVAL ${e.pos}: $e")
-				logger.debug(stateFormatter.format(σ))
-        decider.prover.logComment(s"[eval] $e")
-		}
 
     /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
      * might be tempting to think that we don't need to locally evaluate
@@ -127,16 +127,16 @@ trait DefaultEvaluator[ST <: Store[ST],
      */
 
     val resultTerm = e match {
-      case ast.True() => Q(True(), c)
-      case ast.False() => Q(False(), c)
+      case _: ast.TrueLit => Q(True(), c)
+      case _: ast.FalseLit => Q(False(), c)
 
-      case ast.NullLiteral() => Q(Null(), c)
-      case ast.IntegerLiteral(bigval) => Q(IntLiteral(bigval), c)
+      case _: ast.NullLit => Q(Null(), c)
+      case ast.IntLit(bigval) => Q(IntLiteral(bigval), c)
 
-      case ast.Equals(e0, e1) => evalBinOp(σ, e0, e1, Equals, pve, c)(Q)
-      case ast.Unequals(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, c)(Q)
+      case ast.EqCmp(e0, e1) => evalBinOp(σ, e0, e1, Equals, pve, c)(Q)
+      case ast.NeCmp(e0, e1) => evalBinOp(σ, e0, e1, (p0: Term, p1: Term) => Not(Equals(p0, p1)), pve, c)(Q)
 
-      case v: ast.Variable => Q(σ.γ(v), c)
+      case v: ast.AbstractLocalVar => Q(σ.γ(v), c)
 
       case _: ast.FullPerm => Q(FullPerm(), c)
       case _: ast.NoPerm => Q(NoPerm(), c)
@@ -147,13 +147,13 @@ trait DefaultEvaluator[ST <: Store[ST],
           failIfDivByZero(σ, tFP, e1, t1, predef.Zero, pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
-        val (tVar, tConstraints) = stateUtils.freshARP()
+        val (tVar, tConstraints) = decider.freshARP()
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, σ.h, id) match {
+          decider.getChunk[DirectChunk](σ, σ.h, id, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
@@ -183,11 +183,16 @@ trait DefaultEvaluator[ST <: Store[ST],
         eval(σ, e0, pve, c)((t0, c1) =>
           Q(Not(t0), c1))
 
-      case ast.IntNeg(e0) =>
+      case ast.Neg(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
+
+      case ast.Let(v, e0, e1) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
+          eval(σ \+ (v.localVar, t0), e1, pve, c1)((t1, c2) =>
+            Q(t1, c2)))
 
       /* Strict evaluation of AND */
       case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -214,7 +219,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           val tImplies = Implies(t0, optT1.getOrElse(True()))
           Q(tImplies, c1)})
 
-      case ite @ ast.Ite(e0, e1, e2) =>
+      case ite @ ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branchAndJoin(σ, t0, c1,
             (c2, QB) =>
@@ -231,66 +236,66 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Integers */
 
-      case ast.IntPlus(e0, e1) =>
+      case ast.Add(e0, e1) =>
         evalBinOp(σ, e0, e1, Plus, pve, c)(Q)
 
-      case ast.IntMinus(e0, e1) =>
+      case ast.Sub(e0, e1) =>
         evalBinOp(σ, e0, e1, Minus, pve, c)(Q)
 
-      case ast.IntTimes(e0, e1) =>
+      case ast.Mul(e0, e1) =>
         evalBinOp(σ, e0, e1, Times, pve, c)(Q)
 
-      case ast.IntDiv(e0, e1) =>
+      case ast.Div(e0, e1) =>
         evalBinOp(σ, e0, e1, Div, pve, c)((tDiv, c1) =>
           failIfDivByZero(σ, tDiv, e1, tDiv.p1, 0, pve, c1)(Q))
 
-      case ast.IntMod(e0, e1) =>
+      case ast.Mod(e0, e1) =>
         evalBinOp(σ, e0, e1, Mod, pve, c)((tMod, c1) =>
           failIfDivByZero(σ, tMod, e1, tMod.p1, 0, pve, c1)(Q))
 
-      case ast.IntLE(e0, e1) =>
+      case ast.LeCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c)(Q)
 
-      case ast.IntLT(e0, e1) =>
+      case ast.LtCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, Less, pve, c)(Q)
 
-      case ast.IntGE(e0, e1) =>
+      case ast.GeCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, AtLeast, pve, c)(Q)
 
-      case ast.IntGT(e0, e1) =>
+      case ast.GtCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, Greater, pve, c)(Q)
 
       /* Permissions */
 
-      case ast.PermPlus(e0, e1) =>
+      case ast.PermAdd(e0, e1) =>
         evalBinOp(σ, e0, e1, PermPlus, pve, c)(Q)
 
-      case ast.PermMinus(e0, e1) =>
+      case ast.PermSub(e0, e1) =>
         evalBinOp(σ, e0, e1, PermMinus, pve, c)(Q)
 
-      case ast.PermTimes(e0, e1) =>
+      case ast.PermMul(e0, e1) =>
         evalBinOp(σ, e0, e1, PermTimes, pve, c)(Q)
 
-      case ast.IntPermTimes(e0, e1) =>
+      case ast.IntPermMul(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           eval(σ, e1, pve, c1)((t1, c2) =>
             Q(IntPermTimes(t0, t1), c2)))
 
-      case ast.PermIntDiv(e0, e1) =>
+      case ast.PermDiv(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           eval(σ, e1, pve, c1)((t1, c2) =>
             failIfDivByZero(σ, PermIntDiv(t0, t1), e1, t1, 0, pve, c1)(Q)))
 
-      case ast.PermLE(e0, e1) =>
+      case ast.PermLeCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c)(Q)
 
-      case ast.PermLT(e0, e1) =>
+      case ast.PermLtCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, Less, pve, c)(Q)
 
-      case ast.PermGE(e0, e1) =>
+      case ast.PermGeCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, AtLeast, pve, c)(Q)
 
-      case ast.PermGT(e0, e1) =>
+      case ast.PermGtCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, Greater, pve, c)(Q)
 
       /* Others */
@@ -303,7 +308,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      case quant: ast.Quantified /*if config.disableLocalEvaluations()*/ =>
+      case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (triggerQuant, tQuantOp, silTriggers) = quant match {
           case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
           case ex: ast.Exists => (ex, Exists, Seq())
@@ -346,7 +351,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-          val pre = Expressions.instantiateVariables(ast.utils.BigAnd(func.pres), func.formalArgs, eArgs)
+          val pre = Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
           val c2a = c2.snapshotRecorder match {
             case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))
             case _ => c2
@@ -384,26 +389,37 @@ trait DefaultEvaluator[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
-          val c0a = c.incCycleCounter(predicate)
-          eval(σ, ePerm, pve, c0a)((tPerm, c1) => {
-            decider.assert(σ, IsPositive(tPerm)){
+          val c0 = c.incCycleCounter(predicate)
+
+          evals(σ, eArgs, pve, c0)((tArgs, c1) =>
+            eval(σ, ePerm, pve, c1)((tPerm, c2) =>
+              decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
-                evals(σ, eArgs, pve, c1)((tArgs, c2) =>
-                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
+                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
+                      /* [2014-12-10 Malte] The commented code should replace the code following
+                       * it, but using it slows down RingBufferRd.sil significantly. The generated
+                       * Z3 output looks nearly identical, so my guess is that it is some kind
+                       * of triggering problem, probably related to sequences.
+                       */
+//                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
+//                      val c4 = c3.decCycleCounter(predicate)
+//                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
+//                        QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
-                      val c3a = c3.snapshotRecorder match {
-                        case Some(sr) =>
-                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
-                        case _ => c3}
+//                      val c3a = c3.snapshotRecorder match {
+//                        case Some(sr) =>
+//                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
+//                        case _ => c3}
+//                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c.program)
-                      produce(σ1, s => snap.convert(s), tPerm, body, pve, c3a)((σ2, c4) => {
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 \ (g = σ.g)
-                        eval(σ3, eIn, pve, c4a)((tIn, c5) => {
+                        val σ3 = σ2 //\ (g = σ.g)
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
                           QB(tIn, c5)})})})
-                  })(Q))
+                  )(Q)
               case false =>
-                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}})
+                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)
@@ -411,22 +427,22 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Sequences */
 
-      case ast.SeqIn(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c)(Q)
+      case ast.SeqContains(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c)(Q)
         /* Note the reversed order of the arguments! */
 
-      case silver.ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c)(Q)
-      case silver.ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c)(Q)
-      case silver.ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c)(Q)
-      case ast.SeqAt(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c)(Q)
-      case silver.ast.SeqLength(e0) => eval(σ, e0, pve, c)((t0, c1) => Q(SeqLength(t0), c1))
-      case silver.ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
-      case ast.SeqRanged(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c)(Q)
+      case ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c)(Q)
+      case ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c)(Q)
+      case ast.SeqTake(e0, e1) => evalBinOp(σ, e0, e1, SeqTake, pve, c)(Q)
+      case ast.SeqIndex(e0, e1) => evalBinOp(σ, e0, e1, SeqAt, pve, c)(Q)
+      case ast.SeqLength(e0) => eval(σ, e0, pve, c)((t0, c1) => Q(SeqLength(t0), c1))
+      case ast.EmptySeq(typ) => Q(SeqNil(toSort(typ)), c)
+      case ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c)(Q)
 
-      case silver.ast.SeqUpdate(e0, e1, e2) =>
+      case ast.SeqUpdate(e0, e1, e2) =>
         evals2(σ, List(e0, e1, e2), Nil, pve, c)((ts, c1) =>
           Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
 
-      case silver.ast.ExplicitSeq(es) =>
+      case ast.ExplicitSeq(es) =>
         evals2(σ, es.reverse, Nil, pve, c)((tEs, c1) => {
           val tSeq =
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
@@ -436,71 +452,73 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Sets and multisets */
 
-      case silver.ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
-      case silver.ast.EmptyMultiset(typ) => Q(EmptyMultiset(toSort(typ)), c)
+      case ast.EmptySet(typ) => Q(EmptySet(toSort(typ)), c)
+      case ast.EmptyMultiset(typ) => Q(EmptyMultiset(toSort(typ)), c)
 
-      case silver.ast.ExplicitSet(es) =>
+      case ast.ExplicitSet(es) =>
         evals2(σ, es, Nil, pve, c)((tEs, c1) => {
           val tSet =
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
           Q(tSet, c1)})
 
-      case silver.ast.ExplicitMultiset(es) =>
+      case ast.ExplicitMultiset(es) =>
         evals2(σ, es, Nil, pve, c)((tEs, c1) => {
           val tMultiset =
             tEs.tail.foldLeft[MultisetTerm](SingletonMultiset(tEs.head))((tMultiset, te) =>
               MultisetAdd(tMultiset, te))
           Q(tMultiset, c1)})
 
-      case silver.ast.AnySetUnion(e0, e1) => e.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetUnion, pve, c)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetUnion, pve, c)(Q)
+      case ast.AnySetUnion(e0, e1) => e.typ match {
+        case _: ast.SetType => evalBinOp(σ, e0, e1, SetUnion, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetUnion, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case silver.ast.AnySetIntersection(e0, e1) => e.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIntersection, pve, c)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c)(Q)
+      case ast.AnySetIntersection(e0, e1) => e.typ match {
+        case _: ast.SetType => evalBinOp(σ, e0, e1, SetIntersection, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case silver.ast.AnySetSubset(e0, e1) => e0.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetSubset, pve, c)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetSubset, pve, c)(Q)
+      case ast.AnySetSubset(e0, e1) => e0.typ match {
+        case _: ast.SetType => evalBinOp(σ, e0, e1, SetSubset, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetSubset, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case silver.ast.AnySetMinus(e0, e1) => e.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetDifference, pve, c)(Q)
+      case ast.AnySetMinus(e0, e1) => e.typ match {
+        case _: ast.SetType => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetDifference, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case silver.ast.AnySetContains(e0, e1) => e1.typ match {
-        case _: ast.types.Set => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
-        case _: ast.types.Multiset => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
+      case ast.AnySetContains(e0, e1) => e1.typ match {
+        case _: ast.SetType => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
 
-      case silver.ast.AnySetCardinality(e0) => e0.typ match {
-        case _: ast.types.Set => eval(σ, e0, pve, c)((t0, c1) => Q(SetCardinality(t0), c1))
-        case _: ast.types.Multiset => eval(σ, e0, pve, c)((t0, c1) => Q(MultisetCardinality(t0), c1))
+      case ast.AnySetCardinality(e0) => e0.typ match {
+        case _: ast.SetType => eval(σ, e0, pve, c)((t0, c1) => Q(SetCardinality(t0), c1))
+        case _: ast.MultisetType => eval(σ, e0, pve, c)((t0, c1) => Q(MultisetCardinality(t0), c1))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
                             .format(e0, e0.getClass.getName, e0.typ))
       }
 
-      case _: ast.InhaleExhale =>
-        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(e))
-		}
+      /* Unexpected nodes */
+
+      case _: ast.InhaleExhaleExp =>
+        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
+    }
 
     resultTerm
-	}
+  }
 
   def withChunkIdentifier(σ: S,
                           locacc: ast.LocationAccess,
@@ -525,24 +543,24 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
     }
 
-	private def evalBinOp[T <: Term]
+  private def evalBinOp[T <: Term]
                        (σ: S,
-			                  e0: ast.Expression,
-                        e1: ast.Expression,
+                        e0: ast.Exp,
+                        e1: ast.Exp,
                         termOp: (Term, Term) => T,
                         pve: PartialVerificationError,
-			                  c: C)
+                        c: C)
                        (Q: (T, C) => VerificationResult)
                        : VerificationResult = {
 
-		eval(σ, e0, pve, c)((t0, c1) =>
-			eval(σ, e1, pve, c1)((t1, c2) =>
-				Q(termOp(t0, t1), c2)))
+    eval(σ, e0, pve, c)((t0, c1) =>
+      eval(σ, e1, pve, c1)((t1, c2) =>
+        Q(termOp(t0, t1), c2)))
   }
 
   private def failIfDivByZero(σ: S,
                               t: Term,
-                              eDivisor: ast.Expression,
+                              eDivisor: ast.Exp,
                               tDivisor: Term,
                               tZero: Term,
                               pve: PartialVerificationError,
@@ -599,7 +617,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
 
-        case pt: silver.ast.PossibleTrigger =>
+        case pt: ast.PossibleTrigger =>
           val cachedTrigger = c.possibleTriggers.get(pt)
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
@@ -652,8 +670,8 @@ trait DefaultEvaluator[ST <: Store[ST],
    * thrown.
    */
   private def evalDependently(σ: S,
-                              e0: ast.Expression,
-                              e1: ast.Expression,
+                              e0: ast.Exp,
+                              e1: ast.Exp,
                               t0Transformer: Term => Term,
                               pve: PartialVerificationError, c: C)
                              (Q: (Term, Option[Term], C) => VerificationResult)
@@ -688,17 +706,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         r && {
           val tAux = πAux
           assume(tAux)
-          Q(t0, optT1, optInnerC.getOrElse(c1))}})
+          val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
+          Q(t0, optT1, c2)}})
   }
-
-	override def pushLocalState() {
-		fappCacheFrames = fappCache +: fappCacheFrames
-		super.pushLocalState()
-	}
-
-	override def popLocalState() {
-		fappCache = fappCacheFrames.head
-		fappCacheFrames = fappCacheFrames.tail
-		super.popLocalState()
-	}
 }

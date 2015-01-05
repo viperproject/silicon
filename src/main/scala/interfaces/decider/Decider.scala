@@ -8,26 +8,27 @@ package viper
 package silicon
 package interfaces.decider
 
+import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
 import interfaces.{Failure, VerificationResult}
 import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import state.terms.{Term, Var, Sort}
+import viper.silicon.state.terms.{FullPerm, Term, Var, Sort}
 import state.DirectChunk
 import utils.notNothing._
 
 trait Decider[ST <: Store[ST],
               H <: Heap[H],
-						  PC <: PathConditions[PC],
+              PC <: PathConditions[PC],
               S <: State[ST, H, S],
               C <: Context[C]]
 
     extends StatefulComponent {
 
-	def prover: Prover
-	def π: Set[Term]
+  def prover: Prover
+  def π: Set[Term]
 
-	def checkSmoke(): Boolean
+  def checkSmoke(): Boolean
 
   def pushScope()
   def popScope()
@@ -43,7 +44,7 @@ trait Decider[ST <: Store[ST],
   def assume(t: Term)
   def assume(ts: Iterable[Term])
 
-  def tryOrFail[R](σ: S)
+  def tryOrFail[R](σ: S, c: C)
                   (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
@@ -83,11 +84,12 @@ trait Decider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult
 
-  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH]
+  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH]
 
   def fresh(id: String, s: Sort): Var
   def fresh(s: Sort): Var
-  def fresh(v: ast.Variable): Var
+  def fresh(v: ast.AbstractLocalVar): Var
+  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
 
   def statistics(): Map[String, String]
 }

@@ -6,31 +6,79 @@
 
 package viper
 package silicon
-package theories
+package supporters
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.ast.utility.Functions
 import silver.components.StatefulComponent
-import silver.verifier.errors.{Internal, FunctionNotWellformed, PostconditionViolated}
-import interfaces.{Failure, VerificationResult, Consumer, Producer, Evaluator, Success}
+import silver.verifier.errors.{Internal, PostconditionViolated, FunctionNotWellformed}
+import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{ChunkIdentifier, StateFactory, State, PathConditions, Heap, Store, Mergeable}
+import interfaces.state.{State, StateFactory, PathConditions, Heap, Store, ChunkIdentifier, Mergeable}
 import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, SymbolConvert, DirectChunk}
+import state.{SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{utils => _, _}
-import state.terms.predef._
+import state.terms.predef.`?s`
 
 case class SnapshotRecorder(currentSnap: Term = null,
                             locToChunk: Map[ast.LocationAccess, ChunkIdentifier] = Map(),
-                            chunkToSnap: Map[ChunkIdentifier, Term] = Map(),
+                            chunksToSnaps: Map[ChunkIdentifier, Set[(Stack[Term], Term)]] = Map(),
                             fappToSnap: Map[ast.FuncApp, Term] = Map())
     extends Mergeable[SnapshotRecorder]
        with Logging {
 
-  def locToSnap = locToChunk.map{case (loc, ch) => loc -> chunkToSnap(ch)}
+//  private def locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] =
+//    locToChunk.map{case (loc, ch) => loc -> chunksToSnaps(ch)}
+
+  def locToSnap: Map[ast.LocationAccess, Term] = {
+    locToChunk.map { case (loc, id) => loc -> chunkToSnap(id) }
+//    locToChunk.map { case (loc, ch) =>
+//      val guardsToSnap = chunksToSnaps(ch)
+//      assert(guardsToSnap.nonEmpty)
+//
+//      /* We make the snap of the head pair (guards -> snap) of guardsToSnap the
+//       * inner-most else-clause, i.e., we drop the guards. This should not be a
+//       * problem, but it would be safer to make an unknown value the else-clause.
+//       */
+//      val conditionalSnap =
+//        guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
+//          Ite(And(guards.toSet), snap, tailSnap)
+//        }
+//
+//      loc -> conditionalSnap
+//    }
+  }
+
+  def chunkToSnap(id: ChunkIdentifier): Term = {
+    val guardsToSnap = chunksToSnaps(id)
+    assert(guardsToSnap.nonEmpty)
+
+    /* We make the snap of the head pair (guards -> snap) of guardsToSnap the
+     * inner-most else-clause, i.e., we drop the guards. This should not be a
+     * problem, but it would be safer to make an unknown value the else-clause.
+     */
+    val conditionalSnap =
+      guardsToSnap.tail.foldLeft(guardsToSnap.head._2) { case (tailSnap, (guards, snap)) =>
+        Ite(And(guards.toSet), snap, tailSnap)
+      }
+
+    conditionalSnap
+  }
+
+  def addChunkToSnap(id: ChunkIdentifier, guards: Stack[Term], snap: Term) = {
+    val guardsToSnaps = chunksToSnaps.getOrElse(id, Set()) + (guards -> snap)
+    copy(chunksToSnaps = chunksToSnaps + (id -> guardsToSnaps))
+  }
 
   def merge(other: SnapshotRecorder): SnapshotRecorder = {
-    val combinedCtsOrConflicts = utils.conflictFreeUnion(chunkToSnap, other.chunkToSnap)
+//    val combinedCtsOrConflicts = utils.conflictFreeUnion(chunksToSnaps, other.chunksToSnaps)
+    val cts =
+      other.chunksToSnaps.foldLeft(chunksToSnaps){case (accCts, (id, guardsToSnaps)) =>
+        val guardsToSnaps1 = accCts.getOrElse(id, Set()) ++ guardsToSnaps
+        accCts + (id -> guardsToSnaps1)
+      }
+
     val combinedLtcOrConflicts = utils.conflictFreeUnion(locToChunk, other.locToChunk)
 
     val combinedFtsOrConflicts = utils.conflictFreeUnion(fappToSnap, other.fappToSnap) match {
@@ -50,10 +98,9 @@ case class SnapshotRecorder(currentSnap: Term = null,
         else Left((resolved, unresolved))
     }
 
-    (combinedCtsOrConflicts, combinedLtcOrConflicts, combinedFtsOrConflicts) match {
-      case (Right(cts), Right(ltc), Right(fts)) /*if currentSnap == other.currentSnap*/ =>
-
-        copy(chunkToSnap = cts, locToChunk = ltc, fappToSnap = fts)
+    (/*combinedCtsOrConflicts, */combinedLtcOrConflicts, combinedFtsOrConflicts) match {
+      case (/*Right(cts),*/ Right(ltc), Right(fts)) /*if currentSnap == other.currentSnap*/ =>
+        copy(chunksToSnaps = cts, locToChunk = ltc, fappToSnap = fts)
 
       case p3 =>
 //        p3.productIterator.zip[String](Seq("cts", "ltc", "fts").iterator).foreach{case (a,b) =>
@@ -110,7 +157,7 @@ case class SnapshotRecorder(currentSnap: Term = null,
 
   override lazy val toString = {
     val ltcStrs = locToChunk map {case (k, v) => s"$k  |==>  $v"}
-    val ctsStrs = chunkToSnap map {case (k, v) => s"$k  |==>  $v"}
+    val ctsStrs = chunksToSnaps map {case (k, v) => s"$k  |==>  $v"}
     val ltsStrs = locToSnap map {case (k, v) => s"$k  |==>  $v"}
     val ftsStrs = fappToSnap map {case (k, v) => s"$k  |==>  $v"}
 
@@ -118,7 +165,7 @@ case class SnapshotRecorder(currentSnap: Term = null,
        |  currentSnap: $currentSnap
        |  locToChunk:
        |    ${ltcStrs.mkString("\n    ")}
-       |  chunkToSnap:
+       |  chunksToSnaps:
        |    ${ctsStrs.mkString("\n    ")}
        |  locToSnap:
        |    ${ltsStrs.mkString("\n    ")}
@@ -129,7 +176,7 @@ case class SnapshotRecorder(currentSnap: Term = null,
   }
 }
 
-trait FunctionsSupporter[ST <: Store[ST],
+trait FunctionSupporter[ST <: Store[ST],
                          H <: Heap[H],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
@@ -154,7 +201,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   private val expressionTranslator =
     new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh, limitedFunction)
 
-  private class FunctionData(val programFunction: ast.ProgramFunction, val program: ast.Program) {
+  private class FunctionData(val programFunction: ast.Function, val program: ast.Program) {
     val func = symbolConverter.toFunction(programFunction)
     val formalArgs = programFunction.formalArgs map (v => Var(v.name, symbolConverter.toSort(v.typ)))
     val args = Seq(`?s`) ++ formalArgs
@@ -179,7 +226,7 @@ trait FunctionsSupporter[ST <: Store[ST],
     def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
 
     lazy val translatedPre = {
-      val pre = ast.utils.BigAnd(programFunction.pres)
+      val pre = utils.ast.BigAnd(programFunction.pres)
 
       expressionTranslator.translatePrecondition(program, pre, locToSnap, fappToSnap)
     }
@@ -187,17 +234,22 @@ trait FunctionsSupporter[ST <: Store[ST],
     lazy val axiom = {
       val translatedBody = expressionTranslator.translate(program, programFunction, locToSnap, fappToSnap)
 
-      val nonNulls = And(
-        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
-                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
-                           .distinct: _*)
+      /* TODO: We may only add non-null assumptions about receivers that are
+       * definitely dereferenced inside functions. That is, the receivers of
+       * field accesses that occur under a conditional may not be assumed to
+       * be non-null!
+       */
+//      val nonNulls = And(
+//        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
+//                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
+//                           .distinct: _*)
 
-      Quantification(Forall, args, Implies(translatedPre, And(fapp === translatedBody, nonNulls)), triggers)
+      Quantification(Forall, args, Implies(translatedPre, And(fapp === translatedBody/*, nonNulls*/)), triggers)
     }
 
     lazy val postAxiom = {
       if (programFunction.posts.nonEmpty) {
-        val post = ast.utils.BigAnd(programFunction.posts)
+        val post = utils.ast.BigAnd(programFunction.posts)
 
         val translatedPost =
           expressionTranslator.translatePostcondition(program, post, locToSnap, fappToSnap, limitedFapp)
@@ -214,7 +266,7 @@ trait FunctionsSupporter[ST <: Store[ST],
   object functionsSupporter extends StatefulComponent {
     private var program: ast.Program = null
 
-    private var functionData = Map[ast.ProgramFunction, FunctionData]()
+    private var functionData = Map[ast.Function, FunctionData]()
 
     def handleFunctions(program: ast.Program): List[VerificationResult] =  {
       reset()
@@ -235,7 +287,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       functionData = toMap(heights.map{case (f, _) => f -> new FunctionData(f, program)})
     }
 
-    private def handleFunction(function: ast.ProgramFunction, c: C): List[VerificationResult] = {
+    private def handleFunction(function: ast.Function, c: C): List[VerificationResult] = {
       val data = functionData(function)
 
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
@@ -261,7 +313,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       }
     }
 
-    private def checkSpecificationsWellDefined(function: ast.ProgramFunction, c: C): VerificationResult = {
+    private def checkSpecificationsWellDefined(function: ast.Function, c: C): VerificationResult = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + " (specs well-defined) " + ("-" * 10)
       logger.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
@@ -292,7 +344,7 @@ trait FunctionsSupporter[ST <: Store[ST],
       result
     }
 
-    private def verifyAndAxiomatize(function: ast.ProgramFunction, c: C): VerificationResult = {
+    private def verifyAndAxiomatize(function: ast.Function, c: C): VerificationResult = {
       val comment = "-" * 10 + " FUNCTION " + function.name + "-" * 10
       logger.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
@@ -303,11 +355,11 @@ trait FunctionsSupporter[ST <: Store[ST],
       val γ = Γ((out, fresh(out)) +: ins.map(v => (v, fresh(v))))
       val σ = Σ(γ, Ø, Ø)
 
-      val postError = (offendingNode: ast.Expression) => PostconditionViolated(offendingNode, function)
+      val postError = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
 
       val data = functionData(function)
       var recorders = List[SnapshotRecorder]()
-      val pres = ast.utils.BigAnd(function.pres)
+      val pres = utils.ast.BigAnd(function.pres)
 
       val result =
         inScope {
@@ -366,7 +418,7 @@ trait FunctionsSupporter[ST <: Store[ST],
 
     /* Debugging */
 
-    private def show(functionData: Map[ast.ProgramFunction, FunctionData]) =
+    private def show(functionData: Map[ast.Function, FunctionData]) =
       functionData.map { case (fun, fd) => (
         fun.name,    // Function name only
 //        s"${fun.name}(${fun.formalArgs.mkString(", ")}}): ${fun.typ}",    // Function name and signature
@@ -385,12 +437,12 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   private var program: ast.Program = null
   private var locToSnap: Map[ast.LocationAccess, Term] = null
   private var fappToSnap: Map[ast.FuncApp, Term] = null
-  private var parentFunc: ast.ProgramFunction = null
+  private var parentFunc: ast.Function = null
   private var resultReplacement: FApp = null
   private var ignoreAccessPredicates = false
 
   def translate(program: ast.Program,
-                func: ast.ProgramFunction,
+                func: ast.Function,
                 locToSnap: Map[ast.LocationAccess, Term],
                 fappToSnap: Map[ast.FuncApp, Term]): Term = {
 
@@ -406,7 +458,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   }
 
   def translate(program: ast.Program,
-                exp: ast.Expression,
+                exp: ast.Exp,
                 locToSnap: Map[ast.LocationAccess, Term],
                 fappToSnap: Map[ast.FuncApp, Term]): Term = {
 
@@ -432,7 +484,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   }
 
   def translatePostcondition(program: ast.Program,
-                             post: ast.Expression,
+                             post: ast.Exp,
                              locToSnap: Map[ast.LocationAccess, Term],
                              fappToSnap: Map[ast.FuncApp, Term],
                              resultReplacement: FApp): Term = {
@@ -453,7 +505,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
   }
 
   def translatePrecondition(program: ast.Program,
-                            pre: ast.Expression,
+                            pre: ast.Exp,
                             locToSnap: Map[ast.LocationAccess, Term],
                             fappToSnap: Map[ast.FuncApp, Term]): Term = {
 
@@ -477,7 +529,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
    * See public `translate` methods.
    */
   override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
-                                  (e: ast.Expression)
+                                  (e: ast.Exp)
                                   : Term =
 
     e match {
@@ -486,7 +538,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val pre = ast.utils.BigAnd(silverFunc.pres)
+        val pre = utils.ast.BigAnd(silverFunc.pres)
 
         val func = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(program, arg, locToSnap, fappToSnap))
@@ -505,7 +557,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
           fapp
 
       case _: ast.AccessPredicate if ignoreAccessPredicates => True()
-      case _: ast.ResultLiteral => resultReplacement
+      case _: ast.Result => resultReplacement
       case _ => super.translate(toSort)(e)
     }
 

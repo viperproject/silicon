@@ -10,6 +10,7 @@ package decider
 
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
 import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
@@ -26,17 +27,17 @@ class DefaultDecider[ST <: Store[ST],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S],
                      C <: Context[C]]
-		extends Decider[ST, H, PC, S, C]
-		   with Logging {
+    extends Decider[ST, H, PC, S, C]
+       with Logging {
 
-	private var z3: Z3ProverStdIO = _
+  private var z3: Z3ProverStdIO = _
 
   protected var pathConditionsFactory: PathConditionsFactory[PC] = _
   protected var config: Config = _
   protected var bookkeeper: Bookkeeper = _
   protected var pathConditions: PC = _
   protected var symbolConverter: SymbolConvert = _
-  protected var heapCompressor: HeapCompressor[ST, H, S] = _
+  protected var heapCompressor: HeapCompressor[ST, H, S, C] = _
 
   private sealed trait State
 
@@ -68,7 +69,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   def init(pathConditionsFactory: PathConditionsFactory[PC],
-           heapCompressor: HeapCompressor[ST, H, S],
+           heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
            bookkeeper: Bookkeeper)
           : Option[DependencyNotFoundError] = {
@@ -209,7 +210,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def checkSmoke() = prover.check() == Unsat
 
-  def tryOrFail[R](σ: S)
+  def tryOrFail[R](σ: S, c: C)
                   (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
                   (Q: R => VerificationResult)
@@ -231,7 +232,11 @@ class DefaultDecider[ST <: Store[ST],
       if (failure.isEmpty)
         r
       else {
-        heapCompressor.compress(σ, σ.h)
+//        println("BEFORE COMPRESSION")
+//        println(s"  σ.h = ${σ.h}")
+        heapCompressor.compress(σ, σ.h, c)
+//        println("AFTER COMPRESSION")
+//        println(s"  σ.h = ${σ.h}")
         block(σ, r => Q(r), f => f)
       }
 
@@ -242,7 +247,7 @@ class DefaultDecider[ST <: Store[ST],
        *       an expression has a lasting effect even after the evaluation,
        *       although eval doesn't return a heap.
        *       HOWEVER, it violates the assumption that the heap is immutable,
-       *       which is likely to cause problems, next next paragraph.
+       *       which is likely to cause problems, see next paragraph.
        *       It would probably be better to have methods that potentially
        *       compress heaps explicitly pass on a new heap.
        *       If tryOrFail would do that, then every method using it would
@@ -270,7 +275,7 @@ class DefaultDecider[ST <: Store[ST],
 
   def check(σ: S, t: Term) = assert(σ, t, null)
 
-	def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
+  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
     val success = assert(σ, t, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
@@ -282,11 +287,11 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-	protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
-		val asserted = isKnownToBeTrue(t)
+  protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
+    val asserted = isKnownToBeTrue(t)
 
-		asserted || proverAssert(t, logSink)
-	}
+    asserted || proverAssert(t, logSink)
+  }
 
   private def isKnownToBeTrue(t: Term) = t match {
     case True() => true
@@ -319,8 +324,8 @@ class DefaultDecider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult = {
 
-    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
-      getChunk[CH](σ1, σ1.h, id) match {
+    tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
+      getChunk[CH](σ1, σ1.h, id, c) match {
       case Some(chunk) =>
         QS(chunk)
 
@@ -343,7 +348,7 @@ class DefaultDecider[ST <: Store[ST],
                (Q: CH => VerificationResult)
                : VerificationResult =
 
-    tryOrFail[CH](σ \ h)((σ1, QS, QF) =>
+    tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
       withChunk[CH](σ1, σ1.h, id, locacc, pve, c)(ch => {
         val permCheck =  optPerms match {
           case Some(p) => IsAsPermissive(ch.perm, p)
@@ -363,41 +368,48 @@ class DefaultDecider[ST <: Store[ST],
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
     )(Q)
 
-	def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier): Option[CH] = {
+  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
     val chunks = h.values collect {
       case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]}
 
     getChunk(σ, chunks, id)
   }
 
-	private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
-		findChunk(σ, chunks, id)
+  private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
+    findChunk(σ, chunks, id)
 
-	private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
-					 findChunkLiterally(chunks, id)
-		orElse findChunkWithProver(σ, chunks, id))
+  private def findChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier) = (
+           findChunkLiterally(chunks, id)
+    orElse findChunkWithProver(σ, chunks, id))
 
-	private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
-		chunks find (ch => ch.args == id.args)
+  private def findChunkLiterally[CH <: Chunk: NotNothing](chunks: Iterable[CH], id: ChunkIdentifier) =
+    chunks find (ch => ch.args == id.args)
 
   /**
     * Tries to find out if we know that for some chunk the receiver is the receiver we are looking for
     */
-	private def findChunkWithProver[CH <: Chunk: NotNothing]
+  private def findChunkWithProver[CH <: Chunk: NotNothing]
                                  (σ: S, chunks: Iterable[CH], id: ChunkIdentifier)
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-		val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
+    val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
-		chunk
-	}
+    chunk
+  }
 
   /* Fresh symbols */
 
   def fresh(s: Sort) = prover_fresh("$t", s)
   def fresh(id: String, s: Sort) = prover_fresh(id, s)
-  def fresh(v: ast.Variable) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
+  def fresh(v: ast.AbstractLocalVar) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
+
+  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term) = {
+    val permVar = fresh(id, sorts.Perm)
+    val permVarConstraints = IsReadPermVar(permVar, upperBound)
+
+    (permVar, permVarConstraints)
+  }
 
   private def prover_fresh(id: String, s: Sort) = {
     bookkeeper.freshSymbols += 1

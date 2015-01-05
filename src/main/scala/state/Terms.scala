@@ -9,7 +9,6 @@ package silicon
 package state.terms
 
 import scala.reflect._
-import ast.commonnodes
 import silver.ast.utility.{GenericTriggerGenerator, Visitor}
 
 /* Why not have a Term[S <: Sort]?
@@ -58,7 +57,7 @@ object sorts {
   }
 
   class Arrow private (val from: SISeq[Sort], val to: Sort) extends Sort
-      with commonnodes.StructuralEquality {
+      with StructuralEquality {
 
     val equalityDefiningMembers = from :: to :: Nil
     val id = s"${from mkString " x "} -> $to"
@@ -142,6 +141,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def deepCollect[R](f: PartialFunction[Term, R]) : Seq[R] =
     Visitor.deepCollect(Seq(this), state.utils.subterms)(f)
 
+  /** @see [[Visitor.shallowCollect()]] */
+  def shallowCollect[R](f: PartialFunction[Term, R]): Seq[R] =
+    Visitor.shallowCollect(Seq(this), state.utils.subterms)(f)
+
   /** @see [[Visitor.find()]] */
   def find[R](f: PartialFunction[Term, R]): Option[R] =
     Visitor.find(this, state.utils.subterms)(f)
@@ -166,6 +169,63 @@ sealed trait Term /*extends Traversable[Term]*/ {
   }
 }
 
+trait UnaryOp[E] {
+  def op: String = getClass.getSimpleName.stripSuffix("$") + ":"
+  /* If UnaryOp is extended by a case-class then getSimpleName returns
+   * the class name suffixed with a dollar sign.
+   */
+  def p: E
+
+  override def toString = op + p
+}
+
+trait BinaryOp[E] {
+  def op: String = getClass.getSimpleName.stripSuffix("$")
+  def p0: E
+  def p1: E
+
+  override def toString = "%s %s %s".format(p0, op, p1)
+}
+
+trait StructuralEqualityUnaryOp[E] extends UnaryOp[E] {
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case uop: UnaryOp[_] if uop.getClass.eq(this.getClass) => p == uop.p
+      case _ => false
+    })
+
+  override def hashCode(): Int = p.hashCode
+}
+
+trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
+  override def equals(other: Any) =
+    this.eq(other.asInstanceOf[AnyRef]) || (other match {
+      case bop: BinaryOp[_] if bop.getClass.eq(this.getClass) =>
+        /* getClass identity is checked in order to prohibit that different
+         * subtypes of BinaryOp are considered equal.
+         */
+        p0 == bop.p0 && p1 == bop.p1
+
+      case _ => false
+    })
+
+  override def hashCode(): Int = p0.hashCode() * p1.hashCode()
+}
+
+trait StructuralEquality { self: AnyRef =>
+  val equalityDefiningMembers: Seq[Any]
+
+  override val hashCode = silicon.utils.generateHashCode(equalityDefiningMembers)
+
+  override def equals(other: Any) = (
+    this.eq(other.asInstanceOf[AnyRef])
+      || (other match {
+      case se: StructuralEquality if this.getClass.eq(se.getClass) =>
+        equalityDefiningMembers == se.equalityDefiningMembers
+      case _ => false
+    }))
+}
+
 /* Symbols */
 
 sealed trait Symbol {
@@ -179,7 +239,7 @@ case class Var(id: String, sort: Sort) extends Symbol with Term {
 class Function(val id: String, val sort: sorts.Arrow)
     extends Symbol
        with Term
-       with commonnodes.StructuralEquality {
+       with StructuralEquality {
 
   lazy val limitedVersion = Function(id + "$", sort)
   val equalityDefiningMembers = id :: sort :: Nil
@@ -207,11 +267,11 @@ case object Unit extends SnapshotTerm with Literal {
 }
 
 case class IntLiteral(n: BigInt) extends ArithmeticTerm with Literal {
-	def +(m: Int) = IntLiteral(n + m)
-	def -(m: Int) = IntLiteral(n - m)
-	def *(m: Int) = IntLiteral(n * m)
-	def /(m: Int) = Div(this, IntLiteral(m))
-	override val toString = n.toString()
+  def +(m: Int) = IntLiteral(n + m)
+  def -(m: Int) = IntLiteral(n - m)
+  def *(m: Int) = IntLiteral(n * m)
+  def /(m: Int) = Div(this, IntLiteral(m))
+  override val toString = n.toString()
 }
 
 case class Null() extends Term with Literal {
@@ -226,7 +286,7 @@ sealed trait BooleanLiteral extends BooleanTerm with Literal {
 
 case class True() extends BooleanLiteral {
   val value = true
-	override val toString = "True"
+  override val toString = "True"
 }
 
 case class False() extends BooleanLiteral {
@@ -264,7 +324,7 @@ object Exists extends Quantifier {
   override val toString = "QE"
 }
 
-class Trigger private[terms] (val p: Seq[Term]) extends commonnodes.StructuralEqualityUnaryOp[Seq[Term]] {
+class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
   override val toString = s"{${p.mkString(",")}}"
 }
 
@@ -280,7 +340,7 @@ class Quantification private[terms] (val q: Quantifier,
                                      val body: Term,
                                      val triggers: Seq[Trigger])
     extends BooleanTerm
-       with commonnodes.StructuralEquality {
+       with StructuralEquality {
 
   lazy val autoTrigger: Quantification = {
     if (triggers.nonEmpty) {
@@ -325,93 +385,111 @@ sealed abstract class ArithmeticTerm extends Term {
 }
 
 class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
-    with commonnodes.Plus[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object Plus extends Function2[Term, Term, Term] {
-	import predef.Zero
+  override val op = "+"
+}
 
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (t0, Zero) => t0
-		case (Zero, t1) => t1
-		case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 + n1)
-		case _ => new Plus(e0, e1)
-	}
+object Plus extends ((Term, Term) => Term) {
+  import predef.Zero
 
-	def unapply(t: Plus) = Some((t.p0, t.p1))
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (t0, Zero) => t0
+    case (Zero, t1) => t1
+    case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 + n1)
+    case _ => new Plus(e0, e1)
+  }
+
+  def unapply(t: Plus) = Some((t.p0, t.p1))
 }
 
 class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
-    with commonnodes.Minus[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object Minus extends Function2[Term, Term, Term] {
-	import predef.Zero
+  override val op = "-"
+}
 
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (t0, Zero) => t0
-		case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 - n1)
-		case (t0, t1) if t0 == t1 => Zero
-		case _ => new Minus(e0, e1)
-	}
+object Minus extends ((Term, Term) => Term) {
+  import predef.Zero
 
-	def unapply(t: Minus) = Some((t.p0, t.p1))
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (t0, Zero) => t0
+    case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 - n1)
+    case (t0, t1) if t0 == t1 => Zero
+    case _ => new Minus(e0, e1)
+  }
+
+  def unapply(t: Minus) = Some((t.p0, t.p1))
 }
 
 class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
-		with commonnodes.Times[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object Times extends Function2[Term, Term, Term] {
-	import predef.{Zero, One}
+  override val op = "*"
+}
 
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (t0, Zero) => Zero
-		case (Zero, t1) => Zero
-		case (t0, One) => t0
-		case (One, t1) => t1
-		case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 * n1)
-		case _ => new Times(e0, e1)
-	}
+object Times extends ((Term, Term) => Term) {
+  import predef.{Zero, One}
 
-	def unapply(t: Times) = Some((t.p0, t.p1))
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (t0, Zero) => Zero
+    case (Zero, t1) => Zero
+    case (t0, One) => t0
+    case (One, t1) => t1
+    case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 * n1)
+    case _ => new Times(e0, e1)
+  }
+
+  def unapply(t: Times) = Some((t.p0, t.p1))
 }
 
 case class Div(p0: Term, p1: Term) extends ArithmeticTerm
-		with commonnodes.Div[Term] with ForbiddenInTrigger
+    with BinaryOp[Term] with ForbiddenInTrigger {
+
+  override val op = "/"
+}
 
 case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
-		with commonnodes.Mod[Term] with ForbiddenInTrigger
+    with BinaryOp[Term] with ForbiddenInTrigger {
+
+  override val op = "%"
+}
 
 /* Boolean expression terms */
 
 sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 
 class Not(val p: Term) extends BooleanTerm
-    with commonnodes.StructuralEqualityUnaryOp[Term] with ForbiddenInTrigger {
+    with StructuralEqualityUnaryOp[Term] with ForbiddenInTrigger {
 
-	override val op = "!"
+  override val op = "!"
 
-	override val toString = p match {
-		case eq: BuiltinEquals => eq.p0.toString + " != " + eq.p1.toString
-		case _ => super.toString
-	}
+  override val toString = p match {
+    case eq: BuiltinEquals => eq.p0.toString + " != " + eq.p1.toString
+    case _ => super.toString
+  }
 }
 
 object Not extends (Term => Term) {
-	def apply(e0: Term) = e0 match {
-		case Not(e1) => e1
-		case True() => False()
-		case False() => True()
-		case _ => new Not(e0)
-	}
+  def apply(e0: Term) = e0 match {
+    case Not(e1) => e1
+    case True() => False()
+    case False() => True()
+    case _ => new Not(e0)
+  }
 
-	def unapply(e: Not) = Some(e.p)
+  def unapply(e: Not) = Some(e.p)
 }
 
 class Or(val p0: Term, val p1: Term) extends BooleanTerm
-		with commonnodes.Or[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
+
+  override val op = "||"
+}
 
 /* TODO: Or should be (Term, Term) => BooleanTerm, but that require a
  *       Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
@@ -419,21 +497,20 @@ class Or(val p0: Term, val p1: Term) extends BooleanTerm
  *       that conflicts with using extractor objects to simplify terms,
  *       since extractor objects can't be type-parameterised.
  */
-object Or extends Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (True(), _) | (_, True()) => True()
-		case (False(), _) => e1
-		case (_, False()) => e0
-		case _ if e0 == e1 => e0
-		case _ => new Or(e0, e1)
-	}
+object Or extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (True(), _) | (_, True()) => True()
+    case (False(), _) => e1
+    case (_, False()) => e0
+    case _ if e0 == e1 => e0
+    case _ => new Or(e0, e1)
+  }
 
-	def unapply(e: Or) = Some((e.p0, e.p1))
+  def unapply(e: Or) = Some((e.p0, e.p1))
 }
 
 class And(val ts: Seq[Term]) extends BooleanTerm
-    with commonnodes.StructuralEquality
-    with ForbiddenInTrigger {
+    with StructuralEquality with ForbiddenInTrigger {
 
   assert(ts.nonEmpty, "Expected at least one term, but found none")
 
@@ -444,7 +521,7 @@ class And(val ts: Seq[Term]) extends BooleanTerm
 
 object And {
   def apply(ts: Term*) = createAnd(ts)
-  def apply(ts: Set[Term]) = createAnd(ts.toSeq)
+  def apply(ts: Iterable[Term]) = createAnd(ts.toSeq)
 
   @inline
   def createAnd(_ts: Seq[Term]): Term = {
@@ -459,49 +536,55 @@ object And {
     }
   }
 
-	def unapply(e: And) = Some(e.ts)
+  def unapply(e: And) = Some(e.ts)
 }
 
 class Implies(val p0: Term, val p1: Term) extends BooleanTerm
-		with commonnodes.Implies[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object Implies extends Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term): Term = (e0, e1) match {
-		case (True(), _) => e1
-		case (False(), _) => True()
-		case (_, True()) => True()
-		case (_, Implies(e10, e11)) => Implies(And(e0, e10), e11)
-		case _ if e0 == e1 => True()
-		case _ => new Implies(e0, e1)
-	}
+  override val op = "==>"
+}
 
-	def unapply(e: Implies) = Some((e.p0, e.p1))
+object Implies extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term): Term = (e0, e1) match {
+    case (True(), _) => e1
+    case (False(), _) => True()
+    case (_, True()) => True()
+    case (_, Implies(e10, e11)) => Implies(And(e0, e10), e11)
+    case _ if e0 == e1 => True()
+    case _ => new Implies(e0, e1)
+  }
+
+  def unapply(e: Implies) = Some((e.p0, e.p1))
 }
 
 class Iff(val p0: Term, val p1: Term) extends BooleanTerm
-		with commonnodes.Iff[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object Iff extends Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (True(), _) => e1
-		case (_, True()) => e0
-		case _ if e0 == e1 => True()
-		case _ => new Iff(e0, e1)
-	}
+  override val op = "<==>"
+}
 
-	def unapply(e: Iff) = Some((e.p0, e.p1))
+object Iff extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (True(), _) => e1
+    case (_, True()) => e0
+    case _ if e0 == e1 => True()
+    case _ => new Iff(e0, e1)
+  }
+
+  def unapply(e: Iff) = Some((e.p0, e.p1))
 }
 
 class Ite(val t0: Term, val t1: Term, val t2: Term)
     extends Term
        with ForbiddenInTrigger
-       with commonnodes.StructuralEquality {
+       with StructuralEquality {
 
-	assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
-			"Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
-			.format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
+  assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
+      "Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
+      .format(t0, t1, t2, t0.sort, t1.sort, t2.sort))
 
 
   val equalityDefiningMembers = t0 :: t1 :: t2 :: Nil
@@ -509,8 +592,8 @@ class Ite(val t0: Term, val t1: Term, val t2: Term)
   override val toString = "(%s ? %s : %s)".format(t0, t1, t2)
 }
 
-object Ite extends Function3[Term, Term, Term, Term] {
-	def apply(e0: Term, e1: Term, e2: Term) = (e0, e1, e2) match {
+object Ite extends ((Term, Term, Term) => Term) {
+  def apply(e0: Term, e1: Term, e2: Term) = (e0, e1, e2) match {
     case _ if e1 == e2 => e1
     case (True(), _, _) => e1
     case (False(), _, _) => e2
@@ -519,14 +602,14 @@ object Ite extends Function3[Term, Term, Term, Term] {
     case _ => new Ite(e0, e1, e2)
   }
 
-	def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))
+  def unapply(e: Ite) = Some((e.t0, e.t1, e.t2))
 }
 
 /* Comparison expression terms */
 
 sealed trait ComparisonTerm extends BooleanTerm
 
-sealed trait Equals extends ComparisonTerm with commonnodes.Eq[Term]
+sealed trait Equals extends ComparisonTerm with BinaryOp[Term] { override val op = "==" }
 
 object Equals extends ((Term, Term) => BooleanTerm) {
   def apply(e0: Term, e1: Term) = {
@@ -549,7 +632,7 @@ object Equals extends ((Term, Term) => BooleanTerm) {
 
 /* Represents built-in equality, e.g., '=' in SMT-LIB */
 class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with ForbiddenInTrigger {
 }
 
@@ -568,7 +651,7 @@ object BuiltinEquals {
 
 /* Custom equality that (potentially) needs to be axiomatised. */
 class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   def getArgs = p0 :: p1 :: Nil
@@ -581,64 +664,75 @@ object CustomEquals {
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-    with commonnodes.Less[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with ForbiddenInTrigger {
 
   assert(p0.sort == p1.sort,
     "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
       .format(p0.sort, p0, p1.sort, p1))
+
+  override val op = "<"
 }
 
-object Less extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 < n1) True() else False()
-		case (t0, t1) if t0 == t1 => False()
-		case _ => new Less(e0, e1)
-	}
+object Less extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (IntLiteral(n0), IntLiteral(n1)) => if (n0 < n1) True() else False()
+    case (t0, t1) if t0 == t1 => False()
+    case _ => new Less(e0, e1)
+  }
 
-	def unapply(e: Less) = Some((e.p0, e.p1))
+  def unapply(e: Less) = Some((e.p0, e.p1))
 }
 
 class AtMost(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.AtMost[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object AtMost extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 <= n1) True() else False()
-		case (t0, t1) if t0 == t1 => True()
-		case _ => new AtMost(e0, e1)
-	}
+  override val op = "<="
+}
 
-	def unapply(e: AtMost) = Some((e.p0, e.p1))
+object AtMost extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (IntLiteral(n0), IntLiteral(n1)) => if (n0 <= n1) True() else False()
+    case (t0, t1) if t0 == t1 => True()
+    case _ => new AtMost(e0, e1)
+  }
+
+  def unapply(e: AtMost) = Some((e.p0, e.p1))
 }
 
 class Greater(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.Greater[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object Greater extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 > n1) True() else False()
-		case (t0, t1) if t0 == t1 => False()
-		case _ => new Greater(e0, e1)
-	}
+  override val op = ">"
+}
 
-	def unapply(e: Greater) = Some((e.p0, e.p1))
+object Greater extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (IntLiteral(n0), IntLiteral(n1)) => if (n0 > n1) True() else False()
+    case (t0, t1) if t0 == t1 => False()
+    case _ => new Greater(e0, e1)
+  }
+
+  def unapply(e: Greater) = Some((e.p0, e.p1))
 }
 
 class AtLeast(val p0: Term, val p1: Term) extends ComparisonTerm
-		with commonnodes.AtLeast[Term] with commonnodes.StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
 
-object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ Function2[Term, Term, Term] {
-	def apply(e0: Term, e1: Term) = (e0, e1) match {
-		case (IntLiteral(n0), IntLiteral(n1)) => if (n0 >= n1) True() else False()
-		case (t0, t1) if t0 == t1 => True()
-		case _ => new AtLeast(e0, e1)
-	}
+  override val op = ">="
+}
 
-	def unapply(e: AtLeast) = Some((e.p0, e.p1))
+object AtLeast extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (IntLiteral(n0), IntLiteral(n1)) => if (n0 >= n1) True() else False()
+    case (t0, t1) if t0 == t1 => True()
+    case _ => new AtLeast(e0, e1)
+  }
+
+  def unapply(e: AtLeast) = Some((e.p0, e.p1))
 }
 
 /*
@@ -655,7 +749,7 @@ case class WildcardPerm(v: Var) extends Permissions { override val toString = v.
 
 class FractionPerm(val n: Term, val d: Term)
     extends Permissions
-       with commonnodes.StructuralEquality {
+       with StructuralEquality {
 
   lazy val isDefinitelyPositive = literal match {
     case Some((i1, i2)) => 0 < i1 * i2
@@ -692,9 +786,12 @@ case class IsReadPermVar(v: Var, ub: Term) extends BooleanTerm {
 
 class PermTimes(val p0: Term, val p1: Term)
     extends Permissions
-       with commonnodes.Times[Term]
-       with commonnodes.StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger
+       with BinaryOp[Term]
+       with StructuralEqualityBinaryOp[Term]
+       with ForbiddenInTrigger {
+
+  override val op = "*"
+}
 
 object PermTimes extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = (t0, t1) match {
@@ -710,9 +807,12 @@ object PermTimes extends ((Term, Term) => Term) {
 
 class IntPermTimes(val p0: Term, val p1: Term)
     extends Permissions
-       with commonnodes.Times[Term]
-       with commonnodes.StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger
+       with BinaryOp[Term]
+       with StructuralEqualityBinaryOp[Term]
+       with ForbiddenInTrigger {
+
+  override val op = "*"
+}
 
 object IntPermTimes extends ((Term, Term) => Term) {
   import predef.{Zero, One}
@@ -729,18 +829,23 @@ object IntPermTimes extends ((Term, Term) => Term) {
 
 case class PermIntDiv(p0: Term, p1: Term)
     extends Permissions
-       with commonnodes.Div[Term]
+       with BinaryOp[Term]
 //    with commonnodes.StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger {
 
   utils.assertSort(p1, "Second term", sorts.Int)
+
+  override val op = "/"
 }
 
 class PermPlus(val p0: Term, val p1: Term)
     extends Permissions
-       with commonnodes.Plus[Term]
-       with commonnodes.StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger
+       with BinaryOp[Term]
+       with StructuralEqualityBinaryOp[Term]
+       with ForbiddenInTrigger {
+
+  override val op = "+"
+}
 
 object PermPlus extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = (t0, t1) match {
@@ -758,12 +863,14 @@ object PermPlus extends ((Term, Term) => Term) {
 
 class PermMinus(val p0: Term, val p1: Term)
     extends Permissions
-       with commonnodes.Minus[Term]
-       with commonnodes.StructuralEqualityBinaryOp[Term]
+       with BinaryOp[Term]
+       with StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger {
 
+  override val op = "-"
+
   override val toString = p1 match {
-    case _: commonnodes.BinaryOp[_] => s"$p0 $op ($p1)"
+    case _: BinaryOp[_] => s"$p0 $op ($p1)"
     case _ => s"$p0 $op $p1"
   }
 }
@@ -783,11 +890,13 @@ object PermMinus extends ((Term, Term) => Term) {
 
 class PermLess(val p0: Term, val p1: Term)
     extends BooleanTerm
-       with commonnodes.Less[Term]
-       with commonnodes.StructuralEqualityBinaryOp[Term]
+       with BinaryOp[Term]
+       with StructuralEqualityBinaryOp[Term]
        with ForbiddenInTrigger {
 
   override val toString = "(%s) < (%s)".format(p0, p1)
+
+  override val op = "<"
 }
 
 object PermLess extends ((Term, Term) => Term) {
@@ -811,7 +920,7 @@ object PermLess extends ((Term, Term) => Term) {
 }
 
 case class PermMin(p0: Term, p1: Term) extends Permissions
-    with commonnodes.BinaryOp[Term]
+    with BinaryOp[Term]
     with PossibleBinaryOpTrigger[Term] {
 
   utils.assertSort(p0, "Permission 1st", sorts.Perm)
@@ -887,7 +996,7 @@ case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ with P
 }
 
 class SeqAppend(val p0: Term, val p1: Term) extends SeqTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
@@ -909,7 +1018,7 @@ object SeqAppend extends ((Term, Term) => SeqTerm) {
 }
 
 class SeqDrop(val p0: Term, val p1: Term) extends SeqTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
@@ -932,7 +1041,7 @@ object SeqDrop extends ((Term, Term) => SeqTerm) {
 }
 
 class SeqTake(val p0: Term, val p1: Term) extends SeqTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
@@ -955,7 +1064,7 @@ object SeqTake extends ((Term, Term) => SeqTerm) {
 }
 
 class SeqLength(val p: Term) extends Term
-    with commonnodes.StructuralEqualityUnaryOp[Term]
+    with StructuralEqualityUnaryOp[Term]
     with PossibleTrigger {
 
   val sort = sorts.Int
@@ -975,7 +1084,7 @@ object SeqLength {
 }
 
 class SeqAt(val p0: Term, val p1: Term) extends Term
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val sort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
@@ -997,7 +1106,7 @@ object SeqAt extends ((Term, Term) => Term) {
 }
 
 class SeqIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   override val toString = "%s in %s".format(p1, p0)
@@ -1018,7 +1127,7 @@ object SeqIn extends ((Term, Term) => BooleanTerm) {
 
 class SeqUpdate(val t0: Term, val t1: Term, val t2: Term)
     extends SeqTerm
-       with commonnodes.StructuralEquality
+       with StructuralEquality
        with PossibleTrigger {
 
   val sort = t0.sort.asInstanceOf[sorts.Seq]
@@ -1050,7 +1159,7 @@ sealed trait SetTerm extends Term {
 }
 
 sealed trait BinarySetOp extends SetTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleBinaryOpTrigger[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
@@ -1073,7 +1182,7 @@ case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ with P
 }
 
 class SetAdd(val p0: Term, val p1: Term) extends SetTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
@@ -1172,7 +1281,7 @@ object SetDifference extends ((Term, Term) => SetTerm) {
 }
 
 class SetIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   override val op = "in"
@@ -1193,7 +1302,7 @@ object SetIn extends ((Term, Term) => BooleanTerm) {
 }
 
 class SetCardinality(val p: Term) extends Term
-    with commonnodes.StructuralEqualityUnaryOp[Term]
+    with StructuralEqualityUnaryOp[Term]
     with PossibleTrigger {
 
   val sort = sorts.Int
@@ -1220,7 +1329,7 @@ sealed trait MultisetTerm extends Term {
 }
 
 sealed trait BinaryMultisetOp extends MultisetTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleBinaryOpTrigger[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
@@ -1243,7 +1352,7 @@ case class SingletonMultiset(p: Term) extends MultisetTerm /* with UnaryOp[Term]
 }
 
 class MultisetAdd(val p0: Term, val p1: Term) extends MultisetTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
@@ -1327,7 +1436,7 @@ object MultisetDifference extends ((Term, Term) => MultisetTerm) {
 }
 
 class MultisetIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   override val op = "∈"
@@ -1348,7 +1457,7 @@ object MultisetIn extends ((Term, Term) => BooleanTerm) {
 }
 
 class MultisetCardinality(val p: Term) extends Term
-    with commonnodes.StructuralEqualityUnaryOp[Term]
+    with StructuralEqualityUnaryOp[Term]
     with PossibleTrigger {
 
   val sort = sorts.Int
@@ -1368,7 +1477,7 @@ object MultisetCardinality extends (Term => MultisetCardinality) {
 }
 
 class MultisetCount(val p0: Term, val p1: Term) extends Term
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   val sort = sorts.Int
@@ -1404,7 +1513,7 @@ case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term with Po
 sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 
 class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
-    with commonnodes.StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term]
     with PossibleTrigger {
 
   utils.assertSort(p0, "first operand", sorts.Snap)
@@ -1469,7 +1578,7 @@ case class Domain(field: String, fvf: Term) extends SetTerm with PossibleTrigger
  */
 class SortWrapper(val t: Term, val to: Sort)
     extends Term
-       with commonnodes.StructuralEquality {
+       with StructuralEquality {
 
   assert((t.sort == sorts.Snap || to == sorts.Snap) && t.sort != to,
          s"Unexpected sort wrapping of $t from ${t.sort} to $to")
@@ -1500,7 +1609,7 @@ sealed trait PossibleTrigger extends Term with GenericTriggerGenerator.PossibleT
    */
 }
 
-sealed trait PossibleBinaryOpTrigger[T <: Term] extends PossibleTrigger { self: commonnodes.BinaryOp[T] =>
+sealed trait PossibleBinaryOpTrigger[T <: Term] extends PossibleTrigger { self: BinaryOp[T] =>
   lazy val getArgs = p0 :: p1 :: Nil
 }
 
@@ -1510,7 +1619,7 @@ sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.Forbid
 
 /* Other terms */
 
-class Distinct(val ts: Set[Term]) extends BooleanTerm with commonnodes.StructuralEquality {
+class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality {
   assert(ts.nonEmpty, "Distinct requires at least term.")
 
   val equalityDefiningMembers = ts :: Nil

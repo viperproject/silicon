@@ -8,39 +8,42 @@ package viper
 package silicon
 
 import com.weiglewilczek.slf4s.Logging
+import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NegativePermission, AssertionFalse}
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, ChunkIdentifier}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.{SymbolConvert, DirectChunk, DirectFieldChunk, DirectPredicateChunk, DefaultContext}
+import state.{DirectChunk, DefaultContext}
 import state.terms._
 import state.terms.predef.`?r`
-import state.terms.perms.{IsNonNegative, IsNoAccess}
+import supporters.{LetHandler, Brancher, ChunkSupporter}
 import heap.QuantifiedChunkHelper
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
-											PC <: PathConditions[PC], S <: State[ST, H, S]]
-		extends Consumer[DirectChunk, ST, H, S, DefaultContext]
-		{ this: Logging with Evaluator[ST, H, S, DefaultContext]
-									  with Brancher[ST, H, S, DefaultContext] =>
+                      PC <: PathConditions[PC], S <: State[ST, H, S]]
+    extends Consumer[DirectChunk, ST, H, S, DefaultContext]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext]
+                    with Brancher[ST, H, S, DefaultContext]
+                    with ChunkSupporter[ST, H, PC, S]
+                    with LetHandler[ST, H, S, DefaultContext] =>
 
   private type C = DefaultContext
 
-	protected val decider: Decider[ST, H, PC, S, C]
-	import decider.assume
+  protected val decider: Decider[ST, H, PC, S, C]
+  import decider.assume
 
-  protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
+//  protected val stateFactory: StateFactory[ST, H, S]
+//  import stateFactory._
 
-  protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
+//  protected val symbolConverter: SymbolConvert
+//  import symbolConverter.toSort
 
   protected val quantifiedChunkHelper: QuantifiedChunkHelper[ST, H, PC, S]
-	protected val stateFormatter: StateFormatter[ST, H, S, String]
-	protected val bookkeeper: Bookkeeper
-	protected val config: Config
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val bookkeeper: Bookkeeper
+  protected val config: Config
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -48,7 +51,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-	def consume(σ: S, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+  def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult =
 
@@ -57,8 +60,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   def consumes(σ: S,
                p: Term,
-               φs: Seq[ast.Expression],
-               pvef: ast.Expression => PartialVerificationError,
+               φs: Seq[ast.Exp],
+               pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
               : VerificationResult =
@@ -68,8 +71,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   private def consumes(σ: S,
                        h: H,
                        p: Term,
-                       φs: Seq[ast.Expression],
-                       pvef: ast.Expression => PartialVerificationError,
+                       φs: Seq[ast.Exp],
+                       pvef: ast.Exp => PartialVerificationError,
                        c: C)
                        (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
@@ -102,7 +105,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           }))
     }
 
-  protected def consume(σ: S, h: H, p: Term, φ: ast.Expression, pve: PartialVerificationError, c: C)
+  protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult = {
 
@@ -112,10 +115,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
     }
 
-		val consumed = φ match {
+    val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
-				consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-					consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
+        consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
+          consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = c1.snapshotRecorder.get
@@ -125,15 +128,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
               case _ => c2}
 
-						Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-				eval(σ, e0, pve, c)((t0, c1) =>
-					branch(σ, t0, c,
-						(c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
-						(c2: C) => Q(h, Unit, Nil, c2)))
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c,
+            (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
+            (c2: C) => Q(h, Unit, Nil, c2)))
 
-      case ast.Ite(e0, a1, a2) if !φ.isPure =>
+      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
@@ -207,41 +210,28 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))
 
+      case let: ast.Let if !let.isPure =>
+        handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
+          consume(σ \+ γ1, h, p, body, pve, c1)(Q))
+
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σ, IsNonNegative(tPerm)){
+            decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
-                consumePermissions(σ, h, id, PermTimes(p, tPerm), locacc, pve, c2)((h1, ch, c3, results) => {
-                  val c4 = c3.snapshotRecorder match {
-                    case Some(sr) =>
-                      c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-                    case _ => c3}
-                  ch match {
-                    case fc: DirectFieldChunk =>
-                      val snap = fc.value.convert(sorts.Snap)
-                      Q(h1, snap, fc :: Nil, c4)
-
-                    case pc: DirectPredicateChunk =>
-                      val h2 =
-                        if (results.consumedCompletely)
-                          pc.nested.foldLeft(h1){case (ha, nc) => ha - nc}
-                        else
-                          h1
-                      Q(h2, pc.snap, pc :: Nil, c4)}})
-
+                chunkSupporter.consume(σ, h, id, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
-      case _: ast.InhaleExhale =>
-        Failure[ST, H, S](ast.Consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+      case _: ast.InhaleExhaleExp =>
+        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
-			/* Any regular Expressions, i.e. boolean and arithmetic.
-			 * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
-			 * not in the partially consumed heap (h).
-			 */
+      /* Any regular Expressions, i.e. boolean and arithmetic.
+       * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
+       * not in the partially consumed heap (h).
+       */
       case _ =>
-        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ)((σ1, QS, QF) => {
+        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ, c)((σ1, QS, QF) => {
           eval(σ1, φ, pve, c)((t, c) =>
             decider.assert(σ1, t) {
               case true =>
@@ -261,35 +251,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             case false =>
               Failure[ST, H, S](pve dueTo AssertionFalse(φ))})
 */
-		}
-
-		consumed
-	}
-
-  private def consumePermissions(σ: S,
-                                 h: H,
-                                 id: ChunkIdentifier,
-                                 pLoss: Term,
-                                 locacc: ast.LocationAccess,
-                                 pve: PartialVerificationError,
-                                 c: C)
-                                (Q: (H, DirectChunk, C, PermissionsConsumptionResult) => VerificationResult)
-                                :VerificationResult = {
-
-    /* TODO: assert that pLoss > 0 */
-
-    if (utils.consumeExactRead(pLoss, c)) {
-      decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
-        if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
-          Q(h - ch, ch, c, PermissionsConsumptionResult(true))}
-        else
-          Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
-    } else {
-      decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
-        assume(PermLess(pLoss, ch.perm))
-        Q(h - ch + (ch - pLoss), ch, c, PermissionsConsumptionResult(false))})
     }
+
+    consumed
   }
 }
-
-private case class PermissionsConsumptionResult(consumedCompletely: Boolean)
