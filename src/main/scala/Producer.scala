@@ -186,7 +186,7 @@ trait DefaultProducer[ST <: Store[ST],
           eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
             val pNettoGain = PermTimes(pGain, p)
-            val ch = DirectPredicateChunk(predicate.name, tArgs, s, pNettoGain)
+            val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
