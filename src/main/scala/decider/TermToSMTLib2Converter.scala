@@ -228,6 +228,9 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case Distinct(symbols) =>
       parens("distinct" <+> ssep(symbols.toSeq map render, space))
 
+    case Let(x, t, body) =>
+      parens("let" <+> parens(parens(render(x) <+> render(t))) <+> render(body))
+      
     case Domain(id, fvf) => parens("$FVF.domain_" <> id <+> render(fvf))
     case Lookup(field, fvf, at) => parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
   }

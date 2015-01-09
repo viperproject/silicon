@@ -1619,7 +1619,7 @@ sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.Forbid
 
 /* Other terms */
 
-class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality {
+class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality with ForbiddenInTrigger {
   assert(ts.nonEmpty, "Distinct requires at least term.")
 
   val equalityDefiningMembers = ts :: Nil
@@ -1632,6 +1632,11 @@ object Distinct {
     else True()
 
   def unapply(d: Distinct) = Some(d.ts)
+}
+
+case class Let(x: Var, t: Term, body: Term) extends Term with ForbiddenInTrigger {
+  val sort = body.sort
+  override lazy val toString = s"let $x = $t in $body"
 }
 
 /* Predefined terms */
