@@ -153,6 +153,10 @@ trait ExpressionTranslator {
       case as: silver.ast.AnySetContains => translateAnySetBinExp(as, SetIn, MultisetIn, as.right)
       case as: silver.ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality)
 
+      /* Other expressions */
+
+      case silver.ast.Let(lvd, e, body) => Let(f(lvd.localVar).asInstanceOf[Var], f(e), f(body))
+
       /* Unsupported (because unexpected) expressions */
 
       case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
