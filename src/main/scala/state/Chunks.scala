@@ -9,7 +9,7 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import terms.{PermMinus, PermPlus, Term}
+import terms.{PermMinus, PermPlus, Term, sorts}
 
 sealed trait DirectChunk extends PermissionChunk[DirectChunk]
 
@@ -21,6 +21,8 @@ case class FieldChunkIdentifier(rcvr: Term, name: String) extends ChunkIdentifie
 
 case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
     extends FieldChunk with DirectChunk {
+
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   val args = rcvr :: Nil
   val id = FieldChunkIdentifier(rcvr, name)
@@ -42,6 +44,9 @@ case class DirectPredicateChunk(name: String,
                                 perm: Term,
                                 nested: List[NestedChunk] = Nil)
     extends PredicateChunk with DirectChunk {
+
+  assert(snap.sort == sorts.Snap, s"Snapshot $snap must be of sort Snap, but found ${snap.sort}")
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   val id = PredicateChunkIdentifier(name, args)
 
