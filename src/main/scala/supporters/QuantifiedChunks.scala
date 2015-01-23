@@ -111,14 +111,27 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private type C = DefaultContext
 
-  private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain)
+  private case class FvfDefEntry(partialValue: Term, generateTriggersFrom: Seq[Seq[Term]], partialDomain: Domain)
   /* [AS] */ //private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain, quantVar: Option[Var])
 
   private case class FvfDef(field: ast.Field, fvf: Term, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
-    def quantifiedValues(qvar: Var) =
-      entries map (entry => Forall(qvar, entry.partialValue, entry.valueTriggers))
+    def quantifiedValues(qvar: Var) = {
+      entries map (entry => {
+        val (triggers, additionalVars) =
+//          TriggerGenerator.generateTriggers(qvar :: Nil, And(entry.valueTriggers.flatMap(_.p)))
+          TriggerGenerator.generateFirstTriggers(qvar :: Nil, entry.generateTriggersFrom.map(And))
+                          .getOrElse((Nil, Nil))
+//        println()
+//        println(s"qvar = $qvar")
+//        println(s"generateTriggersFrom = ${entry.generateTriggersFrom}")
+//        println(s"additionalVars = $additionalVars")
+//        println(s"triggers = $triggers")
+//        Forall(qvar, entry.partialValue, entry.valueTriggers)
+        Forall(qvar +: additionalVars, entry.partialValue, triggers)
+      })
+    }
     /* [AS] */
 //    def quantifiedValues =
 //      entries map (entry => Forall(entry.quantVar.get, entry.partialValue, entry.valueTriggers))
@@ -306,7 +319,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                 fvfDefs ::=
                     FvfDefEntry(Implies(PermLess(NoPerm(), permsIndividual), lookupRcvr === lookupIndividual),
 //                              Trigger(lookupRcvr :: lookupIndividual :: Nil) :: Nil,
-                                Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
+//                                Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
+                                (lookupRcvr :: lookupIndividual :: Nil) :: (permsIndividual :: Nil) :: Nil,
                                 Domain(field.name, valueIndividual))
 /* [AS] *///                              Domain(field.name, valueIndividual),freshQVariable)
 
@@ -333,7 +347,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                 val fvfDefEntry = fvfDefs(0)
                 val _fvf = fvfDefEntry.partialDomain.fvf
                 val _lookupRcvr = lookupRcvr.copy(fvf = fvfDefEntry.partialDomain.fvf)
-                val _fvfDef = FvfDef(field, _fvf, fvfDefEntry.copy(True(), Trigger(Nil) :: Nil) :: Nil)
+//                val _fvfDef = FvfDef(field, _fvf, fvfDefEntry.copy(True(), Trigger(Nil) :: Nil) :: Nil)
+                val _fvfDef = FvfDef(field, _fvf, fvfDefEntry.copy(True(), Nil) :: Nil)
 
                 (_lookupRcvr, _fvfDef)
               } else {
@@ -495,7 +510,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       fvfDefs ::=
         FvfDefEntry(Implies(PermLess(NoPerm(), candidatePerms), fvfLookup === candidateLookup),
 //                      Trigger(fvfLookup :: candidateLookup :: Nil) :: Nil,
-                    Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
+//                    Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
+                    (fvfLookup :: candidateLookup :: Nil) :: (candidatePerms :: Nil) :: Nil,
                     Domain(field.name, candidateValue))
 /* [AS] *///                    Domain(field.name, candidateValue), Some(freshQVariable))
 
@@ -518,14 +534,13 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         permsToTake = PermMinus(permsToTake, permsTaken)
 
         if (constrainPermissions) {
-          /* TODO: Add triggers (probably needs autoTriggers for terms ) */
           val constrainPermissionQuantifier =
-            Forall(`?r`, Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFraction, ch.perm)), Nil).autoTrigger
+            Forall(`?r`, Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFraction, ch.perm)), Nil: Seq[Trigger]).autoTrigger
 
           assume(constrainPermissionQuantifier)
 
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
-        } else  if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil)))
+        } else  if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger])))
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
 
         success = check(σ, repl(permsToTake) === NoPerm())
@@ -582,22 +597,28 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val vx = Var("x", qvar.sort)
     val vy = Var("y", qvar.sort)
 
-    Forall(vx :: vy :: Nil,
+    val receiversEqual = receiver.replace(qvar, vx) === receiver.replace(qvar, vy)
+
+    val implies =
       Implies(
-        And(
-          condition.replace(qvar, vx),
+        And(condition.replace(qvar, vx),
           condition.replace(qvar, vy),
-          receiver.replace(qvar, vx) === receiver.replace(qvar, vy)),
-        vx === vy),
-      Nil).autoTrigger
+          receiversEqual),
+        vx === vy)
+
+    Forall(
+      vx :: vy :: Nil,
+      implies,
+      receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil)
   }
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term) = {
-    Forall(qvar,
+    Forall(
+      qvar,
       Implies(
         And(cond, PermLess(NoPerm(), perms)),
         rcvr !== Null()),
-      Nil).autoTrigger
+      rcvr :: cond :: perms :: Nil)
   }
 
   def getFreshInverseFunction(of: Term, condition: Term, qvar: Var): (Term => Term, Seq[Term]) = {
@@ -608,10 +629,18 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val funcSymbol = decider.fresh("inv", funcSort)
     val inverseFunc = (t: Term) => Apply(funcSymbol, t :: Nil)
 
-    val ax1 = Forall(qvar, Implies(condition, inverseFunc(of) === qvar), Nil).autoTrigger
+    var inv: Term = inverseFunc(of)
+
+//    val ax1 = Forall(qvar, Implies(condition, inv === qvar), Nil: Seq[Trigger]).autoTrigger
+    val ax1 = Forall(qvar, Implies(condition, inv === qvar), inv :: condition :: Nil)
 
     val r = Var("r", sorts.Ref)
-    val ax2 = Forall(r, Implies(condition, of.replace(qvar, inverseFunc(r)) === r), Nil/*Trigger(inverseFunc(r))*/).autoTrigger
+
+    inv = of.replace(qvar, inverseFunc(r))
+    val invCond = condition.replace(qvar, inverseFunc(r))
+
+    val ax2 = Forall(r, Implies(invCond, inv === r), Nil: Seq[Trigger]).autoTrigger
+//    val ax2 = Forall(r, Implies(invCond, inv === r), inv :: invCond :: Nil)
 
     (inverseFunc, ax1 :: ax2 :: Nil)
   }
