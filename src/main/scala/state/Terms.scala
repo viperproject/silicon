@@ -314,6 +314,16 @@ object Forall extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Forall, qvars, tBody, triggers)
 
+  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
+    this(qvar :: Nil, tBody, computeTriggersFrom)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit) = {
+    val (triggers, extraVars) =
+      TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
+
+      Quantification(Forall, qvars ++ extraVars, tBody, triggers)
+    }
+
   override val toString = "QA"
 }
 
@@ -350,14 +360,11 @@ class Quantification private[terms] (val q: Quantifier,
       /* Triggers were given explicitly */
       this
     } else {
-      val results = TriggerGenerator.generateTriggers(vars, body)
-
-      if (results.nonEmpty) {
-        val (generatedTriggers, extraVariables) = results(0)
-        Quantification(q, vars ++ extraVariables, body, generatedTriggers)
-      } else {
-        /* TODO: Emit warning that no triggers were found */
-        this
+      TriggerGenerator.generateTriggers(vars, body) match {
+        case Some((generatedTriggers, extraVariables)) =>
+          Quantification(q, vars ++ extraVariables, body, generatedTriggers)
+        case _ =>
+          this
       }
     }
   }
@@ -522,7 +529,7 @@ class And(val ts: Seq[Term]) extends BooleanTerm
   override lazy val toString = ts.mkString(" && ")
 }
 
-object And {
+object And extends (Iterable[Term] => Term) {
   def apply(ts: Term*) = createAnd(ts)
   def apply(ts: Iterable[Term]) = createAnd(ts.toSeq)
 
