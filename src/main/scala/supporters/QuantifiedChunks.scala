@@ -106,13 +106,17 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private type C = DefaultContext
 
-  private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain, quantVar: Option[Var])
+  private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain)
+  /* [AS] */ //private case class FvfDefEntry(partialValue: Term, valueTriggers: Seq[Trigger], partialDomain: Domain, quantVar: Option[Var])
 
   private case class FvfDef(field: ast.Field, fvf: Term, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
-    def quantifiedValues =
-      entries map (entry => Forall(entry.quantVar.get, entry.partialValue, entry.valueTriggers))
+    def quantifiedValues(qvar: Var) =
+      entries map (entry => Forall(qvar, entry.partialValue, entry.valueTriggers))
+    /* [AS] */
+//    def quantifiedValues =
+//      entries map (entry => Forall(entry.quantVar.get, entry.partialValue, entry.valueTriggers))
 
     lazy val totalDomain = (
       Domain(field.name, fvf)
@@ -219,13 +223,20 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                      c: C)
                                     (Q: Lookup => VerificationResult)
                                     : VerificationResult = {
-    val needsQuantifying = optQVarInRcvr match {
-      case Some(qvar) => true
-      case None => false
-    }
+    /* [AS] */
+//    val needsQuantifying = optQVarInRcvr match {
+//      case Some(qvar) => true
+//      case None => false
+//    }
 
-    withValue(σ, h, rcvr, needsQuantifying, field, pve, locacc, c)((t, fvfDef) => {
-      if (needsQuantifying) assume(fvfDef.quantifiedValues) else assume(fvfDef.singletonValues)
+    withValue(σ, h, rcvr, field, pve, locacc, c)((t, fvfDef) => {
+      optQVarInRcvr match {
+        case Some(qvar) => assume(fvfDef.quantifiedValues(qvar))
+        case None => assume(fvfDef.singletonValues)
+      }
+      /* [AS] */
+//    withValue(σ, h, rcvr, needsQuantifying, field, pve, locacc, c)((t, fvfDef) => {
+//      if (needsQuantifying) assume(fvfDef.quantifiedValues) else assume(fvfDef.singletonValues)
 
       assume(fvfDef.totalDomain)
 
@@ -242,7 +253,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private def withValue(σ: S,
                         h: H,
                         rcvr: Term,
-                        needsQuantifying: Boolean,
+/* [AS] */ //                        needsQuantifying: Boolean,
                         field: ast.Field,
                         pve: PartialVerificationError,
                         locacc: ast.LocationAccess,
@@ -261,24 +272,30 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
           case true =>
             val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
+            val lookupRcvr = Lookup(field.name, fvf, rcvr)
 
             var fvfDefs: List[FvfDefEntry] = Nil
             var fvfIndividualDomains: List[Domain] = Nil // AS: why is this not used?
 
             h.values.foreach {
               case ch: QuantifiedChunk if ch.name == field.name =>
-                val freshQVariable = if (needsQuantifying) Some(decider.fresh("r", rcvr.sort)) else None
-                val axiomRecv = if (needsQuantifying) freshQVariable.get else rcvr
-                val permsIndividual = ch.perm.replace(`?r`, axiomRecv)
-                val valueIndividual = ch.value.replace(`?r`, axiomRecv)
-                val lookupRcvr = Lookup(field.name, fvf, axiomRecv)
-                val lookupIndividual = Lookup(field.name, valueIndividual, axiomRecv)
+                val permsIndividual = ch.perm.replace(`?r`, rcvr)
+                val valueIndividual = ch.value.replace(`?r`, rcvr)
+                val lookupIndividual = Lookup(field.name, valueIndividual, rcvr)
+/* [AS] */
+//                val freshQVariable = if (needsQuantifying) Some(decider.fresh("r", rcvr.sort)) else None
+//                val axiomRecv = if (needsQuantifying) freshQVariable.get else rcvr
+//                val permsIndividual = ch.perm.replace(`?r`, axiomRecv)
+//                val valueIndividual = ch.value.replace(`?r`, axiomRecv)
+//                val lookupRcvr = Lookup(field.name, fvf, axiomRecv)
+//                val lookupIndividual = Lookup(field.name, valueIndividual, axiomRecv)
 
                 fvfDefs ::=
                     FvfDefEntry(Implies(PermLess(NoPerm(), permsIndividual), lookupRcvr === lookupIndividual),
 //                              Trigger(lookupRcvr :: lookupIndividual :: Nil) :: Nil,
-                              Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
-                              Domain(field.name, valueIndividual),freshQVariable)
+                                Trigger(lookupRcvr :: Nil) :: Trigger(lookupIndividual :: Nil) :: Nil,
+                                Domain(field.name, valueIndividual))
+/* [AS] *///                              Domain(field.name, valueIndividual),freshQVariable)
 
               case ch if ch.name == field.name =>
                 sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
@@ -286,7 +303,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
               case _ => /* Ignore other chunks */
             }
 
-            Q(Lookup(field.name, fvf, rcvr), FvfDef(field, fvf, fvfDefs))}}
+            Q(lookupRcvr, FvfDef(field, fvf, fvfDefs))}}
+            /* [AS] */ //Q(Lookup(field.name, fvf, rcvr), FvfDef(field, fvf, fvfDefs))}}
   }
 
   /* Manipulating quantified chunks */
@@ -347,7 +365,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     if (success) {
 //      assume(fvfDef.singletonValues)
-      assume(fvfDef.quantifiedValues)
+      assume(fvfDef.quantifiedValues(skolemVar))
+/* [AS] *///      assume(fvfDef.quantifiedValues)
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
     } else
@@ -370,7 +389,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       split(σ, h, field, quantifiedReceiver, quantifiedReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
-      assume(fvfDef.quantifiedValues)
+      assume(fvfDef.quantifiedValues(qvarInReceiver))
+/* [AS] *///      assume(fvfDef.quantifiedValues)
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
     } else
@@ -388,9 +408,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                     c: C)
                    : (H, QuantifiedChunk, FvfDef, Boolean) = {
 
-    val freshQVariable = decider.fresh("r", sorts.Ref) // use this as receiver in axioms generated
-    def replquant(t: Term) = t.replace(`?r`, freshQVariable)
-    def replrecv(t: Term) = t.replace(`?r`, arbitraryReceiver)
+    def repl(t: Term) = t.replace(`?r`, arbitraryReceiver)
+    /* [AS] */
+//    val freshQVariable = decider.fresh("r", sorts.Ref) // use this as receiver in axioms generated
+//    def replquant(t: Term) = t.replace(`?r`, freshQVariable)
+//    def replrecv(t: Term) = t.replace(`?r`, arbitraryReceiver)
 
     var quantifiedChunks = Seq[QuantifiedChunk]()
     var ignored = Seq[Chunk]()
@@ -410,19 +432,27 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     var success = false
     val fvf = fresh("vs", sorts.FieldValueFunction(toSort(field.typ)))
 //    val fvfLookup = Lookup(field.name, fvf, specificReceiver)
-     var fvfDefs: List[FvfDefEntry] = Nil
+
+    val fvfLookup = Lookup(field.name, fvf, arbitraryReceiver)
+    var fvfDefs: List[FvfDefEntry] = Nil
+/* [AS] *///     var fvfDefs: List[FvfDefEntry] = Nil
 
     candidates.foreach(ch => {
-      val candidatePerms = replquant(ch.perm)
-      val candidateValue = replquant(ch.value)
-      val fvfLookup = Lookup(field.name, fvf, freshQVariable)
-      val candidateLookup = Lookup(field.name, candidateValue, freshQVariable)
+      val candidatePerms = repl(ch.perm)
+      val candidateValue = repl(ch.value)
+      val candidateLookup = Lookup(field.name, candidateValue, arbitraryReceiver)
+      /* [AS] */
+//      val candidatePerms = replquant(ch.perm)
+//      val candidateValue = replquant(ch.value)
+//      val fvfLookup = Lookup(field.name, fvf, freshQVariable)
+//      val candidateLookup = Lookup(field.name, candidateValue, freshQVariable)
 
       fvfDefs ::=
         FvfDefEntry(Implies(PermLess(NoPerm(), candidatePerms), fvfLookup === candidateLookup),
 //                      Trigger(fvfLookup :: candidateLookup :: Nil) :: Nil,
                     Trigger(fvfLookup :: Nil) :: Trigger(candidateLookup :: Nil) :: Nil,
-                    Domain(field.name, candidateValue), Some(freshQVariable))
+                    Domain(field.name, candidateValue))
+/* [AS] *///                    Domain(field.name, candidateValue), Some(freshQVariable))
 
       if (success)
         residue ::= ch
@@ -453,7 +483,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         } else  if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil)))
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
 
-        success = check(σ, replrecv(permsToTake) === NoPerm())
+        success = check(σ, repl(permsToTake) === NoPerm())
+        /* [AS] */ //success = check(σ, replrecv(permsToTake) === NoPerm())
       }
     })
 
