@@ -170,6 +170,7 @@
   (< j n)
   (< j ($Seq.length s))) (= ($Seq.index ($Seq.take s n) j) ($Seq.index s j)))
   :pattern ( ($Seq.index ($Seq.take s n) j))
+;  :weight 25
   )))
 (assert (forall ((s $Seq<$S$>) (n Int) ) (! (=> (<= 0 n) (and
   (=> (<= n ($Seq.length s)) (= ($Seq.length ($Seq.drop s n)) (- ($Seq.length s) n)))
@@ -181,6 +182,7 @@
   (<= 0 j)
   (< j (- ($Seq.length s) n))) (= ($Seq.index ($Seq.drop s n) j) ($Seq.index s (+ j n))))
   :pattern ( ($Seq.index ($Seq.drop s n) j))
+;  :weight 25
   )))
 ;(assert (forall ((s $Seq<$S$>) (t $Seq<$S$>) ) (!
 ;  (and
