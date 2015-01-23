@@ -65,8 +65,8 @@ class DefaultSetsEmitter(prover: Prover,
           case s: ast.MultisetType =>
             /* Multisets depend on sets */
             setTypes += ast.SetType(s.elementType)
-          case s: ast.SeqType =>
-            /* Sequences depend on multisets, which in turn depend on sets */
+//          case s: ast.SeqType =>
+//            /* Sequences depend on multisets, which in turn depend on sets */
             setTypes += ast.SetType(s.elementType)
           case _ =>
           /* Ignore other types */
