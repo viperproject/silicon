@@ -278,6 +278,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
           case true =>
+            /* TODO: Declaring a fresh fvf should be "lazy", i.e. it should only
+             *       declared in the prover if it is actually used at the end
+             *       (which it might not due to optimisations).
+             */
             val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
             val lookupRcvr = Lookup(field.name, fvf, rcvr)
 
@@ -314,16 +318,35 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
               case _ => /* Ignore other chunks */
             }
 
-            val cacheLog = bookkeeper.logfiles("withValueCache")
-            cacheLog.println(s"rcvr = $rcvr")
-            cacheLog.println(s"lookupRcvr = $lookupRcvr")
-            cacheLog.println(s"consideredCunks = $consideredCunks")
-            cacheLog.println(s"cached? ${withValueCache.contains(rcvr, consideredCunks)}")
-            cacheLog.println()
+            /* Optimisisations */
+
+//            val cacheLog = bookkeeper.logfiles("withValueCache")
+//            cacheLog.println(s"rcvr = $rcvr")
+//            cacheLog.println(s"lookupRcvr = $lookupRcvr")
+//            cacheLog.println(s"consideredCunks = $consideredCunks")
+//            cacheLog.println(s"fvf = $fvf")
+//            cacheLog.println(s"fvfDefs.length = ${fvfDefs.length}")
+//            cacheLog.println(s"fvfDefs = $fvfDefs")
 
             val (lookupRcvrToReturn, fvfDefToReturn) =
-              withValueCache.getOrElseUpdate((rcvr, consideredCunks),
-                                             (lookupRcvr, FvfDef(field, fvf, fvfDefs)))
+              if (fvfDefs.length == 1) {
+                val fvfDefEntry = fvfDefs(0)
+                val _fvf = fvfDefEntry.partialDomain.fvf
+                val _lookupRcvr = lookupRcvr.copy(fvf = fvfDefEntry.partialDomain.fvf)
+                val _fvfDef = FvfDef(field, _fvf, fvfDefEntry.copy(True(), Trigger(Nil) :: Nil) :: Nil)
+
+                (_lookupRcvr, _fvfDef)
+              } else {
+//                cacheLog.println(s"cached? ${withValueCache.contains(rcvr, consideredCunks)}")
+                withValueCache.getOrElseUpdate((rcvr, consideredCunks),
+                                               (lookupRcvr, FvfDef(field, fvf, fvfDefs)))
+              }
+
+//            cacheLog.println(s"lookupRcvrToReturn = $lookupRcvrToReturn")
+//            cacheLog.println(s"fvfDefToReturn = $fvfDefToReturn")
+//            cacheLog.println()
+
+            /* We're done */
 
             Q(lookupRcvrToReturn, fvfDefToReturn)}}
             /* [AS] */ //Q(Lookup(field.name, fvf, rcvr), FvfDef(field, fvf, fvfDefs))}}
@@ -533,11 +556,26 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   }
 
   def domainDefinitionAxiom(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, snap: Term) = {
-    Forall(qvar,
-      Iff(
-        SetIn(rcvr, Domain(field.name, snap)),
-        cond),
-      Trigger(Lookup(field.name, snap, rcvr)))
+    val axiom = cond match {
+      case SetIn(`qvar`, set) =>
+        /* Optimised axiom in the case where the quantified permission forall is of the
+         * shape "forall x :: x in set ==> ...".
+         */
+        Domain(field.name, snap) === set
+
+      case _ =>
+        /* Create an axiom of the shape "forall x :: x in domain(fvf) <==> cond(x)" */
+        Forall(qvar,
+          Iff(
+            SetIn(rcvr, Domain(field.name, snap)),
+            cond),
+          Trigger(Lookup(field.name, snap, rcvr)))
+    }
+
+//    val log = bookkeeper.logfiles("domainDefinitionAxiom")
+//    log.println(s"axiom = $axiom")
+
+    axiom
   }
 
   def injectivityAxiom(qvar: Var, condition: Term, receiver: Term) = {
@@ -594,10 +632,14 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def reset() {
     withValueCache.clear()
-    val cacheLog = bookkeeper.logfiles("withValueCache")
-    cacheLog.println()
-    cacheLog.println("*" * 40)
-    cacheLog.println()
+
+//    val logs = List(bookkeeper.logfiles("withValueCache"),
+//                    bookkeeper.logfiles("domainDefinitionAxiom"))
+//    logs foreach { log =>
+//      log.println()
+//      log.println("*" * 40)
+//      log.println()
+//    }
   }
 
   def stop() {}
@@ -606,11 +648,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
 object QuantifiedChunkSupporter {
   object ForallRef {
-    def unapply(n: ast.Node): Option[(ast.LocalVar,  /* Quantified variable */
-                                      ast.Exp,     /* Condition */
-                                      ast.Exp,     /* Receiver e of acc(e.f, p) */
+    def unapply(n: ast.Node): Option[(ast.LocalVar,       /* Quantified variable */
+                                      ast.Exp,            /* Condition */
+                                      ast.Exp,            /* Receiver e of acc(e.f, p) */
                                       ast.Field,          /* Field f of acc(e.f, p) */
-                                      ast.Exp,     /* Permissions p of acc(e.f, p) */
+                                      ast.Exp,            /* Permissions p of acc(e.f, p) */
                                       ast.Forall,         /* AST node of the forall (for error reporting) */
                                       ast.FieldAccess)] = /* AST node for e.f (for error reporting) */
 
@@ -620,18 +662,6 @@ object QuantifiedChunkSupporter {
                                 ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
             if    rcvr.exists(_ == lvd.localVar)
                && triggers.isEmpty =>
-
-          /* TODO: If the condition is just "x in xs" then xs could be returned to
-           *       simplify the definition of domains of freshly created FVFs (as
-           *       done, e.g., when producing quantified permissions) by just
-           *       assuming "domain(fvf) == xs" instead of assuming that
-           *       "forall x :: x in domain(fvf) <==> condition(x)". This should
-           *       have a positive effect on the prover's runtime.
-           *
-           *       Another way of handling this would be to have an optimisation
-           *       rule that transforms a "forall x :: x in domain(fvf) <==> x in xs"
-           *       into a "domain(fvf) == xs".
-           */
 
           Some((lvd.localVar, condition, rcvr, f, gain, forall, fa))
 
