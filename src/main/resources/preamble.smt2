@@ -37,7 +37,11 @@
 
 ; Syntax for Z3 >= 4.3.2
 (set-option :smt.mbqi false)
+; (set-option :sat.random_seed 0)
+; (set-option :produce-models true)
+;(set-option :model false)
 (set-option :model.v2 true)
+; (set-option :model.compact true)
 (set-option :smt.phase_selection 0)
 (set-option :smt.restart_strategy 0)
 (set-option :smt.restart_factor |1.5|)
@@ -50,10 +54,13 @@
 (set-option :smt.qi.cost "(+ weight generation)")
 (set-option :type_check true)
 (set-option :smt.bv.reflect true)
-(set-option :smt.bv.reflect true)
 ;(set-option :smt.qi_profile true)
 ;(set-option :smt.default_qid true) ; Not supported in Z3 4.3.2?
 ;(set-option :smt.macro_finder true)
+;(set-option :combined_solver.solver2_timeout 500)
+;(set-option :combined_solver.solver2_unknown 2)
+;(set-option :smt.arith.nl false)
+(set-option :smt.arith.nl.gb false)
 
 ; --- Snapshots ---
 
