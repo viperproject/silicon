@@ -35,7 +35,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
 
   var logfiles: scala.collection.immutable.Map[String, PrintWriter] =
     scala.collection.immutable.Map[String, PrintWriter]().withDefault(name => {
-      val writer = common.io.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
+      val writer = common.io.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false, true)
       logfiles += (name -> writer)
 
       writer

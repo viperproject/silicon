@@ -9,17 +9,19 @@ package silicon
 package supporters
 
 import silver.ast
+import silver.components.StatefulComponent
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
-import viper.silicon.decider.PreambleFileEmitter
-import viper.silicon.interfaces.{PreambleEmitter, VerificationResult, Failure}
+import interfaces.{PreambleEmitter, VerificationResult, Failure}
 import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
 import interfaces.decider.{Decider, Prover}
+import decider.PreambleFileEmitter
 import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
 import state.terms.utils.BigPermSum
 import state.terms
 import state.terms._
 import state.terms.predef.`?r`
+import reporting.Bookkeeper
 
 trait FieldValueFunctionsEmitter extends PreambleEmitter
 
@@ -98,7 +100,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                               (decider: Decider[ST, H, PC, S, DefaultContext],
                                symbolConverter: SymbolConvert,
                                stateFactory: StateFactory[ST, H, S],
-                               config: Config) {
+                               config: Config,
+                               bookkeeper: Bookkeeper)
+
+    extends StatefulComponent {
 
   import symbolConverter.toSort
   import stateFactory._
@@ -250,6 +255,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
    *       Also, withValue always has to iterate over all chunks (unlike split).
    */
 
+  private val withValueCache = MMap[(Term, Set[QuantifiedChunk]), (Lookup, FvfDef)]()
+
   private def withValue(σ: S,
                         h: H,
                         rcvr: Term,
@@ -277,6 +284,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             var fvfDefs: List[FvfDefEntry] = Nil
             var fvfIndividualDomains: List[Domain] = Nil // AS: why is this not used?
 
+            var consideredCunks = Set[QuantifiedChunk]()
+
             h.values.foreach {
               case ch: QuantifiedChunk if ch.name == field.name =>
                 val permsIndividual = ch.perm.replace(`?r`, rcvr)
@@ -297,13 +306,26 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                 Domain(field.name, valueIndividual))
 /* [AS] *///                              Domain(field.name, valueIndividual),freshQVariable)
 
+                consideredCunks += ch
+
               case ch if ch.name == field.name =>
                 sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
 
               case _ => /* Ignore other chunks */
             }
 
-            Q(lookupRcvr, FvfDef(field, fvf, fvfDefs))}}
+            val cacheLog = bookkeeper.logfiles("withValueCache")
+            cacheLog.println(s"rcvr = $rcvr")
+            cacheLog.println(s"lookupRcvr = $lookupRcvr")
+            cacheLog.println(s"consideredCunks = $consideredCunks")
+            cacheLog.println(s"cached? ${withValueCache.contains(rcvr, consideredCunks)}")
+            cacheLog.println()
+
+            val (lookupRcvrToReturn, fvfDefToReturn) =
+              withValueCache.getOrElseUpdate((rcvr, consideredCunks),
+                                             (lookupRcvr, FvfDef(field, fvf, fvfDefs)))
+
+            Q(lookupRcvrToReturn, fvfDefToReturn)}}
             /* [AS] */ //Q(Lookup(field.name, fvf, rcvr), FvfDef(field, fvf, fvfDefs))}}
   }
 
@@ -567,6 +589,19 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         .orElse(cond.map(_.find{case SeqIn(seq, _) => seq; case SetIn(_, set) => set}).flatten)
         .toSeq
   }
+
+  /* Lifetime */
+
+  def reset() {
+    withValueCache.clear()
+    val cacheLog = bookkeeper.logfiles("withValueCache")
+    cacheLog.println()
+    cacheLog.println("*" * 40)
+    cacheLog.println()
+  }
+
+  def stop() {}
+  def start() {}
 }
 
 object QuantifiedChunkSupporter {

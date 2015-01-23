@@ -297,5 +297,6 @@ class DefaultVerifier[ST <: Store[ST],
 
   override def reset() {
     super.reset()
+    quantifiedChunkSupporter.reset()
   }
 }
