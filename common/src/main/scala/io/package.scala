@@ -35,10 +35,10 @@ package object io {
    * @param file Is assumed to denote a file, not a directory.
    * @return The instantiated sink.
    */
-  def PrintWriter(file: JFile, autoFlush: Boolean = true): JPrintWriter = {
+  def PrintWriter(file: JFile, autoFlush: Boolean = true, append: Boolean = false): JPrintWriter = {
     val pf = file.getParentFile
     if (pf != null) pf.mkdirs()
 
-    new JPrintWriter(new JBufferedWriter(new JFileWriter(file)), autoFlush)
+    new JPrintWriter(new JBufferedWriter(new JFileWriter(file, append)), autoFlush)
   }
 }
