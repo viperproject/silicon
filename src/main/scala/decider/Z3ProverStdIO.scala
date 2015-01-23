@@ -264,7 +264,10 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
       result = input.readLine()
       if (result.toLowerCase != "success") logComment(result)
 
-      repeat = result.startsWith("WARNING")
+      val warning = result.startsWith("WARNING")
+      if (warning) logger.info(s"Z3: $result")
+
+      repeat = warning
     }
 
     result
