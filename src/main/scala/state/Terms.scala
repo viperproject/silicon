@@ -218,7 +218,7 @@ trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
 trait StructuralEquality { self: AnyRef =>
   val equalityDefiningMembers: Seq[Any]
 
-  override val hashCode = silicon.utils.generateHashCode(equalityDefiningMembers)
+  override val hashCode = silver.utility.Common.generateHashCode(equalityDefiningMembers)
 
   override def equals(other: Any) = (
     this.eq(other.asInstanceOf[AnyRef])
