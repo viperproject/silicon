@@ -31,17 +31,6 @@ package object utils {
     }
   }
 
-  /* Take from scala -print when working with case classes. */
-  @inline
-  def generateHashCode(xs: Any*) = {
-    var code = 0
-
-    for (x <- xs)
-      code = code * 41 + (if (x == null) 0 else x.##)
-
-    code
-  }
-
   def consumeExactRead(fp: Term, c: DefaultContext): Boolean = fp match {
     case _: WildcardPerm => false
     case v: Var => !c.constrainableARPs.contains(v)
