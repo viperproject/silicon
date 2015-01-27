@@ -88,7 +88,7 @@ abstract class MagicWandChunkLike extends {
 
   override lazy val toString = {
     val pos = ghostFreeWand.pos match {
-      case rp: viper.silver.ast.RealPosition => s"${rp.line}:${rp.column}"
+      case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
       case other => other.toString
     }
 
