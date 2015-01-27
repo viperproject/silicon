@@ -53,9 +53,9 @@ class DefaultMultisetsEmitter(prover: Prover,
       t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
         case s: ast.MultisetType =>
           multisetTypes += s
-        case s: ast.SeqType =>
-          /* Sequences depend on multisets */
-          multisetTypes += ast.MultisetType(s.elementType)
+//        case s: ast.SeqType =>
+//          /* Sequences depend on multisets */
+//          multisetTypes += ast.MultisetType(s.elementType)
         case _ =>
           /* Ignore other types */
       }

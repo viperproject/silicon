@@ -44,7 +44,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
   def start() {
     logfile =
-      if (logpath != null) common.io.PrintWriter(new File(logpath))
+      if (logpath != null) silver.utility.Common.PrintWriter(new File(logpath))
       else null
 
     z3 = createZ3Instance()

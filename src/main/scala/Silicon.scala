@@ -346,7 +346,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           logger.info("")
 
         case Some(("file", path)) =>
-          silicon.common.io.toFile(verifier.bookkeeper.toJson, new File(path))
+          silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
 
         case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }

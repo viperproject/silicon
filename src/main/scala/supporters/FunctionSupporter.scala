@@ -378,7 +378,7 @@ trait FunctionSupporter[ST <: Store[ST],
            */
           produce(σ, fresh, FullPerm(), pres, Internal(pres), c)((σ1, c2) => {
             val c2a = c2.copy(snapshotRecorder = c2.snapshotRecorder.map(_.copy(currentSnap = null)))
-            eval(σ1, function.exp, FunctionNotWellformed(function), c2a)((tB, c3) => {
+            eval(σ1, function.body, FunctionNotWellformed(function), c2a)((tB, c3) => {
               recorders ::= c3.snapshotRecorder.get
               val c4 = c3.copy(snapshotRecorder = None)
               consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
@@ -449,7 +449,7 @@ private class HeapAccessReplacingExpressionTranslator(val symbolConverter: Symbo
     this.program = program
     this.parentFunc = func
 
-    val body = translate(program, func.exp, locToSnap, fappToSnap)
+    val body = translate(program, func.body, locToSnap, fappToSnap)
 
     this.program = null
     this.parentFunc = null
