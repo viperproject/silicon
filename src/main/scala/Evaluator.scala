@@ -182,7 +182,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         eval(σ, e0, pve, c)((t0, c1) =>
           Q(Not(t0), c1))
 
-      case ast.Neg(e0) =>
+      case ast.Minus(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           Q(Minus(0, t0), c1))
 
