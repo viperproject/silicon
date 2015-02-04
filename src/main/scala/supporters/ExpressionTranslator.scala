@@ -82,7 +82,7 @@ trait ExpressionTranslator {
       case ast.Mul(e0, e1) => Times(f(e0), f(e1))
       case ast.Div(e0, e1) => Div(f(e0), f(e1))
       case ast.Mod(e0, e1) => Mod(f(e0), f(e1))
-      case ast.Neg(e0) => Minus(IntLiteral(0), f(e0))
+      case ast.Minus(e0) => Minus(IntLiteral(0), f(e0))
 
       case ast.GeCmp(e0, e1) => AtLeast(f(e0), f(e1))
       case ast.GtCmp(e0, e1) => Greater(f(e0), f(e1))
