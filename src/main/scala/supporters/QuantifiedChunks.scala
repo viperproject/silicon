@@ -117,11 +117,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private case class FvfDef(field: ast.Field, fvf: Term, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
-    def quantifiedValues(qvar: Var) = {
+    def quantifiedValues(qvars: Seq[Var]) = {
       entries map (entry => {
         val (triggers, additionalVars) =
 //          TriggerGenerator.generateTriggers(qvar :: Nil, And(entry.valueTriggers.flatMap(_.p)))
-          TriggerGenerator.generateFirstTriggers(qvar :: Nil, entry.generateTriggersFrom.map(And))
+          TriggerGenerator.generateFirstTriggers(qvars, entry.generateTriggersFrom.map(And))
                           .getOrElse((Nil, Nil))
 //        println()
 //        println(s"qvar = $qvar")
@@ -129,7 +129,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 //        println(s"additionalVars = $additionalVars")
 //        println(s"triggers = $triggers")
 //        Forall(qvar, entry.partialValue, entry.valueTriggers)
-        Forall(qvar +: additionalVars, entry.partialValue, triggers)
+        Forall(qvars ++ additionalVars, entry.partialValue, triggers)
       })
     }
     /* [AS] */
@@ -234,7 +234,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   def withPotentiallyQuantifiedValue(σ: S,
                                      h: H,
                                      rcvr: Term,
-                                     optQVarInRcvr: Option[Var],
+                                     qvarsInRcvr: Seq[Var],
                                      field: ast.Field,
                                      pve: PartialVerificationError,
                                      locacc: ast.LocationAccess,
@@ -248,10 +248,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 //    }
 
     withValue(σ, h, rcvr, field, pve, locacc, c)((t, fvfDef) => {
-      optQVarInRcvr match {
-        case Some(qvar) => assume(fvfDef.quantifiedValues(qvar))
-        case None => assume(fvfDef.singletonValues)
-      }
+      if (qvarsInRcvr.nonEmpty)
+        assume(fvfDef.quantifiedValues(qvarsInRcvr))
+      else
+        assume(fvfDef.singletonValues)
       /* [AS] */
 //    withValue(σ, h, rcvr, needsQuantifying, field, pve, locacc, c)((t, fvfDef) => {
 //      if (needsQuantifying) assume(fvfDef.quantifiedValues) else assume(fvfDef.singletonValues)
@@ -425,7 +425,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     if (success) {
 //      assume(fvfDef.singletonValues)
-      assume(fvfDef.quantifiedValues(skolemVar))
+      assume(fvfDef.quantifiedValues(skolemVar :: Nil))
 /* [AS] *///      assume(fvfDef.quantifiedValues)
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
@@ -449,7 +449,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       split(σ, h, field, quantifiedReceiver, quantifiedReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
-      assume(fvfDef.quantifiedValues(qvarInReceiver))
+      assume(fvfDef.quantifiedValues(qvarInReceiver :: Nil))
 /* [AS] *///      assume(fvfDef.quantifiedValues)
       assume(fvfDef.totalDomain)
       Q(Some(h1, ch, c))
