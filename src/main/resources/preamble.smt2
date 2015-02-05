@@ -60,7 +60,8 @@
 ;(set-option :combined_solver.solver2_timeout 500)
 ;(set-option :combined_solver.solver2_unknown 2)
 ;(set-option :smt.arith.nl false)
-(set-option :smt.arith.nl.gb false)
+; (set-option :smt.arith.nl.gb false)
+    ; See http://stackoverflow.com/questions/28210673
 
 ; --- Snapshots ---
 
