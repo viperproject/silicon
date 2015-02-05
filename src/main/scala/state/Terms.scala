@@ -236,6 +236,16 @@ case class Var(id: String, sort: Sort) extends Symbol with Term {
   override val toString = id
 }
 
+/* TODO: id should be a Symbol, not a String. In general, no terms should talk a
+ *       String where an id or some other kind of symbol is expected.
+ *       The TermTo<SomeOutputLanguage>Converter should then take care of
+ *       sanitising all symbols.
+ *
+ * TODO: As a related issue, it should also be the Converters that decide how to
+ *       distinguish limited functions from unlimited ones. The Function term
+ *       could take a flag instead that indicates if this is the (un)limited
+ *       version.
+ */
 class Function(val id: String, val sort: sorts.Arrow)
     extends Symbol
        with Term
