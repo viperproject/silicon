@@ -96,7 +96,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
       parens(sanitizeSymbol(f.id) <+> render(s) <+> ssep(tArgs map render, space))
 
     case Quantification(quant, vars, body, triggers) =>
-      val docVars = ssep(vars map (v => parens(v.id <+> render(v.sort))), space)
+      val docVars = ssep(vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort))), space)
       val docBody = render(body)
       val docQuant = render(quant)
 
@@ -273,7 +273,22 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
   protected def sortWrapperSymbol(from: Sort, to: Sort): String =
     s"$$SortWrappers.${convert(from)}To${convert(to)}"
 
-  def sanitizeSymbol(str: String) =
+  def sanitizeSymbol(str: String) = {
+    val str1 = replaceOffendingCharacters(str)
+
+    val str2 =
+      if (isSafe(str1)) str1
+      else "$" + str1
+        /* TODO: '$' should ONLY be used to sanitise symbols, it should no longer
+         *       be used to mark symbols from Silicon's preamble such as $Perm or
+         *       $Seq. If need be, there should be a dedicated symbol for the
+         *       former and one for the latter purpose.
+         */
+
+    str2
+  }
+
+  def replaceOffendingCharacters(str: String) =
     str.replace('#', '_')
        .replace("τ", "$tau")
        .replace('[', '<')
@@ -281,4 +296,13 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
        .replace("::", ".")
        .replace(',', '~')
        .replace(" ", "")
+
+  /* TODO: Would be ideal if we had a list of all reserved keywords from
+   *       SMTLIB2 plus those from Z3.
+   */
+  def isSafe(str: String) = (
+      str.head == '$'
+    | str.contains('<')
+    | str.contains('@')
+  )
 }
