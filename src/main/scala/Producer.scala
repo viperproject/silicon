@@ -195,9 +195,9 @@ trait DefaultProducer[ST <: Store[ST],
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
         val πPre = decider.π
-        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables,
-                        recordPossibleTriggers = true,
-                        possibleTriggers = Map())
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables
+                        /*recordPossibleTriggers = true,
+                        possibleTriggers = Map()*/)
         decider.locally[(Set[Term], Term, Term, Term, C, Map[ast.Exp, Term])](QB =>
           eval(σQVar, cond, pve, c0)((tCond, c1) => {
             assume(tCond)
@@ -205,11 +205,11 @@ trait DefaultProducer[ST <: Store[ST],
               eval(σQVar, gain, pve, c2)((pGain, c3) => {
                 val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
                 val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
-                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
-                                 recordPossibleTriggers = c.recordPossibleTriggers,
-                                 possibleTriggers = c.possibleTriggers)
+                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables
+                                 /*recordPossibleTriggers = c.recordPossibleTriggers,
+                                 possibleTriggers = c.possibleTriggers*/)
                 QB(πAux, tCond, tRcvr, pGain, c4, c2.possibleTriggers)}))})
-        ){case (πAux, tCond, tRcvr, pGain, c1, possibleTriggersInCondAndRcvr) =>
+        ){case (πAux, tCond, tRcvr, pGain, c1, _/*possibleTriggersInCondAndRcvr*/) =>
           assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
