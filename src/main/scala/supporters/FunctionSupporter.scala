@@ -234,10 +234,7 @@ class FunctionData(val programFunction: ast.Function,
         val body =
           if (freshFvfs.isEmpty) innermostBody
           else Exists(freshFvfs, innermostBody, Nil) // TODO: Triggers?
-        Forall(
-          args,
-          body,
-          triggers)})
+        Forall(args, body, triggers)})
   }
 
   lazy val postAxiom: Option[Term] = translatedPre match {
@@ -249,8 +246,12 @@ class FunctionData(val programFunction: ast.Function,
         val optPost =
           expressionTranslator.translatePostcondition(program, post, this)
 
-        optPost.map(post =>
-          Quantification(Forall, args, Implies(pre, post), limitedTriggers))
+        optPost.map(translatedBody => {
+          val innermostBody = And(qpTerms ++ List(Implies(pre, translatedBody)))
+          val body =
+            if (freshFvfs.isEmpty) innermostBody
+            else Exists(freshFvfs, innermostBody, Nil) // TODO: Triggers?
+          Forall(args, body, limitedTriggers)})
       } else
         Some(True())
   }
