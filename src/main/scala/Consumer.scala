@@ -76,8 +76,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
 
-    /* TODO: See the code comment about produce vs. produces in DefaultProducer.produces.
-     *       The same applies to consume vs. consumes.
+    /* Note: See the code comment about produce vs. produces in
+     * DefaultProducer.produces. The same applies to consume vs. consumes.
      */
 
     if (φs.isEmpty)
@@ -91,17 +91,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       else
         consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
           consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = c1.snapshotRecorder.get
-                val sr2 = c2.snapshotRecorder.get
-                val snap1 = if (s1 == Unit) Unit else sr1.currentSnap
-                val snap2 = if (s2 == Unit) Unit else sr2.currentSnap
-                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
-              case _ => c2}
-
-            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)
-          }))
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
     }
 
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
@@ -118,16 +108,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.And(a1, a2) if !φ.isPure =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
           consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                val sr1 = c1.snapshotRecorder.get
-                val sr2 = c2.snapshotRecorder.get
-                val snap1 = if (s1 == Unit) Unit else sr1.currentSnap
-                val snap2 = if (s2 == Unit) Unit else sr2.currentSnap
-                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Combine(snap1, snap2))))
-              case _ => c2}
-
-            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c3)}))
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>

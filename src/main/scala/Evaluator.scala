@@ -174,7 +174,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)(ch => {
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
-                c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch.id))))
+                c1.copy(snapshotRecorder = Some(sr.recordSnapshot(fa, c1.branchConditions, ch.value)))
               case _ => c1}
             Q(ch.value, c2)}))
 
@@ -351,10 +351,6 @@ trait DefaultEvaluator[ST <: Store[ST],
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
           val pre = Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
-          val c2a = c2.snapshotRecorder match {
-            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))
-            case _ => c2
-          }
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -366,15 +362,14 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2a)(QB =>
-            consume(σ, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
+          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB =>
+            consume(σ, FullPerm(), pre, err, c2)((_, s, _, c3) => {
+              val s1 = s.convert(sorts.Snap)
               val c4 = c3.snapshotRecorder match {
                 case Some(sr) =>
-                  val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
-                                   fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
-                  c3.copy(snapshotRecorder = Some(sr1))
+                  c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
                 case _ => c3}
-              val tFApp = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
+              val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
               val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
               QB(tFApp, c5)})
             )((tR, cR) => {
@@ -405,10 +400,6 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                        QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
-//                      val c3a = c3.snapshotRecorder match {
-//                        case Some(sr) =>
-//                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
-//                        case _ => c3}
 //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c.program)
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {

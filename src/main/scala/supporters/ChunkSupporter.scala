@@ -52,21 +52,17 @@ trait ChunkSupporter[ST <: Store[ST],
       consume(σ, h, id, tPerm, locacc, pve, c)((h2, optCh, c2, results) =>
         optCh match {
           case Some(ch) =>
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-              case _ => c2}
             ch match {
               case fc: DirectFieldChunk =>
                 val snap = fc.value.convert(sorts.Snap)
-                Q(h2, snap, fc :: Nil, c3)
+                Q(h2, snap, fc :: Nil, c2)
               case pc: DirectPredicateChunk =>
                 val h3 =
                   if (results.consumedCompletely)
                     pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
                   else
                     h2
-                Q(h3, pc.snap, pc :: Nil, c3)}
+                Q(h3, pc.snap, pc :: Nil, c2)}
           case None =>
             /* Not having consumed anything could mean that we are in an infeasible
              * branch, or that the permission amount to consume was zero.
@@ -100,17 +96,9 @@ trait ChunkSupporter[ST <: Store[ST],
 
     def produce(σ: S, h: H, ch: DirectChunk, c: C): (H, C) = {
       val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
-      val c1 = recordSnapshot(c, matchedChunk, ch)
+      val c1 = c//recordSnapshot(c, matchedChunk, ch)
 
       (h1, c1)
     }
-
-    private def recordSnapshot(c: C, matchedChunk: Option[DirectChunk], producedChunk: DirectChunk): C =
-      c.snapshotRecorder match {
-        case Some(sr) =>
-          val sr1 = sr.addChunkToSnap(matchedChunk.getOrElse(producedChunk).id, c.branchConditions, sr.currentSnap)
-          c.copy(snapshotRecorder = Some(sr1))
-        case _ => c
-      }
   }
 }
