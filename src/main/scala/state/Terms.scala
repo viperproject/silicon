@@ -341,6 +341,9 @@ object Exists extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Exists, qvars, tBody, triggers)
 
+  def apply(qvars: Iterable[Var], tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Exists, qvars.toSeq, tBody, triggers)
+
   override val toString = "QE"
 }
 

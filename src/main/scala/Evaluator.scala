@@ -160,14 +160,19 @@ trait DefaultEvaluator[ST <: Store[ST],
       case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
           eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-//          assert(qvarsInRcvr.length <= 1,
-//                 s"Expected receiver to contain at most one quantified variable, but found $qvarsInRcvr in $tRcvr")
-          quantifiedChunkSupporter.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, qvarsInRcvr, fa.field, pve, fa, c1)((t) => {
-//          val c2 = c1.snapshotRecorder match {
-//            case Some(sr) =>
-//              c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> t))))
-//            case _ => c1}
-          Q(t, c1)})})
+          quantifiedChunkSupporter.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, qvarsInRcvr, fa.field, pve, fa, c1)((value, optFreshFvf, ts) => {
+            assume(ts)
+            val c2 = c1.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, value)
+                            .recordQPTerms(c1.branchConditions, ts)
+                val sr2 = optFreshFvf match {
+                  case Some(fvf) => sr1.recordFvf(fvf)
+                  case None => sr1
+                }
+                c1.copy(snapshotRecorder = Some(sr2))
+              case _ => c1}
+            Q(value, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>

@@ -198,7 +198,8 @@ trait DefaultProducer[ST <: Store[ST],
           assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-          val ch = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond)
+          val (ch, inverseAxioms) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond)
+          assume(inverseAxioms)
           val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
 //          assume(Domain(field.name, snap) === tSet)
           val tDomainQuant = quantifiedChunkSupporter.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
@@ -213,7 +214,13 @@ trait DefaultProducer[ST <: Store[ST],
             if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)
           assume(ts)
-          Q(h + ch1, c1)}
+          val c2 = c1.snapshotRecorder match {
+            case Some(sr) =>
+              val sr1 = sr.recordQPTerms(c1.branchConditions, inverseAxioms)
+              c1.copy(snapshotRecorder = Some(sr1))
+            case None =>
+              c1}
+          Q(h + ch1, c2)}
 
  case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))

@@ -207,7 +207,8 @@ trait DefaultExecutor[ST <: Store[ST],
                 val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, FullPerm())
                 val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2){
+                // TODO: What to pass as receiverUsingInverseFunction to splitSingleLocation?
+                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2){
                   case Some((h1, ch, c3)) =>
                     val (fvf, fvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
                     assume(fvfDef)

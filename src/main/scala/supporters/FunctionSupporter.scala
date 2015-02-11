@@ -22,7 +22,9 @@ import state.terms.{utils => _, _}
 import state.terms.predef.`?s`
 
 case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
-                            private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map())
+                            private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
+                            freshFvfs: Set[Term] = Set(),
+                            qpTerms: Set[(Stack[Term], Iterable[Term])] = Set())
     extends Mergeable[SnapshotRecorder]
        with Logging {
 
@@ -64,6 +66,14 @@ case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[
     copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
   }
 
+  def recordQPTerms(guards: Stack[Term], ts: Iterable[Term]) = {
+    copy(qpTerms = qpTerms + (guards -> ts))
+  }
+
+  def recordFvf(fvf: Term) = {
+    copy(freshFvfs = freshFvfs + fvf)
+  }
+
   def merge(other: SnapshotRecorder): SnapshotRecorder = {
     val lts =
       other.locToSnaps.foldLeft(locToSnaps){case (accLts, (loc, guardsToSnaps)) =>
@@ -77,7 +87,10 @@ case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[
         accFts + (fapp -> guardsToSnaps1)
       }
 
-    copy(locToSnaps = lts, fappToSnaps = fts)
+    val fvfs = freshFvfs ++ other.freshFvfs
+    val qpts = qpTerms ++ other.qpTerms
+
+    copy(locToSnaps = lts, fappToSnaps = fts, freshFvfs = fvfs, qpTerms = qpts)
   }
 
   /** Tries to merge two snapshots. For two snapshots to be mergable, they have
@@ -169,12 +182,32 @@ class FunctionData(val programFunction: ast.Function,
   /* If the program function isn't well-formed, the following field might remain empty */
   private var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
   private var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
+  private var optQPTerms: Option[Set[(Stack[Term], Iterable[Term])]] = None
+  private var optFreshFvfs: Option[Set[Var]] = None
+
+  /* TODO: Should be lazy vals, not methods */
 
   def locToSnap = optLocToSnap.getOrElse(Map[ast.LocationAccess, Term]())
   def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
+  def freshFvfs = optFreshFvfs.getOrElse(Set[Var]())
+
+  def qpTerms: Iterable[Term] = optQPTerms match {
+    case Some(qpts) =>
+      qpts.map{case (guards, ts) => Implies(And(guards), And(ts))}
+    case None =>
+      Nil
+  }
+//    optQPTerms.getOrElse(Set[(Stack[Term], Iterable[Term])]())
 
   def locToSnap_=(lts: Map[ast.LocationAccess, Term]) { optLocToSnap = Some(lts) }
   def fappToSnap_=(fts: Map[ast.FuncApp, Term]) { optFappToSnap = Some(fts) }
+
+  def freshFvfs_=(fvfs: Set[Term]) = {
+    assert(fvfs.forall(_.isInstanceOf[Var]))
+    optFreshFvfs = Some(fvfs.asInstanceOf[Set[Var]])
+  }
+
+  def qpTerms_=(qpts: Set[(Stack[Term], Iterable[Term])]) { optQPTerms = Some(qpts) }
 
   lazy val translatedPre: Option[Term] = {
     val pre = utils.ast.BigAnd(programFunction.pres)
@@ -196,8 +229,15 @@ class FunctionData(val programFunction: ast.Function,
       //        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
       //                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
       //                           .distinct: _*)
-      optBody.map(body =>
-        Quantification(Forall, args, Implies(pre, And(fapp === body/*, nonNulls*/)), triggers))
+      optBody.map(translatedBody => {
+        val innermostBody = And(qpTerms ++ List(Implies(pre, And(fapp === translatedBody/*, nonNulls*/))))
+        val body =
+          if (freshFvfs.isEmpty) innermostBody
+          else Exists(freshFvfs, innermostBody, Nil) // TODO: Triggers?
+        Forall(
+          args,
+          body,
+          triggers)})
   }
 
   lazy val postAxiom: Option[Term] = translatedPre match {
@@ -339,6 +379,8 @@ trait FunctionSupporter[ST <: Store[ST],
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
         data.locToSnap = summaryRecorder.locToSnap
         data.fappToSnap = summaryRecorder.fappToSnap
+        data.qpTerms = summaryRecorder.qpTerms
+        data.freshFvfs = summaryRecorder.freshFvfs
       }
 
       result
@@ -388,6 +430,8 @@ trait FunctionSupporter[ST <: Store[ST],
 
         data.locToSnap = summaryRecorder.locToSnap
         data.fappToSnap = summaryRecorder.fappToSnap
+        data.qpTerms = summaryRecorder.qpTerms
+        data.freshFvfs = summaryRecorder.freshFvfs
       }
 
       /* Ignore internal errors; the assumption is that they have already been

@@ -164,7 +164,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                         assume(ts ++ inverseRcvrFuncAxioms)
                         val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                         val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                        quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
+                        val tRcvrUsingInv = tRcvr.replace(tQVar, quantifiedInverseRcvr)
+                        quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, tRcvrUsingInv, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
                           case Some((h3, ch, c4)) =>
                             Q(h3, ch.value, /*ch :: */Nil, c4)
                           case None =>
@@ -184,7 +185,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, tPerm)
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c2) {
+            // TODO: What to pass as receiverUsingInverseFunction to splitSingleLocation?
+            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c2) {
               case Some((h1, ch, c3)) =>
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
