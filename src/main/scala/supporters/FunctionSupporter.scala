@@ -179,6 +179,8 @@ class FunctionData(val programFunction: ast.Function,
     Quantification(Forall, args, limFApp === fapp, triggers)
   }
 
+  var welldefined = false
+
   /* If the program function isn't well-formed, the following field might remain empty */
   private var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
   private var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
@@ -384,6 +386,8 @@ trait FunctionSupporter[ST <: Store[ST],
         data.freshFvfs = summaryRecorder.freshFvfs
       }
 
+      data.welldefined = !result.isFatal
+
       result
     }
 
@@ -434,6 +438,8 @@ trait FunctionSupporter[ST <: Store[ST],
         data.qpTerms = summaryRecorder.qpTerms
         data.freshFvfs = summaryRecorder.freshFvfs
       }
+
+      data.welldefined &&= !result.isFatal
 
       /* Ignore internal errors; the assumption is that they have already been
        * recorded while checking well-framedness of function contracts.
@@ -582,7 +588,10 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         s.convert(sort)
       case None =>
         failed = true
-        logger.warn(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
+        if (data.welldefined) {
+          println(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
+          logger.warn(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
+        }
 
         Var("$unresolved", sort)
     }
