@@ -382,6 +382,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                           concreteReceiver: Term,
                           fraction: Term,
                           conditionalizedFraction: Term,
+                          assumeAxiomsOfFreshFVF: Boolean,
                           chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                           c: C)
                          (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
@@ -391,8 +392,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       split(σ, h, field, concreteReceiver, Predef.identity, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
-      assume(fvfDef.singletonValues)
-      assume(fvfDef.totalDomain)
+      if (assumeAxiomsOfFreshFVF) {
+        assume(fvfDef.singletonValues)
+        assume(fvfDef.totalDomain)
+      }
       Q(Some(h1, ch, c))
     } else
       Q(None)
@@ -511,7 +514,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       (value, True())
 
     case _ =>
-      val fvf = fresh("vs", sorts.FieldValueFunction(toSort(field.typ)))
+      val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
       val fvfDef = And(Lookup(field.name, fvf, rcvr) === value, Domain(field.name, fvf) === SingletonSet(rcvr))
 
       (fvf, fvfDef)

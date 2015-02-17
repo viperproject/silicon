@@ -186,7 +186,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, tPerm)
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c2) {
+            /* [17-02-2015] Setting the formal argument assumeAxiomsOfFreshFVF
+             * of splitSingleLocation to false only made two tests fail, both
+             * of which assert properties of functions. It would be interesting
+             * to see why (only) these two fail.
+             */
+            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), true, chunkOrderHeuristics, c2) {
               case Some((h1, ch, c3)) =>
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
