@@ -190,7 +190,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       case _ => false
     }.asInstanceOf[Option[QuantifiedChunk]]
 
-  def isQuantifiedFor(h: H, field: String) = getQuantifiedChunk(h, field).nonEmpty
+  def isQuantifiedFor(h: H, field: String) =
+    h.values.exists(ch => ch.isInstanceOf[QuantifiedChunk] && ch.name == field)
 
   /**
     * Computes the total permission amount held in the given heap for the given chunk identifier.
