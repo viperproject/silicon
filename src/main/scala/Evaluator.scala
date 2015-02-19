@@ -329,8 +329,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(tQuant, c1)
         }
 
-      /* Only evaluate the function application; relies on functions being axiomatised */
-      case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
+      case fapp @ ast.FuncApp(funcName, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 

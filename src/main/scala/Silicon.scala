@@ -413,6 +413,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     val argType = org.rogach.scallop.ArgType.LIST
   }
 
+  /* TODO: Validate arguments to showStatistics */
   val showStatistics = opt[(String, String)]("showStatistics",
     descr = (  "Show some statistics about the verification. Options are "
              + "'stdio' and 'file=<path\\to\\statistics.json>'"),
@@ -420,7 +421,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(statisticsSinkConverter)
-  /* TODO: Validate arguments to showStatistics */
 
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
@@ -525,14 +525,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
-
-  val disableFunctionAxiomatization = opt[Boolean]("disableFunctionAxiomatization",
-    descr = (  "Disable axiomatization of user-provided functions, and evaluate functions on "
-        + "the fly instead."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
 
   validateOpt(timeout){
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
