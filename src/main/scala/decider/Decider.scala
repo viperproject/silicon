@@ -8,7 +8,6 @@ package viper
 package silicon
 package decider
 
-import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
@@ -61,13 +60,6 @@ class DefaultDecider[ST <: Store[ST],
   @inline
   def π = pathConditions.values
 
-  private lazy val z3Exe: String = {
-    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
-
-    config.z3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
-                               .getOrElse("z3" + (if (isWindows) ".exe" else "")))
-  }
-
   def init(pathConditionsFactory: PathConditionsFactory[PC],
            heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
@@ -93,21 +85,21 @@ class DefaultDecider[ST <: Store[ST],
 
   private def createProver(): Option[DependencyNotFoundError] = {
     try {
-      z3 = new Z3ProverStdIO(z3Exe, config.effectiveZ3LogFile, bookkeeper)
+      z3 = new Z3ProverStdIO(config, bookkeeper)
       z3.start() /* Cannot query Z3 version otherwise */
     } catch {
       case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
         state = State.Erroneous
         val message = (
-          s"Could not execute Z3 at $z3Exe. Either place z3 in the path, or set "
+          s"Could not execute Z3 at ${z3.z3Path}. Either place z3 in the path, or set "
             + s"the environment variable ${Silicon.z3ExeEnvironmentVariable}, or run "
-            + s"Silicon with option --${config.z3Exe.humanName}")
+            + s"Silicon with option --z3Exe")
 
         return Some(DependencyNotFoundError(message))
     }
 
     val z3Version = z3.z3Version()
-    logger.info(s"Using Z3 $z3Version located at $z3Exe")
+    logger.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
 
     if (z3Version != Silicon.expectedZ3Version)
       logger.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")

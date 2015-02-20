@@ -27,4 +27,5 @@ trait Prover extends StatefulComponent {
   def sanitizeSymbol(symbol: String): String
   def declare(decl: Decl)
   def statistics(): Map[String, String]
+  def proverRunStarts()
 }
