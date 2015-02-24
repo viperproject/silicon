@@ -136,16 +136,23 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
     readSuccess()
   }
 
-  def assert(goal: Term) = assert(convert(goal))
+  def assert(goal: Term, timeout: Int = 0) = assert(convert(goal), timeout)
 
-  def assert(goal: String) = {
+  def assert(goal: String, timeout: Int) = {
     bookkeeper.assertionCounter += 1
 
     push()
     writeLine("(assert (not " + goal + "))")
     readSuccess()
     val startTime = System.currentTimeMillis()
+
+//    if (timeout == 0)
+    writeLine(s"(set-option :timeout $timeout)")
+    readSuccess()
     writeLine("(check-sat)")
+//    else
+//      writeLine(s"(check-sat-using (using-params smt :soft_timeout $timeout))")
+
     val r = readUnsat()
     val endTime = System.currentTimeMillis()
     logComment(s"${common.format.formatMillisReadably(endTime - startTime)}")
