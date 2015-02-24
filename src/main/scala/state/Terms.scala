@@ -308,7 +308,7 @@ case class False() extends BooleanLiteral {
 
 sealed trait Quantifier
 
-object Forall extends Quantifier {
+case object Forall extends Quantifier {
   def apply(qvar: Var, tBody: Term, trigger: Trigger) =
     Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil)
 
@@ -329,6 +329,11 @@ object Forall extends Quantifier {
       TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
 
     Quantification(Forall, qvars ++ extraVars, tBody, triggers)
+  }
+
+  def unapply(q: Quantification) = q match {
+    case Quantification(Forall, qvars, tBody, triggers) => Some((qvars, tBody, triggers))
+    case _ => None
   }
 
   override val toString = "QA"
