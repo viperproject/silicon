@@ -390,7 +390,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                          : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, concreteReceiver, Predef.identity, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
+      split(σ, h, field, concreteReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
       if (assumeAxiomsOfFreshFVF) {
@@ -407,16 +407,15 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                      field: ast.Field,
                      receiverWithExplicitQVar: Term,
                      qvarInReceiver: Var,
-                     inverseOfImplicitQVar: Term,
                      fraction: Term,
-                     conditionalizedFraction: Term,
+                     conditionalizedFractionWithoutExplicitQVar: Term,
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, receiverWithExplicitQVar, t => t.replace(qvarInReceiver, inverseOfImplicitQVar), fraction, conditionalizedFraction, chunkOrderHeuristic, c)
+      split(σ, h, field, receiverWithExplicitQVar, fraction, conditionalizedFractionWithoutExplicitQVar, chunkOrderHeuristic, c)
 
     if (success) {
       assume(fvfDef.quantifiedValues(qvarInReceiver :: Nil))
@@ -429,15 +428,20 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private def split(σ: S,
                     h: H,
                     field: ast.Field,
-                    receiver: Term, /* Either a single, concrete receiver, or one with an explicitly quantified variable */
-                    replaceExplicitQVarWithInverseOfImplicitQVar: Term => Term,
+                    receiver: Term,
+                      /* Either a single, constant receiver, or one with an
+                       * explicitly quantified variable
+                       */
                     fraction: Term,
-                    conditionalizedFraction: Term,
+                    conditionalizedFractionWithoutExplicitQVar: Term,
+                      /* May not mention any explicitly quantified variable,
+                       * occurrences of those must have been replaced with
+                       * inverse functions inv(`?r`).
+                       */
                     chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                     c: C)
                    : (H, QuantifiedChunk, FvfDef, Boolean) = {
 
-    val conditionalizedFractionWithInverseOfImplicitQVar = replaceExplicitQVarWithInverseOfImplicitQVar(conditionalizedFraction)
     var quantifiedChunks = Seq[QuantifiedChunk]()
     var otherChunks = Seq[Chunk]()
 
@@ -452,7 +456,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     val candidates = chunkOrderHeuristic(quantifiedChunks)
     var residue: List[Chunk] = Nil
-    var permsToTake = conditionalizedFractionWithInverseOfImplicitQVar
+    var permsToTake = conditionalizedFractionWithoutExplicitQVar
     var success = false
 
     /* Using receiverUsingInverseFunction instead of receiver yields axioms
@@ -487,7 +491,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         if (constrainPermissions) {
           val constrainPermissionQuantifier =
             Forall(`?r`,
-                   Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFractionWithInverseOfImplicitQVar, ch.perm)),
+                   Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFractionWithoutExplicitQVar, ch.perm)),
                    Nil: Seq[Trigger]).autoTrigger
 
           assume(constrainPermissionQuantifier)
@@ -501,8 +505,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       }
     }
 
+    success = success || check(σ, permsToTake.replace(`?r`, receiver) === NoPerm())
+
     val hResidue = H(residue ++ otherChunks)
-    val chunkSplittedOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithInverseOfImplicitQVar)
+    val chunkSplittedOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithoutExplicitQVar)
 
     (hResidue, chunkSplittedOf, fvfDef, success)
   }

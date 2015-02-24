@@ -161,12 +161,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           quantifiedChunkSupporter.getFreshInverseFunction(tRcvr, tCond, tQVar)
                         val inverseOfImplicitQVar = inverseFunc(`?r`)
                         val condPerms =
-                          Ite(tCond, tPerm, NoPerm())
-//                          quantifiedChunkSupporter.conditionalPermissions(tQVar, inverseOfImplicitQVar, tCond, tPerm)
+                          quantifiedChunkSupporter.conditionalPermissions(tQVar, inverseOfImplicitQVar, tCond, tPerm)
                         assume(ts ++ inverseAxioms)
                         val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                         val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                        quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, inverseOfImplicitQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
+                        quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
                           case Some((h3, ch, c4)) =>
                             Q(h3, ch.value, /*ch :: */Nil, c4)
                           case None =>
