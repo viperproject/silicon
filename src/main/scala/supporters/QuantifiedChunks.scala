@@ -497,11 +497,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           assume(constrainPermissionQuantifier)
 
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
-        } else if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger]))) {
+        } else if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger]), config.splitTimeout())) {
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
         }
 
-        success = check(σ, permsToTake.replace(`?r`, receiver) === NoPerm())
+        success = check(σ, permsToTake.replace(`?r`, receiver) === NoPerm(), config.splitTimeout())
       }
     }
 

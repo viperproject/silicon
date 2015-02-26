@@ -526,7 +526,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val disableFunctionAxiomatization = opt[Boolean]("disableFunctionAxiomatization",
     descr = (  "Disable axiomatization of user-provided functions, and evaluate functions on "
-        + "the fly instead."),
+             + "the fly instead."),
     default = Some(false),
     noshort = true,
     hidden = Silicon.hideInternalOptions
@@ -535,6 +535,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val introduceFreshSymbolsForTakenQuantifiedPermissions = opt[Boolean]("shorterQPTerms",
     descr = "Shorten terms arising from quantified permissions by introducing fresh symbols",
     default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val splitTimeout = opt[Int]("qpSplitTimeout",
+    descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "
+             + "holds no further permissions, and 2) checking if sufficiently many "
+             + "permissions have already been split off."),
+    default = Some(500),
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )
