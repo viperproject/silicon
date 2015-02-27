@@ -9,10 +9,13 @@ package silicon
 package common
 
 import java.io.{
-  File => JFile,
-  PrintWriter => JPrintWriter,
-  BufferedWriter => JBufferedWriter,
-  FileWriter => JFileWriter}
+    File => JFile,
+    PrintWriter => JPrintWriter,
+    BufferedWriter => JBufferedWriter,
+    FileWriter => JFileWriter}
+import java.nio.file.{Files, Paths}
+
+import org.apache.commons.io.FilenameUtils
 
 package object io {
   /**
@@ -40,5 +43,31 @@ package object io {
     if (pf != null) pf.mkdirs()
 
     new JPrintWriter(new JBufferedWriter(new JFileWriter(file, append)), autoFlush)
+  }
+
+  def makeFilenameUnique(file: JFile,
+                         targetDirectory: Option[JFile] = None,
+                         newExtension: Option[String] = None)
+                        : JFile = {
+
+    targetDirectory.map(d => assert(d.isDirectory, s"Expected a directory, but found $d"))
+
+    val fileStr = file.toString
+    val directory = targetDirectory.getOrElse(FilenameUtils.getFullPath(fileStr)).toString
+    val baseName = FilenameUtils.getBaseName(fileStr)
+    val extension = newExtension.getOrElse(FilenameUtils.getExtension(fileStr))
+
+    var counter: Long = 0
+    var uniqueBaseName = baseName
+    var uniqueFile = Paths.get(directory, s"$uniqueBaseName.$extension")
+
+    /* Note: Theoretically, this loop might not terminate */
+    while (Files.exists(uniqueFile)) {
+      counter += 1
+      uniqueBaseName = baseName + counter
+      uniqueFile = Paths.get(directory, s"$uniqueBaseName.$extension")
+    }
+
+    uniqueFile.toFile
   }
 }

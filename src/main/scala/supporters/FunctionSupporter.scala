@@ -325,16 +325,12 @@ trait FunctionSupporter[ST <: Store[ST],
 
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
-      if (!config.disableFunctionAxiomatization()) {
-        decider.prover.assume(data.limitedAxiom)
-        data.postAxiom map decider.prover.assume
-      }
+      decider.prover.assume(data.limitedAxiom)
+      data.postAxiom map decider.prover.assume
 
       val result = verifyAndAxiomatize(function, c)
 
-      if (!config.disableFunctionAxiomatization()) {
-        data.axiom map decider.prover.assume
-      }
+      data.axiom map decider.prover.assume
 
       resultSpecsWellDefined :: result :: Nil
     }

@@ -8,24 +8,28 @@ package viper
 package silicon
 package decider
 
-import java.io.{PrintWriter, BufferedWriter, File, InputStreamReader, BufferedReader, OutputStreamWriter}
+import java.io.{PrintWriter, BufferedWriter, InputStreamReader, BufferedReader, OutputStreamWriter}
+import java.nio.file.{Path, Paths}
 import com.weiglewilczek.slf4s.Logging
+import org.apache.commons.io.FileUtils
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
 import reporting.{Bookkeeper, Z3InteractionFailed}
 
 /* TODO: Pass a logger, don't open an own file to log to. */
-class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) extends Prover with Logging {
+class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with Logging {
   val termConverter = new TermToSMTLib2Converter()
   import termConverter._
 
   private var scopeCounter = 0
   private val scopeLabels = new MMap[String, MStack[Int]]()
   private var isLoggingCommentsEnabled: Boolean = true
-  private var logfile: PrintWriter = _
+  private var logFile: PrintWriter = _
   private var z3: Process = _
   private var input: BufferedReader = _
   private var output: PrintWriter = _
+  /* private */ var z3Path: Path = _
+  private var logPath: Path = _
 
   def z3Version() = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -43,19 +47,23 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   }
 
   def start() {
-    logfile =
-      if (logpath != null) silver.utility.Common.PrintWriter(new File(logpath))
-      else null
-
+    logPath = config.z3LogFile
+    logFile = silver.utility.Common.PrintWriter(logPath.toFile)
+    z3Path = Paths.get(config.z3Exe)
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
   }
 
-  private def createZ3Instance() = {
-    logger.info(s"Starting Z3 at $z3path")
+  /* Note: This is just a hack to get the input file name to the prover */
+  def proverRunStarts() {
+    logComment(s"Input file is ${config.inputFile.getOrElse("<unknown>")}")
+  }
 
-    val builder = new ProcessBuilder(z3path, "-smt2", "-in")
+  private def createZ3Instance() = {
+    logger.info(s"Starting Z3 at $z3Path")
+
+    val builder = new ProcessBuilder(z3Path.toFile.getPath, "-smt2", "-in")
     builder.redirectErrorStream(true)
 
     val process = builder.start()
@@ -79,15 +87,27 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
 
   def stop() {
     this.synchronized {
-      logfile.flush()
+      logFile.flush()
       output.flush()
 
-      logfile.close()
+      logFile.close()
       input.close()
       output.close()
 
       z3.destroy()
 //      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
+
+      val currentLogPath = config.z3LogFile
+      if (logPath != currentLogPath) {
+        /* This is a hack to make it possible to name the SMTLIB logfile after
+         * the input file that was verified. Currently, Silicon starts Z3 before
+         * the input file name is known, which is partially due to our crappy
+         * and complicated way of how command-line arguments are parsed and
+         * how Silver programs are passed to verifiers.
+         */
+
+        FileUtils.moveFile(logPath.toFile, currentLogPath.toFile)
+      }
     }
   }
 
@@ -281,7 +301,7 @@ class Z3ProverStdIO(z3path: String, logpath: String, bookkeeper: Bookkeeper) ext
   }
 
   private def log(str: String) {
-    if (logfile != null) logfile.println(str)
+    logFile.println(str)
   }
 
   private def writeLine(out: String) = {
