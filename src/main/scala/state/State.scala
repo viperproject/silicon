@@ -13,7 +13,7 @@ import silver.ast
 import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor,
     StateFactory}
 import interfaces.decider.Decider
-import terms.{Term, True, Implies, And, PermPlus}
+import terms.{Term, True, Implies, And, PermPlus, PermLess}
 import terms.perms.{IsAsPermissive, IsPositive}
 import reporting.Bookkeeper
 import collection.mutable
@@ -304,7 +304,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
     val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
       if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-          && !decider.check(σ, IsAsPermissive(distinctnessLowerBound, PermPlus(c1.perm, c2.perm))))
+          && decider.check(σ, PermLess(distinctnessLowerBound, PermPlus(c1.perm, c2.perm))))
 
         c1.rcvr !== c2.rcvr
       else
