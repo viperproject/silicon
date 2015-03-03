@@ -682,6 +682,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             (c2: C) =>
               Success())
 
+        /* See comment in DefaultDecider.tryOrFail */
         originalChunks match {
           case Some(chunks) => σ.h.replace(chunks)
           case None => /* Nothing to do here */

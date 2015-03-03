@@ -256,6 +256,12 @@ class DefaultDecider[ST <: Store[ST],
        * because now x != y but the heap only contains acc(x.f, 2 * k)
        * (or acc(y.f, 2 * k)).
        */
+      /* Instead of doing what's currently done, the DefaultBrancher could also
+       * be changed s.t. it resets the chunks after backtracking from the first
+       * branch. The disadvantage of that solution, however, would be that the
+       * DefaultBrancher would essentially have to clean up an operation that
+       * is conceptually unrelated.
+       */
       σ.h.replace(chunks)
     }
 
