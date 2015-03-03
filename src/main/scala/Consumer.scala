@@ -217,16 +217,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
        * not in the partially consumed heap (h).
        */
       case _ =>
-        decider.tryOrFail[(H, Term, List[DirectChunk], C)](σ, c)((σ1, QS, QF) => {
-          eval(σ1, φ, pve, c)((t, c) =>
+        decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
+          eval(σ1, φ, pve, c1)((t, c2) =>
             decider.assert(σ1, t) {
               case true =>
                 assume(t)
-                QS((h, Unit, Nil, c))
+                QS((h, Unit, Nil), c2)
               case false =>
                 QF(Failure[ST, H, S](pve dueTo AssertionFalse(φ)))
             })
-        })(Q.tupled)
+        })((res, c1) => Q(res._1, res._2, res._3, c1))
 /* Consume pure expression w/o trying heuristics in case of failure */
 /*
         eval(σ, φ, pve, c)((t, c) =>

@@ -15,7 +15,7 @@ import silver.verifier.reasons.InsufficientPermission
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
-import state.{DirectChunk, SymbolConvert}
+import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
@@ -24,10 +24,11 @@ import silicon.utils.notNothing._
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
-                     S <: State[ST, H, S],
-                     C <: Context[C]]
-    extends Decider[ST, H, PC, S, C]
+                     S <: State[ST, H, S]]
+    extends Decider[ST, H, PC, S, DefaultContext]
        with Logging {
+
+  private type C = DefaultContext
 
   private var z3: Z3ProverStdIO = _
 
@@ -203,9 +204,9 @@ class DefaultDecider[ST <: Store[ST],
   def checkSmoke() = prover.check() == Unsat
 
   def tryOrFail[R](σ: S, c: C)
-                  (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
+                  (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
-                  (Q: R => VerificationResult)
+                  (Q: (R, C) => VerificationResult)
                   : VerificationResult = {
 
     val chunks = σ.h.values
@@ -214,7 +215,8 @@ class DefaultDecider[ST <: Store[ST],
     var r =
       block(
         σ,
-        r => Q(r),
+        c,
+        (r, c1) => Q(r, c1),
         f => {
           Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
           failure = Some(f)
@@ -224,12 +226,9 @@ class DefaultDecider[ST <: Store[ST],
       if (failure.isEmpty)
         r
       else {
-//        println("BEFORE COMPRESSION")
-//        println(s"  σ.h = ${σ.h}")
         heapCompressor.compress(σ, σ.h, c)
-//        println("AFTER COMPRESSION")
-//        println(s"  σ.h = ${σ.h}")
-        block(σ, r => Q(r), f => f)
+        val c1 = c.copy(retrying = true)
+        block(σ, c1, (r, c2) => Q(r, c2), f => f)
       }
 
     if (failure.nonEmpty) {
@@ -258,6 +257,12 @@ class DefaultDecider[ST <: Store[ST],
        * that is passed to the else-branch, which then might not verify,
        * because now x != y but the heap only contains acc(x.f, 2 * k)
        * (or acc(y.f, 2 * k)).
+       */
+      /* Instead of doing what's currently done, the DefaultBrancher could also
+       * be changed s.t. it resets the chunks after backtracking from the first
+       * branch. The disadvantage of that solution, however, would be that the
+       * DefaultBrancher would essentially have to clean up an operation that
+       * is conceptually unrelated.
        */
       σ.h.replace(chunks)
     }
@@ -313,13 +318,13 @@ class DefaultDecider[ST <: Store[ST],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)
-               (Q: CH => VerificationResult)
+               (Q: (CH, C) => VerificationResult)
                : VerificationResult = {
 
-    tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
-      getChunk[CH](σ1, σ1.h, id, c) match {
+    tryOrFail[CH](σ \ h, c)((σ1, c1, QS, QF) =>
+      getChunk[CH](σ1, σ1.h, id, c1) match {
       case Some(chunk) =>
-        QS(chunk)
+        QS(chunk, c1)
 
       case None =>
         if (checkSmoke())
@@ -337,11 +342,11 @@ class DefaultDecider[ST <: Store[ST],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)
-               (Q: CH => VerificationResult)
+               (Q: (CH, C) => VerificationResult)
                : VerificationResult =
 
-    tryOrFail[CH](σ \ h, c)((σ1, QS, QF) =>
-      withChunk[CH](σ1, σ1.h, id, locacc, pve, c)(ch => {
+    tryOrFail[CH](σ \ h, c)((σ1, c1, QS, QF) =>
+      withChunk[CH](σ1, σ1.h, id, locacc, pve, c1)((ch, c2) => {
         val permCheck =  optPerms match {
           case Some(p) => IsAsPermissive(ch.perm, p)
           case None => ch.perm !== NoPerm()
@@ -355,7 +360,7 @@ class DefaultDecider[ST <: Store[ST],
         assert(σ1, permCheck) {
           case true =>
             assume(permCheck)
-            QS(ch)
+            QS(ch, c2)
           case false =>
             QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
     )(Q)

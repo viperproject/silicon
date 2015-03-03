@@ -178,7 +178,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     */
   private def createVerifier(): V = {
     val bookkeeper = new Bookkeeper(config)
-    val decider = new DefaultDecider[ST, H, PC, S, C]()
+    val decider = new DefaultDecider[ST, H, PC, S]()
 
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
     val pathConditionFactory = new DefaultPathConditionsFactory()

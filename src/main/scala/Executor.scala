@@ -222,8 +222,8 @@ trait DefaultExecutor[ST <: Store[ST],
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, Some(FullPerm()), fa, pve, c2)(fc =>
-                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
+                decider.withChunk[DirectChunk](σ, σ.h, id, Some(FullPerm()), fa, pve, c2)((fc, c3) =>
+                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c3))})
             case false =>
               Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
 
@@ -274,12 +274,12 @@ trait DefaultExecutor[ST <: Store[ST],
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
-            decider.tryOrFail[(S, C)](σ, c)((σ1, QS, QF) => {
-            if (decider.checkSmoke())
-                QS(σ1, c)
-            else
-                QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
-            })(_ => Success())
+            decider.tryOrFail[S](σ, c)((σ1, c1, QS, QF) => {
+              if (decider.checkSmoke())
+                  QS(σ1, c1)
+              else
+                  QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
+              })((_, _) => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
