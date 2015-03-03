@@ -18,6 +18,7 @@ case class DefaultContext(program: ast.Program,
                           branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
+                          retrying: Boolean = false,
 
                           additionalTriggers: List[Term] = Nil,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
@@ -52,11 +53,12 @@ case class DefaultContext(program: ast.Program,
    */
 
   def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
+    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1, retrying1,
                         additionalTriggers1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1) =>
 
       other match {
-        case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`, additionalTriggers2,
+        case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`,
+                            retrying2, additionalTriggers2,
                             snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
@@ -64,7 +66,8 @@ case class DefaultContext(program: ast.Program,
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
           val snapshotRecorder3 = DefaultContext.merge(snapshotRecorder1, snapshotRecorder2)
 
-          copy(additionalTriggers = additionalTriggers3,
+          copy(retrying = retrying1 || retrying2,
+               additionalTriggers = additionalTriggers3,
                snapshotRecorder = snapshotRecorder3,
                possibleTriggers = possibleTriggers3)
 

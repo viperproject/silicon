@@ -82,15 +82,15 @@ trait ChunkSupporter[ST <: Store[ST],
                        : VerificationResult = {
 
       if (utils.consumeExactRead(pLoss, c)) {
-        decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
+        decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
           if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
-            Q(h - ch, Some(ch), c, PermissionsConsumptionResult(true))}
+            Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}
           else
-            Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
+            Q(h - ch + (ch - pLoss), Some(ch), c1, PermissionsConsumptionResult(false))})
       } else {
-        decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
+        decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)((ch, c1) => {
           decider.assume(PermLess(pLoss, ch.perm))
-          Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
+          Q(h - ch + (ch - pLoss), Some(ch), c1, PermissionsConsumptionResult(false))})
       }
     }
 

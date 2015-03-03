@@ -15,12 +15,12 @@ import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor,
+    Chunk, ChunkIdentifier}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk}
 import state.terms._
-import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
 import supporters.{Joiner, Brancher, PredicateSupporter}
@@ -50,6 +50,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
   def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -157,12 +158,12 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
-          decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)(ch => {
-            val c2 = c1.snapshotRecorder match {
+          decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)((ch, c2) => {
+            val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
-                c1.copy(snapshotRecorder = Some(sr.recordSnapshot(fa, c1.branchConditions, ch.value)))
-              case _ => c1}
-            Q(ch.value, c2)}))
+                c2.copy(snapshotRecorder = Some(sr.recordSnapshot(fa, c2.branchConditions, ch.value)))
+              case _ => c2}
+            Q(ch.value, c3)}))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -663,18 +664,28 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.pushScope()
 
         val guard = t0Transformer(t0)
+        var originalChunks: Option[Iterable[Chunk]] = None
         val r =
           branch(σ, guard, c1,
-            (c2: C) =>
+            (c2: C) => {
+              if (c2.retrying) {
+                originalChunks = Some(σ.h.values)
+                heapCompressor.compress(σ, σ.h, c2)
+              }
               eval(σ, e1, pve, c2)((t1, c3) => {
                 assert(optT1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
                 optT1 = Some(t1)
                 πAux = decider.π -- (πPre + guard)
                   /* Removing guard from πAux is crucial, it is not part of the aux. terms */
                 optInnerC = Some(c3)
-                Success()}),
+                Success()})},
             (c2: C) =>
               Success())
+
+        originalChunks match {
+          case Some(chunks) => σ.h.replace(chunks)
+          case None => /* Nothing to do here */
+        }
 
         decider.popScope()
 
