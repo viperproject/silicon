@@ -159,18 +159,21 @@ trait DefaultEvaluator[ST <: Store[ST],
           })
 
       case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
-          eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-          quantifiedChunkSupporter.withPotentiallyQuantifiedValue(σ, σ.h, tRcvr, qvarsInRcvr, fa.field, pve, fa, c1)((value, optFreshFvf, ts) => {
-            assume(ts)
+          quantifiedChunkSupporter.withValue(σ, σ.h, tRcvr, fa.field, pve, fa, c1)((value, fvfDef) => {
+            val fvfLookups =
+              if (qvarsInRcvr.nonEmpty) fvfDef.quantifiedValues(qvarsInRcvr)
+              else fvfDef.singletonValues
+            val fvfDomain = fvfDef.totalDomain
+            assume(fvfDomain +: fvfLookups)
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.recordSnapshot(fa, c1.branchConditions, value)
-                            .recordQPTerms(c1.branchConditions, ts)
-                val sr2 = optFreshFvf match {
-                  case Some(fvf) => sr1.recordFvf(fvf)
-                  case None => sr1
-                }
+                            .recordQPTerms(qvarsInRcvr, c1.branchConditions, fvfDomain +: fvfLookups)
+                val sr2 =
+                  if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
+                  else sr1
                 c1.copy(snapshotRecorder = Some(sr2))
               case _ => c1}
             Q(value, c2)})})

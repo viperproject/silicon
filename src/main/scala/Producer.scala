@@ -216,7 +216,7 @@ trait DefaultProducer[ST <: Store[ST],
           assume(ts)
           val c2 = c1.snapshotRecorder match {
             case Some(sr) =>
-              val sr1 = sr.recordQPTerms(c1.branchConditions, inverseAxioms)
+              val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, inverseAxioms)
               c1.copy(snapshotRecorder = Some(sr1))
             case None =>
               c1}

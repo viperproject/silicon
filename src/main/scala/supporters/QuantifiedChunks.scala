@@ -204,48 +204,17 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     BigPermSum(perms, Predef.identity)
   }
 
-  def withPotentiallyQuantifiedValue(σ: S,
-                                     h: H,
-                                     rcvr: Term,
-                                     qvarsInRcvr: Seq[Var],
-                                     field: ast.Field,
-                                     pve: PartialVerificationError,
-                                     locacc: ast.LocationAccess,
-                                     c: C)
-                                    (Q: (Lookup, Option[Term], Seq[Term]) => VerificationResult)
-                                    : VerificationResult = {
-
-    withValue(σ, h, rcvr, field, pve, locacc, c)((t, fvfDef) => {
-      val fvfLookups =
-        if (qvarsInRcvr.nonEmpty)
-          fvfDef.quantifiedValues(qvarsInRcvr)
-        else
-          fvfDef.singletonValues
-
-      val fvfDomain =
-        fvfDef.totalDomain
-
-      Q(t, if (fvfDef.freshFvf) Some(fvfDef.fvf) else None, fvfDomain +: fvfLookups)})
-  }
-
-  /* TODO: Is conceptually very close to split(...) since the latter also computes a
-   *       field value function over all chunks for a given field.
-   *       It would be great to merge the code, while still being able to just compute
-   *       a value without manipulating the visited heap chunks.
-   *       Also, withValue always has to iterate over all chunks (unlike split).
-   */
-
   private val withValueCache = MMap[(Term, Set[QuantifiedChunk]), (Lookup, FvfDef)]()
 
-  private def withValue(σ: S,
-                        h: H,
-                        rcvr: Term,
-                        field: ast.Field,
-                        pve: PartialVerificationError,
-                        locacc: ast.LocationAccess,
-                        c: C)
-                       (Q: (Lookup, FvfDef) => VerificationResult)
-                       : VerificationResult = {
+  def withValue(σ: S,
+                h: H,
+                rcvr: Term,
+                field: ast.Field,
+                pve: PartialVerificationError,
+                locacc: ast.LocationAccess,
+                c: C)
+               (Q: (Lookup, FvfDef) => VerificationResult)
+               : VerificationResult = {
 
     assert(σ, rcvr !== Null()) {
       case false =>

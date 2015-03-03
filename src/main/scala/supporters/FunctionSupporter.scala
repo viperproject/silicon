@@ -24,7 +24,7 @@ import state.terms.predef.`?s`
 case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
                             private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
                             freshFvfs: Set[Term] = Set(),
-                            qpTerms: Set[(Stack[Term], Iterable[Term])] = Set())
+                            qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
     extends Mergeable[SnapshotRecorder]
        with Logging {
 
@@ -66,8 +66,8 @@ case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[
     copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
   }
 
-  def recordQPTerms(guards: Stack[Term], ts: Iterable[Term]) = {
-    copy(qpTerms = qpTerms + (guards -> ts))
+  def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]) = {
+    copy(qpTerms = qpTerms + ((qvars, guards, ts)))
   }
 
   def recordFvf(fvf: Term) = {
@@ -184,7 +184,7 @@ class FunctionData(val programFunction: ast.Function,
   /* If the program function isn't well-formed, the following field might remain empty */
   private var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
   private var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
-  private var optQPTerms: Option[Set[(Stack[Term], Iterable[Term])]] = None
+  private var optQPTerms: Option[Set[(Seq[Var], Stack[Term], Iterable[Term])]] = None
   private var optFreshFvfs: Option[Set[Var]] = None
 
   /* TODO: Should be lazy vals, not methods */
@@ -195,11 +195,16 @@ class FunctionData(val programFunction: ast.Function,
 
   def qpTerms: Iterable[Term] = optQPTerms match {
     case Some(qpts) =>
-      qpts.map{case (guards, ts) => Implies(And(guards), And(ts))}
+      qpts.map { case (qvars, guards, ts) =>
+        val body = Implies(And(guards), And(ts))
+
+        if (qvars.isEmpty) body
+        else Forall(qvars, body, Seq[Trigger]()).autoTrigger }
+              /* TODO: Could use TriggerGenerator.generateFirstTriggers here */
+
     case None =>
       Nil
   }
-//    optQPTerms.getOrElse(Set[(Stack[Term], Iterable[Term])]())
 
   def locToSnap_=(lts: Map[ast.LocationAccess, Term]) { optLocToSnap = Some(lts) }
   def fappToSnap_=(fts: Map[ast.FuncApp, Term]) { optFappToSnap = Some(fts) }
@@ -209,7 +214,7 @@ class FunctionData(val programFunction: ast.Function,
     optFreshFvfs = Some(fvfs.asInstanceOf[Set[Var]])
   }
 
-  def qpTerms_=(qpts: Set[(Stack[Term], Iterable[Term])]) { optQPTerms = Some(qpts) }
+  def qpTerms_=(qpts: Set[(Seq[Var], Stack[Term], Iterable[Term])]) { optQPTerms = Some(qpts) }
 
   lazy val translatedPre: Option[Term] = {
     val pre = utils.ast.BigAnd(programFunction.pres)
