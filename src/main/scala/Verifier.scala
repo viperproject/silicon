@@ -288,6 +288,7 @@ class DefaultVerifier[ST <: Store[ST],
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    fieldValueFunctionsEmitter, quantifiedChunkSupporter,
     decider, ev)
 
   /* Lifetime */
