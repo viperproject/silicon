@@ -15,14 +15,14 @@ import org.apache.commons.io.FileUtils
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
 import reporting.{Bookkeeper, Z3InteractionFailed}
+import silicon.utils.Counter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with Logging {
   val termConverter = new TermToSMTLib2Converter()
   import termConverter._
 
-  private var scopeCounter = 0
-  private val scopeLabels = new MMap[String, MStack[Int]]()
+  private var pushPopScopeDepth = 0
   private var isLoggingCommentsEnabled: Boolean = true
   private var logFile: PrintWriter = _
   private var z3: Process = _
@@ -30,6 +30,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
   private var logPath: Path = _
+  private var counter: Counter = _
 
   def z3Version() = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -47,6 +48,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   }
 
   def start() {
+    counter = new Counter()
     logPath = config.z3LogFile
     logFile = silver.utility.Common.PrintWriter(logPath.toFile)
     z3Path = Paths.get(config.z3Exe)
@@ -79,9 +81,8 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
   def reset() {
     stop()
-    scopeLabels.clear()
-    scopeCounter = 0
     counter.reset()
+    pushPopScopeDepth = 0
     start()
   }
 
@@ -111,33 +112,16 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     }
   }
 
-  def  push(label: String) {
-    val stack =
-      scopeLabels.getOrElse(
-        label,
-        {val s = new MStack[Int](); scopeLabels(label) = s; s})
-
-    stack.push(scopeCounter)
-    push()
-  }
-
-  def  pop(label: String) {
-    val stack = scopeLabels(label)
-    val n = scopeCounter - stack.head
-    stack.pop()
-    pop(n)
-  }
-
   def push(n: Int = 1) {
-    scopeCounter += n
-    val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + scopeCounter
+    pushPopScopeDepth += n
+    val cmd = (if (n == 1) "(push)" else "(push " + n + ")") + " ; " + pushPopScopeDepth
     writeLine(cmd)
     readSuccess()
   }
 
   def pop(n: Int = 1) {
-    val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + scopeCounter
-    scopeCounter -= n
+    val cmd = (if (n == 1) "(pop)" else "(pop " + n + ")") + " ; " + pushPopScopeDepth
+    pushPopScopeDepth -= n
     writeLine(cmd)
     readSuccess()
   }
@@ -307,18 +291,5 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   private def writeLine(out: String) = {
     log(out)
     output.println(out)
-  }
-
-  private object counter {
-    private var value = 0
-
-    def next() = {
-      value = value + 1
-      value
-    }
-
-    def reset() {
-      value = 0
-    }
   }
 }
