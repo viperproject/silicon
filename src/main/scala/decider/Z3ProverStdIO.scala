@@ -268,7 +268,10 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
       result = input.readLine()
       if (result.toLowerCase != "success") logComment(result)
 
-      repeat = result.startsWith("WARNING")
+      val warning = result.startsWith("WARNING")
+      if (warning) logger.info(s"Z3: $result")
+
+      repeat = warning
     }
 
     result
