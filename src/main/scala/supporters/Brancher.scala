@@ -8,12 +8,14 @@ package viper
 package silicon
 package supporters
 
+import silver.components.StatefulComponent
 import interfaces.{Success, Unreachable, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.state.{PathConditions, Context, State, Heap, Store}
 import reporting.Bookkeeper
 import state.terms.{Ite, True, Not, And, Term}
-import viper.silicon.state.DefaultContext
+import state.DefaultContext
+import utils.Counter
 
 trait Brancher[ST <: Store[ST],
                H <: Heap[H],
@@ -52,9 +54,12 @@ trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Brancher[ST, H, S, DefaultContext] {
+    extends Brancher[ST, H, S, DefaultContext]
+       with StatefulComponent {
 
   private[this] type C = DefaultContext
+
+  private var branchCounter: Counter = _
 
   val decider: Decider[ST, H, PC, S, C]
   import decider.assume
@@ -89,7 +94,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
     bookkeeper.branches += additionalPaths
 
-    val cnt = utils.counter.next()
+    val cnt = branchCounter.next()
 
     ((if (exploreTrueBranch) {
       val cTrue = c.copy(branchConditions = guardsTrue +: c.branchConditions)
@@ -184,5 +189,21 @@ trait DefaultBrancher[ST <: Store[ST],
 
       Q(tThen, tElse, cJoined.copy(branchConditions = c.branchConditions))
     }
+  }
+
+  /* Lifecycle */
+
+  abstract override def start() {
+    super.start()
+    branchCounter = new Counter()
+  }
+
+  abstract override def reset() {
+    super.reset()
+    branchCounter.reset()
+  }
+
+  abstract override def stop() = {
+    super.stop()
   }
 }

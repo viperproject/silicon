@@ -112,7 +112,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: AbstractVerifier[ST, H, PC, S] = null
+  private var verifier: V = null
 
   def this() = this(Nil)
 

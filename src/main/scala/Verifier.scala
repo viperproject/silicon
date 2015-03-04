@@ -104,6 +104,15 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 }
 
+/* A base implementation of start/reset/stop is required by the
+ * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
+ */
+class NoOpStatefulComponent extends StatefulComponent {
+  @inline def start() {}
+  @inline def reset() {}
+  @inline def stop() {}
+}
+
 class DefaultElementVerifier[ST <: Store[ST],
                              H <: Heap[H],
                              PC <: PathConditions[PC],
@@ -115,7 +124,8 @@ class DefaultElementVerifier[ST <: Store[ST],
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
       val bookkeeper: Bookkeeper)
-    extends AbstractElementVerifier[ST, H, PC, S]
+    extends NoOpStatefulComponent
+       with AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
@@ -131,8 +141,7 @@ trait AbstractVerifier[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
-    extends StatefulComponent
-       with Logging {
+    extends Logging {
 
   /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext]
   /*protected*/ def config: Config
@@ -144,26 +153,6 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def domainsEmitter: DomainsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S]
-
-  private val statefulSubcomponents = List[StatefulComponent](
-    bookkeeper,
-    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-    decider)
-
-  /* Lifetime */
-
-  def start() {
-    statefulSubcomponents foreach (_.start())
-  }
-
-  def reset() {
-    utils.counter.reset()
-    statefulSubcomponents foreach (_.reset())
-  }
-
-  def stop() {
-    statefulSubcomponents foreach (_.stop())
-  }
 
   /* Functionality */
 
@@ -280,12 +269,28 @@ class DefaultVerifier[ST <: Store[ST],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
       val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
+       with StatefulComponent
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
                                       bookkeeper)
 
+  private val statefulSubcomponents = List[StatefulComponent](
+    bookkeeper,
+    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    decider, ev)
+
+  /* Lifetime */
+
+  override def start() {
+    statefulSubcomponents foreach (_.start())
+  }
+
   override def reset() {
-    super.reset()
+    statefulSubcomponents foreach (_.reset())
+  }
+
+  override def stop() {
+    statefulSubcomponents foreach (_.stop())
   }
 }
