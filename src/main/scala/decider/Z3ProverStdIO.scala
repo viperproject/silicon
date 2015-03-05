@@ -145,24 +145,43 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   def assert(goal: String, timeout: Int) = {
     bookkeeper.assertionCounter += 1
 
-    push()
-    writeLine("(assert (not " + goal + "))")
-    readSuccess()
-    val startTime = System.currentTimeMillis()
-
-//    if (timeout == 0)
     writeLine(s"(set-option :timeout $timeout)")
     readSuccess()
-    writeLine("(check-sat)")
-//    else
-//      writeLine(s"(check-sat-using (using-params smt :soft_timeout $timeout))")
 
-    val r = readUnsat()
+    val (result, duration) = assertUsingGuard(goal)
+    logComment(s"${common.format.formatMillisReadably(duration)}")
+
+    result
+  }
+
+  private def assertUsingPushPop(goal: String): (Boolean, Long) = {
+    push()
+
+    writeLine("(assert (not " + goal + "))")
+    readSuccess()
+
+    val startTime = System.currentTimeMillis()
+    writeLine("(check-sat)")
+    val result = readUnsat()
     val endTime = System.currentTimeMillis()
-    logComment(s"${common.format.formatMillisReadably(endTime - startTime)}")
+
     pop()
 
-    r
+    (result, endTime - startTime)
+  }
+
+  private def assertUsingGuard(goal: String): (Boolean, Long) = {
+    val guard = fresh("grd", sorts.Bool)
+
+    writeLine(s"(assert (implies $guard (not $goal)))")
+    readSuccess()
+
+    val startTime = System.currentTimeMillis()
+    writeLine(s"(check-sat $guard)")
+    val result = readUnsat()
+    val endTime = System.currentTimeMillis()
+
+    (result, endTime - startTime)
   }
 
   def check() = {
