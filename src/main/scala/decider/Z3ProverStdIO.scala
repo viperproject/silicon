@@ -150,6 +150,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
     val (result, duration) = assertUsingGuard(goal)
     logComment(s"${common.format.formatMillisReadably(duration)}")
+    logComment("(get-info :all-statistics)")
 
     result
   }
