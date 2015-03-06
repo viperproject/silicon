@@ -245,6 +245,9 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitStaticPreamble() {
+    decider.prover.logComment("\n; /z3config.smt2")
+    preambleEmitter.emitPreamble("/z3config.smt2")
+
     decider.prover.logComment("\n; /preamble.smt2")
     preambleEmitter.emitPreamble("/preamble.smt2")
 
