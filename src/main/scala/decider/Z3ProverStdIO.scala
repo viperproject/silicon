@@ -65,7 +65,16 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   private def createZ3Instance() = {
     logger.info(s"Starting Z3 at $z3Path")
 
-    val builder = new ProcessBuilder(z3Path.toFile.getPath, "-smt2", "-in")
+    val userProvidedZ3Args: Array[String] = config.z3Args.get match {
+      case None =>
+        Array()
+
+      case Some(args) =>
+        logger.info(s"Additional command-line arguments are $args")
+        args.split(' ').map(_.trim)
+    }
+
+    val builder = new ProcessBuilder(z3Path.toFile.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args :_*)
     builder.redirectErrorStream(true)
 
     val process = builder.start()

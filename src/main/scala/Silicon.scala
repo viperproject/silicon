@@ -14,7 +14,7 @@ import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, 
 import scala.language.postfixOps
 import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
+import org.rogach.scallop.{Subcommand, ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
@@ -395,6 +395,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._
 
+  /* Argument converter */
+
   private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
     val stdioRegex = """(stdio)""".r
     val fileRegex = """(file)=(.*)""".r
@@ -406,12 +408,25 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
         Right(Some(Sink.File, fileName))
 
       case Nil => Right(None)
-      case _ => Left("wrong statistics sink")
+      case _ => Left(s"Unexpected arguments")
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[(Sink, String)]
     val argType = org.rogach.scallop.ArgType.LIST
   }
+
+  private val forwardArgumentsConverter = new ValueConverter[String] {
+    def parse(s: List[(String, List[String])]) = s match {
+      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
+      case Nil => Right(None)
+      case _ => Left(s"Unexpected arguments")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[String]
+    val argType = org.rogach.scallop.ArgType.LIST
+  }
+
+  /* Command-line options */
 
   val defaultRawStatisticsFile = "statistics.json"
 
@@ -460,14 +475,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(""),
     noshort = true,
     hidden = false
-  )
-
-  val unrollFunctions = opt[Int]("unrollFunctions",
-    descr = (  "Unroll function definitions at most n times (default: 1). "
-             + "Only has an effect in combination with --disableFunctionAxiomatization."),
-    default = Some(1),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
   )
 
   val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
@@ -566,26 +573,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
           inputFile.map(f =>
             common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("smt2")).toPath
           ).getOrElse(defaultZ3LogFile)
-//          inputFile.map { f =>
-//            val inputFileStr = f.toString
-////            val fullPath = FilenameUtils.getFullPath(inputFileStr)
-//            val extension = FilenameUtils.getExtension(inputFileStr)
-//            val baseName = FilenameUtils.getBaseName(inputFileStr)
-//            val tmpDir = tempDirectory()
-//
-//            var counter: Long = 0
-//            var freshBaseName = baseName
-//            var freshInputFile = Paths.get(tmpDir, s"$freshBaseName.$extension")
-//
-//            /* Note: Theoretically, this loop might not terminate */
-//            while (Files.exists(freshInputFile)) {
-//              counter += 1
-//              freshBaseName = baseName + counter
-//              freshInputFile = Paths.get(tmpDir, s"$freshBaseName.$extension")
-//            }
-//
-//            freshInputFile
-//          }.getOrElse(defaultZ3LogFile)
         case _ =>
           Paths.get(logfile)
       }
@@ -594,6 +581,24 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
       defaultZ3LogFile
   }
 
+  val z3Args = opt[String]("z3Args",
+    descr = (  "Command-line arguments which should be forwarded to Z3. "
+             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
+    default = None,
+    noshort = true,
+    hidden = false
+  )(forwardArgumentsConverter)
+
+  val z3ConfigArgs = opt[String]("z3ConfigArgs",
+    descr = (  "Configuration options which should be forwarded to Z3. "
+             + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
+             + "including the quotation marks. "
+             + "The configuration options given here will override those from Silicon's Z3 preamble."),
+    default = None,
+    noshort = true,
+    hidden = false
+  )(forwardArgumentsConverter)
+  
   val introduceFreshSymbolsForTakenQuantifiedPermissions = opt[Boolean]("shorterQPTerms",
     descr = "Shorten terms arising from quantified permissions by introducing fresh symbols",
     default = Some(false),
@@ -609,6 +614,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )
+
+  /* Option validation */
 
   validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
