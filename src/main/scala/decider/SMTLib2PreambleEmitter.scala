@@ -11,7 +11,6 @@ package decider
 import java.io.FileNotFoundException
 import scala.io.Source
 import silver.components.StatefulComponent
-import state.terms.Sort
 
 trait PreambleFileEmitter[I, O] extends StatefulComponent {
   def readPreamble(resource: I): Iterable[O]
