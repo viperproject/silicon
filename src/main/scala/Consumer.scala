@@ -150,6 +150,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
                     val receiverInjective =
                       if (!decider.check(σQVar, PermLess(FullPerm(), PermPlus(tPerm, tPerm)))) {
+                        /* TODO: Consider using the inverse function to check injectivity */
                         quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
                       } else
                         True()

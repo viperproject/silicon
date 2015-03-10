@@ -208,8 +208,8 @@ trait DefaultProducer[ST <: Store[ST],
 //                       tCond),
 //                   Trigger(Lookup(field.name, snap, tRcvr)))
           val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
-          val tInjectivity = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
-          assume(Set[Term](PermLess(NoPerm(), pGain), tDomainQuant, tNonNullQuant, tInjectivity))
+//          val tInjectivity = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
+          assume(Set[Term](PermLess(NoPerm(), pGain), tDomainQuant, tNonNullQuant/*, tInjectivity*/))
           val (h, ts) =
             if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)

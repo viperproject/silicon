@@ -558,15 +558,17 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     var inv: Term = inverseFunc(of)
 
 //    val ax1 = Forall(qvar, Implies(condition, inv === qvar), Nil: Seq[Trigger]).autoTrigger
-    val ax1 = Forall(qvar, Implies(condition, inv === qvar), inv :: condition :: Nil)
+//    val ax1 = Forall(qvar, Implies(condition, inv === qvar), inv :: condition :: Nil)
+    val ax1 = Forall(qvar, Implies(condition, inv === qvar), of :: Nil)
 
     val r = Var("r", sorts.Ref)
 
     inv = of.replace(qvar, inverseFunc(r))
     val invCond = condition.replace(qvar, inverseFunc(r))
 
-    val ax2 = Forall(r, Implies(invCond, inv === r), Nil: Seq[Trigger]).autoTrigger
+//    val ax2 = Forall(r, Implies(invCond, inv === r), Nil: Seq[Trigger]).autoTrigger
 //    val ax2 = Forall(r, Implies(invCond, inv === r), inv :: invCond :: Nil)
+    val ax2 = Forall(r, Implies(invCond, inv === r), inv :: Nil)
 
     (inverseFunc, ax1 :: ax2 :: Nil)
   }
