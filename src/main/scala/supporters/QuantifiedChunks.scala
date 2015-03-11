@@ -499,9 +499,9 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def domainDefinitionAxiom(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, snap: Term) = {
     val axiom = cond match {
-      case SetIn(`qvar`, set) =>
+      case SetIn(`qvar`, set) if rcvr == qvar =>
         /* Optimised axiom in the case where the quantified permission forall is of the
-         * shape "forall x :: x in set ==> ...".
+         * shape "forall x :: x in set ==> acc(x.f)".
          */
         Domain(field.name, snap) === set
 
