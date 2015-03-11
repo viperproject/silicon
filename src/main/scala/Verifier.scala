@@ -98,9 +98,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val γ = Γ(ins.map(v => (v, fresh(v))))
     val σ = Σ(γ, Ø, Ø)
 
-    inScope {
-      produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c)((_, c1) =>
-        Success())}
+    predicate.body match {
+      case None => Success()
+      case Some(body) =>
+        inScope {
+          produce(σ, fresh, terms.FullPerm(), body, PredicateNotWellformed(predicate), c)((_, c1) =>
+            Success())}
+    }
   }
 }
 
