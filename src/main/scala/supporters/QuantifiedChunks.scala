@@ -22,6 +22,7 @@ import state.terms
 import state.terms._
 import state.terms.predef.`?r`
 import reporting.Bookkeeper
+import viper.silver.ast.QuantifiedPermissionSupporter
 
 trait FieldValueFunctionsEmitter extends PreambleEmitter
 
@@ -40,7 +41,7 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
 
   def analyze(program: ast.Program) {
     program visit {
-      case QuantifiedChunkSupporter.ForallRef(qvar, cond, rcvr, f, _, forall, _) =>
+      case QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, f, _, forall, _) =>
         collectedFields ++= QuantifiedChunkSupporter.fieldAccesses(forall)
     }
 

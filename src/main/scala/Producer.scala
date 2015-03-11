@@ -17,6 +17,7 @@ import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter, QuantifiedChunkSupporter}
+import viper.silver.ast.QuantifiedPermissionSupporter
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -175,7 +176,7 @@ trait DefaultProducer[ST <: Store[ST],
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
-      case QuantifiedChunkSupporter.ForallRef(qvar, cond, rcvr, field, gain, _, _) =>
+      case QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, field, gain, _, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar

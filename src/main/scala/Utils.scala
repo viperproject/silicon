@@ -13,6 +13,7 @@ import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 import state.DefaultContext
 import state.terms._
 import supporters.QuantifiedChunkSupporter
+import viper.silver.ast.QuantifiedPermissionSupporter
 
 package object utils {
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -85,34 +86,8 @@ package object utils {
     type PositionedNode = silver.ast.Node with silver.ast.Positioned
 
     def check(program: silver.ast.Program) = (
-         checkQuantifiedLocationExpressions(program)
-      ++ program.functions.flatMap(checkFunctionPostconditionNotRecursive)
+         program.functions.flatMap(checkFunctionPostconditionNotRecursive)
       ++ checkPermissions(program))
-
-    /* Unsupported expressions, features or cases */
-
-    def createIllegalQuantifiedLocationExpressionError(offendingNode: PositionedNode) = {
-      val message = "This shape of quantified permissions is currently not supported."
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
-
-    def checkQuantifiedLocationExpressions(root: PositionedNode): Seq[VerificationError] = {
-      /* The constraints imposed on the shape of quantified permission
-       * expressions are the same that Korbinian imposed in DefaultProducer,
-       * DefaultConsumer and QuantifiedChunkHelper.
-       */
-
-      root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        case QuantifiedChunkSupporter.ForallRef(_, _, _, _, _, _, _) =>
-          errors.flatten
-
-        case e: silver.ast.Forall if !e.isPure =>
-          createIllegalQuantifiedLocationExpressionError(e) +: errors.flatten
-
-        case _ => errors.flatten
-      })
-    }
 
     def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
       val message = (

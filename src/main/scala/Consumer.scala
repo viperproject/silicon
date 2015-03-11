@@ -19,6 +19,7 @@ import state.{SymbolConvert, DirectChunk, DefaultContext}
 import state.terms._
 import state.terms.predef.`?r`
 import supporters.{LetHandler, Brancher, ChunkSupporter, QuantifiedChunkSupporter}
+import viper.silver.ast.QuantifiedPermissionSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -122,7 +123,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case QuantifiedChunkSupporter.ForallRef(qvar, condition, rcvr, field, loss, forall, fa) =>
+      case QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val (h1, ts) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.fieldAccesses(forall))
