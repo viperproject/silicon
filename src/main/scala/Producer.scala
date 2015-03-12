@@ -170,7 +170,7 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
-            val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
+            val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
@@ -248,9 +248,12 @@ trait DefaultProducer[ST <: Store[ST],
           (toSort(fa.field.typ), false)
 
         case pa: ast.PredicateAccess =>
-          if (!visited.contains(pa.predicateName))
-            getOptimalSnapshotSort(program.findPredicate(pa.predicateName).body, program, pa.predicateName +: visited)
-          else
+          if (!visited.contains(pa.predicateName)) {
+            program.findPredicate(pa.predicateName).body match {
+              case None => (sorts.Snap, false)
+              case Some(body) => getOptimalSnapshotSort(body, program, pa.predicateName +: visited)
+            }
+          } else
           /* We detected a cycle in the predicate definition and thus stop
            * inspecting the predicate bodies.
            */

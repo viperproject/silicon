@@ -409,7 +409,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
 //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c.program)
+                      val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)

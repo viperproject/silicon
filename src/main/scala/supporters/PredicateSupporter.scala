@@ -41,6 +41,8 @@ trait PredicateSupporter[ST <: Store[ST],
             (Q: (S, C) => VerificationResult)
             : VerificationResult = {
 
+      val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
+
       /* [2014-12-13 Malte] Changing the store doesn't interact well with the
        * snapshot recorder, see the comment in PredicateSupporter.unfold.
        * However, since folding cannot (yet) be used inside functions, we can
@@ -49,7 +51,7 @@ trait PredicateSupporter[ST <: Store[ST],
        * inject them into the predicate body. See commented code below.
        */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-      consume(σ \ insγ, tPerm, predicate.body, pve, c)((σ1, snap, dcs, c1) => {
+      consume(σ \ insγ, tPerm, body, pve, c)((σ1, snap, dcs, c1) => {
         val ncs = dcs flatMap {
           case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
           case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))}
@@ -87,7 +89,7 @@ trait PredicateSupporter[ST <: Store[ST],
 //          case Some(sr) =>
 //            c1.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
 //          case _ => c1}
-        val body = pa.predicateBody(c.program) // predicate.body
+        val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
         produce(σ \ h1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) =>
           Q(σ2 /*\ σ.γ*/, c2))})
     }

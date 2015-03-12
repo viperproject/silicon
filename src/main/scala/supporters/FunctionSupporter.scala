@@ -424,12 +424,17 @@ trait FunctionSupporter[ST <: Store[ST],
            *       is used here (because it has to match DefaultEvaluator, which
            *       uses the BigAnd-version as well).
            */
-          produce(σ, sort => `?s`.convert(sort), FullPerm(), pres, Internal(pres), c)((σ1, c2) => {
-            eval(σ1, function.body, FunctionNotWellformed(function), c2)((tB, c3) => {
-              recorders ::= c3.snapshotRecorder.get
-              val c4 = c3.copy(snapshotRecorder = None)
-              consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
-                Success())})})}
+          produce(σ, sort => `?s`.convert(sort), FullPerm(), pres, Internal(pres), c)((σ1, c2) =>
+            function.body match {
+              case None =>
+                recorders ::= c2.snapshotRecorder.get
+                Success()
+              case Some(body) =>
+                eval(σ1, body, FunctionNotWellformed(function), c2)((tB, c3) => {
+                  recorders ::= c3.snapshotRecorder.get
+                  val c4 = c3.copy(snapshotRecorder = None)
+                  consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
+                    Success())})})}
 
       if (recorders.nonEmpty) {
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
@@ -503,9 +508,9 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.data = data
     this.failed = false
 
-    val result = translate(func.body)
+    val result = func.body map translate
 
-    if (failed) None else Some(result)
+    if (failed) None else result
   }
 
   private def translate(exp: ast.Exp): Term = {
