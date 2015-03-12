@@ -112,7 +112,14 @@ trait DefaultProducer[ST <: Store[ST],
           if (c.snapshotRecorder.isEmpty) {
             val _s0 = mkSnap(a0, c.program)
             val _s1 = mkSnap(a1, c.program)
-            assume(s === Combine(_s0, _s1))
+
+            val snapshotEq = (s, _s0, _s1) match {
+              case (Unit, Unit, Unit) => True()
+              case (Unit, _, _) => sys.error("Unexpected equality between $s and (${_s0}, ${_s1})")
+              case _ => s === Combine(_s0, _s1)
+            }
+
+            assume(snapshotEq)
 
             (_s0, _s1)
           } else {
