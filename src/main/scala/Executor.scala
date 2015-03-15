@@ -121,7 +121,7 @@ trait DefaultExecutor[ST <: Store[ST],
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val wvs = lb.writtenVars filterNot (_.typ == ast.Wand)
+        val wvs = (lb.locals.map(_.localVar) ++ lb.writtenVars).distinct.filterNot(_.typ == ast.Wand)
           /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
@@ -214,8 +214,8 @@ trait DefaultExecutor[ST <: Store[ST],
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, Some(FullPerm()), fa, pve, c2)(fc =>
-                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c2))})
+                decider.withChunk[DirectChunk](σ, σ.h, id, Some(FullPerm()), fa, pve, c2)((fc, c3) =>
+                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c3))})
             case false =>
               Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
 
@@ -266,12 +266,12 @@ trait DefaultExecutor[ST <: Store[ST],
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
-            decider.tryOrFail[(S, C)](σ, c)((σ1, QS, QF) => {
+            decider.tryOrFail[S](σ, c)((σ1, c1, QS, QF) => {
               if (decider.checkSmoke())
-                QS(σ1, c)
+                  QS(σ1, c1)
               else
-                QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
-            })(_ => Success())
+                  QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
+              })((_, _) => Success())
 
           case _ =>
             if (config.disableSubsumption()) {

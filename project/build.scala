@@ -103,7 +103,8 @@ object SiliconBuild extends Build {
     settings = (
          baseSettings
       ++ Seq(name := "Silicon-Magic-Wands-Common",
-             javacOptions ++= Seq("-source", "1.7", "-target", "1.7"))))
+             javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
+             libraryDependencies += dependencies.commonsIO)))
 
   /* On the build-server, we cannot have all project in the same directory, and
    * thus we use the publish-local mechanism for dependencies.
@@ -116,6 +117,7 @@ object SiliconBuild extends Build {
   def externalDep = (
        dependencies.logging
     ++ dependencies.jgrapht
+    ++ Seq(dependencies.commonsIO)
     ++ Seq(dependencies.scallop)
     ++ (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil))
 
@@ -131,6 +133,8 @@ object SiliconBuild extends Build {
     lazy val jgrapht = Seq(
       "org.jgrapht" % "jgrapht-core" % "0.9.0",
       "org.jgrapht" % "jgrapht-ext" % "0.9.0")
+
+    lazy val commonsIO = "commons-io" % "commons-io" % "2.4"
 
     lazy val sil = "viper" %% "silver-magic-wands" %  "0.1-SNAPSHOT"
     lazy val silSrc = RootProject(new java.io.File("../silver"))

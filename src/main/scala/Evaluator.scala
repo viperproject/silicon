@@ -15,15 +15,15 @@ import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{ChunkIdentifier, Store, Heap, PathConditions, State, StateFormatter, StateFactory, Chunk}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor,
+    Chunk, ChunkIdentifier}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk}
 import state.terms._
-import state.terms.predef.`?s`
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import viper.silicon.supporters.{Joiner, Brancher, PredicateSupporter, MagicWandSupporter}
+import supporters.{Joiner, Brancher, PredicateSupporter, MagicWandSupporter}
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -51,6 +51,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
   def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -162,12 +163,12 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
-          decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)(ch => {
-            val c2 = c1.snapshotRecorder match {
+          decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)((ch, c2) => {
+            val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
-                c1.copy(snapshotRecorder = Some(sr.copy(locToChunk = sr.locToChunk + (fa -> ch.id))))
-              case _ => c1}
-            Q(ch.value, c2)}))
+                c2.copy(snapshotRecorder = Some(sr.recordSnapshot(fa, c2.branchConditions, ch.value)))
+              case _ => c2}
+            Q(ch.value, c3)}))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -335,18 +336,13 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(tQuant, c1)
         }
 
-      /* Only evaluate the function application; relies on functions being axiomatised */
-      case fapp @ ast.FuncApp(funcName, eArgs) if !config.disableFunctionAxiomatization() =>
+      case fapp @ ast.FuncApp(funcName, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
           val pre = Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
-          val c2a = c2.snapshotRecorder match {
-            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = `?s`)))
-            case _ => c2
-          }
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -358,15 +354,14 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2a)(QB =>
-            consume(σ, FullPerm(), pre, err, c2a)((_, s, _, c3) => {
+          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB =>
+            consume(σ, FullPerm(), pre, err, c2)((_, s, _, c3) => {
+              val s1 = s.convert(sorts.Snap)
               val c4 = c3.snapshotRecorder match {
                 case Some(sr) =>
-                  val sr1 = sr.copy(currentSnap = c2.snapshotRecorder.get.currentSnap,
-                                   fappToSnap = sr.fappToSnap + (fapp -> sr.currentSnap))
-                  c3.copy(snapshotRecorder = Some(sr1))
+                  c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
                 case _ => c3}
-              val tFApp = FApp(symbolConverter.toFunction(func), s.convert(sorts.Snap), tArgs)
+              val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
               val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
               QB(tFApp, c5)})
             )((tR, cR) => {
@@ -397,12 +392,8 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                        QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
-//                      val c3a = c3.snapshotRecorder match {
-//                        case Some(sr) =>
-//                          c3.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(chs(0).id))))
-//                        case _ => c3}
 //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c.program)
+                      val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
@@ -679,18 +670,29 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.pushScope()
 
         val guard = t0Transformer(t0)
+        var originalChunks: Option[Iterable[Chunk]] = None
         val r =
           branch(σ, guard, c1,
-            (c2: C) =>
+            (c2: C) => {
+              if (c2.retrying) {
+                originalChunks = Some(σ.h.values)
+                heapCompressor.compress(σ, σ.h, c2)
+              }
               eval(σ, e1, pve, c2)((t1, c3) => {
                 assert(optT1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
                 optT1 = Some(t1)
                 πAux = decider.π -- (πPre + guard)
                   /* Removing guard from πAux is crucial, it is not part of the aux. terms */
                 optInnerC = Some(c3)
-                Success()}),
+                Success()})},
             (c2: C) =>
               Success())
+
+        /* See comment in DefaultDecider.tryOrFail */
+        originalChunks match {
+          case Some(chunks) => σ.h.replace(chunks)
+          case None => /* Nothing to do here */
+        }
 
         decider.popScope()
 

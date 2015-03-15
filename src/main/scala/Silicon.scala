@@ -9,17 +9,12 @@ package silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
+import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
-import state.DefaultContext
-import supporters.DefaultDomainsEmitter
-import supporters.DefaultDomainsTranslator
-import supporters.DefaultMultisetsEmitter
-import supporters.DefaultSequencesEmitter
-import supporters.DefaultSetsEmitter
-
 import scala.language.postfixOps
+import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
-import org.rogach.scallop.{ValueConverter, singleArgConverter}
+import org.rogach.scallop.{Subcommand, ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
@@ -29,10 +24,11 @@ import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.FullPerm
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
-    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert}
+    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
-import supporters.MagicWandSupporter
+import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
+    DefaultSequencesEmitter, MagicWandSupporter}
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -46,9 +42,9 @@ trait SiliconConstants {
   val name = brandingData.sbtProjectName
   val version = s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
   val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2014"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2015"
   val z3ExeEnvironmentVariable = "Z3_EXE"
-  val expectedZ3Version = "4.3.0"
+  val expectedZ3Version = "4.3.2"
   val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
 }
 
@@ -116,7 +112,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: AbstractVerifier[ST, H, PC, S] = null
+  private var verifier: V = null
 
   def this() = this(Nil)
 
@@ -239,6 +235,13 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
+    config.inputFile = program.pos match {
+      case sp: ast.AbstractSourcePosition => Some(sp.file)
+      case _ => None
+    }
+
+    verifier.decider.prover.proverRunStarts()
+
     val consistencyErrors = utils.consistency.check(program)
 
     if (consistencyErrors.nonEmpty) {
@@ -340,12 +343,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       config.showStatistics.get match {
         case None =>
 
-        case Some(("stdio", "")) =>
+        case Some((Config.Sink.Stdio, "")) =>
           logger.info("")
           logger.info(verifier.bookkeeper.toString)
           logger.info("")
 
-        case Some(("file", path)) =>
+        case Some((Config.Sink.File, path)) =>
           silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
 
         case _ => /* Should never be reached if the arguments to showStatistics have been validated */
@@ -386,42 +389,69 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
 /** TODO: Move configuration-related code into a dedicated file. */
 
-sealed abstract class ConfigValue[T] {
-  def value: T
-
-  def orElse(f: T => T) = this match {
-    case UserValue(v) => v
-    case DefaultValue(v) => f(v)
-  }
-}
-
-case class DefaultValue[T](value: T) extends ConfigValue[T]
-case class UserValue[T](value: T) extends ConfigValue[T]
-
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
-  private val statisticsSinkConverter = new ValueConverter[(String, String)] {
+  import Config._
+
+  /* Argument converter */
+
+  private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
     val stdioRegex = """(stdio)""".r
     val fileRegex = """(file)=(.*)""".r
 
     def parse(s: List[(String, List[String])]) = s match {
-      case (_, stdioRegex(stdioId) :: Nil) :: Nil => Right(Some(stdioId, ""))
-      case (_, fileRegex(fileId, fileName) :: Nil) :: Nil => Right(Some(fileId, fileName))
+      case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
+
+      case (_, fileRegex(_, fileName) :: Nil) :: Nil =>
+        Right(Some(Sink.File, fileName))
+
       case Nil => Right(None)
-      case _ => Left("wrong statistics sink")
+      case _ => Left(s"Unexpected arguments")
     }
 
-    val tag = scala.reflect.runtime.universe.typeTag[(String, String)]
+    val tag = scala.reflect.runtime.universe.typeTag[(Sink, String)]
     val argType = org.rogach.scallop.ArgType.LIST
   }
 
-  val showStatistics = opt[(String, String)]("showStatistics",
+  private val forwardArgumentsConverter = new ValueConverter[String] {
+    def parse(s: List[(String, List[String])]) = s match {
+      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
+      case Nil => Right(None)
+      case _ => Left(s"Unexpected arguments")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[String]
+    val argType = org.rogach.scallop.ArgType.LIST
+  }
+
+  /* Command-line options */
+
+  val defaultRawStatisticsFile = "statistics.json"
+
+  private val rawShowStatistics = opt[(Sink, String)]("showStatistics",
     descr = (  "Show some statistics about the verification. Options are "
              + "'stdio' and 'file=<path\\to\\statistics.json>'"),
     default = None,
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(statisticsSinkConverter)
-  /* TODO: Validate arguments to showStatistics */
+
+  private lazy val defaultStatisticsFile = Paths.get(tempDirectory(), defaultRawStatisticsFile)
+
+  def showStatistics: ScallopOption[(Sink, String)] = rawShowStatistics map {
+    case (Sink.File, fileName) =>
+      val newFilename =
+        fileName.toLowerCase match {
+          case "$infile" =>
+            inputFile.map(f =>
+              common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("json")).toPath
+            ).getOrElse(defaultStatisticsFile)
+             .toString
+          case _ => fileName
+        }
+
+      (Sink.File, newFilename)
+    case other => other
+  }
 
   val disableSubsumption = opt[Boolean]("disableSubsumption",
     descr = "Don't add assumptions gained by verifying an assert statement",
@@ -442,14 +472,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(""),
     noshort = true,
     hidden = false
-  )
-
-  val unrollFunctions = opt[Int]("unrollFunctions",
-    descr = (  "Unroll function definitions at most n times (default: 1). "
-             + "Only has an effect in combination with --disableFunctionAxiomatization."),
-    default = Some(1),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
   )
 
   val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
@@ -512,7 +534,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
-  val z3Exe = opt[String]("z3Exe",
+  private val rawZ3Exe = opt[String]("z3Exe",
     descr = (  "Z3 executable. The environment variable %s can also "
              + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
     default = None,
@@ -520,21 +542,60 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
-  val z3LogFile = opt[ConfigValue[String]]("z3LogFile",
-    descr = "Log file containing the interaction with Z3 (default: <tempDirectory>/logfile.smt2)",
-    default = Some(DefaultValue("logfile.smt2")),
+  lazy val z3Exe: String = {
+    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
+
+    rawZ3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
+                .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+  }
+
+  val defaultRawZ3LogFile = "logfile.smt2"
+
+  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
+    descr = s"Log file containing the interaction with Z3 (default: <tempDirectory>/$defaultRawZ3LogFile)",
+    default = Some(DefaultValue(defaultRawZ3LogFile)),
     noshort = true,
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  val disableFunctionAxiomatization = opt[Boolean]("disableFunctionAxiomatization",
-    descr = (  "Disable axiomatization of user-provided functions, and evaluate functions on "
-        + "the fly instead."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
+  /* NOTE: You most likely want to call z3LogFile instead of reading inputFile */
+  var inputFile: Option[Path] = None
 
+  private lazy val defaultZ3LogFile = Paths.get(tempDirectory(), defaultRawZ3LogFile)
+
+  def z3LogFile: Path = rawZ3LogFile() match {
+    case UserValue(logfile) =>
+      logfile.toLowerCase match {
+        case "$infile" =>
+          inputFile.map(f =>
+            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("smt2")).toPath
+          ).getOrElse(defaultZ3LogFile)
+        case _ =>
+          Paths.get(logfile)
+      }
+
+    case DefaultValue(logfile) =>
+      defaultZ3LogFile
+  }
+
+  val z3Args = opt[String]("z3Args",
+    descr = (  "Command-line arguments which should be forwarded to Z3. "
+             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
+    default = None,
+    noshort = true,
+    hidden = false
+  )(forwardArgumentsConverter)
+
+  val z3ConfigArgs = opt[String]("z3ConfigArgs",
+    descr = (  "Configuration options which should be forwarded to Z3. "
+             + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
+             + "including the quotation marks. "
+             + "The configuration options given here will override those from Silicon's Z3 preamble."),
+    default = None,
+    noshort = true,
+    hidden = false
+  )(forwardArgumentsConverter)
+  
   val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
@@ -542,13 +603,32 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  validateOpt(timeout){
+  /* Option validation */
+
+  validateOpt(timeout) {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
     case _ => Right(Unit)
   }
+}
 
-  lazy val effectiveZ3LogFile: String =
-    z3LogFile().orElse(new File(tempDirectory(), _).getPath)
+object Config {
+  sealed abstract class ConfigValue[T] {
+    def value: T
+
+    def orElse(f: T => T) = this match {
+      case UserValue(v) => v
+      case DefaultValue(v) => f(v)
+    }
+  }
+
+  case class DefaultValue[T](value: T) extends ConfigValue[T]
+  case class UserValue[T](value: T) extends ConfigValue[T]
+
+  sealed trait Sink
+  object Sink {
+    case object Stdio extends Sink
+    case object File extends Sink
+  }
 }
 
 class SiliconFrontend extends SilFrontend {

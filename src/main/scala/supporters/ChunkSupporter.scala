@@ -65,22 +65,17 @@ trait ChunkSupporter[ST <: Store[ST],
         consume(σ, h1, id, tPerm, locacc, pve, c1)((h2, optCh, c2, results) =>
           optCh match {
             case Some(ch) =>
-              val c3 = c2.snapshotRecorder match {
-                case Some(sr) =>
-                  c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-//                  c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = sr.chunkToSnap(ch.id))))
-                case _ => c2}
               ch match {
                 case fc: DirectFieldChunk =>
                   val snap = fc.value.convert(sorts.Snap)
-                  QS(h2, snap, fc :: Nil, c3)
+                Q(h2, snap, fc :: Nil, c2)
                 case pc: DirectPredicateChunk =>
                   val h3 =
                     if (results.consumedCompletely)
                       pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
                     else
                       h2
-                  QS(h3, pc.snap, pc :: Nil, c3)}
+                Q(h3, pc.snap, pc :: Nil, c2)}
             case None =>
               /* Not having consumed anything could mean that we are in an infeasible
                * branch, or that the permission amount to consume was zero.
@@ -140,33 +135,25 @@ trait ChunkSupporter[ST <: Store[ST],
           Q(h + H(usedChunks), usedChunks.headOption, c3, pcr)})
 
       if (utils.consumeExactRead(pLoss, c)) {
-        decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)(ch => {
+        decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
           if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
-            Q(h - ch, Some(ch), c, PermissionsConsumptionResult(true))}
+            Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}
           else
-            Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
+            Q(h - ch + (ch - pLoss), Some(ch), c1, PermissionsConsumptionResult(false))})
       } else {
-        decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)(ch => {
+        decider.withChunk[DirectChunk](σ, h, id, None, locacc, pve, c)((ch, c1) => {
           decider.assume(PermLess(pLoss, ch.perm))
-          Q(h - ch + (ch - pLoss), Some(ch), c, PermissionsConsumptionResult(false))})
+          Q(h - ch + (ch - pLoss), Some(ch), c1, PermissionsConsumptionResult(false))})
       }
     }
 
     def produce(σ: S, h: H, ch: DirectChunk, c: C): (H, C) = {
       val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
-      val c1 = recordSnapshot(c, matchedChunk, ch)
+      val c1 = c//recordSnapshot(c, matchedChunk, ch)
       val c2 = recordProducedChunk(c1, ch, c.branchConditions)
 
       (h1, c2)
     }
-
-    private def recordSnapshot(c: C, matchedChunk: Option[DirectChunk], producedChunk: DirectChunk): C =
-      c.snapshotRecorder match {
-        case Some(sr) =>
-          val sr1 = sr.addChunkToSnap(matchedChunk.getOrElse(producedChunk).id, c.branchConditions, sr.currentSnap)
-          c.copy(snapshotRecorder = Some(sr1))
-        case _ => c
-      }
 
     private def recordProducedChunk(c: C, producedChunk: DirectChunk, guards: Stack[Term]): C =
       c.recordEffects match {

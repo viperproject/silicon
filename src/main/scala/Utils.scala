@@ -44,19 +44,8 @@ package object utils {
     case _ => true
   }
 
-  /* http://www.tikalk.com/java/blog/avoiding-nothing */
-  object notNothing {
-    sealed trait NotNothing[-T]
-
-    object NotNothing {
-      implicit object notNothing extends NotNothing[Any]
-
-      implicit object `\n The error is because the type parameter was resolved to Nothing`
-          extends NotNothing[Nothing]
-    }
-  }
-
-  object counter {
+  /* NOT thread-safe */
+  class Counter {
     private var value = 0
 
     def next() = {
@@ -66,6 +55,18 @@ package object utils {
 
     def reset() {
       value = 0
+    }
+  }
+
+  /* http://www.tikalk.com/java/blog/avoiding-nothing */
+  object notNothing {
+    sealed trait NotNothing[-T]
+
+    object NotNothing {
+      implicit object notNothing extends NotNothing[Any]
+
+      implicit object `\n The error is because the type parameter was resolved to Nothing`
+          extends NotNothing[Nothing]
     }
   }
 

@@ -173,12 +173,25 @@ trait AbstractElementVerifier[ST <: Store[ST],
     val γ = Γ(ins.map(v => (v, fresh(v))))
     val σ = Σ(γ, Ø, Ø)
 
-       (inScope {
-          checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
-    && inScope {
-          produce(σ, fresh, terms.FullPerm(), predicate.body, PredicateNotWellformed(predicate), c)((_, c1) =>
-            Success())})
+    predicate.body match {
+      case None => Success()
+      case Some(body) =>
+           (inScope {
+             checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
+        && inScope {
+             produce(σ, fresh, terms.FullPerm(), body, PredicateNotWellformed(predicate), c)((_, c1) =>
+               Success())})
+    }
   }
+}
+
+/* A base implementation of start/reset/stop is required by the
+ * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
+ */
+class NoOpStatefulComponent extends StatefulComponent {
+  @inline def start() {}
+  @inline def reset() {}
+  @inline def stop() {}
 }
 
 class DefaultElementVerifier[ST <: Store[ST],
@@ -193,7 +206,8 @@ class DefaultElementVerifier[ST <: Store[ST],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
     (protected implicit val manifestH: Manifest[H])
-    extends AbstractElementVerifier[ST, H, PC, S]
+    extends NoOpStatefulComponent
+       with AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
@@ -211,8 +225,7 @@ trait AbstractVerifier[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
-    extends StatefulComponent
-       with Logging {
+    extends Logging {
 
   /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext[H]]
   /*protected*/ def config: Config
@@ -224,26 +237,6 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def domainsEmitter: DomainsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S]
-
-  private val statefulSubcomponents = List[StatefulComponent](
-    bookkeeper,
-    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-    decider)
-
-  /* Lifetime */
-
-  def start() {
-    statefulSubcomponents foreach (_.start())
-  }
-
-  def reset() {
-    utils.counter.reset()
-    statefulSubcomponents foreach (_.reset())
-  }
-
-  def stop() {
-    statefulSubcomponents foreach (_.stop())
-  }
 
   /* Functionality */
 
@@ -337,6 +330,33 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def emitStaticPreamble() {
+    decider.prover.logComment("\n; /z3config.smt2")
+    preambleEmitter.emitPreamble("/z3config.smt2")
+
+    var malformedZ3ConfigArgs = false
+
+    val smt2ConfigOptions =
+      config.z3ConfigArgs
+            .map(_.split(' ')
+                  .map(_.trim)
+                  .filter(_.nonEmpty)
+                  .map(_.split('=')))
+            .get
+            .getOrElse(Array())
+            .flatMap {
+              case Array(k, v) =>
+                Some(s"(set-option :$k $v)")
+              case other =>
+                malformedZ3ConfigArgs = true
+                None}
+
+    if (malformedZ3ConfigArgs)
+      logger.warn(s"Could not handle ${config.z3ConfigArgs.humanName} '${config.z3ConfigArgs.get.getOrElse("")}'")
+    else if (smt2ConfigOptions.nonEmpty) {
+      logger.info(s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'")
+      preambleEmitter.emitPreamble(smt2ConfigOptions)
+    }
+
     decider.prover.logComment("\n; /preamble.smt2")
     preambleEmitter.emitPreamble("/preamble.smt2")
 
@@ -361,12 +381,28 @@ class DefaultVerifier[ST <: Store[ST],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
      val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
+       with StatefulComponent
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
                                       bookkeeper)
 
+  private val statefulSubcomponents = List[StatefulComponent](
+    bookkeeper,
+    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    decider, ev)
+
+  /* Lifetime */
+
+  override def start() {
+    statefulSubcomponents foreach (_.start())
+  }
+
   override def reset() {
-    super.reset()
+    statefulSubcomponents foreach (_.reset())
+  }
+
+  override def stop() {
+    statefulSubcomponents foreach (_.stop())
   }
 }

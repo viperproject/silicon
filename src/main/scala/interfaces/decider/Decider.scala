@@ -45,9 +45,9 @@ trait Decider[ST <: Store[ST],
   def assume(ts: Set[Term])
 
   def tryOrFail[R](σ: S, c: C)
-                  (block:    (S, R => VerificationResult, Failure[ST, H, S] => VerificationResult)
+                  (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
                           => VerificationResult)
-                  (Q: R => VerificationResult)
+                  (Q: (R, C) => VerificationResult)
                   : VerificationResult
 
   def check(σ: S, t: Term): Boolean
@@ -63,7 +63,7 @@ trait Decider[ST <: Store[ST],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)
-               (Q: CH => VerificationResult)
+               (Q: (CH, C) => VerificationResult)
                : VerificationResult
 
   /** Try to find a chunk identified by `id`. If not present, or if it comes
@@ -81,7 +81,7 @@ trait Decider[ST <: Store[ST],
                 locacc: ast.LocationAccess,
                 pve: PartialVerificationError,
                 c: C)
-               (Q: CH => VerificationResult)
+               (Q: (CH, C) => VerificationResult)
                : VerificationResult
 
   def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH]

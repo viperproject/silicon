@@ -51,7 +51,11 @@ class DefaultSetsEmitter(prover: Prover,
     var setTypes = Set[ast.SetType]()
 
     program visit { case t: silver.ast.Typed =>
-      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) foreach {
+      /* Process the type itself and its type constituents, but ignore types
+       * that use type parameters. The assumption is that the latter are
+       * handled by the domain emitter.
+       */
+      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
         case s: ast.SetType =>
           setTypes += s
         case s: ast.MultisetType =>

@@ -63,18 +63,13 @@ trait DefaultProducer[ST <: Store[ST],
               (Q: (S, C) => VerificationResult)
               : VerificationResult = {
 
-    /* TODO: produces(φs) allows more fine-grained error reporting when compared
-     *       to produce(BigAnd(φs)) because with produces, each φ in φs can be
-     *       produced with its own PartialVerificationError.
-     *       The two differ in behaviour, though, because producing a list of,
-     *       e.g., preconditions, with produce results in more explicit
-     *       conjunctions, and thus in more combine-terms.
-     *       It is therefore necessary to duplicate the code from producing
-     *       conjunctions (ast.And) that records snapshots in order to ensure
-     *       that both produce and produces create the same location-to-snapshot
-     *       mappings.
-     *       It would obviously be better if we could avoid the code duplication
-     *       while preserving the ability of generating more fine-grained errors.
+    /* Note: Produces(φs) allows more fine-grained error reporting when compared
+     * to produce(BigAnd(φs)) because with produces, each φ in φs can be
+     * produced with its own PartialVerificationError. The two differ in
+     * behaviour, though, because producing a list of, e.g., preconditions, with
+     * produce results in more explicit conjunctions, and thus in more
+     * combine-terms, which can affect the snapshot structure of predicates and
+     * functions.
      */
 
     if (φs.isEmpty)
@@ -85,18 +80,8 @@ trait DefaultProducer[ST <: Store[ST],
       if (φs.tail.isEmpty)
         produce(σ, sf, p, φ, pvef(φ), c)(Q)
       else {
-        val (c1, rootSnap) = c.snapshotRecorder match {
-          case Some(sr) =>
-            val rootSnap = sr.currentSnap
-            (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
-          case _ =>
-            (c, null)}
-
-        produce(σ, sf, p, φ, pvef(φ), c1)((σ1, c2) => {
-          val c3 = c2.snapshotRecorder match {
-            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
-            case _ => c2}
-          produces(σ1, sf, p, φs.tail, pvef, c3)(Q)})
+        produce(σ, sf, p, φ, pvef(φ), c)((σ1, c1) => {
+          produces(σ1, sf, p, φs.tail, pvef, c1)(Q)})
       }
     }
   }
@@ -118,27 +103,34 @@ trait DefaultProducer[ST <: Store[ST],
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure =>
         val s = sf(sorts.Snap)
-        val s0 = mkSnap(a0, c.program)
-        val s1 = mkSnap(a1, c.program)
 
-        assume(s === Combine(s0, s1))
+        val (s0, s1) =
+          if (c.snapshotRecorder.isEmpty) {
+            val _s0 = mkSnap(a0, c.program)
+            val _s1 = mkSnap(a1, c.program)
+
+            val snapshotEq = (s, _s0, _s1) match {
+              case (Unit, Unit, Unit) => True()
+              case (Unit, _, _) => sys.error("Unexpected equality between $s and (${_s0}, ${_s1})")
+              case _ => s === Combine(_s0, _s1)
+            }
+
+            assume(snapshotEq)
+
+            (_s0, _s1)
+          } else {
+            val _s0 = First(s)
+            val _s1 = Second(s)
+
+            (_s0, _s1)
+          }
 
         val sf0 = (sort: Sort) => s0.convert(sort)
         val sf1 = (sort: Sort) => s1.convert(sort)
 
-        val (c1, rootSnap) = c.snapshotRecorder match {
-          case Some(sr) =>
-            val rootSnap = sr.currentSnap
-            (c.copy(snapshotRecorder = Some(sr.copy(currentSnap = First(sr.currentSnap)))), rootSnap)
-          case _ =>
-            (c, null)}
-
-        produce2(σ, sf0, p, a0, pve, c1)((h1, c2) => {
-          val c3 = c2.snapshotRecorder match {
-            case Some(sr) => c2.copy(snapshotRecorder = Some(sr.copy(currentSnap = Second(rootSnap))))
-            case _ => c2}
-          produce2(σ \ h1, sf1, p, a1, pve, c3)((h2, c4) =>
-            Q(h2, c4))})
+        produce2(σ, sf0, p, a0, pve, c)((h1, c1) => {
+          produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
+            Q(h2, c2))})
 
       case ast.Implies(e0, a0) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -180,7 +172,7 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
-            val s = sf(getOptimalSnapshotSort(predicate.body, c.program)._1)
+            val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
@@ -215,9 +207,12 @@ trait DefaultProducer[ST <: Store[ST],
           (toSort(fa.field.typ), false)
 
         case pa: ast.PredicateAccess =>
-          if (!visited.contains(pa.predicateName))
-            getOptimalSnapshotSort(program.findPredicate(pa.predicateName).body, program, pa.predicateName +: visited)
-          else
+          if (!visited.contains(pa.predicateName)) {
+            program.findPredicate(pa.predicateName).body match {
+              case None => (sorts.Snap, false)
+              case Some(body) => getOptimalSnapshotSort(body, program, pa.predicateName +: visited)
+            }
+          } else
           /* We detected a cycle in the predicate definition and thus stop
            * inspecting the predicate bodies.
            */
