@@ -493,12 +493,13 @@ trait MagicWandSupporter[ST <: Store[ST],
               val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
                 consume(σ \ σ1.h, FullPerm(), acc, pve, c3a)((σ2, snap, _, c3b) => { /* σUsed'.unfold */
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                  produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, predicate.body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
-                    val topReserveHeap = c3.reserveHeaps.head + σ3.h
-                    val c4a = c4.decCycleCounter(predicate)
-                                .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
-                                      exhaleExt = c3.exhaleExt)
-                    QI(σEmp, σEmp.h, c4a)})})}))
+                val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
+                produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
+                  val topReserveHeap = c3.reserveHeaps.head + σ3.h
+                  val c4a = c4.decCycleCounter(predicate)
+                              .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
+                                    exhaleExt = c3.exhaleExt)
+                  QI(σEmp, σEmp.h, c4a)})})}))
           else
             Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
       } else {
@@ -550,14 +551,14 @@ trait MagicWandSupporter[ST <: Store[ST],
        * introducing another sequence of local variables inside predicateSupporter.fold!
        */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-      val body = predicate.body
+      val body = predicate.body.get /* Only non-abstract predicates can be folded */
       val σEmp = Σ(σ.γ + insγ, Ø, σ.g)
       //      val args = predicate.formalArgs.map(fa => ast.utils.fresh(fa.localVar))
       //      val body = Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
       //      val σEmp = Σ(σ.γ + Γ(args.zip(tArgs)), Ø, σ.g)
 
       consume(σEmp \ σ.h, tPerm, body, pve, c)((σ1, _, _, c1) => { /* exhale_ext, σ1 = σUsed' */
-      val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false)
+        val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false)
         predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c2)((σ2, c3) => { /* σ2.h = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + σ2.h
           val c4 = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,

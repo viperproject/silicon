@@ -68,14 +68,14 @@ trait ChunkSupporter[ST <: Store[ST],
               ch match {
                 case fc: DirectFieldChunk =>
                   val snap = fc.value.convert(sorts.Snap)
-                Q(h2, snap, fc :: Nil, c2)
+                QS(h2, snap, fc :: Nil, c2)
                 case pc: DirectPredicateChunk =>
                   val h3 =
                     if (results.consumedCompletely)
                       pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
                     else
                       h2
-                Q(h3, pc.snap, pc :: Nil, c2)}
+                QS(h3, pc.snap, pc :: Nil, c2)}
             case None =>
               /* Not having consumed anything could mean that we are in an infeasible
                * branch, or that the permission amount to consume was zero.
