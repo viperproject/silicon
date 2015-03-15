@@ -10,12 +10,12 @@ package supporters
 
 import com.weiglewilczek.slf4s.{Logger, Logging}
 import silver.ast
-import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
 import interfaces.{Success, Evaluator, Consumer, Producer, VerificationResult, Failure}
 import interfaces.decider.Decider
-import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store}
+import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store,
+    HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
 import state.terms._
@@ -37,8 +37,7 @@ trait MagicWandSupporter[ST <: Store[ST],
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
-//  protected val symbolConverter: SymbolConvert
-//  import symbolConverter.toSort
+  protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
 
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
@@ -113,20 +112,20 @@ trait MagicWandSupporter[ST <: Store[ST],
 
 //      println("\n[consumeFromMultipleHeaps]")
 //      println(s"  heaps = ${hs.length}")
-  //    println(s"  toLose = $toLose")
-  //    println(s"  heapsToVisit = $heapsToVisit")
-  //    println(s"  visitedHeaps = $visitedHeaps")
-  //    println(s"  chunks = $chunks")
+//      println(s"  toLose = $toLose")
+//      println(s"  heapsToVisit = $heapsToVisit")
+//      println(s"  visitedHeaps = $visitedHeaps")
+//      println(s"  consumedChunks = $consumedChunks")
 
       while (heapsToVisit.nonEmpty && !decider.check(σ, IsNoAccess(toLose))) {
         val h = heapsToVisit.head
         heapsToVisit = heapsToVisit.tail
 
-  //      println(s"\n  h = $h")
+//        println(s"\n  h = $h")
         val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, id, toLose, cCurr)
-  //      println(s"  h1 = $h1")
-  //      println(s"  optCh1 = $optCh1")
-  //      println(s"  toLose1 = $toLose1")
+//        println(s"  h1 = $h1")
+//        println(s"  optCh1 = $optCh1")
+//        println(s"  toLose1 = $toLose1")
 
         visitedHeaps = h1 :: visitedHeaps
 //        chunks =
@@ -141,11 +140,11 @@ trait MagicWandSupporter[ST <: Store[ST],
         cCurr = c1
       }
 
-  //    println(s"\n  X toLose = $toLose")
-  //    println(s"  X heapsToVisit = $heapsToVisit")
-  //    println(s"  X visitedHeaps = $visitedHeaps")
-  //    println(s"  X chunks = $chunks")
-  //    println(s"  X done? ${decider.check(σ, IsNoAccess(toLose))}")
+//      println(s"\n  X toLose = $toLose")
+//      println(s"  X heapsToVisit = $heapsToVisit")
+//      println(s"  X visitedHeaps = $visitedHeaps")
+//      println(s"  X consumedChunks = $consumedChunks")
+//      println(s"  X done? ${decider.check(σ, IsNoAccess(toLose))}")
 
       if (decider.check(σ, IsNoAccess(toLose))) {
         val tEqs =
@@ -167,6 +166,11 @@ trait MagicWandSupporter[ST <: Store[ST],
     /* TODO: This is similar, but not as general, as the consumption algorithm
      *       implemented for supporting quantified permissions. It should be
      *       possible to unite the two.
+     *
+     * TODO: decider.getChunk will return the first chunk it finds - and only
+     *       the first chunk. That is, if h contains multiple chunks for the
+     *       given id, only the first one will be considered. This may result
+     *       in missing permissions that could be taken from h.
      */
     private def consumeMaxPermissions(σ: S,
                                       h: H,
@@ -467,7 +471,7 @@ trait MagicWandSupporter[ST <: Store[ST],
           assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
           produce(σ0 \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
-            val topReserveHeap = c1.reserveHeaps.head + σ3.h
+            val (topReserveHeap, _) = heapCompressor.merge(σ3, c1.reserveHeaps.head, σ3.h, c)
             val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
                               exhaleExt = c1.exhaleExt,
                               lhsHeap = c2.lhsHeap,
@@ -495,7 +499,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                 produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
-                  val topReserveHeap = c3.reserveHeaps.head + σ3.h
+//                  val topReserveHeap = c3.reserveHeaps.head + σ3.h
+                  val (topReserveHeap, _) = heapCompressor.merge(σ3, c3.reserveHeaps.head, σ3.h, c)
                   val c4a = c4.decCycleCounter(predicate)
                               .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                     exhaleExt = c3.exhaleExt)

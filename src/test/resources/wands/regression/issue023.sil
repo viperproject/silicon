@@ -1,0 +1,28 @@
+field f: Int
+
+predicate P(x: Ref) { acc(x.f, 1/3) }
+predicate Q(x: Ref) { acc(x.f, 2/3) }
+
+method test01(x: Ref) {
+  inhale acc(P(x))
+  inhale acc(Q(x))
+
+  package
+    true
+      --*
+    unfolding acc(P(x)) in
+    unfolding acc(Q(x)) in
+    acc(x.f) // Failed previously
+}
+
+method test02(x: Ref) {
+  inhale acc(P(x))
+  inhale true --* acc(x.f, 2/3)
+
+  package
+    true
+      --*
+    unfolding acc(P(x)) in
+    applying (true --* acc(x.f, 2/3)) in
+    acc(x.f) // Failed previously
+}
