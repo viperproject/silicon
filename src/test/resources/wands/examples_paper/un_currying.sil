@@ -24,12 +24,10 @@
  * given wand A * B --* C.
  */
 
-/* The predicate bodies can be arbitrary since the proofs never unfold
- * the predicates.
- */
-predicate P() { true }
-predicate Q() { true }
-predicate R() { true }
+/* The predicates are abstract (no bodies) - in principle, these represent any self-framing assertion */
+predicate P()
+predicate Q()
+predicate R()
 
 /* Define short-hands for the sake of readability */
 define A acc(P())
@@ -37,19 +35,17 @@ define B acc(Q())
 define C acc(R())
 
 /* A --* B --* C  ==>  A * B --* C */
-method uncurry() {
-  inhale A --* (B --* C)
-
+method uncurry() 
+  requires A --* (B --* C)
+  ensures A && B --* C
+{
   package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
-
-  exhale A && B --* C
 }
 
 /* A * B --* C  ==>  A --* B --* C */
-method curry() {
-  inhale A && B --* C
-
-  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
-
-  exhale A --* (B --* C)
+method curry()
+  requires A && B --* C
+  ensures A --* (B --* C)
+{
+  package A --* packaging (B --* applying (A && B --* C) in C) in (B --* C)
 }

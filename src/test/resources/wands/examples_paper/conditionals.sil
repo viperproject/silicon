@@ -9,7 +9,7 @@ field g: Int
 field h: Ref
 
 method conditionals01(x: Ref)
-  requires acc(x.f) && acc(x.g, write)
+  requires acc(x.f) && acc(x.g)
 {
   define A acc(x.f)
   define B acc(x.f) && (x.f ==> acc(x.g))
@@ -22,30 +22,28 @@ method conditionals01(x: Ref)
 
   package A --* B
     // The LHS provides a hypothetical state in which x.f has some value b'.
-    // Since the value of b' is unknown, acc(x.g) must be part of the
-    // footprint of the wand. The current state thus satisfies:
+    // Since the value of b' is unknown, acc(x.g) is effectively part of the
+    // footprint of the wand. The current state now satisfies:
     //
-    //   acc(x.f) * x.f == b * !b' ==> acc(x.g) * A --* B
+    //   acc(x.f) * x.f == b * (!b' ==> acc(x.g)) * (A --* B)
 
   apply A --* B
     // Applying the wand instance requires giving up permissions to x.f, but
-    // we gain them back right away. x.f now has an unknown value b'', and
-    // depending on b'', we potentially also got permissions to x.g from the
-    // wand.
-    // (Note that the loss of information about x.f caused by applying the
-    // wand is an incompleteness of the current state of our implementation
-    // that is straight-forward to overcome.)
-    // The current state thus satisfies:
+    // we gain them back right away. x.f has an unknown value b'' (in 
+    // principle, this should be the same unknown value b as before the 
+    // apply; see regression/issue024.sil for a discussion of this issue).
+    // Depending on b'' (i.e. the value of x.f), we potentially also got 
+    // permissions to x.g from the apply. The current state thus satisfies:
     //
-    //   acc(x.f) * x.f == b'' * !b' ==> acc(x.g) * b'' ==> acc(x.g)
+    //   acc(x.f) * x.f == b'' * (!b' ==> acc(x.g)) * (b'' ==> acc(x.g))
     //
     // The third conjunct is essentially garbage since we will not be able to
     // deduce anything about b'.
 
   if (x.f) {
-    // We gained clarity about the value b'' that x.f has:
+    // We gained clarity about the value b'' that x.f has, resulting in:
     //
-    //   acc(x.f) & x.f == true * true ==> acc(x.g)
+    //   acc(x.f) * x.f == true * acc(x.g)
     assert acc(x.g)
   }
 
@@ -69,7 +67,7 @@ method conditionals02(x: Ref)
     // Since the value of b' is unknown, both acc(x.g) and acc(x.h) must be 
     // part of the footprint of the wand. The current state thus satisfies:
     //
-    //   acc(x.f) * x.f == b * !b' ? acc(x.g) : acc(x.h) * A --* B
+    //   acc(x.f) * x.f == b * (!b' ? acc(x.g) : acc(x.h)) * (A --* B)
     
   apply A --* B
     // After applying the wand, x.f has an unknown value b'' (resulting from an
@@ -77,8 +75,8 @@ method conditionals02(x: Ref)
     // Depending on b'', we either got (back) permissions to x.g or to x.h.
     // The current state thus satisfies:
     //
-    //   acc(x.f) * x.f == b'' * !b' ? acc(x.g) : acc(x.h) *
-    //     b'' ? acc(x.g) : acc(x.h)
+    //   acc(x.f) * x.f == b'' * (!b' ? acc(x.g) : acc(x.h)) *
+    //     (b'' ? acc(x.g) : acc(x.h))
     //
     // In contrast to the situation above, however, this time we are (and the
     // verifier is, too) able to deduce that we are now back in a state that

@@ -32,10 +32,6 @@ method sum_it(ys: Ref) returns (sum: Int)
 
   var old_sum_xs : Int /* used to store sum of list from xs, when wand is packaged */
 
-  /* Short-hands to keep the specifications concise */
-  define A xs != null ==> acc(List(xs)) && sum_rec(xs) == old_sum_xs
-  define B acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))
-
   /* (Trivially) establish the promise that giving up the list starting from
    * the current node xs - which at this point is the head of the list - in a
    * shape s.t. its sum is the same as it is at this point (sum_rec(xs) == old_sum_xs),
@@ -57,7 +53,8 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant xs != null ==> acc(List(xs))
     invariant old_sum_xs == (xs == null ? 0 : sum_rec(xs))
     invariant sum == old(sum_rec(ys)) - old_sum_xs;
-    invariant A --* B
+    invariant (xs != null ==> acc(List(xs)) && sum_rec(xs) == old_sum_xs) --*
+                (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
   {
     unfold List(xs)
     sum := sum + xs.val

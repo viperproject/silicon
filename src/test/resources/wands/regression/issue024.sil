@@ -1,0 +1,51 @@
+/* This example illustrates the behaviour of conditionals on the RHS
+ * of a wand, in particular, which uncertainties are caused when the
+ * footprint of a wand is affected by locations to which permissions
+ * are provided by the LHS.
+ */
+
+field f: Bool
+field g: Int
+field h: Ref
+
+// As described in our ECOOP'15 paper, the straight-forward translation 
+// of "apply A --* B" is "exhale A; exhale A --* B; inhale B".
+// This can lead to incompletenesses, since we do not correlate the values
+// in the state given up (A) with those to which we get back permissions
+// in the inhaled state (B). This should be handled 
+
+method incompleteness_01(x: Ref)
+  requires acc(x.f) && (acc(x.f) --* acc(x.f))
+  ensures acc(x.f)
+  {
+    assert x.f == old(x.f)
+    apply (acc(x.f) --* acc(x.f)) // temporarily exhales acc(x.f)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/24/)
+    assert x.f == old(x.f) // fails: we lost information after the exhale
+  }
+  
+predicate compare(x:Ref) { acc(x.f) }
+method comparison(x: Ref)
+  requires acc(x.f)
+  ensures acc(x.f)
+  {
+    assert x.f == old(x.f)
+    fold compare(x)
+    unfold compare(x)
+    assert x.f == old(x.f) // succeeds
+  }
+
+method incompleteness_02(x: Ref)
+  requires acc(x.f) && acc(x.g)
+{
+  define A acc(x.f)
+  define B acc(x.f) && (x.f ==> acc(x.g))
+
+  package A --* B
+  
+  if(x.f) {
+    apply A --* B
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/24/)
+    assert acc(x.g) // should succeed. See also conditionals.sil test case
+  }
+}
