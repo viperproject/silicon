@@ -45,7 +45,7 @@ method incompleteness_02(x: Ref)
   
   if(x.f) {
     apply A --* B
-    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/24/)
+    //:: UnexpectedOutput(assert.failed:insufficient.permission, /silicon/issue/24/)
     assert acc(x.g) // should succeed. See also conditionals.sil test case
   }
 }
