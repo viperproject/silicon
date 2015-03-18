@@ -115,10 +115,8 @@ object SiliconBuild extends Build {
   def internalDep = if (isBuildServer) Nil else Seq(dependencies.silSrc % "compile->compile;test->test")
 
   def externalDep = (
-       dependencies.logging
-    ++ dependencies.jgrapht
-    ++ Seq(dependencies.commonsIO)
-    ++ Seq(dependencies.scallop)
+       Seq(dependencies.jgrapht, dependencies.commonsIO, dependencies.scallop)
+    ++ dependencies.logging
     ++ (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil))
 
   /* Dependencies */
@@ -129,10 +127,7 @@ object SiliconBuild extends Build {
       "org.slf4j" % "slf4j-log4j12" % "1.6.4")
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
-
-    lazy val jgrapht = Seq(
-      "org.jgrapht" % "jgrapht-core" % "0.9.0",
-      "org.jgrapht" % "jgrapht-ext" % "0.9.0")
+    lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.0"
 
     lazy val commonsIO = "commons-io" % "commons-io" % "2.4"
 
