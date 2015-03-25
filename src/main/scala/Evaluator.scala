@@ -126,7 +126,7 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       context to record the reserve heap.
      */
 
-    val evalResult = e match {
+    val resultTerm = e match {
       case _: ast.TrueLit => Q(True(), c)
       case _: ast.FalseLit => Q(False(), c)
 
@@ -143,9 +143,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.FractionalPerm(e0, e1) =>
         var t1: Term = null
-        evalBinOp(σ, e0, e1, (t0, _t1) => {
-          t1 = _t1; FractionPerm(t0, t1)
-        }, pve, c)((tFP, c1) =>
+        evalBinOp(σ, e0, e1, (t0, _t1) => {t1 = _t1; FractionPerm(t0, t1)}, pve, c)((tFP, c1) =>
           failIfDivByZero(σ, tFP, e1, t1, predef.Zero, pve, c1)(Q))
 
       case _: ast.WildcardPerm =>
@@ -162,7 +160,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-          val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined { case `qv` => true})
+          val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
           quantifiedChunkSupporter.withValue(σ, σ.h, tRcvr, fa.field, pve, fa, c1)((value, fvfDef) => {
             val fvfLookups =
               if (qvarsInRcvr.nonEmpty) fvfDef.quantifiedValues(qvarsInRcvr)
@@ -172,16 +170,13 @@ trait DefaultEvaluator[ST <: Store[ST],
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
                 val sr1 = sr.recordSnapshot(fa, c1.branchConditions, value)
-                  .recordQPTerms(qvarsInRcvr, c1.branchConditions, fvfDomain +: fvfLookups)
+                            .recordQPTerms(qvarsInRcvr, c1.branchConditions, fvfDomain +: fvfLookups)
                 val sr2 =
                   if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
                   else sr1
                 c1.copy(snapshotRecorder = Some(sr2))
-              case _ => c1
-            }
-            Q(value, c2)
-          })
-        })
+              case _ => c1}
+            Q(value, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
@@ -189,10 +184,8 @@ trait DefaultEvaluator[ST <: Store[ST],
             val c3 = c2.snapshotRecorder match {
               case Some(sr) =>
                 c2.copy(snapshotRecorder = Some(sr.recordSnapshot(fa, c2.branchConditions, ch.value)))
-              case _ => c2
-            }
-            Q(ch.value, c3)
-          }))
+              case _ => c2}
+            Q(ch.value, c3)}))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -206,7 +199,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.Let(v, e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
-          eval(σ \+(v.localVar, t0), e1, pve, c1)((t1, c2) =>
+          eval(σ \+ (v.localVar, t0), e1, pve, c1)((t1, c2) =>
             Q(t1, c2)))
 
       /* Strict evaluation of AND */
@@ -217,8 +210,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.And(e0, e1) =>
         evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
           val tAnd = And(t0, optT1.getOrElse(True()))
-          Q(tAnd, c1)
-        })
+          Q(tAnd, c1)})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -228,16 +220,14 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.Or(e0, e1) =>
         evalDependently(σ, e0, e1, Not, pve, c)((t0, optT1, c1) => {
           val tOr = Or(t0, optT1.getOrElse(True()))
-          Q(tOr, c1)
-        })
+          Q(tOr, c1)})
 
       case ast.Implies(e0, e1) =>
         evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
           val tImplies = Implies(t0, optT1.getOrElse(True()))
-          Q(tImplies, c1)
-        })
+          Q(tImplies, c1)})
 
-      case ite@ast.CondExp(e0, e1, e2) =>
+      case ite @ ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branchAndJoin(σ, t0, c1,
             (c2, QB) =>
@@ -247,8 +237,8 @@ trait DefaultEvaluator[ST <: Store[ST],
           )((optT1, optT2, cJoined) => {
             val tIte =
               Ite(t0,
-                optT1.getOrElse(fresh("$deadThen", toSort(e1.typ))),
-                optT2.getOrElse(fresh("$deadElse", toSort(e2.typ))))
+                  optT1.getOrElse(fresh("$deadThen", toSort(e1.typ))),
+                  optT2.getOrElse(fresh("$deadElse", toSort(e2.typ))))
             Q(tIte, cJoined)
           }))
 
@@ -319,13 +309,12 @@ trait DefaultEvaluator[ST <: Store[ST],
       /* Others */
 
       /* Domains not handled directly */
-      case dfa@ast.DomainFuncApp(funcName, eArgs, _) =>
+      case dfa @ ast.DomainFuncApp(funcName, eArgs, _) =>
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
-          Q(DomainFApp(fi, tArgs), c1)
-        })
+          Q(DomainFApp(fi, tArgs), c1)})
 
       case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (triggerQuant, tQuantOp, silTriggers) = quant match {
@@ -341,9 +330,9 @@ trait DefaultEvaluator[ST <: Store[ST],
         val σQuant = σ \+ γVars
 
         val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
-          recordPossibleTriggers = true,
-          possibleTriggers = Map.empty,
-          additionalTriggers = Nil)
+                        recordPossibleTriggers = true,
+                        possibleTriggers = Map.empty,
+                        additionalTriggers = Nil)
 
         decider.locally[(Set[Term], Term, C)](QB => {
           val πPre: Set[Term] = decider.π
@@ -354,18 +343,16 @@ trait DefaultEvaluator[ST <: Store[ST],
               val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
-                recordPossibleTriggers = c.recordPossibleTriggers,
-                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
-                additionalTriggers = c.additionalTriggers ++ (if (c.recordPossibleTriggers) c2.additionalTriggers else Nil))
-              QB(πAux, tQuant, c3)
-            })
-          })
-        }) { case (πAux, tQuant, c1) =>
+                               recordPossibleTriggers = c.recordPossibleTriggers,
+                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
+                               additionalTriggers = c.additionalTriggers ++ (if (c.recordPossibleTriggers) c2.additionalTriggers else Nil))
+              QB(πAux, tQuant, c3)})})
+        }){case (πAux, tQuant, c1) =>
           assume(πAux)
           Q(tQuant, c1)
         }
 
-      case fapp@ast.FuncApp(funcName, eArgs) =>
+      case fapp @ ast.FuncApp(funcName, eArgs) =>
         val err = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 
@@ -389,20 +376,17 @@ trait DefaultEvaluator[ST <: Store[ST],
               val c4 = c3.snapshotRecorder match {
                 case Some(sr) =>
                   c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
-                case _ => c3
-              }
+                case _ => c3}
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
               val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
-              QB(tFApp, c5)
-            })
-          )((tR, cR) => {
-            Q(tR, cR)
-          })
-        })
+              QB(tFApp, c5)})
+            )((tR, cR) => {
+              Q(tR, cR)
+            })})
 
       case ast.Unfolding(
-      acc@ast.PredicateAccessPredicate(pa@ast.PredicateAccess(eArgs, predicateName), ePerm),
-      eIn) =>
+              acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
+              eIn) =>
 
         val predicate = c.program.findPredicate(predicateName)
 
@@ -412,43 +396,37 @@ trait DefaultEvaluator[ST <: Store[ST],
           evals(σ, eArgs, pve, c0)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
-                case true =>
+              case true =>
                   join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
-                    /* [2014-12-10 Malte] The commented code should replace the code following
+                      /* [2014-12-10 Malte] The commented code should replace the code following
                        * it, but using it slows down RingBufferRd.sil significantly. The generated
                        * Z3 output looks nearly identical, so my guess is that it is some kind
                        * of triggering problem, probably related to sequences.
                        */
-                    //                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
-                    //                      val c4 = c3.decCycleCounter(predicate)
-                    //                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
-                    //                        QB(tIn, c5))})
+//                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
+//                      val c4 = c3.decCycleCounter(predicate)
+//                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
+//                        QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
-                      //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+//                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/ , s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
                         val c4a = c4.decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/ , eIn, pve, c4a)((tIn, c5) => {
-                          QB(tIn, c5)
-                        })
-                      })
-                    })
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
+                          QB(tIn, c5)})})})
                   )(Q)
-                case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))
-              }))
+              case false =>
+                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)
         }
 
       /* Sequences */
-      // special-case x in [i..j] to be treated as i<=x && x<j
-      case a@ast.SeqContains(e0, ast.RangeSeq(e1,e2)) => eval2(σ, ast.And(ast.LeCmp(e1,e0)(a.pos,a.info),ast.LtCmp(e0,e2)(a.pos,a.info))(a.pos,a.info), pve, c)(Q)
 
       case ast.SeqContains(e0, e1) => evalBinOp(σ, e1, e0, SeqIn, pve, c)(Q)
-      /* Note the reversed order of the arguments! */
+        /* Note the reversed order of the arguments! */
 
       case ast.SeqAppend(e0, e1) => evalBinOp(σ, e0, e1, SeqAppend, pve, c)(Q)
       case ast.SeqDrop(e0, e1) => evalBinOp(σ, e0, e1, SeqDrop, pve, c)(Q)
@@ -468,8 +446,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
               SeqAppend(SeqSingleton(te), tSeq))
           assume(SeqLength(tSeq) === IntLiteral(es.size))
-          Q(tSeq, c1)
-        })
+          Q(tSeq, c1)})
 
       /* Sets and multisets */
 
@@ -481,57 +458,55 @@ trait DefaultEvaluator[ST <: Store[ST],
           val tSet =
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
-          Q(tSet, c1)
-        })
+          Q(tSet, c1)})
 
       case ast.ExplicitMultiset(es) =>
         evals2(σ, es, Nil, pve, c)((tEs, c1) => {
           val tMultiset =
             tEs.tail.foldLeft[MultisetTerm](SingletonMultiset(tEs.head))((tMultiset, te) =>
               MultisetAdd(tMultiset, te))
-          Q(tMultiset, c1)
-        })
+          Q(tMultiset, c1)})
 
       case ast.AnySetUnion(e0, e1) => e.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetUnion, pve, c)(Q)
         case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetUnion, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
-          .format(e, e.getClass.getName, e.typ))
+                            .format(e, e.getClass.getName, e.typ))
       }
 
       case ast.AnySetIntersection(e0, e1) => e.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetIntersection, pve, c)(Q)
         case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIntersection, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
-          .format(e, e.getClass.getName, e.typ))
+                            .format(e, e.getClass.getName, e.typ))
       }
 
       case ast.AnySetSubset(e0, e1) => e0.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetSubset, pve, c)(Q)
         case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetSubset, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
-          .format(e, e.getClass.getName, e.typ))
+                            .format(e, e.getClass.getName, e.typ))
       }
 
       case ast.AnySetMinus(e0, e1) => e.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetDifference, pve, c)(Q)
         case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetDifference, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
-          .format(e, e.getClass.getName, e.typ))
+                            .format(e, e.getClass.getName, e.typ))
       }
 
       case ast.AnySetContains(e0, e1) => e1.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
         case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
-          .format(e, e.getClass.getName, e.typ))
+                            .format(e, e.getClass.getName, e.typ))
       }
 
       case ast.AnySetCardinality(e0) => e0.typ match {
         case _: ast.SetType => eval(σ, e0, pve, c)((t0, c1) => Q(SetCardinality(t0), c1))
         case _: ast.MultisetType => eval(σ, e0, pve, c)((t0, c1) => Q(MultisetCardinality(t0), c1))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of type %s"
-          .format(e0, e0.getClass.getName, e0.typ))
+                            .format(e0, e0.getClass.getName, e0.typ))
       }
 
       /* Unexpected nodes */
@@ -539,7 +514,8 @@ trait DefaultEvaluator[ST <: Store[ST],
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
     }
-    evalResult
+
+    resultTerm
   }
 
   def withChunkIdentifier(σ: S,
