@@ -120,6 +120,11 @@ trait ExpressionTranslator {
       /* Sequences */
 
       case silver.ast.SeqAppend(e0, e1) => SeqAppend(f(e0), f(e1))
+        // special-case x in [i..j] to be treated as i<=x && x<j
+      case silver.ast.SeqContains(e0, silver.ast.RangeSeq(e1,e2)) => {
+        val fe0 = f(e0)
+        And(AtMost(f(e1),fe0),Less(fe0,f(e2)))
+      }
       case silver.ast.SeqContains(e0, e1) => SeqIn(f(e1), f(e0))
       case silver.ast.SeqDrop(e0, e1) => SeqDrop(f(e0), f(e1))
       case silver.ast.SeqIndex(e0, e1) => SeqAt(f(e0), f(e1))
