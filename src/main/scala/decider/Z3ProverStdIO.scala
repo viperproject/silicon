@@ -157,7 +157,11 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     writeLine(s"(set-option :timeout $timeout)")
     readSuccess()
 
-    val (result, duration) = assertUsingGuard(goal)
+    val (result, duration) = config.assertionMode() match {
+      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+    }
+
     logComment(s"${common.format.formatMillisReadably(duration)}")
     logComment("(get-info :all-statistics)")
 
@@ -180,7 +184,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     (result, endTime - startTime)
   }
 
-  private def assertUsingGuard(goal: String): (Boolean, Long) = {
+  private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
     val guard = fresh("grd", sorts.Bool)
 
     writeLine(s"(assert (implies $guard (not $goal)))")

@@ -398,8 +398,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   /* Argument converter */
 
   private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
-    val stdioRegex = """(stdio)""".r
-    val fileRegex = """(file)=(.*)""".r
+    val stdioRegex = """(?i)(stdio)""".r
+    val fileRegex = """(?i)(file)=(.*)""".r
 
     def parse(s: List[(String, List[String])]) = s match {
       case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
@@ -423,6 +423,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[String]
+    val argType = org.rogach.scallop.ArgType.LIST
+  }
+
+  private val assertionModeConverter = new ValueConverter[AssertionMode] {
+    val pushPopRegex = """(?i)(pp)""".r
+    val softConstraintsRegex = """(?i)(sc)""".r
+
+    def parse(s: List[(String, List[String])]) = s match {
+      case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
+      case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
+      case Nil => Right(None)
+      case _ => Left(s"Unexpected arguments")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[AssertionMode]
     val argType = org.rogach.scallop.ArgType.LIST
   }
 
@@ -599,13 +614,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(forwardArgumentsConverter)
   
-  val introduceFreshSymbolsForTakenQuantifiedPermissions = opt[Boolean]("shorterQPTerms",
-    descr = "Shorten terms arising from quantified permissions by introducing fresh symbols",
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
   val splitTimeout = opt[Int]("qpSplitTimeout",
     descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "
              + "holds no further permissions, and 2) checking if sufficiently many "
@@ -614,6 +622,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )
+
+  val assertionMode = opt[AssertionMode]("assertionMode",
+    descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
+             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+    default = Some(AssertionMode.SoftConstraints),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )(assertionModeConverter)
 
   /* Option validation */
 
@@ -640,6 +656,12 @@ object Config {
   object Sink {
     case object Stdio extends Sink
     case object File extends Sink
+  }
+
+  sealed trait AssertionMode
+  object AssertionMode {
+    case object PushPop extends AssertionMode
+    case object SoftConstraints extends AssertionMode
   }
 }
 
