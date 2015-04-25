@@ -102,6 +102,7 @@ case class VarDecl(v: Var) extends Decl
 case class SortDecl(sort: Sort) extends Decl
 case class FunctionDecl(func: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
+case class MacroDecl(id: String, args: Seq[Var], body: Term) extends Decl
 
 /*
  * Basic terms

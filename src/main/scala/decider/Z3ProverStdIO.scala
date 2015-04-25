@@ -194,7 +194,10 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     (result, endTime - startTime)
   }
 
-  def check() = {
+  def check(timeout: Int = 0) = {
+    writeLine(s"(set-option :timeout $timeout)")
+    readSuccess()
+
     writeLine("(check-sat)")
 
     readLine() match {

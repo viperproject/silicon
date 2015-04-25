@@ -112,6 +112,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private type C = DefaultContext
 
+  private var counter = new silicon.utils.Counter()
+
   private case class FvfDefEntry(partialValue: Term, generateTriggersFrom: Seq[Seq[Term]], partialDomain: Domain)
 
   private case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
@@ -438,25 +440,59 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
      */
     val (_, fvfDef) = summarizeFieldValue(candidates, receiver, field)
 
-    candidates foreach { ch =>
+    decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $fraction")
+//    val trggr = (t: Term) => Apply(Var("$trggr", sorts.Arrow(sorts.Perm, sorts.Bool)), t :: Nil)
+
+    val precomputedData = candidates map { ch =>
+      //      val prevPermsToTake = permsToTake
+      val permsTaken = PermMin(permsToTake, Ite(`?r` === receiver, ch.perm, NoPerm()))
+
+      val macroName = "permsTaken" + counter.next()
+      val macroDecl = MacroDecl(macroName, `?r` :: Nil, permsTaken)
+      decider.prover.declare(macroDecl)
+
+      /* TODO: Fresh functions should be declared lazily, i.e. only of they are actually used later on */
+//      val permsTakenFunc = fresh(macroName, sorts.Arrow(`?r`.sort, sorts.Perm))
+      val permsTakenFunc = Function(macroName, sorts.Arrow(`?r`.sort, sorts.Perm))
+      val permsTakenFApp = (t: Term) => Apply(permsTakenFunc, t :: Nil)
+
+//      assume(Forall(`?r`, permsTakenFApp(`?r`) === permsTaken, Trigger(permsTakenFApp(`?r`))))
+//      assume(permsTakenFApp(receiver) === permsTaken.replace(`?r`, receiver))
+//      assume(trggr(permsTakenFApp(receiver)))
+
+      permsToTake = PermMinus(permsToTake, permsTakenFApp(`?r`))
+
+      (ch, permsTakenFApp(`?r`), permsToTake)
+
+      //      check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger]), config.splitTimeout())
+      //      residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
+      //      success = check(σ, permsToTake.replace(`?r`, receiver) === NoPerm(), config.splitTimeout())
+    }
+
+//    decider.prover.logComment(s"Try to instantiate axioms up-front")
+//    decider.prover.check(config.splitTimeout())
+
+    decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
+
+    precomputedData foreach { case (ch, permsTaken, permsStillToTake) =>
       if (success)
         residue ::= ch
       else {
         val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
-        val permsTakenAmount = PermMin(permsToTake, Ite(`?r` === receiver, ch.perm, NoPerm()))
-        var permsTaken: Term = permsTakenAmount
+//        val permsTakenAmount = PermMin(permsToTake, Ite(`?r` === receiver, ch.perm, NoPerm()))
+//        var permsTaken: Term = permsTakenAmount
+//
+//        if (config.introduceFreshSymbolsForTakenQuantifiedPermissions()) {
+//          val permsTakenFunc = fresh("permsTaken", sorts.Arrow(`?r`.sort, sorts.Perm))
+//          val permsTakenFApp = Apply(permsTakenFunc, `?r` :: Nil)
+//          assume(Forall(`?r`, permsTakenFApp === permsTakenAmount, Trigger(permsTakenFApp)))
+//
+//          permsTaken = permsTakenFApp
+//        }
 
-        if (config.introduceFreshSymbolsForTakenQuantifiedPermissions()) {
-          val permsTakenFunc = fresh("permsTaken", sorts.Arrow(`?r`.sort, sorts.Perm))
-          val permsTakenFApp = Apply(permsTakenFunc, `?r` :: Nil)
-          assume(Forall(`?r`, permsTakenFApp === permsTakenAmount, Trigger(permsTakenFApp)))
-
-          permsTaken = permsTakenFApp
-        }
-
-        /* Update amount of permissions still to take */
-        permsToTake = PermMinus(permsToTake, permsTaken)
+//        /* Update amount of permissions still to take */
+//        permsToTake = PermMinus(permsToTake, permsTaken)
 
         if (constrainPermissions) {
           val constrainPermissionQuantifier =
@@ -464,18 +500,34 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                    Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFractionWithoutExplicitQVar, ch.perm)),
                    Nil: Seq[Trigger]).autoTrigger
 
+          decider.prover.logComment(s"Constrain original permissions $fraction")
           assume(constrainPermissionQuantifier)
 
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
-        } else if (!check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger]), config.splitTimeout())) {
-          residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
+        } else {
+          decider.prover.logComment(s"Chunk depleted?")
+          val chunkDepleted = check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger]), config.splitTimeout())
+
+          if (!chunkDepleted) residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
         }
 
-        success = check(σ, permsToTake.replace(`?r`, receiver) === NoPerm(), config.splitTimeout())
+        /* Note that we also need the last permsStillToTake (i.e. the amount that
+         * belongs to the last chunk we considered in *this* loop) in order to check
+         * for success after the loop (without a timeout).
+         */
+        permsToTake = permsStillToTake.replace(`?r`, receiver)
+
+//        success = check(σ, permsStillToTake.replace(`?r`, receiver) === NoPerm(), config.splitTimeout())
+        decider.prover.logComment(s"Enough permissions taken?")
+        success = check(σ, permsToTake === NoPerm(), config.splitTimeout())
       }
     }
 
-    success = success || check(σ, permsToTake.replace(`?r`, receiver) === NoPerm())
+    decider.prover.logComment("Final check that enough permissions have been taken")
+//    success = success || check(σ, permsToTake.replace(`?r`, receiver) === NoPerm())
+    success = success || check(σ, permsToTake === NoPerm())
+
+    decider.prover.logComment("Done splitting")
 
     val hResidue = H(residue ++ otherChunks)
     val chunkSplittedOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithoutExplicitQVar)

@@ -73,6 +73,17 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
       val fct = FunctionDecl(Function(symbol, from :: Nil, to))
 
       render(fct)
+
+    case MacroDecl(id, args, body) =>
+      val idDoc = sanitizeSymbol(id)
+      val argDocs = args map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))
+      val bodySortDoc = render(body.sort)
+      val bodyDoc = render(body)
+
+//      (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
+//          (ite (<= p1 p2) p1 p2))
+
+      parens("define-fun" <+> idDoc <+> parens(ssep(argDocs, space)) <+> bodySortDoc <> nest(line <> bodyDoc))
   }
 
   def convert(t: Term): String = {
