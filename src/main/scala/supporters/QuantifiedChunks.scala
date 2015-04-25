@@ -187,11 +187,21 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   /* State queries */
 
-  def getQuantifiedChunk(h: H, field: String) =
-    h.values.find {
-      case ch: QuantifiedChunk => ch.name == field
-      case _ => false
-    }.asInstanceOf[Option[QuantifiedChunk]]
+  def splitHeap(h: H, field: String): (Seq[QuantifiedChunk], Seq[Chunk]) = {
+    var quantifiedChunks = Seq[QuantifiedChunk]()
+    var otherChunks = Seq[Chunk]()
+
+    h.values foreach {
+      case ch: QuantifiedChunk if ch.name == field =>
+        quantifiedChunks +:= ch
+      case ch if ch.name == field =>
+        sys.error(s"I did not expect non-quantified chunks on the heap for field $field, but found $ch")
+      case ch =>
+        otherChunks +:= ch
+    }
+
+    (quantifiedChunks, otherChunks)
+  }
 
   def isQuantifiedFor(h: H, field: String) =
     h.values.exists(ch => ch.isInstanceOf[QuantifiedChunk] && ch.name == field)
@@ -229,18 +239,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
 
           case true =>
-            var quantifiedChunks = Seq[QuantifiedChunk]()
-            var otherChunks = Seq[Chunk]()
-
-            h.values foreach {
-              case ch: QuantifiedChunk if ch.name == field.name =>
-                quantifiedChunks +:= ch
-              case ch if ch.name == field.name =>
-                sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
-              case ch =>
-                otherChunks +:= ch
-            }
-
+            val (quantifiedChunks, _) = splitHeap(h, field.name)
             val (lookupRcvr, fvfDef) = summarizeFieldValue(quantifiedChunks, rcvr, field)
 
             /* Optimisisations */
@@ -262,9 +261,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
                 (_lookupRcvr, _fvfDef)
               } else {
-//                cacheLog.println(s"cached? ${withValueCache.contains(rcvr, consideredCunks)}")
-                withValueCache.getOrElseUpdate((rcvr, toSet(quantifiedChunks)),
-                                               (lookupRcvr, fvfDef))
+                if (config.disableQPCaching())
+                  (lookupRcvr, fvfDef)
+                else {
+//                  cacheLog.println(s"cached? ${withValueCache.contains(rcvr, consideredCunks)}")
+                  withValueCache.getOrElseUpdate((rcvr, toSet(quantifiedChunks)), (lookupRcvr, fvfDef))
+                }
               }
 
 //            cacheLog.println(s"lookupRcvrToReturn = $lookupRcvrToReturn")
@@ -414,18 +416,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                     c: C)
                    : (H, QuantifiedChunk, FvfDef, Boolean) = {
 
-    var quantifiedChunks = Seq[QuantifiedChunk]()
-    var otherChunks = Seq[Chunk]()
-
-    h.values foreach {
-      case ch: QuantifiedChunk if ch.name == field.name =>
-        quantifiedChunks +:= ch
-      case ch if ch.name == field.name =>
-        sys.error(s"I did not expect non-quantified chunks on the heap for field ${field.name}, but found $ch")
-      case ch =>
-        otherChunks +:= ch
-    }
-
+    val (quantifiedChunks, otherChunks) = splitHeap(h, field.name)
     val candidates = chunkOrderHeuristic(quantifiedChunks)
     var residue: List[Chunk] = Nil
     var permsToTake = conditionalizedFractionWithoutExplicitQVar
@@ -606,7 +597,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term] = {
     None.orElse(rcvr.find{case SeqAt(seq, _) => seq})
-        .orElse(cond.map(_.find{case SeqIn(seq, _) => seq; case SetIn(_, set) => set}).flatten)
+        .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
         .toSeq
   }
 
@@ -629,28 +620,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 }
 
 object QuantifiedChunkSupporter {
-  object ForallRef {
-    def unapply(n: ast.Node): Option[(ast.LocalVar,       /* Quantified variable */
-                                      ast.Exp,            /* Condition */
-                                      ast.Exp,            /* Receiver e of acc(e.f, p) */
-                                      ast.Field,          /* Field f of acc(e.f, p) */
-                                      ast.Exp,            /* Permissions p of acc(e.f, p) */
-                                      ast.Forall,         /* AST node of the forall (for error reporting) */
-                                      ast.FieldAccess)] = /* AST node for e.f (for error reporting) */
-
-      n match {
-        case forall @ ast.Forall(Seq(lvd @ silver.ast.LocalVarDecl(_, _/*ast.types.Ref*/)),
-                                triggers,
-                                ast.Implies(condition, ast.FieldAccessPredicate(fa @ ast.FieldAccess(rcvr, f), gain)))
-            if    rcvr.exists(_ == lvd.localVar)
-               && triggers.isEmpty =>
-
-          Some((lvd.localVar, condition, rcvr, f, gain, forall, fa))
-
-        case _ => None
-      }
-  }
-
   /* TODO: This is only defined in the object (instead of in the class) because the class
    *       takes the usual type parameters, which would then have to be added to the
    *       DefaultFieldValueFunctionsEmitter, which is where `fieldAccesses` is used

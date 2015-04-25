@@ -15,15 +15,15 @@ import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, State
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.{SymbolConvert, DirectChunk, DefaultContext}
+import state.{QuantifiedChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms._
 import state.terms.predef.`?r`
 import supporters.{LetHandler, Brancher, ChunkSupporter, QuantifiedChunkSupporter}
-import viper.silver.ast.QuantifiedPermissionSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
-    extends Consumer[DirectChunk, ST, H, S, DefaultContext]
+    extends NoOpStatefulComponent
+       with Consumer[DirectChunk, ST, H, S, DefaultContext]
     { this: Logging with Evaluator[ST, H, S, DefaultContext]
                     with Brancher[ST, H, S, DefaultContext]
                     with ChunkSupporter[ST, H, PC, S]
@@ -44,6 +44,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
+
+  private val qpForallCache = MMap[(ast.Forall, Set[QuantifiedChunk]), (Var, Term, Term, Seq[Term], H, QuantifiedChunk, C)]()
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -123,19 +125,19 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
+      case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
+        val (h1, ts1) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.fieldAccesses(forall))
+        /* If receiver or condition dereference a field which hasn't been quantified yet,
+         * then the evaluator will try to find a regular chunk for the quantified variable,
+         * which will fail.
+         * TODO: It would be better if the heap were quantified on-demand (e.g., in the
+         *       evaluator) AND if that quantified heap would be used afterwards as well
+         *       (which would currently not be possible since the evaluator cannot pass
+         *       on modified heaps).
+         */
+        assume(ts1)
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
-        val (h1, ts) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.fieldAccesses(forall))
-          /* If receiver or condition dereference a field which hasn't been quantified yet,
-           * then the evaluator will try to find a regular chunk for the quantified variable,
-           * which will fail.
-           * TODO: It would be better if the heap were quantified on-demand (e.g., in the
-           *       evaluator) AND if that quantified heap would be used afterwards as well
-           *       (which would currently not be possible since the evaluator cannot pass
-           *       on modified heaps).
-           */
-        assume(ts)
         val σQVar = σ \ h1 \+ γQVar
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
         eval(σQVar, condition, pve, c0)((tCond, c1) =>
@@ -157,25 +159,34 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                         True()
                     decider.assert(σ, receiverInjective) {
                       case true =>
-                        val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
-                        val (h2, ts) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
-                        val (inverseFunc, inverseAxioms) =
-                          quantifiedChunkSupporter.getFreshInverseFunction(tRcvr, tCond, tQVar)
-                        val inverseOfImplicitQVar = inverseFunc(`?r`)
-                        val condPerms =
-                          quantifiedChunkSupporter.conditionalPermissions(tQVar, inverseOfImplicitQVar, tCond, tPerm)
-                        assume(ts ++ inverseAxioms)
-                        val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-                        val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                        quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
-                          case Some((h3, ch, c4)) =>
-                            Q(h3, ch.value, /*ch :: */Nil, c4)
-                          case None =>
-                            Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
+                        val (h2, ts2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
+                        assume(ts2)
 
+                        val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
+                        qpForallCache.get((forall, toSet(quantifiedChunks))) match {
+                          case Some((tQVarCached, tRcvrCached, tCondCached, inverseAxiomsCached, hCached, chCached, cCached))
+                               if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
+                            assume(inverseAxiomsCached)
+                            Q(hCached, chCached.value, /*ch :: */Nil, cCached)
+                          case None =>
+                            val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
+                            val (inverseFunc, inverseAxioms) =
+                              quantifiedChunkSupporter.getFreshInverseFunction(tRcvr, tCond, tQVar)
+                            val inverseOfImplicitQVar = inverseFunc(`?r`)
+                            val condPerms =
+                              quantifiedChunkSupporter.conditionalPermissions(tQVar, inverseOfImplicitQVar, tCond, tPerm)
+                            assume(inverseAxioms)
+                            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+                            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                            quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
+                              case Some((h3, ch, c4)) =>
+                                if (!config.disableQPCaching())
+                                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, inverseAxioms, h3, ch, c4))
+                                Q(h3, ch.value, /*ch :: */Nil, c4)
+                              case None =>
+                                Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}
                       case false =>
                         Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
-
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(loss))})})
 
@@ -242,5 +253,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
 
     consumed
+  }
+
+  /* Lifetime */
+
+  override def reset() {
+    super.reset()
+
+    qpForallCache.clear()
   }
 }

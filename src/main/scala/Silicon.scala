@@ -500,21 +500,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
-    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
-             + "Caching results in incompletenesses, but is usually faster."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
-    descr = (  "Disable caching of snapshot symbols. "
-             + "Caching reduces the number of symbols the prover has to work with."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
+//  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
+//    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
+//             + "Caching results in incompletenesses, but is usually faster."),
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
+//
+//  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
+//    descr = (  "Disable caching of snapshot symbols. "
+//             + "Caching reduces the number of symbols the prover has to work with."),
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
 
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
@@ -613,7 +613,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(forwardArgumentsConverter)
-  
+
   val splitTimeout = opt[Int]("qpSplitTimeout",
     descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "
              + "holds no further permissions, and 2) checking if sufficiently many "
@@ -630,6 +630,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(assertionModeConverter)
+
+  val disableQPCaching = opt[Boolean]("disableQPCaching",
+    descr = "Disable caching of qp-related symbols and axioms.",
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
 
   /* Option validation */
 
