@@ -585,6 +585,10 @@ object Implies extends ((Term, Term) => Term) {
   def unapply(e: Implies) = Some((e.p0, e.p1))
 }
 
+object Implied extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term): Term = Implies(e1, e0)
+}
+
 class Iff(val p0: Term, val p1: Term) extends BooleanTerm
     with StructuralEqualityBinaryOp[Term]
     with ForbiddenInTrigger {
