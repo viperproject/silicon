@@ -206,7 +206,7 @@ trait DefaultProducer[ST <: Store[ST],
           assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-          val (ch, inverseAxioms) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond)
+          val (ch, inverseAxioms) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
           assume(inverseAxioms)
           val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
 //          assume(Domain(field.name, snap) === tSet)

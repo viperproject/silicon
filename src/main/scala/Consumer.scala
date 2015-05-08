@@ -171,7 +171,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           case _ =>
                             val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
                             val (inverseFunc, inverseAxioms) =
-                              quantifiedChunkSupporter.getFreshInverseFunction(tRcvr, tCond, tQVar)
+                              quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
                             val inverseOfImplicitQVar = inverseFunc(`?r`)
                             val condPerms =
                               quantifiedChunkSupporter.conditionalPermissions(tQVar, inverseOfImplicitQVar, tCond, tPerm)

@@ -155,22 +155,38 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Ite(`?r` === rcvr, perms, NoPerm())
   }
 
+  /** Creates a quantified chunk corresponding to the assertion
+    * `forall x: T :: g(x) ==> acc(e(x).f, p(x))`.
+    *
+    * @param qvar The explicitly quantified variable `x`.
+    * @param rcvr The receiver expression `e(x)`.
+    * @param field The field `f`.
+    * @param fvf The field value function that is stored in the chunk to create.
+    * @param perms Permission amount `p(x)`.
+    * @param condition The condition `g(x)`.
+    * @param additionalArgs See the homonymous parameter of [[getFreshInverseFunction]].
+    * @return A tuple of
+    *           1. the newly created quantified chunk
+    *           2. the definitional axioms of the inverse function created for the
+    *              chunk, see [[getFreshInverseFunction]].
+    */
   def createQuantifiedChunk(qvar: Var,
                             rcvr: Term,
                             field: ast.Field,
-                            value: Term,
+                            fvf: Term,
                             perms: Term,
-                            condition: Term)
+                            condition: Term,
+                            additionalArgs: Seq[Var])
                            : (QuantifiedChunk, Seq[Term]) = {
 
-    Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
-      s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
+    Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
+      s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
 
-    val (inverseFunc, inverseFuncAxioms) = getFreshInverseFunction(rcvr, condition, qvar)
+    val (inverseFunc, inverseFuncAxioms) = getFreshInverseFunction(qvar, rcvr, condition, additionalArgs)
     val arbitraryInverseRcvr = inverseFunc(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
 
-    (QuantifiedChunk(field.name, value, condPerms), inverseFuncAxioms)
+    (QuantifiedChunk(field.name, fvf, condPerms), inverseFuncAxioms)
   }
 
   def conditionalPermissions(qvar: Var,
@@ -562,13 +578,35 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       rcvr :: cond :: perms :: Nil)
   }
 
-  def getFreshInverseFunction(of: Term, condition: Term, qvar: Var): (Term => Term, Seq[Term]) = {
+  /** Creates a fresh inverse function `inv` and returns the function as well as the
+    * definitional axioms.
+    *
+    * @param qvar A variable (most likely bound by a forall) that occurs in `of`
+    *             and that is the result of the inversion function applied to `of`,
+    *             i.e. `inv(of) = qvar` (if `condition` holds).
+    * @param of A term containing the variable `qvar` that can be understood as
+    *           the application of an invertible function to `qvar`.
+    * @param condition A condition (containing `qvar`) that must hold in order for
+    *                  `inv` to invert `of` to `qvar`.
+    * @param additionalArgs Additional arguments on which `inv` depends.
+    * @return A tuple of
+    *           1. the inverse function as a function of a single arguments (the
+    *              `additionalArgs` have been fixed already)
+    *           2. the definitional axioms of the inverse function.
+    */
+  def getFreshInverseFunction(qvar: Var,
+                              of: Term,
+                              condition: Term,
+                              additionalArgs: Seq[Var])
+                             : (Term => Term, Seq[Term]) = {
+
     Predef.assert(of.sort == sorts.Ref, s"Expected ref-sorted term, but found $of of sort ${of.sort}")
 
+    val additionalSorts = additionalArgs map (_.sort)
     val codomainSort = qvar.sort
-    val funcSort = sorts.Arrow(of.sort, codomainSort)
+    val funcSort = sorts.Arrow(additionalSorts :+ of.sort, codomainSort)
     val funcSymbol = decider.fresh("inv", funcSort)
-    val inverseFunc = (t: Term) => Apply(funcSymbol, t :: Nil)
+    val inverseFunc = (t: Term) => Apply(funcSymbol, additionalArgs :+ t)
 
     var inv: Term = inverseFunc(of)
 

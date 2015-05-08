@@ -21,7 +21,8 @@ import state.{SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{utils => _, _}
 import state.terms.predef.`?s`
 
-case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
+case class SnapshotRecorder(functionArgs: Seq[Var],
+                            private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
                             private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
                             freshFvfs: Set[Term] = Set(),
                             qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
@@ -303,9 +304,7 @@ trait FunctionSupporter[ST <: Store[ST],
       decider.prover.declare(VarDecl(`?s`))
       declareFunctions()
 
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
-
-      functionData.keys.flatMap(function => handleFunction(function, c)).toList
+      functionData.keys.flatMap(function => handleFunction(function)).toList
     }
 
     private def analyze(program: ast.Program) {
@@ -325,17 +324,17 @@ trait FunctionSupporter[ST <: Store[ST],
       expressionTranslator.functionData = functionData
     }
 
-    private def handleFunction(function: ast.Function, c: C): List[VerificationResult] = {
+    private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(data.args)))
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)
-      data.postAxiom map decider.prover.assume
+      data.postAxiom foreach decider.prover.assume
 
       val result = verifyAndAxiomatize(function, c)
 
-      data.axiom map decider.prover.assume
+      data.axiom foreach decider.prover.assume
 
       resultSpecsWellDefined :: result :: Nil
     }
