@@ -164,7 +164,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                            : (QuantifiedChunk, Seq[Term]) = {
 
     Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
-                  s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
+      s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
 
     val (inverseFunc, inverseFuncAxioms) = getFreshInverseFunction(rcvr, condition, qvar)
     val arbitraryInverseRcvr = inverseFunc(`?r`)
@@ -278,8 +278,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             Q(lookupRcvrToReturn, fvfDefToReturn)}}
   }
 
-  private def summarizeFieldValue(//σ: S,
-                                  chunks: Iterable[QuantifiedChunk],
+  private def summarizeFieldValue(chunks: Iterable[QuantifiedChunk],
                                   rcvr: Term,
                                   field: ast.Field)
                                  : (Lookup, FvfDef) = {
@@ -385,7 +384,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                      conditionalizedFractionWithoutExplicitQVar: Term,
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
-                    (Q: Option[(H, QuantifiedChunk, C)] => VerificationResult)
+                    (Q: Option[(H, QuantifiedChunk, FvfDef, C)] => VerificationResult)
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
@@ -394,7 +393,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     if (success) {
       assume(fvfDef.quantifiedValues(qvarInReceiver :: Nil))
       assume(fvfDef.totalDomain)
-      Q(Some(h1, ch, c))
+      Q(Some(h1, ch, fvfDef, c))
     } else
       Q(None)
   }
@@ -529,8 +528,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           Trigger(Lookup(field.name, snap, rcvr)))
     }
 
-//    val log = bookkeeper.logfiles("domainDefinitionAxiom")
-//    log.println(s"axiom = $axiom")
+    //    val log = bookkeeper.logfiles("domainDefinitionAxiom")
+    //    log.println(s"axiom = $axiom")
 
     axiom
   }

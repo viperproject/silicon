@@ -168,7 +168,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
                             assume(inverseAxiomsCached)
                             Q(hCached, chCached.value, /*ch :: */Nil, cCached)
-                          case None =>
+                          case _ =>
                             val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
                             val (inverseFunc, inverseAxioms) =
                               quantifiedChunkSupporter.getFreshInverseFunction(tRcvr, tCond, tQVar)
@@ -179,10 +179,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                             quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
-                              case Some((h3, ch, c4)) =>
+                              case Some((h3, ch, fvfDef, c4)) =>
                                 if (!config.disableQPCaching())
                                   qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, inverseAxioms, h3, ch, c4))
-                                Q(h3, ch.value, /*ch :: */Nil, c4)
+                                val c5 = c4.snapshotRecorder match {
+                                  case Some(sr) =>
+                                    val qvarsInRcvr = c0.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+                                    val fvfLookups =
+                                      if (qvarsInRcvr.nonEmpty) fvfDef.quantifiedValues(qvarsInRcvr)
+                                      else fvfDef.singletonValues
+                                    val fvfDomain = fvfDef.totalDomain
+                                    val sr1 = sr.recordQPTerms(c4.quantifiedVariables, c4.branchConditions, fvfDomain +: fvfLookups)
+                                    val sr2 =
+                                      if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
+                                      else sr1
+                                    c4.copy(snapshotRecorder = Some(sr2))
+                                  case _ => c4}
+                                Q(h3, ch.value, /*ch :: */Nil, c5)
                               case None =>
                                 Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}
                       case false =>
