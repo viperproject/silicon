@@ -96,6 +96,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
     }
 
+    if(c.partiallyVerified)
+      decider.startSkipping()
+
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
@@ -157,6 +160,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 */
     }
 
+    decider.stopSkipping()
     consumed
   }
 }

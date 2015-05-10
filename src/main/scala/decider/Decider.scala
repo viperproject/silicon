@@ -50,6 +50,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   private var state: State = State.Created
+  private var skipVerification : Boolean = false;
 
 //  val paLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
 //  val proverAssertionTimingsLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
@@ -150,6 +151,14 @@ class DefaultDecider[ST <: Store[ST],
     popScope()
 
     r
+  }
+
+  def startSkipping(): Unit ={
+    skipVerification = true;
+  }
+
+  def stopSkipping(): Unit = {
+    skipVerification = false
   }
 
   def locally[R](block: (R => VerificationResult) => VerificationResult)
@@ -285,7 +294,7 @@ class DefaultDecider[ST <: Store[ST],
   protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
-    asserted || proverAssert(t, logSink)
+    skipVerification || asserted || proverAssert(t, logSink)
   }
 
   private def isKnownToBeTrue(t: Term) = t match {

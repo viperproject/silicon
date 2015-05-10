@@ -12,7 +12,8 @@ import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse}
+import viper.silver.ast.VerifiedIf
+import viper.silver.verifier.reasons.{AttributeError, NegativePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -94,6 +95,27 @@ trait DefaultExecutor[ST <: Store[ST],
 
   def exec(σ: S, block: ast.Block, c: C)
           (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
+    block.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
+      case None    => exec2(σ,block,c)(Q)
+      case Some(v:VerifiedIf) => {
+        val pve = AttributeError(v.cond)
+        eval(σ, v.cond, pve, c)((t, c1) =>
+          t match{
+            case True() =>
+              logger.debug(s"$block is partially-verified")
+              exec2(σ,block,c.copy(partiallyVerified = true))(Q)
+            case _ =>
+              logger.debug(s"$block is not partially-verified")
+              exec2(σ,block,c)(Q)
+          })
+      }
+      case _ => sys.error("should not happen")
+    }
+  }
+
+  def exec2(σ: S, block: ast.Block, c: C)
+          (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
     block match {
@@ -171,6 +193,27 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   def exec(σ: S, stmt: ast.Stmt, c: C)
+          (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
+    stmt.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
+      case None    => exec2(σ,stmt,c)(Q)
+      case Some(v:VerifiedIf) => {
+        val pve = AttributeError(stmt)
+        eval(σ, v.cond, pve, c)((t, c1) =>
+          t match{
+            case True() =>
+              logger.debug(s"$stmt is partially-verified")
+              exec2(σ,stmt,c.copy(partiallyVerified = true))(Q)
+            case _ =>
+              logger.debug(s"$stmt is not partially-verified")
+              exec2(σ,stmt,c)(Q)
+          })
+      }
+      case _ => sys.error("should not happen")
+    }
+  }
+
+  def exec2(σ: S, stmt: ast.Stmt, c: C)
                   (Q: (S, C) => VerificationResult)
                   : VerificationResult = {
 
