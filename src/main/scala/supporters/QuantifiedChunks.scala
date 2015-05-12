@@ -582,7 +582,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     * definitional axioms.
     *
     * @param qvar A variable (most likely bound by a forall) that occurs in `of`
-    *             and that is the result of the inversion function applied to `of`,
+    *             and that is the result of the inverse function applied to `of`,
     *             i.e. `inv(of) = qvar` (if `condition` holds).
     * @param of A term containing the variable `qvar` that can be understood as
     *           the application of an invertible function to `qvar`.
