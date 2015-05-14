@@ -96,9 +96,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
     }
 
-    if(c.partiallyVerified)
-      decider.startSkipping()
-
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
@@ -124,7 +121,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σ, perms.IsNonNegative(tPerm)){
+            decider.assert2(σ, perms.IsNonNegative(tPerm)){
               case true =>
                 chunkSupporter.consume(σ, h, id, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
@@ -140,7 +137,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
-            decider.assert(σ1, t) {
+            decider.assert(σ1, t,c1) {
               case true =>
                 assume(t)
                 QS((h, Unit, Nil), c2)

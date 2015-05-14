@@ -277,10 +277,27 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term) = assert(σ, t, null)
+  def check(σ: S, t: Term) = assert2(σ, t, null)
 
-  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
-    val success = assert(σ, t, null)
+
+def assert(σ:S, t:Term, c:C)(Q: Boolean => VerificationResult) = {
+    assert(σ,t,c,null)(Q)
+  }
+
+  protected def assert(σ:S, t:Term, c:C, logSink: java.io.PrintWriter)(Q: Boolean => VerificationResult) = {
+    c.partiallyVerifiedIf match{
+      case None =>
+      case Some(True()) =>
+        skipVerification = true
+      case Some(v) =>
+        skipVerification = false
+        assume(Implies(v,t))
+    }
+    Q(assert2(σ,t,logSink))
+  }
+
+  def assert2(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
+    val success = assert2(σ, t, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
 //    if (!success) {
@@ -290,8 +307,7 @@ class DefaultDecider[ST <: Store[ST],
 
     Q(success)
   }
-
-  protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
+  protected def assert2(σ: S, t: Term, logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
     skipVerification || asserted || proverAssert(t, logSink)
@@ -364,7 +380,7 @@ class DefaultDecider[ST <: Store[ST],
 //          writer.println(permCheck)
 //        }
 
-        assert(σ1, permCheck) {
+        assert2(σ1, permCheck) {
           case true =>
             assume(permCheck)
             QS(ch, c2)

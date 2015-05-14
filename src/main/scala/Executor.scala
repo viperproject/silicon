@@ -12,7 +12,7 @@ import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import viper.silver.ast.VerifiedIf
+import viper.silver.ast.{Attribute, VerifiedIf}
 import viper.silver.verifier.reasons.{AttributeError, NegativePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
@@ -48,6 +48,8 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
+
+  protected var evaluatedVI : Term = null
 
   private def follow(σ: S, edge: ast.Edge, c: C)
                     (Q: (S, C) => VerificationResult)
@@ -101,14 +103,8 @@ trait DefaultExecutor[ST <: Store[ST],
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(v.cond)
         eval(σ, v.cond, pve, c)((t, c1) =>
-          t match{
-            case True() =>
-              logger.debug(s"$block is partially-verified")
-              exec2(σ,block,c.copy(partiallyVerified = true))(Q)
-            case _ =>
-              logger.debug(s"$block is not partially-verified")
-              exec2(σ,block,c)(Q)
-          })
+          exec2(σ,block,c.copy(partiallyVerifiedIf = Some(t)))(Q)
+        )
       }
       case _ => sys.error("should not happen")
     }
@@ -200,14 +196,8 @@ trait DefaultExecutor[ST <: Store[ST],
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(stmt)
         eval(σ, v.cond, pve, c)((t, c1) =>
-          t match{
-            case True() =>
-              logger.debug(s"$stmt is partially-verified")
-              exec2(σ,stmt,c.copy(partiallyVerified = true))(Q)
-            case _ =>
-              logger.debug(s"$stmt is not partially-verified")
-              exec2(σ,stmt,c)(Q)
-          })
+          exec2(σ,stmt,c.copy(partiallyVerifiedIf = Some(t)))(Q)
+        )
       }
       case _ => sys.error("should not happen")
     }
@@ -238,7 +228,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          decider.assert(σ, tRcvr !== Null()){
+          decider.assert(σ, tRcvr !== Null(),c){
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
@@ -295,7 +285,7 @@ trait DefaultExecutor[ST <: Store[ST],
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
             decider.tryOrFail[S](σ, c)((σ1, c1, QS, QF) => {
-              if (decider.checkSmoke())
+              if (decider.checkSmoke() || c.partiallyVerifiedIf.isDefined)
                   QS(σ1, c1)
               else
                   QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
@@ -338,7 +328,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)){
+              decider.assert(σ, IsNonNegative(tPerm),c){
                 case true =>
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
@@ -349,7 +339,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)){
+              decider.assert(σ, IsNonNegative(tPerm),c){
                 case true =>
                   predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>

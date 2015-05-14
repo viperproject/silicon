@@ -25,7 +25,7 @@ case class DefaultContext(program: ast.Program,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
 
-                          partiallyVerified : Boolean = false
+                          partiallyVerifiedIf : Option[Term] = None
                            ) extends Context[DefaultContext] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)
@@ -77,7 +77,7 @@ case class DefaultContext(program: ast.Program,
                additionalTriggers = additionalTriggers3,
                snapshotRecorder = snapshotRecorder3,
                possibleTriggers = possibleTriggers3,
-               partiallyVerified = partiallyVerified1 && partiallyVerified2
+               partiallyVerifiedIf = None
           )
 
         case _ =>
