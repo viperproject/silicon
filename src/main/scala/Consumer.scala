@@ -36,6 +36,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val bookkeeper: Bookkeeper
   protected val config: Config
 
+  private var lastVI = None :Option[Term]
+
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
    * chunks as they existed when the consume took place. More specifically,
@@ -44,10 +46,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    */
   def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
-             : VerificationResult =
+             : VerificationResult = {
 
-    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>
-      Q(σ \ h1, t, dcs, c1))
+    val lastVI = this.lastVI
+    this.lastVI = c.partiallyVerifiedIf
+
+    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>{
+      this.lastVI = lastVI
+      Q(σ \ h1, t, dcs, c1.copy(partiallyVerifiedIf = lastVI))
+    })
+  }
 
   def consumes(σ: S,
                p: Term,
@@ -55,9 +63,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
-              : VerificationResult =
+              : VerificationResult ={
 
-    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)(Q)
+    val lastVI = this.lastVI
+    this.lastVI = c.partiallyVerifiedIf
+
+    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((s1,t, dcs,c1) => {
+      this.lastVI = lastVI
+      Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI))
+    })
+  }
+
 
   private def consumes(σ: S,
                        h: H,
@@ -85,7 +101,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
             Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
     }
-
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult = {
@@ -95,7 +110,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug(stateFormatter.format(σ))
       logger.debug("h = " + stateFormatter.format(h))
     }
-
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
@@ -157,7 +171,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 */
     }
 
-    decider.stopSkipping()
     consumed
   }
 }

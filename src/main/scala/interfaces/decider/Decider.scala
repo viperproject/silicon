@@ -34,9 +34,6 @@ trait Decider[ST <: Store[ST],
   def popScope()
   def inScope[R](block: => R): R
 
-  def startSkipping()
-  def stopSkipping()
-
   def locally[R](block: (R => VerificationResult) => VerificationResult)
                 (Q: R => VerificationResult)
                 : VerificationResult

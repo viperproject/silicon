@@ -192,7 +192,7 @@ trait DefaultExecutor[ST <: Store[ST],
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
     stmt.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
-      case None    => exec2(σ,stmt,c)(Q)
+      case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None))(Q)
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(stmt)
         eval(σ, v.cond, pve, c)((t, c1) =>
