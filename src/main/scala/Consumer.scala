@@ -137,7 +137,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
-            decider.assert(σ1, t,c1) {
+            decider.assert(σ1, t,c2) {
               case true =>
                 assume(t)
                 QS((h, Unit, Nil), c2)

@@ -286,7 +286,7 @@ def assert(σ:S, t:Term, c:C)(Q: Boolean => VerificationResult) = {
 
   protected def assert(σ:S, t:Term, c:C, logSink: java.io.PrintWriter)(Q: Boolean => VerificationResult) = {
     c.partiallyVerifiedIf match{
-      case None =>
+      case None => skipVerification = false
       case Some(True()) =>
         skipVerification = true
       case Some(v) =>
