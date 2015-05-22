@@ -477,7 +477,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       decider.prover.declare(macroDecl)
 
       val permsTakenFunc = Function(macroName, sorts.Arrow(`?r`.sort, sorts.Perm))
-      val permsTakenFApp = (t: Term) => Apply(permsTakenFunc, t :: Nil)
+      val permsTakenFApp = (t: Term) => ApplyMacro(permsTakenFunc, t :: Nil)
 
       permsToTake = PermMinus(permsToTake, permsTakenFApp(`?r`))
 
