@@ -106,6 +106,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     extends StatefulComponent {
 
+  import QuantifiedChunkSupporter._
   import symbolConverter.toSort
   import stateFactory._
   import decider.{assume, assert, check, fresh}
@@ -113,42 +114,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private type C = DefaultContext
 
   private val counter = new silicon.utils.Counter()
-
-  case class InverseFunction(function: Term => Term, definitionalAxioms: Seq[Term]) {
-    def apply(t: Term) = function(t)
-  }
-
-  case class FvfDefEntry(condition: Term,
-                         newLookup: Lookup,
-                         oldLookup: Lookup,
-                         triggers: Seq[Seq[Term]],
-                         generateTriggersFrom: Seq[Seq[Term]],
-                         partialDomain: Domain) {
-
-    lazy val partialValue = Implies(condition, newLookup === oldLookup)
-  }
-
-  case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
-    lazy val singletonValues = entries map (entry => entry.partialValue)
-
-    def quantifiedValues(qvars: Seq[Var]) = {
-      entries map (entry => {
-        val (triggers, additionalVars) =
-          TriggerGenerator.generateFirstTriggers(qvars, entry.generateTriggersFrom.map(And))
-                          .getOrElse((Nil, Nil))
-
-        Forall(qvars ++ additionalVars, entry.partialValue, triggers)
-      })
-    }
-
-    lazy val totalDomain =
-      if (entries.isEmpty)
-        True()
-      else
-        (Domain(field.name, fvf)
-            ===
-         entries.tail.foldLeft[SetTerm](entries.head.partialDomain)((dom, entry) => SetUnion(dom, entry.partialDomain)))
-  }
 
   /* Chunk creation */
 
@@ -676,6 +641,49 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 }
 
 object QuantifiedChunkSupporter {
+  case class InverseFunction(function: Term => Term, definitionalAxioms: Seq[Term]) {
+    def apply(t: Term) = function(t)
+  }
+
+  case class FvfDefEntry(condition: Term,
+                         newLookup: Lookup,
+                         oldLookup: Lookup,
+                         triggers: Seq[Seq[Term]],
+                         generateTriggersFrom: Seq[Seq[Term]],
+                         partialDomain: Domain) {
+
+    lazy val partialValue = Implies(condition, newLookup === oldLookup)
+  }
+
+  case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
+    lazy val singletonValues = entries map (entry => entry.partialValue)
+
+    def quantifiedValues(qvars: Seq[Var]) = {
+      entries map (entry => {
+        val triggersValid =
+          entry.triggers.flatMap(_.map(t =>    t.isInstanceOf[PossibleTrigger]
+              && t.existsDefined{case _: ForbiddenInTrigger => }))
+
+        val (triggers, additionalVars) =
+          if (triggersValid.isEmpty || triggersValid.contains(false))
+            TriggerGenerator.generateFirstTriggers(qvars, entry.generateTriggersFrom.map(And))
+                .getOrElse((Nil, Nil))
+          else
+            (entry.triggers.map(Trigger), Nil)
+
+        Forall(qvars ++ additionalVars, entry.partialValue, triggers)
+      })
+    }
+
+    lazy val totalDomain =
+      if (entries.isEmpty)
+        True()
+      else
+        (Domain(field.name, fvf)
+            ===
+            entries.tail.foldLeft[SetTerm](entries.head.partialDomain)((dom, entry) => SetUnion(dom, entry.partialDomain)))
+  }
+
   /* TODO: This is only defined in the object (instead of in the class) because the class
    *       takes the usual type parameters, which would then have to be added to the
    *       DefaultFieldValueFunctionsEmitter, which is where `fieldAccesses` is used
