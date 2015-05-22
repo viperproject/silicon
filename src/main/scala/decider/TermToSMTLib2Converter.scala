@@ -97,16 +97,16 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case Ite(t0, t1, t2) =>
       renderNAryOp("ite", t0, t1, t2)
 
-    case app @ Apply(f, args) =>
-      val docF = render(f)
+    case fapp: FApp =>
+      parens(sanitizeSymbol(fapp.function.id) <+> ssep(fapp.args map render, space))
 
-      app.funcSort.from match {
+    case app: GenericApply =>
+      val docF = render(app.function)
+
+      app.arrow.from match {
         case Seq(sorts.Unit) => docF
-        case _ => parens(docF <+> ssep(args map render, space))
+        case _ => parens(docF <+> ssep(app.args map render, space))
       }
-
-    case FApp(f, s, tArgs) =>
-      parens(sanitizeSymbol(f.id) <+> render(s) <+> ssep(tArgs map render, space))
 
     case Quantification(quant, vars, body, triggers) =>
       val docVars = ssep(vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort))), space)

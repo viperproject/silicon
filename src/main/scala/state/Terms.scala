@@ -357,7 +357,7 @@ class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryO
   override val toString = s"{${p.mkString(",")}}"
 }
 
-object Trigger {
+object Trigger extends (Seq[Term] => Trigger) {
   def apply(t: Term) = new Trigger(t :: Nil)
   def apply(ts: Seq[Term]) = new Trigger(ts)
 
@@ -963,30 +963,47 @@ case class PermMin(p0: Term, p1: Term) extends Permissions
 
 /* Functions */
 
-case class Apply(func: Term, args: Seq[Term]) extends Term with PossibleTrigger {
-  val funcSort = func.sort match {
+sealed trait Application extends Term {
+  def function: Term
+  def args: Seq[Term]
+  def arrow: sorts.Arrow
+}
+
+sealed abstract class GenericApply extends Application {
+  val arrow = function.sort match {
     case a: sorts.Arrow => a
-    case other => sys.error(s"Cannot apply $func of sort $other to $args")
+    case other => sys.error(s"Cannot apply $function of sort $other to $args")
   }
 
-  val sort = funcSort.to
+  val sort = arrow.to
 
-  override val toString = s"$func(${args.mkString(",")})"
+  override val toString = s"$function (${args.mkString(",")})"
+}
 
-  lazy val getArgs = func +: args
+case class Apply(function: Term, args: Seq[Term])
+    extends GenericApply with PossibleTrigger {
+
+  lazy val getArgs = function +: args
   def withArgs(args: Seq[Term]) = Apply(args.head, args.tail)
 }
 
-case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Term with PossibleTrigger {
+case class ApplyMacro(function: Term, args: Seq[Term])
+    extends GenericApply with ForbiddenInTrigger
+
+case class FApp(function: Function, snapshot: Term, actualArgs: Seq[Term])
+    extends Application with PossibleTrigger {
+
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
   val sort = function.sort.to
+  val arrow = function.sort
+  val args = snapshot +: actualArgs
 
-  lazy val limitedVersion = FApp(function.limitedVersion, snapshot, tArgs)
+  lazy val limitedVersion = FApp(function.limitedVersion, snapshot, actualArgs)
 
-  override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
+  override val toString = s"${function.id}(${args.mkString(",")})"
 
-  lazy val getArgs = snapshot +: tArgs
+  val getArgs = args
   def withArgs(args: Seq[Term]) = FApp(function, args.head, args.tail)
 }
 
