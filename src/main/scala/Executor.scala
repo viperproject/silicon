@@ -286,10 +286,15 @@ trait DefaultExecutor[ST <: Store[ST],
           case _: ast.FalseLit =>
             decider.tryOrFail[S](σ, c)((σ1, c1, QS, QF) => {
               if (decider.checkSmoke() || c.partiallyVerifiedIf.isDefined)
-                  QS(σ1, c1)
+                c.partiallyVerifiedIf match{
+                  case Some(b) => decider.assert(σ1,False(),c1)((res:Boolean) =>
+                    if(res) QS(σ1, c1)
+                    else QF(Failure[ST, H, S](pve dueTo AssertionFalse(a))))
+                  case None => QS(σ1, c1)
+                }
               else
-                  QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
-              })((_, _) => Success())
+                QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
+            })((_, _) => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
