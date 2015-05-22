@@ -211,7 +211,7 @@ trait DefaultExecutor[ST <: Store[ST],
                   case Some((h1, ch, c3)) =>
                     val (fvf, fvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
                     assume(fvfDef)
-                    Q(σ \ h1 \+ ch.copy(value = fvf, aux = ch.aux.copy(hints = hints)), c3)
+                    Q(σ \ h1 \+ ch.copy(value = fvf, hints = hints), c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
 

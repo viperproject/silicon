@@ -115,6 +115,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private val counter = new silicon.utils.Counter()
 
+  QuantifiedChunkSupporter.bookkeeper = bookkeeper /* TODO: Remove */
+
   /* Chunk creation */
 
   def createSingletonQuantifiedChunk(rcvr: Term,
@@ -128,7 +130,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     val condPerms = singletonConditionalPermissions(rcvr, perms)
 
-    QuantifiedChunk(field, value, condPerms)
+    QuantifiedChunk(field, value, condPerms, None, Some(condPerms), Nil)
   }
 
   def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
@@ -165,8 +167,9 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val inverseFunction = getFreshInverseFunction(qvar, rcvr, condition, additionalArgs)
     val arbitraryInverseRcvr = inverseFunction(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
+    val ch = QuantifiedChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), Nil)
 
-    (QuantifiedChunk(field.name, fvf, condPerms), inverseFunction)
+    (ch, inverseFunction)
   }
 
   def conditionalPermissions(qvar: Var,
@@ -296,15 +299,19 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       val potentialFvf = ch.value
       val potentialValue = Lookup(field.name, potentialFvf, rcvr)
 
+//      val triggers =
+
       fvfDefs ::=
           FvfDefEntry(
-            PermLess(NoPerm(), potentialPerms),
+            rcvr,
+            potentialPerms,
             fvfValue,
             potentialValue,
 //            Implies(PermLess(NoPerm(), potentialPerms), fvfValue === potentialValue),
-            Nil,
-            (fvfValue :: potentialValue :: Nil) :: (potentialPerms :: Nil) :: Nil,
-            Domain(field.name, potentialFvf))
+//            (fvfValue :: Nil) :: (potentialValue :: Nil) :: Nil,
+//            (fvfValue :: potentialValue :: Nil) :: (potentialPerms :: Nil) :: Nil,
+            Domain(field.name, potentialFvf),
+            ch)
     }
 
     (fvfValue, FvfDef(field, fvf, true, fvfDefs))
@@ -493,7 +500,9 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     decider.prover.logComment("Done splitting")
 
     val hResidue = H(residue ++ otherChunks)
-    val chunkSplittedOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithoutExplicitQVar)
+
+    val chunkSplittedOf =
+      QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithoutExplicitQVar, None, None, Nil)
 
     (hResidue, chunkSplittedOf, fvfDef, success)
   }
@@ -611,7 +620,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]) = (chunks: Seq[QuantifiedChunk]) => {
-    val (matchingChunks, otherChunks) = chunks.partition(_.aux.hints == hints)
+    val (matchingChunks, otherChunks) = chunks.partition(_.hints == hints)
 
     matchingChunks ++ otherChunks
   }
@@ -641,38 +650,96 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 }
 
 object QuantifiedChunkSupporter {
+  var bookkeeper: Bookkeeper = null /* TODO: Remove! */
+
   case class InverseFunction(function: Term => Term, definitionalAxioms: Seq[Term]) {
     def apply(t: Term) = function(t)
   }
 
-  case class FvfDefEntry(condition: Term,
+  case class FvfDefEntry(rcvr: Term,
+                         potentialPerms: Term,
                          newLookup: Lookup,
                          oldLookup: Lookup,
-                         triggers: Seq[Seq[Term]],
-                         generateTriggersFrom: Seq[Seq[Term]],
-                         partialDomain: Domain) {
+                         partialDomain: Domain,
+                         sourceChunk: QuantifiedChunk) {
 
-    lazy val partialValue = Implies(condition, newLookup === oldLookup)
+    lazy val partialValue = Implies(PermLess(NoPerm(), potentialPerms), newLookup === oldLookup)
   }
 
   case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
     def quantifiedValues(qvars: Seq[Var]) = {
-      entries map (entry => {
-        val triggersValid =
-          entry.triggers.flatMap(_.map(t =>    t.isInstanceOf[PossibleTrigger]
-              && t.existsDefined{case _: ForbiddenInTrigger => }))
+//      val log = bookkeeper.logfiles("fvfdefs")
+//      log.println("\n\n\n")
+//      log.println(s"qvars = $qvars")
 
-        val (triggers, additionalVars) =
-          if (triggersValid.isEmpty || triggersValid.contains(false))
-            TriggerGenerator.generateFirstTriggers(qvars, entry.generateTriggersFrom.map(And))
-                .getOrElse((Nil, Nil))
-          else
-            (entry.triggers.map(Trigger), Nil)
+      entries map { case entry @ FvfDefEntry(rcvr, potentialPerms, newLookup, oldLookup, partialDomain, sourceChunk) =>
+        /* It is assumed that the trigger generator works better (i.e.
+         * introduces fewer fresh quantified variables) if it is applied to
+         * bigger terms (e.g. a conjunction of multiple terms) instead of
+         * iteratively applying to multiple smaller terms.
+         * Consequently, the generator is not applied once and upfront to
+         * potentialPerms etc.
+         */
 
-        Forall(qvars ++ additionalVars, entry.partialValue, triggers)
-      })
+        val sets: Term => Seq[Option[Seq[Term]]] = term => Seq(
+          /* TODO: Using the initial conditional permissions (or the likely to
+           *       be a larger term potentialPerms) to feed generateStrictestTrigger
+           *       makes a few tests fail. I haven't found the time to find
+           *       out why exactly that is.
+           */
+//          sourceChunk.initialCond.map(t => term :: t.replace(`?r`, rcvr) :: Nil),
+//          Some(term :: potentialPerms :: Nil),
+          sourceChunk.inv.map(inv => term :: inv(rcvr) :: Nil))
+
+        val newLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(newLookup)
+        val oldLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(oldLookup)
+
+        val gen: Seq[Option[Seq[Term]]] => (Trigger, Seq[Var]) = srcs =>
+          srcs.map(_.flatMap(ts => TriggerGenerator.generateStrictestTrigger(qvars, And(ts))))
+              .collect{case Some(result) => result}
+              .sortWith((r1, r2) => r1._1.p.length > r2._1.p.length) /* Stricter triggers (more fapps) go first */
+              .headOption
+              .getOrElse((Trigger(Nil), Nil))
+
+        val (newLookupTriggers, additionalQVars1) = gen(newLookupTriggerSetSources)
+        val (oldLookupTriggers, additionalQVars2) = gen(oldLookupTriggerSetSources)
+
+        val defAx =
+          Forall(
+            qvars ++ additionalQVars1 ++ additionalQVars2,
+            entry.partialValue,
+            newLookupTriggers :: oldLookupTriggers :: Nil)
+
+//        val log = bookkeeper.logfiles("qpTriggers")
+//        if (newLookupTriggers.p.isEmpty) {
+//          log.println(s"Could not generate a newLookupTriggers from Sources:")
+//          newLookupTriggerSetSources.foreach(x => log.println(s"  $x"))
+//          log.println(s"rcvr = $rcvr")
+//          log.println(s"qvars = $qvars")
+//          log.println(s"sourceChunk = $sourceChunk")
+//          newLookupTriggerSetSources.foreach { case x =>
+//            log.println(TriggerGenerator.generateTriggerGroups(qvars, And(x.toSeq.flatten)))
+//          }
+//          log.println(s"defAx = $defAx")
+//          log.println()
+//        }
+//        if (oldLookupTriggers.p.isEmpty) {
+//          log.println(s"Could not generate a oldLookupTriggers from Sources:")
+//          oldLookupTriggerSetSources.foreach(x => log.println(s"  $x"))
+//          log.println()
+//        }
+
+//        log.println(s"triggers = ${defAx.triggers}")
+//        log.println(s"defAx = $defAx")
+//        log.println(s"rcvr = $rcvr")
+//        log.println(s"potentialPerms = $potentialPerms")
+//        log.println(s"initialCond = ${sourceChunk.initialCond}")
+//        log.println(s"inv = ${sourceChunk.inv}")
+
+        defAx
+      }
     }
 
     lazy val totalDomain =

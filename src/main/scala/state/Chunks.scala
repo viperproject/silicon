@@ -11,6 +11,7 @@ package state
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
 import terms.{Lookup, PermMinus, PermPlus, Term, sorts}
 import state.terms.predef.`?r`
+import supporters.QuantifiedChunkSupporter.InverseFunction
 
 sealed trait DirectChunk extends PermissionChunk[DirectChunk]
 
@@ -35,12 +36,12 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
   override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
 }
 
-case class QuantifiedChunkAuxiliaryData(hints: Seq[Term] = Nil)
-
 case class QuantifiedChunk(name: String,
                            value: Term,
                            perm: Term,
-                           aux: QuantifiedChunkAuxiliaryData = QuantifiedChunkAuxiliaryData())
+                           inv: Option[InverseFunction],
+                           initialCond: Option[Term],
+                           hints: Seq[Term] = Nil)
     extends Chunk {
 
   assert(value.sort.isInstanceOf[terms.sorts.FieldValueFunction],

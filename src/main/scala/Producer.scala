@@ -208,7 +208,7 @@ trait DefaultProducer[ST <: Store[ST],
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
           val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
           assume(invFct.definitionalAxioms)
-          val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
+          val ch1 = ch.copy(hints = hints)
 //          assume(Domain(field.name, snap) === tSet)
           val tDomainQuant = quantifiedChunkSupporter.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
 //            Forall(tQVar,
