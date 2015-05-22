@@ -114,9 +114,21 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private val counter = new silicon.utils.Counter()
 
-  private case class FvfDefEntry(partialValue: Term, generateTriggersFrom: Seq[Seq[Term]], partialDomain: Domain)
+  case class InverseFunction(function: Term => Term, definitionalAxioms: Seq[Term]) {
+    def apply(t: Term) = function(t)
+  }
 
-  private case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
+  case class FvfDefEntry(condition: Term,
+                         newLookup: Lookup,
+                         oldLookup: Lookup,
+                         triggers: Seq[Seq[Term]],
+                         generateTriggersFrom: Seq[Seq[Term]],
+                         partialDomain: Domain) {
+
+    lazy val partialValue = Implies(condition, newLookup === oldLookup)
+  }
+
+  case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
     def quantifiedValues(qvars: Seq[Var]) = {
@@ -129,10 +141,13 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       })
     }
 
-    lazy val totalDomain = (
-      Domain(field.name, fvf)
-        ===
-      entries.tail.foldLeft[SetTerm](entries.head.partialDomain)((dom, entry) => SetUnion(dom, entry.partialDomain)))
+    lazy val totalDomain =
+      if (entries.isEmpty)
+        True()
+      else
+        (Domain(field.name, fvf)
+            ===
+         entries.tail.foldLeft[SetTerm](entries.head.partialDomain)((dom, entry) => SetUnion(dom, entry.partialDomain)))
   }
 
   /* Chunk creation */
@@ -177,16 +192,16 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                             perms: Term,
                             condition: Term,
                             additionalArgs: Seq[Var])
-                           : (QuantifiedChunk, Seq[Term]) = {
+                           : (QuantifiedChunk, InverseFunction) = {
 
     Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
       s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
 
-    val (inverseFunc, inverseFuncAxioms) = getFreshInverseFunction(qvar, rcvr, condition, additionalArgs)
-    val arbitraryInverseRcvr = inverseFunc(`?r`)
+    val inverseFunction = getFreshInverseFunction(qvar, rcvr, condition, additionalArgs)
+    val arbitraryInverseRcvr = inverseFunction(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
 
-    (QuantifiedChunk(field.name, fvf, condPerms), inverseFuncAxioms)
+    (QuantifiedChunk(field.name, fvf, condPerms), inverseFunction)
   }
 
   def conditionalPermissions(qvar: Var,
@@ -270,10 +285,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
             val (lookupRcvrToReturn, fvfDefToReturn) =
               if (fvfDef.entries.length == 1) {
-                val fvfDefEntry = fvfDef.entries(0)
+                val fvfDefEntry = fvfDef.entries.head
                 val _fvf = fvfDefEntry.partialDomain.fvf
                 val _lookupRcvr = lookupRcvr.copy(fvf = fvfDefEntry.partialDomain.fvf)
-                val _fvfDef = FvfDef(field, _fvf, false, fvfDefEntry.copy(True(), Nil) :: Nil)
+//                val _fvfDef = FvfDef(field, _fvf, false, fvfDefEntry.copy(True(), Nil) :: Nil)
+                val _fvfDef = FvfDef(field, _fvf, false, Nil)
 
                 (_lookupRcvr, _fvfDef)
               } else {
@@ -317,7 +333,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
       fvfDefs ::=
           FvfDefEntry(
-            Implies(PermLess(NoPerm(), potentialPerms), fvfValue === potentialValue),
+            PermLess(NoPerm(), potentialPerms),
+            fvfValue,
+            potentialValue,
+//            Implies(PermLess(NoPerm(), potentialPerms), fvfValue === potentialValue),
+            Nil,
             (fvfValue :: potentialValue :: Nil) :: (potentialPerms :: Nil) :: Nil,
             Domain(field.name, potentialFvf))
     }
@@ -598,32 +618,31 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                               of: Term,
                               condition: Term,
                               additionalArgs: Seq[Var])
-                             : (Term => Term, Seq[Term]) = {
+                             : InverseFunction = {
 
     Predef.assert(of.sort == sorts.Ref, s"Expected ref-sorted term, but found $of of sort ${of.sort}")
 
     val additionalSorts = additionalArgs map (_.sort)
     val codomainSort = qvar.sort
     val funcSort = sorts.Arrow(additionalSorts :+ of.sort, codomainSort)
-    val funcSymbol = decider.fresh("inv", funcSort)
+    val funcSymbol = decider.fresh("invOf", funcSort)
     val inverseFunc = (t: Term) => Apply(funcSymbol, additionalArgs :+ t)
+    var invOf: Term = inverseFunc(of)
 
-    var inv: Term = inverseFunc(of)
-
-//    val ax1 = Forall(qvar, Implies(condition, inv === qvar), Nil: Seq[Trigger]).autoTrigger
-//    val ax1 = Forall(qvar, Implies(condition, inv === qvar), inv :: condition :: Nil)
-    val ax1 = Forall(qvar, Implies(condition, inv === qvar), of :: Nil)
+//    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), Nil: Seq[Trigger]).autoTrigger
+//    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), invOf :: condition :: Nil)
+    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), of :: Nil)
 
     val r = Var("r", sorts.Ref)
 
-    inv = of.replace(qvar, inverseFunc(r))
+    invOf = of.replace(qvar, inverseFunc(r))
     val invCond = condition.replace(qvar, inverseFunc(r))
 
-//    val ax2 = Forall(r, Implies(invCond, inv === r), Nil: Seq[Trigger]).autoTrigger
-//    val ax2 = Forall(r, Implies(invCond, inv === r), inv :: invCond :: Nil)
-    val ax2 = Forall(r, Implies(invCond, inv === r), inv :: Nil)
+//    val ax2 = Forall(r, Implies(invCond, invOf === r), Nil: Seq[Trigger]).autoTrigger
+//    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: invCond :: Nil)
+    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: Nil)
 
-    (inverseFunc, ax1 :: ax2 :: Nil)
+    InverseFunction(inverseFunc, ax1 :: ax2 :: Nil)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]) = (chunks: Seq[QuantifiedChunk]) => {

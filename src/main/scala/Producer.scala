@@ -206,8 +206,8 @@ trait DefaultProducer[ST <: Store[ST],
           assume(πAux)
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-          val (ch, inverseAxioms) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
-          assume(inverseAxioms)
+          val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
+          assume(invFct.definitionalAxioms)
           val ch1 = ch.copy(aux = ch.aux.copy(hints = hints))
 //          assume(Domain(field.name, snap) === tSet)
           val tDomainQuant = quantifiedChunkSupporter.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
@@ -224,7 +224,7 @@ trait DefaultProducer[ST <: Store[ST],
           assume(ts)
           val c2 = c1.snapshotRecorder match {
             case Some(sr) =>
-              val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, inverseAxioms)
+              val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms)
               c1.copy(snapshotRecorder = Some(sr1))
             case None =>
               c1}

@@ -164,24 +164,24 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
                         val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
                         qpForallCache.get((forall, toSet(quantifiedChunks))) match {
-                          case Some((tQVarCached, tRcvrCached, tCondCached, inverseAxiomsCached, hCached, chCached, cCached))
+                          case Some((tQVarCached, tRcvrCached, tCondCached, invAxiomsCached, hCached, chCached, cCached))
                                if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
-                            assume(inverseAxiomsCached)
+                            assume(invAxiomsCached)
                             Q(hCached, chCached.value, /*ch :: */Nil, cCached)
                           case _ =>
                             val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
-                            val (inverseFunc, inverseAxioms) =
+                            val invFct =
                               quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
-                            val inverseOfImplicitQVar = inverseFunc(`?r`)
+                            val invOfImplicitQVar = invFct(`?r`)
                             val condPerms =
-                              quantifiedChunkSupporter.conditionalPermissions(tQVar, inverseOfImplicitQVar, tCond, tPerm)
-                            assume(inverseAxioms)
+                              quantifiedChunkSupporter.conditionalPermissions(tQVar, invOfImplicitQVar, tCond, tPerm)
+                            assume(invFct.definitionalAxioms)
                             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                             quantifiedChunkSupporter.splitLocations(σ, h2, field, tRcvr, tQVar, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
                               case Some((h3, ch, fvfDef, c4)) =>
                                 if (!config.disableQPCaching())
-                                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, inverseAxioms, h3, ch, c4))
+                                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c4))
                                 val c5 = c4.snapshotRecorder match {
                                   case Some(sr) =>
                                     val qvarsInRcvr = c0.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
