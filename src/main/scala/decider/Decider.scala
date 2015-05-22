@@ -286,11 +286,8 @@ def assert(σ:S, t:Term, c:C)(Q: Boolean => VerificationResult) = {
         skipVerification = false
         assume(Implies(v,t))
     }
-    val ret = skipVerification match {
-      case true => Q(true)
-      case false => Q (assert2 (σ, t, logSink) )
-    }
-    ret
+    if(skipVerification) Q(true)
+    else Q( assert2(σ,t,logSink) )
   }
 
   def assert2(σ: S, t: Term)(Q: Boolean => VerificationResult) = {

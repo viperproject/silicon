@@ -36,7 +36,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val bookkeeper: Bookkeeper
   protected val config: Config
 
-  private var lastVI = None :Option[Term]
+  private var currentVI = None :Option[Term]
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -48,11 +48,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult = {
 
-    val lastVI = this.lastVI
-    this.lastVI = c.partiallyVerifiedIf
+    val lastVI = currentVI
+    currentVI = c.partiallyVerifiedIf
 
     consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>{
-      this.lastVI = lastVI
+      currentVI = lastVI
       Q(σ \ h1, t, dcs, c1.copy(partiallyVerifiedIf = lastVI))
     })
   }
@@ -65,11 +65,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
               : VerificationResult ={
 
-    val lastVI = this.lastVI
-    this.lastVI = c.partiallyVerifiedIf
+    val lastVI = currentVI
+    currentVI = c.partiallyVerifiedIf
 
     consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((s1,t, dcs,c1) => {
-      this.lastVI = lastVI
+      currentVI = lastVI
       Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI))
     })
   }

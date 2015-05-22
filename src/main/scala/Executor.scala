@@ -49,8 +49,6 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
-  protected var evaluatedVI : Term = null
-
   private def follow(σ: S, edge: ast.Edge, c: C)
                     (Q: (S, C) => VerificationResult)
                     : VerificationResult = {
