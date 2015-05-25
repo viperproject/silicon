@@ -684,8 +684,8 @@ object QuantifiedChunkSupporter {
          */
 
         val sets: Term => Seq[Option[Seq[Term]]] = term => Seq(
-          /* TODO: Using the initial conditional permissions (or the likely to
-           *       be a larger term potentialPerms) to feed generateStrictestTrigger
+          /* TODO: Using the initial conditional permissions (or the - likely to
+           *       be a larger term - potentialPerms) to feed generateStrictestTrigger
            *       makes a few tests fail. I haven't found the time to find
            *       out why exactly that is.
            */
@@ -706,6 +706,11 @@ object QuantifiedChunkSupporter {
         val (newLookupTriggers, additionalQVars1) = gen(newLookupTriggerSetSources)
         val (oldLookupTriggers, additionalQVars2) = gen(oldLookupTriggerSetSources)
 
+        /* TODO: It seems that the oldLookupTriggers are not needed, and that
+         *       omitting them doesn't affect the run time of the test suite.
+         *       Find out, why. Does it mean that we always trigger the
+         *       definitional axioms of fvfs from newest to oldest?
+         */
         val defAx =
           Forall(
             qvars ++ additionalQVars1 ++ additionalQVars2,
