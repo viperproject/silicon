@@ -226,7 +226,6 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
-    fieldValueFunctionsEmitter.emitAxioms()
 
     emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
     emitSortWrappers(sequencesEmitter.sorts)
@@ -234,6 +233,12 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
     emitSortWrappers(fieldValueFunctionsEmitter.sorts)
+
+    /* ATTENTION: The triggers mention the sort wrappers introduced for FVFs.
+     * The axiom therefore needs to be emitted after the sort wrappers have
+     * been emitted.
+     */
+    fieldValueFunctionsEmitter.emitAxioms()
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
