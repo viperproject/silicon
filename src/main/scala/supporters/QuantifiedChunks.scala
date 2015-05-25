@@ -299,17 +299,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       val potentialFvf = ch.value
       val potentialValue = Lookup(field.name, potentialFvf, rcvr)
 
-//      val triggers =
-
       fvfDefs ::=
           FvfDefEntry(
             rcvr,
             potentialPerms,
             fvfValue,
             potentialValue,
-//            Implies(PermLess(NoPerm(), potentialPerms), fvfValue === potentialValue),
-//            (fvfValue :: Nil) :: (potentialValue :: Nil) :: Nil,
-//            (fvfValue :: potentialValue :: Nil) :: (potentialPerms :: Nil) :: Nil,
             Domain(field.name, potentialFvf),
             ch)
     }
