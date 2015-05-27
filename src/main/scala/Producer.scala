@@ -209,15 +209,11 @@ trait DefaultProducer[ST <: Store[ST],
           val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
           assume(invFct.definitionalAxioms)
           val ch1 = ch.copy(hints = hints)
-//          assume(Domain(field.name, snap) === tSet)
-          val tDomainQuant = quantifiedChunkSupporter.domainDefinitionAxiom(field, tQVar, tCond, tRcvr, snap)
-//            Forall(tQVar,
-//                   Iff(SetIn(tRcvr, Domain(field.name, snap)),
-//                       tCond),
-//                   Trigger(Lookup(field.name, snap, tRcvr)))
+          val domainDefAxioms = quantifiedChunkSupporter.domainDefinitionAxioms(field, tQVar, tCond, tRcvr, snap)
           val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
 //          val tInjectivity = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
-          assume(Set[Term](PermLess(NoPerm(), pGain), tDomainQuant, tNonNullQuant/*, tInjectivity*/))
+          assume(domainDefAxioms)
+          assume(Set[Term](PermLess(NoPerm(), pGain), tNonNullQuant/*, tInjectivity*/))
           val (h, ts) =
             if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
             else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)

@@ -516,27 +516,27 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       (fvf, fvfDef)
   }
 
-  def domainDefinitionAxiom(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, snap: Term) = {
-    val axiom = cond match {
+  def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term) = {
+    val axioms = cond match {
       case SetIn(`qvar`, set) if rcvr == qvar =>
         /* Optimised axiom in the case where the quantified permission forall is of the
          * shape "forall x :: x in set ==> acc(x.f)".
          */
-        Domain(field.name, snap) === set
+        Seq(Domain(field.name, fvf) === set)
 
-      case _ =>
+      case _ => Seq(
         /* Create an axiom of the shape "forall x :: x in domain(fvf) <==> cond(x)" */
         Forall(qvar,
           Implies(
             cond,
-            SetIn(rcvr, Domain(field.name, snap))),
-          Trigger(Lookup(field.name, snap, rcvr)))
+            SetIn(rcvr, Domain(field.name, fvf))),
+          Trigger(Lookup(field.name, fvf, rcvr))))
     }
 
     //    val log = bookkeeper.logfiles("domainDefinitionAxiom")
     //    log.println(s"axiom = $axiom")
 
-    axiom
+    axioms
   }
 
   def injectivityAxiom(qvar: Var, condition: Term, receiver: Term) = {
