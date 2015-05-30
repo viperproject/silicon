@@ -25,7 +25,9 @@ case class DefaultContext(program: ast.Program,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
 
-                          partiallyVerifiedIf : Option[Term] = None
+                          partiallyVerifiedIf : Option[Term] = None,
+                          pviRep : String = "<none>",
+                          termToAssert : Option[ast.Exp] = None
                            ) extends Context[DefaultContext] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)
@@ -58,14 +60,14 @@ case class DefaultContext(program: ast.Program,
     case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
                         retrying1, additionalTriggers1,
                         snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
-                        partiallyVerified1
+                        partiallyVerified1,pviR1, termToAssert1
     ) =>
 
       other match {
         case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`,
                             retrying2, additionalTriggers2,
                             snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
-                            partiallyVerified2
+                            partiallyVerified2, pviR2, termToAssert2
         ) =>
 
           val additionalTriggers3 = additionalTriggers1 ++ additionalTriggers2
@@ -77,7 +79,9 @@ case class DefaultContext(program: ast.Program,
                additionalTriggers = additionalTriggers3,
                snapshotRecorder = snapshotRecorder3,
                possibleTriggers = possibleTriggers3,
-               partiallyVerifiedIf = None
+               partiallyVerifiedIf = None,
+               pviRep = "<none>",
+               termToAssert = None
           )
 
         case _ =>

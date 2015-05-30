@@ -101,7 +101,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(v.cond)
         eval(σ, v.cond, pve, c)((t, c1) =>
-          exec2(σ,block,c.copy(partiallyVerifiedIf = Some(t)))(Q)
+          exec2(σ,block,c.copy(partiallyVerifiedIf = Some(t),pviRep = v.cond.toString()))(Q)
         )
       }
       case _ => sys.error("should not happen")
@@ -190,11 +190,11 @@ trait DefaultExecutor[ST <: Store[ST],
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
     stmt.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
-      case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None))(Q)
+      case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None,pviRep = "<none>"))(Q)
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(stmt)
         eval(σ, v.cond, pve, c)((t, c1) =>
-          exec2(σ,stmt,c.copy(partiallyVerifiedIf = Some(t)))(Q)
+          exec2(σ,stmt,c.copy(partiallyVerifiedIf = Some(t),pviRep = v.cond.toString()))(Q)
         )
       }
       case _ => sys.error("should not happen")
@@ -226,7 +226,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          decider.assert(σ, tRcvr !== Null(),c){
+          decider.assert(σ, tRcvr !== Null(),c.copy(termToAssert = Some(ast.NeCmp(eRcvr,ast.NullLit()())()))){
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
@@ -285,7 +285,7 @@ trait DefaultExecutor[ST <: Store[ST],
             decider.tryOrFail[S](σ, c)((σ1, c1, QS, QF) => {
               if (decider.checkSmoke() || c.partiallyVerifiedIf.isDefined)
                 c.partiallyVerifiedIf match{
-                  case Some(b) => decider.assert(σ1,False(),c1)((res:Boolean) =>
+                  case Some(b) => decider.assert(σ1,False(),c1.copy(termToAssert = Some(ast.FalseLit()())))((res:Boolean) =>
                     if(res) QS(σ1, c1)
                     else QF(Failure[ST, H, S](pve dueTo AssertionFalse(a))))
                   case None => QS(σ1, c1)
@@ -331,7 +331,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm),c){
+              decider.assert2(σ, IsNonNegative(tPerm)){
                 case true =>
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
@@ -342,7 +342,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm),c){
+              decider.assert2(σ, IsNonNegative(tPerm)){
                 case true =>
                   predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>

@@ -20,13 +20,14 @@ import state.terms._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
+import viper.silicon.supporters.VILogger
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
     extends Decider[ST, H, PC, S, DefaultContext]
-       with Logging {
+       with Logging with VILogger {
 
   private type C = DefaultContext
 
@@ -278,14 +279,26 @@ def assert(σ:S, t:Term, c:C)(Q: Boolean => VerificationResult) = {
   protected def assert(σ:S, t:Term, c:C, logSink: java.io.PrintWriter)(Q: Boolean => VerificationResult) = {
     var skipVerification : Boolean = false;
 
+    val vilog = viLogger
+
+    vilog.info("assert: " + (c.termToAssert match{
+      case Some(e) => e.toString
+      case None => "<not set>"
+    }))
+    vilog.info("v-if: " + c.pviRep)
+
     c.partiallyVerifiedIf match{
       case None => skipVerification = false
       case Some(True()) =>
         skipVerification = true
       case Some(v) =>
         skipVerification = false
+        vilog.info("adding implication")
         assume(Implies(v,t))
     }
+
+    vilog.info(s"skipping: $skipVerification")
+
     if(skipVerification) Q(true)
     else Q( assert2(σ,t,logSink) )
   }
