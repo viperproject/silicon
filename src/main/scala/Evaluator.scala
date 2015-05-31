@@ -373,7 +373,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
           evals(σ, eArgs, pve, c0)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm),c.copy(termToAssert = Some(ast.GeCmp(ePerm,ast.IntLit(0)())()))) {
+              decider.assert2(σ, IsNonNegative(tPerm)) {
               case true =>
                   join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
                       /* [2014-12-10 Malte] The commented code should replace the code following
