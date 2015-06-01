@@ -189,6 +189,7 @@ trait DefaultExecutor[ST <: Store[ST],
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
+
     stmt.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
       case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None,pviRep = "<none>"))(Q)
       case Some(v:VerifiedIf) => {

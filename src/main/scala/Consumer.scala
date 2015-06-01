@@ -10,7 +10,7 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NegativePermission, AssertionFalse}
+import viper.silver.verifier.reasons._
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -18,6 +18,7 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter}
+import viper.silver.ast.VerifiedIf
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -44,7 +45,30 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
+
   def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+             (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
+  : VerificationResult = {
+
+    val lastVI = currentVI
+
+    φ.attributes.collectFirst { case v: VerifiedIf => v } match {
+      case None =>
+        consume2(σ, p, φ, pve, c)(Q)
+      case Some(VerifiedIf(cond)) =>
+        val aPVE = AttributeError(φ)
+        eval(σ, cond, aPVE, c)((t, c1) => {
+          val newVI = Some(t)
+          currentVI = newVI
+          consume2(σ, p, φ, pve, c.copy(partiallyVerifiedIf=newVI,pviRep = cond.toString()))((σ1, t1, dcs1, c1) =>{
+            currentVI = lastVI
+            Q(σ1, t1, dcs1, c1.copy(partiallyVerifiedIf = lastVI,pviRep = c.pviRep))
+          })
+        })
+    }
+  }
+
+  private def consume2(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult = {
 
@@ -53,7 +77,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>{
       currentVI = lastVI
-      Q(σ \ h1, t, dcs, c1.copy(partiallyVerifiedIf = lastVI))
+      Q(σ \ h1, t, dcs, c1.copy(partiallyVerifiedIf = lastVI, pviRep = c.pviRep))
     })
   }
 
@@ -70,7 +94,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((s1,t, dcs,c1) => {
       currentVI = lastVI
-      Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI))
+      Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI,pviRep = c.pviRep))
     })
   }
 
@@ -83,10 +107,49 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        c: C)
                        (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
+    if (φs.isEmpty)
+      Q(σ \ h, Unit, Nil, c)
+    else {
+      val φ = φs.head
 
-    /* Note: See the code comment about produce vs. produces in
-     * DefaultProducer.produces. The same applies to consume vs. consumes.
-     */
+      val lastVI = currentVI
+
+      φ.attributes.collectFirst { case v: VerifiedIf => v } match {
+        case None =>
+          consumes2(σ, h, p, φs, pvef, c)(Q)
+        case Some(VerifiedIf(cond)) =>
+          val aPVE = AttributeError(φ)
+          eval(σ, cond, aPVE, c)((t, c1) => {
+            val newVI = Some(t)
+            currentVI = newVI
+            if (φ.tail.isEmpty)
+              consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf=newVI,pviRep = cond.toString()))((h1, s1, dcs1, c1) =>{
+                currentVI = lastVI
+                Q(σ \ h1, s1, dcs1, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf, pviRep = c.pviRep))
+              })
+            else
+              consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf = newVI,pviRep = cond.toString()))((h1, s1, dcs1, c1) => {
+                currentVI = lastVI
+                consumes(σ, h1, p, φs.tail, pvef, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf, pviRep = c.pviRep))((h2, s2, dcs2, c2) =>
+                  Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2))
+              })
+
+          })
+      }
+    }
+
+  private def consumes2(σ: S,
+                       h: H,
+                       p: Term,
+                       φs: Seq[ast.Exp],
+                       pvef: ast.Exp => PartialVerificationError,
+                       c: C)
+                      (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
+  : VerificationResult =
+
+  /* Note: See the code comment about produce vs. produces in
+   * DefaultProducer.produces. The same applies to consume vs. consumes.
+   */
 
     if (φs.isEmpty)
       Q(σ \ h, Unit, Nil, c)
@@ -101,6 +164,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
             Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
     }
+
+
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult = {
@@ -151,7 +216,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
-            decider.assert(σ1, t,c2.copy(termToAssert = Some(φ))) {
+            decider.assert(σ1, t,c2.copy(termToAssert = Some(φ),partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep)) {
               case true =>
                 assume(t)
                 QS((h, Unit, Nil), c2)

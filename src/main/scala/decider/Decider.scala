@@ -282,10 +282,13 @@ def assert(σ:S, t:Term, c:C)(Q: Boolean => VerificationResult) = {
     val vilog = viLogger
 
     vilog.info("assert: " + (c.termToAssert match{
-      case Some(e) => e.toString
+      case Some(e) => e.toString().split("@")(0) //split necessary because e is pretty-printed, which includes existing attributes
       case None => "<not set>"
     }))
-    vilog.info("v-if: " + c.pviRep)
+    vilog.info("v-if: " + (c.partiallyVerifiedIf match{
+      case None => "<none>"
+      case _ => c.pviRep
+    }))
 
     c.partiallyVerifiedIf match{
       case None => skipVerification = false
