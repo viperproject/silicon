@@ -504,29 +504,48 @@ object Not extends (Term => Term) {
   def unapply(e: Not) = Some(e.p)
 }
 
-class Or(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+class Or(val ts: Seq[Term]) extends BooleanTerm
+    with StructuralEquality with ForbiddenInTrigger {
 
-  override val op = "||"
+  assert(ts.nonEmpty, "Expected at least one term, but found none")
+
+  val equalityDefiningMembers = ts
+
+  override lazy val toString = ts.mkString(" || ")
 }
 
-/* TODO: Or should be (Term, Term) => BooleanTerm, but that require a
- *       Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
+/* TODO: Or should be (Term, Term) => BooleanTerm, but that would require
+ *       a Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
  *       It would be sooooo handy to be able to work with Term[Sort], but
  *       that conflicts with using extractor objects to simplify terms,
- *       since extractor objects can't be type-parameterised.
+ *       since extractor objects can't be type-parametrised.
  */
-object Or extends ((Term, Term) => Term) {
-  def apply(e0: Term, e1: Term) = (e0, e1) match {
-    case (True(), _) | (_, True()) => True()
-    case (False(), _) => e1
-    case (_, False()) => e0
-    case _ if e0 == e1 => e0
-    case _ => new Or(e0, e1)
+object Or extends (Iterable[Term] => Term) {
+  def apply(ts: Term*) = createOr(ts)
+  def apply(ts: Iterable[Term]) = createOr(ts.toSeq)
+
+  //  def apply(e0: Term, e1: Term) = (e0, e1) match {
+  //    case (True(), _) | (_, True()) => True()
+  //    case (False(), _) => e1
+  //    case (_, False()) => e0
+  //    case _ if e0 == e1 => e0
+  //    case _ => new Or(e0, e1)
+  //  }
+
+  @inline
+  def createOr(_ts: Seq[Term]): Term = {
+    var ts = _ts.flatMap { case Or(ts1) => ts1; case other => other :: Nil}
+    ts = _ts.filterNot(_ == False())
+    ts = ts.distinct
+
+    ts match {
+      case Seq() => False()
+      case Seq(t) => t
+      case _ => new Or(ts)
+    }
   }
 
-  def unapply(e: Or) = Some((e.p0, e.p1))
+  def unapply(e: Or) = Some(e.ts)
 }
 
 class And(val ts: Seq[Term]) extends BooleanTerm
@@ -1672,9 +1691,6 @@ object perms {
 /* Utility functions */
 
 object utils {
-  def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
-    silicon.utils.mapReduceLeft(it, f, Or, True())
-
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 
