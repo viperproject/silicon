@@ -287,7 +287,7 @@ def assert(σ:S, t:Term, c:C)(Q: Boolean => VerificationResult) = {
     }))
     vilog.info("v-if: " + (c.partiallyVerifiedIf match{
       case None => "<none>"
-      case _ => c.pviRep
+      case Some(term) => if(c.pviRep == "<none>") term else c.pviRep
     }))
 
     c.partiallyVerifiedIf match{
