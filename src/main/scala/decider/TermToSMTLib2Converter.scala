@@ -124,7 +124,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
 
     case uop: Not => renderUnaryOp("not", uop)
     case And(ts) => renderNAryOp("and", ts: _*)
-    case bop: Or => renderBinaryOp("or", bop)
+    case Or(ts) => renderNAryOp("or", ts: _*)
     case bop: Implies => renderBinaryOp("implies", bop)
     case bop: Iff => renderBinaryOp("iff", bop)
     case bop: BuiltinEquals => renderBinaryOp("=", bop)

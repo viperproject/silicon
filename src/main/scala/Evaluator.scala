@@ -214,7 +214,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
-        evalBinOp(σ, e0, e1, Or, pve, c)(Q)
+        evalBinOp(σ, e0, e1, (t1, t2) => Or(t1, t2), pve, c)(Q)
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
