@@ -22,7 +22,6 @@ import state.terms
 import state.terms._
 import state.terms.predef.`?r`
 import reporting.Bookkeeper
-import viper.silver.ast.QuantifiedPermissionSupporter
 
 trait FieldValueFunctionsEmitter extends PreambleEmitter
 
@@ -41,7 +40,7 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
 
   def analyze(program: ast.Program) {
     program visit {
-      case QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, f, _, forall, _) =>
+      case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, f, _, forall, _) =>
         collectedFields ++= QuantifiedChunkSupporter.fieldAccesses(forall)
     }
 
@@ -252,7 +251,15 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 //            cacheLog.println(s"fvfDefs = $fvfDefs")
 
             val (lookupRcvrToReturn, fvfDefToReturn) =
-              if (fvfDef.entries.length == 1) {
+              /* TODO: Reusing the fvf found in a single entry is only sound if
+               * the current g(x) (should be known at call-site of withValue)
+               * and the g(x) from the entry are the same. Detecting this
+               * syntactically is not always possible since i1 <= inv1(r) < j1
+               * might be logically equivalent to i2 <= inv2(r) < j2, but
+               * syntactically it obviously isn't. Creating a single
+               * inv-function per range and receiver might help, though.
+               */
+              /*if (fvfDef.entries.length == 1) {
                 val fvfDefEntry = fvfDef.entries.head
                 val _fvf = fvfDefEntry.partialDomain.fvf
                 val _lookupRcvr = lookupRcvr.copy(fvf = fvfDefEntry.partialDomain.fvf)
@@ -260,7 +267,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                 val _fvfDef = FvfDef(field, _fvf, false, Nil)
 
                 (_lookupRcvr, _fvfDef)
-              } else {
+              } else */{
                 if (config.disableQPCaching())
                   (lookupRcvr, fvfDef)
                 else {
@@ -303,9 +310,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           FvfDefEntry(
             rcvr,
             potentialPerms,
+            SetIn(rcvr, Domain(field.name, fvf)),
             fvfValue,
             potentialValue,
-            Domain(field.name, potentialFvf),
+//            Domain(field.name, potentialFvf),
             ch)
     }
 
@@ -355,8 +363,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def splitSingleLocation(σ: S,
                           h: H,
-                          field: ast.Field,
                           concreteReceiver: Term,
+                          field: ast.Field,
                           fraction: Term,
                           conditionalizedFraction: Term,
                           assumeAxiomsOfFreshFVF: Boolean,
@@ -366,12 +374,13 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                          : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, concreteReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
+      split(σ, h, concreteReceiver, field, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
 
     if (success) {
       if (assumeAxiomsOfFreshFVF) {
+        decider.prover.logComment("[after splitSingleLocation]")
         assume(fvfDef.singletonValues)
-        assume(fvfDef.totalDomain)
+        assume(fvfDef.domainAxiom(Nil, field, fvfDef.fvf, concreteReceiver, True()))
       }
       Q(Some(h1, ch, c))
     } else
@@ -380,9 +389,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def splitLocations(σ: S,
                      h: H,
-                     field: ast.Field,
-                     receiverWithExplicitQVar: Term,
                      qvarInReceiver: Var,
+                     condWithoutExplicitQVar: Term,
+                     receiverWithExplicitQVar: Term,
+                     field: ast.Field,
                      fraction: Term,
                      conditionalizedFractionWithoutExplicitQVar: Term,
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
@@ -391,11 +401,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, receiverWithExplicitQVar, fraction, conditionalizedFractionWithoutExplicitQVar, chunkOrderHeuristic, c)
+      split(σ, h, receiverWithExplicitQVar, field, fraction, conditionalizedFractionWithoutExplicitQVar, chunkOrderHeuristic, c)
 
     if (success) {
+      decider.prover.logComment("[after splitLocations]")
       assume(fvfDef.quantifiedValues(qvarInReceiver :: Nil))
-      assume(fvfDef.totalDomain)
+      assume(fvfDef.domainAxiom(`?r` :: Nil, field, fvfDef.fvf, `?r`, condWithoutExplicitQVar))
       Q(Some(h1, ch, fvfDef, c))
     } else
       Q(None)
@@ -403,11 +414,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private def split(σ: S,
                     h: H,
-                    field: ast.Field,
                     receiver: Term,
                       /* Either a single, constant receiver, or one with an
                        * explicitly quantified variable
                        */
+                    field: ast.Field,
                     fraction: Term,
                     conditionalizedFractionWithoutExplicitQVar: Term,
                       /* May not mention any explicitly quantified variable,
@@ -511,12 +522,14 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     case _ =>
       val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
+
+      /* TODO: Replace with a proper FvfDef */
       val fvfDef = And(Lookup(field.name, fvf, rcvr) === value, Domain(field.name, fvf) === SingletonSet(rcvr))
 
       (fvf, fvfDef)
   }
 
-  def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term) = {
+  def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
     val axioms = cond match {
       case SetIn(`qvar`, set) if rcvr == qvar =>
         /* Optimised axiom in the case where the quantified permission forall is of the
@@ -527,10 +540,20 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       case _ => Seq(
         /* Create an axiom of the shape "forall x :: x in domain(fvf) <==> cond(x)" */
         Forall(qvar,
-          Implies(
+          Iff(
             cond,
             SetIn(rcvr, Domain(field.name, fvf))),
-          Trigger(Lookup(field.name, fvf, rcvr))))
+//          Trigger(Lookup(field.name, fvf, rcvr)))
+          Trigger(SetIn(rcvr, Domain(field.name, fvf))))
+        /* Create an axiom of the shape "forall r :: r in domain(fvf) ==> cond[x |-> inv(r)]" */
+//        Forall(`?r`,
+//          Implies(
+//            SetIn(`?r`, Domain(field.name, fvf)),
+//            And(
+//              cond.replace(qvar, inv(`?r`)),
+//              rcvr.replace(qvar, inv(`?r`)) === `?r`)),
+//          Trigger(SetIn(`?r`, Domain(field.name, fvf))))
+      )
     }
 
     //    val log = bookkeeper.logfiles("domainDefinitionAxiom")
@@ -609,7 +632,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
 //    val ax2 = Forall(r, Implies(invCond, invOf === r), Nil: Seq[Trigger]).autoTrigger
 //    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: invCond :: Nil)
-    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: Nil)
+//    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: Nil)
+    val ax2 = Forall(r, Implies(invCond, invOf === r), inverseFunc(r) :: Nil)
 
     InverseFunction(inverseFunc, ax1 :: ax2 :: Nil)
   }
@@ -653,23 +677,24 @@ object QuantifiedChunkSupporter {
 
   case class FvfDefEntry(rcvr: Term,
                          potentialPerms: Term,
+                         additionalGuard: Term,
                          newLookup: Lookup,
                          oldLookup: Lookup,
-                         partialDomain: Domain,
                          sourceChunk: QuantifiedChunk) {
 
-    lazy val partialValue = Implies(PermLess(NoPerm(), potentialPerms), newLookup === oldLookup)
+    lazy val partialValue =
+      Implies(
+        And(
+          PermLess(NoPerm(), potentialPerms),
+          additionalGuard),
+        newLookup === oldLookup)
   }
 
   case class FvfDef(field: ast.Field, fvf: Term, freshFvf: Boolean, entries: Seq[FvfDefEntry]) {
     lazy val singletonValues = entries map (entry => entry.partialValue)
 
     def quantifiedValues(qvars: Seq[Var]) = {
-//      val log = bookkeeper.logfiles("fvfdefs")
-//      log.println("\n\n\n")
-//      log.println(s"qvars = $qvars")
-
-      entries map { case entry @ FvfDefEntry(rcvr, potentialPerms, newLookup, oldLookup, partialDomain, sourceChunk) =>
+      entries map { case entry @ FvfDefEntry(rcvr, _, _, newLookup, oldLookup, sourceChunk) =>
         /* It is assumed that the trigger generator works better (i.e.
          * introduces fewer fresh quantified variables) if it is applied to
          * bigger terms (e.g. a conjunction of multiple terms) instead of
@@ -706,49 +731,40 @@ object QuantifiedChunkSupporter {
          *       Find out, why. Does it mean that we always trigger the
          *       definitional axioms of fvfs from newest to oldest?
          */
-        val defAx =
-          Forall(
-            qvars ++ additionalQVars1 ++ additionalQVars2,
-            entry.partialValue,
-            newLookupTriggers :: oldLookupTriggers :: Nil)
 
-//        val log = bookkeeper.logfiles("qpTriggers")
-//        if (newLookupTriggers.p.isEmpty) {
-//          log.println(s"Could not generate a newLookupTriggers from Sources:")
-//          newLookupTriggerSetSources.foreach(x => log.println(s"  $x"))
-//          log.println(s"rcvr = $rcvr")
-//          log.println(s"qvars = $qvars")
-//          log.println(s"sourceChunk = $sourceChunk")
-//          newLookupTriggerSetSources.foreach { case x =>
-//            log.println(TriggerGenerator.generateTriggerGroups(qvars, And(x.toSeq.flatten)))
-//          }
-//          log.println(s"defAx = $defAx")
-//          log.println()
-//        }
-//        if (oldLookupTriggers.p.isEmpty) {
-//          log.println(s"Could not generate a oldLookupTriggers from Sources:")
-//          oldLookupTriggerSetSources.foreach(x => log.println(s"  $x"))
-//          log.println()
-//        }
+        /* Replace the given receiver with the implicit one, and in addition,
+         * filter out triggers that don't actually occur in the body. The
+         * latter can happen because the body (or any of its constituents) has
+         * been simplified during its construction.
+         */
+        val rBody = entry.partialValue.replace(rcvr, `?r`)
+        val rNewLookupTriggers = newLookupTriggers.p.map(_.replace(rcvr, `?r`))
+                                                    .filter(t => rBody.existsDefined{case `t` =>})
+        val rOldLookupTriggers = oldLookupTriggers.p.map(_.replace(rcvr, `?r`))
+                                                    .filter(t => rBody.existsDefined{case `t` =>})
 
-//        log.println(s"triggers = ${defAx.triggers}")
-//        log.println(s"defAx = $defAx")
-//        log.println(s"rcvr = $rcvr")
-//        log.println(s"potentialPerms = $potentialPerms")
-//        log.println(s"initialCond = ${sourceChunk.initialCond}")
-//        log.println(s"inv = ${sourceChunk.inv}")
+        val occurringQvars = qvars.filter (v => rBody.existsDefined{case `v` =>})
 
-        defAx
+        Forall(
+          `?r` +: (occurringQvars ++ additionalQVars1 ++ additionalQVars2),
+          rBody,
+          Trigger(rNewLookupTriggers) :: Trigger(rOldLookupTriggers) :: Nil)
       }
     }
 
-    lazy val totalDomain =
-      if (entries.isEmpty)
-        True()
-      else
-        (Domain(field.name, fvf)
-            ===
-            entries.tail.foldLeft[SetTerm](entries.head.partialDomain)((dom, entry) => SetUnion(dom, entry.partialDomain)))
+    def domainAxiom(qvars: Seq[Var], field: ast.Field, fvf: Term, rcvr: Term, condition: Term) = {
+      Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
+                    s"Expected an FVF, but found value $fvf of sort ${fvf.sort}")
+
+      if (qvars.isEmpty)
+        Domain(field.name,fvf) === SingletonSet(rcvr)
+//        Iff(Domain(field.name,fvf) === SingletonSet(rcvr), condition) /* TODO: One test case fails. Find out, why. */
+      else {
+        val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
+
+        Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain))
+      }
+    }
   }
 
   /* TODO: This is only defined in the object (instead of in the class) because the class

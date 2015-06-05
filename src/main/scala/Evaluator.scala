@@ -165,7 +165,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             val fvfLookups =
               if (qvarsInRcvr.nonEmpty) fvfDef.quantifiedValues(qvarsInRcvr)
               else fvfDef.singletonValues
-            val fvfDomain = fvfDef.totalDomain
+            val fvfDomain = fvfDef.domainAxiom(qvarsInRcvr, fa.field, fvfDef.fvf, tRcvr, And(c1.branchConditions))
             assume(fvfDomain +: fvfLookups)
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
