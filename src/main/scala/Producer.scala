@@ -155,9 +155,9 @@ trait DefaultProducer[ST <: Store[ST],
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) {
-            val (s1, fvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-            assume(fvfDef)
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, s1, p)
+            val fvfDef = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
+            assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvfDef.fvf, p)
             (h + ch, c)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
@@ -194,11 +194,13 @@ trait DefaultProducer[ST <: Store[ST],
         decider.locally[(Set[Term], Term, Term, Term, C, Map[ast.Exp, Term])](QB =>
           eval(σQVar, cond, pve, c0)((tCond, c1) => {
             assume(tCond)
-            eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
+            val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
+            eval(σQVar, rcvr, pve, c1a)((tRcvr, c2) =>
               eval(σQVar, gain, pve, c2)((pGain, c3) => {
                 val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
                 val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
-                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables
+                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
+                                 branchConditions = c.branchConditions
                                  /*recordPossibleTriggers = c.recordPossibleTriggers,
                                  possibleTriggers = c.possibleTriggers*/)
                 QB(πAux, tCond, tRcvr, pGain, c4, c2.possibleTriggers)}))})
@@ -214,10 +216,10 @@ trait DefaultProducer[ST <: Store[ST],
 //          val tInjectivity = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
           assume(domainDefAxioms)
           assume(Set[Term](PermLess(NoPerm(), pGain), tNonNullQuant/*, tInjectivity*/))
-          val (h, ts) =
-            if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Set.empty[Term])
+          val (h, fvfDefs) =
+            if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Nil)
             else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)
-          assume(ts)
+          fvfDefs foreach (fvfDef => assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions))
           val c2 = c1.snapshotRecorder match {
             case Some(sr) =>
               val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms)
@@ -226,7 +228,7 @@ trait DefaultProducer[ST <: Store[ST],
               c1}
           Q(h + ch1, c2)}
 
- case _: ast.InhaleExhaleExp =>
+      case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */

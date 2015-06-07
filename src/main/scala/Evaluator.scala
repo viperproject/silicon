@@ -160,23 +160,31 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-          val qvarsInRcvr = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-          quantifiedChunkSupporter.withValue(σ, σ.h, tRcvr, fa.field, pve, fa, c1)((value, fvfDef) => {
-            val fvfLookups =
-              if (qvarsInRcvr.nonEmpty) fvfDef.quantifiedValues(qvarsInRcvr)
-              else fvfDef.singletonValues
-            val fvfDomain = fvfDef.domainAxiom(qvarsInRcvr, fa.field, fvfDef.fvf, tRcvr, And(c1.branchConditions))
-            assume(fvfDomain +: fvfLookups)
+          val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+          val condition = And(c1.branchConditions)
+          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, qvars, condition, tRcvr, pve, fa, c1)(fvfDef => {
+            val fvfDomain = fvfDef.domainDefinition
+//            val fdlog = bookkeeper.logfiles("fvfdefs-eval-fa")
+//            val inforall = c.program.shallowCollect{case f: ast.Forall if f.existsDefined{case fa2: ast.FieldAccess if fa2.pos == fa.pos => } => f}
+//            fdlog.println(s"\nEVAL $e")
+//            Predef.assert(inforall.length <= 1, s"Unexpected result: $inforall")
+//            fdlog.println(s"  forall = ${inforall.headOption}")
+//            fdlog.println(s"  qvars  = $qvars")
+//            fdlog.println(s"  cond   = $condition")
+//            fdlog.println(s"  tRcvr  = $tRcvr")
+//            fdlog.println(s"  domain = $fvfDomain")
+//            fdlog.println(s"  values = ${fvfDef.valueDefinitions}")
+            assume(fvfDomain +: fvfDef.valueDefinitions)
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, value)
-                            .recordQPTerms(qvarsInRcvr, c1.branchConditions, fvfDomain +: fvfLookups)
+                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfDef.lookup(tRcvr))
+                            .recordQPTerms(qvars, c1.branchConditions, fvfDomain +: fvfDef.valueDefinitions)
                 val sr2 =
                   if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
                   else sr1
                 c1.copy(snapshotRecorder = Some(sr2))
               case _ => c1}
-            Q(value, c2)})})
+            Q(fvfDef.lookup(tRcvr), c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>

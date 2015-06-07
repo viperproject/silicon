@@ -207,11 +207,11 @@ trait DefaultExecutor[ST <: Store[ST],
                 val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, FullPerm())
                 val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, tRcvr, field, FullPerm(), condPerms, false, chunkOrderHeuristics, c2) {
-                  case Some((h1, ch, c3)) =>
-                    val (fvf, fvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
-                    assume(fvfDef)
-                    Q(σ \ h1 \+ ch.copy(value = fvf, hints = hints), c3)
+                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2) {
+                  case Some((h1, ch, _, c3)) =>
+                    val fvfDef = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
+                    assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
+                    Q(σ \ h1 \+ ch.copy(value = fvfDef.fvf, hints = hints), c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
 

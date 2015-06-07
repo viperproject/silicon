@@ -126,7 +126,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
       case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
-        val (h1, ts1) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.fieldAccesses(forall))
+        val (h1, fvfDefs1) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.fieldAccesses(forall))
         /* If receiver or condition dereference a field which hasn't been quantified yet,
          * then the evaluator will try to find a regular chunk for the quantified variable,
          * which will fail.
@@ -135,7 +135,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          *       (which would currently not be possible since the evaluator cannot pass
          *       on modified heaps).
          */
-        assume(ts1)
+        fvfDefs1 foreach (fvfDef => assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions))
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \ h1 \+ γQVar
@@ -147,7 +147,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             Q(h, Unit, Nil, c2)
           } else {
             decider.assume(tCond)
-            eval(σQVar, loss, pve, c1)((tPerm, c2) =>
+            val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
+            eval(σQVar, loss, pve, c1a)((tPerm, c2) =>
               decider.assert(σ, perms.IsNonNegative(tPerm)) {
                 case true =>
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
@@ -159,8 +160,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                         True()
                     decider.assert(σ, receiverInjective) {
                       case true =>
-                        val (h2, ts2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
-                        assume(ts2)
+                        val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
+                        fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions))
 
                         val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
                         qpForallCache.get((forall, toSet(quantifiedChunks))) match {
@@ -169,7 +170,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             assume(invAxiomsCached)
                             Q(hCached, chCached.value, /*ch :: */Nil, cCached)
                           case _ =>
-                            val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
+                            val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail,
+                                              branchConditions = c3.branchConditions.tail)
                             val invFct =
                               quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
                             val invOfImplicitQVar = invFct(`?r`)
@@ -178,23 +180,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             assume(invFct.definitionalAxioms)
                             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                            val condWithoutExplicitQVar = tCond.replace(tQVar, invOfImplicitQVar)
-                            quantifiedChunkSupporter.splitLocations(σ, h2, tQVar, condWithoutExplicitQVar, tRcvr, field, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
+                            quantifiedChunkSupporter.splitLocations(σ, h2, field, tQVar :: Nil, tCond, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
                               case Some((h3, ch, fvfDef, c4)) =>
+//                                val fdlog = bookkeeper.logfiles("fvfdefs-cons-forall")
+                                val fvfDomain = fvfDef.domainDefinition(invFct)
+//                                fdlog.println(s"\nCONSUME $φ")
+//                                fdlog.println(s"  tQVar  = $tQVar")
+//                                fdlog.println(s"  tRcvr  = $tRcvr")
+//                                fdlog.println(s"  domain = $fvfDomain")
+//                                fdlog.println(s"  values = ${fvfDef.valueDefinitions}")
+                                assume(fvfDomain +: fvfDef.valueDefinitions)
                                 if (!config.disableQPCaching())
                                   qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c4))
                                 val c5 = c4.snapshotRecorder match {
                                   case Some(sr) =>
-                                    val qvarsInRcvr = c0.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-                                    val fvfLookups =
-                                      if (qvarsInRcvr.nonEmpty) fvfDef.quantifiedValues(qvarsInRcvr)
-                                      else fvfDef.singletonValues
-                                    if (qvarsInRcvr.length != 1)
-                                      sys.error(s"Unexpectedly many quantified variables $qvarsInRcvr in $fa")
-                                    val fvfDomain = fvfDef.domainAxiom(`?r` :: Nil, fa.field, fvfDef.fvf, `?r`, condWithoutExplicitQVar)
                                     val sr1 = sr.recordQPTerms(c4.quantifiedVariables,
                                                                c4.branchConditions,
-                                                               invFct.definitionalAxioms ++ Seq(fvfDomain) ++ fvfLookups)
+                                                               invFct.definitionalAxioms ++ Seq(fvfDomain) ++ fvfDef.valueDefinitions)
                                     val sr2 =
                                       if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
                                       else sr1
@@ -221,8 +223,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              * of which assert properties of functions. It would be interesting
              * to see why (only) these two fail.
              */
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, tRcvr, field, PermTimes(tPerm, p), PermTimes(condPerms, p), true, chunkOrderHeuristics, c2) {
-              case Some((h1, ch, c3)) =>
+            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c2) {
+              case Some((h1, ch, fvfDef, c3)) =>
+//                val fdlog = bookkeeper.logfiles("fvfdefs-cons-acc")
+//                fdlog.println(s"\nCONSUME $φ")
+//                fdlog.println(s"  tRcvr  = $tRcvr")
+//                fdlog.println(s"  domain = ${fvfDef.domainDefinition(Nil, tRcvr)}")
+//                fdlog.println(s"  values = ${fvfDef.valueDefinitions}")
+                assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))
