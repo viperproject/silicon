@@ -505,14 +505,17 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         /* Optimised axiom in the case where the quantified permission forall is of the
          * shape "forall x :: x in set ==> acc(x.f)".
          */
+        /* TODO: Why is cond not used here? */
         Seq(Domain(field.name, fvf) === set)
 
       case _ => Seq(
         /* Create an axiom of the shape "forall x :: x in domain(fvf) <==> cond(x)" */
+        /* TODO: Unify with MultiLocationFvf.domainDefinition */
+        /* TODO: Why does this axiom not use `?r` and inv? */
         Forall(qvar,
           Iff(
-            cond,
-            SetIn(rcvr, Domain(field.name, fvf))),
+            SetIn(rcvr, Domain(field.name, fvf)),
+            cond),
 //          Trigger(Lookup(field.name, fvf, receiver)))
           Trigger(SetIn(rcvr, Domain(field.name, fvf))))
         /* Create an axiom of the shape "forall r :: r in domain(fvf) ==> cond[x |-> inv(r)]" */
