@@ -209,9 +209,9 @@ trait DefaultExecutor[ST <: Store[ST],
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2) {
                   case Some((h1, ch, _, c3)) =>
-                    val fvfDef = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
-                    assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
-                    Q(σ \ h1 \+ ch.copy(value = fvfDef.fvf, hints = hints), c3)
+                    val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
+                    optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+                    Q(σ \ h1 \+ ch.copy(fvf = fvf, hints = hints), c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
 

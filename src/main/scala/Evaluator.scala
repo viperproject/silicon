@@ -177,14 +177,14 @@ trait DefaultEvaluator[ST <: Store[ST],
             assume(fvfDomain +: fvfDef.valueDefinitions)
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfDef.lookup(tRcvr))
+                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfDef.lookupReceiver)
                             .recordQPTerms(qvars, c1.branchConditions, fvfDomain +: fvfDef.valueDefinitions)
                 val sr2 =
                   if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
                   else sr1
                 c1.copy(snapshotRecorder = Some(sr2))
               case _ => c1}
-            Q(fvfDef.lookup(tRcvr), c2)})})
+            Q(fvfDef.lookupReceiver, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>

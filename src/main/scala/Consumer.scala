@@ -135,7 +135,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          *       (which would currently not be possible since the evaluator cannot pass
          *       on modified heaps).
          */
-        fvfDefs1 foreach (fvfDef => assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions))
+        fvfDefs1 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \ h1 \+ γQVar
@@ -161,14 +161,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     decider.assert(σ, receiverInjective) {
                       case true =>
                         val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
-                        fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions))
+                        fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
 
                         val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
                         qpForallCache.get((forall, toSet(quantifiedChunks))) match {
                           case Some((tQVarCached, tRcvrCached, tCondCached, invAxiomsCached, hCached, chCached, cCached))
                                if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
                             assume(invAxiomsCached)
-                            Q(hCached, chCached.value, /*ch :: */Nil, cCached)
+                            Q(hCached, chCached.fvf, /*ch :: */Nil, cCached)
                           case _ =>
                             val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail,
                                               branchConditions = c3.branchConditions.tail)
@@ -202,7 +202,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                       else sr1
                                     c4.copy(snapshotRecorder = Some(sr2))
                                   case _ => c4}
-                                Q(h3, ch.value, /*ch :: */Nil, c5)
+                                Q(h3, ch.fvf, /*ch :: */Nil, c5)
                               case None =>
                                 Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}
                       case false =>

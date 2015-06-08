@@ -155,9 +155,9 @@ trait DefaultProducer[ST <: Store[ST],
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) {
-            val fvfDef = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-            assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvfDef.fvf, p)
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
+            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             (h + ch, c)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
@@ -219,7 +219,7 @@ trait DefaultProducer[ST <: Store[ST],
           val (h, fvfDefs) =
             if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Nil)
             else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)
-          fvfDefs foreach (fvfDef => assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions))
+          fvfDefs foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
           val c2 = c1.snapshotRecorder match {
             case Some(sr) =>
               val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms)

@@ -37,16 +37,16 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
 }
 
 case class QuantifiedChunk(name: String,
-                           value: Term,
+                           fvf: Term,
                            perm: Term,
                            inv: Option[InverseFunction],
                            initialCond: Option[Term],
                            hints: Seq[Term] = Nil)
     extends Chunk {
 
-  assert(value.sort.isInstanceOf[terms.sorts.FieldValueFunction],
-         "Quantified chunk values must be of sort FieldValueFunction")
-         
+  assert(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
+         s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
+
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   val args = `?r` :: Nil
@@ -55,9 +55,9 @@ case class QuantifiedChunk(name: String,
   def +(perm: Term): QuantifiedChunk = this.copy(perm = PermPlus(this.perm, perm))
   def -(perm: Term): QuantifiedChunk = this.copy(perm = PermMinus(this.perm, perm))
 
-  def valueAt(rcvr: Term) = Lookup(name, value, rcvr)
+  def valueAt(rcvr: Term) = Lookup(name, fvf, rcvr)
 
-  override def toString = "%s %s :: %s.%s -> %s # %s".format(terms.Forall, `?r`, `?r`, name, value, perm)
+  override def toString = "%s %s :: %s.%s -> %s # %s".format(terms.Forall, `?r`, `?r`, name, fvf, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {

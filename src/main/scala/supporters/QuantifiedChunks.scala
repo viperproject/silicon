@@ -120,16 +120,13 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def createSingletonQuantifiedChunk(rcvr: Term,
                                      field: String,
-                                     value: Term,
+                                     fvf: Term,
                                      perms: Term)
                                     : QuantifiedChunk = {
 
-    Predef.assert(value.sort.isInstanceOf[sorts.FieldValueFunction],
-                  s"Quantified chunk values must be of sort FieldValueFunction, but found value $value of sort ${value.sort}")
-
     val condPerms = singletonConditionalPermissions(rcvr, perms)
 
-    QuantifiedChunk(field, value, condPerms, None, Some(condPerms), Nil)
+    QuantifiedChunk(field, fvf, condPerms, None, Some(condPerms), Nil)
   }
 
   def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
@@ -287,6 +284,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             Q(fvfDefToReturn)}}
   }
 
+  @inline /* TODO: Consider removing this method */
   private def summarizeFieldValue(chunks: Iterable[QuantifiedChunk],
                                   field: ast.Field,
                                   qvars: Seq[Var],
@@ -298,26 +296,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                   s"Expected all chunks to be about field $field, but got ${chunks.mkString(", ")}")
 
     val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
-    val fvfValue = Lookup(field.name, fvf, receiver)
-    var fvfDefs: List[FvfDefEntry] = Nil
 
-    chunks.foreach { ch =>
-      val potentialPerms = ch.perm.replace(`?r`, receiver)
-      val potentialFvf = ch.value
-      val potentialValue = Lookup(field.name, potentialFvf, receiver)
-
-      fvfDefs ::=
-          FvfDefEntry(
-//            receiver,
-            potentialPerms,
-            SetIn(receiver, Domain(field.name, fvf)),
-            fvfValue,
-            potentialValue,
-//            Domain(field.name, potentialFvf),
-            Some(ch))
-    }
-
-    MultiLocationFvf(field, fvf, qvars, condition, receiver, fvfDefs, true)
+    MultiLocationFvf(field, fvf, qvars, condition, receiver, chunks.toSeq, true)
   }
 
   /* Manipulating quantified chunks */
@@ -337,14 +317,14 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     *         chunks. `ts` is the set of assumptions axiomatising the fresh
     *         field value function `fvf`.
     */
-  def quantifyChunksForField(h: H, field: ast.Field): (H, Seq[MultiLocationFvf]) = {
+  def quantifyChunksForField(h: H, field: ast.Field): (H, Seq[SingleLocationFvf]) = {
     val (chunks, fvfDefOpts) =
       h.values.map {
         case ch: DirectFieldChunk if ch.name == field.name =>
-          val fvfDef = createFieldValueFunction(field, ch.rcvr, ch.value)
-          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvfDef.fvf, ch.perm)
+          val (fvf, optFvfDef) = createFieldValueFunction(field, ch.rcvr, ch.value)
+          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvf, ch.perm)
 
-          (qch, Some(fvfDef))
+          (qch, optFvfDef)
 
         case ch =>
           (ch, None)
@@ -353,8 +333,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     (H(chunks), fvfDefOpts.flatten.toSeq)
   }
 
-  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Seq[MultiLocationFvf]) = {
-    fields.foldLeft((h, Seq[MultiLocationFvf]())){case ((hAcc, fvfDefsAcc), field) =>
+  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Seq[SingleLocationFvf]) = {
+    fields.foldLeft((h, Seq[SingleLocationFvf]())){case ((hAcc, fvfDefsAcc), field) =>
       val (h1, fvfDef1) = quantifyChunksForField(hAcc, field)
 
       (h1, fvfDefsAcc ++ fvfDef1)
@@ -508,18 +488,15 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   /* Misc */
 
-  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): MultiLocationFvf = value.sort match {
+  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingleLocationFvf]) = value.sort match {
     case _: sorts.FieldValueFunction =>
       /* The value is already a field value function, in which case we don't create a fresh one. */
-      MultiLocationFvf(field, value, Nil, True(), rcvr, Nil, false)
+      (value, None)
 
     case _ =>
       val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
 
-      val entry = FvfDefEntry(FullPerm(), True(), Lookup(field.name, fvf, rcvr), value, None)
-      val fvfDef = MultiLocationFvf(field, fvf, Nil, True(), rcvr, entry :: Nil, true)
-
-      fvfDef
+      (fvf, Some(SingleLocationFvf(field, fvf, rcvr, value)))
   }
 
   def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
@@ -668,33 +645,33 @@ object QuantifiedChunkSupporter {
     def apply(t: Term) = function(t)
   }
 
-  case class SingleLocationFvf(field: ast.Field, fvf: Var, rcvr: Term, value: Term, freshFvf: Boolean) {
+  case class SingleLocationFvf(field: ast.Field, fvf: Term, rcvr: Term, value: Term) {
     val valueDefinition = Lookup(field.name, fvf, rcvr) === value
     val domainDefinition = Domain(field.name, fvf) === SingletonSet(rcvr)
   }
 
-  case class FvfDefEntry(potentialPerms: Term,
-                         additionalGuard: Term, /* TODO: Should be computable from MultiLocationFvf's domain */
-                         fvfLookup: Lookup,     /* TODO: Should be computable from MultiLocationFvf's field, fvf and rcvr */
-                         value: Term,
-                         sourceChunk: Option[QuantifiedChunk]) {
+  case class MultiLocationFvf(field: ast.Field, fvf: Term, qvars: Seq[Var], condition: Term, rcvr: Term, sourceChunks: Seq[QuantifiedChunk], freshFvf: Boolean) {
+    val lookupReceiver: Term = Lookup(field.name, fvf, rcvr)
 
-    lazy val partialValue =
-      Implies(
-        And(
-          PermLess(NoPerm(), potentialPerms),
-          additionalGuard),
-        fvfLookup === value)
-  }
+    private case class Entry(sourceChunk: QuantifiedChunk) {
+      val potentialPerms = sourceChunk.perm.replace(`?r`, rcvr)
+      val potentialValue = Lookup(field.name, sourceChunk.fvf, rcvr)
 
-  case class MultiLocationFvf(field: ast.Field, fvf: Term, qvars: Seq[Var], condition: Term, rcvr: Term, entries: Seq[FvfDefEntry], freshFvf: Boolean) {
-    def lookup(rcvr: Term) = Lookup(field.name, fvf, rcvr)
+      val valueDefinition =
+        Implies(
+          And(
+            PermLess(NoPerm(), potentialPerms),
+            SetIn(rcvr, Domain(field.name, fvf))),
+          lookupReceiver === potentialValue)
+    }
+
+    private val entries = sourceChunks map Entry
 
     val valueDefinitions: Seq[Term/*Quantification*/] = {
       if (qvars.isEmpty)
-        entries map (entry => entry.partialValue)
+        entries map (entry => entry.valueDefinition)
       else {
-        entries map { case entry @ FvfDefEntry(_, _, newLookup, oldLookup, sourceChunk) =>
+        entries.map{entry =>
           /* It is assumed that the trigger generator works better (i.e.
            * introduces fewer fresh quantified variables) if it is applied to
            * bigger terms (e.g. a conjunction of multiple terms) instead of
@@ -711,10 +688,10 @@ object QuantifiedChunkSupporter {
              */
             //          sourceChunk.initialCond.map(t => term :: t.replace(`?r`, receiver) :: Nil),
             //          Some(term :: potentialPerms :: Nil),
-            sourceChunk.flatMap(_.inv.map(inv => term :: inv(rcvr) :: Nil)))
+            entry.sourceChunk.inv.map(inv => term :: inv(rcvr) :: Nil))
 
-          val newLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(newLookup)
-          val oldLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(oldLookup)
+          val newLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(lookupReceiver)
+          val oldLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(entry.potentialValue)
 
           val gen: Seq[Option[Seq[Term]]] => (Trigger, Seq[Var]) = srcs =>
             srcs.map(_.flatMap(ts => TriggerGenerator.generateStrictestTrigger(qvars, And(ts))))
@@ -726,10 +703,8 @@ object QuantifiedChunkSupporter {
           val (newLookupTriggers, additionalQVars1) = gen(newLookupTriggerSetSources)
           val (oldLookupTriggers, additionalQVars2) = gen(oldLookupTriggerSetSources)
 
-          /* TODO: It seems that the oldLookupTriggers are not needed, and that
-           *       omitting them doesn't affect the run time of the test suite.
-           *       Find out, why. Does it mean that we always trigger the
-           *       definitional axioms of fvfs from newest to oldest?
+          /* TODO: Omitting the oldLookupTriggers makes only very few test cases fail
+           *       Find out, why these particular tests fail.
            */
 
           /* Replace the given receiver with the implicit one, and in addition,
@@ -737,7 +712,7 @@ object QuantifiedChunkSupporter {
            * latter can happen because the body (or any of its constituents) has
            * been simplified during its construction.
            */
-          val rBody = entry.partialValue.replace(rcvr, `?r`)
+          val rBody = entry.valueDefinition.replace(rcvr, `?r`)
           val rNewLookupTriggers = newLookupTriggers.p.map(_.replace(rcvr, `?r`))
               .filter(t => rBody.existsDefined{case `t` =>})
           val rOldLookupTriggers = oldLookupTriggers.p.map(_.replace(rcvr, `?r`))
