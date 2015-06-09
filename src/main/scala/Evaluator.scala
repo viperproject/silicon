@@ -164,16 +164,6 @@ trait DefaultEvaluator[ST <: Store[ST],
           val condition = And(c1.branchConditions)
           quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, qvars, condition, tRcvr, pve, fa, c1)(fvfDef => {
             val fvfDomain = fvfDef.domainDefinition
-//            val fdlog = bookkeeper.logfiles("fvfdefs-eval-fa")
-//            val inforall = c.program.shallowCollect{case f: ast.Forall if f.existsDefined{case fa2: ast.FieldAccess if fa2.pos == fa.pos => } => f}
-//            fdlog.println(s"\nEVAL $e")
-//            Predef.assert(inforall.length <= 1, s"Unexpected result: $inforall")
-//            fdlog.println(s"  forall = ${inforall.headOption}")
-//            fdlog.println(s"  qvars  = $qvars")
-//            fdlog.println(s"  cond   = $condition")
-//            fdlog.println(s"  tRcvr  = $tRcvr")
-//            fdlog.println(s"  domain = $fvfDomain")
-//            fdlog.println(s"  values = ${fvfDef.valueDefinitions}")
             assume(fvfDomain +: fvfDef.valueDefinitions)
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
