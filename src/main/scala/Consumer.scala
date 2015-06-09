@@ -153,11 +153,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 case true =>
                   eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
                     val receiverInjective =
-                      if (!decider.check(σQVar, PermLess(FullPerm(), PermPlus(tPerm, tPerm)))) {
+                      /* TODO: Can we simplify this check in certain situations? */
+//                    if (!decider.check(σQVar, PermLess(FullPerm(), PermPlus(tPerm, tPerm)))) {
                         /* TODO: Consider using the inverse function to check injectivity */
                         quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
-                      } else
-                        True()
+//                    } else
+//                      True()
                     decider.assert(σ, receiverInjective) {
                       case true =>
                         val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
@@ -182,13 +183,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                             quantifiedChunkSupporter.splitLocations(σ, h2, field, tQVar :: Nil, tCond, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
                               case Some((h3, ch, fvfDef, c4)) =>
-//                                val fdlog = bookkeeper.logfiles("fvfdefs-cons-forall")
                                 val fvfDomain = fvfDef.domainDefinition(invFct)
-//                                fdlog.println(s"\nCONSUME $φ")
-//                                fdlog.println(s"  tQVar  = $tQVar")
-//                                fdlog.println(s"  tRcvr  = $tRcvr")
-//                                fdlog.println(s"  domain = $fvfDomain")
-//                                fdlog.println(s"  values = ${fvfDef.valueDefinitions}")
                                 assume(fvfDomain +: fvfDef.valueDefinitions)
                                 if (!config.disableQPCaching())
                                   qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c4))
@@ -225,11 +220,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              */
             quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c2) {
               case Some((h1, ch, fvfDef, c3)) =>
-//                val fdlog = bookkeeper.logfiles("fvfdefs-cons-acc")
-//                fdlog.println(s"\nCONSUME $φ")
-//                fdlog.println(s"  tRcvr  = $tRcvr")
-//                fdlog.println(s"  domain = ${fvfDef.domainDefinition(Nil, tRcvr)}")
-//                fdlog.println(s"  values = ${fvfDef.valueDefinitions}")
                 assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
