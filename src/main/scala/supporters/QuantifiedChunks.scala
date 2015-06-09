@@ -505,7 +505,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         /* Optimised axiom in the case where the quantified permission forall is of the
          * shape "forall x :: x in set ==> acc(x.f)".
          */
-        /* TODO: Why is cond not used here? */
         Seq(Domain(field.name, fvf) === set)
 
       case _ => Seq(
@@ -653,19 +652,31 @@ object QuantifiedChunkSupporter {
     val domainDefinition = Domain(field.name, fvf) === SingletonSet(rcvr)
   }
 
-  case class MultiLocationFvf(field: ast.Field, fvf: Term, qvars: Seq[Var], condition: Term, rcvr: Term, sourceChunks: Seq[QuantifiedChunk], freshFvf: Boolean) {
+  case class MultiLocationFvf(field: ast.Field,
+                              fvf: Term,
+                              qvars: Seq[Var],
+                              condition: Term,
+                              rcvr: Term,
+                              sourceChunks: Seq[QuantifiedChunk],
+                              freshFvf: Boolean) {
+
     val lookupReceiver: Term = Lookup(field.name, fvf, rcvr)
 
     private case class Entry(sourceChunk: QuantifiedChunk) {
       val potentialPerms = sourceChunk.perm.replace(`?r`, rcvr)
       val potentialValue = Lookup(field.name, sourceChunk.fvf, rcvr)
 
-      val valueDefinition =
+      val valueDefinition = {
+        val domainRestriction =
+          if (qvars.nonEmpty) SetIn(rcvr, Domain(field.name, fvf))
+          else True()
+
         Implies(
           And(
             PermLess(NoPerm(), potentialPerms),
-            SetIn(rcvr, Domain(field.name, fvf))),
+            domainRestriction),
           lookupReceiver === potentialValue)
+      }
     }
 
     private val entries = sourceChunks map Entry
@@ -683,32 +694,14 @@ object QuantifiedChunkSupporter {
            * potentialPerms etc.
            */
 
-          val sets: Term => Seq[Option[Seq[Term]]] = term => Seq(
-            /* TODO: Using the initial conditional permissions (or the - likely to
-             *       be a larger term - potentialPerms) to feed generateStrictestTrigger
-             *       makes a few tests fail. I haven't found the time to find
-             *       out why exactly that is.
+          val sets: Term => Seq[Term] = term => term +: entry.sourceChunk.inv.map(_(`?r`)).toSeq
+
+          val lookup = lookupReceiver.replace(rcvr, `?r`)
+          val newLookupTriggers = Trigger(sets(lookup))
+          val oldLookupTriggers = Trigger(sets(entry.potentialValue.replace(rcvr, `?r`)))
+            /* TODO: Omitting the oldLookupTriggers makes only very few test cases fail.
+             *       Find out, why these particular tests fail.
              */
-            //          sourceChunk.initialCond.map(t => term :: t.replace(`?r`, receiver) :: Nil),
-            //          Some(term :: potentialPerms :: Nil),
-            entry.sourceChunk.inv.map(inv => term :: inv(rcvr) :: Nil))
-
-          val newLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(lookupReceiver)
-          val oldLookupTriggerSetSources: Seq[Option[Seq[Term]]] = sets(entry.potentialValue)
-
-          val gen: Seq[Option[Seq[Term]]] => (Trigger, Seq[Var]) = srcs =>
-            srcs.map(_.flatMap(ts => TriggerGenerator.generateStrictestTrigger(qvars, And(ts))))
-                .collect{case Some(result) => result}
-                .sortWith((r1, r2) => r1._1.p.length > r2._1.p.length) /* Stricter triggers (more fapps) go first */
-                .headOption
-                .getOrElse((Trigger(Nil), Nil))
-
-          val (newLookupTriggers, additionalQVars1) = gen(newLookupTriggerSetSources)
-          val (oldLookupTriggers, additionalQVars2) = gen(oldLookupTriggerSetSources)
-
-          /* TODO: Omitting the oldLookupTriggers makes only very few test cases fail
-           *       Find out, why these particular tests fail.
-           */
 
           /* Replace the given receiver with the implicit one, and in addition,
            * filter out triggers that don't actually occur in the body. The
@@ -716,15 +709,19 @@ object QuantifiedChunkSupporter {
            * been simplified during its construction.
            */
           val rBody = entry.valueDefinition.replace(rcvr, `?r`)
-          val rNewLookupTriggers = newLookupTriggers.p.map(_.replace(rcvr, `?r`))
-              .filter(t => rBody.existsDefined{case `t` =>})
-          val rOldLookupTriggers = oldLookupTriggers.p.map(_.replace(rcvr, `?r`))
-              .filter(t => rBody.existsDefined{case `t` =>})
+            /* TODO: Reverts a substitution performed in valueDefinition - avoid this.
+             *       The whole code of MultiLocationFvf probably contains several
+             *       redundant/inefficient sequences of substitutions.
+             */
+
+          val rNewLookupTriggers = newLookupTriggers.p.filter(t => rBody.existsDefined{case `t` =>})
+          val rOldLookupTriggers = oldLookupTriggers.p.filter(t => rBody.existsDefined{case `t` =>})
 
           val occurringQvars = qvars.filter (v => rBody.existsDefined{case `v` =>})
+          assert(occurringQvars.isEmpty, s"Expected occurringQvars to be empty, but found $occurringQvars")
 
           Forall(
-            `?r` +: (occurringQvars ++ additionalQVars1 ++ additionalQVars2),
+            `?r` +: occurringQvars,
             rBody,
             Trigger(rNewLookupTriggers) :: Trigger(rOldLookupTriggers) :: Nil)
         }
