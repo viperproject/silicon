@@ -437,6 +437,16 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
 
+    /* Note: At this point, permsToTake will still contain `?r` (if `?r` is
+     * present in conditionalizedFractionWithoutExplicitQVar). If
+     * precomputedData is non-empty, `?r` will be replaced by receiver in the
+     * following loop. If precomputedData is empty, however, it must be
+     * replaced as well because permsToTake is used (without being under a
+     * forall `?r`) in the "final check" after the loop.
+     */
+    if (precomputedData.isEmpty)
+      permsToTake = permsToTake.replace(`?r`, receiver)
+
     precomputedData foreach { case (ch, permsTaken, permsStillToTake) =>
       if (success)
         residue ::= ch
