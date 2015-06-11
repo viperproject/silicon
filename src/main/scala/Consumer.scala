@@ -139,71 +139,77 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \ h1 \+ γQVar
+        val πPre = decider.π
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
-        eval(σQVar, condition, pve, c0)((tCond, c1) =>
-          if (decider.check(σQVar, Not(tCond))) {
-            /* The condition cannot be satisfied, hence we don't need to consume anything. */
-            val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
-            Q(h, Unit, Nil, c2)
-          } else {
-            decider.assume(tCond)
-            val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
-            eval(σQVar, loss, pve, c1a)((tPerm, c2) =>
-              decider.assert(σ, perms.IsNonNegative(tPerm)) {
-                case true =>
-                  eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
-                    val receiverInjective =
-                      /* TODO: Can we simplify this check in certain situations? */
-//                    if (!decider.check(σQVar, PermLess(FullPerm(), PermPlus(tPerm, tPerm)))) {
-                        /* TODO: Consider using the inverse function to check injectivity */
-                        quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
-//                    } else
-//                      True()
-                    decider.assert(σ, receiverInjective) {
-                      case true =>
-                        val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
-                        fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
 
-                        val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
-                        qpForallCache.get((forall, toSet(quantifiedChunks))) match {
-                          case Some((tQVarCached, tRcvrCached, tCondCached, invAxiomsCached, hCached, chCached, cCached))
-                               if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
-                            assume(invAxiomsCached)
-                            Q(hCached, chCached.fvf, /*ch :: */Nil, cCached)
-                          case _ =>
-                            val c3a = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail,
-                                              branchConditions = c3.branchConditions.tail)
-                            val invFct =
-                              quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
-                            val invOfImplicitQVar = invFct(`?r`)
-                            val condPerms =
-                              quantifiedChunkSupporter.conditionalPermissions(tQVar, invOfImplicitQVar, tCond, tPerm)
-                            assume(invFct.definitionalAxioms)
-                            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-                            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                            quantifiedChunkSupporter.splitLocations(σ, h2, field, tQVar :: Nil, tCond, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c3a) {
-                              case Some((h3, ch, fvfDef, c4)) =>
-                                val fvfDomain = fvfDef.domainDefinition(invFct)
-                                assume(fvfDomain +: fvfDef.valueDefinitions)
-                                if (!config.disableQPCaching())
-                                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c4))
-                                val c5 = c4.snapshotRecorder match {
-                                  case Some(sr) =>
-                                    val sr1 = sr.recordQPTerms(c4.quantifiedVariables,
-                                                               c4.branchConditions,
-                                                               invFct.definitionalAxioms ++ Seq(fvfDomain) ++ fvfDef.valueDefinitions)
-                                    val sr2 =
-                                      if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
-                                      else sr1
-                                    c4.copy(snapshotRecorder = Some(sr2))
-                                  case _ => c4}
-                                Q(h3, ch.fvf, /*ch :: */Nil, c5)
-                              case None =>
-                                Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}
-                      case false =>
-                        Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
-                case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(loss))})})
+        decider.locally[(Set[Term], Term, Term, Term, C)](QB =>
+          eval(σQVar, condition, pve, c0)((tCond, c1) =>
+            if (decider.check(σQVar, Not(tCond))) {
+              /* The condition cannot be satisfied, hence we don't need to consume anything. */
+              val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
+              Q(h, Unit, Nil, c2)
+            } else {
+              decider.assume(tCond)
+              val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
+              eval(σQVar, loss, pve, c1a)((tLoss, c2) =>
+                decider.assert(σ, perms.IsNonNegative(tLoss)) {
+                  case true =>
+                    eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
+                      /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+                      val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
+                      decider.assert(σ, receiverInjective) {
+                        case true =>
+                          val πDelta = decider.π -- πPre - tCond
+                            /* Removing tCond is crucial since it is not an auxiliary term */
+                          val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
+                          val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail,
+                                           branchConditions = c3.branchConditions.tail)
+                          QB(πAux, tCond, tRcvr, tLoss, c4)
+                        case false =>
+                          Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
+                  case false =>
+                    Failure[ST, H, S](pve dueTo NegativePermission(loss))})})
+        ){ case (πAux, tCond, tRcvr, tLoss, c1) =>
+          assume(πAux)
+
+          val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
+          fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+
+          val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
+          qpForallCache.get((forall, toSet(quantifiedChunks))) match {
+            case Some((tQVarCached, tRcvrCached, tCondCached, invAxiomsCached, hCached, chCached, cCached))
+              if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
+              assume(invAxiomsCached)
+              Q(hCached, chCached.fvf, /*ch :: */Nil, cCached)
+            case _ =>
+              val invFct =
+                quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
+              val invOfImplicitQVar = invFct(`?r`)
+              val condPerms =
+                quantifiedChunkSupporter.conditionalPermissions(tQVar, invOfImplicitQVar, tCond, tLoss)
+              assume(invFct.definitionalAxioms)
+              val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+              val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+              quantifiedChunkSupporter.splitLocations(σ, h2, field, tQVar :: Nil, tCond, tRcvr, PermTimes(tLoss, p), PermTimes(condPerms, p), chunkOrderHeuristics, c1) {
+                case Some((h3, ch, fvfDef, c2)) =>
+                  val fvfDomain = fvfDef.domainDefinition(invFct)
+                  assume(fvfDomain +: fvfDef.valueDefinitions)
+                  if (!config.disableQPCaching())
+                    qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c2))
+                  val c3 = c2.snapshotRecorder match {
+                    case Some(sr) =>
+                      val sr1 = sr.recordQPTerms(c2.quantifiedVariables,
+                                                 c2.branchConditions,
+                                                 invFct.definitionalAxioms ++ Seq(fvfDomain) ++ fvfDef.valueDefinitions)
+                      val sr2 =
+                        if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
+                        else sr1
+                      c2.copy(snapshotRecorder = Some(sr2))
+                    case _ => c2}
+                  Q(h3, ch.fvf, /*ch :: */Nil, c3)
+                case None =>
+                  Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}
+        }
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if quantifiedChunkSupporter.isQuantifiedFor(h, field.name) =>
