@@ -177,10 +177,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
           qpForallCache.get((forall, toSet(quantifiedChunks))) match {
-            case Some((tQVarCached, tRcvrCached, tCondCached, invAxiomsCached, hCached, chCached, cCached))
-              if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
-              assume(invAxiomsCached)
-              Q(hCached, chCached.fvf, /*ch :: */Nil, cCached)
+              /* TODO: Re-enable caching. Needs to take context.branchConditions into account as well. Something else? */
+//            case Some((tQVarCached, tRcvrCached, tCondCached, invAxiomsCached, hCached, chCached, cCached))
+//              if tRcvr == tRcvrCached.replace(tQVarCached, tQVar) && tCond == tCondCached.replace(tQVarCached, tQVar) =>
+//              assume(invAxiomsCached)
+//              Q(hCached, chCached.fvf, /*ch :: */Nil, cCached)
             case _ =>
               val invFct =
                 quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
@@ -194,8 +195,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 case Some((h3, ch, fvfDef, c2)) =>
                   val fvfDomain = fvfDef.domainDefinition(invFct)
                   assume(fvfDomain +: fvfDef.valueDefinitions)
-                  if (!config.disableQPCaching())
-                    qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c2))
+//                  if (!config.disableQPCaching())
+//                    qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c2))
                   val c3 = c2.snapshotRecorder match {
                     case Some(sr) =>
                       val sr1 = sr.recordQPTerms(c2.quantifiedVariables,
