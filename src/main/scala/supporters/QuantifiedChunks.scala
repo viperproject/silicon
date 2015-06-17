@@ -729,7 +729,7 @@ object QuantifiedChunkSupporter {
 
     val domainDefinition: Term = {
       if (qvars.isEmpty)
-        Domain(field.name,fvf) === SingletonSet(rcvr)
+        BuiltinEquals(Domain(field.name,fvf), SingletonSet(rcvr))
       //        Iff(Domain(field.name,fvf) === SingletonSet(receiver), condition) /* TODO: One test case fails. Find out, why. */
       else {
         val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))

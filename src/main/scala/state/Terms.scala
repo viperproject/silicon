@@ -695,6 +695,8 @@ object BuiltinEquals {
     case _ => new BuiltinEquals(t1, t2)
   }
 
+  def apply(t1: Term, t2: Term) = new BuiltinEquals(t1, t2)
+
   def unapply(e: BuiltinEquals) = Some((e.p0, e.p1))
 }
 
@@ -709,6 +711,7 @@ class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 }
 
 object CustomEquals {
+  def apply(t1: Term, t2: Term) = new CustomEquals(t1, t2)
   def unapply(e: CustomEquals) = Some((e.p0, e.p1))
 }
 
