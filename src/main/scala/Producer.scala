@@ -207,9 +207,9 @@ trait DefaultProducer[ST <: Store[ST],
           val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
           assume(invFct.definitionalAxioms)
           val ch1 = ch.copy(hints = hints)
-          val domainDefAxioms = quantifiedChunkSupporter.domainDefinitionAxioms(field, tQVar, tCond, tRcvr, snap, invFct)
+//          val domainDefAxioms = quantifiedChunkSupporter.domainDefinitionAxioms(field, tQVar, tCond, tRcvr, snap, invFct)
+//          assume(domainDefAxioms)
           val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
-          assume(domainDefAxioms)
           assume(Set[Term](PermLess(NoPerm(), pGain), tNonNullQuant))
           val (h, fvfDefs) =
             if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Nil)
