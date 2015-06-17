@@ -596,26 +596,15 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     Predef.assert(of.sort == sorts.Ref, s"Expected ref-sorted term, but found $of of sort ${of.sort}")
 
-    val additionalSorts = additionalArgs map (_.sort)
-    val codomainSort = qvar.sort
-    val funcSort = sorts.Arrow(additionalSorts :+ of.sort, codomainSort)
+    val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ of.sort, qvar.sort)
     val funcSymbol = decider.fresh("invOf", funcSort)
     val inverseFunc = (t: Term) => Apply(funcSymbol, additionalArgs :+ t)
-    var invOf: Term = inverseFunc(of)
+    val invOf: Term = inverseFunc(of)
+    val ofInv = of.replace(qvar, inverseFunc(`?r`))
+    val condInv = condition.replace(qvar, inverseFunc(`?r`))
 
-//    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), Nil: Seq[Trigger]).autoTrigger
-//    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), invOf :: condition :: Nil)
     val ax1 = Forall(qvar, Implies(condition, invOf === qvar), of :: Nil)
-
-    val r = Var("r", sorts.Ref)
-
-    invOf = of.replace(qvar, inverseFunc(r))
-    val invCond = condition.replace(qvar, inverseFunc(r))
-
-//    val ax2 = Forall(r, Implies(invCond, invOf === r), Nil: Seq[Trigger]).autoTrigger
-//    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: invCond :: Nil)
-//    val ax2 = Forall(r, Implies(invCond, invOf === r), invOf :: Nil)
-    val ax2 = Forall(r, Implies(invCond, invOf === r), inverseFunc(r) :: Nil)
+    val ax2 = Forall(`?r`, Implies(condInv, ofInv === `?r`), inverseFunc(`?r`) :: Nil)
 
     InverseFunction(inverseFunc, ax1 :: ax2 :: Nil)
   }
