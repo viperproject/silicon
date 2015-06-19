@@ -112,7 +112,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private type C = DefaultContext
 
-  private val counter = new silicon.utils.Counter()
+  private val permsTakenCounter = new silicon.utils.Counter()
+  private val qidCounter = new silicon.utils.Counter()
 
   QuantifiedChunkSupporter.bookkeeper = bookkeeper /* TODO: Remove */
 
@@ -422,7 +423,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val precomputedData = candidates map { ch =>
       val permsTaken = PermMin(permsToTake, Ite(`?r` === receiver, ch.perm, NoPerm()))
 
-      val macroName = "permsTaken" + counter.next()
+      val macroName = "permsTaken" + permsTakenCounter.next()
       val macroDecl = MacroDecl(macroName, `?r` :: Nil, permsTaken)
 
       decider.prover.declare(macroDecl)
@@ -457,7 +458,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           val constrainPermissionQuantifier =
             Forall(`?r`,
                    Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFractionWithoutExplicitQVar, ch.perm)),
-                   Nil: Seq[Trigger]).autoTrigger
+                   Nil: Seq[Trigger], s"qp.srp${qidCounter.next()}").autoTrigger
 
           decider.prover.logComment(s"Constrain original permissions $fraction")
           assume(constrainPermissionQuantifier)
@@ -526,7 +527,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             SetIn(rcvr, Domain(field.name, fvf)),
             cond),
 //          Trigger(Lookup(field.name, fvf, receiver)))
-          Trigger(SetIn(rcvr, Domain(field.name, fvf))))
+          Trigger(SetIn(rcvr, Domain(field.name, fvf))),
+          s"qp.$fvf-dom")
         /* Create an axiom of the shape "forall r :: r in domain(fvf) ==> cond[x |-> inv(r)]" */
 //        Forall(`?r`,
 //          Implies(
@@ -560,7 +562,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Forall(
       vx :: vy :: Nil,
       implies,
-      receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil)
+      receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil,
+      s"qp.inj${qidCounter.next()}")
   }
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term) = {
@@ -569,7 +572,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       Implies(
         And(cond, PermLess(NoPerm(), perms)),
         rcvr !== Null()),
-      rcvr :: cond :: perms :: Nil)
+      rcvr :: cond :: perms :: Nil,
+      s"qp.null${qidCounter.next()}")
   }
 
   /** Creates a fresh inverse function `inv` and returns the function as well as the
@@ -597,16 +601,16 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Predef.assert(of.sort == sorts.Ref, s"Expected ref-sorted term, but found $of of sort ${of.sort}")
 
     val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ of.sort, qvar.sort)
-    val funcSymbol = decider.fresh("invOf", funcSort)
+    val funcSymbol = decider.fresh("inv", funcSort)
     val inverseFunc = (t: Term) => Apply(funcSymbol, additionalArgs :+ t)
     val invOf: Term = inverseFunc(of)
     val ofInv = of.replace(qvar, inverseFunc(`?r`))
     val condInv = condition.replace(qvar, inverseFunc(`?r`))
 
-    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), of :: Nil)
-    val ax2 = Forall(`?r`, Implies(condInv, ofInv === `?r`), inverseFunc(`?r`) :: Nil)
+    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), of :: Nil, s"qp.${funcSymbol.id}-exp")
+    val ax2 = Forall(`?r`, Implies(condInv, ofInv === `?r`), inverseFunc(`?r`) :: Nil, s"qp.${funcSymbol.id}-imp")
 
-    InverseFunction(inverseFunc, ax1 :: ax2 :: Nil)
+    InverseFunction(funcSymbol, inverseFunc, ax1 :: ax2 :: Nil)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]) = (chunks: Seq[QuantifiedChunk]) => {
@@ -642,7 +646,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 object QuantifiedChunkSupporter {
   var bookkeeper: Bookkeeper = null /* TODO: Remove! */
 
-  case class InverseFunction(function: Term => Term, definitionalAxioms: Seq[Term]) {
+  case class InverseFunction(symbol: Var, function: Term => Term, definitionalAxioms: Seq[Term]) {
     def apply(t: Term) = function(t)
   }
 
@@ -684,6 +688,8 @@ object QuantifiedChunkSupporter {
       if (qvars.isEmpty)
         entries map (entry => entry.valueDefinition)
       else {
+        val axiomCounter = new silicon.utils.Counter()
+
         entries.map{entry =>
           /* It is assumed that the trigger generator works better (i.e.
            * introduces fewer fresh quantified variables) if it is applied to
@@ -722,7 +728,8 @@ object QuantifiedChunkSupporter {
           Forall(
             `?r` +: occurringQvars,
             rBody,
-            Trigger(rNewLookupTriggers) :: Trigger(rOldLookupTriggers) :: Nil)
+            Trigger(rNewLookupTriggers) :: Trigger(rOldLookupTriggers) :: Nil,
+            s"qp.$fvf-lookup-${axiomCounter.next()}")
         }
       }
     }
@@ -734,7 +741,7 @@ object QuantifiedChunkSupporter {
       else {
         val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
 
-        Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain))
+        Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain), s"qp.$fvf-dom")
       }
     }
 
@@ -744,8 +751,10 @@ object QuantifiedChunkSupporter {
           val repl = (t: Term) => t.replace(rcvr, `?r`).replace(v, inverseFunction(`?r`))
 
           domainDefinition match {
-            case Forall(Seq(`v`), body, triggers) => Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)))
-            case other => repl(other)
+            case Forall(Seq(`v`), body, triggers, name) =>
+              Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.symbol}")
+            case other =>
+              repl(other)
           }
         case _ =>
           sys.error(s"Unexpected sequence of qvars: $qvars")
