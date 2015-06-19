@@ -375,6 +375,11 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
       symbolConverter.toSort(concreteType)
     }
 
-    translate(toSort)(ax.exp)
+    translate(toSort)(ax.exp) match {
+      case terms.Quantification(q, vars, body, triggers, "") =>
+        terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
+
+      case other => other
+    }
   }
 }

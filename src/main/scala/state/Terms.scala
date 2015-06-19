@@ -312,27 +312,50 @@ case class False() extends BooleanLiteral {
 sealed trait Quantifier
 
 object Forall extends Quantifier {
-  def apply(qvar: Var, tBody: Term, trigger: Trigger) =
-    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil)
+  def apply(qvar: Var, tBody: Term, trigger: Trigger): Quantification =
+    apply(qvar, tBody, trigger, "")
 
-  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
-    Quantification(Forall, qvar :: Nil, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, trigger: Trigger, name: String) =
+    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name)
 
-  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger) =
-    Quantification(Forall, qvars, tBody, trigger :: Nil)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(qvar, tBody, triggers, "")
 
-  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
-    Quantification(Forall, qvars, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
+    apply(qvars, tBody, trigger, "")
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger, name: String) =
+    Quantification(Forall, qvars, tBody, trigger :: Nil, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(qvars, tBody, triggers, "")
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
+    Quantification(Forall, qvars, tBody, triggers, name)
 
   def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    this(qvar :: Nil, tBody, computeTriggersFrom)
+    apply(qvar, tBody, computeTriggersFrom, "")(dummy)
 
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit) = {
+  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit): Quantification =
+    this(qvar :: Nil, tBody, computeTriggersFrom, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
+    apply(qvars, tBody, computeTriggersFrom, "")(dummy)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit) = {
     val (triggers, extraVars) =
       TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
 
-      Quantification(Forall, qvars ++ extraVars, tBody, triggers)
+      Quantification(Forall, qvars ++ extraVars, tBody, triggers, name)
     }
+
+  def unapply(q: Quantification) = q match {
+    case Quantification(Forall, qvars, tBody, triggers, name) => Some((qvars, tBody, triggers, name))
+    case _ => None
+  }
 
   override val toString = "QA"
 }
@@ -361,7 +384,8 @@ object Trigger {
 class Quantification private[terms] (val q: Quantifier,
                                      val vars: Seq[Var],
                                      val body: Term,
-                                     val triggers: Seq[Trigger])
+                                     val triggers: Seq[Trigger],
+                                     val name: String)
     extends BooleanTerm
        with StructuralEquality {
 
@@ -372,7 +396,7 @@ class Quantification private[terms] (val q: Quantifier,
     } else {
       TriggerGenerator.generateTriggers(vars, body) match {
         case Some((generatedTriggers, extraVariables)) =>
-          Quantification(q, vars ++ extraVariables, body, generatedTriggers)
+          Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
         case _ =>
           this
       }
@@ -384,18 +408,21 @@ class Quantification private[terms] (val q: Quantifier,
   override val toString = s"$q ${vars.mkString(",")} :: $body"
 }
 
-object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger]) => Quantification) {
-  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String) => Quantification) {
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(q, vars, tBody, triggers, "")
+
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    new Quantification(q, vars, tBody, triggers)
+    new Quantification(q, vars, tBody, triggers, name)
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
 //  }
 
-  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers))
+  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers, q.name))
 }
 
 /* Arithmetic expression terms */
