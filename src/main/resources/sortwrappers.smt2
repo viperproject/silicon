@@ -10,6 +10,7 @@
 (assert (forall ((x $S$)) (!
     (= x ($SortWrappers.$SnapTo$S$($SortWrappers.$S$To$Snap x)))
     :pattern (($SortWrappers.$S$To$Snap x))
+    :qid |snap.$S$|
     )))
 ;(assert (forall ((x $Snap)) (!
 ;    (= x ($SortWrappers.$S$To$Snap($SortWrappers.$SnapTo$S$ x)))
