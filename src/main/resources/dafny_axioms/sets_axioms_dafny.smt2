@@ -212,8 +212,10 @@
         ($Set.in o b))
       :pattern (($Set.in o a))
       :pattern (($Set.in o b))
+      :qid |set.ext-inner|
       )))
   :pattern (($Set.equal a b))
+  :qid |set.ext-outer|
   )))
 
 (assert (forall ((a $Set<$S$>) (b $Set<$S$>)) (!

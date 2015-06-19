@@ -339,7 +339,11 @@ trait DefaultEvaluator[ST <: Store[ST],
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
               val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
               val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
-              val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
+              val qid = quant.pos match {
+                case pos: ast.HasLineColumn => s"prog.l${pos.line}"
+                case _ => s"prog.l${quant.pos}"
+              }
+              val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers, qid)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
