@@ -191,7 +191,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
     val quantifiedChunkSupporter = new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, config, bookkeeper)
 
-    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
+    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper, quantifiedChunkSupporter)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
 
     decider.start()

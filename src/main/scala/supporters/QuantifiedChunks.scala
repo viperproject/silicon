@@ -44,6 +44,10 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
         collectedFields ++= QuantifiedChunkSupporter.fieldAccesses(forall)
     }
 
+    QuantifiedChunkSupporter.collectedFields = collectedFields.toSeq /* TODO: Implement properly */
+
+    QuantifiedChunkSupporter.collectedFields = collectedFields.toSeq /* TODO: Implement properly */
+
     collectedSorts = (
         toSet(collectedFields map (f => terms.sorts.FieldValueFunction(symbolConverter.toSort(f.typ))))
       + terms.sorts.FieldValueFunction(terms.sorts.Ref))
@@ -116,6 +120,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private val qidCounter = new silicon.utils.Counter()
 
   QuantifiedChunkSupporter.bookkeeper = bookkeeper /* TODO: Remove */
+  QuantifiedChunkSupporter.symbolConverter = symbolConverter /* TODO: Remove */
 
   /* Chunk creation */
 
@@ -296,7 +301,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Predef.assert(chunks.forall(_.name == field.name),
                   s"Expected all chunks to be about field $field, but got ${chunks.mkString(", ")}")
 
-    val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
+    val fvf = freshFVF(field)
 
     MultiLocationFvf(field, fvf, qvars, condition, receiver, chunks.toSeq, true)
   }
@@ -499,13 +504,58 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   /* Misc */
 
+  /* ATTENTION: Never create an FVF without calling this method! */
+  private def freshFVF(field: ast.Field) = {
+    freshFVFInAction = true
+    val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
+    val freshFvf = fresh("fvf", fvfSort)
+
+    val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
+    val fvf = lastFVF.getOrElse(field, fvfTOP)
+
+    val afterFunction = Var(s"$$FVF.after_${field.name}", sorts.Arrow(fvfSort :: fvfSort :: Nil, sorts.Bool))
+    val after = Apply(afterFunction, freshFvf :: fvf :: Nil)
+    assume(after)
+
+    lastFVF += (field -> freshFvf)
+
+    freshFVFInAction = false
+
+    freshFvf
+  }
+
+  def injectFVF(newFvf: Var): Unit = {
+    Predef.assert(newFvf.sort.isInstanceOf[sorts.FieldValueFunction],
+                  s"Expected newFvf to be of sort FieldValueFunction, but found $newFvf of sort ${newFvf.sort}")
+
+    if (freshFVFInAction) return
+    val newFvfSort = newFvf.sort.asInstanceOf[sorts.FieldValueFunction]
+
+    QuantifiedChunkSupporter.collectedFields.foreach{field =>
+      val codomainSort = toSort(field.typ)
+
+      if (codomainSort == newFvfSort.codomainSort) {
+        val fvfSort = sorts.FieldValueFunction(codomainSort)
+        val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
+
+        val fvf = lastFVF.getOrElse(field, fvfTOP)
+
+        val afterFunction = Var(s"$$FVF.after_${field.name}", sorts.Arrow(fvfSort :: fvfSort :: Nil, sorts.Bool))
+        val after = Apply(afterFunction, newFvf :: fvf :: Nil)
+        assume(after)
+
+        lastFVF += field -> newFvf
+      }
+    }
+  }
+
   def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingleLocationFvf]) = value.sort match {
     case _: sorts.FieldValueFunction =>
       /* The value is already a field value function, in which case we don't create a fresh one. */
       (value, None)
 
     case _ =>
-      val fvf = fresh("fvf", sorts.FieldValueFunction(toSort(field.typ)))
+      val fvf = freshFVF(field)
 
       (fvf, Some(SingleLocationFvf(field, fvf, rcvr, value)))
   }
@@ -629,6 +679,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   def reset() {
     withValueCache.clear()
+    lastFVF = lastFVF.empty
+    savedLastFVF = savedLastFVF.empty
 
 //    val logs = List(bookkeeper.logfiles("withValueCache"),
 //                    bookkeeper.logfiles("domainDefinitionAxiom"))
@@ -639,13 +691,14 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 //    }
   }
 
+  def start() = {
+
+  }
+
   def stop() {}
-  def start() {}
 }
 
 object QuantifiedChunkSupporter {
-  var bookkeeper: Bookkeeper = null /* TODO: Remove! */
-
   case class InverseFunction(symbol: Var, function: Term => Term, definitionalAxioms: Seq[Term]) {
     def apply(t: Term) = function(t)
   }
@@ -771,4 +824,32 @@ object QuantifiedChunkSupporter {
     q.deepCollect {
       case fa: ast.FieldAccess => fa.field
     }
+
+  /* ------------------------------------------------------------------------------- */
+  /* TODO: Implement all of this properly */
+  var bookkeeper: Bookkeeper = null /* TODO: Implement properly */
+  var program: ast.Program = null /* TODO: Implement properly */
+  var collectedFields: Seq[ast.Field] = Seq.empty /* TODO: Implement properly */
+  var symbolConverter: SymbolConvert = null
+
+  private var lastFVF: Map[ast.Field, Term] = Map.empty
+  private var freshFVFInAction = false
+  private var savedLastFVF: Map[ast.Field, Term] = Map.empty
+
+  def initLastFVF() {
+    lastFVF = toMap(collectedFields.map{field =>
+      val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
+      val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
+
+      field -> fvfTOP
+    })
+  }
+
+  def safeLastFVFState() {
+    savedLastFVF = lastFVF
+  }
+
+  def restoreLastFVFState() {
+    lastFVF = savedLastFVF
+  }
 }

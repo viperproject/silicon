@@ -19,6 +19,7 @@ import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
+import supporters.QuantifiedChunkSupporter
 import silicon.utils.notNothing._
 
 class DefaultDecider[ST <: Store[ST],
@@ -38,6 +39,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var pathConditions: PC = _
   protected var symbolConverter: SymbolConvert = _
   protected var heapCompressor: HeapCompressor[ST, H, S, C] = _
+  protected var quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S] = _
 
   private sealed trait State
 
@@ -64,7 +66,8 @@ class DefaultDecider[ST <: Store[ST],
   def init(pathConditionsFactory: PathConditionsFactory[PC],
            heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
-           bookkeeper: Bookkeeper)
+           bookkeeper: Bookkeeper,
+           quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S])
           : Option[DependencyNotFoundError] = {
 
     this.pathConditionsFactory = pathConditionsFactory
@@ -73,6 +76,7 @@ class DefaultDecider[ST <: Store[ST],
     this.bookkeeper = bookkeeper
     this.symbolConverter = new silicon.state.DefaultSymbolConvert()
     this.pathConditions = pathConditionsFactory.Π()
+    this.quantifiedChunkSupporter = quantifiedChunkSupporter
 
     val optProverError = createProver()
 
@@ -435,7 +439,11 @@ class DefaultDecider[ST <: Store[ST],
 
     val v = prover.fresh(id, s)
 
-    if (s == sorts.Perm) assume(IsValidPermVar(v))
+    s match {
+      case sorts.Perm => assume(IsValidPermVar(v))
+      case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(v)
+      case _ => /* Nothing special to do */
+    }
 
     v
   }

@@ -24,7 +24,7 @@ import state.terms.predef.`?s`
 case class SnapshotRecorder(functionArgs: Seq[Var],
                             private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
                             private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
-                            freshFvfs: Set[Term] = Set(),
+                            freshFvfs: Set[(ast.Field, Term)] = Set(),
                             qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
     extends Mergeable[SnapshotRecorder]
        with Logging {
@@ -71,8 +71,8 @@ case class SnapshotRecorder(functionArgs: Seq[Var],
     copy(qpTerms = qpTerms + ((qvars, guards, ts)))
   }
 
-  def recordFvf(fvf: Term) = {
-    copy(freshFvfs = freshFvfs + fvf)
+  def recordFvf(field: ast.Field, fvf: Term) = {
+    copy(freshFvfs = freshFvfs + ((field, fvf)))
   }
 
   def merge(other: SnapshotRecorder): SnapshotRecorder = {
@@ -186,13 +186,13 @@ class FunctionData(val programFunction: ast.Function,
   private var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
   private var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
   private var optQPTerms: Option[Set[(Seq[Var], Stack[Term], Iterable[Term])]] = None
-  private var optFreshFvfs: Option[Set[Var]] = None
+  private var optFreshFvfs: Option[Set[(ast.Field, Var)]] = None
 
   /* TODO: Should be lazy vals, not methods */
 
   def locToSnap = optLocToSnap.getOrElse(Map[ast.LocationAccess, Term]())
   def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
-  def freshFvfs = optFreshFvfs.getOrElse(Set[Var]())
+  def freshFvfs = optFreshFvfs.getOrElse(Set[(ast.Field, Var)]())
 
   def qpTerms: Iterable[Term] = optQPTerms match {
     case Some(qpts) =>
@@ -210,9 +210,9 @@ class FunctionData(val programFunction: ast.Function,
   def locToSnap_=(lts: Map[ast.LocationAccess, Term]) { optLocToSnap = Some(lts) }
   def fappToSnap_=(fts: Map[ast.FuncApp, Term]) { optFappToSnap = Some(fts) }
 
-  def freshFvfs_=(fvfs: Set[Term]) = {
-    assert(fvfs.forall(_.isInstanceOf[Var]))
-    optFreshFvfs = Some(fvfs.asInstanceOf[Set[Var]])
+  def freshFvfs_=(fvfs: Set[(ast.Field, Term)]) = {
+    assert(fvfs.forall(_._2.isInstanceOf[Var]))
+    optFreshFvfs = Some(fvfs.asInstanceOf[Set[(ast.Field, Var)]])
   }
 
   def qpTerms_=(qpts: Set[(Seq[Var], Stack[Term], Iterable[Term])]) { optQPTerms = Some(qpts) }
@@ -221,6 +221,28 @@ class FunctionData(val programFunction: ast.Function,
     val pre = utils.ast.BigAnd(programFunction.pres)
 
     expressionTranslator.translatePrecondition(program, pre, this)
+  }
+
+  lazy val afterRelations: Set[Term] = translatedPre match {
+    case None => Set.empty
+    case Some(_) =>
+      var lastFVF = freshFvfs.map{case (field, fvf) =>
+        val fvfTOP = Var(s"fvfTOP_${field.name}", fvf.sort)
+        field -> fvfTOP
+      }.toMap
+
+      val afters: Set[Term] =
+      freshFvfs.map{case (field, freshFvf) =>
+        val fvf = lastFVF(field)
+        val afterFunction = Var(s"$$FVF.after_${field.name}", sorts.Arrow(fvf.sort :: fvf.sort :: Nil, sorts.Bool))
+        val after = Apply(afterFunction, freshFvf :: fvf :: Nil)
+
+        lastFVF = lastFVF.updated(field, freshFvf)
+
+        after
+      }
+
+      afters
   }
 
   lazy val axiom: Option[Term] = translatedPre match {
@@ -238,10 +260,10 @@ class FunctionData(val programFunction: ast.Function,
       //                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
       //                           .distinct: _*)
       optBody.map(translatedBody => {
-        val innermostBody = And(qpTerms ++ List(Implies(pre, And(fapp === translatedBody/*, nonNulls*/))))
+        val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(fapp === translatedBody/*, nonNulls*/))))
         val body =
           if (freshFvfs.isEmpty) innermostBody
-          else Exists(freshFvfs, innermostBody, Nil) // TODO: Triggers?
+          else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
         Forall(args, body, triggers)})
   }
 
@@ -255,10 +277,10 @@ class FunctionData(val programFunction: ast.Function,
           expressionTranslator.translatePostcondition(program, post, this)
 
         optPost.map(translatedBody => {
-          val innermostBody = And(qpTerms ++ List(Implies(pre, translatedBody)))
+          val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, translatedBody)))
           val body =
             if (freshFvfs.isEmpty) innermostBody
-            else Exists(freshFvfs, innermostBody, Nil) // TODO: Triggers?
+            else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
           Forall(args, body, limitedTriggers)})
       } else
         Some(True())
@@ -266,9 +288,9 @@ class FunctionData(val programFunction: ast.Function,
 }
 
 trait FunctionSupporter[ST <: Store[ST],
-                         H <: Heap[H],
-                         PC <: PathConditions[PC],
-                         S <: State[ST, H, S]]
+                        H <: Heap[H],
+                        PC <: PathConditions[PC],
+                        S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext]
             with Producer[ST, H, S, DefaultContext]
@@ -334,6 +356,7 @@ trait FunctionSupporter[ST <: Store[ST],
 
       val result = verifyAndAxiomatize(function, c)
 
+      data.afterRelations foreach decider.prover.assume
       data.axiom foreach decider.prover.assume
 
       resultSpecsWellDefined :: result :: Nil

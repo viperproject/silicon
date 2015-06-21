@@ -170,7 +170,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfDef.lookupReceiver)
                             .recordQPTerms(qvars, c1.branchConditions, fvfDomain +: fvfDef.valueDefinitions)
                 val sr2 =
-                  if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
+                  if (fvfDef.freshFvf) sr1.recordFvf(fa.field, fvfDef.fvf)
                   else sr1
                 c1.copy(snapshotRecorder = Some(sr2))
               case _ => c1}
@@ -341,8 +341,7 @@ trait DefaultEvaluator[ST <: Store[ST],
               val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
               val qid = quant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
-                case _ => s"prog.l${quant.pos}"
-              }
+                case _ => s"prog.l${quant.pos}"}
               val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers, qid)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,

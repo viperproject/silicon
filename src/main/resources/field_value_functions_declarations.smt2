@@ -8,3 +8,5 @@
 
 (declare-fun $FVF.domain_$FLD$ ($FVF<$S$>) $Set<$Ref>)
 (declare-fun $FVF.lookup_$FLD$ ($FVF<$S$> $Ref) $S$)
+(declare-fun $FVF.after_$FLD$ ($FVF<$S$> $FVF<$S$>) Bool)
+(declare-const $fvfTOP_$FLD$ $FVF<$S$>)

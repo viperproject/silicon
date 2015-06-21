@@ -203,7 +203,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                                  c2.branchConditions,
                                                  invFct.definitionalAxioms ++ Seq(fvfDomain) ++ fvfDef.valueDefinitions)
                       val sr2 =
-                        if (fvfDef.freshFvf) sr1.recordFvf(fvfDef.fvf)
+                        if (fvfDef.freshFvf) sr1.recordFvf(field, fvfDef.fvf)
                         else sr1
                       c2.copy(snapshotRecorder = Some(sr2))
                     case _ => c2}

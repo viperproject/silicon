@@ -164,6 +164,8 @@ trait AbstractVerifier[ST <: Store[ST],
   /* Functionality */
 
   def verify(program: ast.Program): List[VerificationResult] = {
+    QuantifiedChunkSupporter.program = program /* TODO: Implement properly */
+
     emitPreamble(program)
 
     ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
@@ -183,7 +185,11 @@ trait AbstractVerifier[ST <: Store[ST],
      * all members are verified regardless of previous errors.
      * However, verification of a single member is aborted on first error.
      */
-    members.map(m => ev.verify(program, m, c)).toList
+    QuantifiedChunkSupporter.safeLastFVFState() /* TODO: Implement properly */
+    members.map{m =>
+      QuantifiedChunkSupporter.restoreLastFVFState()
+      ev.verify(program, m, c)
+    }.toList
   }
 
   private def filter(str: String) = (
@@ -202,6 +208,7 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
     fieldValueFunctionsEmitter.analyze(program)
+    QuantifiedChunkSupporter.initLastFVF() /* TODO: Implement properly */
 
     emitStaticPreamble()
 
