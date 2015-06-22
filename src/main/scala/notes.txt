@@ -1,0 +1,28 @@
+===== 16.6.2015
+- Imports so that Σ(...) works in set_main?
+- Executor/Conditionalblock: Okay to omit exec->leave->follows... and just do the eval/branch?
+- Safe to assume that there is ALWAYS an else-branch?
+
+
+===== 9.6.2015
+- Failed assertions etc. still produce meaningless output
+- Discussed solution for multiple-collapse-problem when branching:
+  Exchanging stacks/saving pointers only in brancher would
+  probably not work; workaround-solution: Each SEP gets an identifier
+  during insertion, collapse is only executed once per identifier
+- If/Else-Branching: Maybe separate construct?
+
+
+
+===== 3.6.2015
+- Giving state as argument: State expects parameters (?)
+- expressions to evaluate/produce/consume: Which to sort out
+
+===== 20.5.2015
+- consume/produce: Can't replace insert without additional calls of insert (at consumes/produces)
+- Implies in Produce: Branching - how?
+
+===== 13.5.2015
+- branch: seems to be called in certain evaluations (e.g., evaluate (a == 1) || (a == 2))
+- ConditionalBlock
+- produce/consume: pre/postconditions

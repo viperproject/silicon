@@ -92,6 +92,20 @@ trait DefaultProducer[ST <: Store[ST],
                        pve: PartialVerificationError,
                        c: C)
                       (Q: (H, C) => VerificationResult)
+  : VerificationResult = {
+    val SEP_identifier = SymbExLogger.currentLog().producer_insert(φ, σ)
+    produce3(σ, sf, p, φ, pve, c)((σ1, c1) => {
+      SymbExLogger.currentLog().collapse(φ, SEP_identifier)
+      Q(σ1, c1)})
+  }
+
+  private def produce3(σ: S,
+                       sf: Sort => Term,
+                       p: Term,
+                       φ: ast.Exp,
+                       pve: PartialVerificationError,
+                       c: C)
+                      (Q: (H, C) => VerificationResult)
                       : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {

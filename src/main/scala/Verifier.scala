@@ -58,6 +58,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
+    SymbExLogger.insert(method, Σ(Ø, Ø, Ø))
+
     val ins = method.formalArgs.map(_.localVar)
     val outs = method.formalReturns.map(_.localVar)
 
@@ -92,6 +94,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
+
+    SymbExLogger.insert(predicate, Σ(Ø, Ø, Ø))
 
     val ins = predicate.formalArgs.map(_.localVar)
 
@@ -163,7 +167,13 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
 
-    ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
+    val res = ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
+    println("====== TRACE =======\n")
+    for(mpf <- SymbExLogger.mpf_list) {
+      println(mpf.main.toSimpleTree(0))
+    }
+    println("\n\n===== TRACE END =======\n")
+    res
   }
 
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {

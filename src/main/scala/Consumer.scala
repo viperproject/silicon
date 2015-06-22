@@ -88,6 +88,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+  : VerificationResult = {
+    val SEP_identifier = SymbExLogger.currentLog().consumer_insert(φ, σ)
+    consume2(σ, h, p, φ, pve, c)((h1, t1, l1, c1) => {
+      SymbExLogger.currentLog().collapse(φ, SEP_identifier)
+      Q(h1, t1, l1, c1)})
+  }
+
+  protected def consume2(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+                       (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
