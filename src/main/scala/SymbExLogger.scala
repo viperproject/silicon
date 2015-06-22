@@ -5,10 +5,13 @@
 package viper
 package silicon
 
+import java.io.File
 import silver.ast
 import interfaces.state.factoryUtils.Ø
 import interfaces.state.{StateFactory, HeapFactory, Store}
 import viper.silver.ast.Node
+
+
 
 object SymbExLogger {
   var mpf_list = List[SymbLog]()
@@ -21,7 +24,26 @@ object SymbExLogger {
   def currentLog(): SymbLog = {
     mpf_list.last
   }
+
+  def writeDotFile(): Unit = {
+    var str: String = "digraph {\n"
+    str = str + "node [shape=rectangle];\n\n";
+
+    for(mpf <- mpf_list) {
+      str = str + mpf.toDot() + "\n\n"
+    }
+
+    str = str + "}"
+    val pw = new java.io.PrintWriter(new File("dot_input.dot"))
+    try pw.write(str) finally pw.close()
+  }
 }
+
+//========================= SymbLog ========================
+
+/*
+ * Concept: One object of SymbLog per Method/Predicate/Function.
+ */
 
 
 class SymbLog(v: silver.ast.Node, s: AnyRef) {
@@ -134,6 +156,83 @@ class SymbLog(v: silver.ast.Node, s: AnyRef) {
       case _ => return true
     }
   }
+
+  private var previousNode = "";
+
+  def toDot(): String = {
+
+    var output = ""
+
+    output = output + "    "+main.dotNode()+" [label="+main.dotLabel()+"];\n"
+    output = output + toDot_block(main)
+    output
+  }
+
+  private def toDot_block(s: SymbolicRecord):String =
+  {
+    previousNode = s.dotNode()
+
+    var output = ""
+
+    s match {
+      case ite: IfThenElseRecord => {
+        val ite_parent = previousNode
+        output = output + "    " + ite.thnCond.dotNode() + " [label=" + ite.thnCond.dotLabel() + "];\n"
+        output = output + "    " + previousNode + " -> " + ite.thnCond.dotNode() + ";\n"
+        previousNode = ite.thnCond.dotNode()
+        for(rec <- ite.thnSubs) {
+          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output = output + toDot_block(rec)
+        }
+        previousNode = ite_parent
+        output = output + "    " + ite.elsCond.dotNode() + " [label=" + ite.elsCond.dotLabel() + "];\n"
+        output = output + "    " + previousNode + " -> " + ite.elsCond.dotNode() + ";\n"
+        previousNode = ite.elsCond.dotNode()
+        for(rec <- ite.elsSubs) {
+          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output = output + toDot_block(rec)
+        }
+      }
+      case _ => {
+        if(s.subs.isEmpty)
+          return ""
+        for(rec <- s.subs) {
+          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output = output + toDot_block(rec)
+        }
+      }
+    }
+
+    /*for(i <- 0 until s.subs.length)
+    {
+      val rec = s.subs.apply(i)
+      if(rec.toString().substring(0,2).equals("IF")) {
+        val if_rec = rec
+        val if_parent = previousNode
+        val else_rec = s.subs.apply(i+1)
+        output = output + "    " + if_rec.dotNode() + " [label=" + if_rec.dotLabel() + "];\n"
+        output = output + "    " + previousNode + " -> " + if_rec.dotNode() + ";\n"
+        output = output + toDot_block(if_rec)
+
+        previousNode = if_parent
+        output = output + "    " + else_rec.dotNode() + " [label=" + else_rec.dotLabel() + "];\n"
+        output = output + "    " + previousNode + " -> " + else_rec.dotNode() + ";\n"
+        output = output + toDot_block(else_rec)
+      }
+      else {
+        if(!rec.toString().substring(0,2).equals("EL")) {
+          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output = output + toDot_block(rec)
+        }
+      }*/
+    return output
+  }
+
+
 }
 
 //=========================
@@ -149,13 +248,22 @@ trait SymbolicRecord {
 
   def toSimpleTree(n: Int):String = {
     var ident = ""
-    for(i <- 1 to n)
-      ident = ident + " "
-    var str:String = ident + this.toString()+"\n"
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+    var str:String = this.toString()+"\n"
     for(s <- subs){
-      str = str + ident + " " + s.toSimpleTree(n+1)
+      str = str + ident + s.toSimpleTree(n+1)
     }
     str
+  }
+
+  def dotNode(): String = {
+    this.hashCode().toString()
+  }
+
+  def dotLabel(): String = {
+    "\""+this.toString()+"\""
   }
 }
 
@@ -219,5 +327,41 @@ class ConsumeRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
 
   override def toString():String = {
     "execute: "+value.toString()
+  }
+}
+
+class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+  val value = v //meaningless
+  val state = s
+
+  var thnCond = new EvaluateRecord(null, null)
+  var elsCond = new EvaluateRecord(null, null)
+
+  var thnSubs = List[SymbolicRecord]()
+  var elsSubs = List[SymbolicRecord]()
+
+  override def toString(): String ={
+    "if "+thnCond.value.toString()
+  }
+
+  override def toSimpleTree(n: Int): String ={
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+
+    var str = ""
+    str = str + "if " + thnCond.value.toString()+":\n"
+    str = str + ident + thnCond.toSimpleTree(n+1)
+    for(s <- thnSubs){
+      str = str + ident + s.toSimpleTree(n+1)
+    }
+
+    str = str + ident.substring(2) + "else " + elsCond.value.toString()+":\n"
+    str = str + ident + elsCond.toSimpleTree(n+1)
+    for(s <- elsSubs){
+      str = str + ident + s.toSimpleTree(n+1)
+    }
+    return str
   }
 }
