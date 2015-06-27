@@ -16,7 +16,7 @@ import viper.silver.ast.Node
 object SymbExLogger {
   var mpf_list = List[SymbLog]()
 
-  def insert(mpf: silver.ast.Node, s: AnyRef): Unit ={
+  def insert(mpf: silver.ast.Member, s: AnyRef): Unit ={
     // mpf: Method, Predicate or Function
     mpf_list = mpf_list ++ List(new SymbLog(mpf,s))
   }
@@ -46,7 +46,7 @@ object SymbExLogger {
  */
 
 
-class SymbLog(v: silver.ast.Node, s: AnyRef) {
+class SymbLog(v: silver.ast.Member, s: AnyRef) {
   var main = v match {
     case m: silver.ast.Method     => new MethodRecord(m, s)
     case p: silver.ast.Predicate  => new PredicateRecord(p, s)
@@ -145,8 +145,8 @@ class SymbLog(v: silver.ast.Node, s: AnyRef) {
       }
       case exp: silver.ast.Exp => {
         exp match {
-          case _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
-               | /*_: ast.AbstractLocalVar |*/ _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
+          case /*_: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
+               | _: ast.AbstractLocalVar |*/ _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
                | _: ast.WildcardPerm | _: ast.FieldAccess =>
             return false
           case _ =>
@@ -334,8 +334,8 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val value = v //meaningless
   val state = s
 
-  var thnCond = new EvaluateRecord(null, null)
-  var elsCond = new EvaluateRecord(null, null)
+  var thnCond:SymbolicRecord = new EvaluateRecord(null, null)
+  var elsCond:SymbolicRecord = new EvaluateRecord(null, null)
 
   var thnSubs = List[SymbolicRecord]()
   var elsSubs = List[SymbolicRecord]()
@@ -362,6 +362,31 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     for(s <- elsSubs){
       str = str + ident + s.toSimpleTree(n+1)
     }
+    return str
+  }
+}
+
+class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+  val value = v
+  val state = s
+
+  var cond:SymbolicRecord   = new EvaluateRecord(null, null)
+  var thnExp:SymbolicRecord = new EvaluateRecord(null, null)
+  var elsExp:SymbolicRecord = new EvaluateRecord(null, null)
+
+  override def toString(): String = {
+    "evaluate: "+cond.value.toString() + " ? " + thnExp.value.toString() + " : " + elsExp.value.toString()
+  }
+
+  override def toSimpleTree(n: Int):String = {
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+    var str = ""
+    str = str + toString()+"\n"
+    str = str + ident + thnExp.toSimpleTree(n+1)
+    str = str + ident + elsExp.toSimpleTree(n+1)
     return str
   }
 }

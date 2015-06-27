@@ -215,19 +215,38 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(tImplies, c1)})
 
       case ite @ ast.CondExp(e0, e1, e2) =>
-        eval(σ, e0, pve, c)((t0, c1) =>
+        val ceLog = new CondExpRecord(e0, σ)
+        // remove already inserted "evaluate ...":
+        println(SymbExLogger.currentLog().stack.toString())
+        SymbExLogger.currentLog().stack = SymbExLogger.currentLog().stack.tail
+        SymbExLogger.currentLog().stack.head.subs = SymbExLogger.currentLog().stack.head.subs.reverse.tail.reverse
+        // insert CondExpRecord:
+        val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
+
+        val condExp_res = eval(σ, e0, pve, c)((t0, c1) => {
+          ceLog.cond = ceLog.subs.apply(0)
+          ceLog.subs = List[SymbolicRecord]()
           branchAndJoin(σ, t0, c1,
             (c2, QB) =>
-              eval(σ, e1, pve, c2)(QB),
+              eval(σ, e1, pve, c2)((t_e1, c_e1) => {
+                ceLog.thnExp = ceLog.subs.apply(0)
+                ceLog.subs = List[SymbolicRecord]()
+                QB(t_e1, c_e1)}),
             (c2, QB) =>
-              eval(σ, e2, pve, c2)(QB)
+              eval(σ, e2, pve, c2)((t_e2, c_e2) => {
+                ceLog.elsExp = ceLog.subs.apply(0)
+                ceLog.subs = List[SymbolicRecord]()
+                QB(t_e2, c_e2)})
           )((optT1, optT2, cJoined) => {
+            SymbExLogger.currentLog().collapse(ite, SEP_identifier)
             val tIte =
               Ite(t0,
                   optT1.getOrElse(fresh("$deadThen", toSort(e1.typ))),
                   optT2.getOrElse(fresh("$deadElse", toSort(e2.typ))))
+            println("HERE "+SymbExLogger.currentLog().stack.toString())
             Q(tIte, cJoined)
-          }))
+          })})
+        condExp_res
 
       /* Integers */
 

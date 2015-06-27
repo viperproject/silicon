@@ -106,9 +106,10 @@ trait DefaultExecutor[ST <: Store[ST],
           val thn_edge = cblock.succs.apply(0)
           val els_edge = cblock.succs.apply(1)
 
-          SymbExLogger.currentLog().stack = iteLog::SymbExLogger.currentLog().stack
+          val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
+          //SymbExLogger.currentLog().stack = iteLog::SymbExLogger.currentLog().stack
           val thnblock = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
-            iteLog.thnCond = iteLog.subs.apply(0).asInstanceOf[EvaluateRecord]
+            iteLog.thnCond = iteLog.subs.apply(0)
             iteLog.subs = List[SymbolicRecord]()
 
             val thn_branch_res = branch(σ1, tCond, c2,
@@ -121,7 +122,7 @@ trait DefaultExecutor[ST <: Store[ST],
           })
 
           val elsblock = eval(σ1, els_edge.cond, IfFailed(els_edge.cond), c1)((tCond, c2) => {
-            iteLog.elsCond = iteLog.subs.apply(0).asInstanceOf[EvaluateRecord]
+            iteLog.elsCond = iteLog.subs.apply(0)
             iteLog.subs = List[SymbolicRecord]()
             val els_branch_res = branch(σ1, tCond, c2,
               (c3: C) => exec(σ1, els_edge.dest, c3)(Q),
@@ -129,8 +130,8 @@ trait DefaultExecutor[ST <: Store[ST],
 
             iteLog.elsSubs = iteLog.subs
             iteLog.subs = List[SymbolicRecord]()
-            SymbExLogger.currentLog().stack = SymbExLogger.currentLog().stack.tail
-            val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
+            //SymbExLogger.currentLog().stack = SymbExLogger.currentLog().stack.tail
+            //val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
             SymbExLogger.currentLog().collapse(null, SEP_identifier)
             els_branch_res
           })
