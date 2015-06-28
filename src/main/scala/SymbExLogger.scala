@@ -145,7 +145,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
       }
       case exp: silver.ast.Exp => {
         exp match {
-          case /*_: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
+          case _: ast.CondExp | /*_: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
                | _: ast.AbstractLocalVar |*/ _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
                | _: ast.WildcardPerm | _: ast.FieldAccess =>
             return false
@@ -158,6 +158,12 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
   }
 
   private var previousNode = "";
+  private var unique_node_nr = this.hashCode();
+
+  private def unique_node_number():Int = {
+    unique_node_nr = unique_node_nr+1
+    unique_node_nr
+  }
 
   def toDot(): String = {
 
@@ -180,7 +186,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
         output = output + "    " + ite.thnCond.dotNode() + " [label=" + ite.thnCond.dotLabel() + "];\n"
         output = output + "    " + previousNode + " -> " + ite.thnCond.dotNode() + ";\n"
         previousNode = ite.thnCond.dotNode()
-        for(rec <- ite.thnSubs) {
+        for (rec <- ite.thnSubs) {
           output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
           output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
           output = output + toDot_block(rec)
@@ -189,11 +195,34 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
         output = output + "    " + ite.elsCond.dotNode() + " [label=" + ite.elsCond.dotLabel() + "];\n"
         output = output + "    " + previousNode + " -> " + ite.elsCond.dotNode() + ";\n"
         previousNode = ite.elsCond.dotNode()
-        for(rec <- ite.elsSubs) {
+        for (rec <- ite.elsSubs) {
           output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
           output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
           output = output + toDot_block(rec)
         }
+      }
+      case ce: CondExpRecord => {
+
+        output = output + "    " + ce.cond.dotNode() + " [label="+ce.cond.dotLabel()+"];\n"
+        output = output + "    " + previousNode + " -> " + ce.cond.dotNode() + ";\n"
+        previousNode = ce.cond.dotNode()
+
+        output = output + "    " + ce.thnExp.dotNode() + " [label="+ce.thnExp.dotLabel()+"];\n"
+        output = output + "    " + previousNode + " -> " + ce.thnExp.dotNode() + ";\n"
+        output = output + toDot_block(ce.thnExp)
+        val thnExp_end = previousNode
+
+        previousNode = ce.cond.dotNode()
+        output = output + "    " + ce.elsExp.dotNode() + " [label="+ce.elsExp.dotLabel()+"];\n"
+        output = output + "    " + previousNode + " -> " + ce.elsExp.dotNode() + ";\n"
+        output = output + toDot_block(ce.elsExp)
+        val elsExp_end = previousNode
+
+        val join_node = unique_node_number().toString()
+        output = output + "    " + join_node + " [label=\"Join\"];\n"
+        output = output + "    " + thnExp_end + " -> " + join_node + ";\n"
+        output = output + "    " + elsExp_end + " -> " + join_node + ";\n"
+        previousNode = join_node
       }
       case _ => {
         if(s.subs.isEmpty)
@@ -243,7 +272,13 @@ trait SymbolicRecord {
   var subs = List[SymbolicRecord]()
 
   override def toString():String = {
-    value.toString()
+    if(value != null)  value.toString()
+    else "null"
+  }
+
+  def toSimpleString():String = {
+    if(value != null)  value.toString()
+    else "null"
   }
 
   def toSimpleTree(n: Int):String = {
@@ -341,7 +376,11 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   var elsSubs = List[SymbolicRecord]()
 
   override def toString(): String ={
-    "if "+thnCond.value.toString()
+    "if "+thnCond.toSimpleString()
+  }
+
+  override def toSimpleString(): String = {
+    "if "+thnCond.toSimpleString()
   }
 
   override def toSimpleTree(n: Int): String ={
@@ -375,7 +414,11 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   var elsExp:SymbolicRecord = new EvaluateRecord(null, null)
 
   override def toString(): String = {
-    "evaluate: "+cond.value.toString() + " ? " + thnExp.value.toString() + " : " + elsExp.value.toString()
+    "evaluate: "+cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString()
+  }
+
+  override def toSimpleString(): String = {
+    "(" + cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString() + ")"
   }
 
   override def toSimpleTree(n: Int):String = {
