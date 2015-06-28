@@ -294,6 +294,31 @@ trait DefaultEvaluator[ST <: Store[ST],
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
+      case quant: silver.ast.ForallReferences =>
+        val body = quant.exp
+        val variable = quant.variable.localVar
+
+        val heap = σ.h
+        val includedFieldNames = quant.accessList.map(_.name)
+        val refs = heap.values.map(_.id).collect({
+          case ref@FieldChunkIdentifier(rcvr,field_name) if includedFieldNames contains field_name => ref
+        }).toList
+
+        // Iterate over the list of applicable refs in continuation passing style,
+        // Evaluates the forall-body with a different variable assignment each time.
+        // Combines individual terms with And in each recursive call
+        def conjunction(refs: List[FieldChunkIdentifier],
+                        result: Term,
+                        cj: C,
+                        Qj: (Term, C) => VerificationResult) : VerificationResult = refs match {
+          case ref :: tail => eval(σ \+ (variable,ref.rcvr), body, pve, cj){ (term,c2) =>
+            conjunction(tail, And(result,term), c2, Qj)
+          }
+          case Nil =>
+            Qj(result, cj)
+        }
+        conjunction(refs, True(), c, Q)
+
       case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (triggerQuant, tQuantOp, silTriggers) = quant match {
           case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)

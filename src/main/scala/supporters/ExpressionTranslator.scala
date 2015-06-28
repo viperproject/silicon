@@ -54,6 +54,7 @@ trait ExpressionTranslator {
 
 
     exp match {
+      case r:silver.ast.ForallReferences => ???
       case q @ ast.QuantifiedExp(qvars, _) =>
         val (autoTriggerQuant, quantifier, triggers) = q match {
           case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
