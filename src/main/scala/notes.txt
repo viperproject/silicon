@@ -1,3 +1,7 @@
+===== 30.6.2015
+- Join in DOT-representation, similar construct in logger needed?
+- Unique number per method/predicate/function; hashtag of mpf as initial counter. Problems?
+
 ===== 16.6.2015
 - Imports so that Σ(...) works in set_main?
 - Executor/Conditionalblock: Okay to omit exec->leave->follows... and just do the eval/branch?
