@@ -63,29 +63,8 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
 
   def insert(s: SymbolicRecord): Int = {
 
-    if(!isUsed(s.value))
+    if(!isUsed(s.value) || isRecordedDifferently(s))
       return -1
-
-    /*if(flag_comment_stack) {
-      sr = new SymbRec(ptype, v, comment_stack.head, branchlevel, s)
-      comment_stack = comment_stack.tail
-      flag_comment_stack = false
-    }
-    else {
-      sr = new SymbRec(ptype, v, branchlevel, s)
-    }
-    debug_println(sr.toString())
-    current().subs = current().subs++List(sr)
-    stack = sr::stack
-
-
-    SEP_counter = SEP_counter+1
-    SEP_set = SEP_set+SEP_counter
-
-    if(flag_manual_collapse) {
-      manual_collapse_set = manual_collapse_set + SEP_counter
-      flag_manual_collapse = false
-    }*/
 
     current().subs = current().subs++List(s)
     stack = s::stack
@@ -125,10 +104,23 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
 
   def collapse(v: silver.ast.Node, n: Int): Unit =
   {
-    if(SEP_set.contains(n)) {
+    if(n != -1 && SEP_set.contains(n)) {
       SEP_set = SEP_set - n
       if (isUsed(v))
         stack = stack.tail
+    }
+  }
+
+  def isRecordedDifferently(s: SymbolicRecord): Boolean =
+  {
+    s.value match {
+      case v: silver.ast.MethodCall =>
+        s match {
+          case _: MethodCallRecord => false
+          case _ => true
+        }
+
+      case _ => false
     }
   }
 
@@ -223,6 +215,31 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
         output = output + "    " + thnExp_end + " -> " + join_node + ";\n"
         output = output + "    " + elsExp_end + " -> " + join_node + ";\n"
         previousNode = join_node
+      }
+
+      case mc: MethodCallRecord => {
+        val mc_parent = previousNode
+        output = output + "    " + mc.dotNode() + " [label="+mc.dotLabel()+"];\n"
+        previousNode = mc.dotNode()
+
+        for(p <- mc.parameters){
+          output = output + "    " + p.dotNode() + " [label=\"parameter: "+p.toSimpleString()+"\"];\n"
+          output = output + "    " + previousNode + " -> " + p.dotNode() + ";\n"
+          output = output + subsToDot(p)
+        }
+        previousNode = mc.dotNode()
+
+        output = output + "    " + mc.precondition.dotNode() + " [label=\"precondition: "+mc.precondition.toSimpleString()+"\"];\n"
+        output = output + "    " + previousNode + " -> " + mc.precondition.dotNode() + ";\n"
+        output = output + subsToDot(mc.precondition)
+        previousNode = mc.dotNode()
+
+        output = output + "    " + mc.postcondition.dotNode() + " [label=\"postcondition: "+mc.postcondition.toSimpleString()+"\"];\n"
+        output = output + "    " + previousNode + " -> " + mc.postcondition.dotNode() + ";\n"
+        output = output + subsToDot(mc.postcondition)
+        previousNode = mc.dotNode()
+
+
       }
       case _ => {
         if(s.subs.isEmpty)
@@ -444,6 +461,43 @@ class CommentRecord(str: String, s: AnyRef) extends SymbolicRecord {
 
   override def dotLabel():String = {
     "\""+comment+"\""
+  }
+}
+
+class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicRecord {
+  val value = v
+  val state = s
+
+  var parameters = List[SymbolicRecord]()
+
+  var precondition: SymbolicRecord = new ConsumeRecord(null,null)
+  var postcondition:SymbolicRecord = new ProduceRecord(null,null)
+
+  override def toSimpleTree(n: Int):String = {
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+    var str = ""
+    str = str + toString()+"\n"
+    str = str + ident + "precondition: " + precondition.toSimpleTree(n+1)
+    str = str + ident + "postcondition: " + postcondition.toSimpleTree(n+1)
+    for(p <- parameters) {
+      str = str + ident + "parameter: " + p.toSimpleTree(n+1)
+    }
+    return str
+  }
+
+  override def toString(): String ={
+    if(v != null)
+      "execute: " + v.toString()
+    else
+      "execute: MethodCall <null>"
+  }
+
+  override def toSimpleString(): String = {
+    if(v != null) v.toString()
+    else "MethodCall <null>"
   }
 }
 

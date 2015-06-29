@@ -329,17 +329,27 @@ trait DefaultExecutor[ST <: Store[ST],
            *       only while checking well-formedness).
            */
 
+        val mcLog = new MethodCallRecord(call, σ)
+        val SEP_identifier = SymbExLogger.currentLog().insert(mcLog)
+
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
+          mcLog.parameters = mcLog.subs
+          mcLog.subs = List[SymbolicRecord]()
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = utils.ast.BigAnd(meth.pres)
           consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
+            mcLog.precondition = mcLog.subs.apply(0)
+            mcLog.subs = List[SymbolicRecord]()
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
             val post = utils.ast.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
+              mcLog.postcondition = mcLog.subs.apply(0)
+              mcLog.subs = List[SymbolicRecord]()
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
+              SymbExLogger.currentLog().collapse(null, SEP_identifier)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>

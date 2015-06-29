@@ -1,6 +1,7 @@
 ===== 30.6.2015
 - Join in DOT-representation, similar construct in logger needed?
 - Unique number per method/predicate/function; hashtag of mpf as initial counter. Problems?
+- twice(twice(1))?
 
 ===== 16.6.2015
 - Imports so that Σ(...) works in set_main?
