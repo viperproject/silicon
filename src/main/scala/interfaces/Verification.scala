@@ -21,7 +21,7 @@ import silicon.state.terms.Term
  */
 
 /* TODO: Make VerificationResult immutable */
-abstract class VerificationResult {
+sealed abstract class VerificationResult {
   var previous: Option[NonFatalResult] = None
 
   def isFatal: Boolean

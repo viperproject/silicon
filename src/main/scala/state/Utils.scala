@@ -121,6 +121,7 @@ package object utils {
     case op: UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
     case and: And => and.ts
+    case or: Or => or.ts
     case _: NoPerm | _: FullPerm => Nil
     case wcp: WildcardPerm => List(wcp.v)
     case fp: FractionPerm => List(fp.n, fp.d)
@@ -162,7 +163,7 @@ package object utils {
       case Div(t0, t1) => Div(go(t0), go(t1))
       case Mod(t0, t1) => Mod(go(t0), go(t1))
       case Not(t) => Not(go(t))
-      case Or(t0, t1) => Or(go(t0), go(t1))
+      case Or(ts) => Or(ts map go : _*)
       case And(ts) => And(ts map go : _*)
       case Implies(t0, t1) => Implies(go(t0), go(t1))
       case Iff(t0, t1) => Iff(go(t0), go(t1))

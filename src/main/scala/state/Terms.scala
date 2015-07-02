@@ -319,27 +319,50 @@ case class False() extends BooleanLiteral {
 sealed trait Quantifier
 
 object Forall extends Quantifier {
-  def apply(qvar: Var, tBody: Term, trigger: Trigger) =
-    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil)
+  def apply(qvar: Var, tBody: Term, trigger: Trigger): Quantification =
+    apply(qvar, tBody, trigger, "")
 
-  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
-    Quantification(Forall, qvar :: Nil, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, trigger: Trigger, name: String) =
+    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name)
 
-  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger) =
-    Quantification(Forall, qvars, tBody, trigger :: Nil)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(qvar, tBody, triggers, "")
 
-  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
-    Quantification(Forall, qvars, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
+    apply(qvars, tBody, trigger, "")
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger, name: String) =
+    Quantification(Forall, qvars, tBody, trigger :: Nil, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(qvars, tBody, triggers, "")
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
+    Quantification(Forall, qvars, tBody, triggers, name)
 
   def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    this(qvar :: Nil, tBody, computeTriggersFrom)
+    apply(qvar, tBody, computeTriggersFrom, "")(dummy)
 
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit) = {
+  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit): Quantification =
+    this(qvar :: Nil, tBody, computeTriggersFrom, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
+    apply(qvars, tBody, computeTriggersFrom, "")(dummy)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit) = {
     val (triggers, extraVars) =
       TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
 
-      Quantification(Forall, qvars ++ extraVars, tBody, triggers)
+      Quantification(Forall, qvars ++ extraVars, tBody, triggers, name)
     }
+
+  def unapply(q: Quantification) = q match {
+    case Quantification(Forall, qvars, tBody, triggers, name) => Some((qvars, tBody, triggers, name))
+    case _ => None
+  }
 
   override val toString = "QA"
 }
@@ -368,7 +391,8 @@ object Trigger {
 class Quantification private[terms] (val q: Quantifier,
                                      val vars: Seq[Var],
                                      val body: Term,
-                                     val triggers: Seq[Trigger])
+                                     val triggers: Seq[Trigger],
+                                     val name: String)
     extends BooleanTerm
        with StructuralEquality {
 
@@ -379,7 +403,7 @@ class Quantification private[terms] (val q: Quantifier,
     } else {
       TriggerGenerator.generateTriggers(vars, body) match {
         case Some((generatedTriggers, extraVariables)) =>
-          Quantification(q, vars ++ extraVariables, body, generatedTriggers)
+          Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
         case _ =>
           this
       }
@@ -391,18 +415,21 @@ class Quantification private[terms] (val q: Quantifier,
   override val toString = s"$q ${vars.mkString(",")} :: $body"
 }
 
-object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger]) => Quantification) {
-  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String) => Quantification) {
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(q, vars, tBody, triggers, "")
+
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    new Quantification(q, vars, tBody, triggers)
+    new Quantification(q, vars, tBody, triggers, name)
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
 //  }
 
-  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers))
+  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers, q.name))
 }
 
 /* Arithmetic expression terms */
@@ -511,29 +538,48 @@ object Not extends (Term => Term) {
   def unapply(e: Not) = Some(e.p)
 }
 
-class Or(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+class Or(val ts: Seq[Term]) extends BooleanTerm
+    with StructuralEquality with ForbiddenInTrigger {
 
-  override val op = "||"
+  assert(ts.nonEmpty, "Expected at least one term, but found none")
+
+  val equalityDefiningMembers = ts
+
+  override lazy val toString = ts.mkString(" || ")
 }
 
-/* TODO: Or should be (Term, Term) => BooleanTerm, but that require a
- *       Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
+/* TODO: Or should be (Term, Term) => BooleanTerm, but that would require
+ *       a Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
  *       It would be sooooo handy to be able to work with Term[Sort], but
  *       that conflicts with using extractor objects to simplify terms,
- *       since extractor objects can't be type-parameterised.
+ *       since extractor objects can't be type-parametrised.
  */
-object Or extends ((Term, Term) => Term) {
-  def apply(e0: Term, e1: Term) = (e0, e1) match {
-    case (True(), _) | (_, True()) => True()
-    case (False(), _) => e1
-    case (_, False()) => e0
-    case _ if e0 == e1 => e0
-    case _ => new Or(e0, e1)
+object Or extends (Iterable[Term] => Term) {
+  def apply(ts: Term*) = createOr(ts)
+  def apply(ts: Iterable[Term]) = createOr(ts.toSeq)
+
+  //  def apply(e0: Term, e1: Term) = (e0, e1) match {
+  //    case (True(), _) | (_, True()) => True()
+  //    case (False(), _) => e1
+  //    case (_, False()) => e0
+  //    case _ if e0 == e1 => e0
+  //    case _ => new Or(e0, e1)
+  //  }
+
+  @inline
+  def createOr(_ts: Seq[Term]): Term = {
+    var ts = _ts.flatMap { case Or(ts1) => ts1; case other => other :: Nil}
+    ts = _ts.filterNot(_ == False())
+    ts = ts.distinct
+
+    ts match {
+      case Seq() => False()
+      case Seq(t) => t
+      case _ => new Or(ts)
+    }
   }
 
-  def unapply(e: Or) = Some((e.p0, e.p1))
+  def unapply(e: Or) = Some(e.ts)
 }
 
 class And(val ts: Seq[Term]) extends BooleanTerm
@@ -648,6 +694,19 @@ object Equals extends ((Term, Term) => BooleanTerm) {
       True()
     else
       e0.sort match {
+        case sorts.Snap =>
+          (e0, e1) match {
+            case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
+              assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
+            case (c1: Combine, sw2: SortWrapper) =>
+              assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
+            case (sw1: SortWrapper, c2: Combine) =>
+              assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+            case _ => /* Ok */
+          }
+
+          new BuiltinEquals(e0, e1)
+
         case sorts.Perm => BuiltinEquals.forPerm(e0, e1)
         case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset => new CustomEquals(e0, e1)
         case _ => new BuiltinEquals(e0, e1)
@@ -1716,9 +1775,6 @@ object perms {
 /* Utility functions */
 
 object utils {
-  def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
-    silicon.utils.mapReduceLeft(it, f, Or, True())
-
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 
