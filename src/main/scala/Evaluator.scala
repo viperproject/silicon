@@ -220,18 +220,15 @@ trait DefaultEvaluator[ST <: Store[ST],
         val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
 
         val condExp_res = eval(σ, e0, pve, c)((t0, c1) => {
-          ceLog.cond = ceLog.subs.apply(0)
-          ceLog.subs = List[SymbolicRecord]()
+          ceLog.finish_cond()
           branchAndJoin(σ, t0, c1,
             (c2, QB) =>
               eval(σ, e1, pve, c2)((t_e1, c_e1) => {
-                ceLog.thnExp = ceLog.subs.apply(0)
-                ceLog.subs = List[SymbolicRecord]()
+                ceLog.finish_thnExp()
                 QB(t_e1, c_e1)}),
             (c2, QB) =>
               eval(σ, e2, pve, c2)((t_e2, c_e2) => {
-                ceLog.elsExp = ceLog.subs.apply(0)
-                ceLog.subs = List[SymbolicRecord]()
+                ceLog.finish_elsExp()
                 QB(t_e2, c_e2)})
           )((optT1, optT2, cJoined) => {
             SymbExLogger.currentLog().collapse(null, SEP_identifier)

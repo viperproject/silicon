@@ -380,7 +380,6 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
 
   var thnCond:SymbolicRecord = new EvaluateRecord(null, null)
   var elsCond:SymbolicRecord = new EvaluateRecord(null, null)
-
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null))
   var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null))
 
@@ -412,6 +411,28 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     }
     return str
   }
+
+  def finish_thnCond(): Unit ={
+    thnCond = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_elsCond(): Unit ={
+    elsCond = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_thnSubs(): Unit ={
+    if(!subs.isEmpty)
+      thnSubs = subs
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_elsSubs(): Unit ={
+    if(!subs.isEmpty)
+      elsSubs = subs
+    subs = List[SymbolicRecord]()
+  }
 }
 
 class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
@@ -442,6 +463,21 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     str = str + ident + elsExp.toSimpleTree(n+1)
     return str
   }
+
+  def finish_cond(): Unit ={
+    cond = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_thnExp(): Unit ={
+    thnExp = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_elsExp(): Unit ={
+    elsExp = subs(0)
+    subs = List[SymbolicRecord]()
+  }
 }
 
 class CommentRecord(str: String, s: AnyRef) extends SymbolicRecord {
@@ -469,7 +505,6 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
   val state = s
 
   var parameters = List[SymbolicRecord]()
-
   var precondition: SymbolicRecord = new ConsumeRecord(null,null)
   var postcondition:SymbolicRecord = new ProduceRecord(null,null)
 
@@ -498,6 +533,21 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
   override def toSimpleString(): String = {
     if(v != null) v.toString()
     else "MethodCall <null>"
+  }
+
+  def finish_parameters(): Unit ={
+    parameters = subs
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_precondition(): Unit ={
+    precondition = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_postcondition(): Unit ={
+    postcondition = subs(0)
+    subs = List[SymbolicRecord]()
   }
 }
 

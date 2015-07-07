@@ -101,40 +101,39 @@ trait DefaultExecutor[ST <: Store[ST],
       case cblock @ silver.ast.ConditionalBlock(stmt, e, thn, els) =>
         exec(σ, stmt, c)((σ1, c1) => {
 
-          var iteLog = new IfThenElseRecord(e, σ)
+          val iteLog = new IfThenElseRecord(e, σ)
 
           val thn_edge = cblock.succs.apply(0)
           val els_edge = cblock.succs.apply(1)
 
           val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
-          //SymbExLogger.currentLog().stack = iteLog::SymbExLogger.currentLog().stack
           val thnblock = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
-            iteLog.thnCond = iteLog.subs.apply(0)
-            iteLog.subs = List[SymbolicRecord]()
+            iteLog.finish_thnCond()
 
             val thn_branch_res = branch(σ1, tCond, c2,
-              (c3: C) => exec(σ1, thn_edge.dest, c2)(Q),
+              (c3: C) => exec(σ1, thn_edge.dest, c2)((σ_thn, c_thn) => {
+                iteLog.finish_thnSubs()
+                Q(σ_thn, c_thn)
+              }),
               (c3: C) => Success())
-
-            iteLog.thnSubs = iteLog.subs
-            iteLog.subs = List[SymbolicRecord]()
+            //iteLog.finish_thnSubs()
             thn_branch_res
           })
 
           val elsblock = eval(σ1, els_edge.cond, IfFailed(els_edge.cond), c1)((tCond, c2) => {
-            iteLog.elsCond = iteLog.subs.apply(0)
-            iteLog.subs = List[SymbolicRecord]()
-            val els_branch_res = branch(σ1, tCond, c2,
-              (c3: C) => exec(σ1, els_edge.dest, c3)(Q),
-              (c3: C) => Success())
+            iteLog.finish_elsCond()
 
-            iteLog.elsSubs = iteLog.subs
-            iteLog.subs = List[SymbolicRecord]()
-            //SymbExLogger.currentLog().stack = SymbExLogger.currentLog().stack.tail
-            //val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
+            val els_branch_res = branch(σ1, tCond, c2,
+              (c3: C) => exec(σ1, els_edge.dest, c3)((σ_els, c_els) => {
+                iteLog.finish_elsSubs()
+                Q(σ_els, c_els)
+              }),
+              (c3: C) => Success())
+            //iteLog.finish_elsSubs()
             SymbExLogger.currentLog().collapse(null, SEP_identifier)
             els_branch_res
           })
+
 
           thnblock && elsblock
         })
@@ -333,20 +332,17 @@ trait DefaultExecutor[ST <: Store[ST],
         val SEP_identifier = SymbExLogger.currentLog().insert(mcLog)
 
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
-          mcLog.parameters = mcLog.subs
-          mcLog.subs = List[SymbolicRecord]()
+          mcLog.finish_parameters()
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = utils.ast.BigAnd(meth.pres)
           consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
-            mcLog.precondition = mcLog.subs.apply(0)
-            mcLog.subs = List[SymbolicRecord]()
+            mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
             val post = utils.ast.BigAnd(meth.posts)
             produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
-              mcLog.postcondition = mcLog.subs.apply(0)
-              mcLog.subs = List[SymbolicRecord]()
+              mcLog.finish_postcondition()
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               SymbExLogger.currentLog().collapse(null, SEP_identifier)
