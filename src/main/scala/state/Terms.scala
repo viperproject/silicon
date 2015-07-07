@@ -687,6 +687,19 @@ object Equals extends ((Term, Term) => BooleanTerm) {
       True()
     else
       e0.sort match {
+        case sorts.Snap =>
+          (e0, e1) match {
+            case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
+              assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
+            case (c1: Combine, sw2: SortWrapper) =>
+              assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
+            case (sw1: SortWrapper, c2: Combine) =>
+              assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+            case _ => /* Ok */
+          }
+
+          new BuiltinEquals(e0, e1)
+
         case sorts.Perm => BuiltinEquals.forPerm(e0, e1)
         case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset => new CustomEquals(e0, e1)
         case _ => new BuiltinEquals(e0, e1)
