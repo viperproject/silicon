@@ -378,8 +378,8 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val value = v //meaningless
   val state = s
 
-  var thnCond:SymbolicRecord = new EvaluateRecord(null, null)
-  var elsCond:SymbolicRecord = new EvaluateRecord(null, null)
+  var thnCond:SymbolicRecord = new CommentRecord("Unreachable", null)
+  var elsCond:SymbolicRecord = new CommentRecord("Unreachable", null)
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null))
   var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null))
 
@@ -413,12 +413,14 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   }
 
   def finish_thnCond(): Unit ={
-    thnCond = subs(0)
+    if(!subs.isEmpty)
+      thnCond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
   def finish_elsCond(): Unit ={
-    elsCond = subs(0)
+    if(!subs.isEmpty)
+      elsCond = subs(0)
     subs = List[SymbolicRecord]()
   }
 

@@ -103,39 +103,32 @@ trait DefaultExecutor[ST <: Store[ST],
 
           val iteLog = new IfThenElseRecord(e, σ)
 
-          val thn_edge = cblock.succs.apply(0)
-          val els_edge = cblock.succs.apply(1)
+          val thn_edge = cblock.succs(0)
+          val els_edge = cblock.succs(1)
 
           val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
-          val thnblock = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
-            iteLog.finish_thnCond()
 
+          val iteResult = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
+            iteLog.finish_thnCond()
             val thn_branch_res = branch(σ1, tCond, c2,
               (c3: C) => exec(σ1, thn_edge.dest, c2)((σ_thn, c_thn) => {
                 iteLog.finish_thnSubs()
                 Q(σ_thn, c_thn)
               }),
               (c3: C) => Success())
-            //iteLog.finish_thnSubs()
             thn_branch_res
-          })
-
-          val elsblock = eval(σ1, els_edge.cond, IfFailed(els_edge.cond), c1)((tCond, c2) => {
+          }) && eval(σ1, els_edge.cond, IfFailed(els_edge.cond), c1)((tCond, c2) => {
             iteLog.finish_elsCond()
-
             val els_branch_res = branch(σ1, tCond, c2,
               (c3: C) => exec(σ1, els_edge.dest, c3)((σ_els, c_els) => {
                 iteLog.finish_elsSubs()
                 Q(σ_els, c_els)
               }),
               (c3: C) => Success())
-            //iteLog.finish_elsSubs()
-            SymbExLogger.currentLog().collapse(null, SEP_identifier)
             els_branch_res
           })
-
-
-          thnblock && elsblock
+          SymbExLogger.currentLog().collapse(null, SEP_identifier)
+          iteResult
         })
 
       case block @ silver.ast.StatementBlock(stmt, _) =>
