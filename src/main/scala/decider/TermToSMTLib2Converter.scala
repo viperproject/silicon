@@ -95,7 +95,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case FApp(f, s, tArgs) =>
       parens(sanitizeSymbol(f.id) <+> render(s) <+> ssep(tArgs map render, space))
 
-    case Quantification(quant, vars, body, triggers) =>
+    case Quantification(quant, vars, body, triggers, name) =>
       val docVars = ssep(vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort))), space)
       val docBody = render(body)
       val docQuant = render(quant)
@@ -105,7 +105,11 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
                      .map(d => ":pattern" <+> parens(d)),
              line)
 
-      parens(docQuant <+> parens(docVars) <+> parens("!" <> nest(line <> docBody <> line <> docTriggers)))
+      val docQid: Doc =
+        if (name.isEmpty) empty
+        else s":qid |$name|"
+
+      parens(docQuant <+> parens(docVars) <+> parens("!" <> nest(line <> docBody <> line <> docTriggers <> line <> docQid)))
 
     /* Booleans */
 
