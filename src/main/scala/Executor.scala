@@ -96,12 +96,21 @@ trait DefaultExecutor[ST <: Store[ST],
   def exec(σ: S, block: ast.Block, c: C)
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
+    execVI(σ,block,c)(Q)
+  }
+
+  val defaultPviRep = "<none>"
+
+  def execVI(σ: S, block: ast.Block, c: C)
+          (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
     block.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
-      case None    => exec2(σ,block,c)(Q)
+      case None    => exec2(σ,block,c.copy(partiallyVerifiedIf = None,pviRep = defaultPviRep))(Q)
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(v.cond)
         eval(σ, v.cond, pve, c)((t, c1) =>
-          exec2(σ,block,c.copy(partiallyVerifiedIf = Some(t),pviRep = v.cond.toString()))(Q)
+          exec2(σ,block,c.copy(partiallyVerifiedIf = Some(t),pviRep = v.cond.toString()))(
+            (σ,c2) => Q(σ,c2.copy(partiallyVerifiedIf = None,pviRep = defaultPviRep)))
         )
       }
       case _ => sys.error("should not happen")
@@ -148,8 +157,8 @@ trait DefaultExecutor[ST <: Store[ST],
             if (decider.checkSmoke())
               Success() /* TODO: Mark branch as dead? */
             else
-              exec(σ1, lb.body, c1)((σ2, c2) =>
-                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, _, c3) =>
+              exec(σ1, lb.body, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((σ2, c2) =>
+                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((σ3, _, _, c3) =>
                   Success())))}
             &&
           inScope {
@@ -189,9 +198,14 @@ trait DefaultExecutor[ST <: Store[ST],
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
+    execVI(σ,stmt,c)(Q)
+  }
 
+  def execVI(σ: S, stmt: ast.Stmt, c: C)
+          (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
     stmt.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
-      case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None,pviRep = "<none>"))(Q)
+      case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None,pviRep = defaultPviRep))(Q)
       case Some(v:VerifiedIf) => {
         val pve = AttributeError(stmt)
         eval(σ, v.cond, pve, c)((t, c1) =>
@@ -317,7 +331,7 @@ trait DefaultExecutor[ST <: Store[ST],
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = utils.ast.BigAnd(meth.pres)
-          consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
+          consume(σ \ insγ, FullPerm(), pre, pve, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)

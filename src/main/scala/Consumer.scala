@@ -38,6 +38,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val config: Config
 
   private var currentVI = None :Option[Term]
+  private var currentRep = "<none>"
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -51,6 +52,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   : VerificationResult = {
 
     val lastVI = currentVI
+    val lastRep = currentRep
 
     φ.attributes.collectFirst { case v: VerifiedIf => v } match {
       case None =>
@@ -60,9 +62,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         eval(σ, cond, aPVE, c)((t, c1) => {
           val newVI = Some(t)
           currentVI = newVI
-          consume2(σ, p, φ, pve, c.copy(partiallyVerifiedIf=newVI,pviRep = cond.toString()))((σ1, t1, dcs1, c1) =>{
+          currentRep = cond.toString()
+          consume2(σ, p, φ, pve, c.copy(partiallyVerifiedIf=newVI,pviRep = currentRep))((σ1, t1, dcs1, c1) =>{
             currentVI = lastVI
-            Q(σ1, t1, dcs1, c1.copy(partiallyVerifiedIf = lastVI,pviRep = c.pviRep))
+            Q(σ1, t1, dcs1, c1.copy(partiallyVerifiedIf = lastVI,pviRep = lastRep))
           })
         })
     }
@@ -72,13 +75,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
              : VerificationResult = {
 
-    val lastVI = currentVI
-    currentVI = c.partiallyVerifiedIf
-
-    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>{
-      currentVI = lastVI
-      Q(σ \ h1, t, dcs, c1.copy(partiallyVerifiedIf = lastVI, pviRep = c.pviRep))
-    })
+    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) => Q(σ \ h1, t, dcs, c1))
   }
 
   def consumes(σ: S,
@@ -90,11 +87,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               : VerificationResult ={
 
     val lastVI = currentVI
+    val lastRep = currentRep
     currentVI = c.partiallyVerifiedIf
+    currentRep = c.pviRep
 
     consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((s1,t, dcs,c1) => {
       currentVI = lastVI
-      Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI,pviRep = c.pviRep))
+      currentRep = lastRep
+      Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI,pviRep = lastRep))
     })
   }
 
@@ -113,6 +113,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       val φ = φs.head
 
       val lastVI = currentVI
+      val lastRep = currentRep
 
       φ.attributes.collectFirst { case v: VerifiedIf => v } match {
         case None =>
@@ -121,16 +122,18 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           val aPVE = AttributeError(φ)
           eval(σ, cond, aPVE, c)((t, c1) => {
             val newVI = Some(t)
+            val newRep = cond.toString()
             currentVI = newVI
+            currentRep = newRep
             if (φ.tail.isEmpty)
               consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf=newVI,pviRep = cond.toString()))((h1, s1, dcs1, c1) =>{
                 currentVI = lastVI
+                currentRep = lastRep
                 Q(σ \ h1, s1, dcs1, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf, pviRep = c.pviRep))
               })
             else
-              consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf = newVI,pviRep = cond.toString()))((h1, s1, dcs1, c1) => {
-                currentVI = lastVI
-                consumes(σ, h1, p, φs.tail, pvef, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf, pviRep = c.pviRep))((h2, s2, dcs2, c2) =>
+              consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf = newVI,pviRep = newRep))((h1, s1, dcs1, c1) => {
+                consumes(σ, h1, p, φs.tail, pvef, c1.copy(partiallyVerifiedIf = newVI, pviRep = newRep))((h2, s2, dcs2, c2) =>
                   Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2))
               })
 
@@ -145,11 +148,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        pvef: ast.Exp => PartialVerificationError,
                        c: C)
                       (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
-  : VerificationResult =
+  : VerificationResult = {
 
-  /* Note: See the code comment about produce vs. produces in
+    /* Note: See the code comment about produce vs. produces in
    * DefaultProducer.produces. The same applies to consume vs. consumes.
    */
+
+    val VI = c.partiallyVerifiedIf
+    val viRep = c.pviRep
 
     if (φs.isEmpty)
       Q(σ \ h, Unit, Nil, c)
@@ -161,9 +167,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           Q(σ \ h1, s1, dcs1, c1))
       else
         consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
-          consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
-            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
+          consumes(σ, h1, p, φs.tail, pvef, c1.copy(partiallyVerifiedIf = VI,pviRep = viRep))((h2, s2, dcs2, c2) => {
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)
+          }))
     }
+  }
+
 
 
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
@@ -178,7 +187,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-          consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
+          consume(σ, h1, p, a2, pve, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((h2, s2, dcs2, c2) => {
             Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
@@ -190,12 +199,12 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c,
-            (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
-            (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
+            (c2: C) => consume(σ, h, p, a1, pve, c2.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))(Q),
+            (c2: C) => consume(σ, h, p, a2, pve, c2.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))(Q)))
 
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
-          consume(σ \+ γ1, h, p, body, pve, c1)(Q))
+          consume(σ \+ γ1, h, p, body, pve, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))(Q))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
