@@ -119,6 +119,11 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
           case _: MethodCallRecord => false
           case _ => true
         }
+      case v: silver.ast.CondExp =>
+        s match {
+          case _: CondExpRecord => false
+          case _ => true
+        }
 
       case _ => false
     }
@@ -137,10 +142,10 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
       }
       case exp: silver.ast.Exp => {
         exp match {
-          case _: ast.CondExp | /*_: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
-               | _: ast.AbstractLocalVar |*/ _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
-               | _: ast.WildcardPerm | _: ast.FieldAccess =>
-            return false
+          /*case /*_: ast.CondExp | _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
+               | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
+               | _: ast.WildcardPerm | _: ast.FieldAccess */=>
+            return false*/
           case _ =>
             return true
         }
@@ -552,4 +557,93 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
     subs = List[SymbolicRecord]()
   }
 }
+
+
+/**
+ * ================================
+ * GUIDE FOR EXTENDING SymbExLogger
+ * ================================
+ *
+ * SymbExLogger records all calls of the four symbolic primitives Execute, Evaluate, Produce
+ * and Consume. By default, only the current state and parameters of the primitives are stored.
+ * If you want to get more information from certain structures, there are several ways to store additional
+ * info:
+ *
+ * 1) Store the information as a CommentRecord.
+ * 2) Implement a customized record.
+ *
+ * Use of CommentRecord (1):
+ *    At the point in the code where you want to add the comment, call
+ *    //SymbExLogger.currentLog().insert(new CommentRecord(my_info, σ)
+ *    //SymbExLogger.currentLog().collapse()
+ *    σ is the current state (AnyRef, but should be of type State[_,_,_] usually), my_info
+ *    is a string that contains the information you want to store. If you want to store more information
+ *    than just a string, consider (2).
+ *
+ * Use of custom Records:
+ *    For already existing examples, have a look at CondExpRecord (local Branching) or IfThenElseRecord
+ *    (recording of If-Then-Else-structures).
+ *    Assume that you want to have a custom record for  (non-short-circuiting) evaluations of
+ *    silver.ast.And, since you want to differ between the evaluation of the lefthandside
+ *    and the righthandside (not possible with default recording).
+ *    Your custom record should look similar like this:
+ *
+ *    class AndRecord(v: silver.ast.And, s: AnyRef) extends SymbolicRecord {
+ *      val value = v // Due to inheritance. This is what gets recorded by default.
+ *      val state = s // "
+ *
+ *      lhs: SymbolicRecord = new CommentRecord("null", null)
+ *      rhs: SymbolicRecord = new CommentRecord("null", null)
+ *      // lhs & rhs are what you're interested in. The first initialization should be overwritten anyway,
+ *      // initialization with a CommendRecord just ensures that the logger won't crash due
+ *      // to a Null Exception.
+ *
+ *      def finish_lhs(): Unit ={
+ *        lhs = subs(0)
+ *        subs = List[SymbolicRecord]()
+ *      }
+ *
+ *      def finish_rhs(): Unit = {
+ *        rhs = subs(0)
+ *        subs = List[SymbolicRecord]()
+ *      }
+ *
+ *      override def toSimpleTree:String = {..} // See below or have a look at existing examples
+ *
+ *      // finish_FIELD() is the method that overwrites the given field with what is currently in 'subs'.
+ *      // For usage example, see below.
+ *    }
+ *
+ *    Usage of your new custom record 'AndRecord':
+ *    This is the code in the DefaultEvaluator (after unrolling of evalBinOp):
+ *
+ *    case ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
+ *      eval(σ, e0, pve, c)((t0, c1) =>
+ *        eval(σ, e1, pve, c1)((t1, c2) =>
+ *          Q(And(t0, t1), c2)))
+ *
+ *    Use of the new record:
+ *
+ *    case and @ ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
+ *      andRec = new AndRecord(and, σ)
+ *      SymbExLogger.currentLog().insert(andRec)
+ *      eval(σ, e0, pve, c)((t0, c1) => {
+ *        andRec.finish_lhs()
+ *        eval(σ, e1, pve, c1)((t1, c2) => {
+ *          andRec.finish_rhs()
+ *          SymbExLogger.currentLog().collapse()
+ *          Q(And(t0, t1), c2)))}}
+ *
+ *    The record is now available for use; now its representation needs to be implemented.
+ *    For the 'simpleTree'-output, implement a 'toSimpleTree()'-method in AndRecord.
+ *    For the DOT-output, implement a case-distinction for AndRecord (see method subsToDot
+ *    in the SymbLog-class):
+ *    For every field in your record (here: lhs & rhs), add a line that creates a node, and connect
+ *    those to the previousNode (see subsToDot() for examples). Make use of the dotLabel() and
+ *    dotNode() method that are inherited from SymbolicRecord (in some cases, you might need to
+ *    override them).
+ *    To avoid 'double recording' (i.e., disable default recording during recording on custom records),
+ *    add AndRecord to 'isRecordedDifferently()' in SymbLog (same fashion as existing records).
+ *    Otherwise, Evaluations of 'Ands' will appear twice in the tree.
+ */
 
