@@ -121,8 +121,8 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
         }
       case v: silver.ast.CondExp =>
         s match {
-          case _: CondExpRecord => false
-          case _ => true
+          case _: EvaluateRecord => true
+          case _ => false
         }
 
       case _ => false
@@ -142,7 +142,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
       }
       case exp: silver.ast.Exp => {
         exp match {
-          /*case /*_: ast.CondExp | _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
+          /*case _: ast.CondExp /*| _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
                | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
                | _: ast.WildcardPerm | _: ast.FieldAccess */=>
             return false*/
@@ -375,7 +375,7 @@ class ConsumeRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val state = s
 
   override def toString():String = {
-    "execute: "+toSimpleString()
+    "consume: "+toSimpleString()
   }
 }
 
@@ -403,13 +403,13 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     }
 
     var str = ""
-    str = str + "if " + thnCond.value.toString()+":\n"
+    str = str + "if " + thnCond.toSimpleString()+":\n"
     str = str + ident + thnCond.toSimpleTree(n+1)
     for(s <- thnSubs){
       str = str + ident + s.toSimpleTree(n+1)
     }
 
-    str = str + ident.substring(2) + "else " + elsCond.value.toString()+":\n"
+    str = str + ident.substring(2) + "else " + elsCond.toSimpleString()+":\n"
     str = str + ident + elsCond.toSimpleTree(n+1)
     for(s <- elsSubs){
       str = str + ident + s.toSimpleTree(n+1)
@@ -452,11 +452,13 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   var elsExp:SymbolicRecord = new CommentRecord("Unreachable", null)
 
   override def toString(): String = {
-    "evaluate: "+cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString()
+    //"evaluate: "+cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString()
+    "evaluate: "+v.toString()
   }
 
   override def toSimpleString(): String = {
-    "(" + cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString() + ")"
+    //"(" + cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString() + ")"
+    v.toString()
   }
 
   override def toSimpleTree(n: Int):String = {
@@ -635,7 +637,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
  *          Q(And(t0, t1), c2)))}}
  *
  *    The record is now available for use; now its representation needs to be implemented.
- *    For the 'simpleTree'-output, implement a 'toSimpleTree()'-method in AndRecord.
+ *    For the 'simpleTree'-output, override the 'toSimpleTree()'-method in AndRecord.
  *    For the DOT-output, implement a case-distinction for AndRecord (see method subsToDot
  *    in the SymbLog-class):
  *    For every field in your record (here: lhs & rhs), add a line that creates a node, and connect

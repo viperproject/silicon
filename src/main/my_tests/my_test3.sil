@@ -1,0 +1,42 @@
+//Testing local branching
+
+
+method m1(b: Bool)
+{
+    var a: Int
+    a := b ? 1 : 2
+}
+
+method m2(b: Bool)
+{
+    var a: Int
+    a := 1+(b ? 1 : 2)+2
+    a := 2
+    a := 3
+    a := 4
+}
+
+method m3(b1: Bool, b2: Bool)
+{
+    var a: Int
+    a := (b1 ? (b2 ? 2 : 3) : ((b1 && b2) ? 4 : 5))
+}
+
+method m4()
+{
+  var a: Int
+  a := (true ? 1 : 2)
+}
+
+method m5()
+requires ((true ? true : false))
+ensures (1==1)
+{
+  var a: Int
+  a := 1
+  assert(true ? true : true)
+  //assert(1==1)
+  //assert(true ? false : true)
+  //assert(1==(false ? 1 : 2))
+  //assert(1==(true ? 2 : 1))
+}

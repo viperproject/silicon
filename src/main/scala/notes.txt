@@ -1,3 +1,13 @@
+===== 14.7.2015
+- assert(true ? false : true) gets recorded twice
+- Weird behaviour when assertions fail (see my_test_Branching.sil)
+- documentation: comments? guide enough?
+- domains? (names.sil)
+- CondExp in Producer/Consumer?
+
+
+
+
 ===== 30.6.2015
 - Join in DOT-representation, similar construct in logger needed?
 - Unique number per method/predicate/function; hashtag of mpf as initial counter. Problems?
@@ -16,8 +26,6 @@
   probably not work; workaround-solution: Each SEP gets an identifier
   during insertion, collapse is only executed once per identifier
 - If/Else-Branching: Maybe separate construct?
-
-
 
 ===== 3.6.2015
 - Giving state as argument: State expects parameters (?)
