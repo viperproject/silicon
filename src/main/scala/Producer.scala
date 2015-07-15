@@ -295,9 +295,8 @@ trait DefaultProducer[ST <: Store[ST],
                                              visited: Seq[String])
                                             : (Sort, Boolean) = {
 
-    if (φ1.isPure && !φ2.isPure) getOptimalSnapshotSort(φ2, program, visited)
-    else if (!φ1.isPure && φ2.isPure) getOptimalSnapshotSort(φ1, program, visited)
-    else fIfBothPure()
+    if (φ1.isPure && φ2.isPure) fIfBothPure()
+    else (sorts.Snap, false)
     }
 
   private def mkSnap(φ: ast.Exp, program: ast.Program, visited: Seq[String] = Nil): Term =
