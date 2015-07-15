@@ -7,6 +7,8 @@
 package viper
 package silicon
 
+import javax.annotation.PreDestroy
+
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.ast.utility.Expressions
@@ -299,24 +301,39 @@ trait DefaultEvaluator[ST <: Store[ST],
         val variable = quant.variable.localVar
 
         val heap = σ.h
-        val includedFieldNames = quant.accessList.map(_.name)
+        val includedArgNames = quant.accessList.map(_.name)
+
         val refs = heap.values.map(_.id).collect({
-          case ref@FieldChunkIdentifier(rcvr,field_name) if includedFieldNames contains field_name => ref
+          case ref@FieldChunkIdentifier(rcvr,field_name) if includedArgNames contains field_name => ref
+          case ref@PredicateChunkIdentifier(name,args) if includedArgNames contains name => ref
         }).toList
 
         // Iterate over the list of applicable refs in continuation passing style,
         // Evaluates the forall-body with a different variable assignment each time.
         // Combines individual terms with And in each recursive call
-        def conjunction(refs: List[FieldChunkIdentifier],
+        def conjunction(refs: List[ChunkIdentifier],
                         result: Term,
                         cj: C,
                         Qj: (Term, C) => VerificationResult) : VerificationResult = refs match {
-          case ref :: tail => eval(σ \+ (variable,ref.rcvr), body, pve, cj){ (term,c2) =>
-            conjunction(tail, And(result,term), c2, Qj)
-          }
+
+          case ref :: tail =>
+
+            ref match {
+              case f@FieldChunkIdentifier(rcvr, name) =>
+
+                eval(σ \+ (variable,f.rcvr), body, pve, cj){ (term,c2) =>
+                  conjunction(tail, And(result,term), c2, Qj)}
+
+              case p@PredicateChunkIdentifier(name, args) =>
+
+                eval(σ \+ (variable, p.args.head), body, pve, cj){ (term,c2) =>
+                  conjunction(tail, And(result,term), c2, Qj)}
+            }
+
           case Nil =>
             Qj(result, cj)
         }
+
         conjunction(refs, True(), c, Q)
 
       case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
