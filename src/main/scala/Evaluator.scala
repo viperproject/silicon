@@ -77,7 +77,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
   : VerificationResult = {
-    val SEP_identifier = SymbExLogger.currentLog().evaluator_insert(e, σ)
+    val SEP_identifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ))
     eval3(σ, e, pve, c)((e1, c1) => {
       SymbExLogger.currentLog().collapse(e, SEP_identifier)
       Q(e1, c1)})

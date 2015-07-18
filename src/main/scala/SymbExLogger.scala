@@ -74,34 +74,6 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
     return SEP_counter
   }
 
-  def executor_insert(stmt: silver.ast.Stmt, s: AnyRef): Int ={
-    var res = -1
-    val v = new ExecuteRecord(stmt, s)
-    res = insert(v)
-    return res
-  }
-
-  def evaluator_insert(exp: silver.ast.Exp, s: AnyRef): Int ={
-    var res = -1
-    val v = new EvaluateRecord(exp, s)
-    res = insert(v)
-    return res
-  }
-
-  def producer_insert(exp: silver.ast.Exp, s: AnyRef): Int ={
-    var res = -1
-    val v = new ProduceRecord(exp, s)
-    res = insert(v)
-    return res
-  }
-
-  def consumer_insert(exp: silver.ast.Exp, s: AnyRef): Int ={
-    var res = -1
-    val v = new ConsumeRecord(exp, s)
-    res = insert(v)
-    return res
-  }
-
   def collapse(v: silver.ast.Node, n: Int): Unit =
   {
     if(n != -1 && SEP_set.contains(n)) {

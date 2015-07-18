@@ -93,7 +93,7 @@ trait DefaultProducer[ST <: Store[ST],
                        c: C)
                       (Q: (H, C) => VerificationResult)
   : VerificationResult = {
-    val SEP_identifier = SymbExLogger.currentLog().producer_insert(φ, σ)
+    val SEP_identifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ))
     produce3(σ, sf, p, φ, pve, c)((σ1, c1) => {
       SymbExLogger.currentLog().collapse(φ, SEP_identifier)
       Q(σ1, c1)})
