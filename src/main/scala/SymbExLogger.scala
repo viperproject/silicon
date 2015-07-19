@@ -92,6 +92,28 @@ object SymbExLogger {
   }
 
   /**
+   * Simple string representation of the logs.
+   */
+  def simpleTreeString():String = {
+    var res = ""
+    for (mpf <- mpf_list){
+      res = res + mpf.main.toSimpleTree(1) + "\n"
+    }
+    res
+  }
+
+  /**
+   * Simple string representation of the logs, but contains only the types of the records
+   * and not their values. Original purpose was usage for unit testing.
+   */
+  def typeTreeString():String = {
+    var res = ""
+    for (mpf <- mpf_list){
+      res = res + mpf.main.toTypeTree(1) + "\n"
+    }
+    res
+  }
+  /**
    * Writes a .DOT-file with a representation of all logged methods, predicates, functions.
    * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
    */
@@ -312,8 +334,7 @@ trait SymbolicRecord {
   var subs = List[SymbolicRecord]()
 
   override def toString():String = {
-    if(value != null)  value.toString()
-    else "null"
+    toTypeString() + " " + toSimpleString()
   }
 
   def toSimpleString():String = {
@@ -333,6 +354,20 @@ trait SymbolicRecord {
     str
   }
 
+  def toTypeTree(n: Int):String = {
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+    var str:String = toTypeString()+"\n"
+    for(s <- subs){
+      str = str + ident + s.toTypeTree(n+1)
+    }
+    str
+  }
+
+  def toTypeString():String {}
+
   def dotNode(): String = {
     this.hashCode().toString()
   }
@@ -342,87 +377,75 @@ trait SymbolicRecord {
   }
 }
 
+trait MultiChildRecord extends SymbolicRecord
+trait MultiChildOrderedRecord extends MultiChildRecord
+trait MultiChildUnorderedRecord extends MultiChildRecord
+trait SequentialRecord extends SymbolicRecord
+
 class MethodRecord(v: silver.ast.Method, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
-
-  override def toString():String = {
-    "method " + toSimpleString()
-  }
 
   override def toSimpleString():String = {
     if(value != null) value.name
     else "null"
   }
+
+  def toTypeString():String = { "method" }
 }
 
 class PredicateRecord(v: silver.ast.Predicate, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
 
-  override def toString():String = {
-    "predicate "+toSimpleString()
-  }
-
   override def toSimpleString():String = {
     if(value != null) value.name
     else "null"
   }
+
+  def toTypeString():String = { "predicate" }
 }
 
 class FunctionRecord(v: silver.ast.Function, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
 
-  override def toString():String = {
-    "function "+toSimpleString()
-  }
-
   override def toSimpleString():String = {
     if(value != null) value.name
     else "null"
   }
+
+  def toTypeString():String = { "function" }
 }
 
 class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
-
-  override def toString():String = {
-    "execute: "+toSimpleString()
-  }
+  def toTypeString():String = { "execute" }
 }
 
 class EvaluateRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
-
-  override def toString():String = {
-    "evaluate: "+toSimpleString()
-  }
+  def toTypeString():String = { "evaluate" }
 }
 
 class ProduceRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
-
-  override def toString():String = {
-    "produce: "+toSimpleString()
-  }
+  def toTypeString():String = { "produce" }
 }
 
 class ConsumeRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
-
-  override def toString():String = {
-    "consume: "+toSimpleString()
-  }
+  def toTypeString():String = { "consume" }
 }
 
 class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
-  val value = v //meaningless
+  val value = v //meaningless since there is no directly usable if-then-else structure in the AST
   val state = s
+  def toTypeString():String = { "IfThenElse" }
 
   var thnCond:SymbolicRecord = new CommentRecord("Unreachable", null)
   var elsCond:SymbolicRecord = new CommentRecord("Unreachable", null)
@@ -458,6 +481,27 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     return str
   }
 
+  override def toTypeTree(n: Int): String ={
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+
+    var str = ""
+    str = str + "if\n"
+    str = str + ident + thnCond.toTypeTree(n+1)
+    for(s <- thnSubs){
+      str = str + ident + s.toTypeTree(n+1)
+    }
+
+    str = str + ident.substring(2) + "else\n"
+    str = str + ident + elsCond.toTypeTree(n+1)
+    for(s <- elsSubs){
+      str = str + ident + s.toTypeTree(n+1)
+    }
+    return str
+  }
+
   def finish_thnCond(): Unit ={
     if(!subs.isEmpty)
       thnCond = subs(0)
@@ -486,6 +530,7 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
 class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
+  def toTypeString():String = { "CondExp" }
 
   var cond:SymbolicRecord   = new EvaluateRecord(null, null)
   // thn/els Exp is Unreachable by default. If this is not the case, it will be overwritten
@@ -514,6 +559,18 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     return str
   }
 
+  override def toTypeTree(n: Int):String = {
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+    var str = ""
+    str = str + "CondExp\n"
+    str = str + ident + thnExp.toTypeTree(n+1)
+    str = str + ident + elsExp.toTypeTree(n+1)
+    return str
+  }
+
   def finish_cond(): Unit ={
     cond = subs(0)
     subs = List[SymbolicRecord]()
@@ -533,6 +590,7 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
 class CommentRecord(str: String, s: AnyRef) extends SymbolicRecord {
   val value = null
   val state = s
+  def toTypeString():String = { "Comment" }
 
   val comment = str
 
@@ -553,6 +611,7 @@ class CommentRecord(str: String, s: AnyRef) extends SymbolicRecord {
 class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicRecord {
   val value = v
   val state = s
+  def toTypeString():String = { "MethodCall" }
 
   var parameters = List[SymbolicRecord]()
   var precondition: SymbolicRecord = new ConsumeRecord(null,null)
@@ -569,6 +628,24 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
     str = str + ident + "postcondition: " + postcondition.toSimpleTree(n+1)
     for(p <- parameters) {
       str = str + ident + "parameter: " + p.toSimpleTree(n+1)
+    }
+    return str
+  }
+
+  override def toTypeTree(n: Int):String = {
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+    var str = ""
+    str = str + "MethodCall\n"
+    str = str + ident + "precondition\n"
+    str = str + ident + "  " + precondition.toTypeTree(n+2)
+    str = str + ident + "postcondition\n"
+    str = str + ident + "  " + postcondition.toTypeTree(n+2)
+    for(p <- parameters) {
+      str = str + ident + "parameter\n"
+      str = str + ident + "  " + p.toTypeTree(n+2)
     }
     return str
   }

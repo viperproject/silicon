@@ -169,9 +169,7 @@ trait AbstractVerifier[ST <: Store[ST],
 
     val res = ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
     println("====== TRACE =======\n")
-    for(mpf <- SymbExLogger.mpf_list) {
-      println(mpf.main.toSimpleTree(1))
-    }
+    println(SymbExLogger.simpleTreeString())
     println("\n\n===== TRACE END =======\n")
     SymbExLogger.writeDotFile()
 
