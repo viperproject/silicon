@@ -11,20 +11,90 @@ import interfaces.state.factoryUtils.Ø
 import interfaces.state.{StateFactory, HeapFactory, Store}
 import viper.silver.ast.Node
 
+/*
+ * Overall concept:
+ * 1) SymbExLogger Object:
+ *    Is used as interface to access the logs. Contains a list of SymbLog, one SymbLog
+ *    per method/function/predicate (mpf). The method 'currentLog()' gives access to the log
+ *    of the currently executed mpf. Code from this file that is used in Silicon should only be used
+ *    via SymbExLogger.
+ * 2) SymbLog:
+ *    Contains the log for one mpf. Most important methods: insert/collapse. To 'start'
+ *    a record use insert, to finish the recording use collapse. There should be as many calls
+ *    of collapse as of insert (theoretically; practically this is not possible due to branching.
+ *    To avoid such cases, each insert gets an identifier, which is then used by collapse, to avoid
+ *    multiple collapses per insert).
+ * 3) Records:
+ *    The basic abstract record type is SymbolicRecord. There is one record type for each of the
+ *    four basic symbolic primitives evaluate, execute, consume and produce. For constructs of special
+ *    interest (e.g., if-then-else-branching), there are separate records.
+ *    The basic record looks conceptually as follows:
+ *
+ *    SymbolicRecord {
+ *      subs = List[SymbolicRecord]
+ *    }
+ *
+ *    Example to illustrate the way a silver program is logged:
+ *    Assume the following silver code:
+ *
+ *    method m() {
+ *      var a: Int
+ *      a := 1
+ *      a := a+2
+ *    }
+ *
+ *    This results in a log that can be visualized as a simple tree (see: toSimpleTree()) as follows:
+ *
+ *    method m
+ *      execute a := 1
+ *        evaluate 1
+ *      execute a := a + 2
+ *        evaluate a
+ *        evaluate 2
+ *
+ *    The order of insert/collapse is as follows:
+ *    insert(method), insert(execute), insert (evaluate),
+ *    collapse(evaluate), collapse(execute),
+ *    insert(execute), insert(evaluate) collapse(evaluate),
+ *    insert(evaluate), collapse(evaluate)
+ *    collapse(execute), collapse(method)
+ *
+ *    Collapse basically 'removes one indentation', i.e., brings you one level higher in the tree.
+ *    For an overview of 'custom' records (e.g., for Branching, local branching, method calls etc.),
+ *    have a look at the bottom of this file for a guide in how to create such records or take a look
+ *    at already existing examples such as IfThenElseRecord, CondExpRecord or MethodCallRecord.
+ */
+
 
 
 object SymbExLogger {
+  /** List of logged Method/Predicates/Functions. **/
   var mpf_list = List[SymbLog]()
 
-  def insert(mpf: silver.ast.Member, s: AnyRef): Unit ={
-    // mpf: Method, Predicate or Function
+  /** Add a new log for a method, function or predicate (mpf).
+   *
+   * @param mpf Either a MethodRecord, PredicateRecord or a FunctionRecord.
+   * @param s Current state. Since the body of the method (predicate/function) is not yet
+   *          executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
+   *          state).
+   */
+  def mpf_insert(mpf: silver.ast.Member, s: AnyRef): Unit ={
     mpf_list = mpf_list ++ List(new SymbLog(mpf,s))
   }
 
+  /** Use this method to access the current log, e.g., to access the log of the method
+    * that gets currently symbolically executed.
+   *
+   * @return Returns the current method, predicate or function that is being logged.
+   */
   def currentLog(): SymbLog = {
     mpf_list.last
   }
 
+  /**
+   * Writes a .DOT-file with a representation of all logged methods, predicates, functions.
+   * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
+   */
   def writeDotFile(): Unit = {
     var str: String = "digraph {\n"
     str = str + "node [shape=rectangle];\n\n";
@@ -41,11 +111,10 @@ object SymbExLogger {
 
 //========================= SymbLog ========================
 
-/*
- * Concept: One object of SymbLog per Method/Predicate/Function.
+/**
+ * Concept: One object of SymbLog per Method/Predicate/Function. SymbLog
+ * is used in the SymbExLogger-object.
  */
-
-
 class SymbLog(v: silver.ast.Member, s: AnyRef) {
   var main = v match {
     case m: silver.ast.Method     => new MethodRecord(m, s)
