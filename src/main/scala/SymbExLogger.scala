@@ -144,14 +144,22 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
     case f: silver.ast.Function   => new FunctionRecord(f,s)
   }
 
-  var stack = List[SymbolicRecord](main)
-  var SEP_counter = 0
-  var SEP_set = Set[Int]()
+  private var stack = List[SymbolicRecord](main)
+  private var SEP_counter = 0
+  private var SEP_set = Set[Int]()
 
-  def current(): SymbolicRecord = {
+  private def current(): SymbolicRecord = {
     stack.head
   }
 
+  /**
+   * Inserts a record. For usage of custom records, take a look at the guidelines in SymbExLogger.scala.
+   * For every insert, there MUST be a call of collapse at the appropriate place in the code. The right order
+   * of insert/collapse-calls defines the record-hierarchy.
+   * @param s Record for symbolic execution primitive.
+   * @return Identifier of the inserted record, must be given as argument to the
+   *         respective call of collapse.
+   */
   def insert(s: SymbolicRecord): Int = {
 
     if(!isUsed(s.value) || isRecordedDifferently(s))
@@ -165,6 +173,13 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
     return SEP_counter
   }
 
+  /**
+   * 'Finishes' the recording at the current node and goes one level higher in the record tree.
+   * There should be only one call of collapse per insert.
+   * @param v The node that will be 'collapsed'. Is only used for filtering-purposes, can be null.
+   * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
+   *          value). 
+   */
   def collapse(v: silver.ast.Node, n: Int): Unit =
   {
     if(n != -1 && SEP_set.contains(n)) {
@@ -174,7 +189,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
     }
   }
 
-  def isRecordedDifferently(s: SymbolicRecord): Boolean =
+  private def isRecordedDifferently(s: SymbolicRecord): Boolean =
   {
     s.value match {
       case v: silver.ast.MethodCall =>
@@ -192,7 +207,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
     }
   }
 
-  def isUsed(node: silver.ast.Node): Boolean =
+  private def isUsed(node: silver.ast.Node): Boolean =
   {
     node match {
       case stmt: silver.ast.Stmt => {
@@ -225,6 +240,12 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
     unique_node_nr
   }
 
+  /**
+   * Creates a DOT-representation of the record. Contains ONLY the creation and linking of nodes,
+   * does NOT contain the necessary initialization for GraphViz (eg., digraph {...}). For output that can
+   * be directly used by GraphViz, have a look at SymbExLogger.writeDotFile().
+   * @return Returns the part of a DOT-graph that represents the record.
+   */
   def toDot(): String = {
 
     var output = ""
@@ -467,13 +488,13 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
     }
 
     var str = ""
-    str = str + "if " + thnCond.toSimpleString()+":\n"
+    str = str + "if " + thnCond.toSimpleString()+"\n"
     str = str + ident + thnCond.toSimpleTree(n+1)
     for(s <- thnSubs){
       str = str + ident + s.toSimpleTree(n+1)
     }
 
-    str = str + ident.substring(2) + "else " + elsCond.toSimpleString()+":\n"
+    str = str + ident.substring(2) + "else " + elsCond.toSimpleString()+"\n"
     str = str + ident + elsCond.toSimpleTree(n+1)
     for(s <- elsSubs){
       str = str + ident + s.toSimpleTree(n+1)
