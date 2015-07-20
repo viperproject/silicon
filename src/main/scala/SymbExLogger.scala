@@ -131,6 +131,20 @@ object SymbExLogger {
     val pw = new java.io.PrintWriter(new File("dot_input.dot"))
     try pw.write(str) finally pw.close()
   }
+
+  def writeJSFile(): Unit = {
+    val pw = new java.io.PrintWriter(new File("executionTreeData.js"))
+    try pw.write(printJSTree()) finally pw.close()
+  }
+
+  def printJSTree(): String = {
+    var str = "var executionTreeData = [\n"
+    for(mpf <- mpf_list) {
+      str = str + mpf.toJSTree() + ", \n"
+    }
+    str = str + "]\n"
+    return str
+  }
 }
 
 //========================= SymbLog ========================
@@ -343,6 +357,88 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
       }
     }
 
+    return output
+  }
+
+  def toJSTree():String = {
+    var output = ""
+    output = output + recordToJS(main) + "\n"
+    return output
+  }
+
+  private def recordToJS(s: SymbolicRecord):String = {
+    var output = ""
+    s match {
+      case ite: IfThenElseRecord => {
+        output = output + "{ name: \'IfThenElse\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+        output = output + "{ name: \'if " +ite.thnCond.toSimpleString()+ "\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + ",\n children: [\n"
+        for (sub <- ite.thnSubs) {
+          output = output + recordToJS(sub) + ", \n"
+        }
+        output = output + "]},\n"
+        output = output + "{ name: \'else " +ite.elsCond.toSimpleString()+ "\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + ",\n children: [\n"
+        for (sub <- ite.elsSubs) {
+          output = output + recordToJS(sub) + ", \n"}
+        output = output + "]}\n"
+        output = output + "]}"
+      }
+      case ce: CondExpRecord => {
+        output = output + "{ name: \'"+ce.toString()+"\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+        output = output + recordToJS(ce.thnExp) + ", \n"
+        output = output + recordToJS(ce.elsExp) + "]}"
+      }
+      case mc: MethodCallRecord => {
+        output = output + "{ name: \'"+mc.toString()+"\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+
+        output = output + "{ name: \'parameters\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+        for(p <- mc.parameters){
+          output = output + recordToJS(p) + ", \n"
+        }
+        output = output + "]},"
+
+        output = output + "{ name: \'precondition\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+        output = output + recordToJS(mc.precondition)
+        output = output + "]},"
+
+        output = output + "{ name: \'postcondition\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+        output = output + recordToJS(mc.postcondition)
+        output = output + "]}"
+
+        output = output + "]}"
+      }
+      case cr: CommentRecord => {
+        output = output + "{ name: \'"+cr.toString+"\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}}"
+      }
+      case _ => {
+        output = output + "{ name: \'" + s.toString() + "\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        if (!s.subs.isEmpty) {
+          output = output + ",\n children: [\n"
+          for (sub <- s.subs) {
+            output = output + recordToJS(sub) + ", \n"
+          }
+          output = output + "]"
+        }
+        output = output + "}"
+      }
+    }
     return output
   }
 
