@@ -140,7 +140,9 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
-    case l: Let => List(l.x, l.t, l.body)
+    case l: Let =>
+      val (vs, ts) = l.bindings.toSeq.unzip
+      vs ++ ts :+ l.body
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -222,7 +224,7 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
-      case Let(x, t, body) => Let(go(x), go(t), go(body))
+      case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

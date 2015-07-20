@@ -1718,7 +1718,7 @@ sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.Forbid
 /* Other terms */
 
 class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality with ForbiddenInTrigger {
-  assert(ts.nonEmpty, "Distinct requires at least term.")
+  assert(ts.nonEmpty, "Distinct requires at least one term")
 
   val equalityDefiningMembers = ts :: Nil
   override val toString = s"Distinct($ts)"
@@ -1732,9 +1732,25 @@ object Distinct {
   def unapply(d: Distinct) = Some(d.ts)
 }
 
-case class Let(x: Var, t: Term, body: Term) extends Term with ForbiddenInTrigger {
+class Let(val bindings: Map[Var, Term], val body: Term) extends Term with StructuralEquality with ForbiddenInTrigger {
+  assert(bindings.nonEmpty, "Let needs to bind at least one variable")
+
   val sort = body.sort
-  override lazy val toString = s"let $x = $t in $body"
+  val equalityDefiningMembers = Seq(body) ++ bindings.flatMap(_.productIterator)
+
+  override lazy val toString = s"let ${bindings.map(p => s"${p._1} = ${p._2}")} in $body"
+}
+
+object Let extends ((Map[Var, Term], Term) => Term) {
+  def apply(v: Var, t: Term, body: Term): Term = apply(Map(v -> t), body)
+  def apply(vs: Seq[Var], ts: Seq[Term], body: Term): Term = apply(toMap(vs zip ts), body)
+
+  def apply(bindings: Map[Var, Term], body: Term) = {
+    if (bindings.isEmpty) body
+    else new Let(bindings, body)
+  }
+
+  def unapply(l: Let) = Some((l.bindings, l.body))
 }
 
 /* Predefined terms */
