@@ -19,8 +19,7 @@ import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort}
 import reporting.Bookkeeper
 import decider.PreambleFileEmitter
-import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter, MultisetsEmitter, SetsEmitter,
-    SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
+import viper.silicon.supporters._
 
 trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
@@ -56,6 +55,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   def verify(method: ast.Method, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
+    VILogHelper.getLogger().info("verifying method " + method.name)
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
@@ -91,6 +91,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
+    VILogHelper.getLogger().info("verifying predicate " + predicate.name)
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
     val ins = predicate.formalArgs.map(_.localVar)
