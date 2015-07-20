@@ -1,3 +1,11 @@
+===== 21.7.2015
+- print sae
+- context added (DefaultContext okay?)
+- Added a bit of scalaDoc, more or okay like this?
+- 'Concept-introduction' in SymbExLogger
+- Traits: MultiChildRecord etc., hierarchy
+
+
 ===== 14.7.2015
 - assert(true ? false : true) gets recorded twice
 - Weird behaviour when assertions fail (see my_test_Branching.sil)

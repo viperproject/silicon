@@ -9,6 +9,7 @@ import java.io.File
 import silver.ast
 import interfaces.state.factoryUtils.Ø
 import interfaces.state.{StateFactory, HeapFactory, Store}
+import viper.silicon.state.DefaultContext
 import viper.silver.ast.Node
 
 /*
@@ -77,9 +78,10 @@ object SymbExLogger {
    * @param s Current state. Since the body of the method (predicate/function) is not yet
    *          executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
    *          state).
+   * @param c Current context.
    */
-  def mpf_insert(mpf: silver.ast.Member, s: AnyRef): Unit ={
-    mpf_list = mpf_list ++ List(new SymbLog(mpf,s))
+  def mpf_insert(mpf: silver.ast.Member, s: AnyRef, c: DefaultContext): Unit ={
+    mpf_list = mpf_list ++ List(new SymbLog(mpf, s, c))
   }
 
   /** Use this method to access the current log, e.g., to access the log of the method
@@ -137,11 +139,11 @@ object SymbExLogger {
  * Concept: One object of SymbLog per Method/Predicate/Function. SymbLog
  * is used in the SymbExLogger-object.
  */
-class SymbLog(v: silver.ast.Member, s: AnyRef) {
+class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
   var main = v match {
-    case m: silver.ast.Method     => new MethodRecord(m, s)
-    case p: silver.ast.Predicate  => new PredicateRecord(p, s)
-    case f: silver.ast.Function   => new FunctionRecord(f,s)
+    case m: silver.ast.Method     => new MethodRecord(m, s, c)
+    case p: silver.ast.Predicate  => new PredicateRecord(p, s, c)
+    case f: silver.ast.Function   => new FunctionRecord(f,s, c)
   }
 
   private var stack = List[SymbolicRecord](main)
@@ -178,7 +180,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
    * There should be only one call of collapse per insert.
    * @param v The node that will be 'collapsed'. Is only used for filtering-purposes, can be null.
    * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
-   *          value). 
+   *          value).
    */
   def collapse(v: silver.ast.Node, n: Int): Unit =
   {
@@ -352,6 +354,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef) {
 trait SymbolicRecord {
   val value: silver.ast.Node
   val state: AnyRef
+  val context: DefaultContext
   var subs = List[SymbolicRecord]()
 
   override def toString():String = {
@@ -403,9 +406,10 @@ trait MultiChildOrderedRecord extends MultiChildRecord
 trait MultiChildUnorderedRecord extends MultiChildRecord
 trait SequentialRecord extends SymbolicRecord
 
-class MethodRecord(v: silver.ast.Method, s: AnyRef) extends SymbolicRecord {
+class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
 
   override def toSimpleString():String = {
     if(value != null) value.name
@@ -415,9 +419,10 @@ class MethodRecord(v: silver.ast.Method, s: AnyRef) extends SymbolicRecord {
   def toTypeString():String = { "method" }
 }
 
-class PredicateRecord(v: silver.ast.Predicate, s: AnyRef) extends SymbolicRecord {
+class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
 
   override def toSimpleString():String = {
     if(value != null) value.name
@@ -427,9 +432,10 @@ class PredicateRecord(v: silver.ast.Predicate, s: AnyRef) extends SymbolicRecord
   def toTypeString():String = { "predicate" }
 }
 
-class FunctionRecord(v: silver.ast.Function, s: AnyRef) extends SymbolicRecord {
+class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
 
   override def toSimpleString():String = {
     if(value != null) value.name
@@ -439,39 +445,44 @@ class FunctionRecord(v: silver.ast.Function, s: AnyRef) extends SymbolicRecord {
   def toTypeString():String = { "function" }
 }
 
-class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef) extends SymbolicRecord {
+class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
   def toTypeString():String = { "execute" }
 }
 
-class EvaluateRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
   def toTypeString():String = { "evaluate" }
 }
 
-class ProduceRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
   def toTypeString():String = { "produce" }
 }
 
-class ConsumeRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
   def toTypeString():String = { "consume" }
 }
 
-class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v //meaningless since there is no directly usable if-then-else structure in the AST
   val state = s
+  val context = c
   def toTypeString():String = { "IfThenElse" }
 
-  var thnCond:SymbolicRecord = new CommentRecord("Unreachable", null)
-  var elsCond:SymbolicRecord = new CommentRecord("Unreachable", null)
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null))
-  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null))
+  var thnCond:SymbolicRecord = new CommentRecord("Unreachable", null, null)
+  var elsCond:SymbolicRecord = new CommentRecord("Unreachable", null, null)
+  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
 
   override def toString(): String ={
     "if "+thnCond.toSimpleString()
@@ -548,24 +559,29 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   }
 }
 
-class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
+class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
   def toTypeString():String = { "CondExp" }
 
-  var cond:SymbolicRecord   = new EvaluateRecord(null, null)
+  var cond:SymbolicRecord   = new EvaluateRecord(null, null, null)
   // thn/els Exp is Unreachable by default. If this is not the case, it will be overwritten
-  var thnExp:SymbolicRecord = new CommentRecord("Unreachable", null)
-  var elsExp:SymbolicRecord = new CommentRecord("Unreachable", null)
+  var thnExp:SymbolicRecord = new CommentRecord("Unreachable", null, null)
+  var elsExp:SymbolicRecord = new CommentRecord("Unreachable", null, null)
 
   override def toString(): String = {
-    //"evaluate: "+cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString()
-    "evaluate: "+v.toString()
+    if(v != null)
+      "evaluate: "+v.toString()
+    else
+      "CondExp <null>"
   }
 
   override def toSimpleString(): String = {
-    //"(" + cond.toSimpleString() + " ? " + thnExp.toSimpleString() + " : " + elsExp.toSimpleString() + ")"
-    v.toString()
+    if(v != null)
+      v.toString()
+    else
+      "CondExp <Null>"
   }
 
   override def toSimpleTree(n: Int):String = {
@@ -608,9 +624,10 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef) extends SymbolicRecord {
   }
 }
 
-class CommentRecord(str: String, s: AnyRef) extends SymbolicRecord {
+class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = null
   val state = s
+  val context = c
   def toTypeString():String = { "Comment" }
 
   val comment = str
@@ -629,14 +646,15 @@ class CommentRecord(str: String, s: AnyRef) extends SymbolicRecord {
   }
 }
 
-class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicRecord {
+class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
   val value = v
   val state = s
+  val context = c
   def toTypeString():String = { "MethodCall" }
 
   var parameters = List[SymbolicRecord]()
-  var precondition: SymbolicRecord = new ConsumeRecord(null,null)
-  var postcondition:SymbolicRecord = new ProduceRecord(null,null)
+  var precondition: SymbolicRecord = new ConsumeRecord(null,null, null)
+  var postcondition:SymbolicRecord = new ProduceRecord(null,null, null)
 
   override def toSimpleTree(n: Int):String = {
     var ident = ""
@@ -715,29 +733,30 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
  *
  * Use of CommentRecord (1):
  *    At the point in the code where you want to add the comment, call
- *    //SymbExLogger.currentLog().insert(new CommentRecord(my_info, σ)
+ *    //SymbExLogger.currentLog().insert(new CommentRecord(my_info, σ, c)
  *    //SymbExLogger.currentLog().collapse()
  *    σ is the current state (AnyRef, but should be of type State[_,_,_] usually), my_info
- *    is a string that contains the information you want to store. If you want to store more information
- *    than just a string, consider (2).
+ *    is a string that contains the information you want to store, c is the current
+ *    context. If you want to store more information than just a string, consider (2).
  *
- * Use of custom Records:
+ * Use of custom Records (2):
  *    For already existing examples, have a look at CondExpRecord (local Branching) or IfThenElseRecord
  *    (recording of If-Then-Else-structures).
  *    Assume that you want to have a custom record for  (non-short-circuiting) evaluations of
  *    silver.ast.And, since you want to differ between the evaluation of the lefthandside
  *    and the righthandside (not possible with default recording).
- *    Your custom record should look similar like this:
+ *    Your custom record could look similar to this:
  *
- *    class AndRecord(v: silver.ast.And, s: AnyRef) extends SymbolicRecord {
- *      val value = v // Due to inheritance. This is what gets recorded by default.
- *      val state = s // "
+ *    class AndRecord(v: silver.ast.And, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+ *      val value = v    // Due to inheritance. This is what gets recorded by default.
+ *      val state = s    // "
+ *      val context = c  // "
  *
- *      lhs: SymbolicRecord = new CommentRecord("null", null)
- *      rhs: SymbolicRecord = new CommentRecord("null", null)
+ *      lhs: SymbolicRecord = new CommentRecord("null", null, null)
+ *      rhs: SymbolicRecord = new CommentRecord("null", null, null)
  *      // lhs & rhs are what you're interested in. The first initialization should be overwritten anyway,
- *      // initialization with a CommendRecord just ensures that the logger won't crash due
- *      // to a Null Exception.
+ *      // initialization with a CommentRecord just ensures that the logger won't crash due
+ *      // to a Null Exception (ideally).
  *
  *      def finish_lhs(): Unit ={
  *        lhs = subs(0)
@@ -766,7 +785,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
  *    Use of the new record:
  *
  *    case and @ ast.And(e0, e1) if config.disableShortCircuitingEvaluations() =>
- *      andRec = new AndRecord(and, σ)
+ *      andRec = new AndRecord(and, σ, c)
  *      SymbExLogger.currentLog().insert(andRec)
  *      eval(σ, e0, pve, c)((t0, c1) => {
  *        andRec.finish_lhs()
@@ -785,6 +804,6 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef) extends SymbolicReco
  *    override them).
  *    To avoid 'double recording' (i.e., disable default recording during recording on custom records),
  *    add AndRecord to 'isRecordedDifferently()' in SymbLog (same fashion as existing records).
- *    Otherwise, Evaluations of 'Ands' will appear twice in the tree.
+ *    Otherwise, Evaluations of 'Ands' will appear twice in the logging tree.
  */
 

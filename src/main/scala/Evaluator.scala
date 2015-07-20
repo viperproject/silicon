@@ -77,7 +77,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
   : VerificationResult = {
-    val SEP_identifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ))
+    val SEP_identifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, c))
     eval3(σ, e, pve, c)((e1, c1) => {
       SymbExLogger.currentLog().collapse(e, SEP_identifier)
       Q(e1, c1)})
@@ -216,7 +216,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ite @ ast.CondExp(e0, e1, e2) =>
 
-        val ceLog = new CondExpRecord(ite, σ)
+        val ceLog = new CondExpRecord(ite, σ, c)
         val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
 
         val condExp_res = eval(σ, e0, pve, c)((t0, c1) => {

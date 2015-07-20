@@ -101,7 +101,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case cblock @ silver.ast.ConditionalBlock(stmt, e, thn, els) =>
         exec(σ, stmt, c)((σ1, c1) => {
 
-          val iteLog = new IfThenElseRecord(e, σ)
+          val iteLog = new IfThenElseRecord(e, σ, c)
 
           val thn_edge = cblock.succs(0)
           val els_edge = cblock.succs(1)
@@ -208,7 +208,7 @@ trait DefaultExecutor[ST <: Store[ST],
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
-    val SEP_identifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ))
+    val SEP_identifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, c))
     exec2(σ, stmt, c)((σ1, c1) => {
       SymbExLogger.currentLog().collapse(stmt, SEP_identifier)
       Q(σ1, c1)})
@@ -321,7 +321,7 @@ trait DefaultExecutor[ST <: Store[ST],
            *       only while checking well-formedness).
            */
 
-        val mcLog = new MethodCallRecord(call, σ)
+        val mcLog = new MethodCallRecord(call, σ, c)
         val SEP_identifier = SymbExLogger.currentLog().insert(mcLog)
 
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
