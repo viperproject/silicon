@@ -4,6 +4,8 @@
 - Added a bit of scalaDoc, more or okay like this?
 - 'Concept-introduction' in SymbExLogger
 - Traits: MultiChildRecord etc., hierarchy
+- unit-testing: TypeTree okay?
+- IfThenElse-blocks etc. in executionTreeData.js
 
 
 ===== 14.7.2015
