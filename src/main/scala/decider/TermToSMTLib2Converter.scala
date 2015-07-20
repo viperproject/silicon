@@ -223,7 +223,6 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
       parens("distinct" <+> ssep(symbols.toSeq map render, space))
 
     case Let(bindings, body) =>
-      parens("let" <+> parens(ssep(bindings.toSeq map (p => parens(render(p._1) <+> render(p._2))), space)) <+> render(body))
       val docBindings = ssep(bindings.toSeq map (p => parens(render(p._1) <+> render(p._2))), space)
       parens("let" <+> parens(docBindings) <+> render(body))
 
