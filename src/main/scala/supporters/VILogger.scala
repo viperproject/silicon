@@ -26,21 +26,15 @@ object VILogHelper {
     }
   }
 
-  def getTag(path:String): String ={
-    path.split("\\\\|/").toSeq.reverse match {
-      case Seq(s) => s.replace(".sil","")
-      case Seq(s1, s2) => s2 + "_" + s1.replace(".sil","")
-      case s1 +: s2 +: s3 +: tail => s3 + "_" + s2 + "_" + s1.replace(".sil","")
-    }
-  }
+  def getTag(path:String) = viper.silver.testing.VIActivityChecker.getTag(path)
+  def getPath(fileName:String) = viper.silver.testing.VIActivityChecker.getPath(fileName)
 
   def setLogFor(p :Program) :Unit  = {
     val subfolder = "vilog"
     val extension = ".log"
 
     val fName = getTag(p.source)
-
-    val path = subfolder + "\\" + fName + extension
+    val path = getPath(fName)
 
     val log = org.apache.log4j.Logger.getLogger("VERIFIED-IF")
     log.removeAllAppenders()
