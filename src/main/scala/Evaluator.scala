@@ -309,24 +309,21 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
                         recordPossibleTriggers = true,
-                        possibleTriggers = Map.empty,
-                        additionalTriggers = Nil)
+                        possibleTriggers = Map.empty)
 
         decider.locally[(Set[Term], Term, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
               val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
               val qid = quant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
                 case _ => s"prog.l${quant.pos}"}
-              val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers, qid)
+              val tQuant = Quantification(tQuantOp, tVars, tBody, triggers, qid)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
-                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
-                               additionalTriggers = c.additionalTriggers ++ (if (c.recordPossibleTriggers) c2.additionalTriggers else Nil))
+                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
               QB(πAux, tQuant, c3)})})
         }){case (πAux, tQuant, c1) =>
           assume(πAux)

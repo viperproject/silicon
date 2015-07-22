@@ -97,11 +97,8 @@ trait DefaultJoiner[ST <: Store[ST],
           decider.assume(tAuxResult + tActualResult)
 
           val tJoined = tActualVar
+          val cJoined = c1.copy(branchConditions = c.branchConditions)
 
-          val cJoined =
-            c1.copy(branchConditions = c.branchConditions,
-                    additionalTriggers = if (c1.recordPossibleTriggers) tActualVar :: c1.additionalTriggers
-                                         else c1.additionalTriggers)
           Q(tJoined, cJoined)
       }
     }
