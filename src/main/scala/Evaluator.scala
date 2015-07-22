@@ -359,7 +359,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                   c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
                 case _ => c3}
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
-              val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+              val c5 =
+                if (c4.recordPossibleTriggers) c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+                else c4
               QB(tFApp, c5)})
             )((tR, cR) => {
               Q(tR, cR)
