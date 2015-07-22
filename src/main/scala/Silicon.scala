@@ -595,6 +595,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(forwardArgumentsConverter)
 
+  val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
+    descr = (  "Handle pure conjunction individually."
+             + "Increases precision of error reporting, but may slow down verification."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
   /* Option validation */
 
   validateOpt(timeout) {
