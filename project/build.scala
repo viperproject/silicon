@@ -132,6 +132,6 @@ object SiliconBuild extends Build {
     lazy val commonsIO = "commons-io" % "commons-io" % "2.4"
 
     lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
-    lazy val silSrc = RootProject(new java.io.File("../obligations-silver-robmeier"))
+    lazy val silSrc = RootProject(new java.io.File("../obligations-silver"))
   }
 }
