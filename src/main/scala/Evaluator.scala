@@ -27,6 +27,8 @@ import state.terms.implicits._
 import state.terms.perms.IsNonNegative
 import supporters.{Joiner, Brancher, PredicateSupporter}
 
+import scala.collection.mutable
+
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
@@ -308,6 +310,21 @@ trait DefaultEvaluator[ST <: Store[ST],
           case ref@PredicateChunkIdentifier(name,args) if includedArgNames contains name => ref
         }).toList
 
+
+        //remove all chunks for which we have no permission
+
+        def hasPerm(v : ChunkIdentifier) = decider.getChunk[DirectChunk](σ, σ.h, v, c) match {
+          case None => false
+          case Some(x) =>
+            val result = decider.check(σ, Greater(x.perm, NoPerm()))
+            result
+        }
+
+        val chunksWithPerm = refs.filter({v => hasPerm(v)})
+
+        //TODO: remove chunks from heap (-> ask Malte)
+
+
         // Iterate over the list of applicable refs in continuation passing style,
         // Evaluates the forall-body with a different variable assignment each time.
         // Combines individual terms with And in each recursive call
@@ -334,7 +351,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             Qj(result, cj)
         }
 
-        conjunction(refs, True(), c, Q)
+        conjunction(chunksWithPerm, True(), c, Q)
 
       case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (triggerQuant, tQuantOp, silTriggers) = quant match {
