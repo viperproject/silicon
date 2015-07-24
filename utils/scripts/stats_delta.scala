@@ -174,7 +174,7 @@ def renderAsHtmlGraph(id: String, htmlFile: String, completedStats: Seq[SortedMa
 if (args.length < 3) {
   println("Usage: stats_delta <option> <in-file> <out-file>")
   println("  where <option> can be one of")
-  println("    delta")
+  println("    all")
   println("    each")
   println("    id=<statistics-id>")
 } else {

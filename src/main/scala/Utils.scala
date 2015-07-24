@@ -80,6 +80,15 @@ package object utils {
                     f,
                     (e0: silver.ast.Exp, e1: silver.ast.Exp) => silver.ast.And(e0, e1)(e0.pos, e0.info),
                      silver.ast.TrueLit()(emptyPos))
+
+    def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =
+      program.transform(pre = {
+        case e @ silver.ast.SeqContains(x, silver.ast.RangeSeq(a, b)) =>
+          silver.ast.And(
+            silver.ast.LeCmp(a, x)(e.pos),
+            silver.ast.LtCmp(x, b)(e.pos)
+          )(e.pos)
+      })(recursive = _ => true)
   }
 
   object consistency {

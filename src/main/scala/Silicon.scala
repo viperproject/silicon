@@ -313,7 +313,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
-    val results = verifier.verify(program)
+    val optimisedProgram = utils.ast.rewriteRangeContains(program)
+    val results = verifier.verify(optimisedProgram)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
@@ -620,6 +621,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = false
   )(forwardArgumentsConverter)
+
+  val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
+    descr = (  "Handle pure conjunction individually."
+             + "Increases precision of error reporting, but may slow down verification."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
 
   val splitTimeout = opt[Int]("qpSplitTimeout",
     descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "

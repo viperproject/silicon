@@ -253,8 +253,7 @@ class DefaultDecider[ST <: Store[ST],
         r
       else {
         heapCompressor.compress(σ, σ.h, c)
-        val c1 = c.copy(retrying = true)
-        block(σ, c1, (r, c2) => Q(r, c2), f => f)
+        block(σ, c.copy(retrying = true), (r, c2) => Q(r, c2.copy(retrying = false)), f => f)
       }
 
     if (failure.nonEmpty) {
