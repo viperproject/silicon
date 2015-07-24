@@ -490,6 +490,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     decider.prover.logComment("Final check that enough permissions have been taken")
 //    success = success || check(σ, permsToTake.replace(`?r`, receiver) === NoPerm())
+    /* Setting a (short) timeout here will make it less likely that the verification suceeds */
     success = success || check(σ, permsToTake === NoPerm())
 
     decider.prover.logComment("Done splitting")

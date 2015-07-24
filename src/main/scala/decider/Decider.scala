@@ -416,6 +416,9 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
+    /* Note: We could set a timeout for check, but I haven't yet encountered an
+     * example where that would be beneficial or even necessary.
+     */
     val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
     chunk
