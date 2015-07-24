@@ -64,6 +64,7 @@ trait DefaultBrancher[ST <: Store[ST],
   val decider: Decider[ST, H, PC, S, C]
   import decider.assume
 
+  val config: Config
   val bookkeeper: Bookkeeper
 
   def branch(σ: S,
@@ -85,8 +86,8 @@ trait DefaultBrancher[ST <: Store[ST],
     val guardsTrue = And(ts: _*)
     val guardsFalse = And(ts map (t => Not(t)): _*)
 
-    val exploreTrueBranch = !decider.check(σ, guardsFalse)
-    val exploreFalseBranch = !decider.check(σ, guardsTrue)
+    val exploreTrueBranch = !decider.check(σ, guardsFalse, config.checkTimeout())
+    val exploreFalseBranch = !exploreTrueBranch || !decider.check(σ, guardsTrue, config.checkTimeout())
 
     val additionalPaths =
       if (exploreTrueBranch && exploreFalseBranch) 1

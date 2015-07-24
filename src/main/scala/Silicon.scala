@@ -545,6 +545,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val checkTimeout = opt[Int]("checkTimeout",
+    descr = "Timeout (in ms) per check, usually used to branch over expressions (default: 250).",
+    default = Some(250),
+    noshort = true,
+    hidden = false
+  )
+
   val tempDirectory = opt[String]("tempDirectory",
     descr = "Path to which all temporary data will be written (default: ./tmp)",
     default = Some("./tmp"),
