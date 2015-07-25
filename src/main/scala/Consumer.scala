@@ -18,6 +18,7 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter}
+import viper.silver.ast.{ForallReferences}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -129,6 +130,33 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+
+      case ForallReferences(variable, accessList, exp) =>
+
+        //TODO: how can this be done efficiently?
+        val σ_new = {
+          var σt = σ
+
+          for (v <- σ.h.values) {
+            σt = σt \- v
+          }
+
+          for (v <- h.values) {
+            σt = σt \+ v
+          }
+          σt
+        }
+
+        decider.tryOrFail[(H, Term, List[DirectChunk])](σ_new, c)((σ1, c1, QS, QF) => {
+          eval(σ1, φ, pve, c1)((t, c2) =>
+            decider.assert(σ1, t) {
+              case true =>
+                assume(t)
+                QS((h, Unit, Nil), c2)
+              case false =>
+                QF(Failure[ST, H, S](pve dueTo AssertionFalse(φ)))
+            })
+        })((res, c1) => Q(res._1, res._2, res._3, c1))
 
       /* Any regular Expressions, i.e. boolean and arithmetic.
        * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
