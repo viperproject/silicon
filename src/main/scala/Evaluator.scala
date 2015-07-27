@@ -477,7 +477,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.AnySetContains(e0, e1) => e1.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
-        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, (t0, t1) => MultisetCount(t1, t0), pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
