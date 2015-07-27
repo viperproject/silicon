@@ -216,7 +216,6 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case bop: MultisetDifference => renderBinaryOp("$Multiset.difference", bop)
     case bop: MultisetIntersection => renderBinaryOp("$Multiset.intersection", bop)
     case bop: MultisetUnion => renderBinaryOp("$Multiset.union", bop)
-    case MultisetIn(t0, t1) => renderBinaryOp(">", renderBinaryOp("$Multiset.count", render(t1), render(t0)), "0")
     case bop: MultisetSubset => renderBinaryOp("$Multiset.subset", bop)
     case bop: MultisetCount => renderBinaryOp("$Multiset.count", bop)
 
