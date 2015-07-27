@@ -630,6 +630,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
+  val assertionMode = opt[AssertionMode]("assertionMode",
+    descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
+             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+    default = Some(AssertionMode.PushPop),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )(assertionModeConverter)
+
+
   val splitTimeout = opt[Int]("qpSplitTimeout",
     descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "
              + "holds no further permissions, and 2) checking if sufficiently many "
@@ -638,14 +647,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )
-
-  val assertionMode = opt[AssertionMode]("assertionMode",
-    descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
-    default = Some(AssertionMode.PushPop),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )(assertionModeConverter)
 
   val disableQPCaching = opt[Boolean]("disableQPCaching",
     descr = "Disable caching of qp-related symbols and axioms.",
