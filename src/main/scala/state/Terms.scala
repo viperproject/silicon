@@ -1522,27 +1522,6 @@ object MultisetDifference extends ((Term, Term) => MultisetTerm) {
   def unapply(md: MultisetDifference) = Some((md.p0, md.p1))
 }
 
-class MultisetIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
-
-  override val op = "∈"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = MultisetIn(args(0), args(1))
-}
-
-object MultisetIn extends ((Term, Term) => BooleanTerm) {
-  def apply(t0: Term, t1: Term) = {
-    utils.assertSort(t1, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
-    utils.assertSort(t0, "first operand", t1.sort.asInstanceOf[sorts.Multiset].elementsSort)
-
-    new MultisetIn(t0, t1)
-  }
-
-  def unapply(mi: MultisetIn) = Some((mi.p0, mi.p1))
-}
-
 class MultisetCardinality(val p: Term) extends Term
     with StructuralEqualityUnaryOp[Term]
     with PossibleTrigger {
@@ -1568,21 +1547,21 @@ class MultisetCount(val p0: Term, val p1: Term) extends Term
     with PossibleTrigger {
 
   val sort = sorts.Int
-  override val toString = s"cnt($p0,$p1)"
+  override val toString = s"$p0($p1)"
 
   lazy val getArgs = p0 :: p1 :: Nil
   def withArgs(args: Seq[Term]) = MultisetCount(args(0), args(1))
 }
 
 object MultisetCount extends {
-  def apply(e:Term, t:Term) = {
-    utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
-    utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
+  def apply(ms: Term, el: Term) = {
+    utils.assertSort(ms, "first operand", "Multiset", _.isInstanceOf[sorts.Multiset])
+    utils.assertSort(el, "second operand", ms.sort.asInstanceOf[sorts.Multiset].elementsSort)
 
-    new MultisetCount(e,t)
+    new MultisetCount(ms, el)
   }
 
-  def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
+  def unapply(mc: MultisetCount) = Some((mc.p0, mc.p1))
 }
 
 /* Domains */

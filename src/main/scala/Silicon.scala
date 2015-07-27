@@ -310,7 +310,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
-    val results = verifier.verify(program)
+    val optimisedProgram = utils.ast.rewriteRangeContains(program)
+    val results = verifier.verify(optimisedProgram)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
@@ -599,6 +600,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
+    descr = (  "Handle pure conjunction individually."
+             + "Increases precision of error reporting, but may slow down verification."),
+    default = Some(false),
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )
