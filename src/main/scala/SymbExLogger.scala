@@ -497,12 +497,13 @@ trait SymbolicRecord {
   }
 }
 
+trait MemberRecord extends SymbolicRecord
 trait MultiChildRecord extends SymbolicRecord
 trait MultiChildOrderedRecord extends MultiChildRecord
 trait MultiChildUnorderedRecord extends MultiChildRecord
 trait SequentialRecord extends SymbolicRecord
 
-class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends MemberRecord {
   val value = v
   val state = s
   val context = c
@@ -515,7 +516,7 @@ class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends S
   def toTypeString():String = { "method" }
 }
 
-class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) extends MemberRecord {
   val value = v
   val state = s
   val context = c
@@ -528,7 +529,7 @@ class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) ext
   def toTypeString():String = { "predicate" }
 }
 
-class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) extends MemberRecord {
   val value = v
   val state = s
   val context = c
@@ -541,35 +542,35 @@ class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) exten
   def toTypeString():String = { "function" }
 }
 
-class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
   def toTypeString():String = { "execute" }
 }
 
-class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
   def toTypeString():String = { "evaluate" }
 }
 
-class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
   def toTypeString():String = { "produce" }
 }
 
-class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
   def toTypeString():String = { "consume" }
 }
 
-class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends MultiChildUnorderedRecord {
   val value = v //meaningless since there is no directly usable if-then-else structure in the AST
   val state = s
   val context = c
@@ -655,7 +656,7 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends 
   }
 }
 
-class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends MultiChildOrderedRecord {
   val value = v
   val state = s
   val context = c
@@ -705,22 +706,25 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends Sym
   }
 
   def finish_cond(): Unit ={
-    cond = subs(0)
+    if(!subs.isEmpty)
+      cond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
   def finish_thnExp(): Unit ={
-    thnExp = subs(0)
+    if(!subs.isEmpty)
+      thnExp = subs(0)
     subs = List[SymbolicRecord]()
   }
 
   def finish_elsExp(): Unit ={
-    elsExp = subs(0)
+    if(!subs.isEmpty)
+      elsExp = subs(0)
     subs = List[SymbolicRecord]()
   }
 }
 
-class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = null
   val state = s
   val context = c
@@ -742,7 +746,7 @@ class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends SymbolicR
   }
 }
 
-class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) extends SymbolicRecord {
+class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) extends MultiChildOrderedRecord {
   val value = v
   val state = s
   val context = c
