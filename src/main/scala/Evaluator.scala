@@ -329,24 +329,21 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
                         recordPossibleTriggers = true,
-                        possibleTriggers = Map.empty,
-                        additionalTriggers = Nil)
+                        possibleTriggers = Map.empty)
 
         decider.locally[(Set[Term], Term, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
               val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
               val qid = quant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
                 case _ => s"prog.l${quant.pos}"}
-              val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers, qid)
+              val tQuant = Quantification(tQuantOp, tVars, tBody, triggers, qid)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
-                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
-                               additionalTriggers = c.additionalTriggers ++ (if (c.recordPossibleTriggers) c2.additionalTriggers else Nil))
+                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
               QB(πAux, tQuant, c3)})})
         }){case (πAux, tQuant, c1) =>
           assume(πAux)
@@ -379,7 +376,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                   c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
                 case _ => c3}
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
-              val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+              val c5 =
+                if (c4.recordPossibleTriggers) c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+                else c4
               QB(tFApp, c5)})
             )((tR, cR) => {
               Q(tR, cR)
@@ -498,7 +497,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.AnySetContains(e0, e1) => e1.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
-        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, (t0, t1) => MultisetCount(t1, t0), pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }

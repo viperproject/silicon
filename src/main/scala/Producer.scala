@@ -114,7 +114,7 @@ trait DefaultProducer[ST <: Store[ST],
     }
 
     val produced = φ match {
-      case ast.And(a0, a1) if !φ.isPure =>
+      case ast.And(a0, a1) if !φ.isPure || config.handlePureConjunctsIndividually() =>
         val s = sf(sorts.Snap)
 
         val (s0, s1) =

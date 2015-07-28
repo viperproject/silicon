@@ -247,8 +247,7 @@ class DefaultDecider[ST <: Store[ST],
         r
       else {
         heapCompressor.compress(σ, σ.h, c)
-        val c1 = c.copy(retrying = true)
-        block(σ, c1, (r, c2) => Q(r, c2), f => f)
+        block(σ, c.copy(retrying = true), (r, c2) => Q(r, c2.copy(retrying = false)), f => f)
       }
 
     if (failure.nonEmpty) {
@@ -290,10 +289,10 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term) = assert(σ, t, null)
+  def check(σ: S, t: Term, timeout: Int = 0) = assert(σ, t, timeout, null)
 
-  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
-    val success = assert(σ, t, null)
+  def assert(σ: S, t: Term, timeout: Int = 0)(Q: Boolean => VerificationResult) = {
+    val success = assert(σ, t, timeout, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
 //    if (!success) {
@@ -304,10 +303,10 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-  protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
+  protected def assert(σ: S, t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
-    asserted || proverAssert(t, logSink)
+    asserted || proverAssert(t, timeout, logSink)
   }
 
   private def isKnownToBeTrue(t: Term) = t match {
@@ -317,7 +316,7 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
-  private def proverAssert(t: Term, logSink: java.io.PrintWriter) = {
+  private def proverAssert(t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
 

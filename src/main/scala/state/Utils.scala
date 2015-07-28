@@ -140,7 +140,9 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
-    case l: Let => List(l.x, l.t, l.body)
+    case l: Let =>
+      val (vs, ts) = l.bindings.toSeq.unzip
+      vs ++ ts :+ l.body
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -211,10 +213,8 @@ package object utils {
       case MultisetIntersection(t0, t1) => MultisetIntersection(go(t0), go(t1))
       case MultisetSubset(t0, t1) => MultisetSubset(go(t0), go(t1))
       case MultisetDifference(t0, t1) => MultisetDifference(go(t0), go(t1))
-      case MultisetIn(t0, t1) => MultisetIn(go(t0), go(t1))
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
-//      case MultisetFromSeq(t) => MultisetFromSeq(go(t))
       case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
       case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))
@@ -222,7 +222,7 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
-      case Let(x, t, body) => Let(go(x), go(t), go(body))
+      case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

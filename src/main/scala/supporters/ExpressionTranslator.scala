@@ -150,7 +150,7 @@ trait ExpressionTranslator {
       case as: silver.ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
       case as: silver.ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
       case as: silver.ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
-      case as: silver.ast.AnySetContains => translateAnySetBinExp(as, SetIn, MultisetIn, as.right)
+      case as: silver.ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
       case as: silver.ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality)
 
       /* Other expressions */

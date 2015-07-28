@@ -106,7 +106,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     }
 
     val consumed = φ match {
-      case ast.And(a1, a2) if !φ.isPure =>
+      case ast.And(a1, a2) if !φ.isPure || config.handlePureConjunctsIndividually() =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
           consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
             Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))

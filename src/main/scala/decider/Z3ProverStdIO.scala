@@ -31,6 +31,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   /* private */ var z3Path: Path = _
   private var logPath: Path = _
   private var counter: Counter = _
+  private var lastTimeout: Int = 0
 
   def z3Version() = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -92,6 +93,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     stop()
     counter.reset()
     pushPopScopeDepth = 0
+    lastTimeout = 0
     start()
   }
 
@@ -149,31 +151,77 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def assert(goal: Term) = assert(convert(goal))
+  def assert(goal: Term, timeout: Int = 0) = assert(convert(goal), timeout)
 
-  def assert(goal: String) = {
+  def assert(goal: String, timeout: Int) = {
     bookkeeper.assertionCounter += 1
 
-    push()
-    writeLine("(assert (not " + goal + "))")
-    readSuccess()
-    val startTime = System.currentTimeMillis()
-    writeLine("(check-sat)")
-    val r = readUnsat()
-    val endTime = System.currentTimeMillis()
-    logComment(s"${common.format.formatMillisReadably(endTime - startTime)}")
-    pop()
+    setTimeout(timeout)
 
-    r
+    val (result, duration) = config.assertionMode() match {
+      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+    }
+
+    logComment(s"${common.format.formatMillisReadably(duration)}")
+    logComment("(get-info :all-statistics)")
+
+    result
   }
 
-  def check() = {
+  private def assertUsingPushPop(goal: String): (Boolean, Long) = {
+    push()
+
+    writeLine("(assert (not " + goal + "))")
+    readSuccess()
+
+    val startTime = System.currentTimeMillis()
+    writeLine("(check-sat)")
+    val result = readUnsat()
+    val endTime = System.currentTimeMillis()
+
+    pop()
+
+    (result, endTime - startTime)
+  }
+
+  private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
+    val guard = fresh("grd", sorts.Bool)
+
+    writeLine(s"(assert (implies $guard (not $goal)))")
+    readSuccess()
+
+    val startTime = System.currentTimeMillis()
+    writeLine(s"(check-sat $guard)")
+    val result = readUnsat()
+    val endTime = System.currentTimeMillis()
+
+    (result, endTime - startTime)
+  }
+
+  def check(timeout: Int = 0) = {
+    setTimeout(timeout)
+
     writeLine("(check-sat)")
 
     readLine() match {
       case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
+    }
+  }
+
+  private def setTimeout(timeout: Int) {
+    /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
+     * worsen performance, if only a bit. For the current test suite of
+     * 199 Silver files, the total verification time increased from 60s
+     * to 70s if 'set-option' is emitted every time.
+     */
+    if (lastTimeout != timeout) {
+      lastTimeout = timeout
+
+      writeLine(s"(set-option :timeout $timeout)")
+      readSuccess()
     }
   }
 
