@@ -216,7 +216,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ite @ ast.CondExp(e0, e1, e2) =>
 
-        val ceLog = new CondExpRecord(ite, σ, c)
+        val ceLog = new CondExpRecord(ite, σ, c, "evaluate")
         val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
 
         val condExp_res = eval(σ, e0, pve, c)((t0, c1) => {

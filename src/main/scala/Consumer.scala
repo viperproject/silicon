@@ -122,7 +122,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           branch(σ, t0, c,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))*/
-        val ceLog = new CondExpRecord(ite, σ, c)
+        /*val ceLog = new CondExpRecord(ite, σ, c, "consume")
         val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
 
         eval(σ, e0, pve, c)((t0, c1) => {
@@ -134,6 +134,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a2, pve, c2)((h_a2, s_a2, dc_a2, c_a2) => {
               ceLog.finish_elsExp()
               Q(h_a2, s_a2, dc_a2, c_a2)}))
+          SymbExLogger.currentLog().collapse(null, SEP_identifier)
+          branch_res})*/
+        val ceLog = new GlobalBranchRecord(ite, σ, c, "consume")
+        val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
+
+        eval(σ, e0, pve, c)((t0, c1) => {
+          ceLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => consume(σ, h, p, a1, pve, c2)((h_a1, s_a1, dc_a1, c_a1) => {
+              val res1 = Q(h_a1, s_a1, dc_a1, c_a1)
+              ceLog.finish_thnSubs()
+              res1}),
+            (c2: C) => consume(σ, h, p, a2, pve, c2)((h_a2, s_a2, dc_a2, c_a2) => {
+              val res2 = Q(h_a2, s_a2, dc_a2, c_a2)
+              ceLog.finish_elsSubs()
+              res2}))
           SymbExLogger.currentLog().collapse(null, SEP_identifier)
           branch_res})
 

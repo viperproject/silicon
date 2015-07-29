@@ -215,7 +215,12 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
         }
       case v: silver.ast.CondExp =>
         s match {
-          case _: EvaluateRecord => true
+          case _: EvaluateRecord | _: ConsumeRecord | _: ProduceRecord => true
+          case _ => false
+        }
+      case v: silver.ast.Implies =>
+        s match {
+          case /*_: ConsumeRecord |*/ _: ProduceRecord => true
           case _ => false
         }
 
@@ -320,6 +325,23 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
         output = output + "    " + thnExp_end + " -> " + join_node + ";\n"
         output = output + "    " + elsExp_end + " -> " + join_node + ";\n"
         previousNode = join_node
+      }
+      case imp: GlobalBranchRecord => {
+        val imp_parent = previousNode
+        //output = output + "    " + imp.cond.dotNode() + " [label=" + imp.cond.dotLabel() + "];\n"
+        //output = output + "    " + previousNode + " -> " + imp.cond.dotNode() + ";\n"
+        //previousNode = imp.cond.dotNode()
+        for (rec <- imp.thnSubs) {
+          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output = output + subsToDot(rec)
+        }
+        previousNode = imp_parent
+        for (rec <- imp.elsSubs) {
+          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output = output + subsToDot(rec)
+        }
       }
 
       case mc: MethodCallRecord => {
@@ -656,27 +678,29 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends 
   }
 }
 
-class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends MultiChildOrderedRecord {
+class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String)
+    extends MultiChildOrderedRecord {
   val value = v
   val state = s
   val context = c
+  val environment = env
   def toTypeString():String = { "CondExp" }
 
-  var cond:SymbolicRecord   = new EvaluateRecord(null, null, null)
+  var cond:SymbolicRecord   = new CommentRecord("<missing condition>", null, null)
   // thn/els Exp is Unreachable by default. If this is not the case, it will be overwritten
   var thnExp:SymbolicRecord = new CommentRecord("Unreachable", null, null)
   var elsExp:SymbolicRecord = new CommentRecord("Unreachable", null, null)
 
   override def toString(): String = {
-    if(v != null)
-      "evaluate: "+v.toString()
+    if(value != null)
+      environment + " "+value.toString()
     else
       "CondExp <null>"
   }
 
   override def toSimpleString(): String = {
-    if(v != null)
-      v.toString()
+    if(value != null)
+      value.toString()
     else
       "CondExp <Null>"
   }
@@ -720,6 +744,84 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends Mul
   def finish_elsExp(): Unit ={
     if(!subs.isEmpty)
       elsExp = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+}
+
+class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String) extends MultiChildUnorderedRecord
+{
+  val value = v
+  val state = s
+  val context = c
+  val environment = env
+  def toTypeString():String = { "GlobalBranch" }
+
+  var cond:SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+
+  override def toSimpleString():String = {
+    if(value != null)
+      value.toString()
+    else
+      "GlobalBranch<Null>"
+  }
+
+  override def toString():String = {
+    environment + " " + toSimpleString()
+  }
+
+  override def toSimpleTree(n: Int): String ={
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+
+    var str = ""
+    str = str + environment + " Branch 1: " + toSimpleString()+"\n"
+    for(s <- thnSubs){
+      str = str + ident + s.toSimpleTree(n+1)
+    }
+
+    str = str + ident.substring(2) + "Branch 2:\n"
+    for(s <- elsSubs){
+      str = str + ident + s.toSimpleTree(n+1)
+    }
+    return str
+  }
+
+  override def toTypeTree(n: Int): String ={
+    var ident = ""
+    for(i <- 1 to n) {
+      ident = "  " + ident
+    }
+
+    var str = ""
+    str = str + toTypeString + "\n"
+    for(s <- thnSubs){
+      str = str + ident + s.toTypeTree(n+1)
+    }
+    for(s <- elsSubs){
+      str = str + ident + s.toTypeTree(n+1)
+    }
+    return str
+  }
+
+  def finish_cond(): Unit ={
+    if(!subs.isEmpty)
+      cond = subs(0)
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_thnSubs(): Unit ={
+    if(!subs.isEmpty)
+      thnSubs = subs
+    subs = List[SymbolicRecord]()
+  }
+
+  def finish_elsSubs(): Unit ={
+    if(!subs.isEmpty)
+      elsSubs = subs
     subs = List[SymbolicRecord]()
   }
 }
@@ -790,8 +892,8 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
   }
 
   override def toString(): String ={
-    if(v != null)
-      "execute: " + v.toString()
+    if(value != null)
+      "execute: " + value.toString()
     else
       "execute: MethodCall <null>"
   }
