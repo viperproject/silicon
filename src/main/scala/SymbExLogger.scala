@@ -96,54 +96,38 @@ object SymbExLogger {
   /**
    * Simple string representation of the logs.
    */
-  def simpleTreeString(): String = {
-    var res = ""
-    for (m <- memberList){
-      res = res + m.main.toSimpleTree(1) + "\n"
-    }
-    res
+  def toSimpleTreeString(): String = {
+    val simpleTreeRenderer = new SimpleTreeRenderer()
+    simpleTreeRenderer.render(memberList)
   }
 
   /**
    * Simple string representation of the logs, but contains only the types of the records
    * and not their values. Original purpose was usage for unit testing.
    */
-  def typeTreeString(): String = {
-    var res = ""
-    for (m <- memberList){
-      res = res + m.main.toTypeTree(1) + "\n"
-    }
-    res
+  def toTypeTreeString(): String = {
+    val typeTreeRenderer = new TypeTreeRenderer()
+    typeTreeRenderer.render(memberList)
   }
   /**
    * Writes a .DOT-file with a representation of all logged methods, predicates, functions.
    * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
    */
   def writeDotFile(): Unit = {
-    var str: String = "digraph {\n"
-    str = str + "node [shape=rectangle];\n\n";
-
-    for(m <- memberList) {
-      str = str + m.toDot() + "\n\n"
-    }
-
-    str = str + "}"
+    val dotRenderer = new DotTreeRenderer()
+    val str = dotRenderer.render(memberList)
     val pw = new java.io.PrintWriter(new File("dot_input.dot"))
     try pw.write(str) finally pw.close()
   }
 
+  /**
+   * Writes a .JS-file that can be used for representation of the logged methods, predicates
+   * and functions in a HTML-file.
+   */
   def writeJSFile(): Unit = {
+    val jsRenderer = new JSTreeRenderer()
     val pw = new java.io.PrintWriter(new File("executionTreeData.js"))
-    try pw.write(printJSTree()) finally pw.close()
-  }
-
-  def printJSTree(): String = {
-    var str = "var executionTreeData = [\n"
-    for(m <- memberList) {
-      str = str + m.toJSTree() + ", \n"
-    }
-    str = str + "]\n"
-    return str
+    try pw.write(jsRenderer.render(memberList)) finally pw.close()
   }
 }
 
@@ -170,7 +154,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
 
   /**
    * Inserts a record. For usage of custom records, take a look at the guidelines in SymbExLogger.scala.
-   * For every insert, there MUST be a call of collapse at the appropriate place in the code. The right order
+   * For every insert, there MUST be a call of collapse at the appropriate place in the code. The order
    * of insert/collapse-calls defines the record-hierarchy.
    * @param s Record for symbolic execution primitive.
    * @return Identifier of the inserted record, must be given as argument to the
@@ -249,6 +233,37 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
       case _ => return true
     }
   }
+}
+
+//===== Renderer Classes =====
+
+trait Renderer[T] {
+  def renderMember(s: SymbLog): T
+  def render(memberList: List[SymbLog]): T
+}
+
+class DotTreeRenderer extends Renderer[String] {
+
+  def render(memberList: List[SymbLog]): String = {
+    var str: String = "digraph {\n"
+    str = str + "node [shape=rectangle];\n\n";
+
+    for(m <- memberList) {
+      str = str + renderMember(m) + "\n\n"
+    }
+
+    str = str + "}"
+    str
+  }
+
+  def renderMember(s: SymbLog): String = {
+    val main = s.main
+    var output = ""
+
+    output = output + "    "+main.dotNode()+" [label="+main.dotLabel()+"];\n"
+    output = output + subsToDot(main)
+    output
+  }
 
   private var previousNode = "";
   private var unique_node_nr = this.hashCode();
@@ -256,21 +271,6 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
   private def unique_node_number():Int = {
     unique_node_nr = unique_node_nr+1
     unique_node_nr
-  }
-
-  /**
-   * Creates a DOT-representation of the record. Contains ONLY the creation and linking of nodes,
-   * does NOT contain the necessary initialization for GraphViz (eg., digraph {...}). For output that can
-   * be directly used by GraphViz, have a look at SymbExLogger.writeDotFile().
-   * @return Returns the part of a DOT-graph that represents the record.
-   */
-  def toDot(): String = {
-
-    var output = ""
-
-    output = output + "    "+main.dotNode()+" [label="+main.dotLabel()+"];\n"
-    output = output + subsToDot(main)
-    output
   }
 
   private def subsToDot(s: SymbolicRecord): String = {
@@ -377,8 +377,20 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
 
     return output
   }
+}
 
-  def toJSTree(): String = {
+class JSTreeRenderer extends Renderer[String] {
+  def render(memberList: List[SymbLog]): String = {
+    var str = "var executionTreeData = [\n"
+    for(m <- memberList) {
+      str = str + renderMember(m) + ", \n"
+    }
+    str = str + "]\n"
+    return str
+  }
+
+  def renderMember(member: SymbLog): String = {
+    val main = member.main
     var output = ""
     output = output + recordToJS(main) + "\n"
     return output
@@ -459,17 +471,156 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     }
     return output
   }
-
-
 }
 
-//=========================
+class SimpleTreeRenderer extends Renderer[String] {
+  def render(memberList: List[SymbLog]): String = {
+    var res = ""
+    for (m <- memberList){
+      res = res + renderMember(m) + "\n"
+    }
+    res
+  }
+  
+  def renderMember(member: SymbLog): String = {
+    toSimpleTree(member.main, 1)
+  }
+  
+  def toSimpleTree(s: SymbolicRecord, n: Int): String = {
+    var indent = ""
+    for(i <- 1 to n) {
+      indent = "  " + indent
+    }
+    var str = ""
+    s match {
+      case ite: IfThenElseRecord => {
+        str = str + "if " + ite.thnCond.toSimpleString()+"\n"
+        str = str + indent + toSimpleTree(ite.thnCond, n+1)
+        for(sub <- ite.thnSubs){
+          str = str + indent + toSimpleTree(sub, n+1)
+        }
+        str = str + indent.substring(2) + "else " + ite.elsCond.toSimpleString()+"\n"
+        str = str + indent + toSimpleTree(ite.elsCond, n+1)
+        for(sub <- ite.elsSubs){
+          str = str + indent + toSimpleTree(sub, n+1)
+        }
+      }
+      case ce: CondExpRecord => {
+        str = str + ce.toString()+"\n"
+        str = str + indent + toSimpleTree(ce.thnExp, n+1)
+        str = str + indent + toSimpleTree(ce.elsExp, n+1)
+        return str
+      }
+      case gb: GlobalBranchRecord => {
+        str = str + gb.environment + " Branch 1: " + gb.toSimpleString()+"\n"
+        for(sub <- gb.thnSubs){
+          str = str + indent + toSimpleTree(sub, n+1)
+        }
+
+        str = str + indent.substring(2) + "Branch 2:\n"
+        for(sub <- gb.elsSubs){
+          str = str + indent + toSimpleTree(sub, n+1)
+        }
+      }
+      case mc: MethodCallRecord => {
+        str = str + mc.toString()+"\n"
+        str = str + indent + "precondition: " + toSimpleTree(mc.precondition, n+1)
+        str = str + indent + "postcondition: " + toSimpleTree(mc.postcondition, n+1)
+        for(p <- mc.parameters) {
+          str = str + indent + "parameter: " + toSimpleTree(p, n+1)
+        }
+      }
+      case _ => {
+        str = str + s.toString() + "\n"
+        for (sub <- s.subs) {
+          str = str + indent + toSimpleTree(sub, n + 1)
+        }
+      }
+    }
+    return str
+  }
+}
+
+class TypeTreeRenderer extends Renderer[String] {
+  def render(memberList: List[SymbLog]): String = {
+    var res = ""
+    for (m <- memberList){
+      res = res + renderMember(m) + "\n"
+    }
+    res
+  }
+
+  def renderMember(member: SymbLog): String = {
+    toTypeTree(member.main, 1)
+  }
+
+  def toTypeTree(s: SymbolicRecord, n: Int): String = {
+    var indent = ""
+    for(i <- 1 to n) {
+      indent = "  " + indent
+    }
+    var str = ""
+
+    s match {
+      case ite: IfThenElseRecord => {
+        str = str + "if\n"
+        str = str + indent + toTypeTree(ite.thnCond, n+1)
+        for(sub <- ite.thnSubs){
+          str = str + indent + toTypeTree(sub, n+1)
+        }
+
+        str = str + indent.substring(2) + "else\n"
+        str = str + indent + toTypeTree(ite.elsCond, n+1)
+        for(sub <- ite.elsSubs){
+          str = str + indent + toTypeTree(sub, n+1)
+        }
+      }
+      case ce: CondExpRecord => {
+        str = str + "CondExp\n"
+        str = str + indent + toTypeTree(ce.thnExp, n+1)
+        str = str + indent + toTypeTree(ce.elsExp, n+1)
+      }
+      case gb: GlobalBranchRecord => {
+        str = str + gb.toTypeString + "\n"
+        for(sub <- gb.thnSubs){
+          str = str + indent + toTypeTree(sub, n+1)
+        }
+        for(sub <- gb.elsSubs){
+          str = str + indent + toTypeTree(sub, n+1)
+        }
+      }
+      case mc: MethodCallRecord => {
+        str = str + "MethodCall\n"
+        str = str + indent + "precondition\n"
+        str = str + indent + "  " + toTypeTree(mc.precondition, n+2)
+        str = str + indent + "postcondition\n"
+        str = str + indent + "  " + toTypeTree(mc.postcondition, n+2)
+        for(p <- mc.parameters) {
+          str = str + indent + "parameter\n"
+          str = str + indent + "  " + toTypeTree(p, n+2)
+        }
+      }
+      case _ => {
+        str = s.toTypeString()+"\n"
+        for(sub <- s.subs){
+          str = str + indent + toTypeTree(sub, n+1)
+        }
+      }
+    }
+    str
+  }
+}
+
+
+//=========== Records =========
 
 trait SymbolicRecord {
   val value: silver.ast.Node
   val state: AnyRef
   val context: DefaultContext
   var subs = List[SymbolicRecord]()
+
+  def toTypeString(): String {}
 
   override def toString(): String = {
     toTypeString() + " " + toSimpleString()
@@ -479,32 +630,6 @@ trait SymbolicRecord {
     if(value != null)  value.toString()
     else "null"
   }
-
-  def toSimpleTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-    var str:String = this.toString()+"\n"
-    for(s <- subs){
-      str = str + ident + s.toSimpleTree(n+1)
-    }
-    str
-  }
-
-  def toTypeTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-    var str:String = toTypeString()+"\n"
-    for(s <- subs){
-      str = str + ident + s.toTypeTree(n+1)
-    }
-    str
-  }
-
-  def toTypeString(): String {}
 
   def dotNode(): String = {
     this.hashCode().toString()
@@ -606,48 +731,6 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
     "if "+thnCond.toSimpleString()
   }
 
-  override def toSimpleTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-
-    var str = ""
-    str = str + "if " + thnCond.toSimpleString()+"\n"
-    str = str + ident + thnCond.toSimpleTree(n+1)
-    for(s <- thnSubs){
-      str = str + ident + s.toSimpleTree(n+1)
-    }
-
-    str = str + ident.substring(2) + "else " + elsCond.toSimpleString()+"\n"
-    str = str + ident + elsCond.toSimpleTree(n+1)
-    for(s <- elsSubs){
-      str = str + ident + s.toSimpleTree(n+1)
-    }
-    return str
-  }
-
-  override def toTypeTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-
-    var str = ""
-    str = str + "if\n"
-    str = str + ident + thnCond.toTypeTree(n+1)
-    for(s <- thnSubs){
-      str = str + ident + s.toTypeTree(n+1)
-    }
-
-    str = str + ident.substring(2) + "else\n"
-    str = str + ident + elsCond.toTypeTree(n+1)
-    for(s <- elsSubs){
-      str = str + ident + s.toTypeTree(n+1)
-    }
-    return str
-  }
-
   def finish_thnCond(): Unit = {
     if(!subs.isEmpty)
       thnCond = subs(0)
@@ -700,30 +783,6 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
       "CondExp <Null>"
   }
 
-  override def toSimpleTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-    var str = ""
-    str = str + toString()+"\n"
-    str = str + ident + thnExp.toSimpleTree(n+1)
-    str = str + ident + elsExp.toSimpleTree(n+1)
-    return str
-  }
-
-  override def toTypeTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-    var str = ""
-    str = str + "CondExp\n"
-    str = str + ident + thnExp.toTypeTree(n+1)
-    str = str + ident + elsExp.toTypeTree(n+1)
-    return str
-  }
-
   def finish_cond(): Unit ={
     if(!subs.isEmpty)
       cond = subs(0)
@@ -764,42 +823,6 @@ class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: S
 
   override def toString(): String = {
     environment + " " + toSimpleString()
-  }
-
-  override def toSimpleTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-
-    var str = ""
-    str = str + environment + " Branch 1: " + toSimpleString()+"\n"
-    for(s <- thnSubs){
-      str = str + ident + s.toSimpleTree(n+1)
-    }
-
-    str = str + ident.substring(2) + "Branch 2:\n"
-    for(s <- elsSubs){
-      str = str + ident + s.toSimpleTree(n+1)
-    }
-    return str
-  }
-
-  override def toTypeTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-
-    var str = ""
-    str = str + toTypeString + "\n"
-    for(s <- thnSubs){
-      str = str + ident + s.toTypeTree(n+1)
-    }
-    for(s <- elsSubs){
-      str = str + ident + s.toTypeTree(n+1)
-    }
-    return str
   }
 
   def finish_cond(): Unit ={
@@ -853,39 +876,6 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
   var parameters = List[SymbolicRecord]()
   var precondition: SymbolicRecord = new ConsumeRecord(null,null, null)
   var postcondition:SymbolicRecord = new ProduceRecord(null,null, null)
-
-  override def toSimpleTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-    var str = ""
-    str = str + toString()+"\n"
-    str = str + ident + "precondition: " + precondition.toSimpleTree(n+1)
-    str = str + ident + "postcondition: " + postcondition.toSimpleTree(n+1)
-    for(p <- parameters) {
-      str = str + ident + "parameter: " + p.toSimpleTree(n+1)
-    }
-    return str
-  }
-
-  override def toTypeTree(n: Int): String = {
-    var ident = ""
-    for(i <- 1 to n) {
-      ident = "  " + ident
-    }
-    var str = ""
-    str = str + "MethodCall\n"
-    str = str + ident + "precondition\n"
-    str = str + ident + "  " + precondition.toTypeTree(n+2)
-    str = str + ident + "postcondition\n"
-    str = str + ident + "  " + postcondition.toTypeTree(n+2)
-    for(p <- parameters) {
-      str = str + ident + "parameter\n"
-      str = str + ident + "  " + p.toTypeTree(n+2)
-    }
-    return str
-  }
 
   override def toString(): String = {
     if(value != null)
@@ -971,8 +961,6 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
  *        subs = List[SymbolicRecord]()
  *      }
  *
- *      override def toSimpleTree:String = {..} // See below or have a look at existing examples
- *
  *      // finish_FIELD() is the method that overwrites the given field with what is currently in 'subs'.
  *      // For usage example, see below.
  *    }
@@ -997,16 +985,8 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
  *          SymbExLogger.currentLog().collapse()
  *          Q(And(t0, t1), c2)))}}
  *
- *    The record is now available for use; now its representation needs to be implemented.
- *    For the 'simpleTree'-output, override the 'toSimpleTree()'-method in AndRecord.
- *    For the DOT-output, implement a case-distinction for AndRecord (see method subsToDot
- *    in the SymbLog-class):
- *    For every field in your record (here: lhs & rhs), add a line that creates a node, and connect
- *    those to the previousNode (see subsToDot() for examples). Make use of the dotLabel() and
- *    dotNode() method that are inherited from SymbolicRecord (in some cases, you might need to
- *    override them).
- *    To avoid 'double recording' (i.e., disable default recording during recording on custom records),
- *    add AndRecord to 'isRecordedDifferently()' in SymbLog (same fashion as existing records).
- *    Otherwise, Evaluations of 'Ands' will appear twice in the logging tree.
+ *    The record is now available for use; now its representation needs to be implemented,
+ *    which is done Renderer-Classes. Implement a new case in all renderer for the new
+ *    record.
  */
 

@@ -152,11 +152,12 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => Q(σ.h, c2)))*/
         val impLog = new GlobalBranchRecord(imp, σ, c, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        var cIdentifier = 0
         eval(σ, e0, pve, c)((t0, c1) => {
           impLog.finish_cond()
           val branch_res = branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a0, pve, c2)((h_a1, c_a1) => {
-              SymbExLogger.currentLog().insert(new CommentRecord("HACK", null, null))
+              cIdentifier = SymbExLogger.currentLog().insert(new CommentRecord("HACK", null, null))
               val res1 = Q(h_a1, c_a1)
               impLog.finish_thnSubs()
               res1}),
@@ -164,28 +165,11 @@ trait DefaultProducer[ST <: Store[ST],
               val res2 = Q(σ.h, c2)
               impLog.finish_elsSubs()
               res2})
-          SymbExLogger.currentLog.collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapse(null, cIdentifier)
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        /*eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
-            (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))*/
-        /*val ceLog = new CondExpRecord(ite, σ, c, "produce")
-        val sepIdentifier = SymbExLogger.currentLog().insert(ceLog)
-
-        eval(σ, e0, pve, c)((t0, c1) => {
-          ceLog.finish_cond()
-          val branch_res = branch(σ, t0, c1,
-            (c2: C) => produce2(σ, sf, p, a1, pve, c2)((h_a1, c_a1) => {
-              ceLog.finish_thnExp()
-              Q(h_a1, c_a1)}),
-            (c2: C) => produce2(σ, sf, p, a2, pve, c2)((h_a2, c_a2) => {
-              ceLog.finish_elsExp()
-              Q(h_a2, c_a2)}))
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})*/
         val ceLog = new GlobalBranchRecord(ite, σ, c, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(ceLog)
 
