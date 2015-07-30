@@ -237,7 +237,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
 
 //===== Renderer Classes =====
 
-trait Renderer[T] {
+sealed trait Renderer[T] {
   def renderMember(s: SymbLog): T
   def render(memberList: List[SymbLog]): T
 }
@@ -614,7 +614,7 @@ class TypeTreeRenderer extends Renderer[String] {
 
 //=========== Records =========
 
-trait SymbolicRecord {
+sealed trait SymbolicRecord {
   val value: silver.ast.Node
   val state: AnyRef
   val context: DefaultContext
