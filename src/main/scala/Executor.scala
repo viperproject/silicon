@@ -106,7 +106,7 @@ trait DefaultExecutor[ST <: Store[ST],
           val thn_edge = cblock.succs(0)
           val els_edge = cblock.succs(1)
 
-          val SEP_identifier = SymbExLogger.currentLog().insert(iteLog)
+          val sepIdentifier = SymbExLogger.currentLog().insert(iteLog)
 
           val iteResult = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
             iteLog.finish_thnCond()
@@ -127,7 +127,7 @@ trait DefaultExecutor[ST <: Store[ST],
               (c3: C) => Success())
             els_branch_res
           })
-          SymbExLogger.currentLog().collapse(null, SEP_identifier)
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           iteResult
         })
 
@@ -208,9 +208,9 @@ trait DefaultExecutor[ST <: Store[ST],
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {
-    val SEP_identifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, c))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, c))
     exec2(σ, stmt, c)((σ1, c1) => {
-      SymbExLogger.currentLog().collapse(stmt, SEP_identifier)
+      SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
       Q(σ1, c1)})
   }
 
@@ -322,7 +322,7 @@ trait DefaultExecutor[ST <: Store[ST],
            */
 
         val mcLog = new MethodCallRecord(call, σ, c)
-        val SEP_identifier = SymbExLogger.currentLog().insert(mcLog)
+        val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
 
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
           mcLog.finish_parameters()
@@ -338,7 +338,7 @@ trait DefaultExecutor[ST <: Store[ST],
               mcLog.finish_postcondition()
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
-              SymbExLogger.currentLog().collapse(null, SEP_identifier)
+              SymbExLogger.currentLog().collapse(null, sepIdentifier)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>

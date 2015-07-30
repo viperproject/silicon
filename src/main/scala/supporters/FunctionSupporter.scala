@@ -306,7 +306,7 @@ trait FunctionSupporter[ST <: Store[ST],
       logger.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
 
-      SymbExLogger.mpf_insert(function, Σ(Ø, Ø, Ø), c)
+      SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), c)
 
       val data = functionData(function)
       val out = function.result

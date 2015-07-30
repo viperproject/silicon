@@ -58,7 +58,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-    SymbExLogger.mpf_insert(method, Σ(Ø, Ø, Ø), c)
+    SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), c)
 
     val ins = method.formalArgs.map(_.localVar)
     val outs = method.formalReturns.map(_.localVar)
@@ -95,7 +95,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
-    SymbExLogger.mpf_insert(predicate, Σ(Ø, Ø, Ø), c)
+    SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), c)
 
     val ins = predicate.formalArgs.map(_.localVar)
 

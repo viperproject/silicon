@@ -16,11 +16,11 @@ import viper.silver.ast.Node
  * Overall concept:
  * 1) SymbExLogger Object:
  *    Is used as interface to access the logs. Contains a list of SymbLog, one SymbLog
- *    per method/function/predicate (mpf). The method 'currentLog()' gives access to the log
- *    of the currently executed mpf. Code from this file that is used in Silicon should only be used
+ *    per method/function/predicate (member). The method 'currentLog()' gives access to the log
+ *    of the currently executed member. Code from this file that is used in Silicon should only be used
  *    via SymbExLogger.
  * 2) SymbLog:
- *    Contains the log for one mpf. Most important methods: insert/collapse. To 'start'
+ *    Contains the log for a member. Most important methods: insert/collapse. To 'start'
  *    a record use insert, to finish the recording use collapse. There should be as many calls
  *    of collapse as of insert (theoretically; practically this is not possible due to branching.
  *    To avoid such cases, each insert gets an identifier, which is then used by collapse, to avoid
@@ -70,18 +70,18 @@ import viper.silver.ast.Node
 
 object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
-  var mpf_list = List[SymbLog]()
+  var memberList = List[SymbLog]()
 
-  /** Add a new log for a method, function or predicate (mpf).
+  /** Add a new log for a method, function or predicate (member).
    *
-   * @param mpf Either a MethodRecord, PredicateRecord or a FunctionRecord.
+   * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
    * @param s Current state. Since the body of the method (predicate/function) is not yet
    *          executed/logged, this is usually the empty state (use Σ(Ø, Ø, Ø) for empty
    *          state).
    * @param c Current context.
    */
-  def mpf_insert(mpf: silver.ast.Member, s: AnyRef, c: DefaultContext): Unit ={
-    mpf_list = mpf_list ++ List(new SymbLog(mpf, s, c))
+  def insertMember(member: silver.ast.Member, s: AnyRef, c: DefaultContext): Unit ={
+    memberList = memberList ++ List(new SymbLog(member, s, c))
   }
 
   /** Use this method to access the current log, e.g., to access the log of the method
@@ -90,16 +90,16 @@ object SymbExLogger {
    * @return Returns the current method, predicate or function that is being logged.
    */
   def currentLog(): SymbLog = {
-    mpf_list.last
+    memberList.last
   }
 
   /**
    * Simple string representation of the logs.
    */
-  def simpleTreeString():String = {
+  def simpleTreeString(): String = {
     var res = ""
-    for (mpf <- mpf_list){
-      res = res + mpf.main.toSimpleTree(1) + "\n"
+    for (m <- memberList){
+      res = res + m.main.toSimpleTree(1) + "\n"
     }
     res
   }
@@ -108,10 +108,10 @@ object SymbExLogger {
    * Simple string representation of the logs, but contains only the types of the records
    * and not their values. Original purpose was usage for unit testing.
    */
-  def typeTreeString():String = {
+  def typeTreeString(): String = {
     var res = ""
-    for (mpf <- mpf_list){
-      res = res + mpf.main.toTypeTree(1) + "\n"
+    for (m <- memberList){
+      res = res + m.main.toTypeTree(1) + "\n"
     }
     res
   }
@@ -123,8 +123,8 @@ object SymbExLogger {
     var str: String = "digraph {\n"
     str = str + "node [shape=rectangle];\n\n";
 
-    for(mpf <- mpf_list) {
-      str = str + mpf.toDot() + "\n\n"
+    for(m <- memberList) {
+      str = str + m.toDot() + "\n\n"
     }
 
     str = str + "}"
@@ -139,8 +139,8 @@ object SymbExLogger {
 
   def printJSTree(): String = {
     var str = "var executionTreeData = [\n"
-    for(mpf <- mpf_list) {
-      str = str + mpf.toJSTree() + ", \n"
+    for(m <- memberList) {
+      str = str + m.toJSTree() + ", \n"
     }
     str = str + "]\n"
     return str
@@ -161,8 +161,8 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
   }
 
   private var stack = List[SymbolicRecord](main)
-  private var SEP_counter = 0
-  private var SEP_set = Set[Int]()
+  private var sepCounter = 0
+  private var sepSet = Set[Int]()
 
   private def current(): SymbolicRecord = {
     stack.head
@@ -184,9 +184,9 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     current().subs = current().subs++List(s)
     stack = s::stack
 
-    SEP_counter = SEP_counter+1
-    SEP_set = SEP_set+SEP_counter
-    return SEP_counter
+    sepCounter = sepCounter+1
+    sepSet = sepSet+sepCounter
+    return sepCounter
   }
 
   /**
@@ -196,17 +196,15 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
    * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
    *          value).
    */
-  def collapse(v: silver.ast.Node, n: Int): Unit =
-  {
-    if(n != -1 && SEP_set.contains(n)) {
-      SEP_set = SEP_set - n
+  def collapse(v: silver.ast.Node, n: Int): Unit = {
+    if(n != -1 && sepSet.contains(n)) {
+      sepSet = sepSet - n
       if (isUsed(v))
         stack = stack.tail
     }
   }
 
-  private def isRecordedDifferently(s: SymbolicRecord): Boolean =
-  {
+  private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
     s.value match {
       case v: silver.ast.MethodCall =>
         s match {
@@ -228,8 +226,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     }
   }
 
-  private def isUsed(node: silver.ast.Node): Boolean =
-  {
+  private def isUsed(node: silver.ast.Node): Boolean = {
     node match {
       case stmt: silver.ast.Stmt => {
         stmt match {
@@ -276,8 +273,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     output
   }
 
-  private def subsToDot(s: SymbolicRecord):String =
-  {
+  private def subsToDot(s: SymbolicRecord): String = {
     previousNode = s.dotNode()
 
     var output = ""
@@ -382,13 +378,13 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     return output
   }
 
-  def toJSTree():String = {
+  def toJSTree(): String = {
     var output = ""
     output = output + recordToJS(main) + "\n"
     return output
   }
 
-  private def recordToJS(s: SymbolicRecord):String = {
+  private def recordToJS(s: SymbolicRecord): String = {
     var output = ""
     s match {
       case ite: IfThenElseRecord => {
@@ -475,16 +471,16 @@ trait SymbolicRecord {
   val context: DefaultContext
   var subs = List[SymbolicRecord]()
 
-  override def toString():String = {
+  override def toString(): String = {
     toTypeString() + " " + toSimpleString()
   }
 
-  def toSimpleString():String = {
+  def toSimpleString(): String = {
     if(value != null)  value.toString()
     else "null"
   }
 
-  def toSimpleTree(n: Int):String = {
+  def toSimpleTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -496,7 +492,7 @@ trait SymbolicRecord {
     str
   }
 
-  def toTypeTree(n: Int):String = {
+  def toTypeTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -508,7 +504,7 @@ trait SymbolicRecord {
     str
   }
 
-  def toTypeString():String {}
+  def toTypeString(): String {}
 
   def dotNode(): String = {
     this.hashCode().toString()
@@ -529,81 +525,80 @@ class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends M
   val value = v
   val state = s
   val context = c
+  def toTypeString(): String = { "method" }
 
   override def toSimpleString():String = {
     if(value != null) value.name
     else "null"
   }
-
-  def toTypeString():String = { "method" }
 }
 
 class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) extends MemberRecord {
   val value = v
   val state = s
   val context = c
+  def toTypeString(): String = { "predicate" }
 
   override def toSimpleString():String = {
     if(value != null) value.name
     else "null"
   }
-
-  def toTypeString():String = { "predicate" }
 }
 
 class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) extends MemberRecord {
   val value = v
   val state = s
   val context = c
+  def toTypeString(): String = { "function" }
 
   override def toSimpleString():String = {
     if(value != null) value.name
     else "null"
   }
-
-  def toTypeString():String = { "function" }
 }
 
 class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
-  def toTypeString():String = { "execute" }
+  def toTypeString(): String = { "execute" }
 }
 
 class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
-  def toTypeString():String = { "evaluate" }
+  def toTypeString(): String = { "evaluate" }
 }
 
 class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
   val value = v
   val state = s
   val context = c
-  def toTypeString():String = { "produce" }
+  def toTypeString(): String = { "produce" }
 }
 
-class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
+class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
+    extends SequentialRecord {
   val value = v
   val state = s
   val context = c
-  def toTypeString():String = { "consume" }
+  def toTypeString(): String = { "consume" }
 }
 
-class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends MultiChildUnorderedRecord {
+class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
+    extends MultiChildUnorderedRecord {
   val value = v //meaningless since there is no directly usable if-then-else structure in the AST
   val state = s
   val context = c
-  def toTypeString():String = { "IfThenElse" }
+  def toTypeString(): String = { "IfThenElse" }
 
   var thnCond:SymbolicRecord = new CommentRecord("Unreachable", null, null)
   var elsCond:SymbolicRecord = new CommentRecord("Unreachable", null, null)
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
   var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
 
-  override def toString(): String ={
+  override def toString(): String = {
     "if "+thnCond.toSimpleString()
   }
 
@@ -611,7 +606,7 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends 
     "if "+thnCond.toSimpleString()
   }
 
-  override def toSimpleTree(n: Int): String ={
+  override def toSimpleTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -632,7 +627,7 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends 
     return str
   }
 
-  override def toTypeTree(n: Int): String ={
+  override def toTypeTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -653,25 +648,25 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends 
     return str
   }
 
-  def finish_thnCond(): Unit ={
+  def finish_thnCond(): Unit = {
     if(!subs.isEmpty)
       thnCond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
-  def finish_elsCond(): Unit ={
+  def finish_elsCond(): Unit = {
     if(!subs.isEmpty)
       elsCond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
-  def finish_thnSubs(): Unit ={
+  def finish_thnSubs(): Unit = {
     if(!subs.isEmpty)
       thnSubs = subs
     subs = List[SymbolicRecord]()
   }
 
-  def finish_elsSubs(): Unit ={
+  def finish_elsSubs(): Unit = {
     if(!subs.isEmpty)
       elsSubs = subs
     subs = List[SymbolicRecord]()
@@ -684,7 +679,7 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
   val state = s
   val context = c
   val environment = env
-  def toTypeString():String = { "CondExp" }
+  def toTypeString(): String = { "CondExp" }
 
   var cond:SymbolicRecord   = new CommentRecord("<missing condition>", null, null)
   // thn/els Exp is Unreachable by default. If this is not the case, it will be overwritten
@@ -705,7 +700,7 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
       "CondExp <Null>"
   }
 
-  override def toSimpleTree(n: Int):String = {
+  override def toSimpleTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -717,7 +712,7 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
     return str
   }
 
-  override def toTypeTree(n: Int):String = {
+  override def toTypeTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -748,30 +743,30 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
   }
 }
 
-class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String) extends MultiChildUnorderedRecord
-{
+class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String)
+    extends MultiChildUnorderedRecord {
   val value = v
   val state = s
   val context = c
   val environment = env
-  def toTypeString():String = { "GlobalBranch" }
+  def toTypeString(): String = { "GlobalBranch" }
 
   var cond:SymbolicRecord = new CommentRecord("<missing condition>", null, null)
   var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
   var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
 
-  override def toSimpleString():String = {
+  override def toSimpleString(): String = {
     if(value != null)
       value.toString()
     else
       "GlobalBranch<Null>"
   }
 
-  override def toString():String = {
+  override def toString(): String = {
     environment + " " + toSimpleString()
   }
 
-  override def toSimpleTree(n: Int): String ={
+  override def toSimpleTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -790,7 +785,7 @@ class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: S
     return str
   }
 
-  override def toTypeTree(n: Int): String ={
+  override def toTypeTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -843,12 +838,13 @@ class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends Sequentia
     "comment: " + toSimpleString()
   }
 
-  override def dotLabel():String = {
+  override def dotLabel(): String = {
     "\""+comment+"\""
   }
 }
 
-class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) extends MultiChildOrderedRecord {
+class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
+    extends MultiChildOrderedRecord {
   val value = v
   val state = s
   val context = c
@@ -858,7 +854,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
   var precondition: SymbolicRecord = new ConsumeRecord(null,null, null)
   var postcondition:SymbolicRecord = new ProduceRecord(null,null, null)
 
-  override def toSimpleTree(n: Int):String = {
+  override def toSimpleTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -873,7 +869,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
     return str
   }
 
-  override def toTypeTree(n: Int):String = {
+  override def toTypeTree(n: Int): String = {
     var ident = ""
     for(i <- 1 to n) {
       ident = "  " + ident
@@ -891,7 +887,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
     return str
   }
 
-  override def toString(): String ={
+  override def toString(): String = {
     if(value != null)
       "execute: " + value.toString()
     else
@@ -903,18 +899,18 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
     else "MethodCall <null>"
   }
 
-  def finish_parameters(): Unit ={
-    parameters = subs
+  def finish_parameters(): Unit = {
+    parameters = subs // No check for emptyness. empty subs = no parameters, which is perfectly fine.
     subs = List[SymbolicRecord]()
   }
 
-  def finish_precondition(): Unit ={
-    precondition = subs(0)
+  def finish_precondition(): Unit = {
+    precondition = subs(0) // Will never be empty, default precondition is true.
     subs = List[SymbolicRecord]()
   }
 
-  def finish_postcondition(): Unit ={
-    postcondition = subs(0)
+  def finish_postcondition(): Unit = {
+    postcondition = subs(0) // Will never be empty, default postcondition is true.
     subs = List[SymbolicRecord]()
   }
 }
@@ -926,7 +922,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
  * ================================
  *
  * SymbExLogger records all calls of the four symbolic primitives Execute, Evaluate, Produce
- * and Consume. By default, only the current state and parameters of the primitives are stored.
+ * and Consume. By default, only the current state, context and parameters of the primitives are stored.
  * If you want to get more information from certain structures, there are several ways to store additional
  * info:
  *
@@ -958,15 +954,20 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext) e
  *      rhs: SymbolicRecord = new CommentRecord("null", null, null)
  *      // lhs & rhs are what you're interested in. The first initialization should be overwritten anyway,
  *      // initialization with a CommentRecord just ensures that the logger won't crash due
- *      // to a Null Exception (ideally).
+ *      // to a Null Exception (ideally). Can also be used if you're unsure if a certain structure is
+ *      // evaluated at all; e.g., the righthandside might not be evaluated because the lefthandside
+ *      // is already false (see IfThenElseRecord: paths might be unreachable, so the default is
+ *      // a CommentRecord("Unreachable", null, null) which is not overwritten due to unreachability.
  *
- *      def finish_lhs(): Unit ={
- *        lhs = subs(0)
+ *      def finish_lhs(): Unit = {
+ *        if(!subs.isEmpty) //so you don't overwrite your default CommentRecord if subs is empty
+ *          lhs = subs(0)
  *        subs = List[SymbolicRecord]()
  *      }
  *
  *      def finish_rhs(): Unit = {
- *        rhs = subs(0)
+ *        if(!subs.isEmpty)
+ *          rhs = subs(0)
  *        subs = List[SymbolicRecord]()
  *      }
  *

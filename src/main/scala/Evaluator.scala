@@ -77,9 +77,9 @@ trait DefaultEvaluator[ST <: Store[ST],
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
   : VerificationResult = {
-    val SEP_identifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, c))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, c))
     eval3(σ, e, pve, c)((e1, c1) => {
-      SymbExLogger.currentLog().collapse(e, SEP_identifier)
+      SymbExLogger.currentLog().collapse(e, sepIdentifier)
       Q(e1, c1)})
   }
 
@@ -217,7 +217,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ite @ ast.CondExp(e0, e1, e2) =>
 
         val ceLog = new CondExpRecord(ite, σ, c, "evaluate")
-        val SEP_identifier = SymbExLogger.currentLog().insert(ceLog)
+        val sepIdentifier = SymbExLogger.currentLog().insert(ceLog)
 
         val condExp_res = eval(σ, e0, pve, c)((t0, c1) => {
           ceLog.finish_cond()
@@ -231,7 +231,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 ceLog.finish_elsExp()
                 QB(t_e2, c_e2)})
           )((optT1, optT2, cJoined) => {
-            SymbExLogger.currentLog().collapse(null, SEP_identifier)
+            SymbExLogger.currentLog().collapse(null, sepIdentifier)
             val tIte =
               Ite(t0,
                   optT1.getOrElse(fresh("$deadThen", toSort(e1.typ))),
