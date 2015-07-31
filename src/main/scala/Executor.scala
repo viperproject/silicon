@@ -12,7 +12,8 @@ import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse}
+import viper.silver.ast.{Attribute, VerifiedIf}
+import viper.silver.verifier.reasons.{AttributeError, NegativePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -94,6 +95,30 @@ trait DefaultExecutor[ST <: Store[ST],
 
   def exec(σ: S, block: ast.Block, c: C)
           (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
+    execVI(σ,block,c)(Q)
+  }
+
+  val defaultPviRep = "<none>"
+
+  def execVI(σ: S, block: ast.Block, c: C)
+          (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
+    block.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
+      case None    => exec2(σ,block,c.copy(partiallyVerifiedIf = None,pviRep = defaultPviRep))(Q)
+      case Some(v:VerifiedIf) => {
+        val pve = AttributeError(v.cond)
+        eval(σ, v.cond, pve, c)((t, c1) =>
+          exec2(σ,block,c.copy(partiallyVerifiedIf = Some(t),pviRep = v.cond.toString()))(
+            (σ,c2) => Q(σ,c2.copy(partiallyVerifiedIf = None,pviRep = defaultPviRep)))
+        )
+      }
+      case _ => sys.error("should not happen")
+    }
+  }
+
+  def exec2(σ: S, block: ast.Block, c: C)
+          (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
     block match {
@@ -132,8 +157,8 @@ trait DefaultExecutor[ST <: Store[ST],
             if (decider.checkSmoke())
               Success() /* TODO: Mark branch as dead? */
             else
-              exec(σ1, lb.body, c1)((σ2, c2) =>
-                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, _, c3) =>
+              exec(σ1, lb.body, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((σ2, c2) =>
+                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((σ3, _, _, c3) =>
                   Success())))}
             &&
           inScope {
@@ -172,7 +197,28 @@ trait DefaultExecutor[ST <: Store[ST],
 
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
-          : VerificationResult = {
+  : VerificationResult = {
+    execVI(σ,stmt,c)(Q)
+  }
+
+  def execVI(σ: S, stmt: ast.Stmt, c: C)
+          (Q: (S, C) => VerificationResult)
+  : VerificationResult = {
+    stmt.attributes.find(_.isInstanceOf[VerifiedIf] ) match{
+      case None    => exec2(σ,stmt,c.copy(partiallyVerifiedIf = None,pviRep = defaultPviRep))(Q)
+      case Some(v:VerifiedIf) => {
+        val pve = AttributeError(stmt)
+        eval(σ, v.cond, pve, c)((t, c1) =>
+          exec2(σ,stmt,c.copy(partiallyVerifiedIf = Some(t),pviRep = v.cond.toString()))(Q)
+        )
+      }
+      case _ => sys.error("should not happen")
+    }
+  }
+
+  def exec2(σ: S, stmt: ast.Stmt, c: C)
+                  (Q: (S, C) => VerificationResult)
+                  : VerificationResult = {
 
     /* For debugging-purposes only */
     stmt match {
@@ -195,7 +241,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          decider.assert(σ, tRcvr !== Null()){
+          decider.assert(σ, tRcvr !== Null(),c.copy(termToAssert = Some(ast.NeCmp(eRcvr,ast.NullLit()())()))){
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) => {
                 val id = FieldChunkIdentifier(tRcvr, field.name)
@@ -252,11 +298,16 @@ trait DefaultExecutor[ST <: Store[ST],
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
             decider.tryOrFail[S](σ, c)((σ1, c1, QS, QF) => {
-              if (decider.checkSmoke())
-                  QS(σ1, c1)
+              if (decider.checkSmoke() || c.partiallyVerifiedIf.isDefined)
+                c.partiallyVerifiedIf match{
+                  case Some(b) => decider.assert(σ1,False(),c1.copy(termToAssert = Some(ast.FalseLit()())))((res:Boolean) =>
+                    if(res) QS(σ1, c1)
+                    else QF(Failure[ST, H, S](pve dueTo AssertionFalse(a))))
+                  case None => QS(σ1, c1)
+                }
               else
-                  QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
-              })((_, _) => Success())
+                QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
+            })((_, _) => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
@@ -280,7 +331,7 @@ trait DefaultExecutor[ST <: Store[ST],
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = utils.ast.BigAnd(meth.pres)
-          consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
+          consume(σ \ insγ, FullPerm(), pre, pve, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
@@ -295,7 +346,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = FoldFailed(fold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)){
+              decider.assert2(σ, IsNonNegative(tPerm)){
                 case true =>
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
@@ -306,7 +357,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)){
+              decider.assert2(σ, IsNonNegative(tPerm)){
                 case true =>
                   predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>

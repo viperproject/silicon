@@ -20,13 +20,14 @@ import state.terms._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
+import viper.silicon.supporters.VILogger
 
 class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
     extends Decider[ST, H, PC, S, DefaultContext]
-       with Logging {
+       with Logging with VILogger {
 
   private type C = DefaultContext
 
@@ -289,10 +290,44 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term, timeout: Int = 0) = assert(σ, t, timeout, null)
+  def check(σ: S, t: Term, timeout: Int = 0) = assert2(σ, t, timeout, null)
 
-  def assert(σ: S, t: Term, timeout: Int = 0)(Q: Boolean => VerificationResult) = {
-    val success = assert(σ, t, timeout, null)
+  def assert(σ: S, t: Term,c:C,timeout: Int = 0)(Q: Boolean => VerificationResult) = {
+    assert(σ,t,c,timeout,null)(Q)
+  }
+
+  private def assert(σ:S, t:Term, c:C,timeout:Int, logSink: java.io.PrintWriter)(Q: Boolean => VerificationResult) = {
+    var skipVerification : Boolean = false;
+
+    val vilog = viLogger
+
+    vilog.info("assert: " + (c.termToAssert match{
+      case Some(e) => e.toString().split("@")(0) //split necessary because e is pretty-printed, which includes existing attributes
+      case None => "<not set>"
+    }))
+    vilog.info("v-if: " + (c.partiallyVerifiedIf match{
+      case None => "<none>"
+      case Some(term) => if(c.pviRep == "<none>") term else c.pviRep
+    }))
+
+    c.partiallyVerifiedIf match{
+      case None => skipVerification = false
+      case Some(True()) =>
+        skipVerification = true
+      case Some(v) =>
+        skipVerification = false
+        vilog.info("adding implication")
+        assume(Implies(v,t))
+    }
+
+    vilog.info(s"skipping: $skipVerification")
+
+    if(skipVerification) Q(true)
+    else Q( assert2(σ,t,timeout,logSink) )
+  }
+
+  def assert2(σ: S, t: Term,timout:Int = 0)(Q: Boolean => VerificationResult) = {
+    val success = assert2(σ, t, 0, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
 //    if (!success) {
@@ -302,8 +337,8 @@ class DefaultDecider[ST <: Store[ST],
 
     Q(success)
   }
+  protected def assert2(σ: S, t: Term,timeout:Int, logSink: java.io.PrintWriter) = {
 
-  protected def assert(σ: S, t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
     asserted || proverAssert(t, timeout, logSink)
@@ -376,7 +411,7 @@ class DefaultDecider[ST <: Store[ST],
 //          writer.println(permCheck)
 //        }
 
-        assert(σ1, permCheck) {
+        assert2(σ1, permCheck) {
           case true =>
             assume(permCheck)
             QS(ch, c2)

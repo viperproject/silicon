@@ -51,7 +51,8 @@ trait Decider[ST <: Store[ST],
                   : VerificationResult
 
   def check(σ: S, t: Term, timeout: Int = 0): Boolean
-  def assert(σ: S, t: Term, timeout: Int = 0)(Q: Boolean => VerificationResult): VerificationResult
+  def assert(σ: S, t: Term, c:C,timeout: Int = 0)(Q: Boolean => VerificationResult): VerificationResult
+  def assert2(σ: S, t: Term,timeout: Int = 0)(Q: Boolean => VerificationResult): VerificationResult
 
   /** Try to find a chunk identified by `id`. If not present, a failure is
     * returned, otherwise, `Q` is invoked with the found chunk.

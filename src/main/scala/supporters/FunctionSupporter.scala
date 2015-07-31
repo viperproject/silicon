@@ -280,6 +280,7 @@ trait FunctionSupporter[ST <: Store[ST],
     }
 
     private def handleFunction(function: ast.Function, c: C): List[VerificationResult] = {
+      VILogHelper.getLogger().info("handling function " + function.name)
       val data = functionData(function)
 
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)

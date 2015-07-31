@@ -27,8 +27,7 @@ import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetB
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
-import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
-    DefaultSequencesEmitter}
+import viper.silicon.supporters._
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -305,6 +304,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
      *    the hierarchy should be changed s.t. it doesn't has that field any
      *    more.
      */
+    VILogHelper.setLogFor(program)
 
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()

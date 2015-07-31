@@ -22,8 +22,12 @@ case class DefaultContext(program: ast.Program,
 
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
-                          possibleTriggers: Map[ast.Exp, Term] = Map())
-    extends Context[DefaultContext] {
+                          possibleTriggers: Map[ast.Exp, Term] = Map(),
+
+                          partiallyVerifiedIf : Option[Term] = None,
+                          pviRep : String = "<none>",
+                          termToAssert : Option[ast.Exp] = None
+                           ) extends Context[DefaultContext] {
 
   def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)
 
@@ -52,13 +56,18 @@ case class DefaultContext(program: ast.Program,
    */
 
   def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1, retrying1,
-                        snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1) =>
+    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
+                        retrying1,
+                        snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
+                        partiallyVerified1,pviR1, termToAssert1
+    ) =>
 
       other match {
         case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`,
                             retrying2,
-                            snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2) =>
+                            snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
+                            partiallyVerified2, pviR2, termToAssert2
+        ) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -66,7 +75,11 @@ case class DefaultContext(program: ast.Program,
 
           copy(retrying = retrying1 || retrying2,
                snapshotRecorder = snapshotRecorder3,
-               possibleTriggers = possibleTriggers3)
+               possibleTriggers = possibleTriggers3,
+               partiallyVerifiedIf = None,
+               pviRep = "<none>",
+               termToAssert = None
+          )
 
         case _ =>
           sys.error("Unexpected mismatch between contexts")

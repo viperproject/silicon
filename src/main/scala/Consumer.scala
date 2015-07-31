@@ -10,7 +10,7 @@ package silicon
 import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{NegativePermission, AssertionFalse}
+import viper.silver.verifier.reasons._
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -18,6 +18,7 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter}
+import viper.silver.ast.VerifiedIf
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -36,18 +37,46 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   protected val bookkeeper: Bookkeeper
   protected val config: Config
 
+  private var currentVI = None :Option[Term]
+  private var currentRep = "<none>"
+
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
    * chunks as they existed when the consume took place. More specifically,
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
+
   def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
-             : VerificationResult =
+  : VerificationResult = {
 
-    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>
-      Q(σ \ h1, t, dcs, c1))
+    val lastVI = currentVI
+    val lastRep = currentRep
+
+    φ.attributes.collectFirst { case v: VerifiedIf => v } match {
+      case None =>
+        consume2(σ, p, φ, pve, c)(Q)
+      case Some(VerifiedIf(cond)) =>
+        val aPVE = AttributeError(φ)
+        eval(σ, cond, aPVE, c)((t, c1) => {
+          val newVI = Some(t)
+          currentVI = newVI
+          currentRep = cond.toString()
+          consume2(σ, p, φ, pve, c.copy(partiallyVerifiedIf=newVI,pviRep = currentRep))((σ1, t1, dcs1, c1) =>{
+            currentVI = lastVI
+            Q(σ1, t1, dcs1, c1.copy(partiallyVerifiedIf = lastVI,pviRep = lastRep))
+          })
+        })
+    }
+  }
+
+  private def consume2(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+             (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
+             : VerificationResult = {
+
+    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) => Q(σ \ h1, t, dcs, c1))
+  }
 
   def consumes(σ: S,
                p: Term,
@@ -55,9 +84,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
-              : VerificationResult =
+              : VerificationResult ={
 
-    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)(Q)
+    val lastVI = currentVI
+    val lastRep = currentRep
+    currentVI = c.partiallyVerifiedIf
+    currentRep = c.pviRep
+
+    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((s1,t, dcs,c1) => {
+      currentVI = lastVI
+      currentRep = lastRep
+      Q(s1,t,dcs,c1.copy(partiallyVerifiedIf = lastVI,pviRep = lastRep))
+    })
+  }
+
 
   private def consumes(σ: S,
                        h: H,
@@ -67,10 +107,55 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        c: C)
                        (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
                        : VerificationResult =
+    if (φs.isEmpty)
+      Q(σ \ h, Unit, Nil, c)
+    else {
+      val φ = φs.head
+
+      val lastVI = currentVI
+      val lastRep = currentRep
+
+      φ.attributes.collectFirst { case v: VerifiedIf => v } match {
+        case None =>
+          consumes2(σ, h, p, φs, pvef, c)(Q)
+        case Some(VerifiedIf(cond)) =>
+          val aPVE = AttributeError(φ)
+          eval(σ, cond, aPVE, c)((t, c1) => {
+            val newVI = Some(t)
+            val newRep = cond.toString()
+            currentVI = newVI
+            currentRep = newRep
+            if (φ.tail.isEmpty)
+              consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf=newVI,pviRep = cond.toString()))((h1, s1, dcs1, c1) =>{
+                currentVI = lastVI
+                currentRep = lastRep
+                Q(σ \ h1, s1, dcs1, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf, pviRep = c.pviRep))
+              })
+            else
+              consume(σ, h, p, φ, pvef(φ), c.copy(partiallyVerifiedIf = newVI,pviRep = newRep))((h1, s1, dcs1, c1) => {
+                consumes(σ, h1, p, φs.tail, pvef, c1.copy(partiallyVerifiedIf = newVI, pviRep = newRep))((h2, s2, dcs2, c2) =>
+                  Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2))
+              })
+
+          })
+      }
+    }
+
+  private def consumes2(σ: S,
+                       h: H,
+                       p: Term,
+                       φs: Seq[ast.Exp],
+                       pvef: ast.Exp => PartialVerificationError,
+                       c: C)
+                      (Q: (S, Term, List[DirectChunk], C) => VerificationResult)
+  : VerificationResult = {
 
     /* Note: See the code comment about produce vs. produces in
-     * DefaultProducer.produces. The same applies to consume vs. consumes.
-     */
+   * DefaultProducer.produces. The same applies to consume vs. consumes.
+   */
+
+    val VI = c.partiallyVerifiedIf
+    val viRep = c.pviRep
 
     if (φs.isEmpty)
       Q(σ \ h, Unit, Nil, c)
@@ -82,9 +167,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           Q(σ \ h1, s1, dcs1, c1))
       else
         consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
-          consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
-            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
+          consumes(σ, h1, p, φs.tail, pvef, c1.copy(partiallyVerifiedIf = VI,pviRep = viRep))((h2, s2, dcs2, c2) => {
+            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)
+          }))
     }
+  }
+
+
 
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
@@ -95,11 +184,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug(stateFormatter.format(σ))
       logger.debug("h = " + stateFormatter.format(h))
     }
-
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure || config.handlePureConjunctsIndividually() =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-          consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
+          consume(σ, h1, p, a2, pve, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))((h2, s2, dcs2, c2) => {
             Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
@@ -111,17 +199,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c,
-            (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
-            (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
+            (c2: C) => consume(σ, h, p, a1, pve, c2.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))(Q),
+            (c2: C) => consume(σ, h, p, a2, pve, c2.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))(Q)))
 
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
-          consume(σ \+ γ1, h, p, body, pve, c1)(Q))
+          consume(σ \+ γ1, h, p, body, pve, c1.copy(partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep))(Q))
 
       case ast.AccessPredicate(locacc, perm) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σ, perms.IsNonNegative(tPerm)){
+            decider.assert2(σ, perms.IsNonNegative(tPerm)){
               case true =>
                 chunkSupporter.consume(σ, h, id, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
@@ -137,7 +225,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _ =>
         decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
-            decider.assert(σ1, t) {
+            decider.assert(σ1, t,c2.copy(termToAssert = Some(φ),partiallyVerifiedIf = c.partiallyVerifiedIf,pviRep = c.pviRep)) {
               case true =>
                 assume(t)
                 QS((h, Unit, Nil), c2)

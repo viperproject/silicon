@@ -375,7 +375,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
           evals(σ, eArgs, pve, c0)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)) {
+              decider.assert2(σ, IsNonNegative(tPerm)) {
               case true =>
                   join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
                       /* [2014-12-10 Malte] The commented code should replace the code following
@@ -510,7 +510,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           if (assertRcvrNonNull)
-            decider.assert(σ, tRcvr !== Null()){
+            decider.assert(σ, tRcvr !== Null(),c.copy(termToAssert = Some(ast.NeCmp(eRcvr,ast.NullLit()())()))){
               case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
               case false => Failure[ST, H, S](pve dueTo ReceiverNull(locacc))}
           else
@@ -546,7 +546,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                              (Q: (Term, C) => VerificationResult)
                              : VerificationResult = {
 
-    decider.assert(σ, tDivisor !== tZero){
+    decider.assert2(σ, tDivisor !== tZero){
       case true => Q(t, c)
       case false => Failure[ST, H, S](pve dueTo DivisionByZero(eDivisor))
     }
