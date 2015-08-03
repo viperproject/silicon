@@ -19,6 +19,7 @@ package object utils {
     /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
      *       then we should also establish that !(x in xs).
      */
+
     val ts = (
       /* Refs pointed to by local variables */
          σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
@@ -79,7 +80,7 @@ package object utils {
          */
 
         val occurringQuantifiedVariables = qvars(q.body)
-        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains)
+        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains).distinct
 
         if (varsToBind.isEmpty)
           auxiliaryTerms += q
@@ -91,7 +92,7 @@ package object utils {
           auxiliaryTerms += Quantification(quantifier, varsToBind, q, Nil).autoTrigger
 
       case t =>
-        val occurringQuantifiedVariables = qvars(t)
+        val occurringQuantifiedVariables = qvars(t).distinct
 
         if (occurringQuantifiedVariables.isEmpty)
           auxiliaryTerms += t
