@@ -12,7 +12,8 @@ import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.ast.utility.Functions
 import silver.components.StatefulComponent
-import silver.verifier.errors.{Internal, PostconditionViolated, FunctionNotWellformed}
+import silver.verifier.errors.{ContractNotWellformed, Internal, PostconditionViolated, FunctionNotWellformed}
+import silver.verifier.VerificationError
 import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Evaluator}
 import interfaces.decider.Decider
 import interfaces.state.{State, StateFactory, PathConditions, Heap, Store, Mergeable}
@@ -259,7 +260,10 @@ trait FunctionSupporter[ST <: Store[ST],
 
       val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
 
-      functionData.keys.flatMap(function => handleFunction(function, c)).toList
+      // FIXME: A workaround for Silver issue #94.
+      // toList must be before flatMap. Otherwise Set will be used internally and some
+      // error messages will be lost.
+      functionData.keys.toList.flatMap(function => handleFunction(function, c))
     }
 
     private def analyze(program: ast.Program) {
@@ -325,13 +329,34 @@ trait FunctionSupporter[ST <: Store[ST],
        */
       var recorders = List[SnapshotRecorder]()
 
-      val result =
+      val originalResult: VerificationResult =
         inScope {
-//          produces(σ, data.snapshot, FullPerm(), function.pres, _ => functionMalformed, c)((σ1, c1) =>
           produce(σ, sort => `?s`.convert(sort), FullPerm(), pres, functionMalformed, c)((σ1, c1) =>
             evals(σ1, function.posts, functionMalformed, c1)((tPosts, c2) => {
               recorders ::= c2.snapshotRecorder.get
               Success()}))}
+      // FIXME (workaround for Silicon issue 161): This modification of result is needed because evals
+      // does not allow creating errors for specific expressions.
+      val result = originalResult match {
+        case Failure(message) =>
+          message match {
+            case FunctionNotWellformed(f, r) =>
+              val node: ast.Exp = r.offendingNode.asInstanceOf[ast.Exp]
+              var offendingNode: ast.Exp = node
+              (function.pres ++ function.posts).foreach((pre: ast.Node) => {
+                pre.find(_ == node) match {
+                  case Some(n) =>
+                    offendingNode = pre.asInstanceOf[ast.Exp]
+                  case _ =>
+                }
+              })
+              val newMessage: VerificationError = ContractNotWellformed(offendingNode, r)
+              Failure(newMessage)
+            case _ =>
+              Failure(message)
+          }
+        case e => e
+      }
 
       if (recorders.nonEmpty) {
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
