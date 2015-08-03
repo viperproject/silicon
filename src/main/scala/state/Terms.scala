@@ -413,7 +413,9 @@ object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
     apply(q, vars, tBody, triggers, "")
 
-  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) = {
+    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
+
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
@@ -422,6 +424,7 @@ object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
 //  }
+  }
 
   def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers, q.name))
 }

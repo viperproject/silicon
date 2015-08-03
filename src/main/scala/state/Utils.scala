@@ -80,7 +80,7 @@ package object utils {
          */
 
         val occurringQuantifiedVariables = qvars(q.body)
-        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains)
+        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains).distinct
 
         if (varsToBind.isEmpty)
           auxiliaryTerms += q
@@ -92,7 +92,7 @@ package object utils {
           auxiliaryTerms += Quantification(quantifier, varsToBind, q, Nil).autoTrigger
 
       case t =>
-        val occurringQuantifiedVariables = qvars(t)
+        val occurringQuantifiedVariables = qvars(t).distinct
 
         if (occurringQuantifiedVariables.isEmpty)
           auxiliaryTerms += t
