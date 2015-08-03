@@ -584,7 +584,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  /* NOTE: You most likely want to call z3LogFile instead of reading inputFile */
   var inputFile: Option[Path] = None
 
   private lazy val defaultZ3LogFile = Paths.get(tempDirectory(), defaultRawZ3LogFile)
@@ -690,7 +689,7 @@ object Config {
 }
 
 class SiliconFrontend extends SilFrontend {
-  private var siliconInstance: Silicon = _
+  protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq("args" -> fullCmd))
@@ -710,9 +709,12 @@ object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
     try {
       execute(args)
+        /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
     } catch {
       case ex: org.rogach.scallop.exceptions.ScallopResult =>
         /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
+    } finally {
+      siliconInstance.stop()
     }
 
     sys.exit()

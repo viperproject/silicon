@@ -8,11 +8,13 @@ package viper
 package silicon
 package decider
 
+import com.weiglewilczek.slf4s.Logging
 import org.kiama.output.PrettyPrinter
 import interfaces.decider.TermConverter
 import state.terms._
+import reporting.Bookkeeper
 
-class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, String, String] {
+class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with TermConverter[String, String, String] with Logging {
   override val defaultIndent = 2
   override val defaultWidth = 80
 
@@ -112,6 +114,18 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
       val docVars = ssep(vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort))), space)
       val docBody = render(body)
       val docQuant = render(quant)
+
+      triggers.foreach(tr => tr.p.foreach{t =>
+        val fts = t.deepCollect{case s: ForbiddenInTrigger => s}
+        if (fts.nonEmpty) {
+          logger.warn(s"Trigget set $tr contains invalid terms")
+          fts.foreach(t => logger.warn(s"  $t"))
+
+          val triggerLog = bookkeeper.logfiles("invalid-triggers")
+          triggerLog.println(s"Trigget set $tr contains invalid terms")
+          fts.foreach(t => triggerLog.println(s"  $t"))
+        }
+      })
 
       val docTriggers =
         ssep(triggers.map(trigger => ssep(trigger.p map render, space))
