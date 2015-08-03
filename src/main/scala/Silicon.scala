@@ -396,8 +396,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   /* Argument converter */
 
   private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
-    val stdioRegex = """(stdio)""".r
-    val fileRegex = """(file)=(.*)""".r
+    val stdioRegex = """(?i)(stdio)""".r
+    val fileRegex = """(?i)(file)=(.*)""".r
 
     def parse(s: List[(String, List[String])]) = s match {
       case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
@@ -498,21 +498,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
-    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
-             + "Caching results in incompletenesses, but is usually faster."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
-    descr = (  "Disable caching of snapshot symbols. "
-             + "Caching reduces the number of symbols the prover has to work with."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
+//  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
+//    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
+//             + "Caching results in incompletenesses, but is usually faster."),
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
+//
+//  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
+//    descr = (  "Disable caching of snapshot symbols. "
+//             + "Caching reduces the number of symbols the prover has to work with."),
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
 
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
@@ -581,7 +581,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  /* NOTE: You most likely want to call z3LogFile instead of reading inputFile */
   var inputFile: Option[Path] = None
 
   private lazy val defaultZ3LogFile = Paths.get(tempDirectory(), defaultRawZ3LogFile)
@@ -677,7 +676,7 @@ object Config {
 }
 
 class SiliconFrontend extends SilFrontend {
-  private var siliconInstance: Silicon = _
+  protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq("args" -> fullCmd))
@@ -697,9 +696,12 @@ object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
     try {
       execute(args)
+        /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
     } catch {
       case ex: org.rogach.scallop.exceptions.ScallopResult =>
         /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
+    } finally {
+      siliconInstance.stop()
     }
 
     sys.exit()

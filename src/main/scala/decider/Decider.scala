@@ -321,7 +321,7 @@ class DefaultDecider[ST <: Store[ST],
       logSink.println(t)
 
 //    val startTime = System.currentTimeMillis()
-    val result = prover.assert(t)
+    val result = prover.assert(t, timeout)
 //    val endTime = System.currentTimeMillis()
 //    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
 

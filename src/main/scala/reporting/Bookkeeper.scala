@@ -8,18 +8,20 @@ package viper
 package silicon
 package reporting
 
-/* TODO: Move output formatting (of Syxc' and Z3's statistics) to its own class. */
+/* TODO: Move output formatting (of Silicon's and Z3's statistics) to its own class. */
 
 /* TODO: Improve creation of output strings:
  *         (- Not having to list the fields in two string templates)
  *         - Not having to add a newly added field to the template
  */
 
-import java.io.{PrintWriter, File}
+import java.io.File
 import java.text.SimpleDateFormat
 import silver.components.StatefulComponent
 
 class Bookkeeper(config: Config) extends StatefulComponent {
+  private var lastSeenSource: Option[String] = None
+
   var branches: Long = 0
   var heapMergeIterations: Long = 0
   var objectDistinctnessComputations: Long = 0
@@ -34,12 +36,15 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   var proverStatistics = Map[String, String]()
   var appliedHeuristicReactions: Long = 0
 
-  var logfiles: scala.collection.immutable.Map[String, PrintWriter] =
-    scala.collection.immutable.Map[String, PrintWriter]().withDefault(name => {
+  /* TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided */
+  var logfiles: scala.collection.immutable.Map[String, MultiRunLogger] =
+    scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
       val writer = silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
-      logfiles += (name -> writer)
+      val logger = new MultiRunLogger(writer, () => config.inputFile.map(_.toString))
 
-      writer
+      logfiles += (name -> logger)
+
+      logger
     })
 
   def start() { /* Nothing to do here */ }
@@ -63,6 +68,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
      * across multiple runs of Silicon. This is not essential, though, and only
      * a design decision.
      */
+    logfiles.values foreach (_.flush())
   }
 
   def stop() {
@@ -133,7 +139,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       |  "silicon_assumptionCounter": %d,
       |  "silicon_assertionCounter": %d,
       |  "silicon_freshSymbols": %d,
-      |  "silicon_appliedHeuristicReactions": %d""" + (if (proverStatistics.size == 0) "\n" else ",\n")
+      |  "silicon_appliedHeuristicReactions": %d""" + (if (proverStatistics.isEmpty) "\n" else ",\n")
     + placeholderLines + "\n}").trim.stripMargin
   }
 }

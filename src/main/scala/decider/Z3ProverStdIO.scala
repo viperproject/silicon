@@ -19,7 +19,7 @@ import silicon.utils.Counter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with Logging {
-  val termConverter = new TermToSMTLib2Converter()
+  val termConverter = new TermToSMTLib2Converter(bookkeeper)
   import termConverter._
 
   private var pushPopScopeDepth = 0
