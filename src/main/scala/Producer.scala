@@ -152,37 +152,40 @@ trait DefaultProducer[ST <: Store[ST],
             (c2: C) => Q(σ.h, c2)))*/
         val impLog = new GlobalBranchRecord(imp, σ, c, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-        var cIdentifier = 0
+        var cIdentifier1 = 0
+        var cIdentifier2 = 0
         eval(σ, e0, pve, c)((t0, c1) => {
           impLog.finish_cond()
           val branch_res = branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a0, pve, c2)((h_a1, c_a1) => {
-              cIdentifier = SymbExLogger.currentLog().insert(new CommentRecord("HACK", null, null))
+              //cIdentifier1 = SymbExLogger.currentLog().insert(new CommentRecord("HACK1", null, null))
               val res1 = Q(h_a1, c_a1)
               impLog.finish_thnSubs()
               res1}),
             (c2: C) => {
+              //cIdentifier2 = SymbExLogger.currentLog().insert(new CommentRecord("HACK2", null, null))
               val res2 = Q(σ.h, c2)
               impLog.finish_elsSubs()
               res2})
-          SymbExLogger.currentLog().collapse(null, cIdentifier)
+          //SymbExLogger.currentLog().collapse(null, cIdentifier1)
+          //SymbExLogger.currentLog().collapse(null, cIdentifier2)
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        val ceLog = new GlobalBranchRecord(ite, σ, c, "produce")
-        val sepIdentifier = SymbExLogger.currentLog().insert(ceLog)
+        val gbLog = new GlobalBranchRecord(ite, σ, c, "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
 
         eval(σ, e0, pve, c)((t0, c1) => {
-          ceLog.finish_cond()
+          gbLog.finish_cond()
           val branch_res = branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a1, pve, c2)((h_a1, c_a1) => {
               val res1 = Q(h_a1, c_a1)
-              ceLog.finish_thnSubs()
+              gbLog.finish_thnSubs()
               res1}),
             (c2: C) => produce2(σ, sf, p, a2, pve, c2)((h_a2, c_a2) => {
               val res2 = Q(h_a2, c_a2)
-              ceLog.finish_elsSubs()
+              gbLog.finish_elsSubs()
               res2}))
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
