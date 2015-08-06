@@ -104,6 +104,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                               (decider: Decider[ST, H, PC, S, DefaultContext],
                                symbolConverter: SymbolConvert,
                                stateFactory: StateFactory[ST, H, S],
+                               axiomRewriter: TriggerRewriter,
                                config: Config,
                                bookkeeper: Bookkeeper)
 
@@ -121,6 +122,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   QuantifiedChunkSupporter.bookkeeper = bookkeeper /* TODO: Remove */
   QuantifiedChunkSupporter.symbolConverter = symbolConverter /* TODO: Remove */
+  QuantifiedChunkSupporter.axiomRewriter = axiomRewriter /* TODO: Remove */
 
   /* Chunk creation */
 
@@ -700,6 +702,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 }
 
 object QuantifiedChunkSupporter {
+  var axiomRewriter: TriggerRewriter = null /* TODO: Implement properly */
+
   case class InverseFunction(symbol: Var, function: Term => Term, definitionalAxioms: Seq[Term]) {
     def apply(t: Term) = function(t)
   }
@@ -794,8 +798,25 @@ object QuantifiedChunkSupporter {
       //        Iff(Domain(field.name,fvf) === SingletonSet(receiver), condition) /* TODO: One test case fails. Find out, why. */
       else {
         val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
+        val forall = Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain), s"qp.$fvf-dom")
 
-        Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain), s"qp.$fvf-dom")
+        val ddLog = bookkeeper.logfiles("domain-definition-foralls")
+        ddLog.println(s"\nInitial: $forall")
+        ddLog.println(s"  name: ${forall.name}")
+        ddLog.println(s"  triggers: ${forall.triggers}")
+
+        val finalForall = axiomRewriter.rewrite(forall) match {
+          case Some(rewrittenForall) => rewrittenForall
+          case None =>
+            ddLog.println("Failed to rewrite the axiom")
+            forall
+        }
+
+        ddLog.println(s"Final: $finalForall")
+        ddLog.println(s"  name: ${finalForall.name}")
+        ddLog.println(s"  triggers: ${finalForall.triggers}")
+
+        finalForall
       }
     }
 

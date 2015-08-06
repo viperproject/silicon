@@ -23,7 +23,7 @@ import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerifi
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import state.terms.FullPerm
+import state.terms.{TriggerRewriter, FullPerm}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
 import supporters.{DefaultFieldValueFunctionsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator,
@@ -188,8 +188,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val dlb = FullPerm()
 
-    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-    val quantifiedChunkSupporter = new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, config, bookkeeper)
+    val heapCompressor = new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val axiomRewriter = new TriggerRewriter(decider.fresh, bookkeeper.logfiles("axiomRewriter"))
+
+    val quantifiedChunkSupporter =
+      new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, axiomRewriter, config,
+                                                 bookkeeper)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper, quantifiedChunkSupporter)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */

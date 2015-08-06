@@ -373,17 +373,6 @@ object Exists extends Quantifier {
   override val toString = "QE"
 }
 
-class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
-  override val toString = s"{${p.mkString(",")}}"
-}
-
-object Trigger extends (Seq[Term] => Trigger) {
-  def apply(t: Term) = new Trigger(t :: Nil)
-  def apply(ts: Seq[Term]) = new Trigger(ts)
-
-  def unapply(trigger: Trigger) = Some(trigger.p)
-}
-
 class Quantification private[terms] (val q: Quantifier,
                                      val vars: Seq[Var],
                                      val body: Term,
