@@ -115,17 +115,29 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       val docBody = render(body)
       val docQuant = render(quant)
 
-      triggers.foreach(tr => tr.p.foreach{t =>
-        val fts = t.deepCollect{case s: ForbiddenInTrigger => s}
-        if (fts.nonEmpty) {
-          logger.warn(s"Trigget set $tr contains invalid terms")
-          fts.foreach(t => logger.warn(s"  $t"))
+      if (triggers.isEmpty) {
+        val triggerLog = bookkeeper.logfiles("invalid-triggers")
+        triggerLog.println(s"\n--- --- [SMTLib2Converter] --- ---\n$term\n")
+        triggerLog.println("The quantifier contains no triggers!")
+      } else {
+        var first = true
 
-          val triggerLog = bookkeeper.logfiles("invalid-triggers")
-          triggerLog.println(s"Trigget set $tr contains invalid terms")
-          fts.foreach(t => triggerLog.println(s"  $t"))
-        }
-      })
+        triggers.foreach(tr => tr.p.foreach { t =>
+          val fts = t.deepCollect { case s: ForbiddenInTrigger => s }
+          if (fts.nonEmpty) {
+            logger.warn(s"Trigger set $tr contains invalid terms")
+            fts.foreach(ft => logger.warn(s"  $ft"))
+
+            val triggerLog = bookkeeper.logfiles("invalid-triggers")
+            if (first) {
+              triggerLog.println(s"\n--- --- --- --- --- ---\n$term\n")
+              first = false
+            }
+            triggerLog.println(s"Triggers contain invalid terms")
+            fts.foreach(ft => triggerLog.println(s"  $ft"))
+          }
+        })
+      }
 
       val docTriggers =
         ssep(triggers.map(trigger => ssep(trigger.p map render, space))
