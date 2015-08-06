@@ -168,6 +168,8 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
     this.replace(toMap(originals.zip(replacements)))
   }
+
+  def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 }
 
 trait UnaryOp[E] {
@@ -405,6 +407,15 @@ class Quantification private[terms] (val q: Quantifier,
   }
 
   val equalityDefiningMembers = q :: vars :: body :: triggers :: Nil
+
+  def copy(q: Quantifier = q,
+           vars: Seq[Var] = vars,
+           body: Term = body,
+           triggers: Seq[Trigger] = triggers,
+           name: String = name) = {
+
+    Quantification(q, vars, body, triggers, name)
+  }
 
   override val toString = s"$q ${vars.mkString(",")} :: $body"
 }
