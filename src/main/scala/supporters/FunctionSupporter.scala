@@ -327,12 +327,10 @@ trait FunctionSupporter[ST <: Store[ST],
       decider.prover.declare(VarDecl(`?s`))
       declareFunctions()
 
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
-
       // FIXME: A workaround for Silver issue #94.
       // toList must be before flatMap. Otherwise Set will be used internally and some
       // error messages will be lost.
-      functionData.keys.toList.flatMap(function => handleFunction(function, c))
+      functionData.keys.toList.flatMap(function => handleFunction(function))
     }
 
     private def analyze(program: ast.Program) {
