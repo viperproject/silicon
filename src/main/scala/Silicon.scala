@@ -317,8 +317,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
-    val optimisedProgram = utils.ast.rewriteRangeContains(program)
-    val results = verifier.verify(optimisedProgram)
+    val results = verifier.verify(program)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
