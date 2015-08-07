@@ -615,18 +615,25 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Forall(
       vx :: vy :: Nil,
       implies,
-      receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil,
+      Nil: List[Trigger]
+      /*receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil*/,
       s"qp.inj${qidCounter.next()}")
   }
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term) = {
-    Forall(
-      qvar,
-      Implies(
-        And(cond, PermLess(NoPerm(), perms)),
-        rcvr !== Null()),
-      rcvr :: cond :: perms :: Nil,
-      s"qp.null${qidCounter.next()}")
+    val axRaw =
+      Forall(
+        qvar,
+        Implies(
+          And(cond, PermLess(NoPerm(), perms)),
+          rcvr !== Null()),
+        Nil: List[Trigger],
+        s"qp.null${qidCounter.next()}"
+      ).autoTrigger
+
+    val ax = axiomRewriter.rewrite(axRaw).getOrElse(axRaw)
+
+    ax
   }
 
   /** Creates a fresh inverse function `inv` and returns the function as well as the
@@ -660,8 +667,23 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val ofInv = of.replace(qvar, inverseFunc(`?r`))
     val condInv = condition.replace(qvar, inverseFunc(`?r`))
 
-    val ax1 = Forall(qvar, Implies(condition, invOf === qvar), of :: Nil, s"qp.${funcSymbol.id}-exp")
-    val ax2 = Forall(`?r`, Implies(condInv, ofInv === `?r`), inverseFunc(`?r`) :: Nil, s"qp.${funcSymbol.id}-imp")
+    val ax1Raw =
+      Forall(
+        qvar,
+        Implies(condition, invOf === qvar),
+        of :: And(condition, invOf) :: Nil,
+        s"qp.${funcSymbol.id}-exp")
+
+    val ax2Raw =
+      Forall(
+        `?r`,
+        Implies(condInv, ofInv === `?r`),
+        Trigger(inverseFunc(`?r`)),
+        s"qp.${funcSymbol.id}-imp")
+
+
+    val ax1 = axiomRewriter.rewrite(ax1Raw).getOrElse(ax1Raw)
+    val ax2 = axiomRewriter.rewrite(ax2Raw).getOrElse(ax2Raw)
 
     InverseFunction(funcSymbol, inverseFunc, ax1 :: ax2 :: Nil)
   }
