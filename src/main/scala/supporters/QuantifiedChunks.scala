@@ -799,22 +799,7 @@ object QuantifiedChunkSupporter {
       else {
         val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
         val forall = Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain), s"qp.$fvf-dom")
-
-        val ddLog = bookkeeper.logfiles("domain-definition-foralls")
-        ddLog.println(s"\nInitial: $forall")
-        ddLog.println(s"  name: ${forall.name}")
-        ddLog.println(s"  triggers: ${forall.triggers}")
-
-        val finalForall = axiomRewriter.rewrite(forall) match {
-          case Some(rewrittenForall) => rewrittenForall
-          case None =>
-            ddLog.println("Failed to rewrite the axiom")
-            forall
-        }
-
-        ddLog.println(s"Final: $finalForall")
-        ddLog.println(s"  name: ${finalForall.name}")
-        ddLog.println(s"  triggers: ${finalForall.triggers}")
+        val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
 
         finalForall
       }
