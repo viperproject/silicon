@@ -116,6 +116,40 @@ package object utils {
     auxiliaryTerms
   }
 
+  def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
+    var problems: List[String] = Nil
+
+    quantification.q match {
+      case Exists =>
+        /* No checks yet */
+      case Forall =>
+        /* 1. Check that triggers are present */
+        if (quantification.triggers.isEmpty)
+          problems ::= s"No triggers given"
+
+        /* 2. Check that each trigger set mentions all quantified variables */
+        quantification.triggers.foreach(trigger => {
+          val vars =
+            trigger.p.foldLeft(Set[Var]()){case (varsAcc, term) =>
+              varsAcc ++ term.deepCollect{case v: Var => v}}
+
+          if (!quantification.vars.forall(vars.contains))
+            problems ::= s"Trigger set $trigger does not contain all quantified variables"
+        })
+
+        /* 3. Check that all triggers are valid */
+        quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
+          if (!term.isInstanceOf[PossibleTrigger])
+            problems ::= s"Trigger $term is not a possible trigger"
+
+          term.deepCollect{case s: ForbiddenInTrigger => s}.foreach(term =>
+            problems ::= s"Term $term may not occur in triggers")
+        })
+    }
+
+    problems.reverse
+  }
+
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
