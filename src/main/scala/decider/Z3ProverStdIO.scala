@@ -142,7 +142,25 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def assume(term: Term) = assume(convert(term))
+  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
+
+  def assume(term: Term) = {
+    /* Detect certain simple problems with quantifiers.
+     * Note that the current checks don't take in account whether or not a
+     * quantification occurs in positive or negative position.
+     */
+    term.deepCollect{case q: Quantification => q}.foreach(q => {
+      val problems = state.utils.detectQuantificationProblems(q)
+
+      if (problems.nonEmpty) {
+        quantificationLogger.println(s"\n\n${q.toString(true)}")
+        quantificationLogger.println("Problems:")
+        problems.foreach(p => quantificationLogger.println(s"  $p"))
+      }
+    })
+
+    assume(convert(term))
+  }
 
   def assume(term: String) {
     bookkeeper.assumptionCounter += 1

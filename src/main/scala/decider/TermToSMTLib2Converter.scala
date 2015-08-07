@@ -8,13 +8,12 @@ package viper
 package silicon
 package decider
 
-import com.weiglewilczek.slf4s.Logging
 import org.kiama.output.PrettyPrinter
 import interfaces.decider.TermConverter
 import state.terms._
 import reporting.Bookkeeper
 
-class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with TermConverter[String, String, String] with Logging {
+class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with TermConverter[String, String, String] {
   override val defaultIndent = 2
   override val defaultWidth = 80
 
@@ -115,30 +114,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       val docBody = render(body)
       val docQuant = render(quant)
 
-      if (triggers.isEmpty) {
-        val triggerLog = bookkeeper.logfiles("invalid-triggers")
-        triggerLog.println(s"\n--- --- [SMTLib2Converter] --- ---\n$term\n")
-        triggerLog.println("The quantifier contains no triggers!")
-      } else {
-        var first = true
-
-        triggers.foreach(tr => tr.p.foreach { t =>
-          val fts = t.deepCollect { case s: ForbiddenInTrigger => s }
-          if (fts.nonEmpty) {
-            logger.warn(s"Trigger set $tr contains invalid terms")
-            fts.foreach(ft => logger.warn(s"  $ft"))
-
-            val triggerLog = bookkeeper.logfiles("invalid-triggers")
-            if (first) {
-              triggerLog.println(s"\n--- --- --- --- --- ---\n$term\n")
-              first = false
-            }
-            triggerLog.println(s"Triggers contain invalid terms")
-            fts.foreach(ft => triggerLog.println(s"  $ft"))
-          }
-        })
-      }
-
       val docTriggers =
         ssep(triggers.map(trigger => ssep(trigger.p map render, space))
                      .map(d => ":pattern" <+> parens(d)),
@@ -207,15 +182,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case bop: SeqAt => renderBinaryOp("$Seq.index", bop)
     case bop: SeqTake => renderBinaryOp("$Seq.take", bop)
     case bop: SeqDrop => renderBinaryOp("$Seq.drop", bop)
-    case bop: SeqIn /*@ SeqIn(tSeq, tElem)*/ =>
-      /* This would rewrite SeqIn in triggers as well, resulting in illegal triggers */
-//      tSeq match {
-//        case SeqRanged(tMin, tMax) =>
-//          val inequalities = And(AtMost(tMin, tElem), Less(tElem, tMax))
-//          render(inequalities)
-//        case _ => renderBinaryOp("$Seq.contains", bop)
-//      }
-      renderBinaryOp("$Seq.contains", bop)
+    case bop: SeqIn => renderBinaryOp("$Seq.contains", bop)
     case SeqUpdate(t0, t1, t2) => renderNAryOp("$Seq.update", t0, t1, t2)
 
     /* Sets */
