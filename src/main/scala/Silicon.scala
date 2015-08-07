@@ -214,7 +214,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   def stop() {
-    verifier.stop()
+    if (verifier != null) verifier.stop()
   }
 
   /** Verifies a given SIL program and returns a sequence of verification errors.
