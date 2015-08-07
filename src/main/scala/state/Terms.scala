@@ -411,7 +411,14 @@ class Quantification private[terms] (val q: Quantifier,
     Quantification(q, vars, body, triggers, name)
   }
 
-  override val toString = s"$q ${vars.mkString(",")} :: $body"
+  lazy val stringRepresentation = s"$q ${vars.mkString(",")} :: $body"
+  lazy val stringRepresentationWithTriggers = s"$q ${vars.mkString(",")} :: ${triggers.mkString(",")} $body"
+
+  override lazy val toString = stringRepresentation
+
+  def toString(withTriggers: Boolean = false) =
+    if (withTriggers) stringRepresentationWithTriggers
+    else stringRepresentation
 }
 
 object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String) => Quantification) {
