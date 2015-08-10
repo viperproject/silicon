@@ -433,6 +433,25 @@ class JSTreeRenderer extends Renderer[String] {
         output = output + recordToJS(ce.thnExp) + ", \n"
         output = output + recordToJS(ce.elsExp) + "]}"
       }
+      case gb: GlobalBranchRecord => {
+        output = output + "{ name: \'"+gb.toString()+"\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "\n, children: [\n"
+        output = output + "{ name: \'Branch 1: " + "\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + ",\n children: [\n"
+        for (sub <- gb.thnSubs) {
+          output = output + recordToJS(sub) + ", \n"
+        }
+        output = output + "]},\n"
+        output = output + "{ name: \'Branch 2: " + "\', open: true, prestate: "
+        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + ",\n children: [\n"
+        for (sub <- gb.elsSubs) {
+          output = output + recordToJS(sub) + ", \n"}
+        output = output + "]}\n"
+        output = output + "]}"
+      }
       case mc: MethodCallRecord => {
         output = output + "{ name: \'"+mc.toString()+"\', open: true, prestate: "
         output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
