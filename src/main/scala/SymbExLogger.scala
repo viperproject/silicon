@@ -188,10 +188,24 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     }
   }
 
+  /**
+   * Quite a hack. Is used for impure Branching, where 'redundant' collapses in the continuation
+   * can mess up the logging-hierarchy. Idea: Just remove all identifiers from the collapse-Set, so
+   * collapse will NOT collapse records that were inserted outside of branching but collapsed inside
+   * a branch due to continuation. Currently, this is only used for impure Branching (CondExp/Implies
+   * in Producer/Consumer).
+   */
   def initializeBranching(): Unit = {
     sepSet = Set[Int]()
   }
 
+  /**
+   * Quite a hack, similar purpose as initializeBranching. Is used to make sure that an else-branch
+   * is logged correctly, which is sometimes not the case in branching when collapses from the continuation
+   * in the If-branch remove the branching-record itself from the stack. Currently only used for impure
+   * Branching (CondExp/Implies in Producer/Consumer).
+   * @param s Record that should record the else-branch.
+   */
   def prepareOtherBranch(s: SymbolicRecord): Unit = {
     stack = s::stack
   }
@@ -210,7 +224,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
         }
       case v: silver.ast.Implies =>
         s match {
-          case /*_: ConsumeRecord |*/ _: ProduceRecord => true
+          case _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
         }
 
