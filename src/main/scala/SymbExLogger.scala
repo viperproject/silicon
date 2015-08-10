@@ -188,6 +188,14 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     }
   }
 
+  def initializeBranching(): Unit = {
+    sepSet = Set[Int]()
+  }
+
+  def prepareOtherBranch(s: SymbolicRecord): Unit = {
+    stack = s::stack
+  }
+
   private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
     s.value match {
       case v: silver.ast.MethodCall =>
@@ -512,7 +520,7 @@ class SimpleTreeRenderer extends Renderer[String] {
         return str
       }
       case gb: GlobalBranchRecord => {
-        str = str + gb.environment + " Branch 1: " + gb.toSimpleString()+"\n"
+        str = str + "Branch 1:\n"
         for(sub <- gb.thnSubs){
           str = str + indent + toSimpleTree(sub, n+1)
         }
