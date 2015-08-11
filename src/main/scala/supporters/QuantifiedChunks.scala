@@ -461,19 +461,18 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       else {
         val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
 
-        if (constrainPermissions) {
-          val constrainPermissionQuantifier =
-            Forall(`?r`,
-                   Implies(ch.perm !== NoPerm(), PermLess(conditionalizedFractionWithoutExplicitQVar, ch.perm)),
-                   Nil: Seq[Trigger], s"qp.srp${qidCounter.next()}").autoTrigger
+        val (permissionConstraint, depletedCheck) =
+          createPermissionConstraintAndDepletedCheck(ch, qvars, conditionalizedFractionWithoutExplicitQVar,
+                                                     constrainPermissions, permsTaken)
 
+        if (constrainPermissions) {
           decider.prover.logComment(s"Constrain original permissions $fraction")
-          assume(constrainPermissionQuantifier)
+          assume(permissionConstraint)
 
           residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
         } else {
           decider.prover.logComment(s"Chunk depleted?")
-          val chunkDepleted = check(σ, Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger]), config.splitTimeout())
+          val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
 
           if (!chunkDepleted) residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
         }
@@ -485,13 +484,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         permsToTake = permsStillToTake.replace(`?r`, receiver)
 
         decider.prover.logComment(s"Enough permissions taken?")
-        //        success = check(σ, permsStillToTake.replace(`?r`, receiver) === NoPerm(), config.splitTimeout())
         success = check(σ, permsToTake === NoPerm(), config.splitTimeout())
       }
     }
 
     decider.prover.logComment("Final check that enough permissions have been taken")
-//    success = success || check(σ, permsToTake.replace(`?r`, receiver) === NoPerm())
     /* Setting a (short) timeout here will make it less likely that the verification suceeds */
     success = success || check(σ, permsToTake === NoPerm())
 
@@ -499,10 +496,103 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     val hResidue = H(residue ++ otherChunks)
 
-    val chunkSplittedOf =
+    val chunkSplitOf =
       QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithoutExplicitQVar, None, None, Nil)
 
-    (hResidue, chunkSplittedOf, fvfDef, success)
+    (hResidue, chunkSplitOf, fvfDef, success)
+  }
+
+  private def createPermissionConstraintAndDepletedCheck(ch: QuantifiedChunk,
+                                                         qvars: Seq[Var],
+                                                         conditionalizedFractionWithoutExplicitQVar: Term,
+                                                         constrainPermissions: Boolean,
+                                                         permsTaken: Term)
+                                                        : (Term, Term) = {
+
+    val result = eliminateImplicitQVarIfPossible(ch.perm, qvars)
+
+    val permissionConstraint =
+      if (constrainPermissions)
+        result match {
+          case None =>
+            Forall(`?r`,
+              Implies(
+                ch.perm !== NoPerm(),
+                PermLess(conditionalizedFractionWithoutExplicitQVar, ch.perm)),
+              Nil: Seq[Trigger], s"qp.srp${qidCounter.next()}").autoTrigger
+          case Some((perms, singleRcvr)) =>
+            Implies(
+              perms !== NoPerm(),
+              PermLess(conditionalizedFractionWithoutExplicitQVar.replace(`?r`, singleRcvr), perms))
+        }
+      else
+        True()
+
+    val depletedCheck = result match {
+      case None =>
+        Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger])
+      case Some((perms, singleRcvr)) =>
+        PermMinus(perms, permsTaken.replace(`?r`, singleRcvr)) === NoPerm()
+    }
+
+    (permissionConstraint, depletedCheck)
+  }
+
+  @inline
+  private def eliminateImplicitQVarIfPossible(perms: Term, qvars: Seq[Var]): Option[(Term, Term)] = {
+    /* TODO: This code could be improved significantly if we
+     *         - distinguished between quantified chunks for single and multiple locations
+     *         - separated the initial permission amount from the subtracted amount(s) in each chunk
+     */
+
+    /* This method essentially tries to detect if a quantified chunk provides
+     * permissions to a single location only, in which case there isn't a need
+     * to create, e.g. permission constraints or depleted checks that quantify
+     * over the implicit receiver (i.e. over r).
+     *
+     * With the current approach to handling quantified permissions, a
+     * quantified chunk that provides permissions to a single receiver only
+     * will have a permission term (chunk.perm) of the shape
+     *   (r == t ? p(r) : 0) - p_1(r) - ... - p_n(r)
+     * The conditional represents the initial permission amount that the chunk
+     * was initialised with, and the p_i(r) are amounts that have potentially
+     * been split of during the execution (by construction, it is ensured that
+     * the term is >= 0).
+     *
+     * Quantifying over r is not relevant for such terms, because the only
+     * meaningful choice of r is t. Hence, such terms are rewritten to
+     *   p(t) - p_1(t) - ... - p_n(t)
+     *
+     * I benchmarked the effects of this optimisation on top of Silicon-QP
+     * revision 0bc3d0d81890 (2015-08-11), and the runtime didn't change.
+     * However, in the case of constraining symbolic permissions, the
+     * optimisation will avoid assuming foralls for which no triggers can be
+     * found. These cases are rather rare (at the moment of writing, about 10
+     * for the whole test suite), but probably still worth avoiding.
+     */
+
+    var v: Term = `?r`
+
+    def eliminateImplicitQVarIfPossible(t: Term): Term = t.transform {
+      case Ite(Equals(`?r`, w), p1, NoPerm()) if !qvars.exists(w.contains) =>
+        v = w
+        p1.replace(`?r`, v)
+      case pm @ PermMinus(t1, t2) =>
+        /* By construction, the "subtraction tree" should be left-leaning,
+         * with the initial permission amount (the conditional) as its
+         * left-most term.
+         */
+        val s1 = eliminateImplicitQVarIfPossible(t1)
+        if (v == `?r`) pm
+        else PermMinus(s1, t2.replace(`?r`, v))
+      case other =>
+        other
+    }()
+
+    val result = eliminateImplicitQVarIfPossible(perms)
+
+    if (v == `?r`) None
+    else Some((result, v))
   }
 
   /* Misc */
