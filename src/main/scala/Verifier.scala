@@ -166,6 +166,7 @@ trait AbstractVerifier[ST <: Store[ST],
 
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
+    SymbExLogger.setConfig(config)
 
     val res = ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
     println("====== TRACE =======\n")

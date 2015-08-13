@@ -6,11 +6,7 @@ package viper
 package silicon
 
 import java.io.File
-import silver.ast
-import interfaces.state.factoryUtils.Ø
-import interfaces.state.{StateFactory, HeapFactory, Store}
-import viper.silicon.state.DefaultContext
-import viper.silver.ast.Node
+import state.{MapBackedStore, ListBackedHeap, DefaultState, DefaultContext}
 
 /*
  * Overall concept:
@@ -72,6 +68,9 @@ object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
   var memberList = List[SymbLog]()
 
+  /** Config of Silicon. Used by StateFormatters.**/
+  private var config: Config = null
+
   /** Add a new log for a method, function or predicate (member).
    *
    * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
@@ -91,6 +90,16 @@ object SymbExLogger {
    */
   def currentLog(): SymbLog = {
     memberList.last
+  }
+
+  /** Passes config from Silicon to SymbExLogger. **/
+  def setConfig(c: Config): Unit = {
+    config = c
+  }
+
+  /** Gives back config from Silicon **/
+  def getConfig(): Config = {
+    config
   }
 
   /**
@@ -402,6 +411,12 @@ class DotTreeRenderer extends Renderer[String] {
 }
 
 class JSTreeRenderer extends Renderer[String] {
+
+  val stateFormatter: DefaultStateFormatter[MapBackedStore,
+    ListBackedHeap, DefaultState[MapBackedStore, ListBackedHeap]]
+  = new DefaultStateFormatter[MapBackedStore, ListBackedHeap,
+    DefaultState[MapBackedStore, ListBackedHeap]](SymbExLogger.getConfig())
+
   def render(memberList: List[SymbLog]): String = {
     var str = "var executionTreeData = [\n"
     for(m <- memberList) {
@@ -426,14 +441,16 @@ class JSTreeRenderer extends Renderer[String] {
         output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + "{ name: \'if " +ite.thnCond.toSimpleString()+ "\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(ite.thnCond) + "\", heap: \"\", pcs: \"\"}"
         output = output + ",\n children: [\n"
         for (sub <- ite.thnSubs) {
           output = output + recordToJS(sub) + ", \n"
         }
         output = output + "]},\n"
         output = output + "{ name: \'else " +ite.elsCond.toSimpleString()+ "\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(ite.elsCond) + "\", heap: \"\", pcs: \"\"}"
         output = output + ",\n children: [\n"
         for (sub <- ite.elsSubs) {
           output = output + recordToJS(sub) + ", \n"}
@@ -442,14 +459,16 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case ce: CondExpRecord => {
         output = output + "{ name: \'"+ce.toString()+"\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(ce) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + recordToJS(ce.thnExp) + ", \n"
         output = output + recordToJS(ce.elsExp) + "]}"
       }
       case gb: GlobalBranchRecord => {
         output = output + "{ name: \'"+gb.toString()+"\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(gb) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + "{ name: \'Branch 1: " + "\', open: true, prestate: "
         output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
@@ -468,7 +487,8 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case mc: MethodCallRecord => {
         output = output + "{ name: \'"+mc.toString()+"\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(mc) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
 
         output = output + "{ name: \'parameters\', open: true, prestate: "
@@ -480,13 +500,15 @@ class JSTreeRenderer extends Renderer[String] {
         output = output + "]},"
 
         output = output + "{ name: \'precondition\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(mc.precondition) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + recordToJS(mc.precondition)
         output = output + "]},"
 
         output = output + "{ name: \'postcondition\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(mc.postcondition) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + recordToJS(mc.postcondition)
         output = output + "]}"
@@ -495,11 +517,13 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case cr: CommentRecord => {
         output = output + "{ name: \'"+cr.toString+"\', open: true, prestate: "
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}}"
         output = output + "{store: \"\", heap: \"\", pcs: \"\"}}"
       }
       case _ => {
         output = output + "{ name: \'" + s.toString() + "\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
+        output = output + "{store: \"" + printState(s) + "\", heap: \"\", pcs: \"\"}"
         if (!s.subs.isEmpty) {
           output = output + ",\n children: [\n"
           for (sub <- s.subs) {
@@ -511,6 +535,22 @@ class JSTreeRenderer extends Renderer[String] {
       }
     }
     return output
+  }
+
+  def printState(s: SymbolicRecord): String = {
+    var res = ""
+    if (s.state != null) {
+      res = stateFormatter.format(s.state.asInstanceOf[DefaultState[MapBackedStore, ListBackedHeap]])
+      var i=0
+      while(i < res.length()) {
+        if (res(i).equals('\n')) {
+          res = res.substring(0, i-1) + "\\n" + res.substring(i+1, res.length())
+          i=i+1
+        }
+        i = i+1
+      }
+    }
+    res
   }
 }
 
