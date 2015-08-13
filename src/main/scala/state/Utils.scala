@@ -19,6 +19,7 @@ package object utils {
     /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
      *       then we should also establish that !(x in xs).
      */
+
     val ts = (
       /* Refs pointed to by local variables */
          σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
@@ -79,7 +80,7 @@ package object utils {
          */
 
         val occurringQuantifiedVariables = qvars(q.body)
-        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains)
+        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains).distinct
 
         if (varsToBind.isEmpty)
           auxiliaryTerms += q
@@ -91,7 +92,7 @@ package object utils {
           auxiliaryTerms += Quantification(quantifier, varsToBind, q, Nil).autoTrigger
 
       case t =>
-        val occurringQuantifiedVariables = qvars(t)
+        val occurringQuantifiedVariables = qvars(t).distinct
 
         if (occurringQuantifiedVariables.isEmpty)
           auxiliaryTerms += t
@@ -113,6 +114,40 @@ package object utils {
     }
 
     auxiliaryTerms
+  }
+
+  def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
+    var problems: List[String] = Nil
+
+    quantification.q match {
+      case Exists =>
+        /* No checks yet */
+      case Forall =>
+        /* 1. Check that triggers are present */
+        if (quantification.triggers.isEmpty)
+          problems ::= s"No triggers given"
+
+        /* 2. Check that each trigger set mentions all quantified variables */
+        quantification.triggers.foreach(trigger => {
+          val vars =
+            trigger.p.foldLeft(Set[Var]()){case (varsAcc, term) =>
+              varsAcc ++ term.deepCollect{case v: Var => v}}
+
+          if (!quantification.vars.forall(vars.contains))
+            problems ::= s"Trigger set $trigger does not contain all quantified variables"
+        })
+
+        /* 3. Check that all triggers are valid */
+        quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
+          if (!term.isInstanceOf[PossibleTrigger])
+            problems ::= s"Trigger $term is not a possible trigger"
+
+          term.deepCollect{case s: ForbiddenInTrigger => s}.foreach(term =>
+            problems ::= s"Term $term may not occur in triggers")
+        })
+    }
+
+    problems.reverse
   }
 
   def subterms(t: Term): Seq[Term] = t match {

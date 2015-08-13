@@ -79,6 +79,7 @@ package object utils {
                     (e0: silver.ast.Exp, e1: silver.ast.Exp) => silver.ast.And(e0, e1)(e0.pos, e0.info),
                      silver.ast.TrueLit()(emptyPos))
 
+    /** Note: be aware of Silver issue #95!*/
     def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =
       program.transform(pre = {
         case e @ silver.ast.SeqContains(x, silver.ast.RangeSeq(a, b)) =>

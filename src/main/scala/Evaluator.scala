@@ -331,7 +331,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                         recordPossibleTriggers = true,
                         possibleTriggers = Map.empty)
 
-        decider.locally[(Set[Term], Term, C)](QB => {
+        decider.locally[(Set[Term], Quantification, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
@@ -605,9 +605,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
-    val (optCachedTriggerTerms, optRemainingTriggerExpressions) =
+    val (cachedTriggerTerms, remainingTriggerExpressions) =
       trigger.exps.map {
-        case ast.Old(e) => e
+        case ast.Old(e) => e /* Warning! For heap-dep. function applications, old(e) probably matters */
         case e => e
       }.map {
         case fapp: ast.FuncApp =>
@@ -621,18 +621,32 @@ trait DefaultEvaluator[ST <: Store[ST],
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
 
         case e => (None, Some(e))
-      }.unzip
+      }.unzip match {
+        case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
+          (optCachedTriggerTerms.flatten, optRemainingTriggerExpressions.flatten)
+      }
 
-    if (optRemainingTriggerExpressions.flatten.nonEmpty)
-      /* Reasons for why a trigger wasn't recorded while evaluating the body include:
-       *   - It did not occur in the body
-       *   - The evaluation of the body terminated early, for example, because the
-       *     LHS of an implication evaluated to false
-       */
-      logger.debug(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
+    /* Reasons for why a trigger wasn't recorded while evaluating the body include:
+     *   - It did not occur in the body
+     *   - The evaluation of the body terminated early, for example, because the
+     *     LHS of an implication evaluated to false
+     */
 
-    /* TODO: Translate remaining triggers - which is currently not directly possible.
-     *       For example, assume a conjunction f(x) && g(x) where f(x) is the
+    var optRemainingTriggerTerms: Option[Seq[Term]] = None
+    val πPre: Set[Term] = decider.π
+    var πAux: Set[Term] = Set()
+
+    /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
+     *       stop if evaluating one fails
+     */
+    val r =
+      evals(σ, remainingTriggerExpressions, pve, c)((remainingTriggerTerms, c1) => {
+        optRemainingTriggerTerms = Some(remainingTriggerTerms)
+        πAux = decider.π -- πPre
+        Success()})
+
+    /* TODO: Here is an example where evaluating remainingTriggerExpressions will
+     *       fail: Assume a conjunction f(x) && g(x) where f(x) is the
      *       precondition of g(x). This gives rise to the trigger {f(x), g(x)}.
      *       If the two trigger expressions are evaluated individually, evaluating
      *       the second will fail because its precondition doesn't hold.
@@ -641,9 +655,9 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       Evaluating the latter will currently fail when evaluating y.f because
      *       y on its own (i.e., without having assumed y in xs) might be null.
      *
-     *       What should probably be done is to merely translate (instead of
-     *       evaluate) triggers, where the difference is that translating does not
-     *       entail any checks such as checking for non-nullity.
+     *       What might be possible is to merely translate (instead of evaluate)
+     *       triggers, where the difference is that translating does not entail
+     *       any checks such as checking for non-nullity.
      *       In case of applications of heap. dep. functions this won't be
      *       straight-forward, because the resulting FApp-term expects a snapshot,
      *       which is computed by (temporarily) consuming the function's
@@ -653,9 +667,15 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       because some trigger sets might no longer cover all quantified
      *       variables.
      */
-//    evals(σ, optRemainingTriggerExpressions.flatten, pve, c)((ts, c1) =>
-//      Q(Trigger(ts ++ fappTriggers.flatten), c1))
-    Q(Trigger(optCachedTriggerTerms.flatten), c)
+
+    (r, optRemainingTriggerTerms) match {
+      case (Success(), Some(remainingTriggerTerms)) =>
+        assume(πAux)
+        Q(Trigger(cachedTriggerTerms ++ remainingTriggerTerms), c)
+      case _ =>
+        bookkeeper.logfiles("evalTrigger").println(s"Couldn't translate some of these triggers:\n  $remainingTriggerExpressions\nReason:\n  $r")
+        Q(Trigger(cachedTriggerTerms), c)
+    }
   }
 
   /* Evaluates `e0` to `t0`, assumes `t0Transformer(t0)`, and afterwards only

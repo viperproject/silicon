@@ -11,8 +11,9 @@ package decider
 import org.kiama.output.PrettyPrinter
 import interfaces.decider.TermConverter
 import state.terms._
+import reporting.Bookkeeper
 
-class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, String, String] {
+class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with TermConverter[String, String, String] {
   override val defaultIndent = 2
   override val defaultWidth = 80
 
