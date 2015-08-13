@@ -60,6 +60,7 @@ private[tests] object DSL {
 
   implicit class BooleanOperators(t1: Term) {
     def &&(t2: Term) = And(t1, t2)
+    def ==>(t2: Term) = Implies(t1, t2)
   }
 
   val x = Var("x", sorts.Int)

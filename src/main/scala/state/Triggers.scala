@@ -253,7 +253,7 @@ class TriggerRewriter(fresh: (String, Sort) => Var, logger: MultiRunLogger) {
       else
         equalityComponents.sliding(2).map{case Seq(t1: Term, t2: Term) => t1 === t2}
 
-    rewrittenBody = And(And(equalities.toSeq), rewrittenBody)
+    rewrittenBody = Implies(And(equalities.toSeq), rewrittenBody)
 
 
     /* Step 5 - Create rewritten quantification */

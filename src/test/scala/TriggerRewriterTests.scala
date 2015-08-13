@@ -66,7 +66,7 @@ class TriggerRewriterTests extends FunSuite with ShouldMatchers {
       Forall(x, f(x, x + `1`) > x, Trigger(f(x, x + `1`)))
     ) should be (Some(
       Forall(Seq(x, x0), /* TODO: Make order of variables predictable (or use an ordered set) */
-             (x === x0 - `1`) && (f(x, x0) > x),
+             (x === x0 - `1`) ==> (f(x, x0) > x),
              Trigger(f(x, x0)))
     ))
 
@@ -74,7 +74,7 @@ class TriggerRewriterTests extends FunSuite with ShouldMatchers {
       Forall(x, f(x + `1`) === g(x - `2`) + f(x), Trigger(Seq(f(x + `1`), g(x - `2`))))
     ) should be (Some(
       Forall(Seq(x0, x1),
-             (x0 - `1` === x1 + `2`) && f(x0) === g(x1) + f(x1 + `2`),
+             (x0 - `1` === x1 + `2`) ==> (f(x0) === g(x1) + f(x1 + `2`)),
               /* TODO: Replacing f(x) by f(x1 + `2`) is arbitrary, could as well
                *       be f(x + `1`). Can we make it the result more predictable?
                */
