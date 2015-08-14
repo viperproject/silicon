@@ -16,11 +16,8 @@ import scala.util.Properties.envOrNone
 import com.weiglewilczek.slf4s.Logging
 import org.rogach.scallop.{Subcommand, ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
-    Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
-    AbortedExceptionally => SilExceptionThrown}
-import silver.frontend.{SilFrontend, SilFrontendConfig}
+import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError, AbortedExceptionally => SilExceptionThrown, AbstractError}
+import viper.silver.frontend.{TranslatorState, SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.FullPerm
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
@@ -670,6 +667,23 @@ object Config {
 
 class SiliconFrontend extends SilFrontend {
   private var siliconInstance: Silicon = _
+
+
+  override def result: SilVerificationResult = {
+    val silicon = _verifier.get.asInstanceOf[Silicon]
+
+    if(_state < TranslatorState.Verified) super.result
+    else{
+      val viErrors = VILogHelper.verifyLog()
+      viErrors match{
+        case Nil => super.result
+        case ces:Seq[AbstractError] => super.result match{
+          case SilSuccess => SilFailure(ces)
+          case SilFailure(es) => SilFailure(es ++ ces)
+        }
+      }
+    }
+  }
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq("args" -> fullCmd))
