@@ -6,7 +6,10 @@ package viper
 package silicon
 
 import java.io.File
+import java.nio.file.{Path, Paths, Files}
 import state.{MapBackedStore, ListBackedHeap, DefaultState, DefaultContext}
+import viper.silver.ast.NoPosition
+import viper.silver.verifier.AbstractError
 
 /*
  * Overall concept:
@@ -71,6 +74,8 @@ object SymbExLogger {
   /** Config of Silicon. Used by StateFormatters.**/
   private var config: Config = null
 
+  var filePath: Path = null
+
   /** Add a new log for a method, function or predicate (member).
    *
    * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
@@ -92,9 +97,14 @@ object SymbExLogger {
     memberList.last
   }
 
-  /** Passes config from Silicon to SymbExLogger. **/
+  /**
+   * Passes config from Silicon to SymbExLogger.
+   * Config is assigned only once, further calls are ignored.
+   * @param c Config of Silicon.
+   */
   def setConfig(c: Config): Unit = {
-    config = c
+    if(config == null)
+      config = c
   }
 
   /** Gives back config from Silicon **/
@@ -137,6 +147,14 @@ object SymbExLogger {
     val jsRenderer = new JSTreeRenderer()
     val pw = new java.io.PrintWriter(new File("executionTreeData.js"))
     try pw.write(jsRenderer.render(memberList)) finally pw.close()
+  }
+
+  /** Unit Testing **/
+  var unitTestEngine: SymbExLogUnitTest = null
+  /** Initialize Unit Testing. Should be done AFTER the file to be tested is known. **/
+  def initUnitTestEngine(): Unit = {
+    if(filePath != null)
+      unitTestEngine = new SymbExLogUnitTest(filePath)
   }
 }
 
@@ -989,7 +1007,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
 
 /**
  * ================================
- * GUIDE FOR EXTENDING SymbExLogger
+ * GUIDE FOR ADDING RECORDS TO SymbExLogger
  * ================================
  *
  * SymbExLogger records all calls of the four symbolic primitives Execute, Evaluate, Produce
@@ -1071,3 +1089,52 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
  *    record.
  */
 
+class SymbExLogUnitTest(f: Path) {
+  private val originalFilePath: Path = f
+  private val fileName: Path = originalFilePath.getFileName()
+
+  /**
+   * If there is a predefined 'expected-output'-file (.elog) for the currently verified program,
+   * a 'actual output'-file is created (.alog) and then compared with the expected output. Should
+   * only be called if the whole verification process is already terminated.
+   */
+  def verify(): Unit = {
+    val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
+    val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
+
+    if(Files.exists(Paths.get(expectedPath))) {
+      val pw = new java.io.PrintWriter(new File(actualPath))
+      try pw.write(SymbExLogger.toTypeTreeString()) finally pw.close()
+
+      val expectedSource = scala.io.Source.fromFile(expectedPath)
+      val expected = //try expectedSource.getLines() finally expectedSource.close()
+        expectedSource.getLines()
+
+      val actualSource = scala.io.Source.fromFile(actualPath)
+      val actual = //try actualSource.getLines() finally actualSource.close()
+        actualSource.getLines()
+
+      var testFailed = false
+      var lineNumber = 0
+
+      while(!testFailed && expected.hasNext && actual.hasNext) {
+        if(!actual.next().equals(expected.next())) {
+          testFailed = true
+        }
+        lineNumber = lineNumber + 1
+      }
+      if(testFailed) {
+        var errorMsg = "Unit Test failed, expected output "
+        errorMsg = errorMsg + "does not match actual output. "
+        errorMsg = errorMsg + "First occurrence at line " + lineNumber
+        println("\n"+errorMsg+"\n")
+      }
+    }
+  }
+}
+
+/*case class SymbExLogUnitTestError(msg: String) extends AbstractError {
+  def pos = NoPosition
+  def fullId = "symbexlogunittest.error"
+  def readableMessage = msg
+}*/

@@ -21,6 +21,9 @@ class SiliconTests extends SilSuite {
   override def frontend(verifier: Verifier, files: Seq[Path]) = {
     require(files.length == 1, "tests should consist of exactly one file")
 
+    SymbExLogger.filePath = files.head
+    SymbExLogger.initUnitTestEngine()
+
     val fe = new SiliconFrontend()
     fe.init(verifier)
     fe.reset(files.head)
