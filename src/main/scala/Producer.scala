@@ -85,6 +85,7 @@ trait DefaultProducer[ST <: Store[ST],
     }
   }
 
+  /** Wrapper Method for produce, for logging. See Executor.scala for explanation of analogue. **/
   private def produce2(σ: S,
                        sf: Sort => Term,
                        p: Term,

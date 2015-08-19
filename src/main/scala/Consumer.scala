@@ -86,6 +86,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
     }
 
+
+
+  /** Wrapper Method for consume, for logging. See Executor.scala for explanation of analogue. **/
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
   : VerificationResult = {

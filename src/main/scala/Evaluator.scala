@@ -74,6 +74,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         evals2(σ, es.tail, t :: ts, pve, c1)(Q))
   }
 
+  /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
   : VerificationResult = {

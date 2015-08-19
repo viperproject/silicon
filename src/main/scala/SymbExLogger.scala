@@ -74,8 +74,6 @@ object SymbExLogger {
   /** Config of Silicon. Used by StateFormatters.**/
   private var config: Config = null
 
-  var filePath: Path = null
-
   /** Add a new log for a method, function or predicate (member).
    *
    * @param member Either a MethodRecord, PredicateRecord or a FunctionRecord.
@@ -149,6 +147,8 @@ object SymbExLogger {
     try pw.write(jsRenderer.render(memberList)) finally pw.close()
   }
 
+  /** Path to the file that is being executed. Is used for UnitTesting. **/
+  var filePath: Path = null
   /** Unit Testing **/
   var unitTestEngine: SymbExLogUnitTest = null
   /** Initialize Unit Testing. Should be done AFTER the file to be tested is known. **/
@@ -332,7 +332,16 @@ class DotTreeRenderer extends Renderer[String] {
         val ite_parent = previousNode
         output = output + "    " + ite.thnCond.dotNode() + " [label=" + ite.thnCond.dotLabel() + "];\n"
         output = output + "    " + previousNode + " -> " + ite.thnCond.dotNode() + ";\n"
-        previousNode = ite.thnCond.dotNode()
+
+        // Activate either this or the next line (uncomment). If you use the first, the
+        // representation will not show the evaluation of the if-condition, knowing that
+        // it results in true anyway since the True-Branch is taken. If you want to see
+        // the whole representation without any simplification, use the second line with
+        // 'subsToDot(ite.thnCond).
+
+        // previousNode = ite.thnCond.dotNode()
+        output = output + subsToDot(ite.thnCond)
+
         for (rec <- ite.thnSubs) {
           output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
           output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
@@ -341,7 +350,11 @@ class DotTreeRenderer extends Renderer[String] {
         previousNode = ite_parent
         output = output + "    " + ite.elsCond.dotNode() + " [label=" + ite.elsCond.dotLabel() + "];\n"
         output = output + "    " + previousNode + " -> " + ite.elsCond.dotNode() + ";\n"
-        previousNode = ite.elsCond.dotNode()
+
+        // Same as above.
+        // previousNode = ite.elsCond.dotNode()
+        output = output + subsToDot(ite.elsCond)
+
         for (rec <- ite.elsSubs) {
           output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
           output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
@@ -373,9 +386,6 @@ class DotTreeRenderer extends Renderer[String] {
       }
       case imp: GlobalBranchRecord => {
         val imp_parent = previousNode
-        //output = output + "    " + imp.cond.dotNode() + " [label=" + imp.cond.dotLabel() + "];\n"
-        //output = output + "    " + previousNode + " -> " + imp.cond.dotNode() + ";\n"
-        //previousNode = imp.cond.dotNode()
         for (rec <- imp.thnSubs) {
           output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
           output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
@@ -459,7 +469,6 @@ class JSTreeRenderer extends Renderer[String] {
         output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + "{ name: \'if " +ite.thnCond.toSimpleString()+ "\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(ite.thnCond) + "\", heap: \"\", pcs: \"\"}"
         output = output + ",\n children: [\n"
         for (sub <- ite.thnSubs) {
@@ -467,7 +476,6 @@ class JSTreeRenderer extends Renderer[String] {
         }
         output = output + "]},\n"
         output = output + "{ name: \'else " +ite.elsCond.toSimpleString()+ "\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(ite.elsCond) + "\", heap: \"\", pcs: \"\"}"
         output = output + ",\n children: [\n"
         for (sub <- ite.elsSubs) {
@@ -477,7 +485,6 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case ce: CondExpRecord => {
         output = output + "{ name: \'"+ce.toString()+"\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(ce) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + recordToJS(ce.thnExp) + ", \n"
@@ -485,7 +492,6 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case gb: GlobalBranchRecord => {
         output = output + "{ name: \'"+gb.toString()+"\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(gb) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + "{ name: \'Branch 1: " + "\', open: true, prestate: "
@@ -505,7 +511,6 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case mc: MethodCallRecord => {
         output = output + "{ name: \'"+mc.toString()+"\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(mc) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
 
@@ -518,14 +523,12 @@ class JSTreeRenderer extends Renderer[String] {
         output = output + "]},"
 
         output = output + "{ name: \'precondition\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(mc.precondition) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + recordToJS(mc.precondition)
         output = output + "]},"
 
         output = output + "{ name: \'postcondition\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(mc.postcondition) + "\", heap: \"\", pcs: \"\"}"
         output = output + "\n, children: [\n"
         output = output + recordToJS(mc.postcondition)
@@ -535,12 +538,10 @@ class JSTreeRenderer extends Renderer[String] {
       }
       case cr: CommentRecord => {
         output = output + "{ name: \'"+cr.toString+"\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}}"
         output = output + "{store: \"\", heap: \"\", pcs: \"\"}}"
       }
       case _ => {
         output = output + "{ name: \'" + s.toString() + "\', open: true, prestate: "
-        //output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
         output = output + "{store: \"" + printState(s) + "\", heap: \"\", pcs: \"\"}"
         if (!s.subs.isEmpty) {
           output = output + ",\n children: [\n"

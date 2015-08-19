@@ -204,7 +204,13 @@ trait DefaultExecutor[ST <: Store[ST],
     else
       Q(σ, c)
 
-
+  /**
+   * 'Wrapper-exec'-Method that exists due to logging, to keep track of the execution hierarchy
+   * in presence of continuation passing. See SymbExLogger.scala for explanation of insert/collapse.
+   * All parameters of exec are passed to exec2 (the 'real' exec) unchanged, the only thing that is done
+   * is that the execution is wrapped with insert/collapse BEFORE the call of the continuation method
+   * (which is rather cumbersome to achieve without such a wrapper-method).
+   */
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
   : VerificationResult = {

@@ -169,12 +169,12 @@ trait AbstractVerifier[ST <: Store[ST],
     SymbExLogger.setConfig(config)
 
     val res = ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
-    /*println("====== TRACE =======\n")
-    println(SymbExLogger.toSimpleTreeString())
-    println("\n===== TRACE END =======\n")*/
-    SymbExLogger.unitTestEngine.verify()
 
+    /** If there is a logging-unit-Test for the verified program, the unit-Test is executed. **/
+    SymbExLogger.unitTestEngine.verify()
+    /** Write JavaScript-Representation of the logger. **/
     SymbExLogger.writeJSFile()
+    /** Write DOT-Representation of the logger. **/
     SymbExLogger.writeDotFile()
 
     res

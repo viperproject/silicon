@@ -21,6 +21,8 @@ class SiliconTests extends SilSuite {
   override def frontend(verifier: Verifier, files: Seq[Path]) = {
     require(files.length == 1, "tests should consist of exactly one file")
 
+    // For Unit-Testing of the Symbolic Execution Logging, the name of the file
+    // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
 
