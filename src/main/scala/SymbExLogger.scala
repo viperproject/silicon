@@ -1099,11 +1099,14 @@ class SymbExLogUnitTest(f: Path) {
    * a 'actual output'-file is created (.alog) and then compared with the expected output. Should
    * only be called if the whole verification process is already terminated.
    */
-  def verify(): Unit = {
+  def verify(): Seq[SymbExLogUnitTestError] = {
     val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
     val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
+    var errorMsg = ""
+    var testFailed = false
+    val testIsExecuted = Files.exists(Paths.get(expectedPath))
 
-    if(Files.exists(Paths.get(expectedPath))) {
+    if(testIsExecuted) {
       val pw = new java.io.PrintWriter(new File(actualPath))
       try pw.write(SymbExLogger.toTypeTreeString()) finally pw.close()
 
@@ -1115,7 +1118,6 @@ class SymbExLogUnitTest(f: Path) {
       val actual = //try actualSource.getLines() finally actualSource.close()
         actualSource.getLines()
 
-      var testFailed = false
       var lineNumber = 0
 
       while(!testFailed && expected.hasNext && actual.hasNext) {
@@ -1124,18 +1126,29 @@ class SymbExLogUnitTest(f: Path) {
         }
         lineNumber = lineNumber + 1
       }
+      if(actual.hasNext != expected.hasNext)
+        testFailed = true
+
       if(testFailed) {
-        var errorMsg = "Unit Test failed, expected output "
+        errorMsg = errorMsg + "Unit Test failed, expected output "
         errorMsg = errorMsg + "does not match actual output. "
-        errorMsg = errorMsg + "First occurrence at line " + lineNumber
-        println("\n"+errorMsg+"\n")
+        errorMsg = errorMsg + "First occurrence at line " + lineNumber + ".\n"
+        errorMsg = errorMsg + "Compared Files:\n"
+        errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
+        errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
       }
+    }
+    if(testIsExecuted && testFailed){
+      return Seq(new SymbExLogUnitTestError(errorMsg))
+    }
+    else {
+      return Nil
     }
   }
 }
 
-/*case class SymbExLogUnitTestError(msg: String) extends AbstractError {
+case class SymbExLogUnitTestError(msg: String) extends AbstractError {
   def pos = NoPosition
   def fullId = "symbexlogunittest.error"
   def readableMessage = msg
-}*/
+}

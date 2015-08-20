@@ -170,8 +170,6 @@ trait AbstractVerifier[ST <: Store[ST],
 
     val res = ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
 
-    /** If there is a logging-unit-Test for the verified program, the unit-Test is executed. **/
-    SymbExLogger.unitTestEngine.verify()
     /** Write JavaScript-Representation of the logger. **/
     SymbExLogger.writeJSFile()
     /** Write DOT-Representation of the logger. **/

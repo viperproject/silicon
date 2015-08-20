@@ -29,6 +29,9 @@ import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
 import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
     DefaultSequencesEmitter}
+import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError, AbortedExceptionally => SilExceptionThrown, AbstractError}
+
+import viper.silver.frontend.{TranslatorState, SilFrontend, SilFrontendConfig}
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
@@ -668,6 +671,21 @@ object Config {
 
 class SiliconFrontend extends SilFrontend {
   protected var siliconInstance: Silicon = _
+
+  /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
+  override def result: SilVerificationResult = {
+    if(_state < TranslatorState.Verified) super.result
+    else{
+      val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
+      symbExLogUnitTestErrors match{
+        case Nil => super.result
+        case s1:Seq[AbstractError] => super.result match{
+          case SilSuccess => SilFailure(s1)
+          case SilFailure(s2) => SilFailure(s2 ++ s1)
+        }
+      }
+    }
+  }
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq("args" -> fullCmd))
