@@ -1,3 +1,8 @@
+===== 25.8.2015
+- Method-Calls seem to NOT have always a pre/postcondition (AVLTree.nokeys.sil)
+- sbt-test-time with logger (1400s+) vs. sbt-test-time without logger (60s) due to writing files
+- unit-test-files seem to differ depending on sbt:test-only or sbt:test
+
 ===== 12.8.2015
 - StateFormatter expects Types
 

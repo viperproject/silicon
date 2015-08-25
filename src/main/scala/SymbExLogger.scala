@@ -71,6 +71,8 @@ object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
   var memberList = List[SymbLog]()
 
+  val FLAG_WRITE_FILES = false
+
   /** Config of Silicon. Used by StateFormatters.**/
   private var config: Config = null
 
@@ -131,10 +133,12 @@ object SymbExLogger {
    * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
    */
   def writeDotFile(): Unit = {
-    val dotRenderer = new DotTreeRenderer()
-    val str = dotRenderer.render(memberList)
-    val pw = new java.io.PrintWriter(new File("dot_input.dot"))
-    try pw.write(str) finally pw.close()
+    if(FLAG_WRITE_FILES) {
+      val dotRenderer = new DotTreeRenderer()
+      val str = dotRenderer.render(memberList)
+      val pw = new java.io.PrintWriter(new File("dot_input.dot"))
+      try pw.write(str) finally pw.close()
+    }
   }
 
   /**
@@ -142,9 +146,11 @@ object SymbExLogger {
    * and functions in a HTML-file.
    */
   def writeJSFile(): Unit = {
-    val jsRenderer = new JSTreeRenderer()
-    val pw = new java.io.PrintWriter(new File("executionTreeData.js"))
-    try pw.write(jsRenderer.render(memberList)) finally pw.close()
+    if(FLAG_WRITE_FILES) {
+      val jsRenderer = new JSTreeRenderer()
+      val pw = new java.io.PrintWriter(new File("executionTreeData.js"))
+      try pw.write(jsRenderer.render(memberList)) finally pw.close()
+    }
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
@@ -995,12 +1001,14 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
   }
 
   def finish_precondition(): Unit = {
-    precondition = subs(0) // Will never be empty, default precondition is true.
+    if(!subs.isEmpty)
+      precondition = subs(0)
     subs = List[SymbolicRecord]()
   }
 
-  def finish_postcondition(): Unit = {
-    postcondition = subs(0) // Will never be empty, default postcondition is true.
+def finish_postcondition(): Unit = {
+    if(!subs.isEmpty)
+      postcondition = subs(0)
     subs = List[SymbolicRecord]()
   }
 }
@@ -1100,6 +1108,8 @@ class SymbExLogUnitTest(f: Path) {
    * only be called if the whole verification process is already terminated.
    */
   def verify(): Seq[SymbExLogUnitTestError] = {
+    if(!SymbExLogger.FLAG_WRITE_FILES)
+      return Nil
     val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
     val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
     var errorMsg = ""
