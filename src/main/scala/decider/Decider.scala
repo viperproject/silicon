@@ -227,7 +227,7 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
-  def checkSmoke() = prover.check() == Unsat
+  def checkSmoke() = prover.check(config.checkTimeout()) == Unsat
 
   def tryOrFail[R](σ: S, c: C)
                   (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
