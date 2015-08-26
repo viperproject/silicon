@@ -316,7 +316,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         def hasPerm(v : ChunkIdentifier) = decider.getChunk[DirectChunk](σ, σ.h, v, c) match {
           case None => false
           case Some(x) =>
-            val result = decider.check(σ, Greater(x.perm, NoPerm()))
+            val greater = decider.check(σ, Greater(x.perm, NoPerm()))
+
+            val tmp = !decider.check(σ, Equals(x.perm, NoPerm())) && decider.check(σ, AtLeast(x.perm, NoPerm()))
+
+            val result = greater || tmp
             result
         }
 
