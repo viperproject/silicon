@@ -161,8 +161,8 @@ trait DefaultExecutor[ST <: Store[ST],
   }
 
   def execs(σ: S, stmts: Seq[ast.Stmt], c: C)
-                  (Q: (S, C) => VerificationResult)
-                  : VerificationResult =
+           (Q: (S, C) => VerificationResult)
+           : VerificationResult =
 
     if(stmts.nonEmpty)
       exec(σ, stmts.head, c)((σ1, c1) =>
@@ -171,8 +171,8 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   def exec(σ: S, stmt: ast.Stmt, c: C)
-                  (Q: (S, C) => VerificationResult)
-                  : VerificationResult = {
+          (Q: (S, C) => VerificationResult)
+          : VerificationResult = {
 
     /* For debugging-purposes only */
     stmt match {

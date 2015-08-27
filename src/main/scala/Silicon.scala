@@ -214,7 +214,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   def stop() {
-    verifier.stop()
+    if (verifier != null) verifier.stop()
   }
 
   /** Verifies a given SIL program and returns a sequence of verification errors.
@@ -394,8 +394,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   /* Argument converter */
 
   private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
-    val stdioRegex = """(stdio)""".r
-    val fileRegex = """(file)=(.*)""".r
+    val stdioRegex = """(?i)(stdio)""".r
+    val fileRegex = """(?i)(file)=(.*)""".r
 
     def parse(s: List[(String, List[String])]) = s match {
       case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
@@ -419,6 +419,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[String]
+    val argType = org.rogach.scallop.ArgType.LIST
+  }
+
+  private val assertionModeConverter = new ValueConverter[AssertionMode] {
+    val pushPopRegex = """(?i)(pp)""".r
+    val softConstraintsRegex = """(?i)(sc)""".r
+
+    def parse(s: List[(String, List[String])]) = s match {
+      case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
+      case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
+      case Nil => Right(None)
+      case _ => Left(s"Unexpected arguments")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[AssertionMode]
     val argType = org.rogach.scallop.ArgType.LIST
   }
 
@@ -481,21 +496,21 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
-    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
-             + "Caching results in incompletenesses, but is usually faster."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
-    descr = (  "Disable caching of snapshot symbols. "
-             + "Caching reduces the number of symbols the prover has to work with."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
+//  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
+//    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
+//             + "Caching results in incompletenesses, but is usually faster."),
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
+//
+//  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
+//    descr = (  "Disable caching of snapshot symbols. "
+//             + "Caching reduces the number of symbols the prover has to work with."),
+//    default = Some(false),
+//    noshort = true,
+//    hidden = Silicon.hideInternalOptions
+//  )
 
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
@@ -522,6 +537,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
             + "not per method or proof obligation (default: 0, i.e., no timeout)."),
     default = Some(0),
+    noshort = true,
+    hidden = false
+  )
+
+  val checkTimeout = opt[Int]("checkTimeout",
+    descr = "Timeout (in ms) per check, usually used to branch over expressions (default: 250).",
+    default = Some(250),
     noshort = true,
     hidden = false
   )
@@ -557,7 +579,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
 
-  /* NOTE: You most likely want to call z3LogFile instead of reading inputFile */
   var inputFile: Option[Path] = None
 
   private lazy val defaultZ3LogFile = Paths.get(tempDirectory(), defaultRawZ3LogFile)
@@ -595,6 +616,22 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(forwardArgumentsConverter)
 
+  val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
+    descr = (  "Handle pure conjunction individually."
+             + "Increases precision of error reporting, but may slow down verification."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val assertionMode = opt[AssertionMode]("assertionMode",
+    descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
+             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
+    default = Some(AssertionMode.PushPop),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )(assertionModeConverter)
+
   /* Option validation */
 
   validateOpt(timeout) {
@@ -621,10 +658,16 @@ object Config {
     case object Stdio extends Sink
     case object File extends Sink
   }
+
+  sealed trait AssertionMode
+  object AssertionMode {
+    case object PushPop extends AssertionMode
+    case object SoftConstraints extends AssertionMode
+  }
 }
 
 class SiliconFrontend extends SilFrontend {
-  private var siliconInstance: Silicon = _
+  protected var siliconInstance: Silicon = _
 
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq("args" -> fullCmd))
@@ -644,9 +687,23 @@ object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
     try {
       execute(args)
+        /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
     } catch {
       case ex: org.rogach.scallop.exceptions.ScallopResult =>
         /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
+    } finally {
+      siliconInstance.stop()
     }
+
+    sys.exit()
+      /* TODO: This currently seems necessary to make sure that Z3 is terminated
+       *       if Silicon is supposed to terminate prematurely because of a
+       *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
+       *       at the point where the TimeoutException is caught, but that doesn't
+       *       seem to work. A few forum posts mentioned that Process.destroy
+       *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
+       *       the process to kill has no input/output data left in the
+       *       corresponding streams.
+       */
   }
 }

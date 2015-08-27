@@ -19,6 +19,7 @@ package object utils {
     /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
      *       then we should also establish that !(x in xs).
      */
+
     val ts = (
       /* Refs pointed to by local variables */
          σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
@@ -79,7 +80,7 @@ package object utils {
          */
 
         val occurringQuantifiedVariables = qvars(q.body)
-        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains)
+        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains).distinct
 
         if (varsToBind.isEmpty)
           auxiliaryTerms += q
@@ -91,7 +92,7 @@ package object utils {
           auxiliaryTerms += Quantification(quantifier, varsToBind, q, Nil).autoTrigger
 
       case t =>
-        val occurringQuantifiedVariables = qvars(t)
+        val occurringQuantifiedVariables = qvars(t).distinct
 
         if (occurringQuantifiedVariables.isEmpty)
           auxiliaryTerms += t
@@ -115,12 +116,47 @@ package object utils {
     auxiliaryTerms
   }
 
+  def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
+    var problems: List[String] = Nil
+
+    quantification.q match {
+      case Exists =>
+        /* No checks yet */
+      case Forall =>
+        /* 1. Check that triggers are present */
+        if (quantification.triggers.isEmpty)
+          problems ::= s"No triggers given"
+
+        /* 2. Check that each trigger set mentions all quantified variables */
+        quantification.triggers.foreach(trigger => {
+          val vars =
+            trigger.p.foldLeft(Set[Var]()){case (varsAcc, term) =>
+              varsAcc ++ term.deepCollect{case v: Var => v}}
+
+          if (!quantification.vars.forall(vars.contains))
+            problems ::= s"Trigger set $trigger does not contain all quantified variables"
+        })
+
+        /* 3. Check that all triggers are valid */
+        quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
+          if (!term.isInstanceOf[PossibleTrigger])
+            problems ::= s"Trigger $term is not a possible trigger"
+
+          term.deepCollect{case s: ForbiddenInTrigger => s}.foreach(term =>
+            problems ::= s"Term $term may not occur in triggers")
+        })
+    }
+
+    problems.reverse
+  }
+
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
     case and: And => and.ts
+    case or: Or => or.ts
     case _: NoPerm | _: FullPerm => Nil
     case wcp: WildcardPerm => List(wcp.v)
     case fp: FractionPerm => List(fp.n, fp.d)
@@ -139,7 +175,9 @@ package object utils {
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
-    case l: Let => List(l.x, l.t, l.body)
+    case l: Let =>
+      val (vs, ts) = l.bindings.toSeq.unzip
+      vs ++ ts :+ l.body
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -162,7 +200,7 @@ package object utils {
       case Div(t0, t1) => Div(go(t0), go(t1))
       case Mod(t0, t1) => Mod(go(t0), go(t1))
       case Not(t) => Not(go(t))
-      case Or(t0, t1) => Or(go(t0), go(t1))
+      case Or(ts) => Or(ts map go : _*)
       case And(ts) => And(ts map go : _*)
       case Implies(t0, t1) => Implies(go(t0), go(t1))
       case Iff(t0, t1) => Iff(go(t0), go(t1))
@@ -210,10 +248,8 @@ package object utils {
       case MultisetIntersection(t0, t1) => MultisetIntersection(go(t0), go(t1))
       case MultisetSubset(t0, t1) => MultisetSubset(go(t0), go(t1))
       case MultisetDifference(t0, t1) => MultisetDifference(go(t0), go(t1))
-      case MultisetIn(t0, t1) => MultisetIn(go(t0), go(t1))
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
-//      case MultisetFromSeq(t) => MultisetFromSeq(go(t))
       case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
       case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))
@@ -221,7 +257,7 @@ package object utils {
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
-      case Let(x, t, body) => Let(go(x), go(t), go(body))
+      case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

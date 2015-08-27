@@ -11,8 +11,9 @@ package decider
 import org.kiama.output.PrettyPrinter
 import interfaces.decider.TermConverter
 import state.terms._
+import reporting.Bookkeeper
 
-class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, String, String] {
+class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with TermConverter[String, String, String] {
   override val defaultIndent = 2
   override val defaultWidth = 80
 
@@ -95,7 +96,7 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case FApp(f, s, tArgs) =>
       parens(sanitizeSymbol(f.id) <+> render(s) <+> ssep(tArgs map render, space))
 
-    case Quantification(quant, vars, body, triggers) =>
+    case Quantification(quant, vars, body, triggers, name) =>
       val docVars = ssep(vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort))), space)
       val docBody = render(body)
       val docQuant = render(quant)
@@ -105,13 +106,17 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
                      .map(d => ":pattern" <+> parens(d)),
              line)
 
-      parens(docQuant <+> parens(docVars) <+> parens("!" <> nest(line <> docBody <> line <> docTriggers)))
+      val docQid: Doc =
+        if (name.isEmpty) empty
+        else s":qid |$name|"
+
+      parens(docQuant <+> parens(docVars) <+> parens("!" <> nest(line <> docBody <> line <> docTriggers <> line <> docQid)))
 
     /* Booleans */
 
     case uop: Not => renderUnaryOp("not", uop)
     case And(ts) => renderNAryOp("and", ts: _*)
-    case bop: Or => renderBinaryOp("or", bop)
+    case Or(ts) => renderNAryOp("or", ts: _*)
     case bop: Implies => renderBinaryOp("implies", bop)
     case bop: Iff => renderBinaryOp("iff", bop)
     case bop: BuiltinEquals => renderBinaryOp("=", bop)
@@ -191,7 +196,6 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case bop: MultisetDifference => renderBinaryOp("$Multiset.difference", bop)
     case bop: MultisetIntersection => renderBinaryOp("$Multiset.intersection", bop)
     case bop: MultisetUnion => renderBinaryOp("$Multiset.union", bop)
-    case MultisetIn(t0, t1) => renderBinaryOp(">", renderBinaryOp("$Multiset.count", render(t1), render(t0)), "0")
     case bop: MultisetSubset => renderBinaryOp("$Multiset.subset", bop)
     case bop: MultisetCount => renderBinaryOp("$Multiset.count", bop)
 
@@ -218,8 +222,9 @@ class TermToSMTLib2Converter extends PrettyPrinter with TermConverter[String, St
     case Distinct(symbols) =>
       parens("distinct" <+> ssep(symbols.toSeq map render, space))
 
-    case Let(x, t, body) =>
-      parens("let" <+> parens(parens(render(x) <+> render(t))) <+> render(body))
+    case Let(bindings, body) =>
+      val docBindings = ssep(bindings.toSeq map (p => parens(render(p._1) <+> render(p._2))), space)
+      parens("let" <+> parens(docBindings) <+> render(body))
   }
 
   @inline

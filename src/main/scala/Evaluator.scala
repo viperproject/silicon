@@ -196,7 +196,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
-        evalBinOp(σ, e0, e1, Or, pve, c)(Q)
+        evalBinOp(σ, e0, e1, (t1, t2) => Or(t1, t2), pve, c)(Q)
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
@@ -372,21 +372,21 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
                         recordPossibleTriggers = true,
-                        possibleTriggers = Map.empty,
-                        additionalTriggers = Nil)
+                        possibleTriggers = Map.empty)
 
-        decider.locally[(Set[Term], Term, C)](QB => {
+        decider.locally[(Set[Term], Quantification, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val actualTriggers = triggers ++ c2.additionalTriggers.map(t => Trigger(t))
               val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
-              val tQuant = Quantification(tQuantOp, tVars, tBody, actualTriggers)
+              val qid = quant.pos match {
+                case pos: ast.HasLineColumn => s"prog.l${pos.line}"
+                case _ => s"prog.l${quant.pos}"}
+              val tQuant = Quantification(tQuantOp, tVars, tBody, triggers, qid)
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
-                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()),
-                               additionalTriggers = c.additionalTriggers ++ (if (c.recordPossibleTriggers) c2.additionalTriggers else Nil))
+                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
               QB(πAux, tQuant, c3)})})
         }){case (πAux, tQuant, c1) =>
           assume(πAux)
@@ -419,7 +419,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                   c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
                 case _ => c3}
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
-              val c5 = c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+              val c5 =
+                if (c4.recordPossibleTriggers) c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
+                else c4
               QB(tFApp, c5)})
             )((tR, cR) => {
               Q(tR, cR)
@@ -538,7 +540,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.AnySetContains(e0, e1) => e1.typ match {
         case _: ast.SetType => evalBinOp(σ, e0, e1, SetIn, pve, c)(Q)
-        case _: ast.MultisetType => evalBinOp(σ, e0, e1, MultisetIn, pve, c)(Q)
+        case _: ast.MultisetType => evalBinOp(σ, e0, e1, (t0, t1) => MultisetCount(t1, t0), pve, c)(Q)
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(e, e.getClass.getName, e.typ))
       }
@@ -646,9 +648,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                          (Q: (Trigger, C) => VerificationResult)
                          : VerificationResult = {
 
-    val (optCachedTriggerTerms, optRemainingTriggerExpressions) =
+    val (cachedTriggerTerms, remainingTriggerExpressions) =
       trigger.exps.map {
-        case ast.Old(e) => e
+        case ast.Old(e) => e /* Warning! For heap-dep. function applications, old(e) probably matters */
         case e => e
       }.map {
         case fapp: ast.FuncApp =>
@@ -662,18 +664,32 @@ trait DefaultEvaluator[ST <: Store[ST],
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
 
         case e => (None, Some(e))
-      }.unzip
+      }.unzip match {
+        case (optCachedTriggerTerms, optRemainingTriggerExpressions) =>
+          (optCachedTriggerTerms.flatten, optRemainingTriggerExpressions.flatten)
+      }
 
-    if (optRemainingTriggerExpressions.flatten.nonEmpty)
-      /* Reasons for why a trigger wasn't recorded while evaluating the body include:
-       *   - It did not occur in the body
-       *   - The evaluation of the body terminated early, for example, because the
-       *     LHS of an implication evaluated to false
-       */
-      logger.debug(s"Didn't translate some triggers: ${optRemainingTriggerExpressions.flatten}")
+    /* Reasons for why a trigger wasn't recorded while evaluating the body include:
+     *   - It did not occur in the body
+     *   - The evaluation of the body terminated early, for example, because the
+     *     LHS of an implication evaluated to false
+     */
 
-    /* TODO: Translate remaining triggers - which is currently not directly possible.
-     *       For example, assume a conjunction f(x) && g(x) where f(x) is the
+    var optRemainingTriggerTerms: Option[Seq[Term]] = None
+    val πPre: Set[Term] = decider.π
+    var πAux: Set[Term] = Set()
+
+    /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
+     *       stop if evaluating one fails
+     */
+    val r =
+      evals(σ, remainingTriggerExpressions, pve, c)((remainingTriggerTerms, c1) => {
+        optRemainingTriggerTerms = Some(remainingTriggerTerms)
+        πAux = decider.π -- πPre
+        Success()})
+
+    /* TODO: Here is an example where evaluating remainingTriggerExpressions will
+     *       fail: Assume a conjunction f(x) && g(x) where f(x) is the
      *       precondition of g(x). This gives rise to the trigger {f(x), g(x)}.
      *       If the two trigger expressions are evaluated individually, evaluating
      *       the second will fail because its precondition doesn't hold.
@@ -682,9 +698,9 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       Evaluating the latter will currently fail when evaluating y.f because
      *       y on its own (i.e., without having assumed y in xs) might be null.
      *
-     *       What should probably be done is to merely translate (instead of
-     *       evaluate) triggers, where the difference is that translating does not
-     *       entail any checks such as checking for non-nullity.
+     *       What might be possible is to merely translate (instead of evaluate)
+     *       triggers, where the difference is that translating does not entail
+     *       any checks such as checking for non-nullity.
      *       In case of applications of heap. dep. functions this won't be
      *       straight-forward, because the resulting FApp-term expects a snapshot,
      *       which is computed by (temporarily) consuming the function's
@@ -694,9 +710,15 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       because some trigger sets might no longer cover all quantified
      *       variables.
      */
-//    evals(σ, optRemainingTriggerExpressions.flatten, pve, c)((ts, c1) =>
-//      Q(Trigger(ts ++ fappTriggers.flatten), c1))
-    Q(Trigger(optCachedTriggerTerms.flatten), c)
+
+    (r, optRemainingTriggerTerms) match {
+      case (Success(), Some(remainingTriggerTerms)) =>
+        assume(πAux)
+        Q(Trigger(cachedTriggerTerms ++ remainingTriggerTerms), c)
+      case _ =>
+        bookkeeper.logfiles("evalTrigger").println(s"Couldn't translate some of these triggers:\n  $remainingTriggerExpressions\nReason:\n  $r")
+        Q(Trigger(cachedTriggerTerms), c)
+    }
   }
 
   /* Evaluates `e0` to `t0`, assumes `t0Transformer(t0)`, and afterwards only

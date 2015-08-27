@@ -12,8 +12,8 @@ import com.weiglewilczek.slf4s.Logging
 import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
 import silver.verifier.reasons.InsufficientPermission
+import interfaces.{VerificationResult, Failure, Success, FatalResult, NonFatalResult}
 import interfaces.decider.{Decider, Prover, Unsat}
-import interfaces.{Success, Failure, VerificationResult}
 import interfaces.state._
 import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
@@ -161,13 +161,35 @@ class DefaultDecider[ST <: Store[ST],
     pushScope()
 
     val r: VerificationResult = block(_ir  => {
+      Predef.assert(_ir != null, s"Unexpected block result $ir")
       Predef.assert(ir == null, s"Unexpected intermediate result $ir")
+
       ir = _ir
+
       Success()})
 
     popScope()
 
-    r && Q(ir)
+    r match {
+      case _: FatalResult =>
+        /* If the locally-block yielded a fatal result, then the continuation Q
+         * will not be invoked. That is, the current execution path will be
+         * aborted.
+         */
+        r
+
+      case _: NonFatalResult =>
+        /* If the locally-block yielded a non-fatal result, then the
+         * continuation will only be invoked if the execution of the block
+         * yielded a result that the continuation Q can be invoked with.
+         * That is, a result of type R (excluding null).
+         * If the block's execution did not yield such a result, then the
+         * current execution path will be aborted.
+         *
+         */
+        if (ir != null) r && Q(ir)
+        else r
+    }
   }
 
   /* Assuming facts */
@@ -199,7 +221,7 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
-  def checkSmoke() = prover.check() == Unsat
+  def checkSmoke() = prover.check(config.checkTimeout()) == Unsat
 
   def tryOrFail[R](σ: S, c: C)
                   (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
@@ -225,8 +247,7 @@ class DefaultDecider[ST <: Store[ST],
         r
       else {
         heapCompressor.compress(σ, σ.h, c)
-        val c1 = c.copy(retrying = true)
-        block(σ, c1, (r, c2) => Q(r, c2), f => f)
+        block(σ, c.copy(retrying = true), (r, c2) => Q(r, c2.copy(retrying = false)), f => f)
       }
 
     if (failure.nonEmpty) {
@@ -268,10 +289,10 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term) = assert(σ, t, null)
+  def check(σ: S, t: Term, timeout: Int = 0) = assert(σ, t, timeout, null)
 
-  def assert(σ: S, t: Term)(Q: Boolean => VerificationResult) = {
-    val success = assert(σ, t, null)
+  def assert(σ: S, t: Term, timeout: Int = 0)(Q: Boolean => VerificationResult) = {
+    val success = assert(σ, t, timeout, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
 //    if (!success) {
@@ -282,10 +303,10 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-  protected def assert(σ: S, t: Term, logSink: java.io.PrintWriter) = {
+  protected def assert(σ: S, t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
-    asserted || proverAssert(t, logSink)
+    asserted || proverAssert(t, timeout, logSink)
   }
 
   private def isKnownToBeTrue(t: Term) = t match {
@@ -295,12 +316,12 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
-  private def proverAssert(t: Term, logSink: java.io.PrintWriter) = {
+  private def proverAssert(t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
 
 //    val startTime = System.currentTimeMillis()
-    val result = prover.assert(t)
+    val result = prover.assert(t, timeout)
 //    val endTime = System.currentTimeMillis()
 //    proverAssertionTimingsLog.println("%08d\t%s".format(endTime - startTime, t))
 

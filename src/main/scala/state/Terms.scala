@@ -25,14 +25,6 @@ import silver.ast.utility.{GenericTriggerGenerator, Visitor}
  * optimisations, as done in the work on the type safe builder pattern.
  */
 
-/* TODO: Sorts currently take not type parameters, will probably is necessary
- *       in order to support e.g. non-integer sequences.
- */
-
-/* TODO: Can we use scala.FunctionN instead of UnaryOperator, BinaryOperator?
- *
- */
-
 /*
  * Sorts
  */
@@ -170,6 +162,8 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
     this.replace(toMap(originals.zip(replacements)))
   }
+
+  def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 }
 
 trait UnaryOp[E] {
@@ -311,28 +305,51 @@ case class False() extends BooleanLiteral {
 
 sealed trait Quantifier
 
-object Forall extends Quantifier {
-  def apply(qvar: Var, tBody: Term, trigger: Trigger) =
-    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil)
+case object Forall extends Quantifier {
+  def apply(qvar: Var, tBody: Term, trigger: Trigger): Quantification =
+    apply(qvar, tBody, trigger, "")
 
-  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]) =
-    Quantification(Forall, qvar :: Nil, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, trigger: Trigger, name: String) =
+    Quantification(Forall, qvar :: Nil, tBody, trigger :: Nil, name)
 
-  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger) =
-    Quantification(Forall, qvars, tBody, trigger :: Nil)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(qvar, tBody, triggers, "")
 
-  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
-    Quantification(Forall, qvars, tBody, triggers)
+  def apply(qvar: Var, tBody: Term, triggers: Seq[Trigger], name: String) =
+    Quantification(Forall, qvar :: Nil, tBody, triggers, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger): Quantification =
+    apply(qvars, tBody, trigger, "")
+
+  def apply(qvars: Seq[Var], tBody: Term, trigger: Trigger, name: String) =
+    Quantification(Forall, qvars, tBody, trigger :: Nil, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(qvars, tBody, triggers, "")
+
+  def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
+    Quantification(Forall, qvars, tBody, triggers, name)
 
   def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    this(qvar :: Nil, tBody, computeTriggersFrom)
+    apply(qvar, tBody, computeTriggersFrom, "")(dummy)
 
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit) = {
+  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit): Quantification =
+    this(qvar :: Nil, tBody, computeTriggersFrom, name)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
+    apply(qvars, tBody, computeTriggersFrom, "")(dummy)
+
+  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit) = {
     val (triggers, extraVars) =
       TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
 
-      Quantification(Forall, qvars ++ extraVars, tBody, triggers)
+      Quantification(Forall, qvars ++ extraVars, tBody, triggers, name)
     }
+
+  def unapply(q: Quantification) = q match {
+    case Quantification(Forall, qvars, tBody, triggers, name) => Some((qvars, tBody, triggers, name))
+    case _ => None
+  }
 
   override val toString = "QA"
 }
@@ -344,6 +361,9 @@ object Exists extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
     Quantification(Exists, qvars, tBody, triggers)
 
+  def apply(qvars: Iterable[Var], tBody: Term, triggers: Seq[Trigger]) =
+    Quantification(Exists, qvars.toSeq, tBody, triggers)
+
   override val toString = "QE"
 }
 
@@ -351,7 +371,7 @@ class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryO
   override val toString = s"{${p.mkString(",")}}"
 }
 
-object Trigger {
+object Trigger extends (Seq[Term] => Trigger) {
   def apply(t: Term) = new Trigger(t :: Nil)
   def apply(ts: Seq[Term]) = new Trigger(ts)
 
@@ -361,7 +381,8 @@ object Trigger {
 class Quantification private[terms] (val q: Quantifier,
                                      val vars: Seq[Var],
                                      val body: Term,
-                                     val triggers: Seq[Trigger])
+                                     val triggers: Seq[Trigger],
+                                     val name: String)
     extends BooleanTerm
        with StructuralEquality {
 
@@ -372,7 +393,7 @@ class Quantification private[terms] (val q: Quantifier,
     } else {
       TriggerGenerator.generateTriggers(vars, body) match {
         case Some((generatedTriggers, extraVariables)) =>
-          Quantification(q, vars ++ extraVariables, body, generatedTriggers)
+          Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
         case _ =>
           this
       }
@@ -381,21 +402,43 @@ class Quantification private[terms] (val q: Quantifier,
 
   val equalityDefiningMembers = q :: vars :: body :: triggers :: Nil
 
-  override val toString = s"$q ${vars.mkString(",")} :: $body"
+  def copy(q: Quantifier = q,
+           vars: Seq[Var] = vars,
+           body: Term = body,
+           triggers: Seq[Trigger] = triggers,
+           name: String = name) = {
+
+    Quantification(q, vars, body, triggers, name)
+  }
+
+  lazy val stringRepresentation = s"$q ${vars.mkString(",")} :: $body"
+  lazy val stringRepresentationWithTriggers = s"$q ${vars.mkString(",")} :: ${triggers.mkString(",")} $body"
+
+  override lazy val toString = stringRepresentation
+
+  def toString(withTriggers: Boolean = false) =
+    if (withTriggers) stringRepresentationWithTriggers
+    else stringRepresentation
 }
 
-object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger]) => Quantification) {
-  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]) =
+object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String) => Quantification) {
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger]): Quantification =
+    apply(q, vars, tBody, triggers, "")
+
+  def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) = {
+    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
+
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
      */
-    new Quantification(q, vars, tBody, triggers)
+    new Quantification(q, vars, tBody, triggers, name)
 //    tBody match {
 //    case True() | False() => tBody
 //    case _ => new Quantification(q, vars, tBody, triggers)
 //  }
+  }
 
-  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers))
+  def unapply(q: Quantification) = Some((q.q, q.vars, q.body, q.triggers, q.name))
 }
 
 /* Arithmetic expression terms */
@@ -504,29 +547,48 @@ object Not extends (Term => Term) {
   def unapply(e: Not) = Some(e.p)
 }
 
-class Or(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+class Or(val ts: Seq[Term]) extends BooleanTerm
+    with StructuralEquality with ForbiddenInTrigger {
 
-  override val op = "||"
+  assert(ts.nonEmpty, "Expected at least one term, but found none")
+
+  val equalityDefiningMembers = ts
+
+  override lazy val toString = ts.mkString(" || ")
 }
 
-/* TODO: Or should be (Term, Term) => BooleanTerm, but that require a
- *       Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
+/* TODO: Or should be (Term, Term) => BooleanTerm, but that would require
+ *       a Boolean(t: Term) wrapper, because e0/e1 may just be a Var.
  *       It would be sooooo handy to be able to work with Term[Sort], but
  *       that conflicts with using extractor objects to simplify terms,
- *       since extractor objects can't be type-parameterised.
+ *       since extractor objects can't be type-parametrised.
  */
-object Or extends ((Term, Term) => Term) {
-  def apply(e0: Term, e1: Term) = (e0, e1) match {
-    case (True(), _) | (_, True()) => True()
-    case (False(), _) => e1
-    case (_, False()) => e0
-    case _ if e0 == e1 => e0
-    case _ => new Or(e0, e1)
+object Or extends (Iterable[Term] => Term) {
+  def apply(ts: Term*) = createOr(ts)
+  def apply(ts: Iterable[Term]) = createOr(ts.toSeq)
+
+  //  def apply(e0: Term, e1: Term) = (e0, e1) match {
+  //    case (True(), _) | (_, True()) => True()
+  //    case (False(), _) => e1
+  //    case (_, False()) => e0
+  //    case _ if e0 == e1 => e0
+  //    case _ => new Or(e0, e1)
+  //  }
+
+  @inline
+  def createOr(_ts: Seq[Term]): Term = {
+    var ts = _ts.flatMap { case Or(ts1) => ts1; case other => other :: Nil}
+    ts = _ts.filterNot(_ == False())
+    ts = ts.distinct
+
+    ts match {
+      case Seq() => False()
+      case Seq(t) => t
+      case _ => new Or(ts)
+    }
   }
 
-  def unapply(e: Or) = Some((e.p0, e.p1))
+  def unapply(e: Or) = Some(e.ts)
 }
 
 class And(val ts: Seq[Term]) extends BooleanTerm
@@ -577,6 +639,10 @@ object Implies extends ((Term, Term) => Term) {
   }
 
   def unapply(e: Implies) = Some((e.p0, e.p1))
+}
+
+object Implied extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term): Term = Implies(e1, e0)
 }
 
 class Iff(val p0: Term, val p1: Term) extends BooleanTerm
@@ -641,6 +707,19 @@ object Equals extends ((Term, Term) => BooleanTerm) {
       True()
     else
       e0.sort match {
+        case sorts.Snap =>
+          (e0, e1) match {
+            case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
+              assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
+            case (c1: Combine, sw2: SortWrapper) =>
+              assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
+            case (sw1: SortWrapper, c2: Combine) =>
+              assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
+            case _ => /* Ok */
+          }
+
+          new BuiltinEquals(e0, e1)
+
         case sorts.Perm => BuiltinEquals.forPerm(e0, e1)
         case _: sorts.Seq | _: sorts.Set | _: sorts.Multiset => new CustomEquals(e0, e1)
         case _ => new BuiltinEquals(e0, e1)
@@ -666,6 +745,8 @@ object BuiltinEquals {
     case _ => new BuiltinEquals(t1, t2)
   }
 
+  def apply(t1: Term, t2: Term) = new BuiltinEquals(t1, t2)
+
   def unapply(e: BuiltinEquals) = Some((e.p0, e.p1))
 }
 
@@ -680,9 +761,9 @@ class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
 }
 
 object CustomEquals {
+  def apply(t1: Term, t2: Term) = new CustomEquals(t1, t2)
   def unapply(e: CustomEquals) = Some((e.p0, e.p1))
 }
-
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
     with StructuralEqualityBinaryOp[Term]
@@ -1456,27 +1537,6 @@ object MultisetDifference extends ((Term, Term) => MultisetTerm) {
   def unapply(md: MultisetDifference) = Some((md.p0, md.p1))
 }
 
-class MultisetIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
-
-  override val op = "∈"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = MultisetIn(args(0), args(1))
-}
-
-object MultisetIn extends ((Term, Term) => BooleanTerm) {
-  def apply(t0: Term, t1: Term) = {
-    utils.assertSort(t1, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
-    utils.assertSort(t0, "first operand", t1.sort.asInstanceOf[sorts.Multiset].elementsSort)
-
-    new MultisetIn(t0, t1)
-  }
-
-  def unapply(mi: MultisetIn) = Some((mi.p0, mi.p1))
-}
-
 class MultisetCardinality(val p: Term) extends Term
     with StructuralEqualityUnaryOp[Term]
     with PossibleTrigger {
@@ -1502,21 +1562,21 @@ class MultisetCount(val p0: Term, val p1: Term) extends Term
     with PossibleTrigger {
 
   val sort = sorts.Int
-  override val toString = s"cnt($p0,$p1)"
+  override val toString = s"$p0($p1)"
 
   lazy val getArgs = p0 :: p1 :: Nil
   def withArgs(args: Seq[Term]) = MultisetCount(args(0), args(1))
 }
 
 object MultisetCount extends {
-  def apply(e:Term, t:Term) = {
-    utils.assertSort(t, "second operand", "Multiset", _.isInstanceOf[sorts.Multiset])
-    utils.assertSort(e, "first operand", t.sort.asInstanceOf[sorts.Multiset].elementsSort)
+  def apply(ms: Term, el: Term) = {
+    utils.assertSort(ms, "first operand", "Multiset", _.isInstanceOf[sorts.Multiset])
+    utils.assertSort(el, "second operand", ms.sort.asInstanceOf[sorts.Multiset].elementsSort)
 
-    new MultisetCount(e,t)
+    new MultisetCount(ms, el)
   }
 
-  def unapply(mc:MultisetCount) = Some((mc.p0, mc.p1))
+  def unapply(mc: MultisetCount) = Some((mc.p0, mc.p1))
 }
 
 /* Domains */
@@ -1571,6 +1631,10 @@ case class Second(t: Term) extends SnapshotTerm with PossibleTrigger {
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
  * because they are optimised away if wrappee `t` already has sort `to`.
  */
+
+/* Note: Sort wrappers should probably not be used as (outermost) triggers
+ * because they are optimised away if wrappee `t` already has sort `to`.
+ */
 class SortWrapper(val t: Term, val to: Sort)
     extends Term
        with StructuralEquality {
@@ -1615,7 +1679,7 @@ sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.Forbid
 /* Other terms */
 
 class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality with ForbiddenInTrigger {
-  assert(ts.nonEmpty, "Distinct requires at least term.")
+  assert(ts.nonEmpty, "Distinct requires at least one term")
 
   val equalityDefiningMembers = ts :: Nil
   override val toString = s"Distinct($ts)"
@@ -1629,9 +1693,25 @@ object Distinct {
   def unapply(d: Distinct) = Some(d.ts)
 }
 
-case class Let(x: Var, t: Term, body: Term) extends Term with ForbiddenInTrigger {
+class Let(val bindings: Map[Var, Term], val body: Term) extends Term with StructuralEquality with ForbiddenInTrigger {
+  assert(bindings.nonEmpty, "Let needs to bind at least one variable")
+
   val sort = body.sort
-  override lazy val toString = s"let $x = $t in $body"
+  val equalityDefiningMembers = Seq(body) ++ bindings.flatMap(_.productIterator)
+
+  override lazy val toString = s"let ${bindings.map(p => s"${p._1} = ${p._2}")} in $body"
+}
+
+object Let extends ((Map[Var, Term], Term) => Term) {
+  def apply(v: Var, t: Term, body: Term): Term = apply(Map(v -> t), body)
+  def apply(vs: Seq[Var], ts: Seq[Term], body: Term): Term = apply(toMap(vs zip ts), body)
+
+  def apply(bindings: Map[Var, Term], body: Term) = {
+    if (bindings.isEmpty) body
+    else new Let(bindings, body)
+  }
+
+  def unapply(l: Let) = Some((l.bindings, l.body))
 }
 
 /* Predefined terms */
@@ -1672,9 +1752,6 @@ object perms {
 /* Utility functions */
 
 object utils {
-  def BigOr(it: Iterable[Term], f: Term => Term = t => t): Term =
-    silicon.utils.mapReduceLeft(it, f, Or, True())
-
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
     silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 

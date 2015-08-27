@@ -19,7 +19,7 @@ import silicon.utils.Counter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with Logging {
-  val termConverter = new TermToSMTLib2Converter()
+  val termConverter = new TermToSMTLib2Converter(bookkeeper)
   import termConverter._
 
   private var pushPopScopeDepth = 0
@@ -31,6 +31,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   /* private */ var z3Path: Path = _
   private var logPath: Path = _
   private var counter: Counter = _
+  private var lastTimeout: Int = 0
 
   def z3Version() = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -92,6 +93,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     stop()
     counter.reset()
     pushPopScopeDepth = 0
+    lastTimeout = 0
     start()
   }
 
@@ -140,7 +142,25 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def assume(term: Term) = assume(convert(term))
+  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
+
+  def assume(term: Term) = {
+    /* Detect certain simple problems with quantifiers.
+     * Note that the current checks don't take in account whether or not a
+     * quantification occurs in positive or negative position.
+     */
+    term.deepCollect{case q: Quantification => q}.foreach(q => {
+      val problems = state.utils.detectQuantificationProblems(q)
+
+      if (problems.nonEmpty) {
+        quantificationLogger.println(s"\n\n${q.toString(true)}")
+        quantificationLogger.println("Problems:")
+        problems.foreach(p => quantificationLogger.println(s"  $p"))
+      }
+    })
+
+    assume(convert(term))
+  }
 
   def assume(term: String) {
     bookkeeper.assumptionCounter += 1
@@ -149,31 +169,77 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def assert(goal: Term) = assert(convert(goal))
+  def assert(goal: Term, timeout: Int = 0) = assert(convert(goal), timeout)
 
-  def assert(goal: String) = {
+  def assert(goal: String, timeout: Int) = {
     bookkeeper.assertionCounter += 1
 
-    push()
-    writeLine("(assert (not " + goal + "))")
-    readSuccess()
-    val startTime = System.currentTimeMillis()
-    writeLine("(check-sat)")
-    val r = readUnsat()
-    val endTime = System.currentTimeMillis()
-    logComment(s"${common.format.formatMillisReadably(endTime - startTime)}")
-    pop()
+    setTimeout(timeout)
 
-    r
+    val (result, duration) = config.assertionMode() match {
+      case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
+      case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
+    }
+
+    logComment(s"${common.format.formatMillisReadably(duration)}")
+    logComment("(get-info :all-statistics)")
+
+    result
   }
 
-  def check() = {
+  private def assertUsingPushPop(goal: String): (Boolean, Long) = {
+    push()
+
+    writeLine("(assert (not " + goal + "))")
+    readSuccess()
+
+    val startTime = System.currentTimeMillis()
+    writeLine("(check-sat)")
+    val result = readUnsat()
+    val endTime = System.currentTimeMillis()
+
+    pop()
+
+    (result, endTime - startTime)
+  }
+
+  private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
+    val guard = fresh("grd", sorts.Bool)
+
+    writeLine(s"(assert (implies $guard (not $goal)))")
+    readSuccess()
+
+    val startTime = System.currentTimeMillis()
+    writeLine(s"(check-sat $guard)")
+    val result = readUnsat()
+    val endTime = System.currentTimeMillis()
+
+    (result, endTime - startTime)
+  }
+
+  def check(timeout: Int = 0) = {
+    setTimeout(timeout)
+
     writeLine("(check-sat)")
 
     readLine() match {
       case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
+    }
+  }
+
+  private def setTimeout(timeout: Int) {
+    /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
+     * worsen performance, if only a bit. For the current test suite of
+     * 199 Silver files, the total verification time increased from 60s
+     * to 70s if 'set-option' is emitted every time.
+     */
+    if (lastTimeout != timeout) {
+      lastTimeout = timeout
+
+      writeLine(s"(set-option :timeout $timeout)")
+      readSuccess()
     }
   }
 
