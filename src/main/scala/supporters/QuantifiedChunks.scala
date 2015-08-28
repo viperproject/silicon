@@ -16,7 +16,7 @@ import interfaces.{PreambleEmitter, VerificationResult, Failure}
 import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
 import interfaces.decider.{Decider, Prover}
 import decider.PreambleFileEmitter
-import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk}
+import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk, DirectChunk}
 import state.terms.utils.BigPermSum
 import state.terms
 import state.terms._
@@ -197,7 +197,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     h.values foreach {
       case ch: QuantifiedChunk if ch.name == field =>
         quantifiedChunks +:= ch
-      case ch if ch.name == field =>
+      case ch: DirectChunk if ch.name == field =>
         sys.error(s"I did not expect non-quantified chunks on the heap for field $field, but found $ch")
       case ch =>
         otherChunks +:= ch
