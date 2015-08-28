@@ -155,7 +155,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, σ.h, id, c1) match {
+          decider.getChunk[DirectChunk](σ, σ.partiallyConsumedHeap, id, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
@@ -302,7 +302,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         val body = quant.exp
         val variable = quant.variable.localVar
 
-        val heap = σ.h
+        val heap = σ.partiallyConsumedHeap
         val includedArgNames = quant.accessList.map(_.name)
 
         val refs = heap.values.map(_.id).collect({

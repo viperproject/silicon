@@ -18,7 +18,7 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter}
-import viper.silver.ast.{ForallReferences}
+import viper.silver.ast.{CurrentPerm, ForallReferences}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -97,6 +97,22 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       logger.debug("h = " + stateFormatter.format(h))
     }
 
+    //TODO: how can this be done efficiently?
+    val σ_partial = {
+      var σt = σ
+
+      for (v <- σ.h.values) {
+        σt = σt \- v
+      }
+
+      for (v <- h.values) {
+        σt = σt \+ v
+      }
+      σt
+    }
+
+    σ.partiallyConsumedHeap = h
+
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure || config.handlePureConjunctsIndividually() =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
@@ -133,21 +149,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case ForallReferences(variable, accessList, exp) =>
 
-        //TODO: how can this be done efficiently?
-        val σ_new = {
-          var σt = σ
-
-          for (v <- σ.h.values) {
-            σt = σt \- v
-          }
-
-          for (v <- h.values) {
-            σt = σt \+ v
-          }
-          σt
-        }
-
-        decider.tryOrFail[(H, Term, List[DirectChunk])](σ_new, c)((σ1, c1, QS, QF) => {
+        decider.tryOrFail[(H, Term, List[DirectChunk])](σ_partial, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
             decider.assert(σ1, t) {
               case true =>
@@ -163,6 +165,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
        * not in the partially consumed heap (h).
        */
       case _ =>
+
         decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
             decider.assert(σ1, t) {

@@ -61,6 +61,7 @@ trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
 
   def h: H
   def g: H
+  var partiallyConsumedHeap : H
   def \(h: H): S
   def \(h: H, g: H): S
   def \+(c: Chunk): S
