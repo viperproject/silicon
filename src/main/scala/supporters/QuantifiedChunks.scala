@@ -833,6 +833,8 @@ object QuantifiedChunkSupporter {
                               sourceChunks: Seq[QuantifiedChunk],
                               freshFvf: Boolean) {
 
+    /* TODO: Change code s.th. a SingleLocationFvf is created iff qvars.isEmpty */
+
     val lookupReceiver: Term = Lookup(field.name, fvf, rcvr)
 
     private case class Entry(sourceChunk: QuantifiedChunk) {
@@ -874,9 +876,16 @@ object QuantifiedChunkSupporter {
           val lookup = lookupReceiver.replace(rcvr, `?r`)
           val newLookupTriggers = Trigger(sets(lookup))
           val oldLookupTriggers = Trigger(sets(entry.potentialValue.replace(rcvr, `?r`)))
-            /* TODO: Omitting the oldLookupTriggers makes only very few test cases fail.
-             *       Find out, why these particular tests fail.
-             */
+          /* TODO: Omitting the oldLookupTriggers makes only very few test cases fail.
+           *       Find out, why these particular tests fail.
+           */
+          // val oldLookupTriggers = Trigger(sets(entry.potentialValue.replace(rcvr, `?r`)) :+ SetIn(`?r`, Domain(field.name, fvf)))
+          /* TODO: Strengthening the oldLookupTriggers by adding `?r` in Domain(field.name, fvf)
+           *       makes only very few test cases fail.
+           *       Find out, why these particular tests fail.
+           *       Interestingly, strengthening newLookupTriggers this way makes 27
+           *       tests fails, and strengthening both makes 47 tests fail.
+           */
 
           /* Replace the given receiver with the implicit one, and in addition,
            * filter out triggers that don't actually occur in the body. The
