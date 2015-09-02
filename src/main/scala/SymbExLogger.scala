@@ -12,12 +12,15 @@ import viper.silver.ast.NoPosition
 import viper.silver.verifier.AbstractError
 
 /*
+ * For instructions on how to use/visualise recording, have a look at
+ * \utils\symbolicRecording\README_symbolicRecord.txt
+ *
  * Overall concept:
  * 1) SymbExLogger Object:
- *    Is used as interface to access the logs. Contains a list of SymbLog, one SymbLog
+ *    Is used as interface to access the logs. Code from this file that is used in Silicon
+ *    should only be used via SymbExLogger. Contains a list of SymbLog, one SymbLog
  *    per method/function/predicate (member). The method 'currentLog()' gives access to the log
- *    of the currently executed member. Code from this file that is used in Silicon should only be used
- *    via SymbExLogger.
+ *    of the currently executed member.
  * 2) SymbLog:
  *    Contains the log for a member. Most important methods: insert/collapse. To 'start'
  *    a record use insert, to finish the recording use collapse. There should be as many calls
@@ -43,7 +46,8 @@ import viper.silver.verifier.AbstractError
  *      a := a+2
  *    }
  *
- *    This results in a log that can be visualized as a simple tree (see: toSimpleTree()) as follows:
+ *    This results in a log that can be visualized as a
+ *    simple tree (see: SimpleTreeRenderer) as follows:
  *
  *    method m
  *      execute a := 1
@@ -71,7 +75,8 @@ object SymbExLogger {
   /** List of logged Method/Predicates/Functions. **/
   var memberList = List[SymbLog]()
 
-  val FLAG_WRITE_FILES = false
+  /** Flag; if disabled, no output files for visualisations are created.**/
+  val FLAG_WRITE_FILES = true
 
   /** Config of Silicon. Used by StateFormatters.**/
   private var config: Config = null
@@ -136,7 +141,7 @@ object SymbExLogger {
     if(FLAG_WRITE_FILES) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
-      val pw = new java.io.PrintWriter(new File("dot_input.dot"))
+      val pw = new java.io.PrintWriter(new File("utils/symbolicRecording/dot_input.dot"))
       try pw.write(str) finally pw.close()
     }
   }
@@ -148,7 +153,7 @@ object SymbExLogger {
   def writeJSFile(): Unit = {
     if(FLAG_WRITE_FILES) {
       val jsRenderer = new JSTreeRenderer()
-      val pw = new java.io.PrintWriter(new File("executionTreeData.js"))
+      val pw = new java.io.PrintWriter(new File("utils/symbolicRecording/sedebuggertree/executionTreeData.js"))
       try pw.write(jsRenderer.render(memberList)) finally pw.close()
     }
   }
@@ -161,6 +166,17 @@ object SymbExLogger {
   def initUnitTestEngine(): Unit = {
     if(filePath != null)
       unitTestEngine = new SymbExLogUnitTest(filePath)
+  }
+
+  /**
+   * Resets the SymbExLogger-object, to make it ready for a new file.
+   * Only needed when several files are verified together (e.g., sbt test).
+   */
+  def reset(): Unit ={
+    memberList = List[SymbLog]()
+    filePath = null
+    unitTestEngine = null
+    config = null
   }
 }
 
@@ -1108,8 +1124,6 @@ class SymbExLogUnitTest(f: Path) {
    * only be called if the whole verification process is already terminated.
    */
   def verify(): Seq[SymbExLogUnitTestError] = {
-    if(!SymbExLogger.FLAG_WRITE_FILES)
-      return Nil
     val expectedPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".elog").toString()
     val actualPath = Paths.get("src/test/resources/symbExLogTests/" + fileName + ".alog").toString()
     var errorMsg = ""
@@ -1121,12 +1135,10 @@ class SymbExLogUnitTest(f: Path) {
       try pw.write(SymbExLogger.toTypeTreeString()) finally pw.close()
 
       val expectedSource = scala.io.Source.fromFile(expectedPath)
-      val expected = //try expectedSource.getLines() finally expectedSource.close()
-        expectedSource.getLines()
+      val expected = expectedSource.getLines()
 
       val actualSource = scala.io.Source.fromFile(actualPath)
-      val actual = //try actualSource.getLines() finally actualSource.close()
-        actualSource.getLines()
+      val actual = actualSource.getLines()
 
       var lineNumber = 0
 
@@ -1147,6 +1159,8 @@ class SymbExLogUnitTest(f: Path) {
         errorMsg = errorMsg + "expected: " + expectedPath.toString() + "\n"
         errorMsg = errorMsg + "actual:   " + actualPath.toString() + "\n"
       }
+      actualSource.close()
+      expectedSource.close()
     }
     if(testIsExecuted && testFailed){
       return Seq(new SymbExLogUnitTestError(errorMsg))

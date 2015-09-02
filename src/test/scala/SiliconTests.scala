@@ -23,6 +23,9 @@ class SiliconTests extends SilSuite {
 
     // For Unit-Testing of the Symbolic Execution Logging, the name of the file
     // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
+    // SymbExLogger.reset() cleans the logging object (only relevant for verifying multiple
+    // tests at once, e.g. with the 'test'-sbt-command.
+    SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
 
