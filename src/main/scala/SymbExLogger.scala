@@ -12,8 +12,8 @@ import viper.silver.ast.NoPosition
 import viper.silver.verifier.AbstractError
 
 /*
- * For instructions on how to use/visualise recording, have a look at
- * \utils\symbolicRecording\README_symbolicRecord.txt
+ *  For instructions on how to use/visualise recording, have a look at
+ *  /utils/symbolicRecording/README_symbolicRecord.txt
  *
  * Overall concept:
  * 1) SymbExLogger Object:
