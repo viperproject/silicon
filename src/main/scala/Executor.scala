@@ -213,7 +213,7 @@ trait DefaultExecutor[ST <: Store[ST],
    */
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
-  : VerificationResult = {
+          : VerificationResult = {
     val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, c))
     exec2(σ, stmt, c)((σ1, c1) => {
       SymbExLogger.currentLog().collapse(stmt, sepIdentifier)

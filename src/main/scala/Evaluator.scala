@@ -77,7 +77,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
-  : VerificationResult = {
+          : VerificationResult = {
     val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, c))
     eval3(σ, e, pve, c)((e1, c1) => {
       SymbExLogger.currentLog().collapse(e, sepIdentifier)

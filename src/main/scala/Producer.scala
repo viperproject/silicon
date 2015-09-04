@@ -93,7 +93,7 @@ trait DefaultProducer[ST <: Store[ST],
                        pve: PartialVerificationError,
                        c: C)
                       (Q: (H, C) => VerificationResult)
-  : VerificationResult = {
+                      : VerificationResult = {
     val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ, c))
     produce3(σ, sf, p, φ, pve, c)((σ1, c1) => {
       SymbExLogger.currentLog().collapse(φ, sepIdentifier)

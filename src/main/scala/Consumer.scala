@@ -91,7 +91,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   /** Wrapper Method for consume, for logging. See Executor.scala for explanation of analogue. **/
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
-  : VerificationResult = {
+                       : VerificationResult = {
     val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(φ, σ, c))
     consume2(σ, h, p, φ, pve, c)((h1, t1, l1, c1) => {
       SymbExLogger.currentLog().collapse(φ, SEP_identifier)
