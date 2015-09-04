@@ -3,9 +3,9 @@
 
 :: Set the GRAPHVIZ_PATH variable to your installation folder:
 ::=====================================
-SET GRAPHVIZ_PATH= E:\Programme\GraphViz
+SET GRAPHVIZ_PATH= <INSERT PATH TO GRAPHVIZ DIRECTORY>
 ::=====================================
 
-"%graphvizpath%\bin\dot.exe" -Tpng "%cd%\utils\symbolicRecording\dot_input.dot" > "%cd%\utils\symbolicRecording\dot_output.png"
+"%graphvizpath%\bin\dot.exe" -Tpng "%cd%\dot_input.dot" > "%cd%\dot_output.png"
 
-"%cd%\utils\symbolicRecording\dot_output.png"
+"%cd%\dot_output.png"

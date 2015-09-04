@@ -20,13 +20,13 @@ Chapters:
     3) For DOT-Graph-Visualisation:
        a) Make sure you have GraphViz installed. www.graphviz.org
        b1) You use the created dot_input.dot file as input for one of the GraphViz-tools OR
-       b2) you use the available batch-file visualise_dot.bat, which will automatically call dot and create
-          a PNG-file with the graph. Make sure you have set the correct path to the GraphViz directory
-          in the batchfile.
+       b2) you use the available batch-file \utils\symbolicRecording\visualise_dot.bat,
+          which will automatically call dot and create a PNG-file with the graph.
+          Make sure you have set the correct path to the GraphViz directory in the batchfile.
 
     4) For HTML-Visualisation:
        a1) Open \utils\symbolicRecording\sedebuggertree\example.html OR
-       a2) use the batchfile "visualise_HTML.bat".
+       a2) use the batchfile \utils\symbolicRecording\visualise_HTML.bat
 
     Recommendation when using the batch-files: Open a 2nd Terminal in intelliJ (rightclick
     on Terminal -> New Session), use one Terminal for executing your files, use the other
