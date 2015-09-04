@@ -20,7 +20,7 @@ import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerifi
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
     TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
     AbortedExceptionally => SilExceptionThrown, AbstractError}
-import silver.frontend.{SilFrontend, SilFrontendConfig}
+import silver.frontend.{TranslatorState, SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.FullPerm
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
@@ -29,8 +29,6 @@ import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
 import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
     DefaultSequencesEmitter}
-
-import viper.silver.frontend.{TranslatorState, SilFrontend, SilFrontendConfig}
 
 /* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
  *       For example, the way in which DependencyNotFoundErrors are handled.
