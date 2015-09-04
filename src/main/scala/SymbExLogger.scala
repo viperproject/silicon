@@ -76,7 +76,7 @@ object SymbExLogger {
   var memberList = List[SymbLog]()
 
   /** Flag; if disabled, no output files for visualisations are created.**/
-  val FLAG_WRITE_FILES = true
+  val FLAG_WRITE_FILES = false
 
   /** Config of Silicon. Used by StateFormatters.**/
   private var config: Config = null
@@ -287,16 +287,6 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
         stmt match {
           case _: silver.ast.Seqn =>
             return false
-          case _ =>
-            return true
-        }
-      }
-      case exp: silver.ast.Exp => {
-        exp match {
-          /*case _: ast.CondExp /*| _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
-               | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
-               | _: ast.WildcardPerm | _: ast.FieldAccess */=>
-            return false*/
           case _ =>
             return true
         }

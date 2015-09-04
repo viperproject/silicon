@@ -19,7 +19,7 @@ import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
     TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
-    AbortedExceptionally => SilExceptionThrown}
+    AbortedExceptionally => SilExceptionThrown, AbstractError}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import interfaces.{Failure => SiliconFailure}
 import state.terms.FullPerm
@@ -29,7 +29,6 @@ import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import reporting.{VerificationException, Bookkeeper}
 import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
     DefaultSequencesEmitter}
-import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult, Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency, TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError, AbortedExceptionally => SilExceptionThrown, AbstractError}
 
 import viper.silver.frontend.{TranslatorState, SilFrontend, SilFrontendConfig}
 
