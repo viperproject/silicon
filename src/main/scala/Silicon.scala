@@ -669,21 +669,6 @@ object Config {
 class SiliconFrontend extends SilFrontend {
   protected var siliconInstance: Silicon = _
 
-  /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
-  override def result: SilVerificationResult = {
-    if(_state < TranslatorState.Verified) super.result
-    else{
-      val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
-      symbExLogUnitTestErrors match{
-        case Nil => super.result
-        case s1:Seq[AbstractError] => super.result match{
-          case SilSuccess => SilFailure(s1)
-          case SilFailure(s2) => SilFailure(s2 ++ s1)
-        }
-      }
-    }
-  }
-
   def createVerifier(fullCmd: String) = {
     siliconInstance = new Silicon(Seq("args" -> fullCmd))
 

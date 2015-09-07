@@ -10,7 +10,10 @@ package tests
 
 import java.nio.file.Path
 import silver.testing.SilSuite
-import silver.verifier.Verifier
+import viper.silver.frontend.TranslatorState
+import viper.silver.verifier.{Success => SilSuccess, Failure => SilFailure,
+    VerificationResult => SilVerificationResult}
+import viper.silver.verifier._
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
@@ -28,8 +31,8 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
-
-    val fe = new SiliconFrontend()
+    
+    val fe = new SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
     fe
@@ -43,5 +46,22 @@ class SiliconTests extends SilSuite {
     val silicon = Silicon.fromPartialCommandLineArguments(args, debugInfo)
 
     silicon
+  }
+}
+
+class SiliconFrontendWithUnitTesting extends SiliconFrontend {
+  /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
+  override def result: SilVerificationResult = {
+    if(_state < TranslatorState.Verified) super.result
+    else{
+      val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
+      symbExLogUnitTestErrors match{
+        case Nil => super.result
+        case s1:Seq[AbstractError] => super.result match{
+          case SilSuccess => SilFailure(s1)
+          case SilFailure(s2) => SilFailure(s2 ++ s1)
+        }
+      }
+    }
   }
 }
