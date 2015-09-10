@@ -9,7 +9,7 @@ package silicon
 
 import javax.annotation.PreDestroy
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
@@ -90,8 +90,8 @@ trait DefaultEvaluator[ST <: Store[ST],
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
       case _ =>
-        logger.debug(s"\nEVAL ${e.pos}: $e")
-        logger.debug(stateFormatter.format(σ))
+        log.debug(s"\nEVAL ${e.pos}: $e")
+        log.debug(stateFormatter.format(σ))
         decider.prover.logComment(s"[eval] $e")
     }
 
