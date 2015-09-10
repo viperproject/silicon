@@ -8,7 +8,7 @@ package viper
 package silicon
 
 import java.text.SimpleDateFormat
-import java.io.File
+import java.io.{PrintWriter, StringWriter, File}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
@@ -286,7 +286,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
         case ex: Exception =>
-          log.debug(ex.toString + "\n" + ex.getStackTraceString)
+          val sw = new StringWriter()
+          val pw = new PrintWriter(sw)
+          ex.printStackTrace(pw)
+          log.debug(ex.toString + "\n" + sw)
           result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
