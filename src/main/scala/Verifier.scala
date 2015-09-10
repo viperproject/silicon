@@ -7,7 +7,7 @@
 package viper
 package silicon
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed}
 import silver.components.StatefulComponent
@@ -55,7 +55,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
   def verify(method: ast.Method, c: C): VerificationResult = {
-    logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
+    log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
     val ins = method.formalArgs.map(_.localVar)
@@ -90,7 +90,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
-    logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
+    log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
     val ins = predicate.formalArgs.map(_.localVar)
@@ -270,9 +270,9 @@ trait AbstractVerifier[ST <: Store[ST],
                 None}
 
     if (malformedZ3ConfigArgs)
-      logger.warn(s"Could not handle ${config.z3ConfigArgs.humanName} '${config.z3ConfigArgs.get.getOrElse("")}'")
+      log.warn(s"Could not handle ${config.z3ConfigArgs.humanName} '${config.z3ConfigArgs.get.getOrElse("")}'")
     else if (smt2ConfigOptions.nonEmpty) {
-      logger.info(s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'")
+      log.info(s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'")
       preambleEmitter.emitPreamble(smt2ConfigOptions)
     }
 

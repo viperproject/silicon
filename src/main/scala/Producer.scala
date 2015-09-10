@@ -7,7 +7,7 @@
 package viper
 package silicon
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
@@ -95,8 +95,8 @@ trait DefaultProducer[ST <: Store[ST],
                       : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      logger.debug(s"\nPRODUCE ${φ.pos}: $φ")
-      logger.debug(stateFormatter.format(σ))
+      log.debug(s"\nPRODUCE ${φ.pos}: $φ")
+      log.debug(stateFormatter.format(σ))
     }
 
     val produced = φ match {

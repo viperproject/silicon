@@ -7,7 +7,7 @@
 package viper
 package silicon
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
@@ -178,8 +178,8 @@ trait DefaultExecutor[ST <: Store[ST],
     stmt match {
       case _: silver.ast.Seqn =>
       case _ =>
-        logger.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
-        logger.debug(stateFormatter.format(σ))
+        log.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
+        log.debug(stateFormatter.format(σ))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString())
     }

@@ -8,7 +8,7 @@ package viper
 package silicon
 package supporters
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.ast.utility.Functions
 import silver.components.StatefulComponent
@@ -307,7 +307,7 @@ trait FunctionSupporter[ST <: Store[ST],
 
     private def checkSpecificationsWellDefined(function: ast.Function, c: C): VerificationResult = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + " (specs well-defined) " + ("-" * 10)
-      logger.debug(s"\n\n$comment\n")
+      log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
 
       val data = functionData(function)
@@ -371,7 +371,7 @@ trait FunctionSupporter[ST <: Store[ST],
 
     private def verifyAndAxiomatize(function: ast.Function, c: C): VerificationResult = {
       val comment = "-" * 10 + " FUNCTION " + function.name + "-" * 10
-      logger.debug(s"\n\n$comment\n")
+      log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
 
       val data = functionData(function)
@@ -571,7 +571,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         failed = true
         if (data.welldefined) {
           println(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
-          logger.warn(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
+          log.warn(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
         }
 
         Var("$unresolved", sort)

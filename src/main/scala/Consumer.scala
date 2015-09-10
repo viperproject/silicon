@@ -7,7 +7,7 @@
 package viper
 package silicon
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{NegativePermission, AssertionFalse}
@@ -91,9 +91,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      logger.debug(s"\nCONSUME ${φ.pos}: $φ")
-      logger.debug(stateFormatter.format(σ))
-      logger.debug("h = " + stateFormatter.format(h))
+      log.debug(s"\nCONSUME ${φ.pos}: $φ")
+      log.debug(stateFormatter.format(σ))
+      log.debug("h = " + stateFormatter.format(h))
     }
 
     val consumed = φ match {
