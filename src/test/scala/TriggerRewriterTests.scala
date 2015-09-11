@@ -10,12 +10,12 @@ package tests
 
 import java.io.{PrintWriter, StringWriter}
 import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import state.terms._
 import reporting.MultiRunLogger
 import DSL._
 
-class TriggerRewriterTests extends FunSuite with ShouldMatchers {
+class TriggerRewriterTests extends FunSuite with Matchers {
   val dummySink = new PrintWriter(new StringWriter())
   val dummyLogger = new MultiRunLogger(dummySink, () => None)
 

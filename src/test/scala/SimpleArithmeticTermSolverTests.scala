@@ -9,12 +9,12 @@ package silicon
 package tests
 
 import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import state.terms._
 import DSL._
 import SimpleArithmeticTermSolver.solve
 
-class SimpleArithmeticTermSolverTests extends FunSuite with ShouldMatchers {
+class SimpleArithmeticTermSolverTests extends FunSuite with Matchers {
   test("Pre-solving errors") {
     assert(solve(b, y, y).isInstanceOf[SolverResult])
     assert(solve(x, b, y).isInstanceOf[SolverResult])

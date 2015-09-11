@@ -77,7 +77,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
 
     case MacroDecl(id, args, body) =>
       val idDoc = sanitizeSymbol(id)
-      val argDocs = args map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))
+      val argDocs = (args map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))).to[collection.immutable.Seq]
       val bodySortDoc = render(body.sort)
       val bodyDoc = render(body)
 
@@ -99,14 +99,14 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       renderNAryOp("ite", t0, t1, t2)
 
     case fapp: FApp =>
-      parens(sanitizeSymbol(fapp.function.id) <+> ssep(fapp.args map render, space))
+      parens(sanitizeSymbol(fapp.function.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
 
     case app: GenericApply =>
       val docF = render(app.function)
 
       app.arrow.from match {
         case Seq(sorts.Unit) => docF
-        case _ => parens(docF <+> ssep(app.args map render, space))
+        case _ => parens(docF <+> ssep((app.args map render).to[collection.immutable.Seq], space))
       }
 
     case Quantification(quant, vars, body, triggers, name) =>
@@ -115,9 +115,8 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       val docQuant = render(quant)
 
       val docTriggers =
-        ssep((triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
-                     .map(d => ":pattern" <+> parens(d))).to[collection.immutable.Seq],
-             line)
+        ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
+                     .map(d => ":pattern" <+> parens(d)).to[collection.immutable.Seq], line)
 
       val docQid: Doc =
         if (name.isEmpty) empty
