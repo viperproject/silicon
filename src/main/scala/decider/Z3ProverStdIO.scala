@@ -10,7 +10,7 @@ package decider
 
 import java.io.{PrintWriter, BufferedWriter, InputStreamReader, BufferedReader, OutputStreamWriter}
 import java.nio.file.{Path, Paths}
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import org.apache.commons.io.FileUtils
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import state.terms._
@@ -64,14 +64,14 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   }
 
   private def createZ3Instance() = {
-    logger.info(s"Starting Z3 at $z3Path")
+    log.info(s"Starting Z3 at $z3Path")
 
     val userProvidedZ3Args: Array[String] = config.z3Args.get match {
       case None =>
         Array()
 
       case Some(args) =>
-        logger.info(s"Additional command-line arguments are $args")
+        log.info(s"Additional command-line arguments are $args")
         args.split(' ').map(_.trim)
     }
 
@@ -279,7 +279,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
         str.replaceAll("\r", "")
            .replaceAll("\n", "\n; ")
 
-      log("; " + sanitisedStr)
+      logToFile("; " + sanitisedStr)
     }
 
   private def freshId(prefix: String) = prefix + "@" + counter.next()
@@ -344,7 +344,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
       if (result.toLowerCase != "success") logComment(result)
 
       val warning = result.startsWith("WARNING")
-      if (warning) logger.info(s"Z3: $result")
+      if (warning) log.info(s"Z3: $result")
 
       repeat = warning
     }
@@ -352,12 +352,12 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     result
   }
 
-  private def log(str: String) {
+  private def logToFile(str: String) {
     logFile.println(str)
   }
 
   private def writeLine(out: String) = {
-    log(out)
+    logToFile(out)
     output.println(out)
   }
 }

@@ -8,12 +8,12 @@ package viper
 package silicon
 
 import java.text.SimpleDateFormat
-import java.io.File
+import java.io.{PrintWriter, StringWriter, File}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
 import scala.util.Properties.envOrNone
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import org.rogach.scallop.{Subcommand, ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
@@ -240,7 +240,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Running
 
-    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     config.inputFile = program.pos match {
       case sp: ast.AbstractSourcePosition => Some(sp.file)
@@ -294,7 +294,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
         case ex: Exception =>
-          logger.debug(ex.toString + "\n" + ex.getStackTraceString)
+          val sw = new StringWriter()
+          val pw = new PrintWriter(sw)
+          ex.printStackTrace(pw)
+          log.debug(ex.toString + "\n" + sw)
           result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
@@ -351,9 +354,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case None =>
 
         case Some((Config.Sink.Stdio, "")) =>
-          logger.info("")
-          logger.info(verifier.bookkeeper.toString)
-          logger.info("")
+          log.info("")
+          log.info(verifier.bookkeeper.toString)
+          log.info("")
 
         case Some((Config.Sink.File, path)) =>
           silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
@@ -362,9 +365,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       }
     }
 
-    failures foreach (f => logFailure(f, s => logger.info(s)))
+    failures foreach (f => logFailure(f, s => log.info(s)))
 
-    logger.info("\nVerification finished in %s with %s error(s)".format(
+    log.info("\nVerification finished in %s with %s error(s)".format(
         silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
         failures.length))
 
