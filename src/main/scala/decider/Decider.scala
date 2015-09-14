@@ -8,7 +8,7 @@ package viper
 package silicon
 package decider
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
 import silver.verifier.reasons.InsufficientPermission
@@ -100,10 +100,10 @@ class DefaultDecider[ST <: Store[ST],
     }
 
     val z3Version = z3.z3Version()
-    logger.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
+    log.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
 
     if (z3Version != Silicon.expectedZ3Version)
-      logger.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")
+      log.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")
 
     None
   }
@@ -221,7 +221,7 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
-  def checkSmoke() = prover.check() == Unsat
+  def checkSmoke() = prover.check(config.checkTimeout()) == Unsat
 
   def tryOrFail[R](σ: S, c: C)
                   (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)

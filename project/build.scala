@@ -16,7 +16,7 @@ object SiliconBuild extends Build {
     ++ Seq(
           organization := "viper",
           version := "0.1-SNAPSHOT",
-          scalaVersion := "2.10.4",
+          scalaVersion := "2.11.4",
           scalacOptions in Compile ++= Seq(
             "-deprecation",
             "-unchecked",
@@ -123,10 +123,10 @@ object SiliconBuild extends Build {
 
   object dependencies {
     lazy val logging = Seq(
-      "com.weiglewilczek.slf4s" % "slf4s_2.9.1" % "1.0.7",
-      "org.slf4j" % "slf4j-log4j12" % "1.6.4")
+      "org.slf4s" %% "slf4s-api" % "1.7.12",
+      "org.slf4j" % "slf4j-log4j12" % "1.7.12")
 
-    lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
+    lazy val scallop = "org.rogach" %% "scallop" % "0.9.5"
     lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.0"
 
     lazy val commonsIO = "commons-io" % "commons-io" % "2.4"

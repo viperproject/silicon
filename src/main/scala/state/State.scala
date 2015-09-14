@@ -8,7 +8,7 @@ package viper
 package silicon
 package state
 
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import silver.ast
 import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor,
     StateFactory}
