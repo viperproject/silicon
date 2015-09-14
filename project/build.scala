@@ -78,7 +78,7 @@ object SiliconBuild extends Build {
               BrandKeys.data <++= HgIdKeys.projectId(idOrException => {
                 val id =
                   idOrException.fold(Predef.identity,
-                                     _ => de.oakgrove.SbtHgId.Id("<unknown", "<unknown", "<unknown", "<unknown"))
+                                     _ => de.oakgrove.SbtHgId.Id("<unknown>", "<unknown>", "<unknown>", "<unknown>"))
 
                 Seq(Val("hgid_version", id.version),
                     Val("hgid_id", id.id),
