@@ -12,15 +12,18 @@ import java.io.{PrintWriter, StringWriter, File}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
+import scala.reflect.runtime.universe
+import scala.util.Try
 import scala.util.Properties.envOrNone
 import org.slf4s.Logging
-import org.rogach.scallop.{Subcommand, ScallopOption, ValueConverter, singleArgConverter}
+import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
     TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
     AbortedExceptionally => SilExceptionThrown}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
+import common.config.Version
 import interfaces.{Failure => SiliconFailure}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import state.terms.{TriggerRewriter, FullPerm}
@@ -30,25 +33,40 @@ import supporters.{DefaultFieldValueFunctionsEmitter, DefaultDomainsEmitter, Def
     DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, QuantifiedChunkSupporter}
 import reporting.{VerificationException, Bookkeeper}
 
-/* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
- *       For example, the way in which DependencyNotFoundErrors are handled.
- */
+object Silicon {
+  private val brandingDataObjectName = "viper.silicon.brandingData"
+  private val mirror = universe.runtimeMirror(getClass.getClassLoader)
+  private val optModuleSymbol = Try(mirror.staticModule(brandingDataObjectName)).toOption
+  private val optModuleMirror = optModuleSymbol.map(ms => mirror.reflectModule(ms))
+  private val optInstanceMirror = optModuleMirror.map(mm => mirror.reflect(mm.instance))
 
-/* TODO: Can the internal error reporting (Failure, Success) be simplified? Keep in mind that Silicon should
- *       continue if a pure assertion didn't hold.
- */
+  private def bd(name: String): Option[String] = {
+    optModuleSymbol.map(ms => {
+      val field = ms.typeSignature.decl(universe.TermName(name)).asTerm
+      val fieldMirror = optInstanceMirror.get.reflectField(field)
 
-trait SiliconConstants {
-  val name = brandingData.sbtProjectName
-  val version = s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
-  val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
+      fieldMirror.get.toString
+    })
+  }
+
+  private val sbtProjectName = bd("sbtProjectName").getOrElse("Silicon")
+  private val sbtProjectVersion = bd("sbtProjectVersion").getOrElse("0.0")
+  private val buildDate = bd("buildDate").getOrElse("<unknown>")
+
+  private object hgid {
+    val version = bd("hgid_version").getOrElse("<unknown>")
+    val branch = bd("hgid_branch").getOrElse("<unknown>")
+  }
+
+  val name = sbtProjectName
+  val version = s"$sbtProjectVersion (${hgid.version})"
+  val buildVersion = s"$sbtProjectVersion ${hgid.version} ${hgid.branch} $buildDate"
   val copyright = "(c) Copyright ETH Zurich 2012 - 2015"
   val z3ExeEnvironmentVariable = "Z3_EXE"
-  val expectedZ3Version = "4.3.2"
-  val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
-}
+  val z3MinVersion = Version("4.3.2")
+  val z3MaxVersion: Option[Version] = None
+  val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
-object Silicon extends SiliconConstants {
   val hideInternalOptions = true
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
@@ -57,13 +75,13 @@ object Silicon extends SiliconConstants {
         if (k.head.isUpper) {
           Seq(s"-$k=$v")
         } else {
-        val kStr = s"--$k"
-        val vStr = v.toString
+          val kStr = s"--$k"
+          val vStr = v.toString
 
-        vStr.toLowerCase match {
-          case "true" | "false" => Seq(kStr)
-          case _ => Seq(kStr, vStr)
-        }
+          vStr.toLowerCase match {
+            case "true" | "false" => Seq(kStr)
+            case _ => Seq(kStr, vStr)
+          }
         }
     }.toSeq
 
@@ -88,7 +106,6 @@ object Silicon extends SiliconConstants {
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
-         with SiliconConstants
          with Logging {
 
   private type ST = MapBackedStore
@@ -98,6 +115,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type C = DefaultContext
   private type V = DefaultVerifier[ST, H, PC, S]
   private type Failure = SiliconFailure[ST, H, S]
+
+  val name: String = Silicon.name
+  val version = Silicon.version
+  val buildVersion = Silicon.buildVersion
+  val copyright = Silicon.copyright
+  val dependencies = Silicon.dependencies
 
   private var _config: Config = _
   final def config = _config
@@ -172,7 +195,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   /** Creates and sets up an instance of a [[viper.silicon.AbstractVerifier]], which can be used
-    * to verify elements of a SIL AST such as procedures or functions.
+    * to verify a Silver program.
     *
     * @return A fully set up verifier, ready to be used.
     */
@@ -311,12 +334,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
-    /* TODO:
-     *  - Since there doesn't seem to be a need for Success to carry a message,
-     *    the hierarchy should be changed s.t. it doesn't has that field any
-     *    more.
-     */
-
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
@@ -507,14 +524,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-//  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
-//    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
-//             + "Caching results in incompletenesses, but is usually faster."),
-//    default = Some(false),
-//    noshort = true,
-//    hidden = Silicon.hideInternalOptions
-//  )
-//
 //  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
 //    descr = (  "Disable caching of snapshot symbols. "
 //             + "Caching reduces the number of symbols the prover has to work with."),
