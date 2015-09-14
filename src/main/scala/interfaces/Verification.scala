@@ -43,13 +43,13 @@ sealed abstract class VerificationResult {
     }
 }
 
-abstract class FatalResult extends VerificationResult {
+sealed abstract class FatalResult extends VerificationResult {
   val isFatal = true
 
   def &&(other: => VerificationResult) = this
 }
 
-abstract class NonFatalResult extends VerificationResult {
+sealed abstract class NonFatalResult extends VerificationResult {
   val isFatal = false
 
   /* Attention: Parameter 'other' of '&&' is a function! That is, the following
