@@ -75,17 +75,16 @@ object SiliconBuild extends Build {
               BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
               BrandKeys.data <+= name(Val("sbtProjectName", _)),
               BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
-              BrandKeys.data <+= HgIdKeys.projectId { idOrException =>
-                val hgid =
+              BrandKeys.data <++= HgIdKeys.projectId(idOrException => {
+                val id =
                   idOrException.fold(Predef.identity,
-                  _ => de.oakgrove.SbtHgId.Id("<unknown", "<unknown", "<unknown", "<unknown"))
-                BrandObject("hgid",
-                            """val version = "%s"
-                               val id = "%s"
-                               val branch = "%s"
-                               val tags = "%s"
-                            """.format(hgid.version, hgid.id, hgid.branch, hgid.tags))
-              },
+                                     _ => de.oakgrove.SbtHgId.Id("<unknown", "<unknown", "<unknown", "<unknown"))
+
+                Seq(Val("hgid_version", id.version),
+                    Val("hgid_id", id.id),
+                    Val("hgid_branch", id.branch),
+                    Val("hgid_tags", id.tags))
+              }),
               sourceGenerators in Compile <+= BrandKeys.generateDataFile)
               /* ,addCommandAlias("tn", "test-only -- -n ") // requires sbt 0.13.x */)
     ).dependsOn(common)
