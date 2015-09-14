@@ -8,7 +8,7 @@ package viper
 package silicon
 package supporters
 
-import com.weiglewilczek.slf4s.{Logger, Logging}
+import org.slf4s.{LoggerFactory, Logging}
 import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.HeuristicsFailed
@@ -95,7 +95,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
     private var cnt = 0L
     private var stack = Stack[Long]()
-    private val heuristicsLogger = Logger("heuristics")
+    private val heuristicsLogger = LoggerFactory.getLogger("heuristics")
 
     private def tryWithReactions[O]
                                 (description: String)
@@ -187,7 +187,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
           /* TODO: Remove */
           if (stack.size >= 10 * config.maxHeuristicsDepth()) {
-            logger.debug("[tryWithReactions] ******************* Heuristics stack grew too large ***************** ")
+            log.debug("[tryWithReactions] ******************* Heuristics stack grew too large ***************** ")
 //            Thread.sleep(2500)
           }
 

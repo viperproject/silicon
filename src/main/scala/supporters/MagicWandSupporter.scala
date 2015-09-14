@@ -8,7 +8,7 @@ package viper
 package silicon
 package supporters
 
-import com.weiglewilczek.slf4s.{Logger, Logging}
+import org.slf4s.{LoggerFactory, Logging}
 import silver.ast
 import silver.verifier.PartialVerificationError
 import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
@@ -202,7 +202,7 @@ trait MagicWandSupporter[ST <: Store[ST],
     }
 
     private var cnt = 0L
-    private val packageLogger = Logger("package")
+    private val packageLogger = LoggerFactory.getLogger("package")
 
     def packageWand(σ: S, wand: ast.MagicWand, pve: PartialVerificationError, c: C)
                    (Q: (MagicWandChunk, C) => VerificationResult)

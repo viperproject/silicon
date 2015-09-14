@@ -14,7 +14,8 @@ import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, Pre
     MagicWandNotWellformed}
 import silver.components.StatefulComponent
 import silver.ast.utility.{Nodes, Visitor}
-import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success, Failure}
+import viper.silicon.interfaces.{NonFatalResult, Evaluator, Producer, Consumer, Executor, VerificationResult, Success,
+    Failure}
 import interfaces.decider.Decider
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
@@ -94,7 +95,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
 //        println(s"  s1.h = ${σ1.h}")
 //        println(s"  s1.g = ${σ1.g}")
 
-        var σInner: S = null
+        var σInner: S = null.asInstanceOf[S]
 
         result =
           inScope {
@@ -117,7 +118,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
             result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
             break()
 
-          case _: Success => /* Nothing needs to be done*/
+          case _: NonFatalResult => /* Nothing needs to be done*/
         }
       }
     }

@@ -104,7 +104,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       log.debug(stateFormatter.format(σ))
       log.debug("h = " + stateFormatter.format(h))
       if (c.reserveHeaps.nonEmpty)
-        logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
     }
 
     val consumed = φ match {

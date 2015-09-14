@@ -89,10 +89,10 @@ trait DefaultEvaluator[ST <: Store[ST],
         log.debug(s"\nEVAL ${e.pos}: $e")
         log.debug(stateFormatter.format(σ))
         if (c.reserveHeaps.nonEmpty)
-          logger.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+          log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
         if (c.evalHeap.nonEmpty)
-          logger.debug("hE = " + c.evalHeap.map(stateFormatter.format).mkString("", ",\n     ", ""))
-        c.lhsHeap.map(h => logger.debug("hLHS = " + stateFormatter.format(h)))
+          log.debug("hE = " + c.evalHeap.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        c.lhsHeap.map(h => log.debug("hLHS = " + stateFormatter.format(h)))
         decider.prover.logComment(s"[eval] $e")
     }
 
