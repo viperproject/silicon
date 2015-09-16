@@ -17,8 +17,7 @@ if not exist silicon_classpath.txt (
 :: Note: this solutions breaks, once the classpath is longer than 8192 characters!
 for /f "delims=" %%x in (silicon_classpath.txt) do set CP=%%x
 
-set BASE_DIR=%~dp0
-set JVM_OPTS=-Dlog4j.configuration="file:%BASE_DIR%\src\test\resources\log4j.properties" -Xss16m -Dfile.encoding=UTF-8
+set JVM_OPTS=-Dlog4j.configuration=file:src\test\resources\log4j.properties -Xss16m -Dfile.encoding=UTF-8
 set SILICON_MAIN=viper.silicon.SiliconRunner
 set FWD_ARGS= %*
 set CMD=%JAVA_EXE% %JVM_OPTS% -cp "%CP%" %SILICON_MAIN% %FWD_ARGS%
