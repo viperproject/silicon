@@ -1,6 +1,10 @@
 @echo off
 
-set JAVA_EXE=java
+set CURR_DIR=%cd%
+set BASE_DIR=%~dp0
+
+:: switch to repository root to check for classpath file and possibly call sbt.
+cd %BASE_DIR%
 
 :: Only call sbt if the classpath file is missing.
 if not exist silicon_classpath.txt (
@@ -17,7 +21,11 @@ if not exist silicon_classpath.txt (
 :: Note: this solutions breaks, once the classpath is longer than 8192 characters!
 for /f "delims=" %%x in (silicon_classpath.txt) do set CP=%%x
 
-set JVM_OPTS=-Dlog4j.configuration=file:src\test\resources\log4j.properties -Xss16m -Dfile.encoding=UTF-8
+:: switch back to original directory
+cd %CURR_DIR%
+
+set JAVA_EXE=java
+set JVM_OPTS=-Dlog4j.configuration=file:"%BASE_DIR%\src\test\resources\log4j.properties" -Xss16m -Dfile.encoding=UTF-8
 set SILICON_MAIN=viper.silicon.SiliconRunner
 set FWD_ARGS= %*
 set CMD=%JAVA_EXE% %JVM_OPTS% -cp "%CP%" %SILICON_MAIN% %FWD_ARGS%
