@@ -1,0 +1,39 @@
+method m1(b1: Bool, b2: Bool)
+{
+    var a: Int
+    a := (b1 ? (b2 ? 2 : 3) : ((b1 && b2) ? 4 : 5))
+    a := 1+(b1 ? 1 : 2)+2
+    a := 1
+}
+
+method m2(b: Bool) returns (a: Int)
+{
+  a := 1
+  if(a == 1){
+    a := (b ? ((a==1) ? 2 : 3) : ((a!=1) ? 4 : 5))
+  }
+  else{
+    a := -2
+  }
+
+
+  if(!!b){
+    a := 2
+  }
+  else{
+    a := 3
+  }
+  a := 4
+}
+
+method m3(b: Bool, c: Bool)
+{
+  var a: Int
+  if(b) {
+    a := (c ? 1 : 2)
+  }
+  else {
+    a := 3 + 4
+  }
+}
+
