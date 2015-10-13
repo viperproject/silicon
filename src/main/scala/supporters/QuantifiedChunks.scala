@@ -145,7 +145,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     * `forall x: T :: g(x) ==> acc(e(x).f, p(x))`.
     *
     * @param qvar The explicitly quantified variable `x`.
-    * @param rcvr The receiver expression `e(x)`.
+    * @param receiver The receiver expression `e(x)`.
     * @param field The field `f`.
     * @param fvf The field value function that is stored in the chunk to create.
     * @param perms Permission amount `p(x)`.
@@ -157,7 +157,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     *              chunk, see [[getFreshInverseFunction]].
     */
   def createQuantifiedChunk(qvar: Var,
-                            rcvr: Term,
+                            receiver: Term,
                             field: ast.Field,
                             fvf: Term,
                             perms: Term,
@@ -168,7 +168,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
       s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
 
-    val inverseFunction = getFreshInverseFunction(qvar, rcvr, condition, additionalArgs)
+    val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
     val arbitraryInverseRcvr = inverseFunction(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
     val ch = QuantifiedChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), Nil)
@@ -176,16 +176,16 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     (ch, inverseFunction)
   }
 
-  def conditionalPermissions(qvar: Var,
-                             arbitraryInverseRcvr: Term,
-                             qvarSpecificCondition: Term,
-                             perms: Term)
+  def conditionalPermissions(qvar: Var, // x
+                             inverseReceiver: Term, // e⁻¹(r)
+                             condition: Term, // c(x)
+                             perms: Term) // p(x)
                             : Term = {
 
-    val arbitraryCondition = qvarSpecificCondition.replace(qvar, arbitraryInverseRcvr)
-    val arbitraryPerms = perms.replace(qvar, arbitraryInverseRcvr)
+    val conditionOfInv = condition.replace(qvar, inverseReceiver)
+    val permsOfInv = perms.replace(qvar, inverseReceiver)
 
-    Ite(arbitraryCondition, arbitraryPerms/*perms*/, NoPerm())
+    Ite(conditionOfInv, permsOfInv, NoPerm())
   }
 
   /* State queries */
@@ -352,16 +352,15 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   def splitSingleLocation(σ: S,
                           h: H,
                           field: ast.Field,
-                          concreteReceiver: Term,
-                          fraction: Term,
-                          conditionalizedFraction: Term,
+                          receiver: Term, // e
+                          perms: Term, // p
                           chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                           c: C)
                          (Q: Option[(H, QuantifiedChunk, MultiLocationFvf, C)] => VerificationResult)
                          : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, Nil, True(), concreteReceiver, fraction, conditionalizedFraction, chunkOrderHeuristic, c)
+      split(σ, h, field, None, `?r`, `?r` === receiver, receiver, perms, chunkOrderHeuristic, c)
 
     if (success) {
       Q(Some(h1, ch, fvfDef, c))
@@ -372,18 +371,18 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   def splitLocations(σ: S,
                      h: H,
                      field: ast.Field,
-                     qvars: Seq[Var],
-                     conditionWithExplicitQVar: Term,
-                     receiverWithExplicitQVar: Term,
-                     fraction: Term,
-                     conditionalizedFractionWithoutExplicitQVar: Term,
+                     qvar: Some[Var], // x
+                     inverseReceiver: Term, // e⁻¹(r)
+                     condition: Term, // c(x)
+                     receiver: Term, // e(x)
+                     perms: Term, // p(x)
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, MultiLocationFvf, C)] => VerificationResult)
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
-      split(σ, h, field, qvars, conditionWithExplicitQVar, receiverWithExplicitQVar, fraction, conditionalizedFractionWithoutExplicitQVar, chunkOrderHeuristic, c)
+      split(σ, h, field, qvar, inverseReceiver, condition, receiver, perms, chunkOrderHeuristic, c)
 
     if (success) {
       Q(Some(h1, ch, fvfDef, c))
@@ -394,26 +393,23 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private def split(σ: S,
                     h: H,
                     field: ast.Field,
-                    qvars: Seq[Var],
-                    condition: Term,
-                    receiver: Term,
-                      /* Either a single, constant receiver, or one with an
-                       * explicitly quantified variable
-                       */
-                    fraction: Term,
-                    conditionalizedFractionWithoutExplicitQVar: Term,
-                      /* May not mention any explicitly quantified variable,
-                       * occurrences of those must have been replaced with
-                       * inverse functions inv(`?r`).
-                       */
+                    qvar: Option[Var], // x
+                    inverseReceiver: Term, // e⁻¹(r)
+                    condition: Term, // c(x)
+                    receiver: Term, // e(x)
+                    perms: Term, // p(x)
                     chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                     c: C)
                    : (H, QuantifiedChunk, MultiLocationFvf, Boolean) = {
 
     val (quantifiedChunks, otherChunks) = splitHeap(h, field.name)
     val candidates = chunkOrderHeuristic(quantifiedChunks)
+    val pInit = qvar.fold(perms)(x => perms.replace(x, inverseReceiver)) // p(e⁻¹(r))
+    val conditionOfInv = qvar.fold(condition)(x => condition.replace(x, inverseReceiver)) // c(e⁻¹(r))
+    val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(r)) ? p_init(r) : 0
+
     var residue: List[Chunk] = Nil
-    var permsToTake = conditionalizedFractionWithoutExplicitQVar
+    var pNeeded = pInit
     var success = false
 
     /* Using receiverUsingInverseFunction instead of receiver yields axioms
@@ -423,93 +419,83 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
      * that talk about concrete receivers will not use the inverse function, and
      * thus will not trigger the axioms that define the values of the fvf.
      */
-    val fvfDef = summarizeFieldValue(candidates, field, qvars, condition, receiver)
+    val fvfDef = summarizeFieldValue(candidates, field, qvar.toSeq, condition, receiver)
 
-    decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $fraction")
+    decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
 
     val precomputedData = candidates map { ch =>
-      val permsTaken = PermMin(permsToTake, Ite(`?r` === receiver, ch.perm, NoPerm()))
-
-      val macroName = "permsTaken" + permsTakenCounter.next()
-      val macroDecl = MacroDecl(macroName, `?r` :: Nil, permsTaken)
+      val pTaken = Ite(conditionOfInv, PermMin(ch.perm, pNeeded), NoPerm())
+      val macroName = "pTaken" + permsTakenCounter.next()
+      val macroDecl = MacroDecl(macroName, `?r` :: Nil, pTaken)
 
       decider.prover.declare(macroDecl)
 
       val permsTakenFunc = Function(macroName, sorts.Arrow(`?r`.sort, sorts.Perm))
       val permsTakenFApp = (t: Term) => ApplyMacro(permsTakenFunc, t :: Nil)
 
-      permsToTake = PermMinus(permsToTake, permsTakenFApp(`?r`))
+      pNeeded = PermMinus(pNeeded, permsTakenFApp(`?r`))
 
-      (ch, permsTakenFApp(`?r`), permsToTake)
+      (ch, permsTakenFApp(`?r`), pNeeded)
     }
 
     decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
 
-    /* Note: At this point, permsToTake will still contain `?r` (if `?r` is
-     * present in conditionalizedFractionWithoutExplicitQVar). If
-     * precomputedData is non-empty, `?r` will be replaced by receiver in the
-     * following loop. If precomputedData is empty, however, it must be
-     * replaced as well because permsToTake is used (without being under a
-     * forall `?r`) in the "final check" after the loop.
-     */
-    if (precomputedData.isEmpty)
-      permsToTake = permsToTake.replace(`?r`, receiver)
+    var tookEnough: Term = if (success) True() else False()
 
-    precomputedData foreach { case (ch, permsTaken, permsStillToTake) =>
+    precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
       if (success)
-        residue ::= ch
+        residue ::= ithChunk
       else {
-        val constrainPermissions = !silicon.utils.consumeExactRead(fraction, c)
+        val constrainPermissions = !silicon.utils.consumeExactRead(perms, c)
 
         val (permissionConstraint, depletedCheck) =
-          createPermissionConstraintAndDepletedCheck(ch, qvars, conditionalizedFractionWithoutExplicitQVar,
-                                                     constrainPermissions, permsTaken)
+          createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
+                                                     ithPTaken)
 
         if (constrainPermissions) {
-          decider.prover.logComment(s"Constrain original permissions $fraction")
+          decider.prover.logComment(s"Constrain original permissions $perms")
           assume(permissionConstraint)
 
-          residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
+          residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
         } else {
           decider.prover.logComment(s"Chunk depleted?")
           val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
 
-          if (!chunkDepleted) residue ::= ch.copy(perm = PermMinus(ch.perm, permsTaken))
+          if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
         }
 
-        /* Note that we also need the last permsStillToTake (i.e. the amount that
-         * belongs to the last chunk we considered in *this* loop) in order to check
-         * for success after the loop (without a timeout).
+        /* The success-check inside this loop is done with a (short) timeout.
+         * Outside of the loop, the last success-check (potentially) needs to be
+         * re-done, but without a timeout. In order to make this possible,
+         * the assertion to check is recorded by tookEnough.
          */
-        permsToTake = permsStillToTake.replace(`?r`, receiver)
+        tookEnough = Forall(`?r`, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
 
         decider.prover.logComment(s"Enough permissions taken?")
-        success = check(σ, permsToTake === NoPerm(), config.splitTimeout())
+        success = check(σ, tookEnough, config.splitTimeout())
       }
     }
 
     decider.prover.logComment("Final check that enough permissions have been taken")
-    /* Setting a (short) timeout here will make it less likely that the verification suceeds */
-    success = success || check(σ, permsToTake === NoPerm())
+    /* Setting a (short) timeout here will make it less likely that the verification succeeds */
+    success = success || check(σ, tookEnough)
 
     decider.prover.logComment("Done splitting")
 
     val hResidue = H(residue ++ otherChunks)
-
-    val chunkSplitOf =
-      QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedFractionWithoutExplicitQVar, None, None, Nil)
+    val chunkSplitOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, Nil)
 
     (hResidue, chunkSplitOf, fvfDef, success)
   }
 
-  private def createPermissionConstraintAndDepletedCheck(ch: QuantifiedChunk,
-                                                         qvars: Seq[Var],
-                                                         conditionalizedFractionWithoutExplicitQVar: Term,
+  private def createPermissionConstraintAndDepletedCheck(qvar: Option[Var], // x
+                                                         conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
                                                          constrainPermissions: Boolean,
-                                                         permsTaken: Term)
+                                                         ithChunk: QuantifiedChunk,
+                                                         ithPTaken: Term)
                                                         : (Term, Term) = {
 
-    val result = eliminateImplicitQVarIfPossible(ch.perm, qvars)
+    val result = eliminateImplicitQVarIfPossible(ithChunk.perm, qvar)
 
     val permissionConstraint =
       if (constrainPermissions)
@@ -517,29 +503,29 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           case None =>
             Forall(`?r`,
               Implies(
-                ch.perm !== NoPerm(),
-                PermLess(conditionalizedFractionWithoutExplicitQVar, ch.perm)),
+                ithChunk.perm !== NoPerm(),
+                PermLess(conditionalizedPermsOfInv, ithChunk.perm)),
               Nil: Seq[Trigger], s"qp.srp${qidCounter.next()}").autoTrigger
           case Some((perms, singleRcvr)) =>
             Implies(
               perms !== NoPerm(),
-              PermLess(conditionalizedFractionWithoutExplicitQVar.replace(`?r`, singleRcvr), perms))
+              PermLess(conditionalizedPermsOfInv.replace(`?r`, singleRcvr), perms))
         }
       else
         True()
 
     val depletedCheck = result match {
       case None =>
-        Forall(`?r`, PermMinus(ch.perm, permsTaken) === NoPerm(), Nil: Seq[Trigger])
+        Forall(`?r`, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil: Seq[Trigger])
       case Some((perms, singleRcvr)) =>
-        PermMinus(perms, permsTaken.replace(`?r`, singleRcvr)) === NoPerm()
+        PermMinus(perms, ithPTaken.replace(`?r`, singleRcvr)) === NoPerm()
     }
 
     (permissionConstraint, depletedCheck)
   }
 
   @inline
-  private def eliminateImplicitQVarIfPossible(perms: Term, qvars: Seq[Var]): Option[(Term, Term)] = {
+  private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var]): Option[(Term, Term)] = {
     /* TODO: This code could be improved significantly if we
      *         - distinguished between quantified chunks for single and multiple locations
      *         - separated the initial permission amount from the subtracted amount(s) in each chunk
@@ -574,7 +560,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     var v: Term = `?r`
 
     def eliminateImplicitQVarIfPossible(t: Term): Term = t.transform {
-      case Ite(Equals(`?r`, w), p1, NoPerm()) if !qvars.exists(w.contains) =>
+      case Ite(Equals(`?r`, w), p1, NoPerm()) if !qvar.exists(w.contains) =>
         v = w
         p1.replace(`?r`, v)
       case pm @ PermMinus(t1, t2) =>

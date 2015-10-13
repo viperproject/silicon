@@ -204,10 +204,9 @@ trait DefaultExecutor[ST <: Store[ST],
               case false =>
                 Failure[ST, H, S](pve dueTo ReceiverNull(fa))
               case true =>
-                val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, FullPerm())
                 val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), condPerms, chunkOrderHeuristics, c2) {
+                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
                   case Some((h1, ch, _, c3)) =>
                     val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
                     optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))

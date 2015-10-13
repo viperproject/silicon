@@ -136,7 +136,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          *       on modified heaps).
          */
         fvfDefs1 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
-        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        var tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \ h1 \+ γQVar
         val πPre = decider.π
@@ -169,8 +169,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                           Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
                   case false =>
                     Failure[ST, H, S](pve dueTo NegativePermission(loss))})})
-        ){ case (πAux, tCond, tRcvr, tLoss, c1) =>
+        ){ case (πAux, _tCond, _tRcvr, _tLoss, c1) =>
           assume(πAux)
+
+          /* To make it harder for the tQVar to accidentally escape its 'locally' block,
+           * we pick a fresh variable here, which is not declared to the prover.
+           * If this fresh variable is not either bound by a quantifier or replaced by
+           * the inverse function, then the prover should raise an error (which indicates
+           * that the variable escaped its intended scope).
+           */
+          val arbitraryQVar = tQVar
+          tQVar = Var(decider.prover.sanitizeSymbol(qvar.name), toSort(qvar.typ))
+          val tCond = _tCond.replace(arbitraryQVar, tQVar)
+          val tRcvr = _tRcvr.replace(arbitraryQVar, tQVar)
+          val tLoss = _tLoss.replace(arbitraryQVar, tQVar)
 
           val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
           fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
@@ -185,13 +197,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             case _ =>
               val invFct =
                 quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
-              val invOfImplicitQVar = invFct(`?r`)
-              val condPerms =
-                quantifiedChunkSupporter.conditionalPermissions(tQVar, invOfImplicitQVar, tCond, tLoss)
+              val inverseReceiver = invFct(`?r`) // e⁻¹(r)
               assume(invFct.definitionalAxioms)
               val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
               val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-              quantifiedChunkSupporter.splitLocations(σ, h2, field, tQVar :: Nil, tCond, tRcvr, PermTimes(tLoss, p), PermTimes(condPerms, p), chunkOrderHeuristics, c1) {
+              quantifiedChunkSupporter.splitLocations(σ, h2, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
                 case Some((h3, ch, fvfDef, c2)) =>
                   val fvfDomain = fvfDef.domainDefinition(invFct)
                   assume(fvfDomain +: fvfDef.valueDefinitions)
@@ -220,12 +230,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, tPerm)
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            /* [17-02-2015] Setting the formal argument assumeAxiomsOfFreshFVF
-             * of splitSingleLocation to false only made two tests fail, both
-             * of which assert properties of functions. It would be interesting
-             * to see why (only) these two fail.
-             */
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), PermTimes(condPerms, p), chunkOrderHeuristics, c2) {
+            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
               case Some((h1, ch, fvfDef, c3)) =>
                 assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
