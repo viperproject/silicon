@@ -301,19 +301,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             if (ee.getCause != null) ee.getCause
             else ee
 
-          config.logLevel().toUpperCase match {
-            case "DEBUG" | "TRACE" | "ALL" => throw ex
-            case _ =>
-          }
-
-          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+          handleThrowable(ex)
+//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
         case ex: Exception =>
-          val sw = new StringWriter()
-          val pw = new PrintWriter(sw)
-          ex.printStackTrace(pw)
-          log.debug(ex.toString + "\n" + sw)
-          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+          handleThrowable(ex)
+//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -323,6 +316,20 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
     }
+  }
+
+  private def handleThrowable(ex: Throwable) {
+//    config.logLevel().toUpperCase match {
+//      case "DEBUG" | "TRACE" | "ALL" => throw ex
+//      case _ =>
+//    }
+
+    throw ex
+
+//    val sw = new StringWriter()
+//    val pw = new PrintWriter(sw)
+//    ex.printStackTrace(pw)
+//    log.debug(ex.toString + "\n" + sw)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
