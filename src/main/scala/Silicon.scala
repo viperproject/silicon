@@ -64,7 +64,7 @@ object Silicon {
   val copyright = "(c) Copyright ETH Zurich 2012 - 2015"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.3.2")
-  val z3MaxVersion: Option[Version] = None
+  val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
   val hideInternalOptions = true
@@ -541,7 +541,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   val logLevel = opt[String]("logLevel",
     descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
-    default = Some("OFF"),
+    default = Some("WARN"),
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(singleArgConverter(level => level.toUpperCase))
