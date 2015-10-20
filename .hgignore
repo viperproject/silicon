@@ -16,3 +16,4 @@ utils/assembly/silicon.jar
 utils/scripts/z3_tidy.jar
 utils/tidy_smtlib/tidy_smtlib.jar
 utils/scripts/tidy_smtlib.jar
+silicon_classpath.txt

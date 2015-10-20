@@ -106,8 +106,7 @@ class DefaultDecider[ST <: Store[ST],
       log.warn(s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version")
 
     if (Silicon.z3MaxVersion.fold(false)(_ < z3Version))
-      log.warn(  s"Silicon might not work with Z3 version $z3Version, "
-          + s"consider using a version strictly older than ${Silicon.z3MaxVersion.get}")
+      log.warn(  s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
 
     None
   }
