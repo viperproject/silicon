@@ -12,9 +12,10 @@ import java.io.{PrintWriter, BufferedWriter, InputStreamReader, BufferedReader, 
 import java.nio.file.{Path, Paths}
 import org.slf4s.Logging
 import org.apache.commons.io.FileUtils
+import common.config.Version
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
-import state.terms._
 import reporting.{Bookkeeper, Z3InteractionFailed}
+import state.terms._
 import silicon.utils.Counter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
@@ -33,7 +34,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   private var counter: Counter = _
   private var lastTimeout: Int = 0
 
-  def z3Version() = {
+  def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
     var line = ""
 
@@ -43,7 +44,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     logComment(line)
 
     line match {
-      case versionPattern(v) => v
+      case versionPattern(v) => Version(v)
       case _ => throw new Z3InteractionFailed(s"Unexpected output of Z3 while getting version: $line")
     }
   }

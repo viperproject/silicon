@@ -11,12 +11,12 @@
 ; --- Snapshots ---
 
 (declare-datatypes () ((
-    $Snap $Snap.unit
+    $Snap ($Snap.unit)
     ($Snap.combine ($Snap.first $Snap) ($Snap.second $Snap)))))
 
 ; --- References ---
 
-(declare-sort $Ref)
+(declare-sort $Ref 0)
 (declare-const $Ref.null $Ref)
 
 ; --- Permissions ---
