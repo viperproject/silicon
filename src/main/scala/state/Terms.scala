@@ -1004,7 +1004,7 @@ object PermLess extends ((Term, Term) => Term) {
       case (FullPerm(), _: WildcardPerm) => False()
 
       case (`t0`, Ite(tCond, tIf, tElse)) =>
-        /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
+        /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
          * Pushing the comparisons into the ite allows further simplifications.
          */
         Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
