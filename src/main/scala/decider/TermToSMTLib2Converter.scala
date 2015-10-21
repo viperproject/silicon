@@ -116,7 +116,8 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
 
       val docTriggers =
         ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
-                     .map(d => ":pattern" <+> parens(d)).to[collection.immutable.Seq], line)
+                     .map(d => ":pattern" <+> parens(d)).to[collection.immutable.Seq],
+             line)
 
       val docQid: Doc =
         if (name.isEmpty) empty
