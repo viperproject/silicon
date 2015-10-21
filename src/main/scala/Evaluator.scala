@@ -597,6 +597,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         case e => e
       }.map {
         case fapp: ast.FuncApp =>
+          /** Heap-dependent functions that are used as triggers should be used
+            * in the limited version, because it allows for more instantiations.
+            * Keep this code in sync with [[supporters.ExpressionTranslator.translate]]
+            *
+            */
           val cachedTrigger = c.possibleTriggers.get(fapp).collect{case fa: FApp => fa.limitedVersion}
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
