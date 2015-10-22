@@ -258,13 +258,21 @@ trait MagicWandSupporter[ST <: Store[ST],
                            recordEffects = true,
                            producedChunks = Nil,
                            consumedChunks = Stack.fill(stackSize)(Nil))
+          say(s"done: produced LHS ${wand.left}")
+          say(s"next: consume RHS ${wand.right}")
           consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, _, c3) => {
             val c4 = c3.copy(recordEffects = false,
                              producedChunks = Nil,
                              consumedChunks = Stack(),
                              letBoundVars = Nil)
+            say(s"done: consumed RHS ${wand.right}")
+            say(s"next: create wand chunk")
             magicWandSupporter.createChunk(σ \+ Γ(c3.letBoundVars), wand, pve, c4)((ch, c5) => {
+              say(s"done: create wand chunk: $ch")
               magicWandChunk = ch
+                /* TODO: Assert that all produced chunks are identical (due to
+                 * branching, we might get here multiple times per package).
+                 */
 
               lnsay(s"-- reached local end of packageWand $myId --")
               say(s"c3.producedChunks = ${c3.producedChunks}", 2)
@@ -333,109 +341,132 @@ trait MagicWandSupporter[ST <: Store[ST],
       contexts.foreach(c => c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2)))
 
       r && {
-        assert(contexts.map(_.reserveHeaps).map(_.length).toSet.size == 1)
+        assert(contexts.isEmpty == (magicWandChunk == null))
 
-        val joinedReserveHeaps: Stack[MList[Chunk]] = ( /* IMPORTANT: Must match structure of [CTX] above */
-               (MList() ++ c.reserveHeaps.head.values)
-            +: MList[Chunk]() /* σLhs.h at [CTX] above */
-            +: c.reserveHeaps.tail.map(h => MList() ++ h.values)
-          )
+        if (magicWandChunk == null) {
+          /* magicWandChunk is still null, i.e. no wand chunk was produced. This
+           * should only happen if the wand is inconsistent, i.e. if the symbolic
+           * execution pruned all branches (during the package operation) before
+           * reaching the point at which a wand chunk is created and assigned to
+           * magicWandChunk.
+           */
+          assert(!wand.contains[ast.Let])
+            /* TODO: magicWandSupporter.createChunk expects a store that already
+             * binds variables that are let-bound in the wand.
+             * In the case where the symbolic execution does not prune all branches,
+             * the bindings are taken from the context (see call to createChunk
+             * above).
+             */
 
-        assert(joinedReserveHeaps.length == stackSize)
+          val c1 = c.copy(reserveHeaps = c.reserveHeaps.head +: H() +: c.reserveHeaps.tail) /* IMPORTANT: Must match structure of [CTX] above */
+          magicWandSupporter.createChunk(σ, wand, pve, c1)((ch, c2) => {
+            say(s"done: create wand chunk: $ch")
+            Q(ch, c2)})
+        } else {
+          assert(contexts.map(_.reserveHeaps).map(_.length).toSet.size == 1)
 
-        lnsay("Computing joined reserve heaps. Initial stack:")
-        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
+          val joinedReserveHeaps: Stack[MList[Chunk]] = ( /* IMPORTANT: Must match structure of [CTX] above */
+                 (MList() ++ c.reserveHeaps.head.values)
+              +: MList[Chunk]() /* σLhs.h at [CTX] above */
+              +: c.reserveHeaps.tail.map(h => MList() ++ h.values)
+            )
 
-        allProducedChunks.foreach { case (guards, chunks) =>
-          chunks.foreach(ch => {
-            val pGain = Ite(And(guards), ch.perm, NoPerm())
-            var added = false
+          assert(joinedReserveHeaps.length == stackSize)
 
-            ch match {
-              case fc: DirectFieldChunk =>
-                joinedReserveHeaps.head.transform {
-                  case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
-                    added = true
-                    fc.copy(perm = PermPlus(ch1.perm, pGain))
-                  case ch1 => ch1
-                }
+          lnsay("Computing joined reserve heaps. Initial stack:")
+          joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
-              case pc: DirectPredicateChunk =>
-                joinedReserveHeaps.head.transform {
-                  case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
-                    added = true
-                    pc.copy(perm = PermPlus(ch1.perm, pGain))
-                  case ch1 => ch1
-                }
-            }
-
-            if (!added) joinedReserveHeaps.head += ch
-          })
-        }
-
-        lnsay("Stack after adding allProducedChunks:")
-        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
-
-        /* Replace the second top-most layer of allConsumedChunks with Nil
-         * because we don't want to (and din't need to) replay the effects on
-         * the that layer since it corresponds to the LHS heap.
-         * The corresponding level in joinedReserveHeaps is empty, and we thus
-         * cannot consume from it anyway.
-         */
-        joinedReserveHeaps.zip(allConsumedChunks.head +: Nil +: allConsumedChunks.drop(2)).foreach { case (hR, allcchs) =>
-          allcchs.foreach { case (guards, chunks) =>
+          allProducedChunks.foreach { case (guards, chunks) =>
             chunks.foreach(ch => {
-              val pLoss = Ite(And(guards), ch.perm, NoPerm())
-              var matched = false
+              val pGain = Ite(And(guards), ch.perm, NoPerm())
+              var added = false
 
               ch match {
                 case fc: DirectFieldChunk =>
-                  hR.transform {
+                  joinedReserveHeaps.head.transform {
                     case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
-                      matched = true
-                      fc.copy(perm = PermMinus(ch1.perm, pLoss))
+                      added = true
+                      fc.copy(perm = PermPlus(ch1.perm, pGain))
                     case ch1 => ch1
                   }
 
                 case pc: DirectPredicateChunk =>
-                  hR.transform {
+                  joinedReserveHeaps.head.transform {
                     case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
-                      matched = true
-                      pc.copy(perm = PermMinus(ch1.perm, pLoss))
+                      added = true
+                      pc.copy(perm = PermPlus(ch1.perm, pGain))
                     case ch1 => ch1
                   }
               }
 
-              if (!matched) {
-                say(s"Couldn't find a match for $ch!")
-                say(s"hR = $hR", 2)
-                say(s"guards = $guards", 2)
-                say(s"chunks = $chunks", 2)
-                assert(matched)
-              }
+              if (!added) joinedReserveHeaps.head += ch
             })
-        }}
+          }
 
-        lnsay("Finished joined reserve heaps. Final stack:")
-        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
+          lnsay("Stack after adding allProducedChunks:")
+          joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
-        assert(allConsumedChunks.length == c.consumedChunks.length + 1)
+          /* Replace the second top-most layer of allConsumedChunks with Nil
+           * because we don't want to (and din't need to) replay the effects on
+           * the that layer since it corresponds to the LHS heap.
+           * The corresponding level in joinedReserveHeaps is empty, and we thus
+           * cannot consume from it anyway.
+           */
+          joinedReserveHeaps.zip(allConsumedChunks.head +: Nil +: allConsumedChunks.drop(2)).foreach { case (hR, allcchs) =>
+            allcchs.foreach { case (guards, chunks) =>
+              chunks.foreach(ch => {
+                val pLoss = Ite(And(guards), ch.perm, NoPerm())
+                var matched = false
 
-        val consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] =
-          allConsumedChunks.zip(c.consumedChunks.head +: Nil +: c.consumedChunks.tail).map { case (allcchs, cchs) =>
-            cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
+                ch match {
+                  case fc: DirectFieldChunk =>
+                    hR.transform {
+                      case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
+                        matched = true
+                        fc.copy(perm = PermMinus(ch1.perm, pLoss))
+                      case ch1 => ch1
+                    }
 
-        lnsay(s"Exiting packageWand $myId. Final consumedChunks:")
-        consumedChunks.foreach(x => say(x.toString(), 2))
+                  case pc: DirectPredicateChunk =>
+                    hR.transform {
+                      case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
+                        matched = true
+                        pc.copy(perm = PermMinus(ch1.perm, pLoss))
+                      case ch1 => ch1
+                    }
+                }
 
-        /* TODO: Merge contexts */
-        val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
-                                  recordEffects = c.recordEffects,
-                                  producedChunks = c.producedChunks,
-                                  consumedChunks = consumedChunks,
-                                  branchConditions = c.branchConditions)
+                if (!matched) {
+                  say(s"Couldn't find a match for $ch!")
+                  say(s"hR = $hR", 2)
+                  say(s"guards = $guards", 2)
+                  say(s"chunks = $chunks", 2)
+                  assert(matched)
+                }
+              })
+          }}
 
-        Q(magicWandChunk, c1)
+          lnsay("Finished joined reserve heaps. Final stack:")
+          joinedReserveHeaps.foreach(x => say(x.toString(), 2))
+
+          assert(allConsumedChunks.length == c.consumedChunks.length + 1)
+
+          val consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] =
+            allConsumedChunks.zip(c.consumedChunks.head +: Nil +: c.consumedChunks.tail).map { case (allcchs, cchs) =>
+              cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
+
+          lnsay(s"Exiting packageWand $myId. Final consumedChunks:")
+          consumedChunks.foreach(x => say(x.toString(), 2))
+
+          /* TODO: Merge contexts */
+          val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
+                                    recordEffects = c.recordEffects,
+                                    producedChunks = c.producedChunks,
+                                    consumedChunks = consumedChunks,
+                                    branchConditions = c.branchConditions)
+
+          Q(magicWandChunk, c1)
+        }
       }
     }
 
