@@ -92,7 +92,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
         if (c.evalHeap.nonEmpty)
           log.debug("hE = " + c.evalHeap.map(stateFormatter.format).mkString("", ",\n     ", ""))
-        c.lhsHeap.map(h => log.debug("hLHS = " + stateFormatter.format(h)))
+        c.lhsHeap.foreach(h => log.debug("hLHS = " + stateFormatter.format(h)))
         decider.prover.logComment(s"[eval] $e")
     }
 
