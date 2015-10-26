@@ -161,7 +161,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                         case true =>
                           val πDelta = decider.π -- πPre - tCond
                             /* Removing tCond is crucial since it is not an auxiliary term */
-                          val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
+                          val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil, Nil)
                           val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail,
                                            branchConditions = c3.branchConditions.tail)
                           QB(πAux, tCond, tRcvr, tLoss, c4)

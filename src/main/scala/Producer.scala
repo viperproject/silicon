@@ -196,7 +196,7 @@ trait DefaultProducer[ST <: Store[ST],
             eval(σQVar, rcvr, pve, c1a)((tRcvr, c2) =>
               eval(σQVar, gain, pve, c2)((tGain, c3) => {
                 val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
-                val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil)
+                val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil, Nil)
                 val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
                                  branchConditions = c.branchConditions)
                 QB(πAux, tCond, tRcvr, tGain, c4)}))})
