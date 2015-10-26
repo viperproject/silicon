@@ -275,9 +275,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
                 (_lookupRcvr, _fvfDef)
               } else */{
-                if (config.disableQPCaching())
+                if (true/*config.disableQPCaching()*/)
                   fvfDef
                 else {
+                  /* TODO: Caching needs to take the branch conditions into account! */
 //                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
                   withValueCache.getOrElseUpdate((receiver, toSet(quantifiedChunks)), fvfDef)
                 }
