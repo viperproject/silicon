@@ -15,12 +15,13 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
+import decider.PreambleFileEmitter
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort}
+import supporters.{FieldValueFunctionsEmitter, DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter,
+    QuantifiedChunkSupporter}
 import reporting.Bookkeeper
-import decider.PreambleFileEmitter
-import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter, MultisetsEmitter, SetsEmitter,
-    SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
@@ -127,6 +128,7 @@ class DefaultElementVerifier[ST <: Store[ST],
       val symbolConverter: SymbolConvert,
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
+      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
       val bookkeeper: Bookkeeper)
     extends NoOpStatefulComponent
        with AbstractElementVerifier[ST, H, PC, S]
@@ -155,12 +157,15 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def setsEmitter: SetsEmitter
   /*protected*/ def multisetsEmitter: MultisetsEmitter
   /*protected*/ def domainsEmitter: DomainsEmitter
+  /*protected*/ def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
 
   val ev: AbstractElementVerifier[ST, H, PC, S]
 
   /* Functionality */
 
   def verify(program: ast.Program): List[VerificationResult] = {
+    QuantifiedChunkSupporter.program = program /* TODO: Implement properly */
+
     emitPreamble(program)
 
     ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
@@ -180,7 +185,11 @@ trait AbstractVerifier[ST <: Store[ST],
      * all members are verified regardless of previous errors.
      * However, verification of a single member is aborted on first error.
      */
-    members.map(m => ev.verify(m, c)).toList
+    QuantifiedChunkSupporter.safeLastFVFState() /* TODO: Implement properly */
+    members.map{m =>
+      QuantifiedChunkSupporter.restoreLastFVFState()
+      ev.verify(m, c)
+    }.toList
   }
 
   private def filter(str: String) = (
@@ -198,6 +207,8 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.analyze(program)
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
+    fieldValueFunctionsEmitter.analyze(program)
+    QuantifiedChunkSupporter.initLastFVF() /* TODO: Implement properly */
 
     emitStaticPreamble()
 
@@ -205,6 +216,7 @@ trait AbstractVerifier[ST <: Store[ST],
     setsEmitter.declareSorts()
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
+    fieldValueFunctionsEmitter.declareSorts()
 
     /* Sequences depend on multisets ($Multiset.fromSeq, which is
      * additionally axiomatised in the sequences axioms).
@@ -215,6 +227,7 @@ trait AbstractVerifier[ST <: Store[ST],
     sequencesEmitter.declareSymbols()
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
+    fieldValueFunctionsEmitter.declareSymbols()
 
     sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
@@ -226,6 +239,13 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(setsEmitter.sorts)
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
+    emitSortWrappers(fieldValueFunctionsEmitter.sorts)
+
+    /* ATTENTION: The triggers mention the sort wrappers introduced for FVFs.
+     * The axiom therefore needs to be emitted after the sort wrappers have
+     * been emitted.
+     */
+    fieldValueFunctionsEmitter.emitAxioms()
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)
@@ -296,19 +316,22 @@ class DefaultVerifier[ST <: Store[ST],
       val setsEmitter: SetsEmitter,
       val multisetsEmitter: MultisetsEmitter,
       val domainsEmitter: DomainsEmitter,
+      val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
       val stateFormatter: StateFormatter[ST, H, S, String],
       val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
+      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
       val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
        with StatefulComponent
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      bookkeeper)
+                                      quantifiedChunkSupporter, bookkeeper)
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    fieldValueFunctionsEmitter, quantifiedChunkSupporter,
     decider, ev)
 
   /* Lifetime */

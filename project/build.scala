@@ -30,15 +30,15 @@ object SiliconBuild extends Build {
 
   lazy val silicon = {
     var p = Project(
-      id = "silicon",
+      id = "silicon-quantified-permissions",
       base = file("."),
       settings = (
            baseSettings
         ++ assemblySettings
         ++ Seq(
-              name := "Silicon",
+              name := "Silicon-Quantified-Permissions",
               mainClass in assembly := Some("viper.silicon.Silicon"),
-              jarName in assembly := "silicon.jar",
+              jarName in assembly := "silicon-quantified-permissions.jar",
               // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
               fork := true,
                 /* Fork Silicon when run and tested. Avoids problems with file
@@ -101,7 +101,7 @@ object SiliconBuild extends Build {
     base = file("common"),
     settings = (
          baseSettings
-      ++ Seq(name := "Silicon-Common",
+      ++ Seq(name := "Silicon-Quantified-Permissions-Common",
              javacOptions ++= Seq("-source", "1.7", "-target", "1.7"),
              libraryDependencies += dependencies.commonsIO)))
 

@@ -19,6 +19,7 @@ import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
 import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
+import supporters.QuantifiedChunkSupporter
 import silicon.utils.notNothing._
 
 class DefaultDecider[ST <: Store[ST],
@@ -38,6 +39,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var pathConditions: PC = _
   protected var symbolConverter: SymbolConvert = _
   protected var heapCompressor: HeapCompressor[ST, H, S, C] = _
+  protected var quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S] = _
 
   private sealed trait State
 
@@ -64,7 +66,8 @@ class DefaultDecider[ST <: Store[ST],
   def init(pathConditionsFactory: PathConditionsFactory[PC],
            heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
-           bookkeeper: Bookkeeper)
+           bookkeeper: Bookkeeper,
+           quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S])
           : Option[DependencyNotFoundError] = {
 
     this.pathConditionsFactory = pathConditionsFactory
@@ -73,6 +76,7 @@ class DefaultDecider[ST <: Store[ST],
     this.bookkeeper = bookkeeper
     this.symbolConverter = new silicon.state.DefaultSymbolConvert()
     this.pathConditions = pathConditionsFactory.Π()
+    this.quantifiedChunkSupporter = quantifiedChunkSupporter
 
     val optProverError = createProver()
 
@@ -209,16 +213,18 @@ class DefaultDecider[ST <: Store[ST],
    * but the interface does NOT guarantee mutability!
    */
 
-  def assume(_terms: Set[Term]) {
-    val terms = _terms filterNot isKnownToBeTrue
-    if (terms.nonEmpty) assumeWithoutSmokeChecks(terms)
+  def assume(terms: Iterable[Term]) {
+    val newTerms = toSet(terms filterNot isKnownToBeTrue)
+    if (terms.nonEmpty) assumeWithoutSmokeChecks(newTerms)
   }
 
   private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
-    terms foreach pathConditions.push
     /* Add terms to Syxc-managed path conditions */
-    terms foreach prover.assume
+    terms foreach pathConditions.push
+
     /* Add terms to the prover's assumptions */
+    terms foreach prover.assume
+
     None
   }
 
@@ -412,6 +418,9 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
+    /* Note: We could set a timeout for check, but I haven't yet encountered an
+     * example where that would be beneficial or even necessary.
+     */
     val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
 
     chunk
@@ -435,7 +444,11 @@ class DefaultDecider[ST <: Store[ST],
 
     val v = prover.fresh(id, s)
 
-    if (s == sorts.Perm) assume(IsValidPermVar(v))
+    s match {
+      case sorts.Perm => assume(IsValidPermVar(v))
+      case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(v)
+      case _ => /* Nothing special to do */
+    }
 
     v
   }

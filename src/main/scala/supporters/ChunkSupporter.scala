@@ -83,6 +83,9 @@ trait ChunkSupporter[ST <: Store[ST],
 
       if (utils.consumeExactRead(pLoss, c)) {
         decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
+          /* Note: We could set a timeout for check, but I haven't yet encountered
+           * an example where that would be beneficial or even necessary.
+           */
           if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
             Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}
           else

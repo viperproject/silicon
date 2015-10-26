@@ -203,14 +203,14 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
   def merge(σ: S, h: H, ch: Chunk, ctx: C): (H, Option[DirectChunk]) = {
     val (h1, _, matches, ts) = singleMerge(σ, h, H(ch :: Nil), ctx)
-    
+
     decider.assume(ts)
-    
+
     val optMatch = ch match {
       case dc: DirectChunk => matches.get(dc)
       case _ => None
-    } 
-    
+    }
+
     (h1, optMatch)
   }
 
@@ -305,6 +305,10 @@ class DefaultHeapCompressor[ST <: Store[ST],
     val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
       if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
           && decider.check(σ, PermLess(distinctnessLowerBound, PermPlus(c1.perm, c2.perm))))
+              /* Note: We could set a timeout for check, but I haven't yet
+               * encountered an example where that would be beneficial or even
+               * necessary.
+               */
 
         c1.rcvr !== c2.rcvr
       else

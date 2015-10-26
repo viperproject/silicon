@@ -47,6 +47,8 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
        * domain sort of nullary functions.
        */
       ""
+
+    case sorts.FieldValueFunction(codomainSort) => "$FVF<" <> render(codomainSort) <> ">"
   }
 
   def convert(d: Decl): String = {
@@ -72,6 +74,17 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       val fct = FunctionDecl(Function(symbol, from :: Nil, to))
 
       render(fct)
+
+    case MacroDecl(id, args, body) =>
+      val idDoc = sanitizeSymbol(id)
+      val argDocs = (args map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))).to[collection.immutable.Seq]
+      val bodySortDoc = render(body.sort)
+      val bodyDoc = render(body)
+
+//      (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
+//          (ite (<= p1 p2) p1 p2))
+
+      parens("define-fun" <+> idDoc <+> parens(ssep(argDocs, space)) <+> bodySortDoc <> nest(line <> bodyDoc))
   }
 
   def convert(t: Term): String = {
@@ -85,16 +98,16 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case Ite(t0, t1, t2) =>
       renderNAryOp("ite", t0, t1, t2)
 
-    case app @ Apply(f, args) =>
-      val docF = render(f)
+    case fapp: FApp =>
+      parens(sanitizeSymbol(fapp.function.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
 
-      app.funcSort.from match {
+    case app: GenericApply =>
+      val docF = render(app.function)
+
+      app.arrow.from match {
         case Seq(sorts.Unit) => docF
-        case _ => parens(docF <+> ssep((args map render).to[collection.immutable.Seq], space))
+        case _ => parens(docF <+> ssep((app.args map render).to[collection.immutable.Seq], space))
       }
-
-    case FApp(f, s, tArgs) =>
-      parens(sanitizeSymbol(f.id) <+> render(s) <+> ssep((tArgs map render).to[collection.immutable.Seq], space))
 
     case Quantification(quant, vars, body, triggers, name) =>
       val docVars = ssep((vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))).to[collection.immutable.Seq], space)
@@ -225,6 +238,9 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
       parens("let" <+> parens(docBindings) <+> render(body))
+
+    case Domain(id, fvf) => parens("$FVF.domain_" <> id <+> render(fvf))
+    case Lookup(field, fvf, at) => parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
   }
 
   @inline

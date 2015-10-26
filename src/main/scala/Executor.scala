@@ -12,7 +12,7 @@ import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse}
+import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, InsufficientPermission}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -20,7 +20,7 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
-import supporters.{Brancher, PredicateSupporter}
+import supporters.{Brancher, PredicateSupporter, QuantifiedChunkSupporter}
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -45,6 +45,7 @@ trait DefaultExecutor[ST <: Store[ST],
   import symbolConverter.toSort
 
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -191,6 +192,27 @@ trait DefaultExecutor[ST <: Store[ST],
       case ass @ ast.LocalVarAssign(v, rhs) =>
         eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
+
+      /* Assignment for a field that contains quantified chunks */
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
+              if quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name) =>
+
+        val pve = AssignmentFailed(ass)
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+          eval(σ, rhs, pve, c1)((tRhs, c2) =>
+            decider.assert(σ, tRcvr !== Null()){
+              case false =>
+                Failure[ST, H, S](pve dueTo ReceiverNull(fa))
+              case true =>
+                val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+                val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
+                  case Some((h1, ch, _, c3)) =>
+                    val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
+                    optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+                    Q(σ \ h1 \+ ch.copy(fvf = fvf, hints = hints), c3)
+                  case None =>
+                    Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)

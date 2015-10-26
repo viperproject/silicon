@@ -173,8 +173,7 @@ package object utils {
     case fp: FractionPerm => List(fp.n, fp.d)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
-    case app: Apply => List(app.func) ++ app.args
-    case fapp: FApp => List(fapp.function, fapp.snapshot) ++ fapp.tArgs
+    case app: Application => app.function +: app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
@@ -189,6 +188,8 @@ package object utils {
     case l: Let =>
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
+    case Domain(_, fvf) => fvf :: Nil
+    case Lookup(_, fvf, at) => fvf :: at :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -235,6 +236,7 @@ package object utils {
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
       case Apply(f, ts) =>  Apply(go(f), ts map go)
+      case ApplyMacro(f, ts) =>  ApplyMacro(go(f), ts map go)
       case FApp(f, s, ts) => FApp(f, go(s), ts map go)
       case SeqRanged(t0, t1) => SeqRanged(go(t0), go(t1))
       case SeqSingleton(t) => SeqSingleton(go(t))
@@ -269,6 +271,8 @@ package object utils {
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
+      case Domain(f, fvf) => Domain(f, go(fvf))
+      case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

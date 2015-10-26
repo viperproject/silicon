@@ -23,7 +23,7 @@ import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, Sy
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import supporters.{Joiner, Brancher, PredicateSupporter}
+import supporters.{Joiner, Brancher, PredicateSupporter, QuantifiedChunkSupporter}
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -51,6 +51,8 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
+
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
 
   def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -155,6 +157,24 @@ trait DefaultEvaluator[ST <: Store[ST],
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
+
+      case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+          val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+          val condition = And(c1.branchConditions)
+          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, qvars, condition, tRcvr, pve, fa, c1)(fvfDef => {
+            val fvfDomain = fvfDef.domainDefinition
+            assume(fvfDomain +: fvfDef.valueDefinitions)
+            val c2 = c1.snapshotRecorder match {
+              case Some(sr) =>
+                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfDef.lookupReceiver)
+                            .recordQPTerms(qvars, c1.branchConditions, fvfDomain +: fvfDef.valueDefinitions)
+                val sr2 =
+                  if (fvfDef.freshFvf) sr1.recordFvf(fa.field, fvfDef.fvf)
+                  else sr1
+                c1.copy(snapshotRecorder = Some(sr2))
+              case _ => c1}
+            Q(fvfDef.lookupReceiver, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>

@@ -85,6 +85,11 @@ object sorts {
   case class UserSort(id: String) extends Sort {
     override val toString = id
   }
+
+  case class FieldValueFunction(codomainSort: Sort) extends Sort {
+    val id = "FVF[%s]".format(codomainSort)
+    override val toString = id
+  }
 }
 
 /*
@@ -97,6 +102,7 @@ case class VarDecl(v: Var) extends Decl
 case class SortDecl(sort: Sort) extends Decl
 case class FunctionDecl(func: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
+case class MacroDecl(id: String, args: Seq[Var], body: Term) extends Decl
 
 /*
  * Basic terms
@@ -148,7 +154,7 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
-  : this.type =
+               : this.type =
 
     state.utils.transform[this.type](this, pre)(recursive, post)
 
@@ -365,17 +371,6 @@ object Exists extends Quantifier {
     Quantification(Exists, qvars.toSeq, tBody, triggers)
 
   override val toString = "QE"
-}
-
-class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
-  override val toString = s"{${p.mkString(",")}}"
-}
-
-object Trigger extends (Seq[Term] => Trigger) {
-  def apply(t: Term) = new Trigger(t :: Nil)
-  def apply(ts: Seq[Term]) = new Trigger(ts)
-
-  def unapply(trigger: Trigger) = Some(trigger.p)
 }
 
 class Quantification private[terms] (val q: Quantifier,
@@ -1009,7 +1004,7 @@ object PermLess extends ((Term, Term) => Term) {
       case (FullPerm(), _: WildcardPerm) => False()
 
       case (`t0`, Ite(tCond, tIf, tElse)) =>
-        /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
+        /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
          * Pushing the comparisons into the ite allows further simplifications.
          */
         Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
@@ -1035,30 +1030,47 @@ case class PermMin(p0: Term, p1: Term) extends Permissions
 
 /* Functions */
 
-case class Apply(func: Term, args: Seq[Term]) extends Term with PossibleTrigger {
-  val funcSort = func.sort match {
+sealed trait Application extends Term {
+  def function: Term
+  def args: Seq[Term]
+  def arrow: sorts.Arrow
+}
+
+sealed abstract class GenericApply extends Application {
+  val arrow = function.sort match {
     case a: sorts.Arrow => a
-    case other => sys.error(s"Cannot apply $func of sort $other to $args")
+    case other => sys.error(s"Cannot apply $function of sort $other to $args")
   }
 
-  val sort = funcSort.to
+  val sort = arrow.to
 
-  override val toString = s"$func(${args.mkString(",")})"
+  override val toString = s"$function (${args.mkString(",")})"
+}
 
-  lazy val getArgs = func +: args
+case class Apply(function: Term, args: Seq[Term])
+    extends GenericApply with PossibleTrigger {
+
+  lazy val getArgs = function +: args
   def withArgs(args: Seq[Term]) = Apply(args.head, args.tail)
 }
 
-case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Term with PossibleTrigger {
+case class ApplyMacro(function: Term, args: Seq[Term])
+    extends GenericApply with ForbiddenInTrigger
+
+case class FApp(function: Function, snapshot: Term, actualArgs: Seq[Term])
+    extends Application with PossibleTrigger {
+
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
 
   val sort = function.sort.to
+  val arrow = function.sort
+  val args = snapshot +: actualArgs
 
-  lazy val limitedVersion = FApp(function.limitedVersion, snapshot, tArgs)
+  lazy val limitedVersion = FApp(function.limitedVersion, snapshot, actualArgs)
 
-  override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
+  override val toString = s"${function.id}(${args.mkString(",")})"
 
-  lazy val getArgs = snapshot +: tArgs
+  val getArgs = args
   def withArgs(args: Seq[Term]) = FApp(function, args.head, args.tail)
 }
 
@@ -1626,6 +1638,28 @@ case class Second(t: Term) extends SnapshotTerm with PossibleTrigger {
   def withArgs(args: Seq[Term]) = Second(args(0))
 }
 
+/* Quantified permissions */
+
+case class Lookup(field: String, fvf: Term, at: Term) extends Term with PossibleTrigger  {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+
+  lazy val getArgs = fvf :: at :: Nil
+  def withArgs(args: Seq[Term]) = Lookup(field, args(0), args(1))
+}
+
+case class Domain(field: String, fvf: Term) extends SetTerm with PossibleTrigger {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val elementsSort = sorts.Ref
+  val sort = sorts.Set(elementsSort)
+
+  lazy val getArgs = fvf :: Nil
+  def withArgs(args: Seq[Term]) = Domain(field, args(0))
+}
+
 /* Sort wrappers */
 
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
@@ -1718,6 +1752,7 @@ object Let extends ((Map[Var, Term], Term) => Term) {
 
 object predef {
   val `?s` = Var("s@$", sorts.Snap) // with SnapshotTerm
+  val `?r` = Var("r", sorts.Ref)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)

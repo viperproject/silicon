@@ -12,6 +12,8 @@ import silver.verifier.errors.Internal
 import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 import state.DefaultContext
 import state.terms._
+import supporters.QuantifiedChunkSupporter
+import viper.silver.ast.QuantifiedPermissionSupporter
 
 package object utils {
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -94,19 +96,8 @@ package object utils {
     type PositionedNode = silver.ast.Node with silver.ast.Positioned
 
     def check(program: silver.ast.Program) = (
-      program.functions.flatMap(checkFunctionPostconditionNotRecursive)
-        ++ checkPermissions(program))
-
-    /* Unsupported expressions, features or cases */
-
-    def createIllegalQuantifiedLocationExpressionError(offendingNode: PositionedNode) = {
-      val message = (
-        "Silicon requires foralls with access predicates in their body to have "
-          + "a special shape. Try 'forall x: Ref :: x in aSet ==> acc(x.f, perms)' "
-          + "or 'forall i: Int :: i in [0..|aSeq|) ==> acc(aSeq[i].f, perms)'.")
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
+         program.functions.flatMap(checkFunctionPostconditionNotRecursive)
+      ++ checkPermissions(program))
 
     def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
       val message = (
