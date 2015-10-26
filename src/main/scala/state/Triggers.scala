@@ -45,8 +45,8 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
 class TriggerRewriter(fresh: (String, Sort) => Var, logger: MultiRunLogger) {
   def extractInvalidTermsInTriggers(triggers: Seq[Trigger]): Seq[Seq[ForbiddenInTrigger]] =
     /* Note that we use shallow collect here. As a consequence, for a trigger
-     * 'f(x + (N - 1))', the returned invalid term will be 'x + (N - 1)' only,
-     * and not 'x + (N - 1)' and 'N - 1'.
+     * 'f(x + (N - 1))', the returned invalid terms will be 'x + (N - 1)' only,
+     * and not both 'x + (N - 1)' and 'N - 1'.
      *
      * This difference might matter if multiple quantified variables occur in
      * an invalid term, e.g. as in 'f(x + (y - 1))'.
