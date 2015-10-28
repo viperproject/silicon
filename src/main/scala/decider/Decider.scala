@@ -102,8 +102,11 @@ class DefaultDecider[ST <: Store[ST],
     val z3Version = z3.z3Version()
     log.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
 
-    if (z3Version != Silicon.expectedZ3Version)
-      log.warn(s"Expected Z3 version ${Silicon.expectedZ3Version} but found $z3Version")
+    if (z3Version < Silicon.z3MinVersion)
+      log.warn(s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version")
+
+    if (Silicon.z3MaxVersion.fold(false)(_ < z3Version))
+      log.warn(  s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
 
     None
   }

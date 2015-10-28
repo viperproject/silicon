@@ -56,15 +56,22 @@ trait ExpressionTranslator {
     exp match {
       case r:silver.ast.ForallReferences => ???
       case q @ ast.QuantifiedExp(qvars, _) =>
-        val (autoTriggerQuant, quantifier, triggers) = q match {
+        val (autoTriggerQuant, quantifier, triggerSets) = q match {
           case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
           case ex: ast.Exists => (ex, Exists, Seq())
         }
 
+        val translatedTriggers = triggerSets map (triggerSet => Trigger(triggerSet.exps map (trigger =>
+          f(trigger) match {
+            case fapp: FApp => fapp.limitedVersion /** Important: Keep in sync with [[DefaultEvaluator.evalTrigger]] */
+            case other => other
+          }
+        )))
+
         Quantification(quantifier,
                        qvars map (v => Var(v.name, toSort(v.typ, Map()))),
                        f(autoTriggerQuant.exp),
-                       triggers map (tr => Trigger(tr.exps map f)))
+                       translatedTriggers)
 
       case _: ast.TrueLit => True()
       case _: ast.FalseLit => False()

@@ -379,7 +379,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
+              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars, triggers)
               val qid = quant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
                 case _ => s"prog.l${quant.pos}"}
@@ -654,6 +654,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         case e => e
       }.map {
         case fapp: ast.FuncApp =>
+          /** Heap-dependent functions that are used as triggers should be used
+            * in the limited version, because it allows for more instantiations.
+            * Keep this code in sync with [[supporters.ExpressionTranslator.translate]]
+            *
+            */
           val cachedTrigger = c.possibleTriggers.get(fapp).collect{case fa: FApp => fa.limitedVersion}
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
