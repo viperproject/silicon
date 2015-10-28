@@ -64,10 +64,15 @@ package object utils {
     * @param quantifier The quantifier under which the currently ongoing
     *                   symbolic execution takes place
     * @param quantifiedVariables Variables that are bound by the quantifier
+    * @param triggers Triggers that should be used for potentially introduced
+    *                 quantifiers
     * @return Extracted auxiliary terms
     */
-  def extractAuxiliaryTerms(terms: Set[Term], quantifier: Quantifier, quantifiedVariables: Seq[Var]): Set[Term] = {
-//    return Set(Quantification(quantifier, quantifiedVariables, And(terms), Nil).autoTrigger)
+  def extractAuxiliaryTerms(terms: Set[Term],
+                            quantifier: Quantifier,
+                            quantifiedVariables: Seq[Var],
+                            triggers: Seq[Trigger])
+                           : Set[Term] = {
 
     var auxiliaryTerms = Set[Term]()
 
@@ -104,9 +109,15 @@ package object utils {
            */
 
           t match {
-            case _ if t.existsDefined { case _: Apply =>} =>
-              /* Apply-terms should only occur in auxiliary terms */
-              auxiliaryTerms += Quantification(quantifier, occurringQuantifiedVariables, t, Nil).autoTrigger
+            case _ if t.existsDefined { case _: Apply => } => /* Apply-terms should only occur in auxiliary terms */
+
+              /* Combine the triggers computed from the body of the quantifier with the explicitly
+               * provided triggers.
+               */
+              var q = Quantification(quantifier, occurringQuantifiedVariables, t, Nil).autoTrigger
+              q = q.copy(triggers = (triggers ++ q.triggers).distinct)
+
+              auxiliaryTerms += q
 
             case _ => /* Ignore this term */
           }

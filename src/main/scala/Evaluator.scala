@@ -379,7 +379,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars)
+              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars, triggers)
               val qid = quant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
                 case _ => s"prog.l${quant.pos}"}
