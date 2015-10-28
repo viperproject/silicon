@@ -89,6 +89,12 @@ case class DefaultContext[H <: Heap[H]]
                possibleTriggers = possibleTriggers3)
 
         case _ =>
+//          println("\n[Context.merge]")
+//          println("--this--")
+//          this.productIterator.toSeq.tail foreach println
+//          println("--other--")
+//          other.productIterator.toSeq.tail foreach println
+
           sys.error("Unexpected mismatch between contexts")
       }
   }

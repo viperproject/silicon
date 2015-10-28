@@ -96,7 +96,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.prover.logComment(s"[eval] $e")
     }
 
-    eval2(σ \ c.evalHeap.getOrElse(σ.h), e, pve, c)((t, c1) => {
+    eval2(σ \ c.evalHeap.getOrElse(σ.h), e, pve, c.copy(recordEffects = false))((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
@@ -104,7 +104,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             case _ => c1}
         else
           c1
-      Q(t, c2)})
+      Q(t, c2.copy(recordEffects = c.recordEffects))})
   }
 
   protected def eval2(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
