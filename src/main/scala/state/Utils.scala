@@ -114,8 +114,9 @@ package object utils {
               /* Combine the triggers computed from the body of the quantifier with the explicitly
                * provided triggers.
                */
-              var q = Quantification(quantifier, occurringQuantifiedVariables, t, Nil).autoTrigger
-              q = q.copy(triggers = (triggers ++ q.triggers).distinct)
+//              var q = Quantification(quantifier, occurringQuantifiedVariables, t, Nil).autoTrigger
+//              q = q.copy(triggers = (triggers ++ q.triggers).distinct)
+              val q = Quantification(quantifier, occurringQuantifiedVariables, t, triggers)
 
               auxiliaryTerms += q
 
