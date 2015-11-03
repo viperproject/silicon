@@ -719,7 +719,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         r && {
           val tAux = πAux
-          assume(tAux)
+          assume(Implies(guard, And(tAux)))
           val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
           Q(t0, optT1, c2)}})
   }
