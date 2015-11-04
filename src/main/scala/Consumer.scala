@@ -126,7 +126,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
       case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
-        val (h1, fvfDefs1) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.fieldAccesses(forall))
+        val (h1, fvfDefs1) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.quantifiedFieldAccesses(forall))
         /* If receiver or condition dereference a field which hasn't been quantified yet,
          * then the evaluator will try to find a regular chunk for the quantified variable,
          * which will fail.

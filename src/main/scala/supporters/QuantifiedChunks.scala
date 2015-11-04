@@ -41,10 +41,8 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     program visit {
       case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, f, _, forall, _) =>
-        collectedFields ++= QuantifiedChunkSupporter.fieldAccesses(forall)
+        collectedFields ++= QuantifiedChunkSupporter.quantifiedFieldAccesses(forall)
     }
-
-    QuantifiedChunkSupporter.collectedFields = collectedFields.toSeq /* TODO: Implement properly */
 
     QuantifiedChunkSupporter.collectedFields = collectedFields.toSeq /* TODO: Implement properly */
 
@@ -935,10 +933,13 @@ object QuantifiedChunkSupporter {
    *       DefaultFieldValueFunctionsEmitter, which is where `fieldAccesses` is used
    *       as well. Not a very convincing reason.
    */
-  def fieldAccesses(q: ast.Forall) =
+  def quantifiedFieldAccesses(q: ast.Forall) = {
+    val qvars = q.variables.map(_.localVar)
+
     q.deepCollect {
-      case fa: ast.FieldAccess => fa.field
+      case fa: ast.FieldAccess if qvars.exists(fa.rcv.contains) => fa.field
     }
+  }
 
   /* ------------------------------------------------------------------------------- */
   /* TODO: Implement all of this properly */
