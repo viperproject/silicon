@@ -439,7 +439,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
 
-    var tookEnough: Term = if (success) True() else False()
+    var tookEnough = Forall(`?r`, Implies(conditionOfInv, pNeeded === NoPerm()), Nil: Seq[Trigger])
 
     precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
       if (success)
@@ -699,9 +699,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val axRaw =
       Forall(
         qvar,
-        Implies(
-          And(cond, PermLess(NoPerm(), perms)),
-          rcvr !== Null()),
+        Implies(cond, rcvr !== Null()),
         Nil: List[Trigger],
         s"qp.null${qidCounter.next()}"
       ).autoTrigger

@@ -10,7 +10,8 @@ package silicon
 import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NegativePermission, AssertionFalse}
+import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NegativePermission, AssertionFalse,
+  ReceiverNull}
 import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
@@ -136,12 +137,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
          *       on modified heaps).
          */
         fvfDefs1 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
-        var tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \ h1 \+ γQVar
         val πPre = decider.π
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
-
         decider.locally[(Set[Term], Term, Term, Term, C)](QB =>
           eval(σQVar, condition, pve, c0)((tCond, c1) =>
             if (decider.check(σQVar, Not(tCond), config.checkTimeout())) {
@@ -150,43 +150,33 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               Q(h, Unit, Nil, c2)
             } else {
               decider.assume(tCond)
-              val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
-              eval(σQVar, loss, pve, c1a)((tLoss, c2) =>
-                decider.assert(σ, perms.IsNonNegative(tLoss)) {
+              val c2 = c1.copy(branchConditions = tCond +: c1.branchConditions)
+              eval(σQVar, rcvr, pve, c2)((tRcvr, c3) =>
+                decider.assert(σ, tRcvr !== Null()) {
                   case true =>
-                    eval(σQVar, rcvr, pve, c2)((tRcvr, c3) => {
-                      /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-                      val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
-                      decider.assert(σ, receiverInjective) {
+                    eval(σQVar, loss, pve, c3)((tLoss, c4) =>
+                      decider.assert(σ, perms.IsNonNegative(tLoss)) {
                         case true =>
-                          val πDelta = decider.π -- πPre - tCond
-                            /* Removing tCond is crucial since it is not an auxiliary term */
-                          val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil, Nil)
-                          val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail,
-                                           branchConditions = c3.branchConditions.tail)
-                          QB(πAux, tCond, tRcvr, tLoss, c4)
+                          /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+                          val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
+                          decider.assert(σ, receiverInjective) {
+                            case true =>
+                              val πDelta = decider.π -- πPre - tCond
+                                /* Removing tCond is crucial since it is not an auxiliary term */
+                              val πAux = state.utils.extractAuxiliaryTerms(πDelta, Forall, tQVar :: Nil, Nil)
+                              val c5 = c4.copy(quantifiedVariables = c4.quantifiedVariables.tail,
+                                               branchConditions = c4.branchConditions.tail)
+                              QB(πAux, tCond, tRcvr, tLoss, c5)
+                            case false =>
+                              Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}
                         case false =>
-                          Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}})
+                          Failure[ST, H, S](pve dueTo NegativePermission(loss))})
                   case false =>
-                    Failure[ST, H, S](pve dueTo NegativePermission(loss))})})
-        ){ case (πAux, _tCond, _tRcvr, _tLoss, c1) =>
+                    Failure[ST, H, S](pve dueTo ReceiverNull(fa))})})
+        ){ case (πAux, tCond, tRcvr, tLoss, c1) =>
           assume(πAux)
-
-          /* To make it harder for the tQVar to accidentally escape its 'locally' block,
-           * we pick a fresh variable here, which is not declared to the prover.
-           * If this fresh variable is not either bound by a quantifier or replaced by
-           * the inverse function, then the prover should raise an error (which indicates
-           * that the variable escaped its intended scope).
-           */
-          val arbitraryQVar = tQVar
-          tQVar = Var(decider.prover.sanitizeSymbol(qvar.name), toSort(qvar.typ))
-          val tCond = _tCond.replace(arbitraryQVar, tQVar)
-          val tRcvr = _tRcvr.replace(arbitraryQVar, tQVar)
-          val tLoss = _tLoss.replace(arbitraryQVar, tQVar)
-
           val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
           fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
-
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(h2, field.name)
           qpForallCache.get((forall, toSet(quantifiedChunks))) match {
               /* TODO: Re-enable caching. Needs to take context.branchConditions into account as well. Something else? */
