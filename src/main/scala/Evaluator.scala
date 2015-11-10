@@ -314,14 +314,17 @@ trait DefaultEvaluator[ST <: Store[ST],
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
-        val (triggerQuant, tQuantOp, silTriggers) = quant match {
-          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
-          case ex: ast.Exists => (ex, Exists, Seq())
+      case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
+        val (eQuant, qantOp, eTriggers) = sourceQuant match {
+          case forall: ast.Forall =>
+            val forallWithTriggers = forall.autoTrigger
+            (forallWithTriggers, Forall, forallWithTriggers.triggers)
+          case exists: ast.Exists =>
+            (exists, Exists, Seq())
         }
 
-        val body = triggerQuant.exp
-        val vars = triggerQuant.variables map (_.localVar)
+        val body = eQuant.exp
+        val vars = eQuant.variables map (_.localVar)
 
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
@@ -331,22 +334,22 @@ trait DefaultEvaluator[ST <: Store[ST],
                         recordPossibleTriggers = true,
                         possibleTriggers = Map.empty)
 
-        decider.locally[(Set[Term], Quantification, C)](QB => {
+        decider.locally[(Quantification, Quantification, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
-            evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars, triggers)
-              val qid = quant.pos match {
+            evalTriggers(σQuant, eTriggers, pve, c1)((triggers, c2) => {
+              val qid = sourceQuant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
-                case _ => s"prog.l${quant.pos}"}
-              val tQuant = Quantification(tQuantOp, tVars, tBody, triggers, qid)
+                case _ => s"prog.l${sourceQuant.pos}"}
+              val tQuant = Quantification(qantOp, tVars, tBody, triggers, qid)
+              val tAuxQuant = Quantification(qantOp, tVars, And(πDelta), triggers, s"$qid-aux")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
-              QB(πAux, tQuant, c3)})})
-        }){case (πAux, tQuant, c1) =>
-          assume(πAux)
+              QB(tQuant, tAuxQuant, c3)})})
+        }){case (tQuant, tAuxQuant, c1) =>
+          assume(tAuxQuant)
           Q(tQuant, c1)
         }
 
@@ -738,8 +741,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.popScope()
 
         r && {
-          val tAux = πAux
-          assume(Implies(guard, And(tAux)))
+          assume(Implies(guard, And(πAux)))
           val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
           Q(t0, optT1, c2)}})
   }

@@ -446,8 +446,8 @@ trait FunctionSupporter[ST <: Store[ST],
 
       val data = functionData(function)
       val out = function.result
-
-      val γ = Γ(data.formalArgs + (out -> fresh(out)))
+      val tOut = fresh(out)
+      val γ = Γ(data.formalArgs + (out -> tOut))
       val σ = Σ(γ, Ø, Ø)
 
       val postError = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
@@ -477,10 +477,11 @@ trait FunctionSupporter[ST <: Store[ST],
                 recorders ::= c2.snapshotRecorder.get
                 Success()
               case Some(body) =>
-                eval(σ1, body, FunctionNotWellformed(function), c2)((tB, c3) => {
+                eval(σ1, body, FunctionNotWellformed(function), c2)((tBody, c3) => {
                   recorders ::= c3.snapshotRecorder.get
                   val c4 = c3.copy(snapshotRecorder = None)
-                  consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
+                  decider.assume(tOut === tBody)
+                  consumes(σ1, FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
                     Success())})})}
 
       if (recorders.nonEmpty) {
