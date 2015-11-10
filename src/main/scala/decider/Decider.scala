@@ -322,6 +322,7 @@ class DefaultDecider[ST <: Store[ST],
     case True() => true
 //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
+    case q: Quantification if q.body == True() => true
     case _ => false
   }
 
