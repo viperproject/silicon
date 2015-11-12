@@ -235,8 +235,7 @@ class FunctionData(val programFunction: ast.Function,
       val afters: Set[Term] =
       freshFvfs.map{case (field, freshFvf) =>
         val fvf = lastFVF(field)
-        val afterFunction = Var(s"$$FVF.after_${field.name}", sorts.Arrow(fvf.sort :: fvf.sort :: Nil, sorts.Bool))
-        val after = Apply(afterFunction, freshFvf :: fvf :: Nil)
+        val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
         lastFVF = lastFVF.updated(field, freshFvf)
 

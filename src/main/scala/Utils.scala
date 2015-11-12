@@ -47,7 +47,7 @@ package object utils {
 
   /* NOT thread-safe */
   class Counter {
-    private var value = 0
+    private var value = -1
 
     def next() = {
       value = value + 1
@@ -55,7 +55,7 @@ package object utils {
     }
 
     def reset() {
-      value = 0
+      value = -1
     }
   }
 
@@ -90,6 +90,36 @@ package object utils {
             silver.ast.LtCmp(x, b)(e.pos)
           )(e.pos)
       })(recursive = _ => true)
+
+    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
+      val forallAutoTriggered = forall.autoTrigger
+
+      if (forallAutoTriggered.triggers.nonEmpty)
+      /* Standard trigger generation code succeeded */
+        forallAutoTriggered
+      else {
+        /* Standard trigger generation code failed.
+         * Let's try generating (certain) invalid triggers, which will then be rewritten
+         */
+        silver.ast.utility.Triggers.TriggerGeneration.allowInvalidTriggers = true
+
+        val finalForall =
+          silver.ast.utility.Expressions.generateTriggerSet(forall) match {
+            case Some((variables, triggerSets)) =>
+              /* Invalid triggers could be generated, now try to rewrite them */
+              val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
+
+              silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
+            case None =>
+              /* Invalid triggers could not be generated -> give up */
+              forall
+          }
+
+        silver.ast.utility.Triggers.TriggerGeneration.allowInvalidTriggers = false
+
+        finalForall
+      }
+    }
   }
 
   object consistency {

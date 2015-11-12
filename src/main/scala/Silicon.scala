@@ -26,7 +26,7 @@ import silver.frontend.{SilFrontend, SilFrontendConfig}
 import common.config.Version
 import interfaces.{Failure => SiliconFailure}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import state.terms.{TriggerRewriter, FullPerm}
+import state.terms.{AxiomRewriter, FullPerm}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
 import supporters.{DefaultFieldValueFunctionsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator,
@@ -212,7 +212,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val dlb = FullPerm()
 
     val heapCompressor = new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-    val axiomRewriter = new TriggerRewriter(decider.fresh, bookkeeper.logfiles("axiomRewriter"))
+    val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
 
     val quantifiedChunkSupporter =
       new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, axiomRewriter, config,
@@ -361,12 +361,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
      *       well-formedness.
      */
     failures = failures.reverse
-           .foldLeft((Set[String](), List[Failure]())){
-              case ((ss, rs), f: Failure) =>
-                if (ss.contains(f.message.readableMessage)) (ss, rs)
-                else (ss + f.message.readableMessage, f :: rs)
-              case ((ss, rs), r) => (ss, r :: rs)}
-           ._2
+                       .foldLeft((Set[String](), List[Failure]())){
+                          case ((ss, rs), f: Failure) =>
+                            if (ss.contains(f.message.readableMessage)) (ss, rs)
+                            else (ss + f.message.readableMessage, f :: rs)
+                          case ((ss, rs), r) => (ss, r :: rs)}
+                       ._2
 
     if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()

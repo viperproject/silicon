@@ -22,7 +22,7 @@ package object utils {
 
     val ts = (
       /* Refs pointed to by local variables */
-         σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
+         σ.γ.values.values.filter(_.sort == terms.sorts.Ref)
       /* Receivers of fields and ref-typed arguments of predicates */
       ++ σ.h.values.collect {
           case fc: FieldChunk => fc.args
@@ -128,6 +128,9 @@ package object utils {
     auxiliaryTerms
   }
 
+  def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
+    ts.partition(_.isInstanceOf[FvfAfterRelation])
+
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
     var problems: List[String] = Nil
 
@@ -191,6 +194,7 @@ package object utils {
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
+    case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -274,6 +278,7 @@ package object utils {
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
+      case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

@@ -18,23 +18,17 @@ import DSL._
 class TriggerRewriterTests extends FunSuite with Matchers {
   val dummySink = new PrintWriter(new StringWriter())
   val dummyLogger = new MultiRunLogger(dummySink, () => None)
+  val counter = new silicon.utils.Counter()
 
-  val fresh = (id: String, s: Sort) => Var(id, s)
-
-  val rewriter = new TriggerRewriter(fresh, dummyLogger) {
-    var counter = 0
-
+  val rewriter = new AxiomRewriter(counter, dummyLogger) {
     override def rewrite(quantification: Quantification) = {
       val result = super.rewrite(quantification)
-      counter = 0
+      counter.reset()
       result
     }
 
-    override protected def freshQVarId(id: String): String = {
-      val c = counter
-      counter += 1
-
-      s"$id$c"
+    override protected def fresh(id: String, s: Sort): Var = {
+      Var(s"$id${counter.next()}", s)
     }
   }
 

@@ -12,9 +12,10 @@ import org.scalatest.FunSuite
 import org.scalatest.Matchers
 import state.terms._
 import DSL._
-import SimpleArithmeticTermSolver.solve
 
 class SimpleArithmeticTermSolverTests extends FunSuite with Matchers {
+  import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
+
   test("Pre-solving errors") {
     assert(solve(b, y, y).isInstanceOf[SolverResult])
     assert(solve(x, b, y).isInstanceOf[SolverResult])

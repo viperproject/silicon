@@ -11,6 +11,7 @@ package tests
 import org.scalatest.FunSuite
 import state.terms._
 import state.terms.implicits._
+import TriggerGenerator.{TriggerSet, generateTriggerSetGroups}
 
 class TriggerGeneratorTests extends FunSuite {
   test("Work in simple cases") {
@@ -18,8 +19,8 @@ class TriggerGeneratorTests extends FunSuite {
     val s = Var("S", sorts.Seq(sorts.Int))
     val t = SeqAt(s, i)
 
-    assert(TriggerGenerator.generateTriggerGroups(i :: Nil, t) match {
-      case Seq((Seq(Trigger(Seq(`t`))), Seq())) => true
+    assert(generateTriggerSetGroups(i :: Nil, t) match {
+      case Seq((Seq(TriggerSet(Seq(`t`))), Seq())) => true
       case other => false
     })
   }
@@ -29,7 +30,7 @@ class TriggerGeneratorTests extends FunSuite {
     val s = Var("S", sorts.Seq(sorts.Int))
     val t = SeqAt(s, Plus(i, 1))
 
-    assert(TriggerGenerator.generateTriggerGroups(i :: Nil, t).isEmpty)
+    assert(generateTriggerSetGroups(i :: Nil, t).isEmpty)
   }
 
 //  ignore should "not do stupid stuff" in {

@@ -221,6 +221,12 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       if (ts.isEmpty) docId
       else parens(docId <+> docArgs)
 
+    /* Quantified Permissions */
+
+    case Domain(id, fvf) => parens("$FVF.domain_" <> id <+> render(fvf))
+    case Lookup(field, fvf, at) => parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
+    case FvfAfterRelation(field, fvf2, fvf1) => parens("$FVF.after_" <> field <+> render(fvf2) <+> render(fvf1))
+
     /* Other terms */
 
     case First(t) => parens("$Snap.first" <+> render(t))
@@ -238,9 +244,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
       parens("let" <+> parens(docBindings) <+> render(body))
-
-    case Domain(id, fvf) => parens("$FVF.domain_" <> id <+> render(fvf))
-    case Lookup(field, fvf, at) => parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
   }
 
   @inline

@@ -336,22 +336,6 @@ case object Forall extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvars, tBody, triggers, name)
 
-  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    apply(qvar, tBody, computeTriggersFrom, "")(dummy)
-
-  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit): Quantification =
-    this(qvar :: Nil, tBody, computeTriggersFrom, name)
-
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    apply(qvars, tBody, computeTriggersFrom, "")(dummy)
-
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit) = {
-    val (triggers, extraVars) =
-      TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
-
-      Quantification(Forall, qvars ++ extraVars, tBody, triggers, name)
-    }
-
   def unapply(q: Quantification) = q match {
     case Quantification(Forall, qvars, tBody, triggers, name) => Some((qvars, tBody, triggers, name))
     case _ => None
@@ -386,8 +370,9 @@ class Quantification private[terms] (val q: Quantifier,
       /* Triggers were given explicitly */
       this
     } else {
-      TriggerGenerator.generateTriggers(vars, body) match {
-        case Some((generatedTriggers, extraVariables)) =>
+      TriggerGenerator.generateTriggerSetGroup(vars, body) match {
+        case Some((generatedTriggerSets, extraVariables)) =>
+          val generatedTriggers = generatedTriggerSets.map(set => Trigger(set.exps))
           Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
         case _ =>
           this
@@ -1124,7 +1109,7 @@ class SeqAppend(val p0: Term, val p1: Term) extends SeqTerm
 
 object SeqAppend extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSeqSorts(t0, t1)
+    utils.assertSameSorts[sorts.Seq](t0, t1)
     new SeqAppend(t0, t1)
   }
 
@@ -1327,7 +1312,7 @@ class SetUnion(val p0: Term, val p1: Term) extends BinarySetOp {
 
 object SetUnion extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetUnion(t0, t1)
   }
 
@@ -1342,7 +1327,7 @@ class SetIntersection(val p0: Term, val p1: Term) extends BinarySetOp {
 
 object SetIntersection extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetIntersection(t0, t1)
   }
 
@@ -1357,7 +1342,7 @@ class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
 
 object SetSubset extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetSubset(t0, t1)
   }
 
@@ -1372,7 +1357,7 @@ class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
 
 object SetDisjoint extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDisjoint(t0, t1)
   }
 
@@ -1387,7 +1372,7 @@ class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
 
 object SetDifference extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDifference(t0, t1)
   }
 
@@ -1497,7 +1482,7 @@ class MultisetUnion(val p0: Term, val p1: Term) extends BinaryMultisetOp {
 
 object MultisetUnion extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetUnion(t0, t1)
   }
 
@@ -1512,7 +1497,7 @@ class MultisetIntersection(val p0: Term, val p1: Term) extends BinaryMultisetOp 
 
 object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetIntersection(t0, t1)
   }
 
@@ -1527,7 +1512,7 @@ class MultisetSubset(val p0: Term, val p1: Term) extends BinaryMultisetOp {
 
 object MultisetSubset extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetSubset(t0, t1)
   }
 
@@ -1542,7 +1527,7 @@ class MultisetDifference(val p0: Term, val p1: Term) extends BinaryMultisetOp {
 
 object MultisetDifference extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetDifference(t0, t1)
   }
 
@@ -1658,6 +1643,13 @@ case class Domain(field: String, fvf: Term) extends SetTerm with PossibleTrigger
 
   lazy val getArgs = fvf :: Nil
   def withArgs(args: Seq[Term]) = Domain(field, args(0))
+}
+
+case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends BooleanTerm with PossibleTrigger {
+  utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
+
+  lazy val getArgs = fvf2 :: fvf1 :: Nil
+  def withArgs(args: Seq[Term]) = FvfAfterRelation(field, args(0), args(1))
 }
 
 /* Sort wrappers */
@@ -1809,36 +1801,16 @@ object utils {
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameSeqSorts(t0: Term, t1: Term) {
-    assert(
-      (t0.sort, t1.sort) match {
-        case (sorts.Seq(a), sorts.Seq(b)) if a == b => true
-        case _ => false
-      },
-      "Expected both operands to be of sort Seq(X), but found %s (%s) and %s (%s)"
-        .format(t0, t0.sort, t1, t1.sort))
-  }
+  def assertSameSorts[S <: Sort with Product : ClassTag](t0: Term, t1: Term) {
+    val clazz = implicitly[ClassTag[S]].runtimeClass
 
-  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameSetSorts(t0: Term, t1: Term) {
     assert(
       (t0.sort, t1.sort) match {
-        case (sorts.Set(a), sorts.Set(b)) if a == b => true
+        case (s0: S, s1: S) if s0.productIterator.sameElements(s1.productIterator) => true
         case _ => false
       },
-      "Expected both operands to be of sort Set(X), but found %s (%s) and %s (%s)"
-        .format(t0, t0.sort, t1, t1.sort))
-  }
-
-  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameMultisetSorts(t0: Term, t1: Term) {
-    assert(
-      (t0.sort, t1.sort) match {
-        case (sorts.Multiset(a), sorts.Multiset(b)) if a == b => true
-        case _ => false
-      },
-      "Expected both operands to be of sort Multiset(X), but found %s (%s) and %s (%s)"
-        .format(t0, t0.sort, t1, t1.sort))
+      s"Expected both operands to be of sort ${clazz.getSimpleName}(S1,S2,...), but found %s (%s) and %s (%s)"
+          .format(t0, t0.sort, t1, t1.sort))
   }
 }
 

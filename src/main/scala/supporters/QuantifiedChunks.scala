@@ -102,7 +102,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                               (decider: Decider[ST, H, PC, S, DefaultContext],
                                symbolConverter: SymbolConvert,
                                stateFactory: StateFactory[ST, H, S],
-                               axiomRewriter: TriggerRewriter,
+                               axiomRewriter: AxiomRewriter,
                                config: Config,
                                bookkeeper: Bookkeeper)
 
@@ -587,12 +587,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     freshFVFInAction = true
     val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
     val freshFvf = fresh("fvf", fvfSort)
-
     val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
     val fvf = lastFVF.getOrElse(field, fvfTOP)
+    val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
-    val afterFunction = Var(s"$$FVF.after_${field.name}", sorts.Arrow(fvfSort :: fvfSort :: Nil, sorts.Bool))
-    val after = Apply(afterFunction, freshFvf :: fvf :: Nil)
     assume(after)
 
     lastFVF += (field -> freshFvf)
@@ -602,12 +600,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     freshFvf
   }
 
-  def injectFVF(newFvf: Var): Unit = {
-    Predef.assert(newFvf.sort.isInstanceOf[sorts.FieldValueFunction],
-                  s"Expected newFvf to be of sort FieldValueFunction, but found $newFvf of sort ${newFvf.sort}")
+  def injectFVF(freshFvf: Var): Unit = {
+    Predef.assert(freshFvf.sort.isInstanceOf[sorts.FieldValueFunction],
+                  s"Expected newFvf to be of sort FieldValueFunction, but found $freshFvf of sort ${freshFvf.sort}")
 
     if (freshFVFInAction) return
-    val newFvfSort = newFvf.sort.asInstanceOf[sorts.FieldValueFunction]
+    val newFvfSort = freshFvf.sort.asInstanceOf[sorts.FieldValueFunction]
 
     QuantifiedChunkSupporter.collectedFields.foreach{field =>
       val codomainSort = toSort(field.typ)
@@ -615,14 +613,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       if (codomainSort == newFvfSort.codomainSort) {
         val fvfSort = sorts.FieldValueFunction(codomainSort)
         val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
-
         val fvf = lastFVF.getOrElse(field, fvfTOP)
+        val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
-        val afterFunction = Var(s"$$FVF.after_${field.name}", sorts.Arrow(fvfSort :: fvfSort :: Nil, sorts.Bool))
-        val after = Apply(afterFunction, newFvf :: fvf :: Nil)
         assume(after)
 
-        lastFVF += field -> newFvf
+        lastFVF += field -> freshFvf
       }
     }
   }
@@ -690,8 +686,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     Forall(
       vx :: vy :: Nil,
       implies,
-      Nil: List[Trigger]
-      /*receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil*/,
+      Nil,
+      /* receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil */
       s"qp.inj${qidCounter.next()}")
   }
 
@@ -700,7 +696,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       Forall(
         qvar,
         Implies(cond, rcvr !== Null()),
-        Nil: List[Trigger],
+        Nil,
         s"qp.null${qidCounter.next()}"
       ).autoTrigger
 
@@ -740,11 +736,15 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val ofInv = of.replace(qvar, inverseFunc(`?r`))
     val condInv = condition.replace(qvar, inverseFunc(`?r`))
 
+    val (triggers, extraVars) =
+      TriggerGenerator.generateFirstTriggerGroup(qvar :: Nil, of :: And(condition, invOf) :: Nil)
+                      .getOrElse((Nil, Nil))
+
     val ax1Raw =
       Forall(
-        qvar,
+        qvar +: extraVars,
         Implies(condition, invOf === qvar),
-        of :: And(condition, invOf) :: Nil,
+        triggers,
         s"qp.${funcSymbol.id}-exp")
 
     val ax2Raw =
@@ -789,15 +789,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 //    }
   }
 
-  def start() = {
-
-  }
-
+  def start() = {}
   def stop() {}
 }
 
 object QuantifiedChunkSupporter {
-  var axiomRewriter: TriggerRewriter = null /* TODO: Implement properly */
+  var axiomRewriter: AxiomRewriter = null /* TODO: Implement properly */
 
   case class InverseFunction(symbol: Var, function: Term => Term, definitionalAxioms: Seq[Term]) {
     def apply(t: Term) = function(t)
