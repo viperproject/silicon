@@ -736,9 +736,11 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val ofInv = of.replace(qvar, inverseFunc(`?r`))
     val condInv = condition.replace(qvar, inverseFunc(`?r`))
 
+    TriggerGenerator.allowInvalidTriggers = true
     val (triggers, extraVars) =
       TriggerGenerator.generateFirstTriggerGroup(qvar :: Nil, of :: And(condition, invOf) :: Nil)
                       .getOrElse((Nil, Nil))
+    TriggerGenerator.allowInvalidTriggers = false
 
     val ax1Raw =
       Forall(
@@ -899,7 +901,15 @@ object QuantifiedChunkSupporter {
       //        Iff(Domain(field.name,fvf) === SingletonSet(receiver), condition) /* TODO: One test case fails. Find out, why. */
       else {
         val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
-        val forall = Forall(qvars, Iff(rcvrInDomain, condition), Trigger(rcvrInDomain), s"qp.$fvf-dom")
+
+        TriggerGenerator.allowInvalidTriggers = true
+        val (triggers, extraVars) =
+          TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
+                          .getOrElse((Nil, Nil))
+        TriggerGenerator.allowInvalidTriggers = false
+
+        val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, condition), triggers, s"qp.$fvf-dom")
+
         val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
 
         finalForall
