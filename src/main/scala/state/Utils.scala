@@ -22,7 +22,7 @@ package object utils {
 
     val ts = (
       /* Refs pointed to by local variables */
-         σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
+         σ.γ.values.values.filter(_.sort == terms.sorts.Ref)
       /* Receivers of fields and ref-typed arguments of predicates */
       ++ σ.h.values.collect {
           case fc: FieldChunk => fc.args
@@ -127,6 +127,9 @@ package object utils {
 
     auxiliaryTerms
   }
+
+  def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
+    (Nil, ts)
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
     var problems: List[String] = Nil

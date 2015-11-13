@@ -258,12 +258,10 @@ trait FunctionSupporter[ST <: Store[ST],
       decider.prover.declare(VarDecl(`?s`))
       declareFunctions()
 
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
-
       // FIXME: A workaround for Silver issue #94.
       // toList must be before flatMap. Otherwise Set will be used internally and some
       // error messages will be lost.
-      functionData.keys.toList.flatMap(function => handleFunction(function, c))
+      functionData.keys.toList.flatMap(function => handleFunction(function))
     }
 
     private def analyze(program: ast.Program) {
@@ -283,9 +281,9 @@ trait FunctionSupporter[ST <: Store[ST],
       expressionTranslator.functionData = functionData
     }
 
-    private def handleFunction(function: ast.Function, c: C): List[VerificationResult] = {
+    private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)

@@ -9,7 +9,6 @@ package silicon
 
 import org.slf4s.Logging
 import silver.ast
-import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
@@ -297,8 +296,8 @@ trait DefaultEvaluator[ST <: Store[ST],
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val forallWithTriggers = forall.autoTrigger
-            (forallWithTriggers, Forall, forallWithTriggers.triggers)
+            val autoTriggeredForall = utils.ast.autoTrigger(forall)
+            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
         }
@@ -314,7 +313,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                         recordPossibleTriggers = true,
                         possibleTriggers = Map.empty)
 
-        decider.locally[(Quantification, Quantification, C)](QB => {
+        decider.locally[(Quantification, Iterable[Term], Quantification, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
@@ -323,12 +322,16 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
                 case _ => s"prog.l${sourceQuant.pos}"}
               val tQuant = Quantification(qantOp, tVars, tBody, triggers, qid)
-              val tAuxQuant = Quantification(qantOp, tVars, And(πDelta), triggers, s"$qid-aux")
+              val (topLevelTerms, nestedTerms) = state.utils.partitionAuxiliaryTerms(πDelta)
+              val tAuxQuant = Quantification(qantOp, tVars, And(nestedTerms), triggers, s"$qid-aux")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
-              QB(tQuant, tAuxQuant, c3)})})
-        }){case (tQuant, tAuxQuant, c1) =>
+              QB(tQuant, topLevelTerms, tAuxQuant, c3)})})
+        }){case (tQuant, topLevelTerms, tAuxQuant, c1) =>
+          decider.prover.logComment("[evalDependently] top-level auxiliary terms")
+          assume(topLevelTerms)
+          decider.prover.logComment("[evalDependently] nested auxiliary terms")
           assume(tAuxQuant)
           Q(tQuant, c1)
         }
@@ -339,7 +342,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-          val pre = Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
+          val pre = ast.utility.Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -721,7 +724,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.popScope()
 
         r && {
-          assume(Implies(guard, And(πAux)))
+          val (topLevelTerms, nestedTerms) = state.utils.partitionAuxiliaryTerms(πAux)
+          decider.prover.logComment("[evalDependently] top-level auxiliary terms")
+          assume(topLevelTerms)
+          decider.prover.logComment("[evalDependently] nested auxiliary terms")
+          assume(Implies(guard, And(nestedTerms)))
           val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
           Q(t0, optT1, c2)}})
   }
