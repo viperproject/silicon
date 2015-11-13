@@ -120,6 +120,11 @@ package object utils {
         finalForall
       }
     }
+
+    def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
+      case pos: silver.ast.HasLineColumn => pos.line.toString
+      case _ => node.pos.toString
+    }
   }
 
   object consistency {
