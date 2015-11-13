@@ -41,6 +41,39 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
       case (triggerSet, extraVars) => (triggerSet.map(set => Trigger(set.exps)), extraVars)
     }
 
+  def assembleQuantification(quantifier: Quantifier,
+                             qvars: Seq[Var],
+                             body: Term,
+                             toSearch: Seq[Term],
+                             qid: String,
+                             axiomRewriter: AxiomRewriter)
+                            : Quantification = {
+
+    allowInvalidTriggers = true
+    val (triggers, extraVars) = generateFirstTriggerGroup(qvars, toSearch).getOrElse((Nil, Nil))
+    allowInvalidTriggers = false
+
+    val quantification = Quantification(quantifier, qvars ++ extraVars, body, triggers, qid)
+    val finalQuantification = axiomRewriter.rewrite(quantification).getOrElse(quantification)
+
+    finalQuantification
+  }
+
+  def assembleQuantification(quantifier: Quantifier,
+                             qvars: Seq[Var],
+                             body: Term,
+                             triggers: Seq[Trigger],
+                             qid: String,
+                             axiomRewriter: AxiomRewriter)
+                            (implicit dummyImplicit: DummyImplicit)
+                            : Quantification = {
+
+    val quantification = Quantification(quantifier, qvars, body, triggers, qid)
+    val finalQuantification = axiomRewriter.rewrite(quantification).getOrElse(quantification)
+
+    finalQuantification
+  }
+
   /* Note: If Plus and Minus were type arguments of GenericTriggerGenerator, the latter
    *       could implement isForbiddenInTrigger already */
   protected def isForbiddenInTrigger(term: Term) = term match {
