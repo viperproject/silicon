@@ -711,7 +711,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     * @param qvar A variable (most likely bound by a forall) that occurs in `of`
     *             and that is the result of the inverse function applied to `of`,
     *             i.e. `inv(of) = qvar` (if `condition` holds).
-    * @param of A term containing the variable `qvar` that can be understood as
+    * @param fct A term containing the variable `qvar` that can be understood as
     *           the application of an invertible function to `qvar`.
     * @param condition A condition (containing `qvar`) that must hold in order for
     *                  `inv` to invert `of` to `qvar`.
@@ -722,45 +722,37 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     *           2. the definitional axioms of the inverse function.
     */
   def getFreshInverseFunction(qvar: Var,
-                              of: Term,
+                              fct: Term,
                               condition: Term,
                               additionalArgs: Seq[Var])
                              : InverseFunction = {
 
-    Predef.assert(of.sort == sorts.Ref, s"Expected ref-sorted term, but found $of of sort ${of.sort}")
+    Predef.assert(fct.sort == sorts.Ref, s"Expected ref-sorted term, but found $fct of sort ${fct.sort}")
 
-    val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ of.sort, qvar.sort)
+    val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
     val funcSymbol = decider.fresh("inv", funcSort)
     val inverseFunc = (t: Term) => Apply(funcSymbol, additionalArgs :+ t)
-    val invOf: Term = inverseFunc(of)
-    val ofInv = of.replace(qvar, inverseFunc(`?r`))
+    val invOFct: Term = inverseFunc(fct)
+    val fctOfInv = fct.replace(qvar, inverseFunc(`?r`))
     val condInv = condition.replace(qvar, inverseFunc(`?r`))
 
-    TriggerGenerator.allowInvalidTriggers = true
-    val (triggers, extraVars) =
-      TriggerGenerator.generateFirstTriggerGroup(qvar :: Nil, of :: And(condition, invOf) :: Nil)
-                      .getOrElse((Nil, Nil))
-    TriggerGenerator.allowInvalidTriggers = false
+    val finalAxInvOfFct =
+      TriggerGenerator.assembleQuantification(Forall,
+                                              qvar :: Nil,
+                                              Implies(condition, invOFct === qvar),
+                                              fct :: And(condition, invOFct) :: Nil,
+                                              s"qp.${funcSymbol.id}-exp",
+                                              axiomRewriter)
 
-    val ax1Raw =
-      Forall(
-        qvar +: extraVars,
-        Implies(condition, invOf === qvar),
-        triggers,
-        s"qp.${funcSymbol.id}-exp")
+    val finalAxFctOfInv =
+      TriggerGenerator.assembleQuantification(Forall,
+                                              `?r` :: Nil,
+                                              Implies(condInv, fctOfInv === `?r`),
+                                              Trigger(inverseFunc(`?r`)) :: Nil,
+                                              s"qp.${funcSymbol.id}-imp",
+                                              axiomRewriter)
 
-    val ax2Raw =
-      Forall(
-        `?r`,
-        Implies(condInv, ofInv === `?r`),
-        Trigger(inverseFunc(`?r`)),
-        s"qp.${funcSymbol.id}-imp")
-
-
-    val ax1 = axiomRewriter.rewrite(ax1Raw).getOrElse(ax1Raw)
-    val ax2 = axiomRewriter.rewrite(ax2Raw).getOrElse(ax2Raw)
-
-    InverseFunction(funcSymbol, inverseFunc, ax1 :: ax2 :: Nil)
+    InverseFunction(funcSymbol, inverseFunc, finalAxInvOfFct, finalAxFctOfInv)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]) = (chunks: Seq[QuantifiedChunk]) => {
@@ -798,7 +790,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 object QuantifiedChunkSupporter {
   var axiomRewriter: AxiomRewriter = null /* TODO: Implement properly */
 
-  case class InverseFunction(symbol: Var, function: Term => Term, definitionalAxioms: Seq[Term]) {
+  case class InverseFunction(symbol: Var, function: Term => Term, invOfFct: Quantification, fctOfInv: Quantification) {
+    val definitionalAxioms = invOfFct :: fctOfInv :: Nil
     def apply(t: Term) = function(t)
   }
 
