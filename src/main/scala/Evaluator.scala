@@ -357,14 +357,17 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         conjunction(chunksWithPerm, True(), c, Q)
 
-      case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
-        val (triggerQuant, tQuantOp, silTriggers) = quant match {
-          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
-          case ex: ast.Exists => (ex, Exists, Seq())
+      case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
+        val (eQuant, qantOp, eTriggers) = sourceQuant match {
+          case forall: ast.Forall =>
+            val autoTriggeredForall = utils.ast.autoTrigger(forall)
+            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+          case exists: ast.Exists =>
+            (exists, Exists, Seq())
         }
 
-        val body = triggerQuant.exp
-        val vars = triggerQuant.variables map (_.localVar)
+        val body = eQuant.exp
+        val vars = eQuant.variables map (_.localVar)
 
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
@@ -374,22 +377,26 @@ trait DefaultEvaluator[ST <: Store[ST],
                         recordPossibleTriggers = true,
                         possibleTriggers = Map.empty)
 
-        decider.locally[(Set[Term], Quantification, C)](QB => {
+        decider.locally[(Quantification, Iterable[Term], Quantification, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
-            evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars, triggers)
-              val qid = quant.pos match {
+            evalTriggers(σQuant, eTriggers, pve, c1)((triggers, c2) => {
+              val qid = sourceQuant.pos match {
                 case pos: ast.HasLineColumn => s"prog.l${pos.line}"
-                case _ => s"prog.l${quant.pos}"}
-              val tQuant = Quantification(tQuantOp, tVars, tBody, triggers, qid)
+                case _ => s"prog.l${sourceQuant.pos}"}
+              val tQuant = Quantification(qantOp, tVars, tBody, triggers, qid)
+              val (topLevelTerms, nestedTerms) = state.utils.partitionAuxiliaryTerms(πDelta)
+              val tAuxQuant = Quantification(qantOp, tVars, And(nestedTerms), triggers, s"$qid-aux")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
-              QB(πAux, tQuant, c3)})})
-        }){case (πAux, tQuant, c1) =>
-          assume(πAux)
+              QB(tQuant, topLevelTerms, tAuxQuant, c3)})})
+        }){case (tQuant, topLevelTerms, tAuxQuant, c1) =>
+          decider.prover.logComment("[evalDependently] top-level auxiliary terms")
+          assume(topLevelTerms)
+          decider.prover.logComment("[evalDependently] nested auxiliary terms")
+          assume(tAuxQuant)
           Q(tQuant, c1)
         }
 
@@ -399,7 +406,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-          val pre = Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
+          val pre = ast.utility.Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -781,8 +788,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.popScope()
 
         r && {
-          val tAux = πAux
-          assume(tAux)
+          val (topLevelTerms, nestedTerms) = state.utils.partitionAuxiliaryTerms(πAux)
+          decider.prover.logComment("[evalDependently] top-level auxiliary terms")
+          assume(topLevelTerms)
+          decider.prover.logComment("[evalDependently] nested auxiliary terms")
+          assume(Implies(guard, And(nestedTerms)))
           val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
           Q(t0, optT1, c2)}})
   }

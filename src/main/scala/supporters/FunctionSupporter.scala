@@ -258,12 +258,10 @@ trait FunctionSupporter[ST <: Store[ST],
       decider.prover.declare(VarDecl(`?s`))
       declareFunctions()
 
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
-
       // FIXME: A workaround for Silver issue #94.
       // toList must be before flatMap. Otherwise Set will be used internally and some
       // error messages will be lost.
-      functionData.keys.toList.flatMap(function => handleFunction(function, c))
+      functionData.keys.toList.flatMap(function => handleFunction(function))
     }
 
     private def analyze(program: ast.Program) {
@@ -283,17 +281,17 @@ trait FunctionSupporter[ST <: Store[ST],
       expressionTranslator.functionData = functionData
     }
 
-    private def handleFunction(function: ast.Function, c: C): List[VerificationResult] = {
+    private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-
+      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)
-      data.postAxiom map decider.prover.assume
+      data.postAxiom foreach decider.prover.assume
 
       val result = verifyAndAxiomatize(function, c)
 
-      data.axiom map decider.prover.assume
+      data.axiom foreach decider.prover.assume
 
       resultSpecsWellDefined :: result :: Nil
     }
@@ -376,8 +374,8 @@ trait FunctionSupporter[ST <: Store[ST],
 
       val data = functionData(function)
       val out = function.result
-
-      val γ = Γ(data.formalArgs + (out -> fresh(out)))
+      val tOut = fresh(out)
+      val γ = Γ(data.formalArgs + (out -> tOut))
       val σ = Σ(γ, Ø, Ø)
 
       val postError = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
@@ -407,10 +405,11 @@ trait FunctionSupporter[ST <: Store[ST],
                 recorders ::= c2.snapshotRecorder.get
                 Success()
               case Some(body) =>
-                eval(σ1, body, FunctionNotWellformed(function), c2)((tB, c3) => {
+                eval(σ1, body, FunctionNotWellformed(function), c2)((tBody, c3) => {
                   recorders ::= c3.snapshotRecorder.get
                   val c4 = c3.copy(snapshotRecorder = None)
-                  consumes(σ1 \+ (out, tB), FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
+                  decider.assume(tOut === tBody)
+                  consumes(σ1, FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
                     Success())})})}
 
       if (recorders.nonEmpty) {

@@ -226,7 +226,6 @@ trait DefaultProducer[ST <: Store[ST],
         getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
 
       case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
         (toSort(f.typ), false)
 
       case _ =>

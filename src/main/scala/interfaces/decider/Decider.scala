@@ -42,7 +42,7 @@ trait Decider[ST <: Store[ST],
    *       is changed?
    */
   def assume(t: Term)
-  def assume(ts: Set[Term])
+  def assume(ts: Iterable[Term])
 
   def tryOrFail[R](σ: S, c: C)
                   (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
