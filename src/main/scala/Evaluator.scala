@@ -383,27 +383,27 @@ trait DefaultEvaluator[ST <: Store[ST],
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
-                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
-                      /* [2014-12-10 Malte] The commented code should replace the code following
-                       * it, but using it slows down RingBufferRd.sil significantly. The generated
-                       * Z3 output looks nearly identical, so my guess is that it is some kind
-                       * of triggering problem, probably related to sequences.
-                       */
+                join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
+                    /* [2014-12-10 Malte] The commented code should replace the code following
+                     * it, but using it slows down RingBufferRd.sil significantly. The generated
+                     * Z3 output looks nearly identical, so my guess is that it is some kind
+                     * of triggering problem, probably related to sequences.
+                     */
 //                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
 //                      val c4 = c3.decCycleCounter(predicate)
 //                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                        QB(tIn, c5))})
-                    consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
+                  consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
 //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
-                        val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
-                          QB(tIn, c5)})})})
-                  )(Q)
+                    val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
+                    produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
+                      val c4a = c4.decCycleCounter(predicate)
+                      val σ3 = σ2 //\ (g = σ.g)
+                      eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
+                        QB(tIn, c5)})})})
+                )(Q)
               case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)
