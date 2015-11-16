@@ -318,20 +318,18 @@ trait DefaultEvaluator[ST <: Store[ST],
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
             evalTriggers(σQuant, eTriggers, pve, c1)((triggers, c2) => {
-              val qid = sourceQuant.pos match {
-                case pos: ast.HasLineColumn => s"prog.l${pos.line}"
-                case _ => s"prog.l${sourceQuant.pos}"}
-              val tQuant = Quantification(qantOp, tVars, tBody, triggers, qid)
-              val (topLevelTerms, nestedTerms) = state.utils.partitionAuxiliaryTerms(πDelta)
-              val tAuxQuant = Quantification(qantOp, tVars, And(nestedTerms), triggers, s"$qid-aux")
+              val sourceLine = utils.ast.sourceLine(sourceQuant)
+              val tQuant = Quantification(qantOp, tVars, tBody, triggers, s"prog.l$sourceLine")
+              val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
+              val tAuxQuant = Quantification(qantOp, tVars, And(tAuxNested), triggers, s"prog.l$sourceLine-aux")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
-              QB(tQuant, topLevelTerms, tAuxQuant, c3)})})
-        }){case (tQuant, topLevelTerms, tAuxQuant, c1) =>
-          decider.prover.logComment("[evalDependently] top-level auxiliary terms")
-          assume(topLevelTerms)
-          decider.prover.logComment("[evalDependently] nested auxiliary terms")
+              QB(tQuant, tAuxTopLevel, tAuxQuant, c3)})})
+        }){case (tQuant, tAuxTopLevel, tAuxQuant, c1) =>
+          decider.prover.logComment("Top-level auxiliary terms")
+          assume(tAuxTopLevel)
+          decider.prover.logComment("Nested auxiliary terms")
           assume(tAuxQuant)
           Q(tQuant, c1)
         }
@@ -724,11 +722,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         decider.popScope()
 
         r && {
-          val (topLevelTerms, nestedTerms) = state.utils.partitionAuxiliaryTerms(πAux)
-          decider.prover.logComment("[evalDependently] top-level auxiliary terms")
-          assume(topLevelTerms)
-          decider.prover.logComment("[evalDependently] nested auxiliary terms")
-          assume(Implies(guard, And(nestedTerms)))
+          val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πAux)
+          decider.prover.logComment("Top-level auxiliary terms")
+          assume(tAuxTopLevel)
+          decider.prover.logComment("Nested auxiliary terms")
+          assume(Implies(guard, And(tAuxNested)))
           val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
           Q(t0, optT1, c2)}})
   }
