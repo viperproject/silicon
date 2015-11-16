@@ -35,9 +35,6 @@ package object utils {
   }
 
   def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
-    (Nil, ts)
-
-  def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
     ts.partition(_.isInstanceOf[FvfAfterRelation])
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
