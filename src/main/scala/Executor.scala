@@ -300,9 +300,10 @@ trait DefaultExecutor[ST <: Store[ST],
            */
 
         evals(σ, eArgs, pve, c)((tArgs, c1) => {
+          val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           val pre = utils.ast.BigAnd(meth.pres)
-          consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, _, c3) => {
+          consume(σ \ insγ, FullPerm(), pre, pve, c2)((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
@@ -310,7 +311,8 @@ trait DefaultExecutor[ST <: Store[ST],
             produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
-              Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c4)})})})
+              val c5 = c4.copy(recordVisited = c1.recordVisited)
+              Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c5)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)

@@ -219,7 +219,7 @@ class DefaultDecider[ST <: Store[ST],
   }
 
   private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
-    /* Add terms to Syxc-managed path conditions */
+    /* Add terms to Silicon-managed path conditions */
     terms foreach pathConditions.push
 
     /* Add terms to the prover's assumptions */

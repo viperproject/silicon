@@ -350,7 +350,7 @@ trait DefaultProducer[ST <: Store[ST],
 
     if (φ1.isPure && φ2.isPure) fIfBothPure()
     else (sorts.Snap, false)
-    }
+  }
 
   private def mkSnap(φ: ast.Exp, program: ast.Program, visited: Seq[String] = Nil): Term =
     getOptimalSnapshotSort(φ, program, visited) match {

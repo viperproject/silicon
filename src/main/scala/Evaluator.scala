@@ -372,21 +372,21 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB =>
-            consume(σ, FullPerm(), pre, err, c2)((_, s, _, c3) => {
+          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
+            val c3 = c2.copy(recordVisited = true)
+            consume(σ, FullPerm(), pre, err, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
-              val c4 = c3.snapshotRecorder match {
-                case Some(sr) =>
-                  c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
-                case _ => c3}
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
-              val c5 =
-                if (c4.recordPossibleTriggers) c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
-                else c4
-              QB(tFApp, c5)})
-            )((tR, cR) => {
-              Q(tR, cR)
-            })})
+              val c5 = c4.snapshotRecorder match {
+                case Some(sr) =>
+                  c4.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c4.branchConditions, s1)))
+                case _ => c4}
+              val c6 =
+                if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp))
+                else c5
+              val c7 = c6.copy(recordVisited = c2.recordVisited)
+              QB(tFApp, c7)})
+            })(Q)})
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -395,33 +395,33 @@ trait DefaultEvaluator[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
-          val c0 = c.incCycleCounter(predicate)
-
-          evals(σ, eArgs, pve, c0)((tArgs, c1) =>
+          evals(σ, eArgs, pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
-                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
-                      /* [2014-12-10 Malte] The commented code should replace the code following
-                       * it, but using it slows down RingBufferRd.sil significantly. The generated
-                       * Z3 output looks nearly identical, so my guess is that it is some kind
-                       * of triggering problem, probably related to sequences.
-                       */
+                join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
+                  val c3 = c2.incCycleCounter(predicate)
+                             .copy(recordVisited = true)
+                    /* [2014-12-10 Malte] The commented code should replace the code following
+                     * it, but using it slows down RingBufferRd.sil significantly. The generated
+                     * Z3 output looks nearly identical, so my guess is that it is some kind
+                     * of triggering problem, probably related to sequences.
+                     */
 //                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
 //                      val c4 = c3.decCycleCounter(predicate)
 //                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                        QB(tIn, c5))})
-                    consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
+                  consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
 //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
-                        val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
-                          QB(tIn, c5)})})})
-                  )(Q)
+                    val body = pa.predicateBody(c4.program).get /* Only non-abstract predicates can be unfolded */
+                    produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c4)((σ2, c5) => {
+                      val c6 = c5.copy(recordVisited = c2.recordVisited)
+                                 .decCycleCounter(predicate)
+                      val σ3 = σ2 //\ (g = σ.g)
+                      eval(σ3 /*\ σ.γ*/, eIn, pve, c6)(QB)})})
+                })(Q)
               case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)
