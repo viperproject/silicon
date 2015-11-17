@@ -70,6 +70,10 @@ package object utils {
   }
 
   object ast {
+    /** Use with care! In particular, pre sure you now the effect of `BigAnd` on
+      * snapshot recording before you e.g. `consume(..., BigAnd(some_preconditions), ...)`.
+      * Consider using `consumes(..., some_preconditions, ...)` instead.
+      */
     def BigAnd(it: Iterable[silver.ast.Exp],
                f: silver.ast.Exp => silver.ast.Exp = e => e,
                emptyPos: silver.ast.Position = silver.ast.NoPosition) =
