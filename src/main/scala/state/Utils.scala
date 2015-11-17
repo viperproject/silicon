@@ -91,8 +91,6 @@ package object utils {
     case ss: SingletonSet => List(ss.p)
     case ss: SingletonMultiset => List(ss.p)
     case dfa: DomainFApp => List(dfa.function) ++ dfa.tArgs
-    case fst: First => List(fst.t)
-    case snd: Second => List(snd.t)
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
