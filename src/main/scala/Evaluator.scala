@@ -340,7 +340,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-          val pre = ast.utility.Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
+          val pre = func.pres map (ast.utility.Expressions.instantiateVariables(_, func.formalArgs, eArgs))
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -354,7 +354,7 @@ trait DefaultEvaluator[ST <: Store[ST],
            */
           join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
             val c3 = c2.copy(recordVisited = true)
-            consume(σ, FullPerm(), pre, err, c3)((_, s, _, c4) => {
+            consumes(σ, FullPerm(), pre, _ => err, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
               val c5 = c4.snapshotRecorder match {
