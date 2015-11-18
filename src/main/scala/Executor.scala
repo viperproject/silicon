@@ -11,7 +11,7 @@ import org.slf4s.Logging
 import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed}
+    UnfoldFailed, AssertFailed, CallFailed}
 import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
@@ -268,21 +268,16 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = c.program.findMethod(methodName)
-        val pve = PreconditionInCallFalse(call)
-        val pvef = (_: ast.Exp) => pve
-          /* TODO: Used to be MethodCallFailed. Is also passed on to producing the postcondition, during which
-           *       it is passed on to calls to eval, but it could also be thrown by produce itself (probably
-           *       only while checking well-formedness).
-           */
-
-        evals(σ, eArgs, pvef, c)((tArgs, c1) => {
+        val pvefCall = (_: ast.Exp) =>  CallFailed(call)
+        val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
+        evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {
           val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          consumes(σ \ insγ, FullPerm(), meth.pres, pvef, c2)((σ1, _, _, c3) => {
+          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            produces(σ2, fresh, FullPerm(), meth.posts, pvef, c3)((σ3, c4) => {
+            produces(σ2, fresh, FullPerm(), meth.posts, pvefCall, c3)((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               val c5 = c4.copy(recordVisited = c1.recordVisited)
