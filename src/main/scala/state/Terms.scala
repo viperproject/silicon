@@ -1609,18 +1609,42 @@ object Combine {
   def unapply(c: Combine) = Some((c.p0, c.p1))
 }
 
-case class First(t: Term) extends SnapshotTerm with PossibleTrigger {
-  utils.assertSort(t, "term", sorts.Snap)
+class First(val p: Term) extends SnapshotTerm
+    with StructuralEqualityUnaryOp[Term]
+    /*with PossibleTrigger*/ {
 
-  lazy val getArgs = t :: Nil
+  utils.assertSort(p, "term", sorts.Snap)
+
+  lazy val getArgs = p :: Nil
   def withArgs(args: Seq[Term]) = First(args(0))
 }
 
-case class Second(t: Term) extends SnapshotTerm with PossibleTrigger {
-  utils.assertSort(t, "term", sorts.Snap)
+object First extends (Term => Term) {
+  def apply(t: Term) = t match {
+    case Combine(t1, _) => t1
+    case _ => new First(t)
+  }
 
-  lazy val getArgs = t :: Nil
+  def unapply(f: First) = Some(f.p)
+}
+
+class Second(val p: Term) extends SnapshotTerm
+    with StructuralEqualityUnaryOp[Term]
+    /*with PossibleTrigger*/ {
+
+  utils.assertSort(p, "term", sorts.Snap)
+
+  lazy val getArgs = p :: Nil
   def withArgs(args: Seq[Term]) = Second(args(0))
+}
+
+object Second extends (Term => Term) {
+  def apply(t: Term) = t match {
+    case Combine(_, t2) => t2
+    case _ => new Second(t)
+  }
+
+  def unapply(s: Second) = Some(s.p)
 }
 
 /* Quantified permissions */

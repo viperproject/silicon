@@ -348,25 +348,29 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
-    var failures =
+    val failures =
       results.flatMap(r => r :: r.allPrevious)
              .collect{ case f: Failure => f }
-
-    /* Removes results that have the same textual representation of their
-     * error message.
-     *
-     * TODO: This is not only ugly, and also should not be necessary. It seems
-     *       that malformed predicates are currently reported multiple times,
-     *       once for each fold/unfold and once when they are checked for
-     *       well-formedness.
-     */
-    failures = failures.reverse
-                       .foldLeft((Set[String](), List[Failure]())){
-                          case ((ss, rs), f: Failure) =>
-                            if (ss.contains(f.message.readableMessage)) (ss, rs)
-                            else (ss + f.message.readableMessage, f :: rs)
-                          case ((ss, rs), r) => (ss, r :: rs)}
-                       ._2
+             /* Removes results that have the same textual representation of their
+              * error message.
+              *
+              * TODO: This is not only ugly, and also should not be necessary. It seems
+              *       that malformed predicates are currently reported multiple times,
+              *       once for each fold/unfold and once when they are checked for
+              *       well-formedness.
+              */
+             .reverse
+             .foldLeft((Set[String](), List[Failure]())){
+                case ((ss, rs), f: Failure) =>
+                  if (ss.contains(f.message.readableMessage)) (ss, rs)
+                  else (ss + f.message.readableMessage, f :: rs)
+                case ((ss, rs), r) => (ss, r :: rs)}
+             ._2
+             /* Order failures according to source position */
+             .sortBy(_.message.pos match {
+                case pos: ast.HasLineColumn => (pos.line, pos.column)
+                case _ => (-1, -1)
+             })
 
     if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()

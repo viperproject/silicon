@@ -11,7 +11,7 @@ import org.slf4s.Logging
 import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed}
+    UnfoldFailed, AssertFailed, CallFailed}
 import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, InsufficientPermission}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
@@ -110,10 +110,7 @@ trait DefaultExecutor[ST <: Store[ST],
          *       AST again.
          */
         val loopStmt = lb.toAst.asInstanceOf[ast.While]
-        val inv = utils.ast.BigAnd(lb.invs, Predef.identity, lb.pos)
-        val invAndGuard = ast.And(inv, lb.cond)(inv.pos, inv.info)
         val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
-        val invAndNotGuard = ast.And(inv, notGuard)(inv.pos, inv.info)
 
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
@@ -125,7 +122,7 @@ trait DefaultExecutor[ST <: Store[ST],
         (inScope {
           /* Verify loop body (including well-formedness check) */
           decider.prover.logComment("Verify loop body")
-          produce(σBody, fresh,  FullPerm(), invAndGuard, WhileFailed(loopStmt), c)((σ1, c1) =>
+          produces(σBody, fresh,  FullPerm(), lb.invs :+ lb.cond, _ => WhileFailed(loopStmt), c)((σ1, c1) =>
           /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
            *       Should no longer be necessary once we have an on-demand handling of merging and
            *       false-checking.
@@ -143,7 +140,7 @@ trait DefaultExecutor[ST <: Store[ST],
             consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, _, c1) => {
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
-              produce(σ2, fresh,  FullPerm(), invAndNotGuard, WhileFailed(loopStmt), c1)((σ3, c2) =>
+              produces(σ2, fresh,  FullPerm(), lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ3, c2) =>
               /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
                *       Should no longer be necessary once we have an on-demand handling of merging and
                *       false-checking.
@@ -293,22 +290,16 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = c.program.findMethod(methodName)
-        val pve = PreconditionInCallFalse(call)
-          /* TODO: Used to be MethodCallFailed. Is also passed on to producing the postcondition, during which
-           *       it is passed on to calls to eval, but it could also be thrown by produce itself (probably
-           *       only while checking well-formedness).
-           */
-
-        evals(σ, eArgs, pve, c)((tArgs, c1) => {
+        val pvefCall = (_: ast.Exp) =>  CallFailed(call)
+        val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
+        evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {
           val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          val pre = utils.ast.BigAnd(meth.pres)
-          consume(σ \ insγ, FullPerm(), pre, pve, c2)((σ1, _, _, c3) => {
+          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            val post = utils.ast.BigAnd(meth.posts)
-            produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
+            produces(σ2, fresh, FullPerm(), meth.posts, pvefCall, c3)((σ3, c4) => {
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               val c5 = c4.copy(recordVisited = c1.recordVisited)
@@ -317,7 +308,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
@@ -328,7 +319,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
