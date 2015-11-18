@@ -335,7 +335,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
-        val err = PreconditionInAppFalse(fapp)
+        val pvePre = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 
         evals2(σ, eArgs, Nil, _ => pve, c)((tArgs, c2) => {
@@ -354,7 +354,7 @@ trait DefaultEvaluator[ST <: Store[ST],
            */
           join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
             val c3 = c2.copy(recordVisited = true)
-            consumes(σ, FullPerm(), pre, _ => err, c3)((_, s, _, c4) => {
+            consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
               val c5 = c4.snapshotRecorder match {
