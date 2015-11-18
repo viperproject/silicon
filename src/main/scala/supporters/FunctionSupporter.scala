@@ -322,34 +322,12 @@ trait FunctionSupporter[ST <: Store[ST],
        */
       var recorders = List[SnapshotRecorder]()
 
-      val originalResult: VerificationResult =
+      val result: VerificationResult =
         inScope {
           produces(σ, sort => `?s`.convert(sort), FullPerm(), function.pres, ContractNotWellformed, c)((σ1, c1) =>
-            evals(σ1, function.posts, functionMalformed, c1)((tPosts, c2) => {
+            evals(σ1, function.posts, ContractNotWellformed, c1)((tPosts, c2) => {
               recorders ::= c2.snapshotRecorder.get
               Success()}))}
-      // FIXME (workaround for Silicon issue 161): This modification of result is needed because evals
-      // does not allow creating errors for specific expressions.
-      val result = originalResult match {
-        case Failure(message) =>
-          message match {
-            case FunctionNotWellformed(f, r) =>
-              val node: ast.Exp = r.offendingNode.asInstanceOf[ast.Exp]
-              var offendingNode: ast.Exp = node
-              (function.pres ++ function.posts).foreach((pre: ast.Node) => {
-                pre.find(_ == node) match {
-                  case Some(n) =>
-                    offendingNode = pre.asInstanceOf[ast.Exp]
-                  case _ =>
-                }
-              })
-              val newMessage: VerificationError = ContractNotWellformed(offendingNode, r)
-              Failure(newMessage)
-            case _ =>
-              Failure(message)
-          }
-        case e => e
-      }
 
       if (recorders.nonEmpty) {
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))

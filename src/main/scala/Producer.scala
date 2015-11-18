@@ -141,7 +141,7 @@ trait DefaultProducer[ST <: Store[ST],
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)

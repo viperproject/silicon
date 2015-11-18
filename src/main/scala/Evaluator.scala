@@ -51,17 +51,17 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+  def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
 
-    evals2(σ, es, Nil, pve, c)((ts, c1) =>
+    evals2(σ, es, Nil, pvef, c)((ts, c1) =>
       Q(ts, c1))
 
   private def evals2(σ: S,
                      es: Seq[ast.Exp],
                      ts: List[Term],
-                     pve: PartialVerificationError,
+                     pvef: ast.Exp => PartialVerificationError,
                      c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
@@ -69,8 +69,8 @@ trait DefaultEvaluator[ST <: Store[ST],
     if (es.isEmpty)
       Q(ts.reverse, c)
     else
-      eval(σ, es.head, pve, c)((t, c1) =>
-        evals2(σ, es.tail, t :: ts, pve, c1)(Q))
+      eval(σ, es.head, pvef(es.head), c)((t, c1) =>
+        evals2(σ, es.tail, t :: ts, pvef, c1)(Q))
   }
 
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
@@ -287,7 +287,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Domains not handled directly */
       case dfa @ ast.DomainFuncApp(funcName, eArgs, _) =>
-        evals(σ, eArgs, pve, c)((tArgs, c1) => {
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
@@ -338,7 +338,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         val err = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 
-        evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
+        evals2(σ, eArgs, Nil, _ => pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
           val pre = func.pres map (ast.utility.Expressions.instantiateVariables(_, func.formalArgs, eArgs))
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
@@ -375,7 +375,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
-          evals(σ, eArgs, pve, c)((tArgs, c1) =>
+          evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
@@ -421,11 +421,11 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c)(Q)
 
       case ast.SeqUpdate(e0, e1, e2) =>
-        evals2(σ, List(e0, e1, e2), Nil, pve, c)((ts, c1) =>
+        evals2(σ, List(e0, e1, e2), Nil, _ => pve, c)((ts, c1) =>
           Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
 
       case ast.ExplicitSeq(es) =>
-        evals2(σ, es.reverse, Nil, pve, c)((tEs, c1) => {
+        evals2(σ, es.reverse, Nil, _ => pve, c)((tEs, c1) => {
           val tSeq =
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
               SeqAppend(SeqSingleton(te), tSeq))
@@ -438,14 +438,14 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.EmptyMultiset(typ) => Q(EmptyMultiset(toSort(typ)), c)
 
       case ast.ExplicitSet(es) =>
-        evals2(σ, es, Nil, pve, c)((tEs, c1) => {
+        evals2(σ, es, Nil, _ => pve, c)((tEs, c1) => {
           val tSet =
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
           Q(tSet, c1)})
 
       case ast.ExplicitMultiset(es) =>
-        evals2(σ, es, Nil, pve, c)((tEs, c1) => {
+        evals2(σ, es, Nil, _ => pve, c)((tEs, c1) => {
           val tMultiset =
             tEs.tail.foldLeft[MultisetTerm](SingletonMultiset(tEs.head))((tMultiset, te) =>
               MultisetAdd(tMultiset, te))
@@ -521,7 +521,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
       case ast.PredicateAccess(eArgs, predicateName) =>
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
     }
 
@@ -629,7 +629,7 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       stop if evaluating one fails
      */
     val r =
-      evals(σ, remainingTriggerExpressions, pve, c)((remainingTriggerTerms, c1) => {
+      evals(σ, remainingTriggerExpressions, _ => pve, c)((remainingTriggerTerms, c1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         πAux = decider.π -- πPre
         Success()})

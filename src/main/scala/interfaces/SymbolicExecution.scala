@@ -23,7 +23,7 @@ trait Evaluator[ST <: Store[ST],
                 S <: State[ST, H, S],
                 C <: Context[C]] {
 
-  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+  def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult
 

@@ -275,7 +275,7 @@ trait DefaultExecutor[ST <: Store[ST],
            *       only while checking well-formedness).
            */
 
-        evals(σ, eArgs, pve, c)((tArgs, c1) => {
+        evals(σ, eArgs, pvef, c)((tArgs, c1) => {
           val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
           consumes(σ \ insγ, FullPerm(), meth.pres, pvef, c2)((σ1, _, _, c3) => {
@@ -291,7 +291,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
@@ -302,7 +302,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
