@@ -46,7 +46,9 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
-  def verify(member: ast.Member, c: C): VerificationResult = {
+  def verify(member: ast.Member, program: ast.Program): VerificationResult = {
+    val c = DefaultContext(program, utils.ast.quantifiedFields(member, program))
+
     member match {
       case m: ast.Method => verify(m, c)
       case f: ast.Function => sys.error("Functions unexpected at this point, should have been handled already")
@@ -172,8 +174,6 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-    val c = DefaultContext(program)
-
     val members = program.members.filterNot {
       case func: ast.Function => true
       case m => filter(m.name)
@@ -188,7 +188,7 @@ trait AbstractVerifier[ST <: Store[ST],
     QuantifiedChunkSupporter.safeLastFVFState() /* TODO: Implement properly */
     members.map{m =>
       QuantifiedChunkSupporter.restoreLastFVFState()
-      ev.verify(m, c)
+      ev.verify(m, program)
     }.toList
   }
 

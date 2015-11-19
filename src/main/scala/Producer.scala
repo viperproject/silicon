@@ -135,12 +135,15 @@ trait DefaultProducer[ST <: Store[ST],
           produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+        /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
-          if (quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) {
+          if (c.qpFields.contains(field)) {
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
             optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
-            (h + ch, c)
+            val hints = quantifiedChunkSupporter.extractHints(None, None, rcvr)
+            val ch1 = ch.copy(hints = hints)
+            (h + ch1, c)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
             val (h1, c1) = chunkSupporter.produce(σ, h, ch, c)
@@ -185,7 +188,6 @@ trait DefaultProducer[ST <: Store[ST],
                 QB(tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c4)}))})
         ){case (tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
-          val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
           val additionalInvFctArgs = c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs)
           val (ch, invFct) =
             quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond,
@@ -202,7 +204,7 @@ trait DefaultProducer[ST <: Store[ST],
            * This choice of triggers, however, might be problematic when quantified field
            * dereference chains, e.g. x.g.f, where access to x.g and to x.g.f is quantified,
            * are used in pure assertions, as witnessed by method test04 in test case
-           * quantifiedpermissions/sets/generalised_shape.sil.
+           * quantified permissions/sets/generalised_shape.sil.
            *
            * In such a scenario, the receiver of (x.g).f will be an fvf-lookup, e.g.
            * lookup_g(fvf1, x), but since fvf1 was introduced when evaluating x.g, the
@@ -241,22 +243,19 @@ trait DefaultProducer[ST <: Store[ST],
           assume(tAuxQuantNoTriggers.copy(triggers = triggerForAuxQuant))
           decider.prover.logComment("Definitional axioms for inverse functions")
           assume(invFct.definitionalAxioms)
+          val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
           val ch1 = ch.copy(hints = hints)
           val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
           decider.prover.logComment("Receivers are non-null")
           assume(Set(tNonNullQuant))
-          val (h, fvfDefs) =
-            if(quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name)) (σ.h, Nil)
-            else quantifiedChunkSupporter.quantifyChunksForField(σ.h, field)
           decider.prover.logComment("Definitional axioms for field value functions")
-          fvfDefs foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
           val c2 = c1.snapshotRecorder match {
             case Some(sr) =>
               val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms)
               c1.copy(snapshotRecorder = Some(sr1))
             case None =>
               c1}
-          Q(h + ch1, c2)}
+          Q(σ.h + ch1, c2)}
 
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))

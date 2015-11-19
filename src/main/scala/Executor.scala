@@ -224,12 +224,27 @@ trait DefaultExecutor[ST <: Store[ST],
               Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
 
       case ast.NewStmt(v, fields) =>
-        val t = fresh(v)
-        assume(t !== Null())
-        val newh = H(fields.map(f => DirectFieldChunk(t, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
-        val σ1 = σ \+ (v, t) \+ newh
-        val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - t
-        assume(And(refs map (_ !== t)))
+        val tRcvr = fresh(v)
+        assume(tRcvr !== Null())
+
+        /* TODO: Verify similar to the code in DefaultProducer/ast.FieldAccessPredicate - unify */
+        val newChunks = fields map (field => {
+          val p = FullPerm()
+          val s = fresh(field.name, toSort(field.typ))
+          if (c.qpFields.contains(field)) {
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, s)
+            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
+            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+            ch.copy(hints = hints)
+          } else {
+            DirectFieldChunk(tRcvr, field.name, s, p)
+          }
+        })
+
+        val σ1 = σ \+ (v, tRcvr) \+ H(newChunks)
+        val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - tRcvr
+        assume(And(refs map (_ !== tRcvr)))
         Q(σ1, c)
 
       case ast.Fresh(vars) =>

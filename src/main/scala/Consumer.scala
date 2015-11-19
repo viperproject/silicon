@@ -174,9 +174,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   case false =>
                     Failure[ST, H, S](pve dueTo ReceiverNull(fa))})})
         ){case (tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
-            val (h2, fvfDefs2) = quantifiedChunkSupporter.quantifyChunksForField(h, field)
-            if (fvfDefs2.nonEmpty) decider.prover.logComment(s"Definitional axioms for field value functions introduced by quantifying field $field")
-            fvfDefs2 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val invFct =
@@ -196,8 +193,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             decider.prover.logComment("Definitional axioms for inverse functions")
             assume(invFct.definitionalAxioms)
             val inverseReceiver = invFct(`?r`) // e⁻¹(r)
-            quantifiedChunkSupporter.splitLocations(σ, h2, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(pLoss, p), chunkOrderHeuristics, c1) {
-              case Some((h3, ch, fvfDef, c2)) =>
+            quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(pLoss, p), chunkOrderHeuristics, c1) {
+              case Some((h1, ch, fvfDef, c2)) =>
                 val fvfDomain = fvfDef.domainDefinition(invFct)
                 decider.prover.logComment("Definitional axioms for field value function")
                 assume(fvfDomain +: fvfDef.valueDefinitions)
@@ -213,14 +210,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       else sr1
                     c2.copy(snapshotRecorder = Some(sr2))
                   case _ => c2}
-                Q(h3, ch.fvf, /*ch :: */Nil, c3)
+                Q(h1, ch.fvf, /*ch :: */Nil, c3)
               case None =>
                 Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
             //}
         }
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
-          if quantifiedChunkSupporter.isQuantifiedFor(h, field.name) =>
+          if c.qpFields.contains(field) =>
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) => {

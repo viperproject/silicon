@@ -347,7 +347,11 @@ trait FunctionSupporter[ST <: Store[ST],
 
     private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder(data.args)))
+
+      val c = DefaultContext(program = program,
+                             qpFields = utils.ast.quantifiedFields(function, program),
+                             snapshotRecorder = Some(SnapshotRecorder(data.args)))
+
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)

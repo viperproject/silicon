@@ -14,13 +14,14 @@ import terms.{Var, Term}
 import supporters.SnapshotRecorder
 
 case class DefaultContext(program: ast.Program,
+                          qpFields: Set[ast.Field],
+
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
                           branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
-
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map())
@@ -58,13 +59,14 @@ case class DefaultContext(program: ast.Program,
    */
 
   def merge(other: DefaultContext): DefaultContext = this match {
-    case DefaultContext(program1, recordVisited1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
-                        retrying1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1) =>
+    case DefaultContext(program1, qpFields1, recordVisited1, visited1, branchConditions1, constrainableARPs1,
+                        quantifiedVariables1, retrying1, snapshotRecorder1, recordPossibleTriggers1,
+                        possibleTriggers1) =>
 
       other match {
-        case DefaultContext(`program1`, recordVisited2, `visited1`, `branchConditions1`, `constrainableARPs1`,
-                            `quantifiedVariables1`, retrying2, snapshotRecorder2, `recordPossibleTriggers1`,
-                            possibleTriggers2) =>
+        case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`, `branchConditions1`,
+                            `constrainableARPs1`, `quantifiedVariables1`, retrying2, snapshotRecorder2,
+                            `recordPossibleTriggers1`, possibleTriggers2) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
