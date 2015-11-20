@@ -141,9 +141,7 @@ trait DefaultProducer[ST <: Store[ST],
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
             optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
-            val hints = quantifiedChunkSupporter.extractHints(None, None, rcvr)
-            val ch1 = ch.copy(hints = hints)
-            (h + ch1, c)
+            (h + ch, c)
           } else {
             val ch = DirectFieldChunk(rcvr, field.name, s, p)
             val (h1, c1) = chunkSupporter.produce(σ, h, ch, c)

@@ -131,8 +131,9 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                     : QuantifiedChunk = {
 
     val condPerms = singletonConditionalPermissions(rcvr, perms)
+    val hints = extractHints(None, None, rcvr)
 
-    QuantifiedChunk(field, fvf, condPerms, None, Some(condPerms), Nil)
+    QuantifiedChunk(field, fvf, condPerms, None, Some(condPerms), Some(rcvr), hints)
   }
 
   def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
@@ -169,7 +170,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
     val arbitraryInverseRcvr = inverseFunction(`?r`)
     val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
-    val ch = QuantifiedChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), Nil)
+    val ch = QuantifiedChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
 
     (ch, inverseFunction)
   }
@@ -482,7 +483,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     decider.prover.logComment("Done splitting")
 
     val hResidue = H(residue ++ otherChunks)
-    val chunkSplitOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, Nil)
+    val chunkSplitOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)
 
     (hResidue, chunkSplitOf, fvfDef, success)
   }

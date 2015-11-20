@@ -41,8 +41,9 @@ case class QuantifiedChunk(name: String,
                            perm: Term,
                            inv: Option[InverseFunction],
                            initialCond: Option[Term],
+                           singletonRcvr: Option[Term],
                            hints: Seq[Term] = Nil)
-    extends Chunk {
+    extends FieldChunk with DirectChunk {
 
   assert(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
          s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
@@ -51,9 +52,11 @@ case class QuantifiedChunk(name: String,
 
   val args = `?r` :: Nil
   val id = FieldChunkIdentifier(`?r`, name)
+  val value = fvf
 
   def +(perm: Term): QuantifiedChunk = this.copy(perm = PermPlus(this.perm, perm))
   def -(perm: Term): QuantifiedChunk = this.copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = this.copy(perm = perm)
 
   def valueAt(rcvr: Term) = Lookup(name, fvf, rcvr)
 

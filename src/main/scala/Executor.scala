@@ -192,7 +192,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       /* Assignment for a field that contains quantified chunks */
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
-              if quantifiedChunkSupporter.isQuantifiedFor(σ.h, field.name) =>
+              if c.qpFields.contains(field) =>
 
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
@@ -204,10 +204,11 @@ trait DefaultExecutor[ST <: Store[ST],
                 val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
-                  case Some((h1, ch, _, c3)) =>
+                  case Some((h1, _, _, c3)) =>
                     val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
                     optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
-                    Q(σ \ h1 \+ ch.copy(fvf = fvf, hints = hints), c3)
+                    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
+                    Q(σ \ h1 \+ ch, c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
 
@@ -234,9 +235,7 @@ trait DefaultExecutor[ST <: Store[ST],
           if (c.qpFields.contains(field)) {
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, s)
             optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
-            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
-            ch.copy(hints = hints)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
           } else {
             DirectFieldChunk(tRcvr, field.name, s, p)
           }

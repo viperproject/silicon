@@ -25,6 +25,13 @@ package object utils {
          σ.γ.values.values.filter(_.sort == terms.sorts.Ref)
       /* Receivers of fields and ref-typed arguments of predicates */
       ++ σ.h.values.collect {
+          case qch: QuantifiedChunk =>
+            /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
+             * hence, they can only be used under quantifiers that bind `?r`.
+             * An exception are quantified chunks that (definitely) provide permissions to
+             * a single location (i.e. for a single receiver) only.
+             */
+            qch.singletonRcvr.toList
           case fc: FieldChunk => fc.args
           case pc: PredicateChunk => pc.args.filter(_.sort == terms.sorts.Ref)
          }.flatten
