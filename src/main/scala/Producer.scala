@@ -16,6 +16,7 @@ import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import state.terms.predef.`?r`
 import supporters.{LetHandler, Brancher, ChunkSupporter, QuantifiedChunkSupporter}
 import viper.silver.ast.QuantifiedPermissionSupporter
 
@@ -229,7 +230,7 @@ trait DefaultProducer[ST <: Store[ST],
             case Seq(trigger @ Trigger(Seq(lk: Lookup))) => /* TODO: Make more specific */
               /* We need to look for the equality lookup_g(fvf1, ?r) == lookup_g(fvf0, ?r) */
               var optSourceLkR: Option[Lookup] = None
-              val lkR = lk.copy(at = predef.`?r`)
+              val lkR = lk.copy(at = `?r`)
               tAuxQuantNoTriggers.visit { case BuiltinEquals(`lkR`, sourceLkR: Lookup) => optSourceLkR = Some(sourceLkR) }
               /* Trigger {lookup_g(fvf1, x), lookup_g(fvf0, x)} */
               Seq(optSourceLkR.fold(trigger)(sourceLkR => Trigger(sourceLkR.copy(at = lk.at) :: Nil)))
