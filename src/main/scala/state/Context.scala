@@ -14,13 +14,13 @@ import terms.{Var, Term}
 import supporters.SnapshotRecorder
 
 case class DefaultContext(program: ast.Program,
+
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
                           branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
-
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map())
