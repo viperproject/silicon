@@ -743,7 +743,10 @@ object SiliconRunner extends SiliconFrontend {
       siliconInstance.stop()
     }
 
-    sys.exit()
+    sys.exit(result match {
+      case SilSuccess => 0
+      case SilFailure(_) => 1
+    })
       /* TODO: This currently seems necessary to make sure that Z3 is terminated
        *       if Silicon is supposed to terminate prematurely because of a
        *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
