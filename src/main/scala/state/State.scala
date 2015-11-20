@@ -253,7 +253,15 @@ class DefaultHeapCompressor[ST <: Store[ST],
             (ah - c1 + c3, afcs, amatches + (c1 -> c2), ats + tSnapDef)
 
           case (Some(other), _) =>
-            sys.error("[DefaultHeapUtils.merge] Chunks with id = %s and types c1 = %s, c2 = %s were not expected to appear in heaps h1 = %s, h2 = %s.".format(c2.id, other.getClass.getName, c2.getClass.getName, stateFormatter.format(h1), stateFormatter.format(h2)))
+            sys.error(
+              s"""[DefaultHeapUtils.merge] Chunks with
+                 |  id = ${c2.id}
+                 |and types
+                 |  c1 = ${other.getClass.getName},
+                 |  c2 = ${c2.getClass.getName}
+                 |were not expected to appear in heaps
+                 |  h1 = ${stateFormatter.format(h1)},
+                 |  h2 = ${stateFormatter.format(h2)}.""".stripMargin)
 
           case (None, c2: DirectFieldChunk) => (ah + c2, c2 :: afcs, amatches, ats)
           case (None, _) => (ah + c2, afcs, amatches, ats)
