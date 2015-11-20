@@ -240,10 +240,14 @@ trait DefaultExecutor[ST <: Store[ST],
             DirectFieldChunk(tRcvr, field.name, s, p)
           }
         })
-
         val σ1 = σ \+ (v, tRcvr) \+ H(newChunks)
-        val refs = state.utils.getDirectlyReachableReferencesState[ST, H, S](σ1) - tRcvr
-        assume(And(refs map (_ !== tRcvr)))
+        val ts = state.utils.computeReferenceDisjointnesses[ST, H, S](σ1, tRcvr)
+          /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
+           * tRcvr is constrained to be different from (ref-typed) fields of tRcvr to which
+           * permissions have been gained.
+           * Note that we do not constrain the (ref-typed) fields to be mutually disjoint.
+           */
+        assume(And(ts))
         Q(σ1, c)
 
       case ast.Fresh(vars) =>

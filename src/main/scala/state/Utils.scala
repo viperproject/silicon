@@ -8,37 +8,62 @@ package viper
 package silicon
 package state
 
-import interfaces.state.{PredicateChunk, FieldChunk, Heap, Store, State}
+import scala.collection.mutable
+import interfaces.state.{Heap, Store, State}
 import terms._
 
 package object utils {
-  def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-                                         (σ: S)
-                                         : Set[Term] = {
+  /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
+    * unsatisfiable constraint `ref != ref`.
+    */
+  def computeReferenceDisjointnesses[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+                                    (σ: S, ref: Term)
+                                    : Seq[Term] = {
 
-    /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
-     *       then we should also establish that !(x in xs).
-     */
+    val refs = mutable.HashSet[Term]()
+    val refSets = mutable.HashSet[Term]()
+    val refSeqs = mutable.HashSet[Term]()
 
-    val ts = (
-      /* Refs pointed to by local variables */
-         σ.γ.values.values.filter(_.sort == terms.sorts.Ref)
-      /* Receivers of fields and ref-typed arguments of predicates */
-      ++ σ.h.values.collect {
-          case qch: QuantifiedChunk =>
-            /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
-             * hence, they can only be used under quantifiers that bind `?r`.
-             * An exception are quantified chunks that (definitely) provide permissions to
-             * a single location (i.e. for a single receiver) only.
-             */
-            qch.singletonRcvr.toList
-          case fc: FieldChunk => fc.args
-          case pc: PredicateChunk => pc.args.filter(_.sort == terms.sorts.Ref)
-         }.flatten
-      /* Refs pointed to by fields */
-      ++ σ.h.values.collect { case fc: FieldChunk if fc.value.sort == terms.sorts.Ref => fc.value })
+    def collect(t: Term) {
+      t.sort match {
+        case sorts.Ref => if (t != ref) refs += t
+        case sorts.Set(sorts.Ref) => refSets += t
+        case sorts.Seq(sorts.Ref) => refSeqs += t
+        case _ =>
+      }
+    }
 
-    toSet(ts)
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
+    σ.γ.values.values foreach collect
+
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
+    σ.h.values.foreach {
+      case dfc: DirectFieldChunk =>
+        collect(dfc.rcvr)
+        collect(dfc.value)
+      case dpc: DirectPredicateChunk =>
+        dpc.args foreach collect
+        collect(dpc.snap)
+      case qch: QuantifiedChunk =>
+        /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
+         * hence, they can only be used under quantifiers that bind `?r`.
+         * An exception are quantified chunks that (definitely) provide permissions to
+         * a single location (i.e. for a single receiver) only.
+         */
+        qch.singletonRcvr.foreach(rcvr => {
+          collect(rcvr)
+          collect(qch.valueAt(rcvr))
+        })
+      case _ =>
+    }
+
+    val disjointnessAssumptions = mutable.ListBuffer[Term]()
+
+    refs foreach (r => disjointnessAssumptions += (ref !== r))
+    refSets foreach (rs => disjointnessAssumptions += Not(SetIn(ref, rs)))
+    refSeqs foreach (rs => disjointnessAssumptions += Not(SeqIn(rs, ref)))
+
+    disjointnessAssumptions.result()
   }
 
   def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
