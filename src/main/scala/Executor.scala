@@ -227,7 +227,6 @@ trait DefaultExecutor[ST <: Store[ST],
       case ast.NewStmt(v, fields) =>
         val tRcvr = fresh(v)
         assume(tRcvr !== Null())
-
         /* TODO: Verify similar to the code in DefaultProducer/ast.FieldAccessPredicate - unify */
         val newChunks = fields map (field => {
           val p = FullPerm()
@@ -236,10 +235,8 @@ trait DefaultExecutor[ST <: Store[ST],
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, s)
             optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
-          } else {
-            DirectFieldChunk(tRcvr, field.name, s, p)
-          }
-        })
+          } else
+            DirectFieldChunk(tRcvr, field.name, s, p)})
         val σ1 = σ \+ (v, tRcvr) \+ H(newChunks)
         val ts = state.utils.computeReferenceDisjointnesses[ST, H, S](σ1, tRcvr)
           /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
