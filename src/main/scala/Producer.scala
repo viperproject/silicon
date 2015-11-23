@@ -123,7 +123,13 @@ trait DefaultProducer[ST <: Store[ST],
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
-            (c2: C) => Q(σ.h, c2)))
+            (c2: C) => {
+              assume(sf(sorts.Snap) === Unit)
+                /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
+                 * otherwise. In order words, only make this assumption if `sf` has
+                 * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
+                 */
+              Q(σ.h, c2)}))
 
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -261,6 +267,7 @@ trait DefaultProducer[ST <: Store[ST],
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
+        assume(sf(sorts.Snap) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(σ, φ, pve, c)((t, c1) => {
           assume(t)
           Q(σ.h, c1)})
