@@ -459,7 +459,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
         } else {
           decider.prover.logComment(s"Chunk depleted?")
-          val chunkDepleted = check(σ, depletedCheck, config.splitTimeout.get)
+          val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
 
           if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
         }
@@ -472,13 +472,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         tookEnough = Forall(`?r`, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
 
         decider.prover.logComment(s"Enough permissions taken?")
-        success = check(σ, tookEnough, config.splitTimeout.get)
+        success = check(σ, tookEnough, config.splitTimeout())
       }
     }
 
     decider.prover.logComment("Final check that enough permissions have been taken")
-    /* Setting a (short) timeout here will make it less likely that the verification succeeds */
-    success = success || check(σ, tookEnough)
+    success = success || check(σ, tookEnough, 0) /* This check is a must-check, i.e. an assert */
 
     decider.prover.logComment("Done splitting")
 

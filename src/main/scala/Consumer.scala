@@ -144,7 +144,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
         decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB =>
           eval(σQVar, condition, pve, c0)((tCond, c1) =>
-            if (decider.check(σQVar, Not(tCond), config.checkTimeout.get)) {
+            if (decider.check(σQVar, Not(tCond), config.checkTimeout())) {
               /* The condition cannot be satisfied, hence we don't need to consume anything. */
               val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
               Q(h, Unit, Nil, c2)
