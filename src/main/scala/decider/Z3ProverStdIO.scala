@@ -32,7 +32,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   /* private */ var z3Path: Path = _
   private var logPath: Path = _
   private var counter: Counter = _
-  private var lastTimeout: Int = 0
+  private var lastTimeout: Int = -1
 
   def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -170,9 +170,9 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Int = 0) = assert(convert(goal), timeout)
+  def assert(goal: Term, timeout: Option[Int] = None) = assert(convert(goal), timeout)
 
-  def assert(goal: String, timeout: Int) = {
+  def assert(goal: String, timeout: Option[Int]) = {
     bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
@@ -218,7 +218,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     (result, endTime - startTime)
   }
 
-  def check(timeout: Int = 0) = {
+  def check(timeout: Option[Int] = None) = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
@@ -230,16 +230,18 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     }
   }
 
-  private def setTimeout(timeout: Int) {
+  private def setTimeout(timeout: Option[Int]) {
+    val effectiveTimeout = timeout.getOrElse(config.z3Timeout)
+
     /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
      * worsen performance, if only a bit. For the current test suite of
      * 199 Silver files, the total verification time increased from 60s
      * to 70s if 'set-option' is emitted every time.
      */
-    if (lastTimeout != timeout) {
-      lastTimeout = timeout
+    if (lastTimeout != effectiveTimeout) {
+      lastTimeout = effectiveTimeout
 
-      writeLine(s"(set-option :timeout $timeout)")
+      writeLine(s"(set-option :timeout $effectiveTimeout)")
       readSuccess()
     }
   }

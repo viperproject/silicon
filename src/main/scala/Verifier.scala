@@ -272,26 +272,10 @@ trait AbstractVerifier[ST <: Store[ST],
     decider.prover.logComment("\n; /z3config.smt2")
     preambleEmitter.emitPreamble("/z3config.smt2")
 
-    var malformedZ3ConfigArgs = false
-
     val smt2ConfigOptions =
-      config.z3ConfigArgs
-            .map(_.split(' ')
-                  .map(_.trim)
-                  .filter(_.nonEmpty)
-                  .map(_.split('=')))
-            .get
-            .getOrElse(Array())
-            .flatMap {
-              case Array(k, v) =>
-                Some(s"(set-option :$k $v)")
-              case other =>
-                malformedZ3ConfigArgs = true
-                None}
+      config.z3ConfigArgs().map{case (k, v) => s"(set-option :$k $v)"}
 
-    if (malformedZ3ConfigArgs)
-      log.warn(s"Could not handle ${config.z3ConfigArgs.humanName} '${config.z3ConfigArgs.get.getOrElse("")}'")
-    else if (smt2ConfigOptions.nonEmpty) {
+    if (smt2ConfigOptions.nonEmpty) {
       log.info(s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'")
       preambleEmitter.emitPreamble(smt2ConfigOptions)
     }

@@ -86,8 +86,8 @@ trait DefaultBrancher[ST <: Store[ST],
     val guardsTrue = And(ts: _*)
     val guardsFalse = And(ts map (t => Not(t)): _*)
 
-    val exploreTrueBranch = !decider.check(σ, guardsFalse, config.checkTimeout())
-    val exploreFalseBranch = !exploreTrueBranch || !decider.check(σ, guardsTrue, config.checkTimeout())
+    val exploreTrueBranch = !decider.check(σ, guardsFalse, config.checkTimeout.get)
+    val exploreFalseBranch = !exploreTrueBranch || !decider.check(σ, guardsTrue, config.checkTimeout.get)
 
     val additionalPaths =
       if (exploreTrueBranch && exploreFalseBranch) 1
