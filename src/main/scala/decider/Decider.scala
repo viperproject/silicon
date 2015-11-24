@@ -298,7 +298,7 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term, timeout: Option[Int] = None) = assert(σ, t, timeout, null)
+  def check(σ: S, t: Term, timeout: Int) = assert(σ, t, Some(timeout), null)
 
   def assert(σ: S, t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
     val success = assert(σ, t, timeout, null)
@@ -419,10 +419,9 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-    /* Note: We could set a timeout for check, but I haven't yet encountered an
-     * example where that would be beneficial or even necessary.
-     */
-    val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
+    val chunk =
+      chunks find (ch =>
+        check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*), config.checkTimeout()))
 
     chunk
   }

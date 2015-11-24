@@ -211,7 +211,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val dlb = FullPerm()
 
-    val heapCompressor = new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val heapCompressor =
+      new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, stateFormatter, stateFactory, config, bookkeeper)
+
     val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
 
     val quantifiedChunkSupporter =

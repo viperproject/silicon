@@ -30,6 +30,7 @@ trait ChunkSupporter[ST <: Store[ST],
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext]
   protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext]
+  protected val config: Config
 
   object chunkSupporter {
     private type C = DefaultContext
@@ -84,10 +85,7 @@ trait ChunkSupporter[ST <: Store[ST],
 
       if (silicon.utils.consumeExactRead(pLoss, c)) {
         decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
-          /* Note: We could set a timeout for check, but I haven't yet encountered
-           * an example where that would be beneficial or even necessary.
-           */
-          if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)))) {
+          if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)), config.checkTimeout())) {
             Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}
           else
             Q(h - ch + (ch - pLoss), Some(ch), c1, PermissionsConsumptionResult(false))})
