@@ -453,6 +453,33 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     val argType = org.rogach.scallop.ArgType.LIST
   }
 
+  private val smtlibOptionsConverter = new ValueConverter[Map[String, String]] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[Map[String, String]]] = s match {
+      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' =>
+        val config = toMap(
+          str.substring(1, str.length - 1) /* Drop leading and trailing quotation mark */
+             .split(' ') /* Separate individual key=value pairs */
+             .map(_.trim)
+             .filter(_.nonEmpty)
+             .map(_.split('=')) /* Split key=value pairs */
+             .flatMap {
+                case Array(k, v) =>
+                  Some(k -> v)
+                case other =>
+                  return Left(s"Unexpected arguments")
+           })
+
+        Right(Some(config))
+      case Nil =>
+        Right(None)
+      case _ =>
+        Left(s"Unexpected arguments")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[Map[String, String]]
+    val argType = org.rogach.scallop.ArgType.LIST
+  }
+
   private val assertionModeConverter = new ValueConverter[AssertionMode] {
     val pushPopRegex = """(?i)(pp)""".r
     val softConstraintsRegex = """(?i)(sc)""".r
@@ -629,15 +656,25 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(forwardArgumentsConverter)
 
-  val z3ConfigArgs = opt[String]("z3ConfigArgs",
+  val z3ConfigArgs = opt[Map[String, String]]("z3ConfigArgs",
     descr = (  "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
              + "including the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
-    default = None,
+    default = Some(Map()),
     noshort = true,
     hidden = false
-  )(forwardArgumentsConverter)
+  )(smtlibOptionsConverter)
+
+  lazy val z3Timeout: Int =
+    None.orElse(
+            z3ConfigArgs().collectFirst {
+              case (k, v) if k.toLowerCase == "timeout" && v.forall(Character.isDigit) => v.toInt
+            })
+        .orElse{
+            val z3TimeoutArg = """-t:(\d+)""".r
+            z3Args.get.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
+        .getOrElse(0)
 
   val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
     descr = (  "Handle pure conjunction individually."

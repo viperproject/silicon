@@ -226,7 +226,7 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Asserting facts */
 
-  def checkSmoke() = prover.check(config.checkTimeout()) == Unsat
+  def checkSmoke() = prover.check(config.checkTimeout.get) == Unsat
 
   def tryOrFail[R](σ: S, c: C)
                   (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
@@ -294,9 +294,9 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term, timeout: Int = 0) = assert(σ, t, timeout, null)
+  def check(σ: S, t: Term, timeout: Option[Int] = None) = assert(σ, t, timeout, null)
 
-  def assert(σ: S, t: Term, timeout: Int = 0)(Q: Boolean => VerificationResult) = {
+  def assert(σ: S, t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
     val success = assert(σ, t, timeout, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
@@ -308,7 +308,7 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-  protected def assert(σ: S, t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
+  protected def assert(σ: S, t: Term, timeout: Option[Int], logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
     asserted || proverAssert(t, timeout, logSink)
@@ -321,7 +321,7 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
-  private def proverAssert(t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
+  private def proverAssert(t: Term, timeout: Option[Int], logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
 
