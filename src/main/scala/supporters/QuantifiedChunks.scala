@@ -459,7 +459,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
           residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
         } else {
           decider.prover.logComment(s"Chunk depleted?")
-          val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
+          val chunkDepleted = check(σ, depletedCheck, config.splitTimeout.get)
 
           if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
         }
@@ -472,7 +472,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         tookEnough = Forall(`?r`, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
 
         decider.prover.logComment(s"Enough permissions taken?")
-        success = check(σ, tookEnough, config.splitTimeout())
+        success = check(σ, tookEnough, config.splitTimeout.get)
       }
     }
 
