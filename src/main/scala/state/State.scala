@@ -140,9 +140,10 @@ class DefaultHeapCompressor[ST <: Store[ST],
                              C <: Context[C]]
                            (val decider: Decider[ST, H, PC, S, C],
                             val distinctnessLowerBound: Term,
-                            val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
-                            val stateFactory: StateFactory[ST, H, S])
+                            val stateFactory: StateFactory[ST, H, S],
+                            val config: Config,
+                            val bookkeeper: Bookkeeper)
     extends HeapCompressor[ST, H, S, C] with Logging {
 
   import stateFactory.H
@@ -306,7 +307,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
          Seq((rcvr1, perm1), (rcvr2, perm2)) <- pairs.combinations(2)) {
 
       if (   rcvr1 != rcvr2 /* Not essential for soundness, but avoids fruitless prover calls */
-          && decider.check(σ, PermLess(distinctnessLowerBound, PermPlus(perm1, perm2)))) {
+          && decider.check(σ, PermLess(distinctnessLowerBound, PermPlus(perm1, perm2)), config.checkTimeout())) {
 
         tDists += (rcvr1 !== rcvr2)
       }
