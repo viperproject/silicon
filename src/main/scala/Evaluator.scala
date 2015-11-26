@@ -185,9 +185,9 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
-          val tAnd = And(t0, optT1.getOrElse(True()))
-          Q(tAnd, c1)})
+        /* TODO: Avoid evaluating e0 twice */
+        val e1Short = ast.Implies(e0, e1)(e1.pos, e1.info)
+        evalBinOp(σ, e0, e1Short, (t1, t2) => And(t1, t2), pve, c)(Q)
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -195,22 +195,25 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
-        evalDependently(σ, e0, e1, Not, pve, c)((t0, optT1, c1) => {
-          val tOr = Or(t0, optT1.getOrElse(True()))
-          Q(tOr, c1)})
+        /* TODO: Avoid evaluating e0 twice */
+        val e1Short = ast.And(ast.Not(e0)(e0.pos, e0.info), e1)(e1.pos, e1.info)
+        evalBinOp(σ, e0, e1Short, (t1, t2) => Or(t1, t2), pve, c)(Q)
 
       case ast.Implies(e0, e1) =>
-        evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branchAndJoin(σ, t0, c1,
+            (c2, QB) => eval(σ, e1, pve, c2)(QB),
+            (c2, QB) => Success()
+          )((optT1, optT2, cJoined) => {
           val tImplies = Implies(t0, optT1.getOrElse(True()))
-          Q(tImplies, c1)})
+            Q(tImplies, cJoined)
+          }))
 
       case ite @ ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branchAndJoin(σ, t0, c1,
-            (c2, QB) =>
-              eval(σ, e1, pve, c2)(QB),
-            (c2, QB) =>
-              eval(σ, e2, pve, c2)(QB)
+            (c2, QB) => eval(σ, e1, pve, c2)(QB),
+            (c2, QB) => eval(σ, e2, pve, c2)(QB)
           )((optT1, optT2, cJoined) => {
             val tIte =
               Ite(t0,
@@ -665,69 +668,5 @@ trait DefaultEvaluator[ST <: Store[ST],
         bookkeeper.logfiles("evalTrigger").println(s"Couldn't translate some of these triggers:\n  $remainingTriggerExpressions\nReason:\n  $r")
         Q(Trigger(cachedTriggerTerms), c)
     }
-  }
-
-  /* Evaluates `e0` to `t0`, assumes `t0Transformer(t0)`, and afterwards only
-   * evaluates `e1` if the current state is consistent. That is, `e1` is only
-   * evaluated if `t0Transformer(t0)` does not contradict the current path
-   * conditions. This method can be used to evaluate short-circuiting operators
-   * such as conjunction, disjunction or implication.
-   *
-   * Attention: `e1` is not expected to branch; if it does, an exception will be
-   * thrown.
-   */
-  private def evalDependently(σ: S,
-                              e0: ast.Exp,
-                              e1: ast.Exp,
-                              t0Transformer: Term => Term,
-                              pve: PartialVerificationError, c: C)
-                             (Q: (Term, Option[Term], C) => VerificationResult)
-                             : VerificationResult = {
-
-      var πPre: Set[Term] = Set()
-      var optT1: Option[Term] = None /* e1 won't be evaluated if e0 cannot be satisfied */
-      var πAux: Set[Term] = Set()
-      var optInnerC: Option[C] = None
-
-      eval(σ, e0, pve, c)((t0, c1) => {
-        πPre = decider.π
-
-        decider.pushScope()
-
-        val guard = t0Transformer(t0)
-        var originalChunks: Option[Iterable[Chunk]] = None
-        val r =
-          branch(σ, guard, c1,
-            (c2: C) => {
-              if (c2.retrying) {
-                originalChunks = Some(σ.h.values)
-                heapCompressor.compress(σ, σ.h, c2)
-              }
-              eval(σ, e1, pve, c2)((t1, c3) => {
-                assert(optT1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
-                optT1 = Some(t1)
-                πAux = decider.π -- (πPre + guard)
-                  /* Removing guard from πAux is crucial, it is not part of the aux. terms */
-                optInnerC = Some(c3)
-                Success()})},
-            (c2: C) =>
-              Success())
-
-        /* See comment in DefaultDecider.tryOrFail */
-        originalChunks match {
-          case Some(chunks) => σ.h.replace(chunks)
-          case None => /* Nothing to do here */
-        }
-
-        decider.popScope()
-
-        r && {
-          val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πAux)
-          decider.prover.logComment("Top-level auxiliary terms")
-          assume(tAuxTopLevel)
-          decider.prover.logComment("Nested auxiliary terms")
-          assume(Implies(guard, And(tAuxNested)))
-          val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
-          Q(t0, optT1, c2)}})
   }
 }
