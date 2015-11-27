@@ -184,9 +184,10 @@ trait ExpressionTranslator {
 
       /* Unsupported (because unexpected) expressions */
 
-      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
+      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.LabelledOld | _: ast.FractionalPerm
              | _: ast.Result | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateAccess
-             | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm  | _: ast.WildcardPerm | _: ast.EpsilonPerm =>
+             | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm  | _: ast.WildcardPerm | _: ast.EpsilonPerm
+             | _: ast.ForallReferences =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
     }

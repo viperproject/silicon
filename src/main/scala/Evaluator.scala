@@ -10,8 +10,8 @@ package silicon
 import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import silver.verifier.errors.PreconditionInAppFalse
-import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
+import silver.verifier.errors.{PreconditionInAppFalse, Internal}
+import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission, LabelledStateNotReached}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor,
@@ -173,6 +173,25 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(Minus(0, t0), c1))
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
+
+      case old@silver.ast.LabelledOld(e0, lbl) =>
+        c.labelledStates.get(lbl) match {
+          case None =>
+            Failure[ST, H, S](Internal(old, LabelledStateNotReached(old)))
+          case Some(state) =>
+            val oldState = state.asInstanceOf[S]
+            /* REMOVED */ // val forallRefsState = stateFactory.Γ(c.forallRefsVars.toIterable.map(v => v -> σ.γ(v)))
+            // add variables defined in forallrefs to the state
+            val combinedState = oldState /* REMOVED */ // \+ forallRefsState
+            // hack to also add ordinary quantifier variables to the state. I didn't consider this scenario as "in-scope"
+            // TODO not sure if this makes sense
+            val completeState = combinedState /* REMOVED */ // \+ stateFactory.Γ(σ.γ.values.filterNot(x => combinedState.γ.values.contains(x._1)))
+            /* REMOVED */ // val previousAmountHeap = c.heapForAmount
+            eval(completeState, e0, pve, c/* REMOVED *//*.copy(heapForAmount = Some(combinedState.h))*/)((t,c2) => {
+              val c3 = c2/* REMOVED *//*.copy(heapForAmount = previousAmountHeap)*/
+              Q(t,c3)
+            })
+        }
 
       case ast.Let(v, e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>

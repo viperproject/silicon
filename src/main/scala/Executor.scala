@@ -310,6 +310,11 @@ trait DefaultExecutor[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
+      case stateLabel @ silver.ast.StateLabel(name) =>
+        // Add current state to the context under the label's name
+        val nextContext = c.copy(labelledStates = c.labelledStates + (name -> σ))
+        Q(σ, nextContext)
+
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: silver.ast.Goto
            | _: silver.ast.If
