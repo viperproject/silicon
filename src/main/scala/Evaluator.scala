@@ -9,14 +9,13 @@ package silicon
 
 import org.slf4s.Logging
 import silver.ast
-import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor,
-    Chunk, ChunkIdentifier}
+    ChunkIdentifier}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk}
@@ -315,9 +314,10 @@ trait DefaultEvaluator[ST <: Store[ST],
         def hasPerm(v : ChunkIdentifier) = decider.getChunk[DirectChunk](σ, σ.h, v, c) match {
           case None => false
           case Some(x) =>
-            val greater = decider.check(σ, Greater(x.perm, NoPerm()))
+            val greater = decider.check(σ, Greater(x.perm, NoPerm()), config.checkTimeout())
 
-            val tmp = !decider.check(σ, Equals(x.perm, NoPerm())) && decider.check(σ, AtLeast(x.perm, NoPerm()))
+            val tmp = (   !decider.check(σ, Equals(x.perm, NoPerm()), config.checkTimeout())
+                       && decider.check(σ, AtLeast(x.perm, NoPerm()), config.checkTimeout()))
 
             val result = greater || tmp
             result
