@@ -8,15 +8,15 @@ package viper
 package silicon
 package state
 
+import scala.collection.mutable
 import org.slf4s.Logging
 import silver.ast
 import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor,
     StateFactory}
 import interfaces.decider.Decider
-import terms.{Term, True, Implies, And, PermPlus, PermLess}
-import terms.perms.{IsAsPermissive, IsPositive}
+import terms.{Term, True, Implies, And, PermPlus, PermLess, PermAtMost}
+import terms.perms.IsPositive
 import reporting.Bookkeeper
-import collection.mutable
 
 /*
  * Immutable implementation of the necessary state interfaces
@@ -318,7 +318,7 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
   private def assumeValidPermissionAmounts(h: H) {
     h.values foreach {
-      case fc: DirectFieldChunk => decider.assume(IsAsPermissive(distinctnessLowerBound, fc.perm))
+      case fc: DirectFieldChunk => decider.assume(PermAtMost(fc.perm, distinctnessLowerBound))
       case _=>
     }
   }

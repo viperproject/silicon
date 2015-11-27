@@ -17,7 +17,6 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state._
 import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
-import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 
@@ -372,7 +371,7 @@ class DefaultDecider[ST <: Store[ST],
     tryOrFail[CH](σ \ h, c)((σ1, c1, QS, QF) =>
       withChunk[CH](σ1, σ1.h, id, locacc, pve, c1)((ch, c2) => {
         val permCheck =  optPerms match {
-          case Some(p) => IsAsPermissive(ch.perm, p)
+          case Some(p) => PermAtMost(p, ch.perm)
           case None => ch.perm !== NoPerm()
         }
 
@@ -438,8 +437,6 @@ class DefaultDecider[ST <: Store[ST],
     bookkeeper.freshSymbols += 1
 
     val v = prover.fresh(id, s)
-
-    if (s == sorts.Perm) assume(IsValidPermVar(v))
 
     v
   }
