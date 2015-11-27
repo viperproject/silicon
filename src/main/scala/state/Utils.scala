@@ -175,6 +175,7 @@ package object utils {
       case PermPlus(p0, p1) => PermPlus(go(p0), go(p1))
       case PermMinus(p0, p1) => PermMinus(go(p0), go(p1))
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
+      case PermAtMost(p0, p1) => PermAtMost(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
       case Apply(f, ts) =>  Apply(go(f), ts map go)
       case ApplyMacro(f, ts) =>  ApplyMacro(go(f), ts map go)

@@ -163,6 +163,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case WildcardPerm(v) => render(v)
     case FractionPerm(n, d) => renderBinaryOp("/", renderAsReal(n), renderAsReal(d))
     case PermLess(t0, t1) => renderBinaryOp("<", render(t0), render(t1))
+    case PermAtMost(t0, t1) => renderBinaryOp("<=", render(t0), render(t1))
     case PermPlus(t0, t1) => renderBinaryOp("+", renderAsReal(t0), renderAsReal(t1))
     case PermMinus(t0, t1) => renderBinaryOp("-", renderAsReal(t0), renderAsReal(t1))
     case PermTimes(t0, t1) => renderBinaryOp("*", renderAsReal(t0), renderAsReal(t1))
@@ -171,7 +172,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case PermMin(t0, t1) => renderBinaryOp("$Perm.min", render(t0), render(t1))
     case IsValidPermVar(v) => parens("$Perm.isValidVar" <+> render(v))
     case IsReadPermVar(v, ub) => parens("$Perm.isReadVar" <+> render(v) <+> render(ub))
-
 
     /* Sequences */
 

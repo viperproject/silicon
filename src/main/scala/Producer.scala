@@ -158,6 +158,7 @@ trait DefaultProducer[ST <: Store[ST],
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
+            assume(PermAtMost(NoPerm(), pGain))
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
@@ -167,6 +168,7 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
+            assume(PermAtMost(NoPerm(), pGain))
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
