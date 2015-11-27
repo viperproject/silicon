@@ -11,7 +11,7 @@ package supporters
 import silver.components.StatefulComponent
 import interfaces.{Success, Unreachable, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.state.{PathConditions, Context, State, Heap, Store}
+import interfaces.state.{PathConditions, Context, State, Heap, Store, Chunk, HeapCompressor}
 import reporting.Bookkeeper
 import state.terms.{Ite, True, Not, And, Term}
 import state.DefaultContext
@@ -66,6 +66,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
   val config: Config
   val bookkeeper: Bookkeeper
+  val heapCompressor: HeapCompressor[ST, H, S, C]
 
   def branch(σ: S,
              t: Term,
@@ -97,6 +98,21 @@ trait DefaultBrancher[ST <: Store[ST],
 
     val cnt = branchCounter.next()
 
+    /* See comment in DefaultDecider.tryOrFail */
+    var originalChunks: Option[Iterable[Chunk]] = None
+    def compressHeapIfRetrying(c: C, σ: S) {
+      if (c.retrying) {
+        originalChunks = Some(σ.h.values)
+        heapCompressor.compress(σ, σ.h, c)
+      }
+    }
+    def restoreHeapIfPreviouslyCompressed(σ: S) {
+      originalChunks match {
+        case Some(chunks) => σ.h.replace(chunks)
+        case None => /* Nothing to do here */
+      }
+    }
+
     ((if (exploreTrueBranch) {
       val cTrue = c.copy(branchConditions = guardsTrue +: c.branchConditions)
 
@@ -104,7 +120,10 @@ trait DefaultBrancher[ST <: Store[ST],
         decider.inScope {
           decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
           assume(guardsTrue)
-          fTrue(cTrue)
+          compressHeapIfRetrying(cTrue, σ)
+          val r = fTrue(cTrue)
+          restoreHeapIfPreviouslyCompressed(σ)
+          r
         }
 
       result
@@ -120,7 +139,10 @@ trait DefaultBrancher[ST <: Store[ST],
         decider.inScope {
           decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
           assume(guardsFalse)
-          fFalse(cFalse)
+          compressHeapIfRetrying(cFalse, σ)
+          val r = fFalse(cFalse)
+          restoreHeapIfPreviouslyCompressed(σ)
+          r
         }
 
       result

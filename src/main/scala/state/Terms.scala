@@ -995,6 +995,24 @@ object PermLess extends ((Term, Term) => Term) {
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
+class PermAtMost(val p0: Term, val p1: Term) extends ComparisonTerm
+    with StructuralEqualityBinaryOp[Term]
+    with ForbiddenInTrigger {
+
+  override val op = "<="
+}
+
+object PermAtMost extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (NoPerm(), FullPerm()) => True()
+    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => True()
+    case (t0, t1) if t0 == t1 => True()
+    case _ => new PermAtMost(e0, e1)
+  }
+
+  def unapply(e: PermAtMost) = Some((e.p0, e.p1))
+}
+
 case class PermMin(p0: Term, p1: Term) extends Permissions
     with BinaryOp[Term]
     with PossibleBinaryOpTrigger[Term] {
@@ -1586,18 +1604,42 @@ object Combine {
   def unapply(c: Combine) = Some((c.p0, c.p1))
 }
 
-case class First(t: Term) extends SnapshotTerm with PossibleTrigger {
-  utils.assertSort(t, "term", sorts.Snap)
+class First(val p: Term) extends SnapshotTerm
+    with StructuralEqualityUnaryOp[Term]
+    /*with PossibleTrigger*/ {
 
-  lazy val getArgs = t :: Nil
+  utils.assertSort(p, "term", sorts.Snap)
+
+  lazy val getArgs = p :: Nil
   def withArgs(args: Seq[Term]) = First(args(0))
 }
 
-case class Second(t: Term) extends SnapshotTerm with PossibleTrigger {
-  utils.assertSort(t, "term", sorts.Snap)
+object First extends (Term => Term) {
+  def apply(t: Term) = t match {
+    case Combine(t1, _) => t1
+    case _ => new First(t)
+  }
 
-  lazy val getArgs = t :: Nil
+  def unapply(f: First) = Some(f.p)
+}
+
+class Second(val p: Term) extends SnapshotTerm
+    with StructuralEqualityUnaryOp[Term]
+    /*with PossibleTrigger*/ {
+
+  utils.assertSort(p, "term", sorts.Snap)
+
+  lazy val getArgs = p :: Nil
   def withArgs(args: Seq[Term]) = Second(args(0))
+}
+
+object Second extends (Term => Term) {
+  def apply(t: Term) = t match {
+    case Combine(_, t2) => t2
+    case _ => new Second(t)
+  }
+
+  def unapply(s: Second) = Some(s.p)
 }
 
 /* Sort wrappers */
@@ -1712,8 +1754,6 @@ object perms {
     case fp: FractionPerm if fp.isDefinitelyPositive => True()
     case _ => PermLess(NoPerm(), p)
   }
-
-  def IsAsPermissive(p1: Term, p2: Term) = Or(p1 === p2, PermLess(p2, p1))
 
   def IsNoAccess(p: Term) = p match {
     case _: NoPerm => True()

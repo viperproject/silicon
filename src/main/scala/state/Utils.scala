@@ -8,30 +8,52 @@ package viper
 package silicon
 package state
 
-import interfaces.state.{PredicateChunk, FieldChunk, Heap, Store, State}
+import scala.collection.mutable
+import interfaces.state.{Heap, Store, State}
 import terms._
 
 package object utils {
-  def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-                                         (σ: S)
-                                         : Set[Term] = {
+  /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
+    * unsatisfiable constraint `ref != ref`.
+    */
+  def computeReferenceDisjointnesses[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+                                    (σ: S, ref: Term)
+                                    : Seq[Term] = {
 
-    /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
-     *       then we should also establish that !(x in xs).
-     */
+    val refs = mutable.HashSet[Term]()
+    val refSets = mutable.HashSet[Term]()
+    val refSeqs = mutable.HashSet[Term]()
 
-    val ts = (
-      /* Refs pointed to by local variables */
-         σ.γ.values.values.filter(_.sort == terms.sorts.Ref)
-      /* Receivers of fields and ref-typed arguments of predicates */
-      ++ σ.h.values.collect {
-          case fc: FieldChunk => fc.args
-          case pc: PredicateChunk => pc.args.filter(_.sort == terms.sorts.Ref)
-         }.flatten
-      /* Refs pointed to by fields */
-      ++ σ.h.values.collect { case fc: FieldChunk if fc.value.sort == terms.sorts.Ref => fc.value })
+    def collect(t: Term) {
+      t.sort match {
+        case sorts.Ref => if (t != ref) refs += t
+        case sorts.Set(sorts.Ref) => refSets += t
+        case sorts.Seq(sorts.Ref) => refSeqs += t
+        case _ =>
+      }
+    }
 
-    toSet(ts)
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
+    σ.γ.values.values foreach collect
+
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
+    σ.h.values.foreach {
+      case dfc: DirectFieldChunk =>
+        collect(dfc.rcvr)
+        collect(dfc.value)
+      case dpc: DirectPredicateChunk =>
+        dpc.args foreach collect
+        collect(dpc.snap)
+      case _ =>
+    }
+
+    val disjointnessAssumptions = mutable.ListBuffer[Term]()
+
+    refs foreach (r => disjointnessAssumptions += (ref !== r))
+    refSets foreach (rs => disjointnessAssumptions += Not(SetIn(ref, rs)))
+    refSeqs foreach (rs => disjointnessAssumptions += Not(SeqIn(rs, ref)))
+
+    disjointnessAssumptions.result()
   }
 
   def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
@@ -91,8 +113,6 @@ package object utils {
     case ss: SingletonSet => List(ss.p)
     case ss: SingletonMultiset => List(ss.p)
     case dfa: DomainFApp => List(dfa.function) ++ dfa.tArgs
-    case fst: First => List(fst.t)
-    case snd: Second => List(snd.t)
     case sw: SortWrapper => List(sw.t)
     case d: Distinct => d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
@@ -143,6 +163,7 @@ package object utils {
       case PermPlus(p0, p1) => PermPlus(go(p0), go(p1))
       case PermMinus(p0, p1) => PermMinus(go(p0), go(p1))
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
+      case PermAtMost(p0, p1) => PermAtMost(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
       case Apply(f, ts) =>  Apply(go(f), ts map go)
       case FApp(f, s, ts) => FApp(f, go(s), ts map go)

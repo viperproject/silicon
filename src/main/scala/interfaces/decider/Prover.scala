@@ -19,8 +19,8 @@ object Unknown extends Result
 trait Prover extends StatefulComponent {
   def termConverter: TermConverter[String, String, String] /* TODO: Should be type-parametric */
   def assume(term: Term)
-  def assert(goal: Term, timeout: Int = 0): Boolean
-  def check(timeout: Int = 0): Result
+  def assert(goal: Term, timeout: Option[Int] = None): Boolean
+  def check(timeout: Option[Int] = None): Result
   def enableLoggingComments(enabled: Boolean)
   def logComment(str: String)
   def fresh(id: String, sort: Sort): Var

@@ -54,23 +54,40 @@ trait ExpressionTranslator {
 
 
     exp match {
-      case r:silver.ast.ForallReferences => ???
-      case q @ ast.QuantifiedExp(qvars, _) =>
-        val (autoTriggerQuant, quantifier, triggerSets) = q match {
-          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
-          case ex: ast.Exists => (ex, Exists, Seq())
+      case sourceQuant: ast.QuantifiedExp =>
+        /* IMPORTANT: Keep in sync with [[DefaultEvaluator.eval]]
+         *
+         * TODO: Avoid this code duplication.
+         *
+         * TODO: In the long run, it might be better to not
+         *         1. record data while verifying a function
+         *         2. and to then translate the function using the recorded data
+         *       but to instead create the function definition axioms from the
+         *       terms that the evaluation of the function body (and the
+         *       postcondition) yielded.
+         */
+
+        val (eQuant, qantOp, eTriggers) = sourceQuant match {
+          case forall: ast.Forall =>
+            val autoTriggeredForall = silicon.utils.ast.autoTrigger(forall)
+            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+          case exists: ast.Exists =>
+            (exists, Exists, Seq())
         }
 
-        val translatedTriggers = triggerSets map (triggerSet => Trigger(triggerSet.exps map (trigger =>
+        val body = eQuant.exp
+        val vars = eQuant.variables map (_.localVar)
+
+        val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
           f(trigger) match {
-            case fapp: FApp => fapp.limitedVersion /** Important: Keep in sync with [[DefaultEvaluator.evalTrigger]] */
+            case fapp: FApp => fapp.limitedVersion /* IMPORTANT: Keep in sync with [[DefaultEvaluator.evalTrigger]] */
             case other => other
           }
         )))
 
-        Quantification(quantifier,
-                       qvars map (v => Var(v.name, toSort(v.typ, Map()))),
-                       f(autoTriggerQuant.exp),
+        Quantification(qantOp,
+                       vars map (v => Var(v.name, toSort(v.typ, Map()))),
+                       f(body),
                        translatedTriggers)
 
       case _: ast.TrueLit => True()

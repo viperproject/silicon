@@ -179,11 +179,9 @@ class FunctionData(val programFunction: ast.Function,
   def locToSnap_=(lts: Map[ast.LocationAccess, Term]) { optLocToSnap = Some(lts) }
   def fappToSnap_=(fts: Map[ast.FuncApp, Term]) { optFappToSnap = Some(fts) }
 
-  lazy val translatedPre: Option[Term] = {
-    val pre = utils.ast.BigAnd(programFunction.pres)
-
-    expressionTranslator.translatePrecondition(program, pre, this)
-  }
+  lazy val translatedPre: Option[Term] =
+    expressionTranslator.translatePrecondition(program, programFunction.pres, this)
+                        .map(And)
 
   lazy val axiom: Option[Term] = translatedPre match {
     case None => None
@@ -207,13 +205,11 @@ class FunctionData(val programFunction: ast.Function,
     case None => None
     case Some(pre) =>
       if (programFunction.posts.nonEmpty) {
-        val post = utils.ast.BigAnd(programFunction.posts)
+        val optPosts =
+          expressionTranslator.translatePostcondition(program, programFunction.posts, this)
 
-        val optPost =
-          expressionTranslator.translatePostcondition(program, post, this)
-
-        optPost.map(post =>
-          Quantification(Forall, args, Implies(pre, post), limitedTriggers))
+        optPosts.map(posts =>
+          Quantification(Forall, args, Implies(pre, And(posts)), limitedTriggers))
       } else
         Some(True())
   }
@@ -315,7 +311,6 @@ trait FunctionSupporter[ST <: Store[ST],
       val σ = Σ(γ, Ø, Ø)
 
       val functionMalformed = FunctionNotWellformed(function)
-      val pres = utils.ast.BigAnd(function.pres)
 
       /* Recording function data in this phase is necessary for generating the
        * post-axiom fpr each function. Consider a function f(x) with precondition
@@ -327,34 +322,12 @@ trait FunctionSupporter[ST <: Store[ST],
        */
       var recorders = List[SnapshotRecorder]()
 
-      val originalResult: VerificationResult =
+      val result: VerificationResult =
         inScope {
-          produce(σ, sort => `?s`.convert(sort), FullPerm(), pres, functionMalformed, c)((σ1, c1) =>
-            evals(σ1, function.posts, functionMalformed, c1)((tPosts, c2) => {
+          produces(σ, sort => `?s`.convert(sort), FullPerm(), function.pres, ContractNotWellformed, c)((σ1, c1) =>
+            evals(σ1, function.posts, ContractNotWellformed, c1)((tPosts, c2) => {
               recorders ::= c2.snapshotRecorder.get
               Success()}))}
-      // FIXME (workaround for Silicon issue 161): This modification of result is needed because evals
-      // does not allow creating errors for specific expressions.
-      val result = originalResult match {
-        case Failure(message) =>
-          message match {
-            case FunctionNotWellformed(f, r) =>
-              val node: ast.Exp = r.offendingNode.asInstanceOf[ast.Exp]
-              var offendingNode: ast.Exp = node
-              (function.pres ++ function.posts).foreach((pre: ast.Node) => {
-                pre.find(_ == node) match {
-                  case Some(n) =>
-                    offendingNode = pre.asInstanceOf[ast.Exp]
-                  case _ =>
-                }
-              })
-              val newMessage: VerificationError = ContractNotWellformed(offendingNode, r)
-              Failure(newMessage)
-            case _ =>
-              Failure(message)
-          }
-        case e => e
-      }
 
       if (recorders.nonEmpty) {
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
@@ -379,7 +352,6 @@ trait FunctionSupporter[ST <: Store[ST],
       val σ = Σ(γ, Ø, Ø)
 
       val postError = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
-      val pres = utils.ast.BigAnd(function.pres)
 
       var recorders = List[SnapshotRecorder]()
 
@@ -399,7 +371,7 @@ trait FunctionSupporter[ST <: Store[ST],
            *       is used here (because it has to match DefaultEvaluator, which
            *       uses the BigAnd-version as well).
            */
-          produce(σ, sort => `?s`.convert(sort), FullPerm(), pres, Internal(pres), c)((σ1, c2) =>
+          produces(σ, sort => `?s`.convert(sort), FullPerm(), function.pres, Internal, c)((σ1, c2) =>
             function.body match {
               case None =>
                 recorders ::= c2.snapshotRecorder.get
@@ -493,32 +465,32 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   }
 
   def translatePostcondition(program: ast.Program,
-                             post: ast.Exp,
+                             posts: Seq[ast.Exp],
                              data: FunctionData)
-                            : Option[Term] = {
+                            : Option[Seq[Term]] = {
 
     this.program = program
     this.data = data
     this.failed = false
 
-    val result = translate(toSort)(post)
+    val results = posts map translate(toSort)
 
-    if (failed) None else Some(result)
+    if (failed) None else Some(results)
   }
 
   def translatePrecondition(program: ast.Program,
-                            pre: ast.Exp,
+                            pres: Seq[ast.Exp],
                             data: FunctionData)
-                           : Option[Term] = {
+                           : Option[Seq[Term]] = {
 
     this.program = program
     this.data = data
     this.ignoreAccessPredicates = true
     this.failed = false
 
-    val result = translate(toSort)(pre)
+    val results = pres map translate(toSort)
 
-    if (failed) None else Some(result)
+    if (failed) None else Some(results)
   }
 
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
@@ -543,7 +515,6 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val pre = utils.ast.BigAnd(silverFunc.pres)
         val func = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrRecordFailure(data.fappToSnap, eFApp, sorts.Snap)
