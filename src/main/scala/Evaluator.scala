@@ -7,8 +7,6 @@
 package viper
 package silicon
 
-import javax.annotation.PreDestroy
-
 import org.slf4s.Logging
 import silver.ast
 import silver.ast.utility.Expressions
@@ -26,8 +24,6 @@ import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
 import supporters.{Joiner, Brancher, PredicateSupporter}
-
-import scala.collection.mutable
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
