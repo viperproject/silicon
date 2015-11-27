@@ -15,12 +15,12 @@ import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, 
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
+import decider.PreambleFileEmitter
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort}
+import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
 import reporting.Bookkeeper
-import decider.PreambleFileEmitter
-import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter, MultisetsEmitter, SetsEmitter,
-    SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
 
 trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
