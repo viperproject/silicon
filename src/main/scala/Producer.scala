@@ -187,6 +187,7 @@ trait DefaultProducer[ST <: Store[ST],
             val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
             eval(σQVar, rcvr, pve, c1a)((tRcvr, c2) =>
               eval(σQVar, gain, pve, c2)((pGain, c3) => {
+                assume(PermAtMost(NoPerm(), pGain))
                 val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
                 val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
                 val tAuxQuantNoTriggers = Forall(tQVar, And(tAuxNested), Nil, s"prog.l${utils.ast.sourceLine(forall)}-aux")
@@ -247,7 +248,8 @@ trait DefaultProducer[ST <: Store[ST],
               other
           }
           decider.prover.logComment("Nested auxiliary terms")
-          assume(tAuxQuantNoTriggers.copy(triggers = triggerForAuxQuant))
+          assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
+                                          triggers = triggerForAuxQuant))
           decider.prover.logComment("Definitional axioms for inverse functions")
           assume(invFct.definitionalAxioms)
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
