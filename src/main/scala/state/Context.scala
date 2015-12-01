@@ -9,12 +9,11 @@ package silicon
 package state
 
 import silver.ast
-import interfaces.state.{Context, Mergeable, State}
+import interfaces.state.{Context, Mergeable, Heap}
 import terms.{Var, Term}
 import supporters.SnapshotRecorder
 
 case class DefaultContext(program: ast.Program,
-
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
                           branchConditions: Stack[Term] = Stack(),
@@ -24,7 +23,7 @@ case class DefaultContext(program: ast.Program,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
-                          labelledStates: Map[String, State[_,_,_]] = Map())
+                          oldHeaps: Map[String, Heap[_]] = Map()) /* TODO: Integrate regular old */
     extends Context[DefaultContext] {
 
   def incCycleCounter(m: ast.Predicate) =

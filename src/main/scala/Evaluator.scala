@@ -174,21 +174,13 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
 
-      case old@silver.ast.LabelledOld(e0, lbl) =>
-        c.labelledStates.get(lbl) match {
+      case old @ silver.ast.LabelledOld(e0, lbl) =>
+        c.oldHeaps.get(lbl) match {
           case None =>
-            Failure[ST, H, S](Internal(old, LabelledStateNotReached(old)))
-          case Some(state) =>
-            val oldState = state.asInstanceOf[S]
-            /* REMOVED */ // val forallRefsState = stateFactory.Γ(c.forallRefsVars.toIterable.map(v => v -> σ.γ(v)))
-            // add variables defined in forallrefs to the state
-            val combinedState = oldState /* REMOVED */ // \+ forallRefsState
-            // hack to also add ordinary quantifier variables to the state. I didn't consider this scenario as "in-scope"
-            // TODO not sure if this makes sense
-            val completeState = combinedState /* REMOVED */ // \+ stateFactory.Γ(σ.γ.values.filterNot(x => combinedState.γ.values.contains(x._1)))
-            /* REMOVED */ // val previousAmountHeap = c.heapForAmount
-            eval(completeState, e0, pve, c/* REMOVED *//*.copy(heapForAmount = Some(combinedState.h))*/)((t,c2) => {
-              val c3 = c2/* REMOVED *//*.copy(heapForAmount = previousAmountHeap)*/
+            Failure[ST, H, S](pve dueTo LabelledStateNotReached(old))
+          case Some(h) =>
+            eval(σ \ h.asInstanceOf[H], e0, pve, c)((t,c2) => {
+              val c3 = c2
               Q(t,c3)
             })
         }
