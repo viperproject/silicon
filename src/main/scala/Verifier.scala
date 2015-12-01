@@ -46,8 +46,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
   /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
   /*protected*/ val symbolConverter: SymbolConvert
 
+  val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+
   def verify(member: ast.Member, program: ast.Program): VerificationResult = {
-    val c = DefaultContext(program, utils.ast.quantifiedFields(member, program))
+    val quantifiedFields = utils.ast.quantifiedFields(member, program)
+    val c = DefaultContext(program, quantifiedFields)
+
+    quantifiedChunkSupporter.initLastFVF(quantifiedFields) /* TODO: Implement properly */
 
     member match {
       case m: ast.Method => verify(m, c)
@@ -183,9 +188,9 @@ trait AbstractVerifier[ST <: Store[ST],
      * all members are verified regardless of previous errors.
      * However, verification of a single member is aborted on first error.
      */
-    QuantifiedChunkSupporter.safeLastFVFState() /* TODO: Implement properly */
+    ev.quantifiedChunkSupporter.safeLastFVFState() /* TODO: Implement properly */
     members.map{m =>
-      QuantifiedChunkSupporter.restoreLastFVFState()
+      ev.quantifiedChunkSupporter.restoreLastFVFState()
       ev.verify(m, program)
     }.toList
   }
@@ -206,7 +211,6 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
     fieldValueFunctionsEmitter.analyze(program)
-    QuantifiedChunkSupporter.initLastFVF() /* TODO: Implement properly */
 
     emitStaticPreamble()
 

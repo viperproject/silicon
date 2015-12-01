@@ -38,7 +38,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                bookkeeper: Bookkeeper)
     extends StatefulComponent {
 
-  import QuantifiedChunkSupporter._
   import symbolConverter.toSort
   import stateFactory._
   import decider.{assert, fresh, check, assume}
@@ -47,8 +46,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private val permsTakenCounter = new Counter()
   private val qidCounter = new Counter()
-
-  QuantifiedChunkSupporter.symbolConverter = symbolConverter /* TODO: Remove */
 
   /* Chunk creation */
 
@@ -538,7 +535,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     if (freshFVFInAction) return
     val newFvfSort = freshFvf.sort.asInstanceOf[sorts.FieldValueFunction]
 
-    QuantifiedChunkSupporter.collectedFields.foreach{field =>
+    quantifiedFields.foreach{field =>
       val codomainSort = toSort(field.typ)
 
       if (codomainSort == newFvfSort.codomainSort) {
@@ -698,36 +695,17 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
         .toSeq
   }
 
-  /* Lifetime */
+  /* FVF-after and FVF-top */
 
-  def reset() {
-//    withValueCache.clear()
-    lastFVF = lastFVF.empty
-    savedLastFVF = savedLastFVF.empty
-
-//    val logs = List(bookkeeper.logfiles("withValueCache"),
-//                    bookkeeper.logfiles("domainDefinitionAxiom"))
-//    logs foreach { log =>
-//      log.println()
-//      log.println("*" * 40)
-//      log.println()
-//    }
-  }
-
-  def start() = {}
-  def stop() {}
-}
-
-object QuantifiedChunkSupporter {
-  var collectedFields: Seq[ast.Field] = Seq.empty /* TODO: Implement properly */
-  var symbolConverter: SymbolConvert = null
-
+  private var quantifiedFields: Set[ast.Field] = Set.empty
   private var lastFVF: Map[ast.Field, Term] = Map.empty
-  private var freshFVFInAction = false
   private var savedLastFVF: Map[ast.Field, Term] = Map.empty
+  private var freshFVFInAction = false
 
-  def initLastFVF() {
-    lastFVF = toMap(collectedFields.map{field =>
+  def initLastFVF(quantifiedFields: Set[ast.Field]) {
+    this.quantifiedFields = quantifiedFields
+
+    lastFVF = toMap(quantifiedFields.map{field =>
       val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
       val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
 
@@ -742,4 +720,25 @@ object QuantifiedChunkSupporter {
   def restoreLastFVFState() {
     lastFVF = savedLastFVF
   }
+
+  /* Lifetime */
+
+  def reset() {
+//    withValueCache.clear()
+    quantifiedFields = quantifiedFields.empty
+    lastFVF = lastFVF.empty
+    savedLastFVF = savedLastFVF.empty
+    freshFVFInAction = false
+
+//    val logs = List(bookkeeper.logfiles("withValueCache"),
+//                    bookkeeper.logfiles("domainDefinitionAxiom"))
+//    logs foreach { log =>
+//      log.println()
+//      log.println("*" * 40)
+//      log.println()
+//    }
+  }
+
+  def start() = {}
+  def stop() {}
 }

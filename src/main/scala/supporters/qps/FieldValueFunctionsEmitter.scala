@@ -35,8 +35,6 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
         collectedFields += f
     }
 
-    QuantifiedChunkSupporter.collectedFields = collectedFields.toSeq /* TODO: Implement properly */
-
     collectedSorts = (
         collectedFields.map(f => terms.sorts.FieldValueFunction(symbolConverter.toSort(f.typ)))
       + terms.sorts.FieldValueFunction(terms.sorts.Ref))
