@@ -188,11 +188,7 @@ trait AbstractVerifier[ST <: Store[ST],
      * all members are verified regardless of previous errors.
      * However, verification of a single member is aborted on first error.
      */
-    ev.quantifiedChunkSupporter.safeLastFVFState() /* TODO: Implement properly */
-    members.map{m =>
-      ev.quantifiedChunkSupporter.restoreLastFVFState()
-      ev.verify(m, program)
-    }.toList
+    members.map(m => ev.verify(m, program)).toList
   }
 
   private def filter(str: String) = (

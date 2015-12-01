@@ -699,7 +699,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
   private var quantifiedFields: Set[ast.Field] = Set.empty
   private var lastFVF: Map[ast.Field, Term] = Map.empty
-  private var savedLastFVF: Map[ast.Field, Term] = Map.empty
   private var freshFVFInAction = false
 
   def initLastFVF(quantifiedFields: Set[ast.Field]) {
@@ -713,21 +712,12 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     })
   }
 
-  def safeLastFVFState() {
-    savedLastFVF = lastFVF
-  }
-
-  def restoreLastFVFState() {
-    lastFVF = savedLastFVF
-  }
-
   /* Lifetime */
 
   def reset() {
 //    withValueCache.clear()
     quantifiedFields = quantifiedFields.empty
     lastFVF = lastFVF.empty
-    savedLastFVF = savedLastFVF.empty
     freshFVFInAction = false
 
 //    val logs = List(bookkeeper.logfiles("withValueCache"),
