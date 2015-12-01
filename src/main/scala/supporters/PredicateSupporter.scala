@@ -23,18 +23,18 @@ trait PredicateSupporter[ST <: Store[ST],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
-            with Evaluator[ST, H, S, DefaultContext]
-            with Producer[ST, H, S, DefaultContext]
-            with Consumer[DirectChunk, ST, H, S, DefaultContext]
+            with Evaluator[ST, H, S, DefaultContext[H]]
+            with Producer[ST, H, S, DefaultContext[H]]
+            with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
             with ChunkSupporter[ST, H, PC, S] =>
 
-  protected val decider: Decider[ST, H, PC, S, DefaultContext]
+  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
 
   protected val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
 
   object predicateSupporter {
-    private type C = DefaultContext
+    private type C = DefaultContext[H]
     private type CH = DirectChunk
 
     def fold(σ: S, predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError, c: C)

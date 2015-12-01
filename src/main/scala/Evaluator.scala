@@ -28,14 +28,14 @@ trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
-    extends Evaluator[ST, H, S, DefaultContext]
-    { this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext]
-                    with Producer[ST, H, S, DefaultContext]
+    extends Evaluator[ST, H, S, DefaultContext[H]]
+    { this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+                    with Producer[ST, H, S, DefaultContext[H]]
                     with PredicateSupporter[ST, H, PC, S]
-                    with Brancher[ST, H, S, DefaultContext]
-                    with Joiner[DefaultContext] =>
+                    with Brancher[ST, H, S, DefaultContext[H]]
+                    with Joiner[DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
@@ -145,7 +145,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.CurrentPerm(locacc) =>
         withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, σ.partiallyConsumedHeap, id, c1) match {
+          decider.getChunk[DirectChunk](σ, c.partiallyConsumedHeap.getOrElse(σ.h), id, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
@@ -167,18 +167,14 @@ trait DefaultEvaluator[ST <: Store[ST],
         eval(σ, e0, pve, c)((t0, c1) =>
           Q(Minus(0, t0), c1))
 
-      case ast.Old(e0) => eval(σ \ σ.g, e0, pve, c)(Q)
+      case ast.Old(e0) => evalOld(σ, σ.g, e0, pve, c)(Q)
 
       case old @ silver.ast.LabelledOld(e0, lbl) =>
         c.oldHeaps.get(lbl) match {
           case None =>
             Failure[ST, H, S](pve dueTo LabelledStateNotReached(old))
           case Some(h) =>
-            eval(σ \ h.asInstanceOf[H], e0, pve, c)((t,c2) => {
-              val c3 = c2
-              Q(t,c3)
-            })
-        }
+            evalOld(σ, h, e0, pve, c)(Q)}
 
       case ast.Let(v, e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -303,9 +299,9 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(DomainFApp(fi, tArgs), c1)})
 
       case ast.ForPerm(varDecl, accessList, body) =>
+        val h = c.partiallyConsumedHeap.getOrElse(σ.h)
         val qvar = varDecl.localVar
-        val heap = σ.partiallyConsumedHeap
-        val includedArgNames = accessList.map(_.name)
+        val locs = accessList.map(_.name)
 
         /* Iterate over the list of relevant chunks in continuation passing style (very similar
          * to evals), and evaluate the forperm-body with a different qvar assignment each time.
@@ -322,9 +318,9 @@ trait DefaultEvaluator[ST <: Store[ST],
             eval(σ \+ (qvar, rcvrs.head), body, pve, c)((tBody, c1) =>
               bindRcvrAndEvalBody(rcvrs.tail, tBody +: ts, c1)(Q))
 
-        val rcvrs: Iterable[Term] = heap.values.collect {
-          case fch: DirectFieldChunk if includedArgNames contains fch.name => (fch.rcvr, fch.perm)
-          case pch: DirectPredicateChunk if includedArgNames contains pch.name => (pch.args.head, pch.perm)
+        val rcvrs: Iterable[Term] = h.values.collect {
+          case fch: DirectFieldChunk if locs contains fch.name => (fch.rcvr, fch.perm)
+          case pch: DirectPredicateChunk if locs contains pch.name => (pch.args.head, pch.perm)
         }.collect {
           case (rcvr, perm) if decider.check(σ, PermLess(NoPerm(), perm), config.checkTimeout()) => rcvr
         }
@@ -540,6 +536,13 @@ trait DefaultEvaluator[ST <: Store[ST],
 
     resultTerm
   }
+
+  def evalOld(σ: S, h: H, e: ast.Exp, pve: PartialVerificationError, c: C)
+             (Q: (Term, C) => VerificationResult)
+             : VerificationResult =
+
+    eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
+      Q(t, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)))
 
   def withChunkIdentifier(σ: S,
                           locacc: ast.LocationAccess,

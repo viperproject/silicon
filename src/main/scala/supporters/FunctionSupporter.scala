@@ -220,11 +220,11 @@ trait FunctionSupporter[ST <: Store[ST],
                          PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
-            with Evaluator[ST, H, S, DefaultContext]
-            with Producer[ST, H, S, DefaultContext]
-            with Consumer[DirectChunk, ST, H, S, DefaultContext] =>
+            with Evaluator[ST, H, S, DefaultContext[H]]
+            with Producer[ST, H, S, DefaultContext[H]]
+            with Consumer[DirectChunk, ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification
 
   val config: Config
@@ -279,7 +279,7 @@ trait FunctionSupporter[ST <: Store[ST],
 
     private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-      val c = DefaultContext(program = program, snapshotRecorder = Some(SnapshotRecorder()))
+      val c = DefaultContext[H](program = program, snapshotRecorder = Some(SnapshotRecorder()))
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)

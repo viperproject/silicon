@@ -13,7 +13,8 @@ import interfaces.state.{Context, Mergeable, Heap}
 import terms.{Var, Term}
 import supporters.SnapshotRecorder
 
-case class DefaultContext(program: ast.Program,
+case class DefaultContext[H <: Heap[H]]
+                         (program: ast.Program,
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
                           branchConditions: Stack[Term] = Stack(),
@@ -23,8 +24,9 @@ case class DefaultContext(program: ast.Program,
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
-                          oldHeaps: Map[String, Heap[_]] = Map()) /* TODO: Integrate regular old */
-    extends Context[DefaultContext] {
+                          oldHeaps: Map[String, H] = Map.empty[String, H], /* TODO: Integrate regular old */
+                          partiallyConsumedHeap: Option[H] = None)
+    extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Predicate) =
     if (recordVisited) copy(visited = m :: visited)
@@ -57,14 +59,15 @@ case class DefaultContext(program: ast.Program,
    *       output.
    */
 
-  def merge(other: DefaultContext): DefaultContext = this match {
+  def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, recordVisited1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
-                        retrying1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1, labelledStates1) =>
+                        retrying1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1, oldHeaps1,
+                        partiallyConsumedHeap1) =>
 
       other match {
         case DefaultContext(`program1`, recordVisited2, `visited1`, `branchConditions1`, `constrainableARPs1`,
                             `quantifiedVariables1`, retrying2, snapshotRecorder2, `recordPossibleTriggers1`,
-                            possibleTriggers2, `labelledStates1`) =>
+                            possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2

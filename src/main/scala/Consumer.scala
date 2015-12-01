@@ -18,17 +18,16 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter}
-import viper.silver.ast.{CurrentPerm, ForPerm}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
-    extends Consumer[DirectChunk, ST, H, S, DefaultContext]
-    { this: Logging with Evaluator[ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext]
+    extends Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
+                    with Brancher[ST, H, S, DefaultContext[H]]
                     with ChunkSupporter[ST, H, PC, S]
-                    with LetHandler[ST, H, S, DefaultContext] =>
+                    with LetHandler[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.assume
@@ -97,22 +96,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       log.debug("h = " + stateFormatter.format(h))
     }
 
-    //TODO: how can this be done efficiently?
-    val σ_partial = {
-      var σt = σ
-
-      for (v <- σ.h.values) {
-        σt = σt \- v
-      }
-
-      for (v <- h.values) {
-        σt = σt \+ v
-      }
-      σt
-    }
-
-    σ.partiallyConsumedHeap = h
-
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure || config.handlePureConjunctsIndividually() =>
         consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
@@ -147,46 +130,33 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
-      case ForPerm(variable, accessList, exp) =>
-        decider.tryOrFail[(H, Term, List[DirectChunk])](σ_partial, c)((σ1, c1, QS, QF) => {
-          eval(σ1, φ, pve, c1)((t, c2) =>
-            decider.assert(σ1, t) {
-              case true =>
-                assume(t)
-                QS((h, Unit, Nil), c2)
-              case false =>
-                QF(Failure[ST, H, S](pve dueTo AssertionFalse(φ)))
-            })
-        })((res, c1) => Q(res._1, res._2, res._3, c1))
-
-      /* Any regular Expressions, i.e. boolean and arithmetic.
-       * IMPORTANT: The expression is evaluated in the initial heap (σ.h) and
-       * not in the partially consumed heap (h).
-       */
       case _ =>
-
-        decider.tryOrFail[(H, Term, List[DirectChunk])](σ, c)((σ1, c1, QS, QF) => {
-          eval(σ1, φ, pve, c1)((t, c2) =>
-            decider.assert(σ1, t) {
-              case true =>
-                assume(t)
-                QS((h, Unit, Nil), c2)
-              case false =>
-                QF(Failure[ST, H, S](pve dueTo AssertionFalse(φ)))
-            })
-        })((res, c1) => Q(res._1, res._2, res._3, c1))
-/* Consume pure expression w/o trying heuristics in case of failure */
-/*
-        eval(σ, φ, pve, c)((t, c) =>
-          decider.assert(σ, t) {
-            case true =>
-              assume(t)
-              Q(h, Unit, Nil, c)
-            case false =>
-              Failure[ST, H, S](pve dueTo AssertionFalse(φ))})
-*/
+        evalAndAssert(σ, h, φ, pve, c)(Q)
     }
 
     consumed
+  }
+
+  /* The expression is evaluated in the initial heap (σ.h), partially consumed heap (h)
+   * is made available to the evaluation via the context (C.partiallyConsumedHeap).
+   */
+  private def evalAndAssert(σ: S, h: H, e: ast.Exp, pve: PartialVerificationError, c: C)
+                           (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                           : VerificationResult = {
+
+    val c0 = c.copy(partiallyConsumedHeap = Some(h))
+
+    decider.tryOrFail[S](σ, c0)((σ1, c1, QS, QF) => {
+      eval(σ1, e, pve, c1)((t, c2) =>
+        decider.assert(σ1, t) {
+          case true =>
+            assume(t)
+            QS(σ1, c2)
+          case false =>
+            QF(Failure[ST, H, S](pve dueTo AssertionFalse(e)))
+        })
+    })((σ1, c1) => {
+      Q(h, Unit, Nil, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))
+    })
   }
 }

@@ -25,10 +25,10 @@ trait DefaultJoiner[ST <: Store[ST],
                     H <: Heap[H],
                     PC <: PathConditions[PC],
                     S <: State[ST, H, S]]
-    extends Joiner[DefaultContext]
+    extends Joiner[DefaultContext[H]]
 { this: DefaultBrancher[ST, H, PC, S] =>
 
-  private[this] type C = DefaultContext
+  private[this] type C = DefaultContext[H]
 
   val decider: Decider[ST, H, PC, S, C]
 

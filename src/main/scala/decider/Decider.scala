@@ -24,10 +24,10 @@ class DefaultDecider[ST <: Store[ST],
                      H <: Heap[H],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
-    extends Decider[ST, H, PC, S, DefaultContext]
+    extends Decider[ST, H, PC, S, DefaultContext[H]]
        with Logging {
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   private var z3: Z3ProverStdIO = _
 

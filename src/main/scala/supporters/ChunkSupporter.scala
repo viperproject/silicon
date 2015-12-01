@@ -24,17 +24,17 @@ trait ChunkSupporter[ST <: Store[ST],
                      PC <: PathConditions[PC],
                      S <: State[ST, H, S]]
   { this:      Logging
-          with Evaluator[ST, H, S, DefaultContext]
-          with Producer[ST, H, S, DefaultContext]
-          with Consumer[DirectChunk, ST, H, S, DefaultContext]
-          with Brancher[ST, H, S, DefaultContext]  =>
+          with Evaluator[ST, H, S, DefaultContext[H]]
+          with Producer[ST, H, S, DefaultContext[H]]
+          with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+          with Brancher[ST, H, S, DefaultContext[H]]  =>
 
-  protected val decider: Decider[ST, H, PC, S, DefaultContext]
-  protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext]
+  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
   protected val config: Config
 
   object chunkSupporter {
-    private type C = DefaultContext
+    private type C = DefaultContext[H]
     private type CH = DirectChunk
 
     private case class PermissionsConsumptionResult(consumedCompletely: Boolean)
@@ -82,7 +82,7 @@ trait ChunkSupporter[ST <: Store[ST],
                        (Q: (H, Option[DirectChunk], C, PermissionsConsumptionResult) => VerificationResult)
                        : VerificationResult = {
 
-      if (silicon.utils.consumeExactRead(pLoss, c)) {
+      if (silicon.utils.consumeExactRead(pLoss, c.constrainableARPs)) {
         decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
           if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)), config.checkTimeout())) {
             Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}

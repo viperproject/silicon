@@ -54,10 +54,10 @@ trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Brancher[ST, H, S, DefaultContext]
+    extends Brancher[ST, H, S, DefaultContext[H]]
        with StatefulComponent {
 
-  private[this] type C = DefaultContext
+  private[this] type C = DefaultContext[H]
 
   private var branchCounter: Counter = _
 

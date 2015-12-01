@@ -112,7 +112,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   private type H = ListBackedHeap
   private type PC = MutableSetBackedPathConditions
   private type S = DefaultState[ST, H]
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
   private type V = DefaultVerifier[ST, H, PC, S]
   private type Failure = SiliconFailure[ST, H, S]
 

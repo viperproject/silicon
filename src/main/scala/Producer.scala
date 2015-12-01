@@ -22,14 +22,14 @@ trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Producer[ST, H, S, DefaultContext]
-    { this: Logging with Evaluator[ST, H, S, DefaultContext]
-                    with Consumer[DirectChunk, ST, H, S, DefaultContext]
-                    with Brancher[ST, H, S, DefaultContext]
+    extends Producer[ST, H, S, DefaultContext[H]]
+    { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
+                    with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+                    with Brancher[ST, H, S, DefaultContext[H]]
                     with ChunkSupporter[ST, H, PC, S]
-                    with LetHandler[ST, H, S, DefaultContext] =>
+                    with LetHandler[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}

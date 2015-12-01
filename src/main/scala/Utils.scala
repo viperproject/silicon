@@ -30,16 +30,16 @@ package object utils {
     }
   }
 
-  def consumeExactRead(fp: Term, c: DefaultContext): Boolean = fp match {
+  def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
     case _: WildcardPerm => false
-    case v: Var => !c.constrainableARPs.contains(v)
-    case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
-    case IntPermTimes(_, t1) => consumeExactRead(t1, c)
-    case PermIntDiv(t0, _) => consumeExactRead(t0, c)
-    case PermMin(t0 ,t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case Ite(_, t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
+    case v: Var => !constrainableARPs.contains(v)
+    case PermPlus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case PermMinus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case PermTimes(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
+    case IntPermTimes(_, t1) => consumeExactRead(t1, constrainableARPs)
+    case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
+    case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case _ => true
   }
 

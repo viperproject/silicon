@@ -26,13 +26,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
     extends Logging
-       with Evaluator[ST, H, S, DefaultContext]
-       with Producer[ST, H, S, DefaultContext]
-       with Consumer[DirectChunk, ST, H, S, DefaultContext]
-       with Executor[ST, H, S, DefaultContext]
+       with Evaluator[ST, H, S, DefaultContext[H]]
+       with Producer[ST, H, S, DefaultContext[H]]
+       with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+       with Executor[ST, H, S, DefaultContext[H]]
        with FunctionSupporter[ST, H, PC, S] {
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   /*protected*/ val config: Config
 
@@ -122,11 +122,11 @@ class DefaultElementVerifier[ST <: Store[ST],
                              PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
     (  val config: Config,
-      val decider: Decider[ST, H, PC, S, DefaultContext],
+      val decider: Decider[ST, H, PC, S, DefaultContext[H]],
       val stateFactory: StateFactory[ST, H, S],
       val symbolConverter: SymbolConvert,
       val stateFormatter: StateFormatter[ST, H, S, String],
-      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
+      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
       val bookkeeper: Bookkeeper)
     extends NoOpStatefulComponent
        with AbstractElementVerifier[ST, H, PC, S]
@@ -138,7 +138,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with PredicateSupporter[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
-       with DefaultLetHandler[ST, H, S, DefaultContext]
+       with DefaultLetHandler[ST, H, S, DefaultContext[H]]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -147,7 +147,7 @@ trait AbstractVerifier[ST <: Store[ST],
                        S <: State[ST, H, S]]
     extends Logging {
 
-  /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext]
+  /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext[H]]
   /*protected*/ def config: Config
   /*protected*/ def bookkeeper: Bookkeeper
   /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
@@ -167,7 +167,7 @@ trait AbstractVerifier[ST <: Store[ST],
   }
 
   private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-    val c = DefaultContext(program)
+    val c = DefaultContext[H](program)
 
     val members = program.members.filterNot {
       case func: ast.Function => true
@@ -272,7 +272,7 @@ class DefaultVerifier[ST <: Store[ST],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     (  val config: Config,
-      val decider: Decider[ST, H, PC, S, DefaultContext],
+      val decider: Decider[ST, H, PC, S, DefaultContext[H]],
       val stateFactory: StateFactory[ST, H, S],
       val symbolConverter: SymbolConvert,
       val preambleEmitter: PreambleFileEmitter[String, String],
@@ -281,7 +281,7 @@ class DefaultVerifier[ST <: Store[ST],
       val multisetsEmitter: MultisetsEmitter,
       val domainsEmitter: DomainsEmitter,
       val stateFormatter: StateFormatter[ST, H, S, String],
-      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext],
+      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
       val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
        with StatefulComponent

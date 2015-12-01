@@ -126,8 +126,6 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
 
   def \(γ: ST = γ, h: H = h, g: H = g) = this.copy(γ, h, g)
 
-  var partiallyConsumedHeap = h
-
   lazy val π = getPathConditions()
 }
 
@@ -198,14 +196,14 @@ class DefaultHeapCompressor[ST <: Store[ST],
 
   def merge(σ: S, h: H, ch: Chunk, ctx: C): (H, Option[DirectChunk]) = {
     val (h1, _, matches, ts) = singleMerge(σ, h, H(ch :: Nil), ctx)
-    
+
     decider.assume(ts)
-    
+
     val optMatch = ch match {
       case dc: DirectChunk => matches.get(dc)
       case _ => None
-    } 
-    
+    }
+
     (h1, optMatch)
   }
 
