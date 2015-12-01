@@ -159,7 +159,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
     state.utils.transform[this.type](this, pre)(recursive, post)
 
   def replace(original: Term, replacement: Term): Term =
-    this.transform{case `original` => replacement}()
+    if (original == replacement)
+      this
+    else
+      this.transform{case `original` => replacement}()
 
   def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term = {
     this.transform{case t: T if replacements.contains(t) => replacements(t)}()
