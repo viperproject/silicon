@@ -10,7 +10,7 @@ package silicon
 import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import silver.verifier.errors.{PreconditionInAppFalse, Internal}
+import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission, LabelledStateNotReached}
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
@@ -18,7 +18,7 @@ import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, State
     ChunkIdentifier}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
-    DirectFieldChunk}
+    DirectFieldChunk, DirectPredicateChunk}
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
@@ -55,14 +55,9 @@ trait DefaultEvaluator[ST <: Store[ST],
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
 
-    evals2(σ, es, Nil, pvef, c)((ts, c1) =>
-      Q(ts, c1))
+    evals2(σ, es, Nil, pvef, c)(Q)
 
-  private def evals2(σ: S,
-                     es: Seq[ast.Exp],
-                     ts: List[Term],
-                     pvef: ast.Exp => PartialVerificationError,
-                     c: C)
+  private def evals2(σ: S, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
 
@@ -307,65 +302,35 @@ trait DefaultEvaluator[ST <: Store[ST],
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      case quant: silver.ast.ForallReferences =>
-        val body = quant.exp
-        val variable = quant.variable.localVar
-
+      case ast.ForPerm(varDecl, accessList, body) =>
+        val qvar = varDecl.localVar
         val heap = σ.partiallyConsumedHeap
-        val includedArgNames = quant.accessList.map(_.name)
+        val includedArgNames = accessList.map(_.name)
 
-        val refs = heap.values.map(_.id).collect({
-          case ref@FieldChunkIdentifier(rcvr,field_name) if includedArgNames contains field_name => ref
-          case ref@PredicateChunkIdentifier(name,args) if includedArgNames contains name => ref
-        }).toList
+        /* Iterate over the list of relevant chunks in continuation passing style (very similar
+         * to evals), and evaluate the forperm-body with a different qvar assignment each time.
+         */
+        def bindRcvrAndEvalBody(rcvrs: Iterable[Term],
+                                ts: Seq[Term],
+                                c: C)
+                               (Q: (Seq[Term], C) => VerificationResult)
+                               : VerificationResult =
 
+          if (rcvrs.isEmpty)
+            Q(ts.reverse, c)
+          else
+            eval(σ \+ (qvar, rcvrs.head), body, pve, c)((tBody, c1) =>
+              bindRcvrAndEvalBody(rcvrs.tail, tBody +: ts, c1)(Q))
 
-        //remove all chunks for which we have no permission
-
-        def hasPerm(v : ChunkIdentifier) = decider.getChunk[DirectChunk](σ, σ.h, v, c) match {
-          case None => false
-          case Some(x) =>
-            val greater = decider.check(σ, Greater(x.perm, NoPerm()), config.checkTimeout())
-
-            val tmp = (   !decider.check(σ, Equals(x.perm, NoPerm()), config.checkTimeout())
-                       && decider.check(σ, AtLeast(x.perm, NoPerm()), config.checkTimeout()))
-
-            val result = greater || tmp
-            result
+        val rcvrs: Iterable[Term] = heap.values.collect {
+          case fch: DirectFieldChunk if includedArgNames contains fch.name => (fch.rcvr, fch.perm)
+          case pch: DirectPredicateChunk if includedArgNames contains pch.name => (pch.args.head, pch.perm)
+        }.collect {
+          case (rcvr, perm) if decider.check(σ, PermLess(NoPerm(), perm), config.checkTimeout()) => rcvr
         }
 
-        val chunksWithPerm = refs.filter({v => hasPerm(v)})
-
-        //TODO: remove chunks from heap (-> ask Malte)
-
-
-        // Iterate over the list of applicable refs in continuation passing style,
-        // Evaluates the forall-body with a different variable assignment each time.
-        // Combines individual terms with And in each recursive call
-        def conjunction(refs: List[ChunkIdentifier],
-                        result: Term,
-                        cj: C,
-                        Qj: (Term, C) => VerificationResult) : VerificationResult = refs match {
-
-          case ref :: tail =>
-
-            ref match {
-              case f@FieldChunkIdentifier(rcvr, name) =>
-
-                eval(σ \+ (variable,f.rcvr), body, pve, cj){ (term,c2) =>
-                  conjunction(tail, And(result,term), c2, Qj)}
-
-              case p@PredicateChunkIdentifier(name, args) =>
-
-                eval(σ \+ (variable, p.args.head), body, pve, cj){ (term,c2) =>
-                  conjunction(tail, And(result,term), c2, Qj)}
-            }
-
-          case Nil =>
-            Qj(result, cj)
-        }
-
-        conjunction(chunksWithPerm, True(), c, Q)
+        bindRcvrAndEvalBody(rcvrs, Seq.empty, c)((ts, c1) =>
+          Q(And(ts), c1))
 
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {

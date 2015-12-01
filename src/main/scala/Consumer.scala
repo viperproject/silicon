@@ -18,7 +18,7 @@ import reporting.Bookkeeper
 import state.{DirectChunk, DefaultContext}
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter}
-import viper.silver.ast.{CurrentPerm, ForallReferences}
+import viper.silver.ast.{CurrentPerm, ForPerm}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -147,8 +147,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
-      case ForallReferences(variable, accessList, exp) =>
-
+      case ForPerm(variable, accessList, exp) =>
         decider.tryOrFail[(H, Term, List[DirectChunk])](σ_partial, c)((σ1, c1, QS, QF) => {
           eval(σ1, φ, pve, c1)((t, c2) =>
             decider.assert(σ1, t) {
