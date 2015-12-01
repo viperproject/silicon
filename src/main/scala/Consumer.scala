@@ -19,7 +19,8 @@ import reporting.Bookkeeper
 import state.{QuantifiedChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms._
 import state.terms.predef.`?r`
-import supporters.{LetHandler, Brancher, ChunkSupporter, QuantifiedChunkSupporter}
+import supporters.{LetHandler, Brancher, ChunkSupporter}
+import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -127,19 +128,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
       case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
-        val (h1, fvfDefs1) = quantifiedChunkSupporter.quantifyHeapForFields(σ.h, QuantifiedChunkSupporter.quantifiedFieldAccesses(forall))
-        /* If receiver or condition dereference a field which hasn't been quantified yet,
-         * then the evaluator will try to find a regular chunk for the quantified variable,
-         * which will fail.
-         * TODO: It would be better if the heap were quantified on-demand (e.g., in the
-         *       evaluator) AND if that quantified heap would be used afterwards as well
-         *       (which would currently not be possible since the evaluator cannot pass
-         *       on modified heaps).
-         */
-        fvfDefs1 foreach (fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
-        val σQVar = σ \ h1 \+ γQVar
+        val σQVar = σ \+ γQVar
         val πPre = decider.π
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
         decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB =>
@@ -195,18 +186,18 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val inverseReceiver = invFct(`?r`) // e⁻¹(r)
             quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(pLoss, p), chunkOrderHeuristics, c1) {
               case Some((h1, ch, fvfDef, c2)) =>
-                val fvfDomain = fvfDef.domainDefinition(invFct)
+                val fvfDomain = fvfDef.domainDefinitions(invFct)
                 decider.prover.logComment("Definitional axioms for field value function")
-                assume(fvfDomain +: fvfDef.valueDefinitions)
+                assume(fvfDomain ++ fvfDef.valueDefinitions)
 //                if (!config.disableQPCaching())
 //                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c2))
                 val c3 = c2.snapshotRecorder match {
                   case Some(sr) =>
                     val sr1 = sr.recordQPTerms(c2.quantifiedVariables,
                                                c2.branchConditions,
-                                               invFct.definitionalAxioms ++ Seq(fvfDomain) ++ fvfDef.valueDefinitions)
+                                               invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
                     val sr2 =
-                      if (fvfDef.freshFvf) sr1.recordFvf(field, fvfDef.fvf)
+                      if (true/*fvfDef.freshFvf*/) sr1.recordFvf(field, fvfDef.fvf)
                       else sr1
                     c2.copy(snapshotRecorder = Some(sr2))
                   case _ => c2}
@@ -226,7 +217,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
               case Some((h1, ch, fvfDef, c3)) =>
-                assume(fvfDef.domainDefinition +: fvfDef.valueDefinitions)
+                assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))

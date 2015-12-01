@@ -18,9 +18,9 @@ import interfaces.state.factoryUtils.Ø
 import decider.PreambleFileEmitter
 import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{sorts, Sort}
-import supporters.{FieldValueFunctionsEmitter, DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
-    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter,
-    QuantifiedChunkSupporter}
+import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
+import supporters.qps.{FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import reporting.Bookkeeper
 
 trait AbstractElementVerifier[ST <: Store[ST],
@@ -166,8 +166,6 @@ trait AbstractVerifier[ST <: Store[ST],
   /* Functionality */
 
   def verify(program: ast.Program): List[VerificationResult] = {
-    QuantifiedChunkSupporter.program = program /* TODO: Implement properly */
-
     emitPreamble(program)
 
     ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)

@@ -20,7 +20,8 @@ import interfaces.state.factoryUtils.Ø
 import state.terms._
 import state.{FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
-import supporters.{Brancher, PredicateSupporter, QuantifiedChunkSupporter}
+import supporters.{Brancher, PredicateSupporter}
+import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],

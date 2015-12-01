@@ -8,7 +8,7 @@ package viper
 package silicon
 
 import java.text.SimpleDateFormat
-import java.io.{PrintWriter, StringWriter, File}
+import java.io.File
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
@@ -20,8 +20,7 @@ import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
-    AbortedExceptionally => SilExceptionThrown}
+    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import common.config.Version
 import interfaces.{Failure => SiliconFailure}
@@ -29,8 +28,9 @@ import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import state.terms.{AxiomRewriter, FullPerm}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
-import supporters.{DefaultFieldValueFunctionsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator,
-    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, QuantifiedChunkSupporter}
+import supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
+    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter}
+import supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import reporting.{VerificationException, Bookkeeper}
 
 object Silicon {

@@ -11,7 +11,7 @@ package state
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
 import terms.{Lookup, PermMinus, PermPlus, Term, sorts}
 import state.terms.predef.`?r`
-import supporters.QuantifiedChunkSupporter.InverseFunction
+import supporters.qps.InverseFunction
 
 sealed trait DirectChunk extends PermissionChunk[DirectChunk]
 

@@ -22,7 +22,8 @@ import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, Sy
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import supporters.{Joiner, Brancher, PredicateSupporter, QuantifiedChunkSupporter}
+import supporters.{Joiner, Brancher, PredicateSupporter}
+import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -162,18 +163,19 @@ trait DefaultEvaluator[ST <: Store[ST],
           val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
           val condition = And(c1.branchConditions)
           quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, qvars, condition, tRcvr, pve, fa, c1)(fvfDef => {
-            val fvfDomain = fvfDef.domainDefinition
-            assume(fvfDomain +: fvfDef.valueDefinitions)
+            val fvfDomain = fvfDef.domainDefinitions
+            val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+            assume(fvfDomain ++ fvfDef.valueDefinitions)
             val c2 = c1.snapshotRecorder match {
               case Some(sr) =>
-                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfDef.lookupReceiver)
-                            .recordQPTerms(qvars, c1.branchConditions, fvfDomain +: fvfDef.valueDefinitions)
+                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfLookup)
+                            .recordQPTerms(qvars, c1.branchConditions, fvfDomain ++ fvfDef.valueDefinitions)
                 val sr2 =
-                  if (fvfDef.freshFvf) sr1.recordFvf(fa.field, fvfDef.fvf)
+                  if (true/*fvfDef.freshFvf*/) sr1.recordFvf(fa.field, fvfDef.fvf)
                   else sr1
                 c1.copy(snapshotRecorder = Some(sr2))
               case _ => c1}
-            Q(fvfDef.lookupReceiver, c2)})})
+            Q(fvfLookup, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>

@@ -4,95 +4,26 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters.qps
 
-import silver.ast
-import silver.components.StatefulComponent
-import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
-import interfaces.{PreambleEmitter, VerificationResult, Failure}
-import interfaces.state.{Chunk, ChunkIdentifier, Store, Heap, PathConditions, State, StateFactory}
-import interfaces.decider.{Decider, Prover}
-import decider.PreambleFileEmitter
-import state.{DefaultContext, SymbolConvert, QuantifiedChunk, FieldChunkIdentifier, DirectFieldChunk, DirectChunk}
-import state.terms.utils.BigPermSum
-import state.terms
-import state.terms._
-import state.terms.predef.`?r`
-import reporting.Bookkeeper
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{ReceiverNull, InsufficientPermission}
+import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.{Set, toSet, toMap, Map, Config, MMap}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state.{Chunk, Heap, PathConditions, ChunkIdentifier, State, StateFactory, Store}
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.utils.BigPermSum
+import viper.silicon.state.terms._
+import viper.silicon.state.{QuantifiedChunk, SymbolConvert, DefaultContext, DirectFieldChunk, DirectChunk, FieldChunkIdentifier}
+import viper.silicon.utils.{Counter, consumeExactRead}
 
-trait FieldValueFunctionsEmitter extends PreambleEmitter
-
-class DefaultFieldValueFunctionsEmitter(prover: Prover,
-                                        symbolConverter: SymbolConvert,
-                                        preambleFileEmitter: PreambleFileEmitter[String, String])
-    extends FieldValueFunctionsEmitter {
-
-  private var collectedFields = Set[ast.Field]()
-  private var collectedSorts = Set[terms.sorts.FieldValueFunction]()
-
-  def sorts: Set[Sort] = toSet(collectedSorts)
-    /* Scala's immutable sets are invariant in their element type, hence
-     * Set[FVF] is not a subtype of Set[Sort], although FVF is one of Sort.
-     */
-
-  def analyze(program: ast.Program) {
-    program visit {
-      case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, f, _, forall, _) =>
-        collectedFields ++= QuantifiedChunkSupporter.quantifiedFieldAccesses(forall)
-    }
-
-    QuantifiedChunkSupporter.collectedFields = collectedFields.toSeq /* TODO: Implement properly */
-
-    collectedSorts = (
-        toSet(collectedFields map (f => terms.sorts.FieldValueFunction(symbolConverter.toSort(f.typ))))
-      + terms.sorts.FieldValueFunction(terms.sorts.Ref))
-  }
-
-  /* Symbols are taken from a file, there currently isn't a way of retrieving them */
-  def symbols: Option[Set[Function]] = None
-
-  def declareSorts() {
-    collectedSorts foreach (s => prover.declare(SortDecl(s)))
-  }
-
-  def declareSymbols() {
-    collectedFields foreach { f =>
-      val sort = symbolConverter.toSort(f.typ)
-      val id = f.name
-      val substitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
-
-      val fvfDeclarations = "/field_value_functions_declarations.smt2"
-      prover.logComment(s"$fvfDeclarations [$id: $sort]")
-      preambleFileEmitter.emitParametricAssertions(fvfDeclarations, substitutions)
-    }
-  }
-
-  def emitAxioms() {
-    /* Axioms that have to be emitted for each field that is dereferenced from
-     * a quantified receiver
-     */
-    collectedFields foreach { f =>
-      val sort = symbolConverter.toSort(f.typ)
-      val id = f.name
-      val fvfSubstitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
-      val fvfAxioms = "/field_value_functions_axioms.smt2"
-
-      prover.logComment(s"$fvfAxioms [$id: $sort]")
-      preambleFileEmitter.emitParametricAssertions(fvfAxioms, fvfSubstitutions)
-    }
-  }
-
-  /* Lifetime */
-
-  def reset() {
-    collectedFields = collectedFields.empty
-  }
-
-  def stop() {}
-  def start() {}
+case class InverseFunction(symbol: Var, function: Term => Term, invOfFct: Quantification, fctOfInv: Quantification) {
+  val definitionalAxioms = invOfFct :: fctOfInv :: Nil
+  def apply(t: Term) = function(t)
 }
 
 class QuantifiedChunkSupporter[ST <: Store[ST],
@@ -105,22 +36,19 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                axiomRewriter: AxiomRewriter,
                                config: Config,
                                bookkeeper: Bookkeeper)
-
     extends StatefulComponent {
 
   import QuantifiedChunkSupporter._
   import symbolConverter.toSort
   import stateFactory._
-  import decider.{assume, assert, check, fresh}
+  import decider.{assert, fresh, check, assume}
 
   private type C = DefaultContext
 
-  private val permsTakenCounter = new silicon.utils.Counter()
-  private val qidCounter = new silicon.utils.Counter()
+  private val permsTakenCounter = new Counter()
+  private val qidCounter = new Counter()
 
-  QuantifiedChunkSupporter.bookkeeper = bookkeeper /* TODO: Remove */
   QuantifiedChunkSupporter.symbolConverter = symbolConverter /* TODO: Remove */
-  QuantifiedChunkSupporter.axiomRewriter = axiomRewriter /* TODO: Remove */
 
   /* Chunk creation */
 
@@ -219,7 +147,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     BigPermSum(perms, Predef.identity)
   }
 
-  private val withValueCache = MMap[(Term, Set[QuantifiedChunk]), MultiLocationFvf]()
+//  private val withValueCache = MMap[(Term, Set[QuantifiedChunk]), MultiLocationFvf]()
 
   def withValue(σ: S,
                 h: H,
@@ -230,7 +158,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                 pve: PartialVerificationError,
                 locacc: ast.LocationAccess,
                 c: C)
-               (Q: MultiLocationFvf => VerificationResult)
+               (Q: FvfDefinition => VerificationResult)
                : VerificationResult = {
 
     assert(σ, receiver !== Null()) {
@@ -274,13 +202,13 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
                 (_lookupRcvr, _fvfDef)
               } else */{
-                if (true/*config.disableQPCaching()*/)
+//                if (config.disableQPCaching())
                   fvfDef
-                else {
-                  /* TODO: Caching needs to take the branch conditions into account! */
+//                else {
+//                  /* TODO: Caching needs to take the branch conditions into account! */
 //                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
-                  withValueCache.getOrElseUpdate((receiver, toSet(quantifiedChunks)), fvfDef)
-                }
+//                  withValueCache.getOrElseUpdate((receiver, toSet(quantifiedChunks)), fvfDef)
+//                }
               }
 
 //            cacheLog.println(s"lookupRcvrToReturn = $lookupRcvrToReturn")
@@ -298,14 +226,17 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                   qvars: Seq[Var],
                                   condition: Term,
                                   receiver: Term)
-                                 : MultiLocationFvf = {
+                                 : FvfDefinition = {
 
     Predef.assert(chunks.forall(_.name == field.name),
                   s"Expected all chunks to be about field $field, but got ${chunks.mkString(", ")}")
 
     val fvf = freshFVF(field)
 
-    MultiLocationFvf(field, fvf, qvars, condition, receiver, chunks.toSeq, true)
+    if (qvars.isEmpty)
+      SingleLocationIndirectFvfDefinition(field, fvf, receiver, chunks.toSeq)
+    else
+      MultiLocationFvfDefinition(field, fvf, qvars, condition, receiver, chunks.toSeq/*, true*/)(axiomRewriter)
   }
 
   /* Manipulating quantified chunks */
@@ -325,7 +256,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     *         chunks. `ts` is the set of assumptions axiomatising the fresh
     *         field value function `fvf`.
     */
-  def quantifyChunksForField(h: H, field: ast.Field): (H, Seq[SingleLocationFvf]) = {
+  def quantifyChunksForField(h: H, field: ast.Field): (H, Seq[SingleLocationDirectFvfDefinition]) = {
     val (chunks, fvfDefOpts) =
       h.values.map {
         case ch: DirectFieldChunk if ch.name == field.name =>
@@ -341,8 +272,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     (H(chunks), fvfDefOpts.flatten.toSeq)
   }
 
-  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Seq[SingleLocationFvf]) = {
-    fields.foldLeft((h, Seq[SingleLocationFvf]())){case ((hAcc, fvfDefsAcc), field) =>
+  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Seq[SingleLocationDirectFvfDefinition]) = {
+    fields.foldLeft((h, Seq[SingleLocationDirectFvfDefinition]())){case ((hAcc, fvfDefsAcc), field) =>
       val (h1, fvfDef1) = quantifyChunksForField(hAcc, field)
 
       (h1, fvfDefsAcc ++ fvfDef1)
@@ -356,7 +287,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                           perms: Term, // p
                           chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                           c: C)
-                         (Q: Option[(H, QuantifiedChunk, MultiLocationFvf, C)] => VerificationResult)
+                         (Q: Option[(H, QuantifiedChunk, FvfDefinition, C)] => VerificationResult)
                          : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
@@ -378,7 +309,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                      perms: Term, // p(x)
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
-                    (Q: Option[(H, QuantifiedChunk, MultiLocationFvf, C)] => VerificationResult)
+                    (Q: Option[(H, QuantifiedChunk, FvfDefinition, C)] => VerificationResult)
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
@@ -400,7 +331,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                     perms: Term, // p(x)
                     chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                     c: C)
-                   : (H, QuantifiedChunk, MultiLocationFvf, Boolean) = {
+                   : (H, QuantifiedChunk, FvfDefinition, Boolean) = {
 
     val (quantifiedChunks, otherChunks) = splitHeap(h, field.name)
     val candidates = chunkOrderHeuristic(quantifiedChunks)
@@ -412,9 +343,9 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     var pNeeded = pInit
     var success = false
 
-    /* Using receiverUsingInverseFunction instead of receiver yields axioms
+    /* Using inverseReceiver instead of receiver yields axioms
      * about the summarising fvf where the inverse function occurring in
-     * receiverUsingInverseFunction is part of the axiom trigger. This makes several
+     * inverseReceiver is part of the axiom trigger. This makes several
      * examples fail, including issue_0122.sil, because assertions in the program
      * that talk about concrete receivers will not use the inverse function, and
      * thus will not trigger the axioms that define the values of the fvf.
@@ -446,7 +377,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       if (success)
         residue ::= ithChunk
       else {
-        val constrainPermissions = !silicon.utils.consumeExactRead(perms, c)
+        val constrainPermissions = !consumeExactRead(perms, c)
 
         val (permissionConstraint, depletedCheck) =
           createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
@@ -623,7 +554,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     }
   }
 
-  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingleLocationFvf]) = value.sort match {
+  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingleLocationDirectFvfDefinition]) = value.sort match {
     case _: sorts.FieldValueFunction =>
       /* The value is already a field value function, in which case we don't create a fresh one. */
       (value, None)
@@ -631,7 +562,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     case _ =>
       val fvf = freshFVF(field)
 
-      (fvf, Some(SingleLocationFvf(field, fvf, rcvr, value)))
+      (fvf, Some(SingleLocationDirectFvfDefinition(field, fvf, rcvr, value)))
   }
 
   def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
@@ -770,7 +701,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   /* Lifetime */
 
   def reset() {
-    withValueCache.clear()
+//    withValueCache.clear()
     lastFVF = lastFVF.empty
     savedLastFVF = savedLastFVF.empty
 
@@ -788,161 +719,6 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 }
 
 object QuantifiedChunkSupporter {
-  var axiomRewriter: AxiomRewriter = null /* TODO: Implement properly */
-
-  case class InverseFunction(symbol: Var, function: Term => Term, invOfFct: Quantification, fctOfInv: Quantification) {
-    val definitionalAxioms = invOfFct :: fctOfInv :: Nil
-    def apply(t: Term) = function(t)
-  }
-
-  case class SingleLocationFvf(field: ast.Field, fvf: Term, rcvr: Term, value: Term) {
-    val valueDefinition = Lookup(field.name, fvf, rcvr) === value
-    val domainDefinition = Domain(field.name, fvf) === SingletonSet(rcvr)
-  }
-
-  case class MultiLocationFvf(field: ast.Field,
-                              fvf: Term,
-                              qvars: Seq[Var],
-                              condition: Term,
-                              rcvr: Term,
-                              sourceChunks: Seq[QuantifiedChunk],
-                              freshFvf: Boolean) {
-
-    /* TODO: Change code s.th. a SingleLocationFvf is created iff qvars.isEmpty */
-
-    val lookupReceiver: Term = Lookup(field.name, fvf, rcvr)
-
-    private case class Entry(sourceChunk: QuantifiedChunk) {
-      val potentialPerms = sourceChunk.perm.replace(`?r`, rcvr)
-      val potentialValue = Lookup(field.name, sourceChunk.fvf, rcvr)
-
-      val valueDefinition = {
-        val domainRestriction =
-          if (qvars.nonEmpty) SetIn(rcvr, Domain(field.name, fvf))
-          else True()
-
-        Implies(
-          And(
-            PermLess(NoPerm(), potentialPerms),
-            domainRestriction),
-          lookupReceiver === potentialValue)
-      }
-    }
-
-    private val entries = sourceChunks map Entry
-
-    val valueDefinitions: Seq[Term/*Quantification*/] = {
-      if (qvars.isEmpty)
-        entries map (entry => entry.valueDefinition)
-      else {
-        val axiomCounter = new silicon.utils.Counter()
-
-        entries.map{entry =>
-          /* It is assumed that the trigger generator works better (i.e.
-           * introduces fewer fresh quantified variables) if it is applied to
-           * bigger terms (e.g. a conjunction of multiple terms) instead of
-           * iteratively applying to multiple smaller terms.
-           * Consequently, the generator is not applied once and upfront to
-           * potentialPerms etc.
-           */
-
-          val sets: Term => Seq[Term] = term => term +: entry.sourceChunk.inv.map(_(`?r`)).toSeq
-
-          val lookup = lookupReceiver.replace(rcvr, `?r`)
-          val newLookupTriggers = Trigger(sets(lookup))
-          val oldLookupTriggers = Trigger(sets(entry.potentialValue.replace(rcvr, `?r`)))
-          /* TODO: Omitting the oldLookupTriggers makes only very few test cases fail.
-           *       Find out, why these particular tests fail.
-           */
-          // val oldLookupTriggers = Trigger(sets(entry.potentialValue.replace(rcvr, `?r`)) :+ SetIn(`?r`, Domain(field.name, fvf)))
-          /* TODO: Strengthening the oldLookupTriggers by adding `?r` in Domain(field.name, fvf)
-           *       makes only very few test cases fail.
-           *       Find out, why these particular tests fail.
-           *       Interestingly, strengthening newLookupTriggers this way makes 27
-           *       tests fails, and strengthening both makes 47 tests fail.
-           */
-
-          /* Replace the given receiver with the implicit one, and in addition,
-           * filter out triggers that don't actually occur in the body. The
-           * latter can happen because the body (or any of its constituents) has
-           * been simplified during its construction.
-           */
-          val rBody = entry.valueDefinition.replace(rcvr, `?r`)
-            /* TODO: Reverts a substitution performed in valueDefinition - avoid this.
-             *       The whole code of MultiLocationFvf probably contains several
-             *       redundant/inefficient sequences of substitutions.
-             */
-
-          val rNewLookupTriggers = newLookupTriggers.p.filter(t => rBody.existsDefined{case `t` =>})
-          val rOldLookupTriggers = oldLookupTriggers.p.filter(t => rBody.existsDefined{case `t` =>})
-
-          val occurringQvars = qvars.filter (v => rBody.existsDefined{case `v` =>})
-          assert(occurringQvars.isEmpty, s"Expected occurringQvars to be empty, but found $occurringQvars")
-
-          Forall(
-            `?r` +: occurringQvars,
-            rBody,
-            Trigger(rNewLookupTriggers) :: Trigger(rOldLookupTriggers) :: Nil,
-            s"qp.$fvf-lookup-${axiomCounter.next()}")
-        }
-      }
-    }
-
-    val domainDefinition: Term = {
-      if (qvars.isEmpty)
-        BuiltinEquals(Domain(field.name,fvf), SingletonSet(rcvr))
-      //        Iff(Domain(field.name,fvf) === SingletonSet(receiver), condition) /* TODO: One test case fails. Find out, why. */
-      else {
-        val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
-
-        TriggerGenerator.allowInvalidTriggers = true
-        val (triggers, extraVars) =
-          TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
-                          .getOrElse((Nil, Nil))
-        TriggerGenerator.allowInvalidTriggers = false
-
-        val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, condition), triggers, s"qp.$fvf-dom")
-
-        val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
-
-        finalForall
-      }
-    }
-
-    def domainDefinition(inverseFunction: InverseFunction): Term = {
-      qvars match {
-        case Seq(v) if v != `?r` =>
-          val repl = (t: Term) => t.replace(rcvr, `?r`).replace(v, inverseFunction(`?r`))
-
-          domainDefinition match {
-            case Forall(Seq(`v`), body, triggers, name) =>
-              Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.symbol}")
-            case other =>
-              repl(other)
-          }
-        case _ =>
-          sys.error(s"Unexpected sequence of qvars: $qvars")
-      }
-    }
-  }
-
-  /* TODO: This is only defined in the object (instead of in the class) because the class
-   *       takes the usual type parameters, which would then have to be added to the
-   *       DefaultFieldValueFunctionsEmitter, which is where `fieldAccesses` is used
-   *       as well. Not a very convincing reason.
-   */
-  def quantifiedFieldAccesses(q: ast.Forall) = {
-    val qvars = q.variables.map(_.localVar)
-
-    q.deepCollect {
-      case fa: ast.FieldAccess if qvars.exists(fa.rcv.contains) => fa.field
-    }
-  }
-
-  /* ------------------------------------------------------------------------------- */
-  /* TODO: Implement all of this properly */
-  var bookkeeper: Bookkeeper = null /* TODO: Implement properly */
-  var program: ast.Program = null /* TODO: Implement properly */
   var collectedFields: Seq[ast.Field] = Seq.empty /* TODO: Implement properly */
   var symbolConverter: SymbolConvert = null
 

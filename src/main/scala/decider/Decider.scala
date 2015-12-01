@@ -18,7 +18,7 @@ import interfaces.state._
 import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
-import supporters.QuantifiedChunkSupporter
+import supporters.qps.QuantifiedChunkSupporter
 import silicon.utils.notNothing._
 
 class DefaultDecider[ST <: Store[ST],
