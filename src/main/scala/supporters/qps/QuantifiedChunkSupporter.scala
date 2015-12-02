@@ -30,7 +30,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                H <: Heap[H],
                                PC <: PathConditions[PC],
                                S <: State[ST, H, S]]
-                              (decider: Decider[ST, H, PC, S, DefaultContext],
+                              (decider: Decider[ST, H, PC, S, DefaultContext[H]],
                                symbolConverter: SymbolConvert,
                                stateFactory: StateFactory[ST, H, S],
                                axiomRewriter: AxiomRewriter,
@@ -42,7 +42,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   import stateFactory._
   import decider.{assert, fresh, check, assume}
 
-  private type C = DefaultContext
+  private type C = DefaultContext[H]
 
   private val permsTakenCounter = new Counter()
   private val qidCounter = new Counter()
@@ -374,7 +374,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       if (success)
         residue ::= ithChunk
       else {
-        val constrainPermissions = !consumeExactRead(perms, c)
+        val constrainPermissions = !consumeExactRead(perms, c.constrainableARPs)
 
         val (permissionConstraint, depletedCheck) =
           createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
