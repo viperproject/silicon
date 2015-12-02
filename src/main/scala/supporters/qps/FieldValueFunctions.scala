@@ -17,57 +17,48 @@ trait FvfDefinition {
   def fvf: Term
   def valueDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
-  def domainDefinitions(inverseFunction: InverseFunction): Seq[Term]
 }
 
-case class SingleLocationDirectFvfDefinition(field: ast.Field,
-                                             fvf: Term,
-                                             rcvr: Term,
-                                             value: Term)
+object FvfDefinition {
+  @inline
+  private[qps] def pointwiseValueDefinition(field: ast.Field,
+                                            fvf: Term,
+                                            rcvr: Term,
+                                            sourceChunk: QuantifiedChunk,
+                                            rcvrInFvfDomain: Boolean)
+                                           : Term = {
+
+      Implies(
+        And(
+          PermLess(NoPerm(), sourceChunk.perm.replace(`?r`, rcvr)),
+          if (rcvrInFvfDomain)
+            SetIn(rcvr, Domain(field.name, fvf))
+          else
+            True()),
+        Lookup(field.name, fvf, rcvr) === Lookup(field.name, sourceChunk.fvf, rcvr))
+  }
+}
+
+case class SingletonChunkFvfDefinition(field: ast.Field,
+                                       fvf: Term,
+                                       rcvr: Term,
+                                       value: Term)
     extends FvfDefinition {
 
   val valueDefinition = Lookup(field.name, fvf, rcvr) === value
   val valueDefinitions = Seq(valueDefinition)
   val domainDefinition = BuiltinEquals(Domain(field.name, fvf), SingletonSet(rcvr))
   val domainDefinitions = Seq(domainDefinition)
-  def domainDefinitions(inverseFunction: InverseFunction) = sys.error("Should not be used")
 }
 
-private[qps] case class PointwiseDefinition(field: ast.Field,
-                                            fvf: Term,
-                                            rcvr: Term,
-                                            sourceChunk: QuantifiedChunk) {
-  val valueDefinition =
-    Implies(
-      And(
-        PermLess(NoPerm(), sourceChunk.perm.replace(`?r`, rcvr)),
-        SetIn(rcvr, Domain(field.name, fvf))),
-      Lookup(field.name, fvf, rcvr) === Lookup(field.name, sourceChunk.fvf, rcvr))
-}
-
-case class SingleLocationIndirectFvfDefinition(field: ast.Field,
-                                               fvf: Term,
-                                               rcvr: Term,
-                                               sourceChunks: Seq[QuantifiedChunk])
-    extends FvfDefinition {
-
-  val valueDefinitions =
-    sourceChunks.map(ch => PointwiseDefinition(field, fvf, rcvr, ch).valueDefinition)
-
-  val domainDefinitions =
-    Seq(BuiltinEquals(Domain(field.name,fvf), SingletonSet(rcvr)))
-
-  def domainDefinitions(inverseFunction: InverseFunction) = sys.error("Should not be used")
-}
-
-case class MultiLocationFvfDefinition(field: ast.Field,
-                                      fvf: Term,
-                                      qvars: Seq[Var],
-                                      condition: Term,
-                                      rcvr: Term,
-                                      sourceChunks: Seq[QuantifiedChunk] /*,
-                                      freshFvf: Boolean*/)
-                                     (axiomRewriter: AxiomRewriter)
+case class QuantifiedChunkFvfDefinition(field: ast.Field,
+                                        fvf: Term,
+                                        qvars: Seq[Var],
+                                        condition: Term,
+                                        rcvr: Term,
+                                        sourceChunks: Seq[QuantifiedChunk] /*,
+                                        freshFvf: Boolean*/)
+                                       (axiomRewriter: AxiomRewriter)
     extends FvfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationFieldValueFunctionDefinition must be used "
@@ -90,7 +81,7 @@ case class MultiLocationFvfDefinition(field: ast.Field,
       var newFvfLookupTriggers = sets(Lookup(field.name, fvf, `?r`))
       var sourceFvfLookupTriggers = sets(Lookup(field.name, sourceChunk.fvf, `?r`))
 
-      val valueDefinition = PointwiseDefinition(field, fvf, `?r`, sourceChunk).valueDefinition
+      val valueDefinition = FvfDefinition.pointwiseValueDefinition(field, fvf, `?r`, sourceChunk, true)
 
       /* Filter out triggers that don't actually occur in the body. The
        * latter can happen because the body (or any of its constituents) has
@@ -110,7 +101,7 @@ case class MultiLocationFvfDefinition(field: ast.Field,
     }
   }
 
-  val domainDefinitions = {
+  val domainDefinitions: Seq[Term] = {
     val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
 
     TriggerGenerator.allowInvalidTriggers = true
@@ -125,7 +116,7 @@ case class MultiLocationFvfDefinition(field: ast.Field,
     Seq(finalForall)
   }
 
-  def domainDefinitions(inverseFunction: InverseFunction) = {
+  def domainDefinitions(inverseFunction: InverseFunction): Seq[Term] = {
     qvars match {
       case Seq(v) if v != `?r` =>
         val repl = (t: Term) => t.replace(rcvr, `?r`).replace(v, inverseFunction(`?r`))
@@ -141,4 +132,16 @@ case class MultiLocationFvfDefinition(field: ast.Field,
         sys.error(s"Unexpected sequence of qvars: $qvars")
     }
   }
+}
+
+case class SummarisingFvfDefinition(field: ast.Field,
+                                    fvf: Term,
+                                    rcvr: Term,
+                                    sourceChunks: Seq[QuantifiedChunk])
+    extends FvfDefinition {
+
+  val valueDefinitions =
+     sourceChunks.map(ch => FvfDefinition.pointwiseValueDefinition(field, fvf, rcvr, ch, false))
+
+  val domainDefinitions = Seq(True())
 }

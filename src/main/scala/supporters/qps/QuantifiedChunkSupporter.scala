@@ -11,7 +11,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{ReceiverNull, InsufficientPermission}
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.{Set, toSet, toMap, Map, Config, MMap}
+import viper.silicon.{Set, toMap, Map, Config}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.{Chunk, Heap, PathConditions, ChunkIdentifier, State, StateFactory, Store}
 import viper.silicon.reporting.Bookkeeper
@@ -231,9 +231,9 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     val fvf = freshFVF(field)
 
     if (qvars.isEmpty)
-      SingleLocationIndirectFvfDefinition(field, fvf, receiver, chunks.toSeq)
+      SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)
     else
-      MultiLocationFvfDefinition(field, fvf, qvars, condition, receiver, chunks.toSeq/*, true*/)(axiomRewriter)
+      QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks.toSeq/*, true*/)(axiomRewriter)
   }
 
   /* Manipulating quantified chunks */
@@ -253,7 +253,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     *         chunks. `ts` is the set of assumptions axiomatising the fresh
     *         field value function `fvf`.
     */
-  def quantifyChunksForField(h: H, field: ast.Field): (H, Seq[SingleLocationDirectFvfDefinition]) = {
+  def quantifyChunksForField(h: H, field: ast.Field): (H, Seq[SingletonChunkFvfDefinition]) = {
     val (chunks, fvfDefOpts) =
       h.values.map {
         case ch: DirectFieldChunk if ch.name == field.name =>
@@ -269,8 +269,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     (H(chunks), fvfDefOpts.flatten.toSeq)
   }
 
-  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Seq[SingleLocationDirectFvfDefinition]) = {
-    fields.foldLeft((h, Seq[SingleLocationDirectFvfDefinition]())){case ((hAcc, fvfDefsAcc), field) =>
+  def quantifyHeapForFields(h: H, fields: Seq[ast.Field]): (H, Seq[SingletonChunkFvfDefinition]) = {
+    fields.foldLeft((h, Seq[SingletonChunkFvfDefinition]())){case ((hAcc, fvfDefsAcc), field) =>
       val (h1, fvfDef1) = quantifyChunksForField(hAcc, field)
 
       (h1, fvfDefsAcc ++ fvfDef1)
@@ -306,14 +306,14 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                      perms: Term, // p(x)
                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
                      c: C)
-                    (Q: Option[(H, QuantifiedChunk, FvfDefinition, C)] => VerificationResult)
+                    (Q: Option[(H, QuantifiedChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
                     : VerificationResult = {
 
     val (h1, ch, fvfDef, success) =
       split(σ, h, field, qvar, inverseReceiver, condition, receiver, perms, chunkOrderHeuristic, c)
 
     if (success) {
-      Q(Some(h1, ch, fvfDef, c))
+      Q(Some(h1, ch, fvfDef.asInstanceOf[QuantifiedChunkFvfDefinition], c))
     } else
       Q(None)
   }
@@ -551,7 +551,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     }
   }
 
-  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingleLocationDirectFvfDefinition]) = value.sort match {
+  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingletonChunkFvfDefinition]) = value.sort match {
     case _: sorts.FieldValueFunction =>
       /* The value is already a field value function, in which case we don't create a fresh one. */
       (value, None)
@@ -559,7 +559,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     case _ =>
       val fvf = freshFVF(field)
 
-      (fvf, Some(SingleLocationDirectFvfDefinition(field, fvf, rcvr, value)))
+      (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, value)))
   }
 
   def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {

@@ -231,22 +231,20 @@ trait DefaultProducer[ST <: Store[ST],
            *
            * Hence, we do the following: if the only trigger for the auxiliary quantifier is
            * of the shape lookup_g(fvf1, x), then we search the body for the equality
-           * lookup_g(fvf1, x) == lookup_g(fvf0, x), and we add as another trigger.
-           * Searching the body is only necessary because, at the current point, we no longer
-           * no the relation between fvf1 and fvf0 (it could be preserved, though).
+           * lookup_g(fvf1, x) == lookup_g(fvf0, x), and we use lookup_g(fvf0, x) as the
+           * trigger. Searching the body is only necessary because, at the current point, we
+           * no longer no the relation between fvf1 and fvf0 (it could be preserved, though).
            */
           val triggerForAuxQuant = invFct.invOfFct.triggers match {
             case Seq(trigger @ Trigger(Seq(lk: Lookup))) => /* TODO: Make more specific */
-              /* We need to look for the equality lookup_g(fvf1, ?r) == lookup_g(fvf0, ?r) */
               var optSourceLkR: Option[Lookup] = None
-              val lkR = lk.copy(at = `?r`)
+              val lkR = lk.copy(at = lk.at) /* Previously (794844ede494) was "at = `?r`" */
               tAuxQuantNoTriggers.visit { case BuiltinEquals(`lkR`, sourceLkR: Lookup) => optSourceLkR = Some(sourceLkR) }
               /* Trigger {lookup_g(fvf1, x), lookup_g(fvf0, x)} */
               Seq(optSourceLkR.fold(trigger)(sourceLkR => Trigger(sourceLkR.copy(at = lk.at) :: Nil)))
             case other =>
               /* Trigger {lookup_g(fvf1, x)} */
-              other
-          }
+              other}
           decider.prover.logComment("Nested auxiliary terms")
           assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
                                           triggers = triggerForAuxQuant))
