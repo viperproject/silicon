@@ -10,13 +10,15 @@ package silicon
 import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import interfaces.state.{Store, Heap, PathConditions, State, StateFormatter}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
 import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
+import state.terms.predef.`?r`
 import supporters.{LetHandler, Brancher, ChunkSupporter}
+import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -34,9 +36,13 @@ trait DefaultProducer[ST <: Store[ST],
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume}
 
+  protected val stateFactory: StateFactory[ST, H, S]
+  import stateFactory._
+
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -136,14 +142,26 @@ trait DefaultProducer[ST <: Store[ST],
           produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+        /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
+        def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
+          if (c.qpFields.contains(field)) {
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
+            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
+            (h + ch, c)
+          } else {
+            val ch = DirectFieldChunk(rcvr, field.name, s, p)
+            val (h1, c1) = chunkSupporter.produce(σ, h, ch, c)
+            (h1, c1)
+          }
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
           assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
             assume(PermAtMost(NoPerm(), pGain))
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
-            val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
-            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
+            val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
             Q(h1, c3)})})
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
@@ -156,6 +174,95 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
+
+      case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, field, gain, forall, _) =>
+        val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
+        val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
+        val σQVar = σ \+ γQVar
+        val πPre = decider.π
+        val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
+        decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB =>
+          eval(σQVar, cond, pve, c0)((tCond, c1) => {
+            assume(tCond)
+            val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
+            eval(σQVar, rcvr, pve, c1a)((tRcvr, c2) =>
+              eval(σQVar, gain, pve, c2)((pGain, c3) => {
+                assume(PermAtMost(NoPerm(), pGain))
+                val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
+                val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
+                val tAuxQuantNoTriggers = Forall(tQVar, And(tAuxNested), Nil, s"prog.l${utils.ast.sourceLine(forall)}-aux")
+                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
+                                 branchConditions = c.branchConditions)
+                QB(tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c4)}))})
+        ){case (tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
+          val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
+          val additionalInvFctArgs = c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs)
+          val (ch, invFct) =
+            quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond,
+                                                           additionalInvFctArgs)
+          decider.prover.logComment("Top-level auxiliary terms")
+          assume(tAuxTopLevel)
+
+          /* [2015-11-13 Malte]
+           * Using the trigger of the inv-of-receiver definitional axiom of the new inverse
+           * function as the trigger of the auxiliary quantifier seems like a good choice
+           * because whenever we need to learn something about the new inverse function,
+           * we might be interested in the auxiliary assumptions as well.
+           *
+           * This choice of triggers, however, might be problematic when quantified field
+           * dereference chains, e.g. x.g.f, where access to x.g and to x.g.f is quantified,
+           * are used in pure assertions, as witnessed by method test04 in test case
+           * quantified permissions/sets/generalised_shape.sil.
+           *
+           * In such a scenario, the receiver of (x.g).f will be an fvf-lookup, e.g.
+           * lookup_g(fvf1, x), but since fvf1 was introduced when evaluating x.g, the
+           * definitional axioms will be nested under the quantifier that is triggered by
+           * lookup_g(fvf1, x). In particular, the lookup definitional axiom, i.e. the one
+           * stating that lookup_g(fvf1, x) == lookup_g(fvf0, x) will be nested.
+           *
+           * Since we (currently) introduce a new FVF per field dereference, asserting that
+           * we have permissions to (x.g).f (e.g. at some later point) will introduce a new
+           * FVF fvf2, alongside a definitional axiom stating that
+           * lookup_g(fvf2, x) == lookup_g(fvf0, x).
+           *
+           * In order to prove that we hold permissions to (x.g).f, we would need to
+           * instantiate the auxiliary quantifier, but that quantifier is only triggered by
+           * lookup_g(fvf1, x).
+           *
+           * Hence, we do the following: if the only trigger for the auxiliary quantifier is
+           * of the shape lookup_g(fvf1, x), then we search the body for the equality
+           * lookup_g(fvf1, x) == lookup_g(fvf0, x), and we use lookup_g(fvf0, x) as the
+           * trigger. Searching the body is only necessary because, at the current point, we
+           * no longer no the relation between fvf1 and fvf0 (it could be preserved, though).
+           */
+          val triggerForAuxQuant = invFct.invOfFct.triggers match {
+            case Seq(trigger @ Trigger(Seq(lk: Lookup))) => /* TODO: Make more specific */
+              var optSourceLkR: Option[Lookup] = None
+              val lkR = lk.copy(at = lk.at) /* Previously (794844ede494) was "at = `?r`" */
+              tAuxQuantNoTriggers.visit { case BuiltinEquals(`lkR`, sourceLkR: Lookup) => optSourceLkR = Some(sourceLkR) }
+              /* Trigger {lookup_g(fvf1, x), lookup_g(fvf0, x)} */
+              Seq(optSourceLkR.fold(trigger)(sourceLkR => Trigger(sourceLkR.copy(at = lk.at) :: Nil)))
+            case other =>
+              /* Trigger {lookup_g(fvf1, x)} */
+              other}
+          decider.prover.logComment("Nested auxiliary terms")
+          assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
+                                          triggers = triggerForAuxQuant))
+          decider.prover.logComment("Definitional axioms for inverse functions")
+          assume(invFct.definitionalAxioms)
+          val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+          val ch1 = ch.copy(hints = hints)
+          val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
+          decider.prover.logComment("Receivers are non-null")
+          assume(Set(tNonNullQuant))
+          decider.prover.logComment("Definitional axioms for field value functions")
+          val c2 = c1.snapshotRecorder match {
+            case Some(sr) =>
+              val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms)
+              c1.copy(snapshotRecorder = Some(sr1))
+            case None =>
+              c1}
+          Q(σ.h + ch1, c2)}
 
       case _: ast.InhaleExhaleExp =>
         Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
@@ -218,7 +325,7 @@ trait DefaultProducer[ST <: Store[ST],
         getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
 
       case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-        (toSort(f.typ), false)
+      (sorts.FieldValueFunction(toSort(f.typ)), false)
 
       case _ =>
         (sorts.Snap, false)

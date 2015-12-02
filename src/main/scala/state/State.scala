@@ -15,6 +15,7 @@ import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, Sta
     StateFactory}
 import interfaces.decider.Decider
 import terms.{Term, True, Implies, And, PermPlus, PermLess, PermAtMost}
+import terms.predef.`?r`
 import terms.perms.IsPositive
 import reporting.Bookkeeper
 
@@ -135,9 +136,9 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
 
 class DefaultHeapCompressor[ST <: Store[ST],
                             H <: Heap[H],
-                             PC <: PathConditions[PC],
+                            PC <: PathConditions[PC],
                             S <: State[ST, H, S],
-                             C <: Context[C]]
+                            C <: Context[C]]
                            (val decider: Decider[ST, H, PC, S, C],
                             val distinctnessLowerBound: Term,
                             val stateFormatter: StateFormatter[ST, H, S, String],
@@ -252,6 +253,10 @@ class DefaultHeapCompressor[ST <: Store[ST],
             val c3 = c1.copy(perm = PermPlus(c1.perm, c2.perm), snap = tSnap)
             (ah - c1 + c3, afcs, amatches + (c1 -> c2), ats + tSnapDef)
 
+          case (Some(c1: QuantifiedChunk), c2: QuantifiedChunk) =>
+            /* TODO: Singleton quantified chunks could be merged */
+            (ah + c1 + c2, afcs, amatches, ats)
+
           case (Some(other), _) =>
             sys.error(
               s"""[DefaultHeapUtils.merge] Chunks with
@@ -298,6 +303,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
     h.values foreach {
       case DirectFieldChunk(rcvr, fieldName, _, perm) =>
         add(fieldName, rcvr, perm)
+      case QuantifiedChunk(fieldName, _, perm, _, _, Some(rcvr), _) =>
+        add(fieldName, rcvr, perm.replace(`?r`, rcvr))
       case _ =>
     }
 

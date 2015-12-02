@@ -18,6 +18,7 @@ import interfaces.state._
 import state.{DefaultContext, DirectChunk, SymbolConvert}
 import state.terms._
 import reporting.Bookkeeper
+import supporters.qps.QuantifiedChunkSupporter
 import silicon.utils.notNothing._
 
 class DefaultDecider[ST <: Store[ST],
@@ -37,6 +38,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var pathConditions: PC = _
   protected var symbolConverter: SymbolConvert = _
   protected var heapCompressor: HeapCompressor[ST, H, S, C] = _
+  protected var quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S] = _
 
   private sealed trait State
 
@@ -63,7 +65,8 @@ class DefaultDecider[ST <: Store[ST],
   def init(pathConditionsFactory: PathConditionsFactory[PC],
            heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
-           bookkeeper: Bookkeeper)
+           bookkeeper: Bookkeeper,
+           quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S])
           : Option[DependencyNotFoundError] = {
 
     this.pathConditionsFactory = pathConditionsFactory
@@ -72,6 +75,7 @@ class DefaultDecider[ST <: Store[ST],
     this.bookkeeper = bookkeeper
     this.symbolConverter = new silicon.state.DefaultSymbolConvert()
     this.pathConditions = pathConditionsFactory.Π()
+    this.quantifiedChunkSupporter = quantifiedChunkSupporter
 
     val optProverError = createProver()
 
@@ -317,6 +321,7 @@ class DefaultDecider[ST <: Store[ST],
     case True() => true
 //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
     case _ if π contains t => true
+    case q: Quantification if q.body == True() => true
     case _ => false
   }
 
@@ -437,6 +442,11 @@ class DefaultDecider[ST <: Store[ST],
     bookkeeper.freshSymbols += 1
 
     val v = prover.fresh(id, s)
+
+    s match {
+      case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(v)
+      case _ => /* Nothing special to do */
+    }
 
     v
   }

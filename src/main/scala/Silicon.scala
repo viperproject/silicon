@@ -8,7 +8,7 @@ package viper
 package silicon
 
 import java.text.SimpleDateFormat
-import java.io.{PrintWriter, StringWriter, File}
+import java.io.File
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
@@ -20,18 +20,18 @@ import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
 import silver.ast
 import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
-    AbortedExceptionally => SilExceptionThrown}
+    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
 import silver.frontend.{SilFrontend, SilFrontendConfig}
 import common.config.Version
 import interfaces.{Failure => SiliconFailure}
-import state.terms.FullPerm
+import decider.{SMTLib2PreambleEmitter, DefaultDecider}
+import state.terms.{AxiomRewriter, FullPerm}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
-import decider.{SMTLib2PreambleEmitter, DefaultDecider}
+import supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
+    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter}
+import supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import reporting.{VerificationException, Bookkeeper}
-import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
-    DefaultSequencesEmitter}
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -214,7 +214,13 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val heapCompressor =
       new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, stateFormatter, stateFactory, config, bookkeeper)
 
-    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
+    val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
+
+    val quantifiedChunkSupporter =
+      new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, axiomRewriter, config,
+                                                 bookkeeper)
+
+    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper, quantifiedChunkSupporter)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
 
     decider.start()
@@ -225,9 +231,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
     val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
 
+    val fieldValueFunctionsEmitter =
+      new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
+
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, bookkeeper)
+      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
+      stateFormatter, heapCompressor, quantifiedChunkSupporter, bookkeeper)
   }
 
   private def reset() {
@@ -692,6 +701,23 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(assertionModeConverter)
+
+
+  val splitTimeout = opt[Int]("qpSplitTimeout",
+    descr = (  "Timeout (in ms) used by QP's split algorithm when 1) checking if a chunk "
+             + "holds no further permissions, and 2) checking if sufficiently many "
+             + "permissions have already been split off."),
+    default = Some(500),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val disableQPCaching = opt[Boolean]("disableQPCaching",
+    descr = "Disable caching of qp-related symbols and axioms.",
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
 
   /* Option validation */
 

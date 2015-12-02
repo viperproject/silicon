@@ -7,6 +7,7 @@
 package viper
 package silicon
 
+import scala.collection.mutable
 import silver.verifier.VerificationError
 import silver.verifier.errors.Internal
 import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
@@ -127,14 +128,51 @@ package object utils {
       case pos: silver.ast.HasLineColumn => pos.line.toString
       case _ => node.pos.toString
     }
+
+    def quantifiedFields(root: silver.ast.Node, program: silver.ast.Program): Set[silver.ast.Field] = {
+      val collected = mutable.ListBuffer[silver.ast.Field]()
+      val visited = mutable.Set[silver.ast.Member]()
+      val toVisit = mutable.Queue[silver.ast.Member]()
+
+      root match {
+        case m: silver.ast.Member => toVisit += m
+        case _ =>
+      }
+
+      toVisit ++= silver.ast.utility.Nodes.referencedMembers(root, program)
+
+      quantifiedFields(toVisit, collected, visited, program)
+
+      toSet(collected)
+    }
+
+    private def quantifiedFields(toVisit: mutable.Queue[silver.ast.Member],
+                                 collected: mutable.ListBuffer[silver.ast.Field],
+                                 visited: mutable.Set[silver.ast.Member],
+                                 program: silver.ast.Program) {
+
+      while (toVisit.nonEmpty) {
+        val root = toVisit.dequeue()
+
+        root visit {
+          case silver.ast.QuantifiedPermissionSupporter.ForallRefPerm(_, _, _, field, _, _, _) =>
+            collected += field
+        }
+
+        visited += root
+
+        silver.ast.utility.Nodes.referencedMembers(root, program) foreach (m =>
+          if (!visited.contains(m)) toVisit += m)
+      }
+    }
   }
 
   object consistency {
     type PositionedNode = silver.ast.Node with silver.ast.Positioned
 
     def check(program: silver.ast.Program) = (
-      program.functions.flatMap(checkFunctionPostconditionNotRecursive)
-        ++ checkPermissions(program))
+         program.functions.flatMap(checkFunctionPostconditionNotRecursive)
+      ++ checkPermissions(program))
 
     def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
       val message = (

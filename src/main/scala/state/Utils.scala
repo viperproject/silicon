@@ -44,6 +44,16 @@ package object utils {
       case dpc: DirectPredicateChunk =>
         dpc.args foreach collect
         collect(dpc.snap)
+      case qch: QuantifiedChunk =>
+        /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
+         * hence, they can only be used under quantifiers that bind `?r`.
+         * An exception are quantified chunks that (definitely) provide permissions to
+         * a single location (i.e. for a single receiver) only.
+         */
+        qch.singletonRcvr.foreach(rcvr => {
+          collect(rcvr)
+          collect(qch.valueAt(rcvr))
+        })
       case _ =>
     }
 
@@ -57,7 +67,7 @@ package object utils {
   }
 
   def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
-    (Nil, ts)
+    ts.partition(_.isInstanceOf[FvfAfterRelation])
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
     var problems: List[String] = Nil
@@ -105,8 +115,7 @@ package object utils {
     case fp: FractionPerm => List(fp.n, fp.d)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
-    case app: Apply => List(app.func) ++ app.args
-    case fapp: FApp => List(fapp.function, fapp.snapshot) ++ fapp.tArgs
+    case app: Application => app.function +: app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
@@ -119,6 +128,9 @@ package object utils {
     case l: Let =>
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
+    case Domain(_, fvf) => fvf :: Nil
+    case Lookup(_, fvf, at) => fvf :: at :: Nil
+    case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -166,6 +178,7 @@ package object utils {
       case PermAtMost(p0, p1) => PermAtMost(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
       case Apply(f, ts) =>  Apply(go(f), ts map go)
+      case ApplyMacro(f, ts) =>  ApplyMacro(go(f), ts map go)
       case FApp(f, s, ts) => FApp(f, go(s), ts map go)
       case SeqRanged(t0, t1) => SeqRanged(go(t0), go(t1))
       case SeqSingleton(t) => SeqSingleton(go(t))
@@ -200,6 +213,9 @@ package object utils {
       case SortWrapper(t, s) => SortWrapper(go(t), s)
       case Distinct(ts) => Distinct(ts map go)
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
+      case Domain(f, fvf) => Domain(f, go(fvf))
+      case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
+      case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

@@ -1,0 +1,157 @@
+/* Misc */
+
+field f: Int
+
+predicate P01(xs: Set[Ref]) {
+  forall x: Ref :: x in xs ==> acc(x.f)
+}
+
+method test01(xs: Set[Ref], a: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires a in xs
+{
+  var oa: Int := a.f
+
+  a.f := oa + 1
+
+  assert a.f != oa
+
+  fold P01(xs)
+  unfold P01(xs)
+
+  assert a.f > oa
+}
+
+method test02(xs: Set[Ref], a: Ref, b: Ref)
+  requires forall x: Ref :: x in xs ==> acc(x.f)
+  requires a in xs && b in xs
+  ensures forall x: Ref :: x in xs ==> acc(x.f)
+  ensures a != b ? b.f < a.f : a.f == b.f
+{
+  a.f := b.f + 1
+
+  fold P01(xs)
+  unfold P01(xs)
+
+  assert a == b || a.f > b.f
+}
+
+predicate P02(xs: Set[Ref], a: Ref) {
+  (forall x: Ref :: x in xs ==> acc(x.f)) && a in xs
+}
+
+/* Distilled from union-find example */
+
+field nodes: Set[Ref]
+field parent: Ref
+
+method test03(y: Ref, xs: Set[Ref]) {
+  inhale !(null in xs)
+  inhale y in xs
+  inhale forall x: Ref :: x in xs ==> acc(x.parent)
+  inhale forall x: Ref :: x in xs ==> x.parent in xs
+
+  assert acc(y.parent)
+  assert forall x: Ref :: x in xs ==> x.parent in xs
+  assert y.parent in xs
+  assert y.parent != null
+}
+
+predicate inv(this: Ref) {
+     acc(this.nodes)
+  && !(null in this.nodes)
+  && (forall n : Ref :: n in this.nodes ==> acc(n.parent))
+  && (forall q : Ref :: q in this.nodes ==> q.parent in this.nodes)
+}
+
+method test04(this: Ref, struct: Ref)
+  requires acc(this.parent) //&& this.parent == null
+  requires struct != null
+  requires
+       acc(struct.nodes)
+    && !(null in struct.nodes)
+    && (forall n : Ref :: n in struct.nodes ==> acc(n.parent))
+    && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+//  requires acc(inv(struct))
+  requires !(this in struct.nodes)
+//  requires !(this.parent in struct.nodes)
+    /* Without this precondition folding inv(struct) fails.
+     * It follows from this.parent != null together with null not in struct.nodes,
+     * which is part of inv(struct)'s body.
+     */
+{
+//  unfold acc(inv(struct))
+
+  this.parent := this
+  struct.nodes := struct.nodes union Set(this)
+
+  fold acc(inv(struct))
+  unfold acc(inv(struct))
+
+  assert this.parent == this
+}
+
+function getParent(this: Ref, struct: Ref): Ref
+  requires acc(inv(struct))
+  requires unfolding acc(inv(struct)) in this in struct.nodes
+{ unfolding acc(inv(struct)) in this.parent }
+
+method test05(this: Ref, struct: Ref)
+  requires acc(inv(struct))
+  requires unfolding acc(inv(struct)) in this in struct.nodes
+  requires getParent(this, struct) == null
+{
+  unfold acc(inv(struct))
+  assert this.parent == null
+}
+
+/* Distilled from composite example */
+
+field value: Int
+field left: Ref
+//field right: Ref
+field parentStruct: Ref
+
+predicate inv2(this: Ref) {
+     acc(this.nodes)
+  && !(null in (this.nodes))
+  && (forall x: Ref :: x in (this.nodes) ==> acc(x.parent))
+//  && (forall o: Ref :: o in (this.all) ==> acc(o.parentStruct, wildcard))
+  && (forall x: Ref :: x in (this.nodes) ==> acc(x.left)) /* 1/2 */
+//  && (forall t: Ref :: t in (this.all) && t.left != null && visit(t) ==> t.left in this.all)
+//  && (forall s: Ref :: (s in (this.all) && s.left == null) ==> acc(s.left, 1/2))
+//  && (forall v: Ref :: v in (this.all) ==> acc(v.right, 1/2))
+//  && (forall t1: Ref :: t1 in (this.all) && t1.right != null && visit(t1) ==> t1.right in this.all)
+//  && (forall y: Ref :: (y in (this.all) && y.right == null) ==> acc(y.right, 1/2))
+  && (forall x: Ref :: x in (this.nodes) ==> acc(x.value))
+//  && forall y: Ref :: y in this.all && visit(y) ==> y.value == ((y.left==null ? 0 : y.left.value) + (y.right==null ? 0 : y.right.value))  + 1
+}
+
+function getAllNodes(this: Ref): Set[Ref]
+  requires acc(inv2(this))
+{
+ unfolding acc(inv2(this)) in this.nodes
+}
+
+function getLeft(this: Ref): Ref
+  requires acc(this.parentStruct)
+  requires acc(inv2(this.parentStruct))
+  requires this in getAllNodes(this.parentStruct)
+{
+ unfolding acc(inv2(this.parentStruct)) in this.left
+}
+
+method test07(this: Ref, newParent: Ref, isLeft: Bool)
+  requires acc(newParent.parentStruct)
+  requires acc(inv2(newParent.parentStruct))
+  requires newParent in getAllNodes(newParent.parentStruct)
+  requires isLeft == true
+  requires isLeft ==> getLeft(newParent) == null // : getRight(newParent)==null
+{
+//  this.value := 1
+//  this.parent := newParent
+  unfold acc(inv2(newParent.parentStruct))
+
+  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
+  assert isLeft ==> newParent.left == null // : newParent.right == null
+}

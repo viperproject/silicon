@@ -22,8 +22,11 @@ import state.{SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{utils => _, _}
 import state.terms.predef.`?s`
 
-case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
-                            private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map())
+case class SnapshotRecorder(functionArgs: Seq[Var],
+                            private val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
+                            private val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
+                            freshFvfs: Set[(ast.Field, Term)] = Set(),
+                            qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
     extends Mergeable[SnapshotRecorder]
        with Logging {
 
@@ -65,6 +68,14 @@ case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[
     copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
   }
 
+  def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]) = {
+    copy(qpTerms = qpTerms + ((qvars, guards, ts)))
+  }
+
+  def recordFvf(field: ast.Field, fvf: Term) = {
+    copy(freshFvfs = freshFvfs + ((field, fvf)))
+  }
+
   def merge(other: SnapshotRecorder): SnapshotRecorder = {
     val lts =
       other.locToSnaps.foldLeft(locToSnaps){case (accLts, (loc, guardsToSnaps)) =>
@@ -78,7 +89,10 @@ case class SnapshotRecorder(private val locToSnaps: Map[ast.LocationAccess, Set[
         accFts + (fapp -> guardsToSnaps1)
       }
 
-    copy(locToSnaps = lts, fappToSnaps = fts)
+    val fvfs = freshFvfs ++ other.freshFvfs
+    val qpts = qpTerms ++ other.qpTerms
+
+    copy(locToSnaps = lts, fappToSnaps = fts, freshFvfs = fvfs, qpTerms = qpts)
   }
 
   /** Tries to merge two snapshots. For two snapshots to be mergable, they have
@@ -172,16 +186,62 @@ class FunctionData(val programFunction: ast.Function,
   /* If the program function isn't well-formed, the following field might remain empty */
   private var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
   private var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
+  private var optQPTerms: Option[Set[(Seq[Var], Stack[Term], Iterable[Term])]] = None
+  private var optFreshFvfs: Option[Set[(ast.Field, Var)]] = None
+
+  /* TODO: Should be lazy vals, not methods */
 
   def locToSnap = optLocToSnap.getOrElse(Map[ast.LocationAccess, Term]())
   def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
+  def freshFvfs = optFreshFvfs.getOrElse(Set[(ast.Field, Var)]())
+
+  def qpTerms: Iterable[Term] = optQPTerms match {
+    case Some(qpts) =>
+      qpts.map { case (qvars, guards, ts) =>
+        val body = Implies(And(guards), And(ts))
+
+        if (qvars.isEmpty) body
+        else Forall(qvars, body, Seq[Trigger]()).autoTrigger }
+              /* TODO: Could use TriggerGenerator.generateFirstTriggers here */
+
+    case None =>
+      Nil
+  }
 
   def locToSnap_=(lts: Map[ast.LocationAccess, Term]) { optLocToSnap = Some(lts) }
   def fappToSnap_=(fts: Map[ast.FuncApp, Term]) { optFappToSnap = Some(fts) }
 
+  def freshFvfs_=(fvfs: Set[(ast.Field, Term)]) = {
+    assert(fvfs.forall(_._2.isInstanceOf[Var]))
+    optFreshFvfs = Some(fvfs.asInstanceOf[Set[(ast.Field, Var)]])
+  }
+
+  def qpTerms_=(qpts: Set[(Seq[Var], Stack[Term], Iterable[Term])]) { optQPTerms = Some(qpts) }
+
   lazy val translatedPre: Option[Term] =
     expressionTranslator.translatePrecondition(program, programFunction.pres, this)
                         .map(And)
+
+  lazy val afterRelations: Set[Term] = translatedPre match {
+    case None => Set.empty
+    case Some(_) =>
+      var lastFVF = freshFvfs.map{case (field, fvf) =>
+        val fvfTOP = Var(s"fvfTOP_${field.name}", fvf.sort)
+        field -> fvfTOP
+      }.toMap
+
+      val afters: Set[Term] =
+      freshFvfs.map{case (field, freshFvf) =>
+        val fvf = lastFVF(field)
+        val after = FvfAfterRelation(field.name, freshFvf, fvf)
+
+        lastFVF = lastFVF.updated(field, freshFvf)
+
+        after
+      }
+
+      afters
+  }
 
   lazy val axiom: Option[Term] = translatedPre match {
     case None => None
@@ -197,8 +257,12 @@ class FunctionData(val programFunction: ast.Function,
       //        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
       //                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
       //                           .distinct: _*)
-      optBody.map(body =>
-        Quantification(Forall, args, Implies(pre, And(fapp === body/*, nonNulls*/)), triggers))
+      optBody.map(translatedBody => {
+        val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(fapp === translatedBody/*, nonNulls*/))))
+        val body =
+          if (freshFvfs.isEmpty) innermostBody
+          else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
+        Forall(args, body, triggers)})
   }
 
   lazy val postAxiom: Option[Term] = translatedPre match {
@@ -208,17 +272,21 @@ class FunctionData(val programFunction: ast.Function,
         val optPosts =
           expressionTranslator.translatePostcondition(program, programFunction.posts, this)
 
-        optPosts.map(posts =>
-          Quantification(Forall, args, Implies(pre, And(posts)), limitedTriggers))
+        optPosts.map(posts => {
+          val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(posts))))
+          val body =
+            if (freshFvfs.isEmpty) innermostBody
+            else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
+          Forall(args, body, limitedTriggers)})
       } else
         Some(True())
   }
 }
 
 trait FunctionSupporter[ST <: Store[ST],
-                         H <: Heap[H],
-                         PC <: PathConditions[PC],
-                         S <: State[ST, H, S]]
+                        H <: Heap[H],
+                        PC <: PathConditions[PC],
+                        S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
@@ -279,7 +347,11 @@ trait FunctionSupporter[ST <: Store[ST],
 
     private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-      val c = DefaultContext[H](program = program, snapshotRecorder = Some(SnapshotRecorder()))
+
+      val c = DefaultContext[H](program = program,
+                                qpFields = utils.ast.quantifiedFields(function, program),
+                                snapshotRecorder = Some(SnapshotRecorder(data.args)))
+
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)
@@ -287,6 +359,7 @@ trait FunctionSupporter[ST <: Store[ST],
 
       val result = verifyAndAxiomatize(function, c)
 
+      data.afterRelations foreach decider.prover.assume
       data.axiom foreach decider.prover.assume
 
       resultSpecsWellDefined :: result :: Nil
@@ -333,6 +406,8 @@ trait FunctionSupporter[ST <: Store[ST],
         val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
         data.locToSnap = summaryRecorder.locToSnap
         data.fappToSnap = summaryRecorder.fappToSnap
+        data.qpTerms = summaryRecorder.qpTerms
+        data.freshFvfs = summaryRecorder.freshFvfs
       }
 
       data.welldefined = !result.isFatal
@@ -389,6 +464,8 @@ trait FunctionSupporter[ST <: Store[ST],
 
         data.locToSnap = summaryRecorder.locToSnap
         data.fappToSnap = summaryRecorder.fappToSnap
+        data.qpTerms = summaryRecorder.qpTerms
+        data.freshFvfs = summaryRecorder.freshFvfs
       }
 
       data.welldefined &&= !result.isFatal

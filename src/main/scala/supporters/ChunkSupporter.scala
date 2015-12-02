@@ -14,10 +14,9 @@ import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.state.{HeapCompressor, ChunkIdentifier, State, PathConditions, Heap, Store}
-import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk}
+import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, QuantifiedChunk}
 import state.terms._
 import state.terms.perms.IsNoAccess
-import silicon.utils
 
 trait ChunkSupporter[ST <: Store[ST],
                      H <: Heap[H],
@@ -63,7 +62,9 @@ trait ChunkSupporter[ST <: Store[ST],
                     pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
                   else
                     h2
-                Q(h3, pc.snap, pc :: Nil, c2)}
+                Q(h3, pc.snap, pc :: Nil, c2)
+              case qch: QuantifiedChunk =>
+                sys.error(s"Found unexpected quantified chunk $qch")}
           case None =>
             /* Not having consumed anything could mean that we are in an infeasible
              * branch, or that the permission amount to consume was zero.

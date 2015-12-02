@@ -12,7 +12,7 @@ import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
     UnfoldFailed, AssertFailed, CallFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse}
+import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, InsufficientPermission}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
@@ -21,6 +21,7 @@ import state.terms._
 import state.{FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
 import supporters.{Brancher, PredicateSupporter}
+import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
@@ -45,6 +46,7 @@ trait DefaultExecutor[ST <: Store[ST],
   import symbolConverter.toSort
 
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
 
@@ -189,6 +191,28 @@ trait DefaultExecutor[ST <: Store[ST],
         eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
           Q(σ \+ (v, tRhs), c1))
 
+      /* Assignment for a field that contains quantified chunks */
+      case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
+              if c.qpFields.contains(field) =>
+
+        val pve = AssignmentFailed(ass)
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+          eval(σ, rhs, pve, c1)((tRhs, c2) =>
+            decider.assert(σ, tRcvr !== Null()){
+              case false =>
+                Failure[ST, H, S](pve dueTo ReceiverNull(fa))
+              case true =>
+                val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+                val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
+                  case Some((h1, _, _, c3)) =>
+                    val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
+                    optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+                    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
+                    Q(σ \ h1 \+ ch, c3)
+                  case None =>
+                    Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
+
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
@@ -204,14 +228,23 @@ trait DefaultExecutor[ST <: Store[ST],
       case ast.NewStmt(v, fields) =>
         val tRcvr = fresh(v)
         assume(tRcvr !== Null())
-        val newChunks = H(fields.map(f => DirectFieldChunk(tRcvr, f.name, fresh(f.name, toSort(f.typ)), FullPerm())))
+        /* TODO: Verify similar to the code in DefaultProducer/ast.FieldAccessPredicate - unify */
+        val newChunks = fields map (field => {
+          val p = FullPerm()
+          val s = fresh(field.name, toSort(field.typ))
+          if (c.qpFields.contains(field)) {
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, s)
+            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
+          } else
+            DirectFieldChunk(tRcvr, field.name, s, p)})
         val σ1 = σ \+ (v, tRcvr) \+ H(newChunks)
         val ts = state.utils.computeReferenceDisjointnesses[ST, H, S](σ1, tRcvr)
-        /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
-         * tRcvr is constrained to be different from (ref-typed) fields of tRcvr to which
-         * permissions have been gained.
-         * Note that we do not constrain the (ref-typed) fields to be mutually disjoint.
-         */
+          /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
+           * tRcvr is constrained to be different from (ref-typed) fields of tRcvr to which
+           * permissions have been gained.
+           * Note that we do not constrain the (ref-typed) fields to be mutually disjoint.
+           */
         assume(And(ts))
         Q(σ1, c)
 

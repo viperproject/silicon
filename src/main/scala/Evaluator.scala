@@ -23,6 +23,7 @@ import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
 import supporters.{Joiner, Brancher, PredicateSupporter}
+import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -51,6 +52,8 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+  
   def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
@@ -149,6 +152,24 @@ trait DefaultEvaluator[ST <: Store[ST],
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
+
+      case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
+        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
+            val fvfDomain = fvfDef.domainDefinitions
+            val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+            assume(fvfDomain ++ fvfDef.valueDefinitions)
+            val c2 = c1.snapshotRecorder match {
+              case Some(sr) =>
+                val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfLookup)
+                            .recordQPTerms(qvars, c1.branchConditions, fvfDomain ++ fvfDef.valueDefinitions)
+                val sr2 =
+                  if (true/*fvfDef.freshFvf*/) sr1.recordFvf(fa.field, fvfDef.fvf)
+                  else sr1
+                c1.copy(snapshotRecorder = Some(sr2))
+              case _ => c1}
+            Q(fvfLookup, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>

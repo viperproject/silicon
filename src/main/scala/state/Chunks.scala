@@ -9,7 +9,9 @@ package silicon
 package state
 
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import terms.{PermMinus, PermPlus, Term, sorts}
+import terms.{Lookup, PermMinus, PermPlus, Term, sorts}
+import state.terms.predef.`?r`
+import supporters.qps.InverseFunction
 
 sealed trait DirectChunk extends PermissionChunk[DirectChunk]
 
@@ -32,6 +34,33 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
   def \(perm: Term) = this.copy(perm = perm)
 
   override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
+}
+
+case class QuantifiedChunk(name: String,
+                           fvf: Term,
+                           perm: Term,
+                           inv: Option[InverseFunction],
+                           initialCond: Option[Term],
+                           singletonRcvr: Option[Term],
+                           hints: Seq[Term] = Nil)
+    extends FieldChunk with DirectChunk {
+
+  assert(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
+         s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
+
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+
+  val args = `?r` :: Nil
+  val id = FieldChunkIdentifier(`?r`, name)
+  val value = fvf
+
+  def +(perm: Term): QuantifiedChunk = this.copy(perm = PermPlus(this.perm, perm))
+  def -(perm: Term): QuantifiedChunk = this.copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = this.copy(perm = perm)
+
+  def valueAt(rcvr: Term) = Lookup(name, fvf, rcvr)
+
+  override def toString = "%s %s :: %s.%s -> %s # %s".format(terms.Forall, `?r`, `?r`, name, fvf, perm)
 }
 
 case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {
