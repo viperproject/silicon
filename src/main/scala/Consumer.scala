@@ -349,11 +349,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
 
-      /* Any regular Expressions, i.e. boolean and arithmetic */
       case _ =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
-        evalAndAssert(σC, h, φ, pve, c0)(Q)
+        evalAndAssert(σC, h, φ, pve, c0)((h1, t, dcs, c1) => {
+          val c2 = c1.copy(reserveHeaps = c.reserveHeaps, exhaleExt = c.exhaleExt)
+          Q(h1, t, dcs, c2)
+        })
     }
 
     consumed
@@ -378,9 +380,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             QF(Failure[ST, H, S](pve dueTo AssertionFalse(e)))
         })
     })((σ1, c1) => {
-      Q(h, Unit, Nil, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap,
-                              reserveHeaps = c.reserveHeaps,
-                              exhaleExt = c.exhaleExt))
+      Q(h, Unit, Nil, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))
     })
   }
 

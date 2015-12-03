@@ -55,7 +55,10 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   def verify(member: ast.Member, program: ast.Program): VerificationResult = {
     val quantifiedFields = utils.ast.quantifiedFields(member, program)
-    val c = DefaultContext[H](program, quantifiedFields)
+    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
+    val c = DefaultContext[H](program = program,
+                              qpFields = quantifiedFields,
+                              applyHeuristics = applyHeuristics)
 
     quantifiedChunkSupporter.initLastFVF(quantifiedFields) /* TODO: Implement properly */
 
