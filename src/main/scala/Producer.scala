@@ -137,18 +137,8 @@ trait DefaultProducer[ST <: Store[ST],
           produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
       case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          /* Assuming receiver non-null might contradict current path conditions
-           * and we would like to detect that as early as possible.
-           * We could try to assert false after the assumption, but it seems likely
-           * that 'tRcvr === Null()' syntactically occurs in the path conditions if
-           * it is true. Hence, we assert it here, which (should) syntactically look
-           * for the term before calling Z3.
-           */
-          if (decider.check(σ, tRcvr === Null(), config.checkTimeout())) /* TODO: Benchmark performance impact */
-            Success()
-          else {
-            assume(tRcvr !== Null())
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
+          assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
             assume(PermAtMost(NoPerm(), pGain))
             val s = sf(toSort(field.typ))
