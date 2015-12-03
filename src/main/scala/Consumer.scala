@@ -86,7 +86,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     else {
       val φ = φs.head
 
-      if (φ.tail.isEmpty)
+      if (φs.tail.isEmpty)
         consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
           Q(σ \ h1, s1, dcs1, c1))
       else

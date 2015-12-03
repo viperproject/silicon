@@ -9,7 +9,6 @@ package silicon
 
 import org.slf4s.Logging
 import silver.ast
-import silver.ast.utility.Expressions
 import silver.verifier.PartialVerificationError
 import silver.verifier.errors.PreconditionInAppFalse
 import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission}
@@ -53,17 +52,17 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+  def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
 
-    evals2(σ, es, Nil, pve, c)((ts, c1) =>
+    evals2(σ, es, Nil, pvef, c)((ts, c1) =>
       Q(ts, c1))
 
   private def evals2(σ: S,
                      es: Seq[ast.Exp],
                      ts: List[Term],
-                     pve: PartialVerificationError,
+                     pvef: ast.Exp => PartialVerificationError,
                      c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
@@ -71,8 +70,8 @@ trait DefaultEvaluator[ST <: Store[ST],
     if (es.isEmpty)
       Q(ts.reverse, c)
     else
-      eval(σ, es.head, pve, c)((t, c1) =>
-        evals2(σ, es.tail, t :: ts, pve, c1)(Q))
+      eval(σ, es.head, pvef(es.head), c)((t, c1) =>
+        evals2(σ, es.tail, t :: ts, pvef, c1)(Q))
   }
 
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
@@ -192,9 +191,9 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
-          val tAnd = And(t0, optT1.getOrElse(True()))
-          Q(tAnd, c1)})
+        /* TODO: Avoid evaluating e0 twice */
+        val e1Short = ast.Implies(e0, e1)(e1.pos, e1.info)
+        evalBinOp(σ, e0, e1Short, (t1, t2) => And(t1, t2), pve, c)(Q)
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -202,22 +201,25 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
-        evalDependently(σ, e0, e1, Not, pve, c)((t0, optT1, c1) => {
-          val tOr = Or(t0, optT1.getOrElse(True()))
-          Q(tOr, c1)})
+        /* TODO: Avoid evaluating e0 twice */
+        val e1Short = ast.And(ast.Not(e0)(e0.pos, e0.info), e1)(e1.pos, e1.info)
+        evalBinOp(σ, e0, e1Short, (t1, t2) => Or(t1, t2), pve, c)(Q)
 
       case ast.Implies(e0, e1) =>
-        evalDependently(σ, e0, e1, Predef.identity, pve, c)((t0, optT1, c1) => {
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branchAndJoin(σ, t0, c1,
+            (c2, QB) => eval(σ, e1, pve, c2)(QB),
+            (c2, QB) => Success()
+          )((optT1, optT2, cJoined) => {
           val tImplies = Implies(t0, optT1.getOrElse(True()))
-          Q(tImplies, c1)})
+            Q(tImplies, cJoined)
+          }))
 
       case ite @ ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           branchAndJoin(σ, t0, c1,
-            (c2, QB) =>
-              eval(σ, e1, pve, c2)(QB),
-            (c2, QB) =>
-              eval(σ, e2, pve, c2)(QB)
+            (c2, QB) => eval(σ, e1, pve, c2)(QB),
+            (c2, QB) => eval(σ, e2, pve, c2)(QB)
           )((optT1, optT2, cJoined) => {
             val tIte =
               Ite(t0,
@@ -294,20 +296,23 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Domains not handled directly */
       case dfa @ ast.DomainFuncApp(funcName, eArgs, _) =>
-        evals(σ, eArgs, pve, c)((tArgs, c1) => {
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) => {
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(DomainFApp(fi, tArgs), c1)})
 
-      case quant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
-        val (triggerQuant, tQuantOp, silTriggers) = quant match {
-          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
-          case ex: ast.Exists => (ex, Exists, Seq())
+      case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
+        val (eQuant, qantOp, eTriggers) = sourceQuant match {
+          case forall: ast.Forall =>
+            val autoTriggeredForall = utils.ast.autoTrigger(forall)
+            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+          case exists: ast.Exists =>
+            (exists, Exists, Seq())
         }
 
-        val body = triggerQuant.exp
-        val vars = triggerQuant.variables map (_.localVar)
+        val body = eQuant.exp
+        val vars = eQuant.variables map (_.localVar)
 
         val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
         val γVars = Γ(vars zip tVars)
@@ -317,32 +322,34 @@ trait DefaultEvaluator[ST <: Store[ST],
                         recordPossibleTriggers = true,
                         possibleTriggers = Map.empty)
 
-        decider.locally[(Set[Term], Quantification, C)](QB => {
+        decider.locally[(Quantification, Iterable[Term], Quantification, C)](QB => {
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
-            evalTriggers(σQuant, silTriggers, pve, c1)((triggers, c2) => {
-              val πAux = state.utils.extractAuxiliaryTerms(πDelta, tQuantOp, tVars, triggers)
-              val qid = quant.pos match {
-                case pos: ast.HasLineColumn => s"prog.l${pos.line}"
-                case _ => s"prog.l${quant.pos}"}
-              val tQuant = Quantification(tQuantOp, tVars, tBody, triggers, qid)
+            evalTriggers(σQuant, eTriggers, pve, c1)((triggers, c2) => {
+              val sourceLine = utils.ast.sourceLine(sourceQuant)
+              val tQuant = Quantification(qantOp, tVars, tBody, triggers, s"prog.l$sourceLine")
+              val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
+              val tAuxQuant = Quantification(qantOp, tVars, And(tAuxNested), triggers, s"prog.l$sourceLine-aux")
               val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
                                recordPossibleTriggers = c.recordPossibleTriggers,
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
-              QB(πAux, tQuant, c3)})})
-        }){case (πAux, tQuant, c1) =>
-          assume(πAux)
+              QB(tQuant, tAuxTopLevel, tAuxQuant, c3)})})
+        }){case (tQuant, tAuxTopLevel, tAuxQuant, c1) =>
+          decider.prover.logComment("Top-level auxiliary terms")
+          assume(tAuxTopLevel)
+          decider.prover.logComment("Nested auxiliary terms")
+          assume(tAuxQuant)
           Q(tQuant, c1)
         }
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
-        val err = PreconditionInAppFalse(fapp)
+        val pvePre = PreconditionInAppFalse(fapp)
         val func = c.program.findFunction(funcName)
 
-        evals2(σ, eArgs, Nil, pve, c)((tArgs, c2) => {
+        evals2(σ, eArgs, Nil, _ => pve, c)((tArgs, c2) => {
           bookkeeper.functionApplications += 1
-          val pre = Expressions.instantiateVariables(utils.ast.BigAnd(func.pres), func.formalArgs, eArgs)
+          val pre = func.pres map (ast.utility.Expressions.instantiateVariables(_, func.formalArgs, eArgs))
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
@@ -354,21 +361,21 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB =>
-            consume(σ, FullPerm(), pre, err, c2)((_, s, _, c3) => {
+          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
+            val c3 = c2.copy(recordVisited = true)
+            consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
-              val c4 = c3.snapshotRecorder match {
-                case Some(sr) =>
-                  c3.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c3.branchConditions, s1)))
-                case _ => c3}
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
-              val c5 =
-                if (c4.recordPossibleTriggers) c4.copy(possibleTriggers = c4.possibleTriggers + (fapp -> tFApp))
-                else c4
-              QB(tFApp, c5)})
-            )((tR, cR) => {
-              Q(tR, cR)
-            })})
+              val c5 = c4.snapshotRecorder match {
+                case Some(sr) =>
+                  c4.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c4.branchConditions, s1)))
+                case _ => c4}
+              val c6 =
+                if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp))
+                else c5
+              val c7 = c6.copy(recordVisited = c2.recordVisited)
+              QB(tFApp, c7)})
+            })(Q)})
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -377,33 +384,33 @@ trait DefaultEvaluator[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
 
         if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
-          val c0 = c.incCycleCounter(predicate)
-
-          evals(σ, eArgs, pve, c0)((tArgs, c1) =>
+          evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
                 case true =>
-                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB =>
-                      /* [2014-12-10 Malte] The commented code should replace the code following
-                       * it, but using it slows down RingBufferRd.sil significantly. The generated
-                       * Z3 output looks nearly identical, so my guess is that it is some kind
-                       * of triggering problem, probably related to sequences.
-                       */
+                join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
+                  val c3 = c2.incCycleCounter(predicate)
+                             .copy(recordVisited = true)
+                    /* [2014-12-10 Malte] The commented code should replace the code following
+                     * it, but using it slows down RingBufferRd.sil significantly. The generated
+                     * Z3 output looks nearly identical, so my guess is that it is some kind
+                     * of triggering problem, probably related to sequences.
+                     */
 //                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
 //                      val c4 = c3.decCycleCounter(predicate)
 //                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                        QB(tIn, c5))})
-                    consume(σ, FullPerm(), acc, pve, c2)((σ1, snap, chs, c3) => {
+                  consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
 //                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c3)((σ2, c4) => {
-                        val c4a = c4.decCycleCounter(predicate)
-                        val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/, eIn, pve, c4a)((tIn, c5) => {
-                          QB(tIn, c5)})})})
-                  )(Q)
+                    val body = pa.predicateBody(c4.program).get /* Only non-abstract predicates can be unfolded */
+                    produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c4)((σ2, c5) => {
+                      val c6 = c5.copy(recordVisited = c2.recordVisited)
+                                 .decCycleCounter(predicate)
+                      val σ3 = σ2 //\ (g = σ.g)
+                      eval(σ3 /*\ σ.γ*/, eIn, pve, c6)(QB)})})
+                })(Q)
                 case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)
@@ -423,11 +430,11 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.RangeSeq(e0, e1) => evalBinOp(σ, e0, e1, SeqRanged, pve, c)(Q)
 
       case ast.SeqUpdate(e0, e1, e2) =>
-        evals2(σ, List(e0, e1, e2), Nil, pve, c)((ts, c1) =>
+        evals2(σ, List(e0, e1, e2), Nil, _ => pve, c)((ts, c1) =>
           Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
 
       case ast.ExplicitSeq(es) =>
-        evals2(σ, es.reverse, Nil, pve, c)((tEs, c1) => {
+        evals2(σ, es.reverse, Nil, _ => pve, c)((tEs, c1) => {
           val tSeq =
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
               SeqAppend(SeqSingleton(te), tSeq))
@@ -440,14 +447,14 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.EmptyMultiset(typ) => Q(EmptyMultiset(toSort(typ)), c)
 
       case ast.ExplicitSet(es) =>
-        evals2(σ, es, Nil, pve, c)((tEs, c1) => {
+        evals2(σ, es, Nil, _ => pve, c)((tEs, c1) => {
           val tSet =
             tEs.tail.foldLeft[SetTerm](SingletonSet(tEs.head))((tSet, te) =>
               SetAdd(tSet, te))
           Q(tSet, c1)})
 
       case ast.ExplicitMultiset(es) =>
-        evals2(σ, es, Nil, pve, c)((tEs, c1) => {
+        evals2(σ, es, Nil, _ => pve, c)((tEs, c1) => {
           val tMultiset =
             tEs.tail.foldLeft[MultisetTerm](SingletonMultiset(tEs.head))((tMultiset, te) =>
               MultisetAdd(tMultiset, te))
@@ -523,7 +530,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             Q(FieldChunkIdentifier(tRcvr, field.name), c1))
 
       case ast.PredicateAccess(eArgs, predicateName) =>
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
     }
 
@@ -631,7 +638,7 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       stop if evaluating one fails
      */
     val r =
-      evals(σ, remainingTriggerExpressions, pve, c)((remainingTriggerTerms, c1) => {
+      evals(σ, remainingTriggerExpressions, _ => pve, c)((remainingTriggerTerms, c1) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         πAux = decider.π -- πPre
         Success()})
@@ -667,66 +674,5 @@ trait DefaultEvaluator[ST <: Store[ST],
         bookkeeper.logfiles("evalTrigger").println(s"Couldn't translate some of these triggers:\n  $remainingTriggerExpressions\nReason:\n  $r")
         Q(Trigger(cachedTriggerTerms), c)
     }
-  }
-
-  /* Evaluates `e0` to `t0`, assumes `t0Transformer(t0)`, and afterwards only
-   * evaluates `e1` if the current state is consistent. That is, `e1` is only
-   * evaluated if `t0Transformer(t0)` does not contradict the current path
-   * conditions. This method can be used to evaluate short-circuiting operators
-   * such as conjunction, disjunction or implication.
-   *
-   * Attention: `e1` is not expected to branch; if it does, an exception will be
-   * thrown.
-   */
-  private def evalDependently(σ: S,
-                              e0: ast.Exp,
-                              e1: ast.Exp,
-                              t0Transformer: Term => Term,
-                              pve: PartialVerificationError, c: C)
-                             (Q: (Term, Option[Term], C) => VerificationResult)
-                             : VerificationResult = {
-
-      var πPre: Set[Term] = Set()
-      var optT1: Option[Term] = None /* e1 won't be evaluated if e0 cannot be satisfied */
-      var πAux: Set[Term] = Set()
-      var optInnerC: Option[C] = None
-
-      eval(σ, e0, pve, c)((t0, c1) => {
-        πPre = decider.π
-
-        decider.pushScope()
-
-        val guard = t0Transformer(t0)
-        var originalChunks: Option[Iterable[Chunk]] = None
-        val r =
-          branch(σ, guard, c1,
-            (c2: C) => {
-              if (c2.retrying) {
-                originalChunks = Some(σ.h.values)
-                heapCompressor.compress(σ, σ.h, c2)
-              }
-              eval(σ, e1, pve, c2)((t1, c3) => {
-                assert(optT1.isEmpty, s"Unexpected branching occurred while locally evaluating $e1")
-                optT1 = Some(t1)
-                πAux = decider.π -- (πPre + guard)
-                  /* Removing guard from πAux is crucial, it is not part of the aux. terms */
-                optInnerC = Some(c3)
-                Success()})},
-            (c2: C) =>
-              Success())
-
-        /* See comment in DefaultDecider.tryOrFail */
-        originalChunks match {
-          case Some(chunks) => σ.h.replace(chunks)
-          case None => /* Nothing to do here */
-        }
-
-        decider.popScope()
-
-        r && {
-          val tAux = πAux
-          assume(Implies(guard, And(tAux)))
-          val c2 = optInnerC.map(_.copy(branchConditions = c1.branchConditions)).getOrElse(c1)
-          Q(t0, optT1, c2)}})
   }
 }

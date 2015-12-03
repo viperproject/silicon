@@ -15,12 +15,12 @@ import supporters.SnapshotRecorder
 
 case class DefaultContext[H <: Heap[H]]
                          (program: ast.Program,
-                          visited: List[ast.Member] = Nil, /* TODO: Use MultiSet[Member] instead of List[Member] */
+                          recordVisited: Boolean = false,
+                          visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
                           branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
-
                           snapshotRecorder: Option[SnapshotRecorder] = None,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
@@ -40,14 +40,19 @@ case class DefaultContext[H <: Heap[H]]
                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil)
     extends Context[DefaultContext[H]] {
 
-  def incCycleCounter(m: ast.Member) = copy(visited = m :: visited)
+  def incCycleCounter(m: ast.Predicate) =
+    if (recordVisited) copy(visited = m :: visited)
+    else this
 
-  def decCycleCounter(m: ast.Member) = {
-    require(visited.contains(m))
+  def decCycleCounter(m: ast.Member) =
+    if (recordVisited) {
+      require(visited.contains(m))
 
-    val (ms, others) = visited.partition(_ == m)
-    copy(visited = ms.tail ::: others)
-  }
+      val (ms, others) = visited.partition(_ == m)
+      copy(visited = ms.tail ::: others)
+    }
+  else
+    this
 
   def cycles(m: ast.Member) = visited.count(_ == m)
 
@@ -67,16 +72,16 @@ case class DefaultContext[H <: Heap[H]]
    */
 
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
-    case DefaultContext(program1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1, retrying1,
-                        snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
+    case DefaultContext(program1, recordVisited1, visited1, branchConditions1, constrainableARPs1, quantifiedVariables1,
+                        retrying1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
                         recordConsumedChunks1, producedChunks1, consumedChunks1, letBoundVars1) =>
 
       other match {
-        case DefaultContext(`program1`, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`,
-                            retrying2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
-                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
+        case DefaultContext(`program1`, recordVisited2, `visited1`, `branchConditions1`, `constrainableARPs1`,
+                            `quantifiedVariables1`, retrying2, snapshotRecorder2, `recordPossibleTriggers1`,
+                            possibleTriggers2,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                             `recordConsumedChunks1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`) =>
 
@@ -84,7 +89,8 @@ case class DefaultContext[H <: Heap[H]]
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
           val snapshotRecorder3 = DefaultContext.merge(snapshotRecorder1, snapshotRecorder2)
 
-          copy(retrying = retrying1 || retrying2,
+          copy(recordVisited = recordVisited1 || recordVisited2,
+               retrying = retrying1 || retrying2,
                snapshotRecorder = snapshotRecorder3,
                possibleTriggers = possibleTriggers3)
 

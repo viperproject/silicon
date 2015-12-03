@@ -8,15 +8,15 @@ package viper
 package silicon
 package state
 
+import scala.collection.mutable
 import org.slf4s.Logging
 import silver.ast
 import interfaces.state.{Context, Store, Heap, PathConditions, State, Chunk, StateFormatter, HeapCompressor,
     StateFactory}
 import interfaces.decider.Decider
-import terms.{Term, True, Implies, And, PermPlus, PermLess}
-import terms.perms.{IsAsPermissive, IsPositive}
+import terms.{Term, True, Implies, And, PermPlus, PermLess, PermAtMost}
+import terms.perms.IsPositive
 import reporting.Bookkeeper
-import collection.mutable
 
 /*
  * Immutable implementation of the necessary state interfaces
@@ -140,9 +140,10 @@ class DefaultHeapCompressor[ST <: Store[ST],
                              C <: Context[C]]
                            (val decider: Decider[ST, H, PC, S, C],
                             val distinctnessLowerBound: Term,
-                            val bookkeeper: Bookkeeper,
                             val stateFormatter: StateFormatter[ST, H, S, String],
-                            val stateFactory: StateFactory[ST, H, S])
+                            val stateFactory: StateFactory[ST, H, S],
+                            val config: Config,
+                            val bookkeeper: Bookkeeper)
     extends HeapCompressor[ST, H, S, C] with Logging {
 
   import stateFactory.H
@@ -152,9 +153,6 @@ class DefaultHeapCompressor[ST <: Store[ST],
     * calling `h.replace(...)`.
     */
   def compress(σ: S, h: H, ctx: C) {
-    var fcs: List[DirectFieldChunk] = Nil
-    var rfcs: List[DirectFieldChunk] = Nil
-
     var tSnaps = Set[Term]()
     var rts = Set[Term]()
 
@@ -169,24 +167,18 @@ class DefaultHeapCompressor[ST <: Store[ST],
      *    reflected in the State, which could cause confusion while debugging.
      *  - Path conditions are prover.push'ed, then prover.pop'ped again, and then
      *    later on decider.assume'ed again.
-     *  - It might be sufficient to consider the changeset rfcs and to merge
-     *    that with the other chunks, or even iteratively into an empty chunk.
-     *    The result would finally be merged with the complete heap.
-     *    Not sure if that turns out to be sufficient, though.
+     *
+     * TODO: Don't use heaps during compression, just work on Iterable[Chunk] or Set[Chunk]
      */
-
-    /* TODO: Don't use heaps during compression, just work on Iterable[Chunk] or Set[Chunk] */
 
     decider.pushScope()
     do {
       val result = singleMerge(σ, h1, h2, ctx)
       rh = result._1
-      rfcs = result._2
       rts = result._4
 
       rts foreach decider.prover.assume
 
-      fcs = fcs ::: rfcs
       tSnaps = tSnaps ++ rts
       h1 = H()
       h2 = rh
@@ -194,7 +186,8 @@ class DefaultHeapCompressor[ST <: Store[ST],
     decider.popScope()
 
     assumeValidPermissionAmounts(rh)
-    val tDists = deriveObjectDistinctness(σ, rh, fcs)
+
+    val tDists = deriveReferenceInequalities(σ, rh)
 
     decider.assume(tSnaps ++ tDists)
 
@@ -268,7 +261,15 @@ class DefaultHeapCompressor[ST <: Store[ST],
             (ah - c1 + c3, afcs, amatches + (c1 -> c2), ats + tSnapDef)
 
           case (Some(other), _) =>
-            sys.error("[DefaultHeapUtils.merge] Chunks with id = %s and types c1 = %s, c2 = %s were not expected to appear in heaps h1 = %s, h2 = %s.".format(c2.id, other.getClass.getName, c2.getClass.getName, stateFormatter.format(h1), stateFormatter.format(h2)))
+            sys.error(
+              s"""[DefaultHeapUtils.merge] Chunks with
+                 |  id = ${c2.id}
+                 |and types
+                 |  c1 = ${other.getClass.getName},
+                 |  c2 = ${c2.getClass.getName}
+                 |were not expected to appear in heaps
+                 |  h1 = ${stateFormatter.format(h1)},
+                 |  h2 = ${stateFormatter.format(h2)}.""".stripMargin)
 
           case (None, c2: DirectFieldChunk) => (ah + c2, c2 :: afcs, amatches, ats)
           case (None, _) => (ah + c2, afcs, amatches, ats)
@@ -279,51 +280,53 @@ class DefaultHeapCompressor[ST <: Store[ST],
   }
 
   private def combineSnapshots(t1: Term, t2: Term, p1: Term, p2: Term): (Term, Term) = {
-//    var createdFreshSnap = false
-
     val (tSnap, tSnapDef) =
       (IsPositive(p1), IsPositive(p2)) match {
         case (True(), b2) => (t1, Implies(b2, t1 === t2))
         case (b1, True()) => (t2, Implies(b1, t2 === t1))
         case (b1, b2) =>
           val t3 = decider.fresh(t1.sort)
-//          createdFreshSnap = true
           (t3,  And(Implies(b1, t3 === t1), Implies(b2, t3 === t2)))
       }
-
-//    val logfile = bookkeeper.logfiles("conditionallyEquate")
-//    logfile.println(s"$p1, $p2,   --> ($createdFreshSnap), $tSnap, $tSnapDef")
 
     (tSnap, tSnapDef)
   }
 
-  private def deriveObjectDistinctness(σ: S, h: H, fcs: List[DirectFieldChunk]): List[Term] = {
+  /* Derives which references cannot be aliases from the available permissions */
+  private def deriveReferenceInequalities(σ: S, h: H): List[Term] = {
     bookkeeper.objectDistinctnessComputations += 1
 
-    /* Compute which objects must be distinct by considering field chunks and
-     * access permissions.
-     * Rule: if t1.f |-> _ # p1 and t2.f |-> _ # p2 in h and p1 + p2 > 100
-     *       then t1 != t2
-     * We only consider the changeset fcs and compare each chunk in it to
-     * all chunks in h having the same field id.
-     */
-    val fieldChunks = h.values collect {case c: DirectFieldChunk => c}
-    val gs = fieldChunks groupBy(_.name)
+    val pairsPerField = mutable.HashMap[String, mutable.ListBuffer[(Term, Term)]]()
 
-    val tDists = fcs flatMap(c1 => gs(c1.name) map (c2 =>
-      if (   c1.rcvr != c2.rcvr /* Necessary since fcs is a subset of h */
-          && decider.check(σ, PermLess(distinctnessLowerBound, PermPlus(c1.perm, c2.perm))))
+    def add(fieldName: String, rcvr: Term, perm: Term) {
+      pairsPerField.getOrElseUpdate(fieldName, mutable.ListBuffer[(Term, Term)]())
+                   .append((rcvr, perm))
+    }
 
-        c1.rcvr !== c2.rcvr
-      else
-        terms.True()))
+    h.values foreach {
+      case DirectFieldChunk(rcvr, fieldName, _, perm) =>
+        add(fieldName, rcvr, perm)
+      case _ =>
+    }
 
-    tDists
+    val tDists = mutable.ListBuffer[Term]()
+
+    for ((fieldName, pairs) <- pairsPerField;
+         Seq((rcvr1, perm1), (rcvr2, perm2)) <- pairs.combinations(2)) {
+
+      if (   rcvr1 != rcvr2 /* Not essential for soundness, but avoids fruitless prover calls */
+          && decider.check(σ, PermLess(distinctnessLowerBound, PermPlus(perm1, perm2)), config.checkTimeout())) {
+
+        tDists += (rcvr1 !== rcvr2)
+      }
+    }
+
+    tDists.result()
   }
 
   private def assumeValidPermissionAmounts(h: H) {
     h.values foreach {
-      case fc: DirectFieldChunk => decider.assume(IsAsPermissive(distinctnessLowerBound, fc.perm))
+      case fc: DirectFieldChunk => decider.assume(PermAtMost(fc.perm, distinctnessLowerBound))
       case _=>
     }
   }

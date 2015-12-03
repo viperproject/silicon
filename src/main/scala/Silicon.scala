@@ -211,7 +211,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val dlb = FullPerm()
 
-    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
+    val heapCompressor =
+      new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, stateFormatter, stateFactory, config, bookkeeper)
 
     decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
@@ -341,25 +342,29 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
-    var failures =
+    val failures =
       results.flatMap(r => r :: r.allPrevious)
              .collect{ case f: Failure => f }
-
-    /* Removes results that have the same textual representation of their
-     * error message.
-     *
-     * TODO: This is not only ugly, and also should not be necessary. It seems
-     *       that malformed predicates are currently reported multiple times,
-     *       once for each fold/unfold and once when they are checked for
-     *       well-formedness.
-     */
-    failures = failures.reverse
-           .foldLeft((Set[String](), List[Failure]())){
-              case ((ss, rs), f: Failure) =>
-                if (ss.contains(f.message.readableMessage)) (ss, rs)
-                else (ss + f.message.readableMessage, f :: rs)
-              case ((ss, rs), r) => (ss, r :: rs)}
-           ._2
+             /* Removes results that have the same textual representation of their
+              * error message.
+              *
+              * TODO: This is not only ugly, and also should not be necessary. It seems
+              *       that malformed predicates are currently reported multiple times,
+              *       once for each fold/unfold and once when they are checked for
+              *       well-formedness.
+              */
+             .reverse
+             .foldLeft((Set[String](), List[Failure]())){
+                case ((ss, rs), f: Failure) =>
+                  if (ss.contains(f.message.readableMessage)) (ss, rs)
+                  else (ss + f.message.readableMessage, f :: rs)
+                case ((ss, rs), r) => (ss, r :: rs)}
+             ._2
+             /* Order failures according to source position */
+             .sortBy(_.message.pos match {
+                case pos: ast.HasLineColumn => (pos.line, pos.column)
+                case _ => (-1, -1)
+             })
 
     if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()
@@ -447,6 +452,33 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     }
 
     val tag = scala.reflect.runtime.universe.typeTag[String]
+    val argType = org.rogach.scallop.ArgType.LIST
+  }
+
+  private val smtlibOptionsConverter = new ValueConverter[Map[String, String]] {
+    def parse(s: List[(String, List[String])]): Either[String, Option[Map[String, String]]] = s match {
+      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' =>
+        val config = toMap(
+          str.substring(1, str.length - 1) /* Drop leading and trailing quotation mark */
+             .split(' ') /* Separate individual key=value pairs */
+             .map(_.trim)
+             .filter(_.nonEmpty)
+             .map(_.split('=')) /* Split key=value pairs */
+             .flatMap {
+                case Array(k, v) =>
+                  Some(k -> v)
+                case other =>
+                  return Left(s"Unexpected arguments")
+           })
+
+        Right(Some(config))
+      case Nil =>
+        Right(None)
+      case _ =>
+        Left(s"Unexpected arguments")
+    }
+
+    val tag = scala.reflect.runtime.universe.typeTag[Map[String, String]]
     val argType = org.rogach.scallop.ArgType.LIST
   }
 
@@ -626,16 +658,26 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )(forwardArgumentsConverter)
 
-  val z3ConfigArgs = opt[String]("z3ConfigArgs",
+  val z3ConfigArgs = opt[Map[String, String]]("z3ConfigArgs",
     descr = (  "Configuration options which should be forwarded to Z3. "
              + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
              + "including the quotation marks. "
              + "The configuration options given here will override those from Silicon's Z3 preamble."),
-    default = None,
+    default = Some(Map()),
     noshort = true,
     hidden = false
-  )(forwardArgumentsConverter)
-  
+  )(smtlibOptionsConverter)
+
+  lazy val z3Timeout: Int =
+    None.orElse(
+            z3ConfigArgs().collectFirst {
+              case (k, v) if k.toLowerCase == "timeout" && v.forall(Character.isDigit) => v.toInt
+            })
+        .orElse{
+            val z3TimeoutArg = """-t:(\d+)""".r
+            z3Args.get.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
+        .getOrElse(0)
+        
   val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
     descr = "Maximal number of nested heuristics applications (default: 3)",
     default = Some(3),
@@ -722,7 +764,10 @@ object SiliconRunner extends SiliconFrontend {
       siliconInstance.stop()
     }
 
-    sys.exit()
+    sys.exit(result match {
+      case SilSuccess => 0
+      case SilFailure(_) => 1
+    })
       /* TODO: This currently seems necessary to make sure that Z3 is terminated
        *       if Silicon is supposed to terminate prematurely because of a
        *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()

@@ -46,7 +46,7 @@ package object utils {
 
   /* NOT thread-safe */
   class Counter {
-    private var value = 0
+    private var value = -1
 
     def next() = {
       value = value + 1
@@ -54,7 +54,7 @@ package object utils {
     }
 
     def reset() {
-      value = 0
+      value = -1
     }
   }
 
@@ -71,6 +71,10 @@ package object utils {
   }
 
   object ast {
+    /** Use with care! In particular, pre sure you now the effect of `BigAnd` on
+      * snapshot recording before you e.g. `consume(..., BigAnd(some_preconditions), ...)`.
+      * Consider using `consumes(..., some_preconditions, ...)` instead.
+      */
     def BigAnd(it: Iterable[silver.ast.Exp],
                f: silver.ast.Exp => silver.ast.Exp = e => e,
                emptyPos: silver.ast.Position = silver.ast.NoPosition) =
@@ -89,6 +93,41 @@ package object utils {
             silver.ast.LtCmp(x, b)(e.pos)
           )(e.pos)
       })(recursive = _ => true)
+
+    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
+      val forallAutoTriggered = forall.autoTrigger
+
+      if (forallAutoTriggered.triggers.nonEmpty)
+      /* Standard trigger generation code succeeded */
+        forallAutoTriggered
+      else {
+        /* Standard trigger generation code failed.
+         * Let's try generating (certain) invalid triggers, which will then be rewritten
+         */
+        silver.ast.utility.Triggers.TriggerGeneration.allowInvalidTriggers = true
+
+        val finalForall =
+          silver.ast.utility.Expressions.generateTriggerSet(forall) match {
+            case Some((variables, triggerSets)) =>
+              /* Invalid triggers could be generated, now try to rewrite them */
+              val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
+
+              silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
+            case None =>
+              /* Invalid triggers could not be generated -> give up */
+              forall
+          }
+
+        silver.ast.utility.Triggers.TriggerGeneration.allowInvalidTriggers = false
+
+        finalForall
+      }
+    }
+
+    def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
+      case pos: silver.ast.HasLineColumn => pos.line.toString
+      case _ => node.pos.toString
+    }
   }
 
   object consistency {
@@ -97,17 +136,6 @@ package object utils {
     def check(program: silver.ast.Program) = (
       program.functions.flatMap(checkFunctionPostconditionNotRecursive)
         ++ checkPermissions(program))
-
-    /* Unsupported expressions, features or cases */
-
-    def createIllegalQuantifiedLocationExpressionError(offendingNode: PositionedNode) = {
-      val message = (
-        "Silicon requires foralls with access predicates in their body to have "
-          + "a special shape. Try 'forall x: Ref :: x in aSet ==> acc(x.f, perms)' "
-          + "or 'forall i: Int :: i in [0..|aSeq|) ==> acc(aSeq[i].f, perms)'.")
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
 
     def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
       val message = (

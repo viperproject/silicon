@@ -17,7 +17,6 @@ import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state._
 import state.{DefaultContext, DirectChunk, SymbolConvert, MagicWandChunk, MagicWandChunkIdentifier}
 import state.terms._
-import state.terms.perms.IsAsPermissive
 import reporting.Bookkeeper
 import silicon.utils.notNothing._
 
@@ -209,22 +208,24 @@ class DefaultDecider[ST <: Store[ST],
    * but the interface does NOT guarantee mutability!
    */
 
-  def assume(_terms: Set[Term]) {
-    val terms = _terms filterNot isKnownToBeTrue
-    if (terms.nonEmpty) assumeWithoutSmokeChecks(terms)
+  def assume(terms: Iterable[Term]) {
+    val newTerms = toSet(terms filterNot isKnownToBeTrue)
+    if (terms.nonEmpty) assumeWithoutSmokeChecks(newTerms)
   }
 
   private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
+    /* Add terms to Silicon-managed path conditions */
     terms foreach pathConditions.push
-    /* Add terms to Syxc-managed path conditions */
-    terms foreach prover.assume
+
     /* Add terms to the prover's assumptions */
+    terms foreach prover.assume
+
     None
   }
 
   /* Asserting facts */
 
-  def checkSmoke() = prover.check(config.checkTimeout()) == Unsat
+  def checkSmoke() = prover.check(config.checkTimeout.get) == Unsat
 
   def tryOrFail[R](σ: S, c: C)
                   (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
@@ -292,9 +293,9 @@ class DefaultDecider[ST <: Store[ST],
     r
   }
 
-  def check(σ: S, t: Term, timeout: Int = 0) = assert(σ, t, timeout, null)
+  def check(σ: S, t: Term, timeout: Int) = assert(σ, t, Some(timeout), null)
 
-  def assert(σ: S, t: Term, timeout: Int = 0)(Q: Boolean => VerificationResult) = {
+  def assert(σ: S, t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
     val success = assert(σ, t, timeout, null)
 
     /* Heuristics could also be invoked whenever an assertion fails. */
@@ -306,7 +307,7 @@ class DefaultDecider[ST <: Store[ST],
     Q(success)
   }
 
-  protected def assert(σ: S, t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
+  protected def assert(σ: S, t: Term, timeout: Option[Int], logSink: java.io.PrintWriter) = {
     val asserted = isKnownToBeTrue(t)
 
     asserted || proverAssert(t, timeout, logSink)
@@ -319,7 +320,7 @@ class DefaultDecider[ST <: Store[ST],
     case _ => false
   }
 
-  private def proverAssert(t: Term, timeout: Int, logSink: java.io.PrintWriter) = {
+  private def proverAssert(t: Term, timeout: Option[Int], logSink: java.io.PrintWriter) = {
     if (logSink != null)
       logSink.println(t)
 
@@ -370,7 +371,7 @@ class DefaultDecider[ST <: Store[ST],
     tryOrFail[CH](σ \ h, c)((σ1, c1, QS, QF) =>
       withChunk[CH](σ1, σ1.h, id, locacc, pve, c1)((ch, c2) => {
         val permCheck =  optPerms match {
-          case Some(p) => IsAsPermissive(ch.perm, p)
+          case Some(p) => PermAtMost(p, ch.perm)
           case None => ch.perm !== NoPerm()
         }
 
@@ -422,7 +423,9 @@ class DefaultDecider[ST <: Store[ST],
                                  : Option[CH] = {
 
 //    fcwpLog.println(id)
-    val chunk = chunks find (ch => check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*)))
+    val chunk =
+      chunks find (ch =>
+        check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*), config.checkTimeout()))
 
     chunk
   }
@@ -458,8 +461,6 @@ class DefaultDecider[ST <: Store[ST],
     bookkeeper.freshSymbols += 1
 
     val v = prover.fresh(id, s)
-
-    if (s == sorts.Perm) assume(IsValidPermVar(v))
 
     v
   }

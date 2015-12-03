@@ -20,8 +20,6 @@ import java.text.SimpleDateFormat
 import silver.components.StatefulComponent
 
 class Bookkeeper(config: Config) extends StatefulComponent {
-  private var lastSeenSource: Option[String] = None
-
   var branches: Long = 0
   var heapMergeIterations: Long = 0
   var objectDistinctnessComputations: Long = 0

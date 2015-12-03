@@ -80,8 +80,15 @@ trait DefaultProducer[ST <: Store[ST],
       if (φs.tail.isEmpty)
         produce(σ, sf, p, φ, pvef(φ), c)(Q)
       else {
-        produce(σ, sf, p, φ, pvef(φ), c)((σ1, c1) => {
-          produces(σ1, sf, p, φs.tail, pvef, c1)(Q)})
+        val (sf0, sf1) = createSnapshotPair(sf, φ, utils.ast.BigAnd(φs.tail), c)
+          /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
+           *       then remove use of BigAnd; for one it is not efficient since
+           *       the tail of the (decreasing list parameter φs) is BigAnd-ed
+           *       over and over again.
+           */
+
+        produce(σ, sf0, p, φ, pvef(φ), c)((σ1, c1) => {
+          produces(σ1, sf1, p, φs.tail, pvef, c1)(Q)})
       }
     }
   }
@@ -102,32 +109,7 @@ trait DefaultProducer[ST <: Store[ST],
 
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure || config.handlePureConjunctsIndividually() =>
-        val s = sf(sorts.Snap)
-
-        val (s0, s1) =
-          if (c.snapshotRecorder.isEmpty) {
-            val _s0 = mkSnap(a0, c.program)
-            val _s1 = mkSnap(a1, c.program)
-
-            val snapshotEq = (s, _s0, _s1) match {
-              case (Unit, Unit, Unit) => True()
-              case (Unit, _, _) => sys.error("Unexpected equality between $s and (${_s0}, ${_s1})")
-              case _ => s === Combine(_s0, _s1)
-            }
-
-            assume(snapshotEq)
-
-            (_s0, _s1)
-          } else {
-            val _s0 = First(s)
-            val _s1 = Second(s)
-
-            (_s0, _s1)
-          }
-
-        val sf0 = (sort: Sort) => s0.convert(sort)
-        val sf1 = (sort: Sort) => s1.convert(sort)
-
+        val (sf0, sf1) = createSnapshotPair(sf, a0, a1, c)
         produce2(σ, sf0, p, a0, pve, c)((h1, c1) => {
           produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
             Q(h2, c2))})
@@ -136,7 +118,13 @@ trait DefaultProducer[ST <: Store[ST],
         eval(σ, e0, pve, c)((t0, c1) =>
           branch(σ, t0, c1,
             (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
-            (c2: C) => Q(σ.h, c2)))
+            (c2: C) => {
+              assume(sf(sorts.Snap) === Unit)
+                /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
+                 * otherwise. In order words, only make this assumption if `sf` has
+                 * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
+                 */
+              Q(σ.h, c2)}))
 
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -162,6 +150,7 @@ trait DefaultProducer[ST <: Store[ST],
           else {
             assume(tRcvr !== Null())
           eval(σ, gain, pve, c1)((pGain, c2) => {
+            assume(PermAtMost(NoPerm(), pGain))
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectFieldChunk(tRcvr, field.name, s, pNettoGain)
@@ -170,8 +159,9 @@ trait DefaultProducer[ST <: Store[ST],
 
       case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
-        evals(σ, eArgs, pve, c)((tArgs, c1) =>
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
+            assume(PermAtMost(NoPerm(), pGain))
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
             val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
@@ -187,6 +177,7 @@ trait DefaultProducer[ST <: Store[ST],
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
+        assume(sf(sorts.Snap) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(σ, φ, pve, c)((t, c1) => {
           assume(t)
           Q(σ.h, c1)})
@@ -235,13 +226,13 @@ trait DefaultProducer[ST <: Store[ST],
           val (s2, isPure2) = getOptimalSnapshotSort(φ2, program, visited)
           val s = if (s1 == s2) s1 else sorts.Snap
           val isPure = isPure1 && isPure2
+          assert(!isPure)
           (s, isPure)
         }
 
         getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
 
       case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-        /* TODO: This is just a temporary work-around to cope with problems related to quantified permissions. */
         (toSort(f.typ), false)
 
       case _ =>
@@ -264,4 +255,44 @@ trait DefaultProducer[ST <: Store[ST],
       case (sorts.Snap, true) => Unit
       case (sort, _) => fresh(sort)
     }
+
+  @inline
+  private def createSnapshotPair(sf: Sort => Term, a0: ast.Exp, a1: ast.Exp, c: C)
+                                : (Sort => Term, Sort => Term) = {
+
+    val (s0, s1) = createSnapshotPair(sf(sorts.Snap), a0, a1, c)
+
+    val sf0 = (sort: Sort) => s0.convert(sort)
+    val sf1 = (sort: Sort) => s1.convert(sort)
+
+    (sf0, sf1)
+  }
+
+  private def createSnapshotPair(s: Term, a0: ast.Exp, a1: ast.Exp, c: C): (Term, Term) = {
+    /* [2015-11-17 Malte] If both fresh snapshot terms and first/second datatypes
+     * are used, then the overall test suite verifies in 2min 10sec, whereas
+     * it takes 2min 20sec when only first/second datatypes are used. Might be
+     * worth re-benchmarking from time to time.
+     */
+
+    if (c.snapshotRecorder.isEmpty) {
+      val s0 = mkSnap(a0, c.program)
+      val s1 = mkSnap(a1, c.program)
+
+      val snapshotEq = (s, s0, s1) match {
+        case (Unit, Unit, Unit) => True()
+        case (Unit, _, _) => sys.error(s"Unexpected equality between $s and ($s0, $s1)")
+        case _ => s === Combine(s0, s1)
+      }
+
+      assume(snapshotEq)
+
+      (s0, s1)
+    } else {
+      val _s0 = First(s)
+      val _s1 = Second(s)
+
+      (_s0, _s1)
+    }
+  }
 }
