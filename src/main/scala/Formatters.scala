@@ -25,7 +25,11 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
       else
         ""
 
-    "σ(\n  %s, \n  %s, \n  %s, \n%s)".format(γ, h, g, π)
+    s"""σ(
+       |  $γ,
+       |  $h,
+       |  $g,
+       |  $π)""".stripMargin
   }
 
   def format(γ: ST) = {

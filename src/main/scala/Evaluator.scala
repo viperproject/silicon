@@ -83,7 +83,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
       case _ =>
-        log.debug(s"\nEVAL ${e.pos}: $e")
+        log.debug(s"\nEVAL ${utils.ast.sourceLineColumn(e)}: $e")
         log.debug(stateFormatter.format(σ))
         if (c.reserveHeaps.nonEmpty)
           log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
@@ -485,7 +485,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.SeqUpdate(e0, e1, e2) =>
         evals2(σ, List(e0, e1, e2), Nil, _ => pve, c)((ts, c1) =>
-          Q(SeqUpdate(ts(0), ts(1), ts(2)), c1))
+          Q(SeqUpdate(ts.head, ts(1), ts(2)), c1))
 
       case ast.ExplicitSeq(es) =>
         evals2(σ, es.reverse, Nil, _ => pve, c)((tEs, c1) => {

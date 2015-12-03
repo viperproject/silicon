@@ -184,7 +184,7 @@ trait DefaultExecutor[ST <: Store[ST],
     stmt match {
       case _: silver.ast.Seqn =>
       case _ =>
-        log.debug(s"\nEXECUTE ${stmt.pos}: $stmt")
+        log.debug(s"\nEXECUTE ${utils.ast.sourceLineColumn(stmt)}: $stmt")
         log.debug(stateFormatter.format(σ))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString())
@@ -193,7 +193,7 @@ trait DefaultExecutor[ST <: Store[ST],
     val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
-        
+
       case label @ silver.ast.Label(name) =>
         val c1 = c.copy(oldHeaps = c.oldHeaps + (name -> σ.h))
         Q(σ, c1)

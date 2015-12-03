@@ -11,12 +11,11 @@ import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
-import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
-import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
+import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
 import state.terms._
-import state.terms.predef.`?r`
 import supporters.{LetHandler, Brancher, ChunkSupporter, MagicWandSupporter}
 import supporters.qps.QuantifiedChunkSupporter
 
@@ -109,7 +108,7 @@ trait DefaultProducer[ST <: Store[ST],
                       : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      log.debug(s"\nPRODUCE ${φ.pos}: $φ")
+      log.debug(s"\nPRODUCE ${utils.ast.sourceLineColumn(φ)}: $φ")
       log.debug(stateFormatter.format(σ))
     }
 

@@ -462,7 +462,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
               case true => Some(ch)
               case _ => None
             }
-        }.flatten.toSeq
+        }.flatten
 
       wands
     }
@@ -491,7 +491,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
                     .orElse(
                       chunks.collectFirst {
                         case fc: FieldChunk if fc.value == t =>
-                          bindings.find(p => p._2 == fc.args(0))
+                          bindings.find(p => p._2 == fc.args.head)
                                   .map(_._1)
                                   .map(v => ast.FieldAccess(v, program.findField(fc.name))())
                       }.flatten)

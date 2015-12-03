@@ -746,7 +746,7 @@ class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
     with PossibleTrigger {
 
   def getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = Equals(args(0), args(1)).asInstanceOf[CustomEquals]
+  def withArgs(args: Seq[Term]) = Equals(args.head, args(1)).asInstanceOf[CustomEquals]
     /* The cast will raise an exception if the equality has been optimised away */
 }
 
@@ -1038,7 +1038,7 @@ case class PermMin(p0: Term, p1: Term) extends Permissions
 
   override val toString = s"min ($p0, $p1)"
 
-  def withArgs(args: Seq[Term]) = PermMin(args(0), args(1))
+  def withArgs(args: Seq[Term]) = PermMin(args.head, args(1))
 }
 
 /* Functions */
@@ -1104,7 +1104,7 @@ case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] 
   override val toString = "[%s..%s]".format(p0, p1)
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqRanged(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SeqRanged(args.head, args(1))
 }
 
 case class SeqNil(elementsSort: Sort) extends SeqTerm with Literal {
@@ -1119,7 +1119,7 @@ case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ with P
   override val toString = "[" + p + "]"
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SeqSingleton(args(0))
+  def withArgs(args: Seq[Term]) = SeqSingleton(args.head)
 }
 
 class SeqAppend(val p0: Term, val p1: Term) extends SeqTerm
@@ -1132,7 +1132,7 @@ class SeqAppend(val p0: Term, val p1: Term) extends SeqTerm
   override val op = "++"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqAppend(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SeqAppend(args.head, args(1))
 }
 
 object SeqAppend extends ((Term, Term) => SeqTerm) {
@@ -1154,7 +1154,7 @@ class SeqDrop(val p0: Term, val p1: Term) extends SeqTerm
   override val toString = p0 + "[" + p1 + ":]"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqDrop(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SeqDrop(args.head, args(1))
 }
 
 object SeqDrop extends ((Term, Term) => SeqTerm) {
@@ -1177,7 +1177,7 @@ class SeqTake(val p0: Term, val p1: Term) extends SeqTerm
   override val toString = p0 + "[:" + p1 + "]"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqTake(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SeqTake(args.head, args(1))
 }
 
 object SeqTake extends ((Term, Term) => SeqTerm) {
@@ -1198,7 +1198,7 @@ class SeqLength(val p: Term) extends Term
   override val toString = "|" + p + "|"
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SeqLength(args(0))
+  def withArgs(args: Seq[Term]) = SeqLength(args.head)
 }
 
 object SeqLength {
@@ -1219,7 +1219,7 @@ class SeqAt(val p0: Term, val p1: Term) extends Term
   override val toString = p0 + "[" + p1 + "]"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqAt(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SeqAt(args.head, args(1))
 }
 
 object SeqAt extends ((Term, Term) => Term) {
@@ -1239,7 +1239,7 @@ class SeqIn(val p0: Term, val p1: Term) extends BooleanTerm
   override val toString = "%s in %s".format(p1, p0)
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqIn(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SeqIn(args.head, args(1))
 }
 
 object SeqIn extends ((Term, Term) => BooleanTerm) {
@@ -1263,7 +1263,7 @@ class SeqUpdate(val t0: Term, val t1: Term, val t2: Term)
   override val toString = s"$t0[$t1] := $t2"
 
   lazy val getArgs = t0 :: t1 :: t2 :: Nil
-  def withArgs(args: Seq[Term]) = SeqUpdate(args(0), args(1), args(2))
+  def withArgs(args: Seq[Term]) = SeqUpdate(args.head, args(1), args(2))
 }
 
 object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
@@ -1305,7 +1305,7 @@ case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ with P
   override val toString = "{" + p + "}"
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SingletonSet(args(0))
+  def withArgs(args: Seq[Term]) = SingletonSet(args.head)
 }
 
 class SetAdd(val p0: Term, val p1: Term) extends SetTerm
@@ -1318,7 +1318,7 @@ class SetAdd(val p0: Term, val p1: Term) extends SetTerm
   override val op = "+"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SetAdd(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetAdd(args.head, args(1))
 }
 
 object SetAdd extends ((Term, Term) => SetTerm) {
@@ -1335,7 +1335,7 @@ object SetAdd extends ((Term, Term) => SetTerm) {
 class SetUnion(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "∪"
 
-  def withArgs(args: Seq[Term]) = SetUnion(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetUnion(args.head, args(1))
 }
 
 object SetUnion extends ((Term, Term) => SetTerm) {
@@ -1350,7 +1350,7 @@ object SetUnion extends ((Term, Term) => SetTerm) {
 class SetIntersection(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "∩"
 
-  def withArgs(args: Seq[Term]) = SetIntersection(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetIntersection(args.head, args(1))
 }
 
 object SetIntersection extends ((Term, Term) => SetTerm) {
@@ -1365,7 +1365,7 @@ object SetIntersection extends ((Term, Term) => SetTerm) {
 class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "⊂"
 
-  def withArgs(args: Seq[Term]) = SetSubset(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetSubset(args.head, args(1))
 }
 
 object SetSubset extends ((Term, Term) => SetTerm) {
@@ -1380,7 +1380,7 @@ object SetSubset extends ((Term, Term) => SetTerm) {
 class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "disj"
 
-  def withArgs(args: Seq[Term]) = SetDisjoint(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetDisjoint(args.head, args(1))
 }
 
 object SetDisjoint extends ((Term, Term) => SetTerm) {
@@ -1395,7 +1395,7 @@ object SetDisjoint extends ((Term, Term) => SetTerm) {
 class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "\\"
 
-  def withArgs(args: Seq[Term]) = SetDifference(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetDifference(args.head, args(1))
 }
 
 object SetDifference extends ((Term, Term) => SetTerm) {
@@ -1414,7 +1414,7 @@ class SetIn(val p0: Term, val p1: Term) extends BooleanTerm
   override val op = "in"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SetIn(args(0), args(1))
+  def withArgs(args: Seq[Term]) = SetIn(args.head, args(1))
 }
 
 object SetIn extends ((Term, Term) => BooleanTerm) {
@@ -1436,7 +1436,7 @@ class SetCardinality(val p: Term) extends Term
   override val toString = "|" + p + "|"
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SetCardinality(args(0))
+  def withArgs(args: Seq[Term]) = SetCardinality(args.head)
 }
 
 object SetCardinality extends (Term => SetCardinality) {
@@ -1475,7 +1475,7 @@ case class SingletonMultiset(p: Term) extends MultisetTerm /* with UnaryOp[Term]
   override val toString = "{" + p + "}"
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SingletonMultiset(args(0))
+  def withArgs(args: Seq[Term]) = SingletonMultiset(args.head)
 }
 
 class MultisetAdd(val p0: Term, val p1: Term) extends MultisetTerm
@@ -1488,7 +1488,7 @@ class MultisetAdd(val p0: Term, val p1: Term) extends MultisetTerm
   override val op = "+"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = MultisetAdd(args(0), args(1))
+  def withArgs(args: Seq[Term]) = MultisetAdd(args.head, args(1))
 }
 
 object MultisetAdd extends ((Term, Term) => MultisetTerm) {
@@ -1505,7 +1505,7 @@ object MultisetAdd extends ((Term, Term) => MultisetTerm) {
 class MultisetUnion(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "∪"
 
-  def withArgs(args: Seq[Term]) = MultisetUnion(args(0), args(1))
+  def withArgs(args: Seq[Term]) = MultisetUnion(args.head, args(1))
 }
 
 object MultisetUnion extends ((Term, Term) => MultisetTerm) {
@@ -1520,7 +1520,7 @@ object MultisetUnion extends ((Term, Term) => MultisetTerm) {
 class MultisetIntersection(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "∩"
 
-  def withArgs(args: Seq[Term]) = MultisetIntersection(args(0), args(1))
+  def withArgs(args: Seq[Term]) = MultisetIntersection(args.head, args(1))
 }
 
 object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
@@ -1535,7 +1535,7 @@ object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
 class MultisetSubset(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "⊂"
 
-  def withArgs(args: Seq[Term]) = MultisetSubset(args(0), args(1))
+  def withArgs(args: Seq[Term]) = MultisetSubset(args.head, args(1))
 }
 
 object MultisetSubset extends ((Term, Term) => MultisetTerm) {
@@ -1550,7 +1550,7 @@ object MultisetSubset extends ((Term, Term) => MultisetTerm) {
 class MultisetDifference(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "\\"
 
-  def withArgs(args: Seq[Term]) = MultisetDifference(args(0), args(1))
+  def withArgs(args: Seq[Term]) = MultisetDifference(args.head, args(1))
 }
 
 object MultisetDifference extends ((Term, Term) => MultisetTerm) {
@@ -1570,7 +1570,7 @@ class MultisetCardinality(val p: Term) extends Term
   override val toString = "|" + p + "|"
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = MultisetCardinality(args(0))
+  def withArgs(args: Seq[Term]) = MultisetCardinality(args.head)
 }
 
 object MultisetCardinality extends (Term => MultisetCardinality) {
@@ -1590,7 +1590,7 @@ class MultisetCount(val p0: Term, val p1: Term) extends Term
   override val toString = s"$p0($p1)"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = MultisetCount(args(0), args(1))
+  def withArgs(args: Seq[Term]) = MultisetCount(args.head, args(1))
 }
 
 object MultisetCount extends {
@@ -1628,7 +1628,7 @@ class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
   override val toString = s"($p0, $p1)"
 
   lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = Combine(args(0), args(1))
+  def withArgs(args: Seq[Term]) = Combine(args.head, args(1))
 }
 
 object Combine {
@@ -1644,7 +1644,7 @@ class First(val p: Term) extends SnapshotTerm
   utils.assertSort(p, "term", sorts.Snap)
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = First(args(0))
+  def withArgs(args: Seq[Term]) = First(args.head)
 }
 
 object First extends (Term => Term) {
@@ -1663,7 +1663,7 @@ class Second(val p: Term) extends SnapshotTerm
   utils.assertSort(p, "term", sorts.Snap)
 
   lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = Second(args(0))
+  def withArgs(args: Seq[Term]) = Second(args.head)
 }
 
 object Second extends (Term => Term) {
@@ -1684,7 +1684,7 @@ case class Lookup(field: String, fvf: Term, at: Term) extends Term with Possible
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 
   lazy val getArgs = fvf :: at :: Nil
-  def withArgs(args: Seq[Term]) = Lookup(field, args(0), args(1))
+  def withArgs(args: Seq[Term]) = Lookup(field, args.head, args(1))
 }
 
 case class Domain(field: String, fvf: Term) extends SetTerm with PossibleTrigger {
@@ -1694,14 +1694,14 @@ case class Domain(field: String, fvf: Term) extends SetTerm with PossibleTrigger
   val sort = sorts.Set(elementsSort)
 
   lazy val getArgs = fvf :: Nil
-  def withArgs(args: Seq[Term]) = Domain(field, args(0))
+  def withArgs(args: Seq[Term]) = Domain(field, args.head)
 }
 
 case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends BooleanTerm with PossibleTrigger {
   utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
 
   lazy val getArgs = fvf2 :: fvf1 :: Nil
-  def withArgs(args: Seq[Term]) = FvfAfterRelation(field, args(0), args(1))
+  def withArgs(args: Seq[Term]) = FvfAfterRelation(field, args.head, args(1))
 }
 
 /* Sort wrappers */

@@ -130,6 +130,11 @@ package object utils {
       case _ => node.pos.toString
     }
 
+    def sourceLineColumn(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
+      case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
+      case _ => node.pos.toString
+    }
+
     def quantifiedFields(root: silver.ast.Node, program: silver.ast.Program): Set[silver.ast.Field] = {
       val collected = mutable.ListBuffer[silver.ast.Field]()
       val visited = mutable.Set[silver.ast.Member]()

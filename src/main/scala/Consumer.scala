@@ -111,7 +111,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
-      log.debug(s"\nCONSUME ${φ.pos}: $φ")
+      log.debug(s"\nCONSUME ${utils.ast.sourceLineColumn(φ)}: $φ")
       log.debug(stateFormatter.format(σ))
       log.debug("h = " + stateFormatter.format(h))
       if (c.reserveHeaps.nonEmpty)

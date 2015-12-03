@@ -463,7 +463,7 @@ trait MagicWandSupporter[ST <: Store[ST],
           consumedChunks.foreach(x => say(x.toString(), 2))
 
           /* TODO: Merge contexts */
-          val c1 = contexts(0).copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
+          val c1 = contexts.head.copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
                                     recordEffects = c.recordEffects,
                                     producedChunks = c.producedChunks,
                                     consumedChunks = consumedChunks,
