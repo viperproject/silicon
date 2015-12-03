@@ -76,14 +76,14 @@ case class DefaultContext[H <: Heap[H]]
                         retrying1, snapshotRecorder1, recordPossibleTriggers1, possibleTriggers1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
-                        recordConsumedChunks1, producedChunks1, consumedChunks1, letBoundVars1) =>
+                        recordEffects1, producedChunks1, consumedChunks1, letBoundVars1) =>
 
       other match {
-        case DefaultContext(`program1`, recordVisited2, `visited1`, `branchConditions1`, `constrainableARPs1`,
-                            `quantifiedVariables1`, retrying2, snapshotRecorder2, `recordPossibleTriggers1`,
-                            possibleTriggers2,
+        case DefaultContext(`program1`, recordVisited2, `visited1`, `branchConditions1`, `constrainableARPs1`, `quantifiedVariables1`,
+                            retrying2, snapshotRecorder2, `recordPossibleTriggers1`, possibleTriggers2,
+                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                            `recordConsumedChunks1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`) =>
+                            `recordEffects1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2

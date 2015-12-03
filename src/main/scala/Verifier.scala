@@ -20,10 +20,11 @@ import interfaces.decider.Decider
 import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import decider.PreambleFileEmitter
-import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
+import state.{terms, SymbolConvert, DefaultContext}
 import state.terms.{sorts, Sort}
 import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
-    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter,
+    MagicWandSupporter, HeuristicsSupporter}
 import reporting.Bookkeeper
 
 trait AbstractElementVerifier[ST <: Store[ST],

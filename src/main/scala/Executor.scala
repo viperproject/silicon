@@ -11,7 +11,7 @@ import org.slf4s.Logging
 import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed}
+    UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed, CallFailed}
 import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, NamedMagicWandChunkNotFound}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider

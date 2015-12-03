@@ -438,7 +438,7 @@ class DefaultDecider[ST <: Store[ST],
 //    println(s"  after structurallyMatches: b = $b")
     b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
 //    println(s"  after comparing evaluatedTerms.length's: b = $b")
-    b = b && check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)))
+    b = b && check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)), config.checkTimeout())
 //    println(s"  after comparing evaluatedTerms: b = $b")
 
     b

@@ -19,7 +19,7 @@ import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, S
 import interfaces.state.factoryUtils.Ø
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
 import state.terms._
-import state.terms.perms.{IsNoAccess, IsAsPermissive, IsNonNegative}
+import state.terms.perms.{IsNoAccess, IsNonNegative}
 
 trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
@@ -60,7 +60,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       val ghostFreeWand = wand.withoutGhostOperations
       val es = ghostFreeWand.subexpressionsToEvaluate(c.program)
 
-      evals(σ, es, pve, c0)((ts, c1) => {
+      evals(σ, es, _ => pve, c0)((ts, c1) => {
         val c2 = c1.copy(exhaleExt = c.exhaleExt)
         Q(MagicWandChunk(ghostFreeWand, σ.γ.values, ts), c2)})
     }
@@ -117,7 +117,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 //      println(s"  visitedHeaps = $visitedHeaps")
 //      println(s"  consumedChunks = $consumedChunks")
 
-      while (heapsToVisit.nonEmpty && !decider.check(σ, IsNoAccess(toLose))) {
+      while (heapsToVisit.nonEmpty && !decider.check(σ, IsNoAccess(toLose), config.checkTimeout())) {
         val h = heapsToVisit.head
         heapsToVisit = heapsToVisit.tail
 
@@ -146,7 +146,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 //      println(s"  X consumedChunks = $consumedChunks")
 //      println(s"  X done? ${decider.check(σ, IsNoAccess(toLose))}")
 
-      if (decider.check(σ, IsNoAccess(toLose))) {
+      if (decider.check(σ, IsNoAccess(toLose), config.checkTimeout())) {
         val tEqs =
           consumedChunks.flatten.sliding(2).map {
   //          case List((fc1: DirectFieldChunk, _), (fc2: DirectFieldChunk, _)) => fc1.value === fc2.value
@@ -182,7 +182,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       decider.getChunk[DirectChunk](σ, h, id, c) match {
         case result @ Some(ch) =>
           val (pLost, pKeep, pToConsume) =
-            if (decider.check(σ, IsAsPermissive(ch.perm, pLoss)))
+            if (decider.check(σ, PermAtMost(pLoss, ch.perm), config.checkTimeout()))
               (pLoss, PermMinus(ch.perm, pLoss), NoPerm())
             else
               (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
@@ -192,7 +192,7 @@ trait MagicWandSupporter[ST <: Store[ST],
   //        println(s"    pKeep = $pKeep")
   //        println(s"    pToConsume = $pToConsume")
           val h1 =
-            if (decider.check(σ, IsNoAccess(pKeep))) h - ch
+            if (decider.check(σ, IsNoAccess(pKeep), config.checkTimeout())) h - ch
             else h - ch + (ch \ pKeep)
           val consumedChunk = ch \ pLost
           (h1, Some(consumedChunk), pToConsume, c)
@@ -522,8 +522,8 @@ trait MagicWandSupporter[ST <: Store[ST],
         val σC = σ \ getEvalHeap(σ, σ.h, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
         eval(σC, ePerm, pve, c0)((tPerm, c1) =>
-          if (decider.check(σC, IsNonNegative(tPerm)))
-            evals(σC, eArgs, pve, c1)((tArgs, c2) =>
+          if (decider.check(σC, IsNonNegative(tPerm), config.checkTimeout()))
+            evals(σC, eArgs, _ => pve, c1)((tArgs, c2) =>
               consume(σEmp \ σ.h, FullPerm(), acc, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
               val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
                 consume(σ \ σ1.h, FullPerm(), acc, pve, c3a)((σ2, snap, _, c3b) => { /* σUsed'.unfold */
@@ -554,7 +554,7 @@ trait MagicWandSupporter[ST <: Store[ST],
         val c0 = c.incCycleCounter(predicate)
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, σ.h, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-        evals(σC, eArgs, pve, c0)((tArgs, c1) =>
+        evals(σC, eArgs, _ => pve, c0)((tArgs, c1) =>
           eval(σC, ePerm, pve, c1)((tPerm, c2) =>
             decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>

@@ -145,7 +145,7 @@ trait DefaultProducer[ST <: Store[ST],
            * it is true. Hence, we assert it here, which (should) syntactically look
            * for the term before calling Z3.
            */
-          if (decider.check(σ, tRcvr === Null())) /* TODO: Benchmark performance impact */
+          if (decider.check(σ, tRcvr === Null(), config.checkTimeout())) /* TODO: Benchmark performance impact */
             Success()
           else {
             assume(tRcvr !== Null())

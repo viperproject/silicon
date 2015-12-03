@@ -33,7 +33,10 @@ trait ChunkSupporter[ST <: Store[ST],
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
+  protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
+
+  import stateFactory._
 
   object chunkSupporter {
     private type C = DefaultContext[H]
