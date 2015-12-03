@@ -10,6 +10,9 @@ package state.terms
 
 import scala.reflect._
 import silver.ast.utility.{GenericTriggerGenerator, Visitor}
+import interfaces.state.{Store, Heap}
+import state.MagicWandChunk
+
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -236,6 +239,10 @@ trait StructuralEquality { self: AnyRef =>
 
 sealed trait Symbol {
   def id: String
+}
+
+case class PlainSymbol(id: String) extends Symbol {
+  override val toString = id
 }
 
 case class Var(id: String, sort: Sort) extends Symbol with Term {
@@ -1727,6 +1734,43 @@ object SortWrapper {
 
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
 }
+
+/* Magic wands */
+
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+  override val sort = sorts.Unit
+  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
+}
+
+//sealed trait Shape
+
+//case class MagicWand(left: Term, right: Term) extends Term /*with Shape*/ {
+//  override val sort = sorts.Unit
+//  override val toString = s"$left --* $right"
+//}
+
+///* TODO: Consider using regular And/Implies/Ite (Acc is most likely needed in any case) */
+//object shapes {
+//  case class Acc(id: Symbol, args: Seq[Term], perms: DefaultFractionalPermissions) extends Term with Shape {
+//    override val sort = sorts.Unit
+//
+//    override val toString =
+//      if (args.length == 1)
+//        s"acc(${args.head}.$id, $perms)"
+//      else
+//        s"acc($id(${args.mkString(", ")}), $perms)"
+//  }
+//
+//  case class And(p0: Term, p1: Term) extends BooleanTerm with commonnodes.And[Term] with Shape
+//
+//  case class Implies(p0: Term, p1: Term) extends BooleanTerm with commonnodes.Implies[Term] with Shape
+//
+//  case class Ite(p0: Term, p1: Term, p2: Term) extends BooleanTerm with Shape {
+//    override lazy val toString = s"$p0 ? $p1 : $p2"
+//  }
+//
+//
+//}
 
 /* Trigger-related terms */
 

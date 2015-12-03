@@ -26,7 +26,21 @@ case class DefaultContext[H <: Heap[H]]
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
                           oldHeaps: Map[String, H] = Map.empty[String, H], /* TODO: Integrate regular old */
-                          partiallyConsumedHeap: Option[H] = None)
+                          partiallyConsumedHeap: Option[H] = None,
+
+                          reserveHeaps: Stack[H] = Nil,
+                          exhaleExt: Boolean = false,
+                          lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
+                          evalHeap: Option[H] = None,
+
+                          applyHeuristics: Boolean = false,
+                          heuristicsDepth: Int = 0,
+                          triggerAction: AnyRef = null,
+
+                          recordEffects: Boolean = false,
+                          producedChunks: Seq[(Stack[Term], DirectChunk)] = Nil,
+                          consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] = Nil,
+                          letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil)
     extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -63,12 +77,18 @@ case class DefaultContext[H <: Heap[H]]
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, qpFields1, recordVisited1, visited1, branchConditions1, constrainableARPs1,
                         quantifiedVariables1, retrying1, snapshotRecorder1, recordPossibleTriggers1,
-                        possibleTriggers1, oldHeaps1, partiallyConsumedHeap1) =>
+                        possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
+                        reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
+                        applyHeuristics1, heuristicsDepth1, triggerAction1,
+                        recordEffects1, producedChunks1, consumedChunks1, letBoundVars1) =>
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`, `branchConditions1`,
                             `constrainableARPs1`, `quantifiedVariables1`, retrying2, snapshotRecorder2,
-                            `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`) =>
+                            `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
+                            `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
+                            `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
+                            `recordEffects1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -80,6 +100,12 @@ case class DefaultContext[H <: Heap[H]]
                possibleTriggers = possibleTriggers3)
 
         case _ =>
+//          println("\n[Context.merge]")
+//          println("--this--")
+//          this.productIterator.toSeq.tail foreach println
+//          println("--other--")
+//          other.productIterator.toSeq.tail foreach println
+
           sys.error("Unexpected mismatch between contexts")
       }
   }

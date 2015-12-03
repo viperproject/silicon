@@ -40,7 +40,8 @@ class DefaultSymbolConvert extends SymbolConvert {
 
     case   silver.ast.InternalType
          | _: silver.ast.TypeVar
-         | silver.ast.Wand =>
+         | silver.ast.Wand
+         =>
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 

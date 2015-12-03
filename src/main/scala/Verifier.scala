@@ -9,17 +9,22 @@ package silicon
 
 import org.slf4s.Logging
 import silver.ast
-import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed}
+import util.control.Breaks._
+import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed,
+    MagicWandNotWellformed}
 import silver.components.StatefulComponent
-import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Success}
+import silver.ast.utility.{Nodes, Visitor}
+import viper.silicon.interfaces.{NonFatalResult, Evaluator, Producer, Consumer, Executor, VerificationResult, Success,
+    Failure}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
+import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
 import interfaces.state.factoryUtils.Ø
 import decider.PreambleFileEmitter
-import state.{terms, SymbolConvert, DirectChunk, DefaultContext}
+import state.{terms, SymbolConvert, DefaultContext}
 import state.terms.{sorts, Sort}
 import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
-    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter}
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter,
+    MagicWandSupporter, HeuristicsSupporter}
 import supporters.qps.{FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import reporting.Bookkeeper
 
@@ -29,7 +34,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
     extends Logging
        with Evaluator[ST, H, S, DefaultContext[H]]
        with Producer[ST, H, S, DefaultContext[H]]
-       with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+       with Consumer[Chunk, ST, H, S, DefaultContext[H]]
        with Executor[ST, H, S, DefaultContext[H]]
        with FunctionSupporter[ST, H, PC, S] {
 
@@ -62,6 +67,74 @@ trait AbstractElementVerifier[ST <: Store[ST],
     }
   }
 
+  private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
+    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
+    var result: VerificationResult = Success()
+
+//    println("\n[checkWandsAreSelfFraming]")
+
+    breakable {
+      wands foreach {_wand =>
+        val err = MagicWandNotWellformed(_wand)
+
+        /* TODO: How to handle magic wand chunk terms (e.g., wand w := ...) when
+         * checking self-framingness of wands? This also raises the question of
+         * how to produce such terms in general, which could happen when
+         * checking self-framingness of wands, but also, if such terms appear
+         * on the left of a wand that is packaged.
+         *
+         * The problem is currently avoided by replacing occurences of wand
+         * chunk terms with the trivial wand true --* true. Not sure if this is
+         * sound, though.
+         */
+        val trivialWand = (p: ast.Position) => ast.MagicWand(ast.TrueLit()(p), ast.TrueLit()(p))(p)
+        val wand = _wand.transform {
+          case v: ast.AbstractLocalVar if v.typ == ast.Wand => trivialWand(v.pos)
+        }()
+
+        val left = wand.left
+        val right = wand.withoutGhostOperations.right
+        val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.AbstractLocalVar => v}
+        val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
+        val σ1 = Σ(γ1, Ø, g)
+
+//        println(s"  left = $left")
+//        println(s"  right = $right")
+//        println(s"  s1.γ = ${σ1.γ}")
+//        println(s"  s1.h = ${σ1.h}")
+//        println(s"  s1.g = ${σ1.g}")
+
+        var σInner: S = null.asInstanceOf[S]
+
+        result =
+          inScope {
+//            println("  checking left")
+            produce(σ1, fresh, terms.FullPerm(), left, err, c)((σ2, c2) => {
+              σInner = σ2
+//              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
+//              val σ3 = σ1
+              Success()})
+          } && inScope {
+//            println("  checking right")
+            produce(σ1, fresh, terms.FullPerm(), right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
+              Success())}
+
+//        println(s"  result = $result")
+
+        result match {
+          case failure: Failure[ST@unchecked, H@unchecked, S@unchecked] =>
+            /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
+            result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
+            break()
+
+          case _: NonFatalResult => /* Nothing needs to be done*/
+        }
+      }
+    }
+
+    result
+  }
+
   def verify(method: ast.Method, c: C): VerificationResult = {
     log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
@@ -87,14 +160,18 @@ trait AbstractElementVerifier[ST <: Store[ST],
     inScope {
       produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
         val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-       (inScope {
-         produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
-           Success())}
-          &&
-        inScope {
-          exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-            consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
-              Success()))})})}
+           (inScope {
+              /* TODO: Checking self-framingness here fails if pold(e) reads a location
+               *       to which access is not required by the precondition.
+               */
+              checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
+        && inScope {
+              produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
+                Success())}
+        && inScope {
+              exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
+                consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
+                  Success()))})})}
   }
 
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
@@ -109,9 +186,11 @@ trait AbstractElementVerifier[ST <: Store[ST],
     predicate.body match {
       case None => Success()
       case Some(body) =>
-        inScope {
-          produce(σ, fresh, terms.FullPerm(), body, PredicateNotWellformed(predicate), c)((_, c1) =>
-            Success())}
+           (inScope {
+             checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
+        && inScope {
+             produce(σ, fresh, terms.FullPerm(), body, PredicateNotWellformed(predicate), c)((_, c1) =>
+               Success())})
     }
   }
 }
@@ -129,14 +208,15 @@ class DefaultElementVerifier[ST <: Store[ST],
                              H <: Heap[H],
                              PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
-    (  val config: Config,
-      val decider: Decider[ST, H, PC, S, DefaultContext[H]],
-      val stateFactory: StateFactory[ST, H, S],
-      val symbolConverter: SymbolConvert,
-      val stateFormatter: StateFormatter[ST, H, S, String],
-      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
-      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
-      val bookkeeper: Bookkeeper)
+    (val config: Config,
+     val decider: Decider[ST, H, PC, S, DefaultContext[H]],
+     val stateFactory: StateFactory[ST, H, S],
+     val symbolConverter: SymbolConvert,
+     val stateFormatter: StateFormatter[ST, H, S, String],
+     val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
+     val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
+     val bookkeeper: Bookkeeper)
+    (protected implicit val manifestH: Manifest[H])
     extends NoOpStatefulComponent
        with AbstractElementVerifier[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
@@ -148,6 +228,8 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext[H]]
+       with MagicWandSupporter[ST, H, PC, S]
+       with HeuristicsSupporter[ST, H, PC, S]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -286,23 +368,23 @@ trait AbstractVerifier[ST <: Store[ST],
 }
 
 class DefaultVerifier[ST <: Store[ST],
-                      H <: Heap[H],
+                      H <: Heap[H] : Manifest,
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    (  val config: Config,
-      val decider: Decider[ST, H, PC, S, DefaultContext[H]],
-      val stateFactory: StateFactory[ST, H, S],
-      val symbolConverter: SymbolConvert,
-      val preambleEmitter: PreambleFileEmitter[String, String],
-      val sequencesEmitter: SequencesEmitter,
-      val setsEmitter: SetsEmitter,
-      val multisetsEmitter: MultisetsEmitter,
-      val domainsEmitter: DomainsEmitter,
-      val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
-      val stateFormatter: StateFormatter[ST, H, S, String],
-      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
-      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
-      val bookkeeper: Bookkeeper)
+    (val config: Config,
+     val decider: Decider[ST, H, PC, S, DefaultContext[H]],
+     val stateFactory: StateFactory[ST, H, S],
+     val symbolConverter: SymbolConvert,
+     val preambleEmitter: PreambleFileEmitter[String, String],
+     val sequencesEmitter: SequencesEmitter,
+     val setsEmitter: SetsEmitter,
+     val multisetsEmitter: MultisetsEmitter,
+     val domainsEmitter: DomainsEmitter,
+     val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
+     val stateFormatter: StateFormatter[ST, H, S, String],
+     val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
+     val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
+     val bookkeeper: Bookkeeper)
     extends AbstractVerifier[ST, H, PC, S]
        with StatefulComponent
        with Logging {

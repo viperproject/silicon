@@ -22,7 +22,7 @@ import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, Sy
 import state.terms._
 import state.terms.implicits._
 import state.terms.perms.IsNonNegative
-import supporters.{Joiner, Brancher, PredicateSupporter}
+import supporters.{Joiner, Brancher, PredicateSupporter, MagicWandSupporter}
 import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
@@ -30,11 +30,12 @@ trait DefaultEvaluator[ST <: Store[ST],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
     extends Evaluator[ST, H, S, DefaultContext[H]]
-    { this: Logging with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+    { this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with PredicateSupporter[ST, H, PC, S]
                     with Brancher[ST, H, S, DefaultContext[H]]
-                    with Joiner[DefaultContext[H]] =>
+                    with Joiner[DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
 
@@ -75,7 +76,6 @@ trait DefaultEvaluator[ST <: Store[ST],
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
 
-
     /* For debugging only */
     e match {
       case  _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
@@ -85,10 +85,15 @@ trait DefaultEvaluator[ST <: Store[ST],
       case _ =>
         log.debug(s"\nEVAL ${e.pos}: $e")
         log.debug(stateFormatter.format(σ))
+        if (c.reserveHeaps.nonEmpty)
+          log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        if (c.evalHeap.nonEmpty)
+          log.debug("hE = " + c.evalHeap.map(stateFormatter.format).mkString("", ",\n     ", ""))
+        c.lhsHeap.foreach(h => log.debug("hLHS = " + stateFormatter.format(h)))
         decider.prover.logComment(s"[eval] $e")
     }
 
-    eval2(σ, e, pve, c)((t, c1) => {
+    eval2(σ \ c.evalHeap.getOrElse(σ.h), e, pve, c.copy(recordEffects = false))((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
@@ -96,7 +101,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             case _ => c1}
         else
           c1
-      Q(t, c2)})
+      Q(t, c2.copy(recordEffects = c.recordEffects))})
   }
 
   protected def eval2(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
@@ -196,6 +201,8 @@ trait DefaultEvaluator[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo LabelledStateNotReached(old))
           case Some(h) =>
             evalOld(σ, h, e0, pve, c)(Q)}
+            
+      case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
       case ast.Let(v, e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -434,30 +441,30 @@ trait DefaultEvaluator[ST <: Store[ST],
           evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
-              case true =>
-                join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
-                  val c3 = c2.incCycleCounter(predicate)
-                             .copy(recordVisited = true)
-                    /* [2014-12-10 Malte] The commented code should replace the code following
-                     * it, but using it slows down RingBufferRd.sil significantly. The generated
-                     * Z3 output looks nearly identical, so my guess is that it is some kind
-                     * of triggering problem, probably related to sequences.
-                     */
-//                    predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
-//                      val c4 = c3.decCycleCounter(predicate)
-//                      eval(σ1, eIn, pve, c4)((tIn, c5) =>
-//                        QB(tIn, c5))})
-                  consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
-//                      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                    val body = pa.predicateBody(c4.program).get /* Only non-abstract predicates can be unfolded */
-                    produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c4)((σ2, c5) => {
-                      val c6 = c5.copy(recordVisited = c2.recordVisited)
-                                 .decCycleCounter(predicate)
-                      val σ3 = σ2 //\ (g = σ.g)
-                      eval(σ3 /*\ σ.γ*/, eIn, pve, c6)(QB)})})
-                })(Q)
-              case false =>
-                Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                case true =>
+                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
+                    val c3 = c2.incCycleCounter(predicate)
+                               .copy(recordVisited = true)
+                      /* [2014-12-10 Malte] The commented code should replace the code following
+                       * it, but using it slows down RingBufferRd.sil significantly. The generated
+                       * Z3 output looks nearly identical, so my guess is that it is some kind
+                       * of triggering problem, probably related to sequences.
+                       */
+//                      predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)((σ1, c3) => {
+//                        val c4 = c3.decCycleCounter(predicate)
+//                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
+//                          QB(tIn, c5))})
+                    consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
+//                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+                      val body = pa.predicateBody(c4.program).get /* Only non-abstract predicates can be unfolded */
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c4)((σ2, c5) => {
+                        val c6 = c5.copy(recordVisited = c2.recordVisited)
+                                   .decCycleCounter(predicate)
+                        val σ3 = σ2 //\ (g = σ.g)
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c6)(QB)})})
+                  })(Q)
+                case false =>
+                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = fresh("recunf", toSort(eIn.typ))
           Q(unknownValue, c)

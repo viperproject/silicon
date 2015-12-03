@@ -244,6 +244,9 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
       parens("let" <+> parens(docBindings) <+> render(body))
+
+    case _: MagicWandChunkTerm =>
+      sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
   }
 
   @inline

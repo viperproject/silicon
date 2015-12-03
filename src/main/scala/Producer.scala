@@ -10,14 +10,14 @@ package silicon
 import org.slf4s.Logging
 import silver.ast
 import silver.verifier.PartialVerificationError
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
-import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
+import interfaces.{Success, Failure, Producer, Consumer, Evaluator, VerificationResult}
 import interfaces.decider.Decider
 import reporting.Bookkeeper
 import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert, DirectChunk}
 import state.terms._
 import state.terms.predef.`?r`
-import supporters.{LetHandler, Brancher, ChunkSupporter}
+import supporters.{LetHandler, Brancher, ChunkSupporter, MagicWandSupporter}
 import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultProducer[ST <: Store[ST],
@@ -26,8 +26,9 @@ trait DefaultProducer[ST <: Store[ST],
                       S <: State[ST, H, S]]
     extends Producer[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
-                    with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S]
                     with ChunkSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
@@ -174,6 +175,10 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
+
+      case wand: ast.MagicWand =>
+        magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
+          Q(σ.h + chWand, c))
 
       case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, field, gain, forall, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))

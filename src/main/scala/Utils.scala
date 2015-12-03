@@ -11,6 +11,7 @@ import scala.collection.mutable
 import silver.verifier.VerificationError
 import silver.verifier.errors.Internal
 import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import interfaces.state.Heap
 import state.DefaultContext
 import state.terms._
 

@@ -13,9 +13,9 @@ import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.state.{StateFactory, State, PathConditions, Heap, Store}
-import viper.silicon.state.{DirectChunk, PredicateChunkIdentifier, NestedPredicateChunk, NestedFieldChunk,
-    DefaultContext, DirectPredicateChunk, DirectFieldChunk, QuantifiedChunk}
+import interfaces.state.{StateFactory, Chunk, State, PathConditions, Heap, Store}
+import viper.silicon.state.{PredicateChunkIdentifier, NestedPredicateChunk, NestedFieldChunk, DefaultContext,
+    DefaultContext, DirectPredicateChunk, DirectFieldChunk, QuantifiedChunk, MagicWandChunk}
 import state.terms._
 
 trait PredicateSupporter[ST <: Store[ST],
@@ -25,7 +25,7 @@ trait PredicateSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
             with ChunkSupporter[ST, H, PC, S] =>
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
@@ -35,7 +35,7 @@ trait PredicateSupporter[ST <: Store[ST],
 
   object predicateSupporter {
     private type C = DefaultContext[H]
-    private type CH = DirectChunk
+    private type CH = Chunk
 
     def fold(σ: S, predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError, c: C)
             (Q: (S, C) => VerificationResult)
@@ -55,7 +55,8 @@ trait PredicateSupporter[ST <: Store[ST],
         val ncs = dcs flatMap {
           case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
           case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
-          case _: QuantifiedChunk => None}
+          case _: QuantifiedChunk => None
+          case _: MagicWandChunk => None}
         val ch = DirectPredicateChunk(predicate.name, tArgs, snap.convert(sorts.Snap), tPerm, ncs)
         val (h1, c2) = chunkSupporter.produce(σ1, σ1.h, ch, c1)
         val h2 = h1 + H(ncs)

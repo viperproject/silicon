@@ -208,6 +208,14 @@ class DefaultHeapCompressor[ST <: Store[ST],
     (h1, optMatch)
   }
 
+  def merge(σ: S, h: H, newH: H, ctx: C): (H, Seq[DirectChunk]) = {
+    val (h1, _, matches, ts) = singleMerge(σ, h, newH, ctx)
+
+    decider.assume(ts)
+
+    (h1, matches.values.toSeq)
+  }
+
   /** Merges `h2` into `h1`, yielding a quadruple `(h, dfcs, matches, ts)`,
     * where `h` is the heap resulting from the merge.
     * `dfcs` are all those `DirectFieldChunk`s that have been affected by the

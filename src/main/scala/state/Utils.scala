@@ -104,7 +104,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal => Nil
+    case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -145,7 +145,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.p map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal => term
+      case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.body), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))

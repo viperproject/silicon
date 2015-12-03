@@ -8,6 +8,7 @@ package viper
 package silicon
 package state
 
+import silver.ast
 import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
 import terms.{Lookup, PermMinus, PermPlus, Term, sorts}
 import state.terms.predef.`?r`
@@ -106,4 +107,32 @@ case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nest
   def this(pc: DirectPredicateChunk) = this(pc.name, pc.args, pc.snap, pc.nested)
 
   override def toString = "%s(%s;%s)".format(name, args.mkString(","), snap)
+}
+
+abstract class MagicWandChunkLike extends {
+  val ghostFreeWand: ast.MagicWand
+  val evaluatedTerms: Seq[Term]
+  val name = "$MagicWandChunk" + ghostFreeWand.hashCode /* TODO: Name just shouldn't be required for wand chunks */
+  val args = Nil                                        /* TODO: Same for args */
+
+  override lazy val toString = {
+    val pos = ghostFreeWand.pos match {
+      case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
+      case other => other.toString
+    }
+
+    s"wand@$pos[${evaluatedTerms.mkString(",")}]"
+  }
+}
+
+case class MagicWandChunk(ghostFreeWand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], evaluatedTerms: Seq[Term])
+    extends MagicWandChunkLike with Chunk {
+
+  lazy val id = MagicWandChunkIdentifier(ghostFreeWand, bindings, evaluatedTerms)
+}
+
+case class MagicWandChunkIdentifier(ghostFreeWand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], evaluatedTerms: Seq[Term])
+    extends MagicWandChunkLike with ChunkIdentifier {
+
+  lazy val chunk = MagicWandChunk(ghostFreeWand, bindings, evaluatedTerms)
 }

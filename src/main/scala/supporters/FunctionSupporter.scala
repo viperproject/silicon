@@ -16,7 +16,7 @@ import silver.verifier.errors.{ContractNotWellformed, Internal, PostconditionVio
 import silver.verifier.VerificationError
 import interfaces.{VerificationResult, Success, Failure, Producer, Consumer, Evaluator}
 import interfaces.decider.Decider
-import interfaces.state.{State, StateFactory, PathConditions, Heap, Store, Mergeable}
+import interfaces.state.{State, StateFactory, PathConditions, Heap, Store, Mergeable, Chunk}
 import interfaces.state.factoryUtils.Ø
 import state.{SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.{utils => _, _}
@@ -290,7 +290,7 @@ trait FunctionSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[DirectChunk, ST, H, S, DefaultContext[H]] =>
+            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification

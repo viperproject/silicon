@@ -29,7 +29,7 @@ import state.terms.{AxiomRewriter, FullPerm}
 import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
     DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
 import supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
-    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter}
+    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, MagicWandSupporter}
 import supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import reporting.{VerificationException, Bookkeeper}
 
@@ -235,8 +235,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
 
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter, fieldValueFunctionsEmitter,
-      stateFormatter, heapCompressor, quantifiedChunkSupporter, bookkeeper)
+                                      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+                                      fieldValueFunctionsEmitter, stateFormatter, heapCompressor,
+                                      quantifiedChunkSupporter, bookkeeper)
   }
 
   private def reset() {
@@ -685,6 +686,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             val z3TimeoutArg = """-t:(\d+)""".r
             z3Args.get.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
+        
+  val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
+    descr = "Maximal number of nested heuristics applications (default: 3)",
+    default = Some(3),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
 
   val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
     descr = (  "Handle pure conjunction individually."

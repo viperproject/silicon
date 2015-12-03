@@ -11,16 +11,17 @@ import org.slf4s.Logging
 import silver.ast
 import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
     LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed, CallFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, InsufficientPermission}
+    UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed, CallFailed}
+import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, InsufficientPermission,
+    NamedMagicWandChunkNotFound}
 import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
 import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
+import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
 import interfaces.state.factoryUtils.Ø
 import state.terms._
-import state.{FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
+import state.{MagicWandChunk, FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
 import state.terms.perms.IsNonNegative
-import supporters.{Brancher, PredicateSupporter}
+import supporters.{LetHandler, Brancher, PredicateSupporter, MagicWandSupporter}
 import supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
@@ -29,12 +30,16 @@ trait DefaultExecutor[ST <: Store[ST],
                       S <: State[ST, H, S]]
     extends Executor[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
-                    with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with PredicateSupporter[ST, H, PC, S]
-                    with Brancher[ST, H, S, DefaultContext[H]] =>
+                    with Brancher[ST, H, S, DefaultContext[H]]
+                    with MagicWandSupporter[ST, H, PC, S]
+                    with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
+
+  protected implicit val manifestH: Manifest[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, assume, inScope}
@@ -116,7 +121,9 @@ trait DefaultExecutor[ST <: Store[ST],
         /* Havoc local variables that are assigned to in the loop body but
          * that have been declared outside of it, i.e. before the loop.
          */
-        val wvs = (lb.locals.map(_.localVar) ++ lb.writtenVars).distinct
+        val wvs = (lb.locals.map(_.localVar) ++ lb.writtenVars).distinct.filterNot(_.typ == ast.Wand)
+          /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
+
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
@@ -186,10 +193,23 @@ trait DefaultExecutor[ST <: Store[ST],
     val executed = stmt match {
       case silver.ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
+        
+      case label @ silver.ast.Label(name) =>
+        val c1 = c.copy(oldHeaps = c.oldHeaps + (name -> σ.h))
+        Q(σ, c1)
 
       case ass @ ast.LocalVarAssign(v, rhs) =>
-        eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
-          Q(σ \+ (v, tRhs), c1))
+        v.typ match {
+          case ast.Wand =>
+            assert(rhs.isInstanceOf[ast.MagicWand], s"Expected magic wand but found $rhs (${rhs.getClass.getName}})")
+            val wand = rhs.asInstanceOf[ast.MagicWand]
+            val pve = LetWandFailed(ass)
+            magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
+              Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
+          case _ =>
+            eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
+              Q(σ \+ (v, tRhs), c1))
+        }
 
       /* Assignment for a field that contains quantified chunks */
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
@@ -298,7 +318,7 @@ trait DefaultExecutor[ST <: Store[ST],
               val r =
                 consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
                   Success())
-              r && Q(σ,c)
+              r && Q(σ, c)
             } else
               consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
                 Q(σ, c1))
@@ -343,9 +363,58 @@ trait DefaultExecutor[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
 
-      case label @ silver.ast.Label(name) =>
-        val c1 = c.copy(oldHeaps = c.oldHeaps + (name -> σ.h))
-        Q(σ, c1)
+      case pckg @ ast.Package(wand) =>
+        val pve = PackageFailed(pckg)
+        val c0 = c.copy(reserveHeaps = H() :: σ.h :: Nil,
+                        recordEffects = true,
+                        producedChunks = Nil,
+                        consumedChunks = Nil :: Nil :: Nil,
+                        letBoundVars = Nil)
+        magicWandSupporter.packageWand(σ, wand, pve, c0)((chWand, c1) => {
+          assert(c1.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c1.reserveHeaps.length}")
+          val h1 = c1.reserveHeaps(2)
+          val c2 = c1.copy(exhaleExt = false,
+                           reserveHeaps = Nil,
+                           lhsHeap = None,
+                           recordEffects = false,
+                           producedChunks = Nil,
+                           consumedChunks = Stack(),
+                           letBoundVars = Nil)
+          Q(σ \ (h1 + chWand), c2)})
+
+      case apply @ ast.Apply(e) =>
+        /* TODO: Try to unify this code with that from DefaultConsumer/applying */
+
+        val pve = ApplyFailed(apply)
+
+        def QL(σ1: S, γ: ST, wand: ast.MagicWand, c1: C) = {
+          /* The given heap is not σ.h, but rather the consumed portion only. However,
+           * using σ.h should not be a problem as long as the heap that is used as
+           * the given-heap while checking self-framingness of the wand is the heap
+           * described by the left-hand side.
+           */
+          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, _, c2) => {
+            val c2a = c2.copy(lhsHeap = Some(σ1.h))
+            produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
+              val c4 = c3.copy(lhsHeap = None)
+              heapCompressor.compress(σ3, σ3.h, c4)
+              Q(σ3 \ σ1.γ, c4)})})}
+
+        e match {
+          case wand: ast.MagicWand =>
+            consume(σ, FullPerm(), wand, pve, c)((σ1, _, chs, c1) => {
+              QL(σ1, σ1.γ, wand, c1)})
+
+          case v: ast.AbstractLocalVar =>
+            val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
+            decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id, c) match {
+              case Some(ch) =>
+                QL(σ \- ch, Γ(chWand.bindings), chWand.ghostFreeWand, c)
+              case None =>
+                Failure[ST, H, S](pve dueTo NamedMagicWandChunkNotFound(v))}
+
+          case _ => sys.error(s"Expected a magic wand, but found node $e")}
+
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: silver.ast.Goto

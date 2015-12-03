@@ -13,7 +13,7 @@ import silver.ast
 import silver.verifier.PartialVerificationError
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
-import interfaces.state.{HeapCompressor, ChunkIdentifier, State, PathConditions, Heap, Store}
+import interfaces.state.{Chunk, StateFactory, HeapCompressor, ChunkIdentifier, State, PathConditions, Heap, Store}
 import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, QuantifiedChunk}
 import state.terms._
 import state.terms.perms.IsNoAccess
@@ -25,16 +25,21 @@ trait ChunkSupporter[ST <: Store[ST],
   { this:      Logging
           with Evaluator[ST, H, S, DefaultContext[H]]
           with Producer[ST, H, S, DefaultContext[H]]
-          with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
-          with Brancher[ST, H, S, DefaultContext[H]]  =>
+          with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+          with Brancher[ST, H, S, DefaultContext[H]]
+          with MagicWandSupporter[ST, H, PC, S]
+          with HeuristicsSupporter[ST, H, PC, S] =>
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
+  protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
+
+  import stateFactory._
 
   object chunkSupporter {
     private type C = DefaultContext[H]
-    private type CH = DirectChunk
+    private type CH = Chunk
 
     private case class PermissionsConsumptionResult(consumedCompletely: Boolean)
 
@@ -45,32 +50,40 @@ trait ChunkSupporter[ST <: Store[ST],
                 pve: PartialVerificationError,
                 c: C,
                 locacc: ast.LocationAccess,
-                optNode: Option[ast.Node] = None)
+                optNode: Option[ast.Node with ast.Positioned] = None)
                (Q: (H, Term, List[CH], C) => VerificationResult)
                : VerificationResult = {
 
-      consume(σ, h, id, tPerm, locacc, pve, c)((h2, optCh, c2, results) =>
-        optCh match {
-          case Some(ch) =>
-            ch match {
-              case fc: DirectFieldChunk =>
-                val snap = fc.value.convert(sorts.Snap)
-                Q(h2, snap, fc :: Nil, c2)
-              case pc: DirectPredicateChunk =>
-                val h3 =
-                  if (results.consumedCompletely)
-                    pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
-                  else
-                    h2
-                Q(h3, pc.snap, pc :: Nil, c2)
+      val description = optNode.orElse(Some(locacc)).map(node => s"consume ${node.pos}: $node").get
+//      val description = optNode match {
+//        case Some(node) => s"consume ${node.pos}: $node"
+//        case None => s"consume $id"
+//      }
+
+      heuristicsSupporter.tryOperation[H, Term, List[Chunk]](description)(σ, h, c)((σ1, h1, c1, QS) => {
+        consume(σ, h1, id, tPerm, locacc, pve, c1)((h2, optCh, c2, results) =>
+          optCh match {
+            case Some(ch) =>
+              ch match {
+                case fc: DirectFieldChunk =>
+                  val snap = fc.value.convert(sorts.Snap)
+                QS(h2, snap, fc :: Nil, c2)
+                case pc: DirectPredicateChunk =>
+                  val h3 =
+                    if (results.consumedCompletely)
+                      pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
+                    else
+                      h2
+                QS(h3, pc.snap, pc :: Nil, c2)
               case qch: QuantifiedChunk =>
                 sys.error(s"Found unexpected quantified chunk $qch")}
-          case None =>
-            /* Not having consumed anything could mean that we are in an infeasible
-             * branch, or that the permission amount to consume was zero.
-             */
-            Q(h2, Unit, Nil, c2)
-        })
+            case None =>
+              /* Not having consumed anything could mean that we are in an infeasible
+               * branch, or that the permission amount to consume was zero.
+               */
+              QS(h2, Unit, Nil, c2)
+          })
+      })(Q)
     }
 
     private def consume(σ: S,
@@ -83,7 +96,46 @@ trait ChunkSupporter[ST <: Store[ST],
                        (Q: (H, Option[DirectChunk], C, PermissionsConsumptionResult) => VerificationResult)
                        : VerificationResult = {
 
-      if (silicon.utils.consumeExactRead(pLoss, c.constrainableARPs)) {
+      /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
+      if (c.exhaleExt)
+      /* Function "transfer" from wands paper.
+       * Permissions are transferred from the stack of heaps to σUsed, which is
+       * h in the current context.
+       */
+        return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, id, pLoss, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
+          val c2 = c1.copy(reserveHeaps = hs)
+          val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
+
+          val c3 =
+            if (c2.recordEffects) {
+              assert(chs.length == c2.consumedChunks.length)
+
+              val consumedChunks3 =
+                chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], DirectChunk)]]()) {
+                  case (accConsumedChunks, (optCh, consumed)) =>
+                    optCh match {
+                      case Some(ch) => ((c2.branchConditions -> ch) +: consumed) :: accConsumedChunks
+                      case None => consumed :: accConsumedChunks
+                    }
+                }.reverse
+
+              c2.copy(consumedChunks = consumedChunks3)
+            } else
+              c2
+          //        val c3 = chs.last match {
+          //          case Some(ch) if c2.recordEffects =>
+          //            c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
+          //          case _ => c2
+          //        }
+
+          val usedChunks = chs.flatten
+          /* Returning any of the usedChunks should be fine w.r.t to the snapshot
+           * of the chunk, since consumeFromMultipleHeaps should have equated the
+           * snapshots of all usedChunks.
+           */
+          Q(h + H(usedChunks), usedChunks.headOption, c3, pcr)})
+
+      if (utils.consumeExactRead(pLoss, c.constrainableARPs)) {
         decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
           if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)), config.checkTimeout())) {
             Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}
@@ -99,8 +151,16 @@ trait ChunkSupporter[ST <: Store[ST],
     def produce(σ: S, h: H, ch: DirectChunk, c: C): (H, C) = {
       val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
       val c1 = c//recordSnapshot(c, matchedChunk, ch)
+      val c2 = recordProducedChunk(c1, ch, c.branchConditions)
 
-      (h1, c1)
+      (h1, c2)
     }
+
+    private def recordProducedChunk(c: C, producedChunk: DirectChunk, guards: Stack[Term]): C =
+      c.recordEffects match {
+        case true => c.copy(producedChunks = c.producedChunks :+ (guards -> producedChunk))
+        case false => c
+      }
+
   }
 }

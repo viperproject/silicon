@@ -15,7 +15,7 @@ import silver.verifier.reasons.InsufficientPermission
 import interfaces.{VerificationResult, Failure, Success, FatalResult, NonFatalResult}
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state._
-import state.{DefaultContext, DirectChunk, SymbolConvert}
+import state.{DefaultContext, DirectChunk, SymbolConvert, MagicWandChunk, MagicWandChunkIdentifier}
 import state.terms._
 import reporting.Bookkeeper
 import supporters.qps.QuantifiedChunkSupporter
@@ -358,7 +358,7 @@ class DefaultDecider[ST <: Store[ST],
         if (checkSmoke())
           Success() /* TODO: Mark branch as dead? */
         else
-          QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}
+          QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args))}
     )(Q)
   }
 
@@ -390,14 +390,24 @@ class DefaultDecider[ST <: Store[ST],
             assume(permCheck)
             QS(ch, c2)
           case false =>
-            QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)))}})
+            QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args))}})
     )(Q)
 
   def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH] = {
-    val chunks = h.values collect {
-      case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]}
+    id match {
+      case mwChunkId: MagicWandChunkIdentifier =>
+        val mwChunks = h.values.collect{case ch: MagicWandChunk => ch}
+//        println(s"mwChunkId = $mwChunkId")
+//        println(s"mwChunks = $mwChunks")
+        mwChunks.find(ch => compareWandChunks(σ, mwChunkId.chunk, ch, c)).asInstanceOf[Option[CH]]
 
-    getChunk(σ, chunks, id)
+      case _ =>
+        val chunks = h.values collect {
+          case ch if manifest[CH].runtimeClass.isInstance(ch) && ch.name == id.name => ch.asInstanceOf[CH]
+        }
+
+        getChunk(σ, chunks, id)
+    }
   }
 
   private def getChunk[CH <: Chunk: NotNothing](σ: S, chunks: Iterable[CH], id: ChunkIdentifier): Option[CH] =
@@ -423,6 +433,20 @@ class DefaultDecider[ST <: Store[ST],
         check(σ, And(ch.args zip id.args map (x => x._1 === x._2): _*), config.checkTimeout()))
 
     chunk
+  }
+
+  private def compareWandChunks(σ: S, chWand1: MagicWandChunk, chWand2: MagicWandChunk, c: C): Boolean = {
+//    println(s"\n[compareWandChunks]")
+//    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
+//    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
+    var b = chWand1.ghostFreeWand.structurallyMatches(chWand2.ghostFreeWand, c.program)
+//    println(s"  after structurallyMatches: b = $b")
+    b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
+//    println(s"  after comparing evaluatedTerms.length's: b = $b")
+    b = b && check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)), config.checkTimeout())
+//    println(s"  after comparing evaluatedTerms: b = $b")
+
+    b
   }
 
   /* Fresh symbols */
