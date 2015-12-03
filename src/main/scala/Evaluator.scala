@@ -15,7 +15,7 @@ import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission
 import reporting.Bookkeeper
 import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
 import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor,
-    ChunkIdentifier}
+    ChunkIdentifier, Chunk}
 import interfaces.decider.Decider
 import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
     DirectFieldChunk, DirectPredicateChunk}
@@ -54,7 +54,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
-  
+
   def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult =
@@ -201,7 +201,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             Failure[ST, H, S](pve dueTo LabelledStateNotReached(old))
           case Some(h) =>
             evalOld(σ, h, e0, pve, c)(Q)}
-            
+
       case ast.ApplyOld(e0) => eval(σ \ c.lhsHeap.get, e0, pve, c)(Q)
 
       case ast.Let(v, e0, e1) =>

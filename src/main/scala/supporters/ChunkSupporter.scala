@@ -135,7 +135,7 @@ trait ChunkSupporter[ST <: Store[ST],
            */
           Q(h + H(usedChunks), usedChunks.headOption, c3, pcr)})
 
-      if (utils.consumeExactRead(pLoss, c.constrainableARPs)) {
+      if (silicon.utils.consumeExactRead(pLoss, c.constrainableARPs)) {
         decider.withChunk[DirectChunk](σ, h, id, Some(pLoss), locacc, pve, c)((ch, c1) => {
           if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, pLoss)), config.checkTimeout())) {
             Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}

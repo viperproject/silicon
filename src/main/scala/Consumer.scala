@@ -11,8 +11,8 @@ import org.slf4s.Logging
 import silver.ast
 import silver.verifier.{VerificationError, PartialVerificationError}
 import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NegativePermission, AssertionFalse,
-  ReceiverNull, NamedMagicWandChunkNotFound, MagicWandChunkNotFound}
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter}
+    ReceiverNull, NamedMagicWandChunkNotFound, MagicWandChunkNotFound}
+import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
 import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import interfaces.decider.Decider
 import interfaces.state.factoryUtils.Ø
@@ -26,7 +26,7 @@ import supporters.qps.QuantifiedChunkSupporter
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
     extends NoOpStatefulComponent
-       with Consumer[DirectChunk, ST, H, S, DefaultContext[H]]
+       with Consumer[Chunk, ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with ChunkSupporter[ST, H, PC, S]

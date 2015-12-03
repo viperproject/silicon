@@ -17,7 +17,7 @@ import interfaces.decider.Decider
 import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store,
     HeapCompressor}
 import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk}
+import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk, QuantifiedChunk}
 import state.terms._
 import state.terms.perms.{IsNoAccess, IsNonNegative}
 
@@ -397,6 +397,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                       pc.copy(perm = PermPlus(ch1.perm, pGain))
                     case ch1 => ch1
                   }
+
+                case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
               }
 
               if (!added) joinedReserveHeaps.head += ch
@@ -434,6 +436,8 @@ trait MagicWandSupporter[ST <: Store[ST],
                         pc.copy(perm = PermMinus(ch1.perm, pLoss))
                       case ch1 => ch1
                     }
+
+                  case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
                 }
 
                 if (!matched) {

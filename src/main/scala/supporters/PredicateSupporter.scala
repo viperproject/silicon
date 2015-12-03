@@ -15,7 +15,7 @@ import interfaces.{Evaluator, Consumer, Producer, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.state.{StateFactory, Chunk, State, PathConditions, Heap, Store}
 import viper.silicon.state.{PredicateChunkIdentifier, NestedPredicateChunk, NestedFieldChunk, DefaultContext,
-    DefaultContext, DirectPredicateChunk, DirectFieldChunk, QuantifiedChunk, MagicWandChunk}
+    DirectPredicateChunk, DirectFieldChunk, QuantifiedChunk, MagicWandChunk}
 import state.terms._
 
 trait PredicateSupporter[ST <: Store[ST],
