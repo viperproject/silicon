@@ -80,15 +80,14 @@ trait AbstractElementVerifier[ST <: Store[ST],
       wands foreach {_wand =>
         val err = MagicWandNotWellformed(_wand)
 
-        /* TODO: How to handle magic wand chunk terms (e.g., wand w := ...) when
-         * checking self-framingness of wands? This also raises the question of
-         * how to produce such terms in general, which could happen when
-         * checking self-framingness of wands, but also, if such terms appear
-         * on the left of a wand that is packaged.
-         *
-         * The problem is currently avoided by replacing occurences of wand
-         * chunk terms with the trivial wand true --* true. Not sure if this is
-         * sound, though.
+        /* NOTE: Named wand, i.e. "wand w := A --* B", are currently not (separately) checked for
+         * self-framingness; instead, each such wand is replaced by "true --* true" (for the scope
+         * of the self-framingness checks implemented in this block of code).
+         * The reasoning here is that
+         *   (1) either A --* B is a wand that is actually used in the program, in which case
+         *       the other occurrences will be checked for self-framingness
+         *   (2) or A --* B is a wand that does not actually occur in the program, in which case
+         *       the verification will fail anyway
          */
         val trivialWand = (p: ast.Position) => ast.MagicWand(ast.TrueLit()(p), ast.TrueLit()(p))(p)
         val wand = _wand.transform {
