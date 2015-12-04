@@ -1,0 +1,63 @@
+/* See list_sum.sil for the running example of our APLAS'14 paper (currently
+ * under submission).
+ *
+ * This example is effectively the same, but without comments and use of
+ * assertion short-hands.
+ */
+
+field val: Int
+field next: Ref
+
+predicate List(ys: Ref) {
+  acc(ys.val) && acc(ys.next) && (ys.next != null ==> acc(List(ys.next)))
+}
+
+function sum_rec(ys: Ref): Int
+  requires acc(List(ys))
+{ unfolding List(ys) in ys.val + (ys.next == null ? 0 : sum_rec(ys.next)) }
+
+method sum_it(ys: Ref) returns (sum: Int)
+  requires ys != null
+  requires acc(List(ys))
+  ensures acc(List(ys))
+  ensures sum == old(sum_rec(ys))
+{
+  var xs: Ref := ys
+  sum := 0
+
+  package
+    (xs != null ==> (acc(List(xs)) && sum_rec(xs) == now(sum_rec(xs))))
+      --*
+    (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+
+  while (xs != null)
+    invariant xs != null ==> acc(List(xs))
+    invariant sum == old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs))
+    invariant
+      (xs != null ==> (acc(List(xs)) && sum_rec(xs) == now(sum_rec(xs))))
+        --*
+      (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+  {
+    var zs: Ref := xs
+
+    unfold List(xs)
+    sum := sum + xs.val
+    xs := xs.next;
+
+    package
+      (xs != null ==> (acc(List(xs)) && sum_rec(xs) == now(sum_rec(xs))))
+        --*
+      folding List(zs) in
+        applying
+          ((zs != null ==> (acc(List(zs)) && sum_rec(zs) == now(sum_rec(zs))))
+            --*
+          (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))))
+        in
+          acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))
+  }
+
+  apply
+    (xs != null ==> (acc(List(xs)) && sum_rec(xs) == now(sum_rec(xs))))
+      --*
+    (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+}

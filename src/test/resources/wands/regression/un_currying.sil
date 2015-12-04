@@ -1,0 +1,73 @@
+/* A version of the (un)currying-example with additional sanity checks */
+
+/* The predicate bodies can be arbitrary since the proofs never unfold the
+ * predicates.
+ */
+predicate P() { true }
+predicate Q() { true }
+predicate R() { true }
+
+/* A --* B --* C  ==>  A * B --* C */
+method uncurry() {
+
+  /* Define short-hands for the sake of readability (global short-hands are
+   * currently not implemented)
+   */
+  define A acc(P())
+  define B acc(Q())
+  define C acc(R())
+
+  inhale A --* (B --* C) /* requires */
+
+  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+
+  exhale A && B --* C /* ensures */
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false /* Never trust your own implementation */
+}
+
+/* A * B --* C  ==>  A --* B --* C */
+method curry() {
+
+  /* Define short-hands for the sake of readability (global short-hands are
+   * currently not implemented)
+   */
+  define A acc(P())
+  define B acc(Q())
+  define C acc(R())
+
+  inhale A && B --* C /* requires */
+
+  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+
+  exhale A --* (B --* C) /* ensures */
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false /* Never trust your own implementation */
+}
+
+
+/* Regression tests */
+
+method wrong_curry01(x: Ref)
+  requires (acc(P()) && acc(Q())) --* acc(R())
+  ensures acc(P()) --* (acc(Q()) --* acc(R()))
+{
+  inhale acc(P())
+
+  //:: ExpectedOutput(apply.failed:insufficient.permission)
+  apply (acc(P()) && acc(Q())) --* acc(R())
+}
+
+method wrong_curry02(x: Ref)
+  requires (acc(P()) && acc(Q())) --* acc(R())
+  ensures acc(P()) --* (acc(Q()) --* acc(R()))
+{
+  inhale acc(P())
+
+  package acc(Q()) --* (applying ((acc(P()) && acc(Q())) --* acc(R())) in acc(R()))
+
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(P())
+}
