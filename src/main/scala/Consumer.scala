@@ -173,7 +173,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val invFct =
-              quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs))
+              quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c1.quantifiedVariables)
             decider.prover.logComment("Top-level auxiliary terms")
             assume(tAuxTopLevel)
             decider.prover.logComment("Nested auxiliary terms")
@@ -201,16 +201,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     assume(fvfDomain ++ fvfDef.valueDefinitions)
                     //                if (!config.disableQPCaching())
                     //                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c2))
-                    val c3 = c2.snapshotRecorder match {
-                      case Some(sr) =>
-                        val sr1 = sr.recordQPTerms(c2.quantifiedVariables,
-                          c2.branchConditions,
-                          invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
-                        val sr2 =
-                          if (true/*fvfDef.freshFvf*/) sr1.recordFvf(field, fvfDef.fvf)
-                          else sr1
-                        c2.copy(snapshotRecorder = Some(sr2))
-                      case _ => c2}
+                    val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
+                                                                c2.branchConditions,
+                                                                invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
+                    val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
+                    val c3 = c2.copy(functionRecorder = fr2)
                     Q(h1, ch.fvf, /*ch :: */Nil, c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}

@@ -4,14 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import silver.ast
-import interfaces.state.{Context, Mergeable, Heap}
-import terms.{Var, Term}
-import supporters.SnapshotRecorder
+import viper.silver.ast
+import viper.silicon.{Map, Set, Stack}
+import viper.silicon.interfaces.state.{Mergeable, Context, Heap}
+import viper.silicon.state.terms.{Var, Term}
+import viper.silicon.supporters.functions.{NoopFunctionRecorder, FunctionRecorder}
 
 case class DefaultContext[H <: Heap[H]]
                          (program: ast.Program,
@@ -22,7 +21,7 @@ case class DefaultContext[H <: Heap[H]]
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
-                          snapshotRecorder: Option[SnapshotRecorder] = None,
+                          functionRecorder: FunctionRecorder = NoopFunctionRecorder,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
                           oldHeaps: Map[String, H] = Map.empty[String, H], /* TODO: Integrate regular old */
@@ -76,7 +75,7 @@ case class DefaultContext[H <: Heap[H]]
 
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, qpFields1, recordVisited1, visited1, branchConditions1, constrainableARPs1,
-                        quantifiedVariables1, retrying1, snapshotRecorder1, recordPossibleTriggers1,
+                        quantifiedVariables1, retrying1, functionRecorder1, recordPossibleTriggers1,
                         possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
@@ -84,7 +83,7 @@ case class DefaultContext[H <: Heap[H]]
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`, `branchConditions1`,
-                            `constrainableARPs1`, `quantifiedVariables1`, retrying2, snapshotRecorder2,
+                            `constrainableARPs1`, `quantifiedVariables1`, retrying2, functionRecorder2,
                             `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
@@ -92,11 +91,11 @@ case class DefaultContext[H <: Heap[H]]
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
-          val snapshotRecorder3 = DefaultContext.merge(snapshotRecorder1, snapshotRecorder2)
+          val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
 
           copy(recordVisited = recordVisited1 || recordVisited2,
                retrying = retrying1 || retrying2,
-               snapshotRecorder = snapshotRecorder3,
+               functionRecorder = functionRecorder3,
                possibleTriggers = possibleTriggers3)
 
         case _ =>
@@ -115,7 +114,7 @@ case class DefaultContext[H <: Heap[H]]
 
 object DefaultContext {
   def conflictFreeUnionOrAbort[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K,V] =
-    silicon.utils.conflictFreeUnion(m1, m2) match {
+    viper.silicon.utils.conflictFreeUnion(m1, m2) match {
       case Right(m3) => m3
       case _ => sys.error("Unexpected mismatch between contexts")
     }

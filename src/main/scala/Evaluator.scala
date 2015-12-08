@@ -164,25 +164,17 @@ trait DefaultEvaluator[ST <: Store[ST],
             val fvfDomain = fvfDef.domainDefinitions
             val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
             assume(fvfDomain ++ fvfDef.valueDefinitions)
-            val c2 = c1.snapshotRecorder match {
-              case Some(sr) =>
-                val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-                val sr1 = sr.recordSnapshot(fa, c1.branchConditions, fvfLookup)
-                            .recordQPTerms(qvars, c1.branchConditions, fvfDomain ++ fvfDef.valueDefinitions)
-                val sr2 =
-                  if (true/*fvfDef.freshFvf*/) sr1.recordFvf(fa.field, fvfDef.fvf)
-                  else sr1
-                c1.copy(snapshotRecorder = Some(sr2))
-              case _ => c1}
+            val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
+                                         .recordQPTerms(qvars, c1.branchConditions, fvfDomain ++ fvfDef.valueDefinitions)
+            val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
+            val c2 = c1.copy(functionRecorder = fr2)
             Q(fvfLookup, c2)})})
 
       case fa: ast.FieldAccess =>
         withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
           decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)((ch, c2) => {
-            val c3 = c2.snapshotRecorder match {
-              case Some(sr) =>
-                c2.copy(snapshotRecorder = Some(sr.recordSnapshot(fa, c2.branchConditions, ch.value)))
-              case _ => c2}
+            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, c2.branchConditions, ch.value))
             Q(ch.value, c3)}))
 
       case ast.Not(e0) =>
@@ -247,8 +239,8 @@ trait DefaultEvaluator[ST <: Store[ST],
           )((optT1, optT2, cJoined) => {
             val tIte =
               Ite(t0,
-                  optT1.getOrElse(fresh("$deadThen", toSort(e1.typ))),
-                  optT2.getOrElse(fresh("$deadElse", toSort(e2.typ))))
+                  optT1.getOrElse(partiallyAppliedFresh("$deadThen", cJoined, e1.typ)),
+                  optT2.getOrElse(partiallyAppliedFresh("$deadElse", cJoined, e2.typ)))
             Q(tIte, cJoined)
           }))
 
@@ -420,15 +412,10 @@ trait DefaultEvaluator[ST <: Store[ST],
             consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
-              val c5 = c4.snapshotRecorder match {
-                case Some(sr) =>
-                  c4.copy(snapshotRecorder = Some(sr.recordSnapshot(fapp, c4.branchConditions, s1)))
-                case _ => c4}
-              val c6 =
-                if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp))
-                else c5
-              val c7 = c6.copy(recordVisited = c2.recordVisited)
-              QB(tFApp, c7)})
+              val c5 = c4.copy(recordVisited = c2.recordVisited,
+                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1))
+              val c6 = if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp)) else c5
+              QB(tFApp, c6)})
             })(Q)})
 
       case ast.Unfolding(
@@ -466,7 +453,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
         } else {
-          val unknownValue = fresh("recunf", toSort(eIn.typ))
+          val unknownValue = partiallyAppliedFresh("recunf", c, eIn.typ)
           Q(unknownValue, c)
         }
 
@@ -735,5 +722,14 @@ trait DefaultEvaluator[ST <: Store[ST],
         bookkeeper.logfiles("evalTrigger").println(s"Couldn't translate some of these triggers:\n  $remainingTriggerExpressions\nReason:\n  $r")
         Q(Trigger(cachedTriggerTerms), c)
     }
+  }
+
+  private def partiallyAppliedFresh(id: String, c: C, result: ast.Type) = {
+    val appliedArgs = c.quantifiedVariables
+    val appliedSorts = appliedArgs.map(_.sort)
+    val sort = sorts.Arrow(appliedSorts, toSort(result))
+    val func = decider.fresh(id, sort)
+
+    Apply(func, appliedArgs)
   }
 }

@@ -18,6 +18,7 @@ import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConv
 import state.terms._
 import supporters.{LetHandler, Brancher, ChunkSupporter, MagicWandSupporter}
 import supporters.qps.QuantifiedChunkSupporter
+import supporters.functions.NoopFunctionRecorder
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -200,7 +201,7 @@ trait DefaultProducer[ST <: Store[ST],
                 QB(tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c4)}))})
         ){case (tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
-          val additionalInvFctArgs = c.snapshotRecorder.fold(Seq[Var]())(_.functionArgs)
+          val additionalInvFctArgs = c1.quantifiedVariables
           val (ch, invFct) =
             quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(pGain, p), tCond,
                                                            additionalInvFctArgs)
@@ -260,12 +261,7 @@ trait DefaultProducer[ST <: Store[ST],
           decider.prover.logComment("Receivers are non-null")
           assume(Set(tNonNullQuant))
           decider.prover.logComment("Definitional axioms for field value functions")
-          val c2 = c1.snapshotRecorder match {
-            case Some(sr) =>
-              val sr1 = sr.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms)
-              c1.copy(snapshotRecorder = Some(sr1))
-            case None =>
-              c1}
+          val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms))
           Q(σ.h + ch1, c2)}
 
       case _: ast.InhaleExhaleExp =>
@@ -371,7 +367,7 @@ trait DefaultProducer[ST <: Store[ST],
      * worth re-benchmarking from time to time.
      */
 
-    if (c.snapshotRecorder.isEmpty) {
+    if (c.functionRecorder == NoopFunctionRecorder) {
       val s0 = mkSnap(a0, c.program)
       val s1 = mkSnap(a1, c.program)
 

@@ -23,8 +23,9 @@ import decider.PreambleFileEmitter
 import state.{terms, SymbolConvert, DefaultContext}
 import state.terms.{sorts, Sort}
 import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
-    MultisetsEmitter, SetsEmitter, SequencesEmitter, FunctionSupporter, PredicateSupporter, ChunkSupporter,
+    MultisetsEmitter, SetsEmitter, SequencesEmitter, PredicateSupporter, ChunkSupporter,
     MagicWandSupporter, HeuristicsSupporter}
+import supporters.functions.FunctionSupporter
 import supporters.qps.{FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import reporting.Bookkeeper
 
