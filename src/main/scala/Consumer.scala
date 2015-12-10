@@ -138,7 +138,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
-      case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, condition, rcvr, field, loss, forall, fa) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, condition, rcvr, field, loss, forall, fa) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar

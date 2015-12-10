@@ -31,7 +31,7 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
 
   def analyze(program: ast.Program) {
     program visit {
-      case ast.QuantifiedPermissionSupporter.ForallRefPerm(_, _, _, f, _, _, _) =>
+      case ast.utility.QuantifiedPermissions.QPForall(_, _, _, f, _, _, _) =>
         collectedFields += f
     }
 

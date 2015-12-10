@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{Internal, PostconditionViolated, ContractNotWellformed, FunctionNotWellformed}
-import viper.silicon.Map
+import viper.silicon.{Map, toSet}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
@@ -214,9 +214,9 @@ trait FunctionSupporter[ST <: Store[ST],
 
     private def handleFunction(function: ast.Function): List[VerificationResult] = {
       val data = functionData(function)
-
+      val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(function, program))
       val c = DefaultContext[H](program = program,
-                                qpFields = viper.silicon.utils.ast.quantifiedFields(function, program),
+                                qpFields = quantifiedFields,
                                 quantifiedVariables = data.args,
                                 functionRecorder = ActualFunctionRecorder())
 

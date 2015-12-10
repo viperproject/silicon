@@ -180,7 +180,7 @@ trait DefaultProducer[ST <: Store[ST],
         magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
           Q(σ.h + chWand, c))
 
-      case ast.QuantifiedPermissionSupporter.ForallRefPerm(qvar, cond, rcvr, field, gain, forall, _) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, gain, forall, _) =>
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar

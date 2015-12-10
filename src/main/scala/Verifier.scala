@@ -55,7 +55,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
   val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
 
   def verify(member: ast.Member, program: ast.Program): VerificationResult = {
-    val quantifiedFields = utils.ast.quantifiedFields(member, program)
+    val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
     val c = DefaultContext[H](program = program,
                               qpFields = quantifiedFields,
