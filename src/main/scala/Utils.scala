@@ -72,7 +72,7 @@ package object utils {
   }
 
   object ast {
-    /** Use with care! In particular, pre sure you now the effect of `BigAnd` on
+    /** Use with care! In particular, be sure you know the effect of `BigAnd` on
       * snapshot recording before you e.g. `consume(..., BigAnd(some_preconditions), ...)`.
       * Consider using `consumes(..., some_preconditions, ...)` instead.
       */
