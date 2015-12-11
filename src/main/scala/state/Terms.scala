@@ -131,6 +131,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def visit(f: PartialFunction[Term, Any]) =
     Visitor.visit(this, state.utils.subterms)(f)
 
+  /** @see [[Visitor.visitOpt()]] */
+  def visitOpt(f: Term => Boolean) =
+    Visitor.visitOpt(this, state.utils.subterms)(f)
+
   /** @see [[Visitor.reduceTree()]] */
   def reduceTree[R](f: (Term, Seq[R]) => R) = Visitor.reduceTree(this, state.utils.subterms)(f)
 
@@ -1899,6 +1903,12 @@ object utils {
       s"Expected both operands to be of sort ${clazz.getSimpleName}(S1,S2,...), but found %s (%s) and %s (%s)"
           .format(t0, t0.sort, t1, t1.sort))
   }
+
+  /* Taken from http://stackoverflow.com/a/8569263.
+   * Computes the cartesian product of `xs`.
+   */
+  def cartesianProduct[A](xs: Traversable[Traversable[A]]): Seq[Seq[A]] =
+    xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x.view; b <- y) yield a :+ b}
 }
 
 object implicits {
