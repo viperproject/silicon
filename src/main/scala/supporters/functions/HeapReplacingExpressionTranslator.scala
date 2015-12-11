@@ -16,7 +16,7 @@ import viper.silicon.supporters.ExpressionTranslator
 class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
-    with Logging {
+       with Logging {
 
   private val toSort = (typ: ast.Type, _: Any) => symbolConverter.toSort(typ)
 
@@ -31,7 +31,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   def translate(program: ast.Program,
                 func: ast.Function,
                 data: FunctionData)
-  : Option[Term] = {
+               : Option[Term] = {
 
     this.func = func
     this.program = program
@@ -51,7 +51,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   def translatePostcondition(program: ast.Program,
                              posts: Seq[ast.Exp],
                              data: FunctionData)
-  : Option[Seq[Term]] = {
+                            : Option[Seq[Term]] = {
 
     this.program = program
     this.data = data
@@ -65,7 +65,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   def translatePrecondition(program: ast.Program,
                             pres: Seq[ast.Exp],
                             data: FunctionData)
-  : Option[Seq[Term]] = {
+                           : Option[Seq[Term]] = {
 
     this.program = program
     this.data = data
