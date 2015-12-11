@@ -97,8 +97,10 @@ trait DefaultEvaluator[ST <: Store[ST],
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {
-            case pt: ast.PossibleTrigger => c1.copy(possibleTriggers = c1.possibleTriggers + (pt -> t))
-            case _ => c1}
+            case pt: ast.PossibleTrigger =>
+              c1.copy(possibleTriggers = c1.possibleTriggers + (e -> t))
+            case _ =>
+              c1}
         else
           c1
       Q(t, c2.copy(recordEffects = c.recordEffects))})
@@ -372,7 +374,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           val πPre: Set[Term] = decider.π
           eval(σQuant, body, pve, c0)((tBody, c1) => {
             val πDelta = decider.π -- πPre
-            evalTriggers(σQuant, eTriggers, pve, c1)((triggers, c2) => {
+            evalTriggers(σQuant, eTriggers, πDelta, pve, c1)((triggers, c2) => {
               val sourceLine = utils.ast.sourceLine(sourceQuant)
               val tQuant = Quantification(qantOp, tVars, tBody, triggers, s"prog.l$sourceLine")
               val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
@@ -414,6 +416,7 @@ trait DefaultEvaluator[ST <: Store[ST],
               val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
                                functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1))
+              /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val c6 = if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp)) else c5
               QB(tFApp, c6)})
             })(Q)})
@@ -613,46 +616,59 @@ trait DefaultEvaluator[ST <: Store[ST],
     }
   }
 
-  /* TODO: The CP-style in which Silicon's main components are written makes it hard to work
-   *       with sequences. evalTriggers, evals and execs all share the same pattern, they
-   *       essentially recurse over a sequence and accumulate results, where results can be
-   *       terms, verification results, contexts, or any combination of these.
-   *       It would be nice to find a (probably crazy functional) abstraction that avoids
-   *       having to implement that pattern over and over again.
-   *
-   */
-  private def evalTriggers(σ: S, silTriggers: Seq[ast.Trigger], pve: PartialVerificationError, c: C)
-                          (Q: (List[Trigger], C) => VerificationResult)
-                          : VerificationResult =
-
-    evalTriggers(σ, silTriggers, Nil, pve, c)(Q)
-
   private def evalTriggers(σ: S,
-                           silTriggers: Seq[ast.Trigger],
-                           triggers: List[Trigger],
+                           silverTriggers: Seq[ast.Trigger],
+                           pathConditions: Set[Term],
                            pve: PartialVerificationError,
                            c: C)
-                          (Q: (List[Trigger], C) => VerificationResult)
+                          (Q: (Seq[Trigger], C) => VerificationResult)
                           : VerificationResult = {
 
-    if (silTriggers.isEmpty)
-      Q(triggers.reverse, c)
-    else
-      evalTrigger(σ, silTriggers.head, pve, c)((t, c1) =>
-        evalTriggers(σ, silTriggers.tail, t :: triggers, pve, c1)(Q))
+    val eTriggerSets = silverTriggers map (_.exps)
+
+    evalTriggers(σ, eTriggerSets, Nil, pve, c)((tTriggersSets, c1) => {
+      val hasFieldAccesses =
+        eTriggerSets.exists(_.exists(_.existsDefined { case fa: ast.FieldAccess => fa }))
+
+      val expandedTriggersSets =
+        if (hasFieldAccesses)
+          QuantifiedChunkSupporter.expandFvfLookupsInTriggers(tTriggersSets, pathConditions)
+        else
+          tTriggersSets
+
+      Q(expandedTriggersSets map Trigger, c1)
+    })
   }
 
-  private def evalTrigger(σ: S, trigger: ast.Trigger, pve: PartialVerificationError, c: C)
-                         (Q: (Trigger, C) => VerificationResult)
+  /** Evaluates the given list of trigger sets `eTriggerSets` (expressions) and passes the result
+    * plus the initial trigger sets `tTriggerSets` (terms) to the continuation `Q`.
+    */
+  private def evalTriggers(σ: S,
+                           eTriggerSets: TriggerSets[ast.Exp],
+                           tTriggersSets: TriggerSets[Term],
+                           pve: PartialVerificationError,
+                           c: C)
+                          (Q: (TriggerSets[Term], C) => VerificationResult)
+                          : VerificationResult = {
+
+    if (eTriggerSets.isEmpty)
+      Q(tTriggersSets, c)
+    else
+      evalTrigger(σ, eTriggerSets.head, pve, c)((ts, c1) =>
+        evalTriggers(σ, eTriggerSets.tail, tTriggersSets :+ ts, pve, c1)(Q))
+  }
+
+  private def evalTrigger(σ: S, exps: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+                         (Q: (Seq[Term], C) => VerificationResult)
                          : VerificationResult = {
 
     val (cachedTriggerTerms, remainingTriggerExpressions) =
-      trigger.exps.map {
-        case ast.Old(e) => e /* Warning! For heap-dep. function applications, old(e) probably matters */
+      exps.map {
+        case ast.Old(e) => e /* TODO: What about heap-dependent functions under old in triggers? */
         case e => e
       }.map {
         case fapp: ast.FuncApp =>
-          /** Heap-dependent functions that are used as triggers should be used
+          /** Heap-dependent functions that are used as tTriggerSets should be used
             * in the limited version, because it allows for more instantiations.
             * Keep this code in sync with [[supporters.ExpressionTranslator.translate]]
             *
@@ -717,10 +733,10 @@ trait DefaultEvaluator[ST <: Store[ST],
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
         assume(πAux)
-        Q(Trigger(cachedTriggerTerms ++ remainingTriggerTerms), c)
+        Q(cachedTriggerTerms ++ remainingTriggerTerms, c)
       case _ =>
-        bookkeeper.logfiles("evalTrigger").println(s"Couldn't translate some of these triggers:\n  $remainingTriggerExpressions\nReason:\n  $r")
-        Q(Trigger(cachedTriggerTerms), c)
+        bookkeeper.logfiles("evalTrigger").println(s"Couldn't evaluate some trigger expressions:\n  $remainingTriggerExpressions\nReason:\n  $r")
+        Q(cachedTriggerTerms, c)
     }
   }
 
