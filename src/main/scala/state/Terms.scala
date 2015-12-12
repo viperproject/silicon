@@ -1078,6 +1078,10 @@ case class FApp(function: Function, snapshot: Term, actualArgs: Seq[Term])
     extends Application with PossibleTrigger {
 
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
+  assert(function.sort.from.length - 1 == actualArgs.length,
+         s"Function ${function.id} takes ${function.sort.from.length - 1} arguments, but ${actualArgs.length} were provided.")
+  assert(function.sort.from.tail == actualArgs.map(_.sort),
+         s"Sorts don't match: ${function.sort.from.tail} vs. ${actualArgs.map(_.sort)}")
 
   val sort = function.sort.to
   val arrow = function.sort
