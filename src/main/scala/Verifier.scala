@@ -36,8 +36,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
        with Evaluator[ST, H, S, DefaultContext[H]]
        with Producer[ST, H, S, DefaultContext[H]]
        with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-       with Executor[ST, H, S, DefaultContext[H]]
-       with FunctionSupporter[ST, H, PC, S] {
+       with Executor[ST, H, S, DefaultContext[H]] {
 
   private type C = DefaultContext[H]
 
@@ -177,6 +176,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
                   Success()))})})}
   }
 
+  /* TODO: Move into PredicateSupporter */
   def verify(predicate: ast.Predicate, c: C): VerificationResult = {
     log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
     decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
@@ -226,6 +226,7 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
+       with FunctionSupporter[ST, H, PC, S]
        with ChunkSupporter[ST, H, PC, S]
        with PredicateSupporter[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S]
@@ -251,12 +252,14 @@ trait AbstractVerifier[ST <: Store[ST],
   /*protected*/ def domainsEmitter: DomainsEmitter
   /*protected*/ def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
 
-  val ev: AbstractElementVerifier[ST, H, PC, S]
+  val ev: DefaultElementVerifier[ST, H, PC, S]
 
   /* Functionality */
 
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
+
+    ev.predicateSupporter.handlePredicates(program)
 
     ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
   }
@@ -399,7 +402,8 @@ class DefaultVerifier[ST <: Store[ST],
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
     fieldValueFunctionsEmitter, quantifiedChunkSupporter,
-    decider, ev)
+    decider,
+    ev, ev.functionsSupporter, ev.predicateSupporter)
 
   /* Lifetime */
 

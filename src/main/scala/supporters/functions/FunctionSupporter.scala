@@ -11,6 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{Internal, PostconditionViolated, ContractNotWellformed, FunctionNotWellformed}
+import viper.silicon.supporters.{PredicateData, PredicateSupporter}
 import viper.silicon.{Map, toSet}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
@@ -26,7 +27,8 @@ class FunctionData(val programFunction: ast.Function,
                    val program: ast.Program,
                    val symbolConverter: SymbolConvert,
                    val expressionTranslator: HeapAccessReplacingExpressionTranslator,
-                   fresh: ast.LocalVar => Var) {
+                   fresh: ast.LocalVar => Var,
+                   predicateData: Map[ast.Predicate, PredicateData]) {
 
   val func = symbolConverter.toFunction(programFunction)
 
@@ -44,7 +46,7 @@ class FunctionData(val programFunction: ast.Function,
   val limitedTriggers = Trigger(limitedFapp :: Nil) :: Nil
 
   val limitedAxiom = {
-    val limFApp = FApp(limitedFunc, `?s`, formalArgs.values.toSeq)
+    val limFApp = limitedFapp//FApp(limitedFunc, `?s`, formalArgs.values.toSeq)
 
     Quantification(Forall, args, limFApp === fapp, triggers)
   }
@@ -112,10 +114,16 @@ class FunctionData(val programFunction: ast.Function,
       afters
   }
 
-  lazy val axiom: Option[Term] = translatedPre match {
+  lazy val definitionalAxiom: Option[Term] = translatedPre match {
     case None => None
     case Some(pre) =>
+//      println("\n[definitionalAxiom]")
+//      println(s"  name = ${programFunction.name}")
+
       val optBody = expressionTranslator.translate(program, programFunction, this)
+
+      val predicateTriggers = predicateTriggerFApps.values
+//      println(s"  predicateTriggers = ${predicateTriggers.toList}")
 
       /* TODO: We may only add non-null assumptions about receivers that are
        * definitely dereferenced inside functions. That is, the receivers of
@@ -131,7 +139,8 @@ class FunctionData(val programFunction: ast.Function,
         val body =
           if (freshFvfs.isEmpty) innermostBody
           else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
-        Forall(args, body, triggers)})
+        val allTriggers = triggers ++ (predicateTriggers map (pt => Trigger(Seq(triggerFApp, pt))))
+        Forall(args, body, allTriggers)})
   }
 
   lazy val postAxiom: Option[Term] = translatedPre match {
@@ -150,6 +159,99 @@ class FunctionData(val programFunction: ast.Function,
       } else
         Some(True())
   }
+
+  lazy val triggerFunc = Function(s"${func.id}%trigger", func.sort.from.tail, sorts.Bool)
+  lazy val triggerFApp = Apply(triggerFunc, formalArgs.values.toSeq)
+
+  val triggerAxiom = {
+    val fapp = triggerFApp
+
+    Quantification(Forall, args, fapp, limitedTriggers)
+  }
+
+  private[this] var predaccs: Seq[(ast.PredicateAccess, ast.Predicate)] = Vector.empty
+
+  lazy val predicateTriggerFApps: Map[ast.Predicate, FApp] = {
+    val recursiveCallsAndUnfoldings: Seq[(ast.FuncApp, Seq[ast.Unfolding])] =
+      Functions.recursiveCallsAndSurroundingUnfoldings(programFunction)
+
+//    println("  [predicateTriggers]")
+//    println(s"    recursiveCallsAndUnfoldings = $recursiveCallsAndUnfoldings")
+
+    val outerUnfoldings: Seq[ast.Unfolding] =
+      recursiveCallsAndUnfoldings.flatMap(_._2.headOption)
+
+//    println(s"    outerUnfoldings = $outerUnfoldings")
+
+    val predicateAccesses: Seq[ast.PredicateAccess] =
+      if (recursiveCallsAndUnfoldings.isEmpty)
+        programFunction.pres flatMap (pre =>
+          pre.shallowCollect { case predacc: ast.PredicateAccess => predacc })
+      //                            .map(predacc => predicateTrigger(predacc))
+      else
+        outerUnfoldings map (_.acc.loc)
+    //          case ast.Unfolding(ast.PredicateAccessPredicate(predacc: ast.PredicateAccess, perm), exp) =>
+    //            predicateTrigger(predacc)
+    //        }
+
+//    println(s"    predicateAccesses = $predicateAccesses")
+
+    val map: Map[ast.Predicate, FApp] = toMap(
+      predicateAccesses.map(predacc => {
+        val predicate = program.findPredicate(predacc.predicateName)
+        val triggerFunction = predicateData(predicate).triggerFunction
+        //        val triggerFunction = Function(s"${predicate.name}%trigger", args map (_.sort), sorts.Bool)
+
+//        predaccs = predaccs :+ (predacc -> predicate)
+
+        /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
+        val args =
+          expressionTranslator.translatePrecondition(program, predacc.args, this).get
+
+//        val triggerFunction = predicateTriggers(predicate)
+        //      Function(s"${predicate.name}%trigger", args map (_.sort), sorts.Bool)
+        //
+        //    println(s"    triggerFunction = $triggerFunction")
+        //    println(s"    predacc = $predacc")
+        //    println(s"    locToSnap = $locToSnap")
+
+        val fapp =
+          FApp(triggerFunction,
+               expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap, programFunction.name),
+               args)
+
+        predicate -> fapp
+      }))
+
+//    println(s"    map = $map")
+
+//    map
+
+//    val map: Map[ast.Predicate, FApp] = toMap(
+//      predaccs.map { case (predacc, pred) => pred -> predicateTriggerFApp(pred, predacc) })
+
+//    println(s"    map = $map")
+
+    map
+  }
+
+//  /* NOTE: Only ever call after def predicateTriggers */
+//  private def predicateTriggerFApp(predicate: ast.Predicate, predacc: ast.PredicateAccess): FApp = {
+//    /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
+//    val args =
+//      expressionTranslator.translatePrecondition(program, predacc.args, this).get
+//
+//    val triggerFunction = predicateTriggers(predicate)
+////      Function(s"${predicate.name}%trigger", args map (_.sort), sorts.Bool)
+////
+////    println(s"    triggerFunction = $triggerFunction")
+////    println(s"    predacc = $predacc")
+////    println(s"    locToSnap = $locToSnap")
+//
+//    FApp(triggerFunction,
+//         FunctionSupporter.getOrFail(locToSnap, predacc, sorts.Snap, programFunction.name),
+//         args)
+//  }
 }
 
 trait FunctionSupporter[ST <: Store[ST],
@@ -159,7 +261,8 @@ trait FunctionSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+            with PredicateSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification
@@ -202,7 +305,7 @@ trait FunctionSupporter[ST <: Store[ST],
 
       functionData = toMap(
         heights.map{case (func, height) =>
-          val data = new FunctionData(func, height, program, symbolConverter, expressionTranslator, fresh)
+          val data = new FunctionData(func, height, program, symbolConverter, expressionTranslator, fresh, predicateSupporter.data)
           func -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
@@ -223,12 +326,13 @@ trait FunctionSupporter[ST <: Store[ST],
       val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
 
       decider.prover.assume(data.limitedAxiom)
+      decider.prover.assume(data.triggerAxiom)
       data.postAxiom foreach decider.prover.assume
 
       val result = verifyAndAxiomatize(function, c)
 
       data.afterRelations foreach decider.prover.assume
-      data.axiom foreach decider.prover.assume
+      data.definitionalAxiom foreach decider.prover.assume
 
       resultSpecsWellDefined :: result :: Nil
     }
@@ -237,6 +341,7 @@ trait FunctionSupporter[ST <: Store[ST],
       functionData.values foreach {fd =>
         decider.prover.declare(FunctionDecl(fd.func))
         decider.prover.declare(FunctionDecl(fd.limitedFunc))
+        decider.prover.declare(FunctionDecl(fd.triggerFunc))
       }
     }
 
@@ -358,4 +463,3 @@ trait FunctionSupporter[ST <: Store[ST],
       )}
   }
 }
-

@@ -165,7 +165,7 @@ trait DefaultProducer[ST <: Store[ST],
             val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
             Q(h1, c3)})})
 
-      case acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), gain) =>
+      case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {

@@ -442,13 +442,15 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
+                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
+                      decider.assume(FApp(predicateSupporter.data(predicate).triggerFunction, snap, tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c4.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c4)((σ2, c5) => {
-                        val c6 = c5.copy(recordVisited = c2.recordVisited)
+                      val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c5)((σ2, c6) => {
+                        val c7 = c6.copy(recordVisited = c2.recordVisited)
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/, eIn, pve, c6)(QB)})})
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
                   })(Q)
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
