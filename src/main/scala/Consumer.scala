@@ -206,7 +206,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                                                 invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
                     val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
                     val c3 = c2.copy(functionRecorder = fr2)
-                    Q(h1, ch.fvf, /*ch :: */Nil, c3)
+                    Q(h1, ch.fvf.convert(sorts.Snap), /*ch :: */Nil, c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
               case false =>
