@@ -94,14 +94,14 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
           case None => super.translate(toSort)(v)
         }
 
-      case loc: ast.LocationAccess => getOrRecordFailure(data.locToSnap, loc, toSort(loc.typ, Map()))
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ, Map()), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val func = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrRecordFailure(data.fappToSnap, eFApp, sorts.Snap)
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, data.programFunction.name)
         val fapp = FApp(func, snap, args)
 
         val callerHeight = data.height
@@ -117,17 +117,16 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
       case _ => super.translate(toSort)(e)
     }
 
-  private def getOrRecordFailure[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort): Term =
+  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, fname: String): Term =
     map.get(key) match {
       case Some(s) =>
         s.convert(sort)
       case None =>
         failed = true
-        if (data.welldefined) {
-          println(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
-          log.warn(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
-        }
 
-        Var("$unresolved", sort)
+        if (data.welldefined)
+          log.warn(s"Could not resolve $key (${key.pos}}) during the axiomatisation of function $fname")
+
+        fresh("$unresolved", sort)
     }
 }
