@@ -1870,6 +1870,19 @@ object utils {
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
     viper.silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 
+  def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
+    case _: WildcardPerm => false
+    case v: Var => !constrainableARPs.contains(v)
+    case PermPlus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case PermMinus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case PermTimes(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
+    case IntPermTimes(_, t1) => consumeExactRead(t1, constrainableARPs)
+    case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
+    case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case _ => true
+  }
+
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def assertSort(t: Term, desc: String, s: Sort) {
     assert(t.sort == s,

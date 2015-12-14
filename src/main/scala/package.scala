@@ -9,6 +9,8 @@ package viper
 import scala.language.implicitConversions
 
 package object silicon {
+  type TriggerSet[T] = Seq[T]
+  type TriggerSets[T] = Seq[TriggerSet[T]]
 
   /* Immutable collections with a deterministic iteration order */
 

@@ -32,17 +32,16 @@ package object utils {
     }
   }
 
-  def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
-    case _: WildcardPerm => false
-    case v: Var => !constrainableARPs.contains(v)
-    case PermPlus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
-    case PermMinus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
-    case PermTimes(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
-    case IntPermTimes(_, t1) => consumeExactRead(t1, constrainableARPs)
-    case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
-    case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
-    case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
-    case _ => true
+  def append[K1,       E1,       C1 <: Iterable[E1],
+             K2 <: K1, E2 <: E1, C2 <: C1]
+            (m1: Map[K1, C1],
+             m2: Map[K2, C2],
+             app: (C1, C2) => C1) = {
+
+    m2.foldLeft(m1) { case (m1Acc, (k2, c2)) =>
+      val c3 = m1Acc.get(k2).fold(c2: C1)(c1 => app(c1, c2))
+      m1Acc + (k2 -> c3)
+    }
   }
 
   /* NOT thread-safe */
@@ -141,7 +140,8 @@ package object utils {
 
     def check(program: silver.ast.Program) = (
          program.functions.flatMap(checkFunctionPostconditionNotRecursive)
-      ++ checkPermissions(program))
+      ++ checkPermissions(program)
+      ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program)))
 
     def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
       val message = (
@@ -171,6 +171,38 @@ package object utils {
         case eps: silver.ast.EpsilonPerm => createUnsupportedPermissionExpressionError(eps) +: errors.flatten
         case _ => errors.flatten
       })
+
+    def createUnsupportedFieldAccessInTrigger(offendingNode: silver.ast.FieldAccess) = {
+      val message = (   "Silicon only supports field accesses as triggers if (1) permissions to the "
+                     +  "field come from quantified permissions, and if (2) the field access also "
+                     + s"occurs in the body of the quantification. $offendingNode is not such a "
+                     +  "field access.")
+
+      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
+    }
+
+    def checkFieldAccessesInTriggers(root: silver.ast.Member, program: silver.ast.Program)
+                                    : Seq[VerificationError] = {
+
+      val quantifiedFields = silver.ast.utility.QuantifiedPermissions.quantifiedFields(root, program)
+
+      root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
+        case forall: silver.ast.Forall =>
+          forall.triggers.flatMap {
+            case ts => ts.exps.collect {
+              case fa: silver.ast.FieldAccess
+                  if !quantifiedFields.contains(fa.field) || !forall.exp.contains(fa)
+
+                => fa
+            }
+          } match {
+            case Seq() => errors.flatten
+            case fas => (fas map createUnsupportedFieldAccessInTrigger) ++ errors.flatten
+          }
+
+        case _ => errors.flatten
+      })
+    }
 
     /* Unexpected nodes */
 
