@@ -15,24 +15,28 @@ import org.apache.commons.io.FileUtils
 import common.config.Version
 import interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import reporting.{Bookkeeper, Z3InteractionFailed}
+import state.IdentifierFactory
 import state.terms._
-import silicon.utils.Counter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
-class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with Logging {
-  val termConverter = new TermToSMTLib2Converter(bookkeeper)
-  import termConverter._
+class Z3ProverStdIO(config: Config,
+                    bookkeeper: Bookkeeper,
+                    identifierFactory: IdentifierFactory)
+    extends Prover
+       with Logging {
 
   private var pushPopScopeDepth = 0
-  private var isLoggingCommentsEnabled: Boolean = true
+  private var lastTimeout: Int = -1
+//  private var isLoggingCommentsEnabled: Boolean = true
   private var logFile: PrintWriter = _
   private var z3: Process = _
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
   private var logPath: Path = _
-  private var counter: Counter = _
-  private var lastTimeout: Int = -1
+
+  /* private */ val termConverter = new TermToSMTLib2Converter(bookkeeper)
+  import termConverter._
 
   def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -50,10 +54,12 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   }
 
   def start() {
-    counter = new Counter()
+    pushPopScopeDepth = 0
+    lastTimeout = -1
     logPath = config.z3LogFile
     logFile = silver.utility.Common.PrintWriter(logPath.toFile)
     z3Path = Paths.get(config.z3Exe)
+    termConverter.start()
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
@@ -92,9 +98,6 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
   def reset() {
     stop()
-    counter.reset()
-    pushPopScopeDepth = 0
-    lastTimeout = 0
     start()
   }
 
@@ -109,6 +112,8 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
       z3.destroy()
 //      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
+
+      termConverter.stop()
 
       val currentLogPath = config.z3LogFile
       if (logPath != currentLogPath) {
@@ -274,26 +279,16 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     toMap(stats)
   }
 
-  def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
+  def logComment(str: String) = {
+    val sanitisedStr =
+      str.replaceAll("\r", "")
+         .replaceAll("\n", "\n; ")
 
-  def logComment(str: String) =
-    if (isLoggingCommentsEnabled) {
-      val sanitisedStr =
-        str.replaceAll("\r", "")
-           .replaceAll("\n", "\n; ")
+    logToFile("; " + sanitisedStr)
+  }
 
-      logToFile("; " + sanitisedStr)
-    }
-
-  private def freshId(prefix: String) = prefix + "@" + counter.next()
-
-  /* TODO: Could we decouple fresh from Var, e.g. return the used freshId, without
-   *       losing conciseness at call-site?
-   *       It is also slightly fishy that fresh returns a Var although it
-   *       declared a new Function.
-   */
-  def fresh(idPrefix: String, sort: Sort) = {
-    val id = freshId(idPrefix)
+  def fresh(name: String, sort: Sort) = {
+    val id = identifierFactory.fresh(name)
 
     val decl = sort match {
       case arrow: sorts.Arrow => FunctionDecl(Function(id, arrow))
@@ -304,8 +299,6 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
     Var(id, sort)
   }
-
-  def sanitizeSymbol(symbol: String) = termConverter.sanitizeSymbol(symbol)
 
   def declare(decl: Decl) {
     val str = convert(decl)

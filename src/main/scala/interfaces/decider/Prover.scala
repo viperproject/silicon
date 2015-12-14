@@ -21,10 +21,8 @@ trait Prover extends StatefulComponent {
   def assume(term: Term)
   def assert(goal: Term, timeout: Option[Int] = None): Boolean
   def check(timeout: Option[Int] = None): Result
-  def enableLoggingComments(enabled: Boolean)
   def logComment(str: String)
   def fresh(id: String, sort: Sort): Var
-  def sanitizeSymbol(symbol: String): String
   def declare(decl: Decl)
   def statistics(): Map[String, String]
   def proverRunStarts()

@@ -15,7 +15,7 @@ import terms.{Sort, sorts}
 trait SymbolConvert {
   def toSort(typ: ast.Type): Sort
 
-  def toSortSpecificId(id: String, sorts: Seq[Sort]): String
+  def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier
 
   def toFunction(function: ast.DomainFunc): terms.Function
   def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.Function
@@ -36,7 +36,7 @@ class DefaultSymbolConvert extends SymbolConvert {
 
     case dt: ast.DomainType =>
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
-      sorts.UserSort(dt.toString())
+      sorts.UserSort(Identifier(dt.toString()))
 
     case   silver.ast.InternalType
          | _: silver.ast.TypeVar
@@ -45,8 +45,8 @@ class DefaultSymbolConvert extends SymbolConvert {
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 
-  def toSortSpecificId(id: String, sorts: Seq[Sort]) =
-    id + sorts.mkString("[",",","]")
+  def toSortSpecificId(name: String, sorts: Seq[Sort]) =
+    Identifier(name + sorts.mkString("[",",","]"))
 
   def toFunction(function: ast.DomainFunc) = {
     val inSorts = function.formalArgs map (_.typ) map toSort
@@ -69,6 +69,6 @@ class DefaultSymbolConvert extends SymbolConvert {
     val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
     val outSort = toSort(function.typ)
 
-    terms.Function(function.name, inSorts, outSort)
+    terms.Function(Identifier(function.name), inSorts, outSort)
   }
 }

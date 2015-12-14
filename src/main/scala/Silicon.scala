@@ -26,8 +26,7 @@ import common.config.Version
 import interfaces.{Failure => SiliconFailure}
 import decider.{SMTLib2PreambleEmitter, DefaultDecider}
 import state.terms.{AxiomRewriter, FullPerm}
-import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
-    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
+import viper.silicon.state._
 import supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
     DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, MagicWandSupporter}
 import supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
@@ -208,6 +207,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory(decider.π _)
+    val identifierFactory = new DefaultIdentifierFactory
 
     val dlb = FullPerm()
 
@@ -220,7 +220,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, axiomRewriter, config,
                                                  bookkeeper)
 
-    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper, quantifiedChunkSupporter)
+    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper, quantifiedChunkSupporter,
+                 identifierFactory)
            .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
 
     decider.start()
@@ -237,7 +238,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
                                       sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
                                       fieldValueFunctionsEmitter, stateFormatter, heapCompressor,
-                                      quantifiedChunkSupporter, bookkeeper)
+                                      quantifiedChunkSupporter, bookkeeper, identifierFactory)
   }
 
   private def reset() {

@@ -4,20 +4,29 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package decider
+package viper.silicon.decider
 
 import org.kiama.output.PrettyPrinter
-import interfaces.decider.TermConverter
-import state.terms._
-import reporting.Bookkeeper
+import scala.collection.mutable
+import viper.silver.components.StatefulComponent
+import viper.silicon.interfaces.decider.TermConverter
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.Identifier
+import viper.silicon.state.terms._
 
-class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with TermConverter[String, String, String] {
+class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
+    extends PrettyPrinter
+       with TermConverter[String, String, String]
+       with StatefulComponent {
+
   override val defaultIndent = 2
   override val defaultWidth = 80
 
   lazy val uninitialized: Doc = value("<not initialized>")
+
+  private var sanitizedNamesCache: mutable.Map[String, String] = _
+
+  private val nameSanitizer = new SmtlibNameSanitizer
 
   def convert(s: Sort): String = {
     super.pretty(render(s))
@@ -32,7 +41,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     case sorts.Seq(elementSort) => "$Seq<" <> render(elementSort) <> ">"
     case sorts.Set(elementSort) => "$Set<" <> render(elementSort) <> ">"
     case sorts.Multiset(elementSort) => "$Multiset<" <> render(elementSort) <> ">"
-    case sorts.UserSort(id) => sanitizeSymbol(id)
+    case sorts.UserSort(id) => sanitize(id)
 
     case a: sorts.Arrow =>
       val inStr = a.from match {
@@ -60,29 +69,26 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       parens("declare-sort" <+> render(sort))
 
     case VarDecl(v: Var) =>
-      parens("declare-const" <+> sanitizeSymbol(v.id) <+> render(v.sort))
+      parens("declare-const" <+> sanitize(v.id) <+> render(v.sort))
 
     case FunctionDecl(Function(id, sort)) =>
-      val idDoc = sanitizeSymbol(id)
+      val idDoc = sanitize(id)
       val inSortDoc = sort.from.map(render)
       val outSortDoc = render(sort.to)
 
       parens("declare-fun" <+> idDoc <+> parens(ssep(inSortDoc.to[collection.immutable.Seq], space)) <+> outSortDoc)
 
     case SortWrapperDecl(from, to) =>
-      val symbol = sortWrapperSymbol(from, to)
-      val fct = FunctionDecl(Function(symbol, from :: Nil, to))
+      val id = Identifier(sortWrapperName(from, to))
+      val fct = FunctionDecl(Function(id, from :: Nil, to))
 
       render(fct)
 
     case MacroDecl(id, args, body) =>
-      val idDoc = sanitizeSymbol(id)
-      val argDocs = (args map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))).to[collection.immutable.Seq]
+      val idDoc = sanitize(id)
+      val argDocs = (args map (v => parens(sanitize(v.id) <+> render(v.sort)))).to[collection.immutable.Seq]
       val bodySortDoc = render(body.sort)
       val bodyDoc = render(body)
-
-//      (define-fun $Perm.min ((p1 $Perm) (p2 $Perm)) Real
-//          (ite (<= p1 p2) p1 p2))
 
       parens("define-fun" <+> idDoc <+> parens(ssep(argDocs, space)) <+> bodySortDoc <> nest(line <> bodyDoc))
   }
@@ -92,14 +98,14 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
   }
 
   protected def render(term: Term): Doc =  term match {
-    case s: Symbol => sanitizeSymbol(s.id)
+    case s: Symbol => sanitize(s.id)
     case lit: Literal => render(lit)
 
     case Ite(t0, t1, t2) =>
       renderNAryOp("ite", t0, t1, t2)
 
     case fapp: FApp =>
-      parens(sanitizeSymbol(fapp.function.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
+      parens(sanitize(fapp.function.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
 
     case app: GenericApply =>
       val docF = render(app.function)
@@ -110,7 +116,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       }
 
     case Quantification(quant, vars, body, triggers, name) =>
-      val docVars = ssep((vars map (v => parens(sanitizeSymbol(v.id) <+> render(v.sort)))).to[collection.immutable.Seq], space)
+      val docVars = ssep((vars map (v => parens(sanitize(v.id) <+> render(v.sort)))).to[collection.immutable.Seq], space)
       val docBody = render(body)
       val docQuant = render(quant)
 
@@ -216,7 +222,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
 
     case DomainFApp(f, ts) =>
       val docArgs = ssep((ts map render).to[collection.immutable.Seq], space)
-      val docId = sanitizeSymbol(f.id)
+      val docId = sanitize(f.id)
 
       if (ts.isEmpty) docId
       else parens(docId <+> docArgs)
@@ -236,7 +242,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
       renderBinaryOp("$Snap.combine", bop)
 
     case SortWrapper(t, to) =>
-      parens(sortWrapperSymbol(t.sort, to) <+> render(t))
+      parens(sortWrapperName(t.sort, to) <+> render(t))
 
     case Distinct(symbols) =>
       parens("distinct" <+> ssep((symbols.toSeq map render).to[collection.immutable.Seq], space))
@@ -294,39 +300,26 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper) extends PrettyPrinter with 
     else
       render(t)
 
-  protected def sortWrapperSymbol(from: Sort, to: Sort): String =
+  protected def sortWrapperName(from: Sort, to: Sort): String =
     s"$$SortWrappers.${convert(from)}To${convert(to)}"
 
-  def sanitizeSymbol(str: String) = {
-    val str1 = replaceOffendingCharacters(str)
+  private def sanitize(id: Identifier): String = sanitize(id.name)
 
-    val str2 =
-      if (isSafe(str1)) str1
-      else "$" + str1
-        /* TODO: '$' should ONLY be used to sanitise symbols, it should no longer
-         *       be used to mark symbols from Silicon's preamble such as $Perm or
-         *       $Seq. If need be, there should be a dedicated symbol for the
-         *       former and one for the latter purpose.
-         */
+  private def sanitize(str: String): String = {
+    val sanitizedName = sanitizedNamesCache.getOrElseUpdate(str, nameSanitizer.sanitize(str))
 
-    str2
+    sanitizedName
   }
 
-  def replaceOffendingCharacters(str: String) =
-    str.replace('#', '_')
-       .replace("τ", "$tau")
-       .replace('[', '<')
-       .replace(']', '>')
-       .replace("::", ".")
-       .replace(',', '~')
-       .replace(" ", "")
+  def start(): Unit = {
+    sanitizedNamesCache = mutable.Map.empty
+  }
 
-  /* TODO: Would be ideal if we had a list of all reserved keywords from
-   *       SMTLIB2 plus those from Z3.
-   */
-  def isSafe(str: String) = (
-      str.head == '$'
-    | str.contains('<')
-    | str.contains('@')
-  )
+  def reset(): Unit = {
+    sanitizedNamesCache.clear()
+  }
+
+  def stop(): Unit = {
+    sanitizedNamesCache.clear()
+  }
 }

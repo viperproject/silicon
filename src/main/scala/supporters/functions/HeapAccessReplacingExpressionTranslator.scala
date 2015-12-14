@@ -51,30 +51,26 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   def translatePostcondition(program: ast.Program,
                              posts: Seq[ast.Exp],
                              data: FunctionData)
-                            : Option[Seq[Term]] = {
+                            : Seq[Term] = {
 
     this.program = program
     this.data = data
     this.failed = false
 
-    val results = posts map translate(toSort)
-
-    if (failed) None else Some(results)
+    posts map translate(toSort)
   }
 
   def translatePrecondition(program: ast.Program,
                             pres: Seq[ast.Exp],
                             data: FunctionData)
-                           : Option[Seq[Term]] = {
+                           : Seq[Term] = {
 
     this.program = program
     this.data = data
     this.ignoreAccessPredicates = true
     this.failed = false
 
-    val results = pres map translate(toSort)
-
-    if (failed) None else Some(results)
+    pres map translate(toSort)
   }
 
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
@@ -86,7 +82,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
                                   : Term =
 
     e match {
-      case _: ast.Result => data.limitedFapp
+      case _: ast.Result => data.limitedFunctionApplication
 
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
@@ -122,10 +118,10 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
       case Some(s) =>
         s.convert(sort)
       case None =>
-        failed = true
-
-        if (data.welldefined)
+        if (!failed && data.verificationFailures.isEmpty)
           log.warn(s"Could not resolve $key (${key.pos}}) during the axiomatisation of function $fname")
+
+        failed = true
 
         fresh("$unresolved", sort)
     }

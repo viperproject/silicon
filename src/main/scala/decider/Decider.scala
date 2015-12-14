@@ -15,7 +15,7 @@ import silver.verifier.reasons.InsufficientPermission
 import interfaces.{VerificationResult, Failure, Success, FatalResult, NonFatalResult}
 import interfaces.decider.{Decider, Prover, Unsat}
 import interfaces.state._
-import state.{DefaultContext, DirectChunk, SymbolConvert, MagicWandChunk, MagicWandChunkIdentifier}
+import viper.silicon.state._
 import state.terms._
 import reporting.Bookkeeper
 import supporters.qps.QuantifiedChunkSupporter
@@ -39,6 +39,7 @@ class DefaultDecider[ST <: Store[ST],
   protected var symbolConverter: SymbolConvert = _
   protected var heapCompressor: HeapCompressor[ST, H, S, C] = _
   protected var quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S] = _
+  protected var identifierFactory: IdentifierFactory = _
 
   private sealed trait State
 
@@ -66,7 +67,8 @@ class DefaultDecider[ST <: Store[ST],
            heapCompressor: HeapCompressor[ST, H, S, C],
            config: Config,
            bookkeeper: Bookkeeper,
-           quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S])
+           quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
+           identifierFactory: IdentifierFactory)
           : Option[DependencyNotFoundError] = {
 
     this.pathConditionsFactory = pathConditionsFactory
@@ -76,6 +78,7 @@ class DefaultDecider[ST <: Store[ST],
     this.symbolConverter = new silicon.state.DefaultSymbolConvert()
     this.pathConditions = pathConditionsFactory.Π()
     this.quantifiedChunkSupporter = quantifiedChunkSupporter
+    this.identifierFactory = identifierFactory
 
     val optProverError = createProver()
 
@@ -89,7 +92,7 @@ class DefaultDecider[ST <: Store[ST],
 
   private def createProver(): Option[DependencyNotFoundError] = {
     try {
-      z3 = new Z3ProverStdIO(config, bookkeeper)
+      z3 = new Z3ProverStdIO(config, bookkeeper, identifierFactory)
       z3.start() /* Cannot query Z3 version otherwise */
     } catch {
       case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>

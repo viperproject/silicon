@@ -32,7 +32,6 @@ trait DefaultEvaluator[ST <: Store[ST],
     extends Evaluator[ST, H, S, DefaultContext[H]]
     { this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
-                    with PredicateSupporter[ST, H, PC, S]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with Joiner[DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
@@ -40,20 +39,18 @@ trait DefaultEvaluator[ST <: Store[ST],
   private type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
-  import decider.{fresh, assume}
-
   protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
-
   protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
-
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-
+  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+
+  import decider.{fresh, assume}
+  import stateFactory._
+  import symbolConverter.toSort
 
   def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)

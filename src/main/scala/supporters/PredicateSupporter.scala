@@ -8,11 +8,13 @@ package viper.silicon.supporters
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.components.StatefulComponent
+import viper.silver.ast.Program
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.{Map, toMap}
+import viper.silver.verifier.errors._
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.{Set, Map, toMap, toSet}
 import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.{VerificationResult, Consumer, Producer, Evaluator}
+import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -23,50 +25,109 @@ class PredicateData(predicate: ast.Predicate)
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
   val triggerFunction =
-    Function(s"${predicate.name}%trigger", sorts.Snap +: argumentSorts, sorts.Bool)
+    Function(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
 }
 
 trait PredicateSupporter[ST <: Store[ST],
                          H <: Heap[H],
                          PC <: PathConditions[PC],
-                         S <: State[ST, H, S]]
+                         S <: State[ST, H, S],
+                         C <: Context[C]]
+    extends VerificationUnit[H, ast.Predicate] {
+
+  def data: Map[ast.Predicate, PredicateData]
+
+  def fold(σ: S,
+           predicate: ast.Predicate,
+           tArgs: List[Term],
+           tPerm: Term,
+           pve: PartialVerificationError,
+           c: C)
+          (Q: (S, C) => VerificationResult)
+          : VerificationResult
+
+  def unfold(σ: S,
+             predicate: ast.Predicate,
+             tArgs: List[Term],
+             tPerm: Term,
+             pve: PartialVerificationError,
+             c: C,
+             pa: ast.PredicateAccess /* TODO: Make optional (as in magicWandSupporter.foldingPredicate) */)
+            (Q: (S, C) => VerificationResult)
+            : VerificationResult
+}
+
+trait PredicateSupporterProvider[ST <: Store[ST],
+                                 H <: Heap[H],
+                                 PC <: PathConditions[PC],
+                                 S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-            with ChunkSupporter[ST, H, PC, S] =>
+            with ChunkSupporter[ST, H, PC, S]
+            with MagicWandSupporter[ST, H, PC, S] =>
+
+  private type C = DefaultContext[H]
+  private type CH = Chunk
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
 
+  import decider.{fresh, inScope}
   import stateFactory._
 
-  object predicateSupporter extends StatefulComponent {
-    private type C = DefaultContext[H]
-    private type CH = Chunk
-
+  object predicateSupporter extends PredicateSupporter[ST, H, PC, S, C] {
     private var program: ast.Program = null
     private var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
 
-    def data = predicateData
-
-    def handlePredicates(program: ast.Program): Unit = {
-      analyze(program)
-      declareFunctions()
-    }
-
-    private def analyze(program: ast.Program): Unit = {
+    def analyze(program: Program): Unit = {
       this.program = program
 
       this.predicateData = toMap(
         program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
     }
 
-    private def declareFunctions(): Unit = {
+    def data = predicateData
+    def units = predicateData.keys.toSeq
+
+    def sorts: Set[Sort] = Set.empty
+    def declareSorts(): Unit = { /* No sorts need to be declared */ }
+
+    def symbols: Option[Set[Function]] = Some(toSet(predicateData.values.map(_.triggerFunction)))
+
+    def declareSymbols(): Unit = {
+      decider.prover.logComment("Declaring predicate trigger functions")
       predicateData.values foreach (data =>
         decider.prover.declare(FunctionDecl(data.triggerFunction)))
     }
+
+    def verify(predicate: ast.Predicate, c: DefaultContext[H]): Seq[VerificationResult] = {
+      log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
+      decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
+
+      val ins = predicate.formalArgs.map(_.localVar)
+
+      val γ = Γ(ins.map(v => (v, fresh(v))))
+      val σ = Σ(γ, Ø, Ø)
+      val err = PredicateNotWellformed(predicate)
+
+      val result = predicate.body match {
+        case None =>
+          Success()
+        case Some(body) => (
+                inScope {
+                  magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
+            &&  inScope {
+                  produce(σ, decider.fresh, terms.FullPerm(), body, err, c)((_, c1) =>
+                    Success())})
+      }
+
+      Seq(result)
+    }
+
+    def emitAxioms(): Unit = { /* No axioms need to be emitted */ }
 
     def fold(σ: S, predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError, c: C)
             (Q: (S, C) => VerificationResult)

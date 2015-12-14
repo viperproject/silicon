@@ -4,31 +4,26 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import org.slf4s.Logging
-import silver.ast
-import util.control.Breaks._
-import silver.verifier.errors.{ContractNotWellformed, PostconditionViolated, PredicateNotWellformed,
-    MagicWandNotWellformed}
-import silver.components.StatefulComponent
-import silver.ast.utility.{Nodes, Visitor}
-import viper.silicon.interfaces.{NonFatalResult, Evaluator, Producer, Consumer, Executor, VerificationResult, Success,
-    Failure}
-import interfaces.decider.Decider
-import interfaces.state.{Chunk, Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor}
-import interfaces.state.factoryUtils.Ø
-import decider.PreambleFileEmitter
-import state.{terms, SymbolConvert, DefaultContext}
-import state.terms.{sorts, Sort}
-import supporters.{DefaultLetHandler, DefaultJoiner, DefaultBrancher, DomainsEmitter,
-    MultisetsEmitter, SetsEmitter, SequencesEmitter, PredicateSupporter, ChunkSupporter,
-    MagicWandSupporter, HeuristicsSupporter}
-import supporters.functions.FunctionSupporter
-import supporters.qps.{FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
-import reporting.Bookkeeper
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state._
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.state.{IdentifierFactory, terms, SymbolConvert, DefaultContext}
+import viper.silicon.state.terms.{sorts, Sort}
+import viper.silicon.supporters._
+import viper.silicon.supporters.functions.FunctionSupporterProvider
+import viper.silicon.supporters.qps.{FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
+import viper.silicon.reporting.Bookkeeper
 
+/* TODO: 1. Extract method verification code into a MethodSupporter
+ *       2. Remove this trait
+ */
 trait AbstractElementVerifier[ST <: Store[ST],
                              H <: Heap[H], PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
@@ -36,7 +31,8 @@ trait AbstractElementVerifier[ST <: Store[ST],
        with Evaluator[ST, H, S, DefaultContext[H]]
        with Producer[ST, H, S, DefaultContext[H]]
        with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-       with Executor[ST, H, S, DefaultContext[H]] {
+       with Executor[ST, H, S, DefaultContext[H]]
+   { this: MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
 
@@ -53,88 +49,13 @@ trait AbstractElementVerifier[ST <: Store[ST],
 
   val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
 
-  def verify(member: ast.Member, program: ast.Program): VerificationResult = {
+  def createInitialContext(member: ast.Member, program: ast.Program): DefaultContext[H] = {
     val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
     val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
-    val c = DefaultContext[H](program = program,
-                              qpFields = quantifiedFields,
-                              applyHeuristics = applyHeuristics)
 
-    quantifiedChunkSupporter.initLastFVF(quantifiedFields) /* TODO: Implement properly */
-
-    member match {
-      case m: ast.Method => verify(m, c)
-      case f: ast.Function => sys.error("Functions unexpected at this point, should have been handled already")
-      case p: ast.Predicate => verify(p, c)
-      case _: ast.Domain | _: ast.Field => Success()
-    }
-  }
-
-  private def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
-    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
-    var result: VerificationResult = Success()
-
-//    println("\n[checkWandsAreSelfFraming]")
-
-    breakable {
-      wands foreach {_wand =>
-        val err = MagicWandNotWellformed(_wand)
-
-        /* NOTE: Named wand, i.e. "wand w := A --* B", are currently not (separately) checked for
-         * self-framingness; instead, each such wand is replaced by "true --* true" (for the scope
-         * of the self-framingness checks implemented in this block of code).
-         * The reasoning here is that
-         *   (1) either A --* B is a wand that is actually used in the program, in which case
-         *       the other occurrences will be checked for self-framingness
-         *   (2) or A --* B is a wand that does not actually occur in the program, in which case
-         *       the verification will fail anyway
-         */
-        val trivialWand = (p: ast.Position) => ast.MagicWand(ast.TrueLit()(p), ast.TrueLit()(p))(p)
-        val wand = _wand.transform {
-          case v: ast.AbstractLocalVar if v.typ == ast.Wand => trivialWand(v.pos)
-        }()
-
-        val left = wand.left
-        val right = wand.withoutGhostOperations.right
-        val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.AbstractLocalVar => v}
-        val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
-        val σ1 = Σ(γ1, Ø, g)
-
-//        println(s"  left = $left")
-//        println(s"  right = $right")
-//        println(s"  s1.γ = ${σ1.γ}")
-//        println(s"  s1.h = ${σ1.h}")
-//        println(s"  s1.g = ${σ1.g}")
-
-        var σInner: S = null.asInstanceOf[S]
-
-        result =
-          inScope {
-//            println("  checking left")
-            produce(σ1, fresh, terms.FullPerm(), left, err, c)((σ2, c2) => {
-              σInner = σ2
-//              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
-//              val σ3 = σ1
-              Success()})
-          } && inScope {
-//            println("  checking right")
-            produce(σ1, fresh, terms.FullPerm(), right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
-              Success())}
-
-//        println(s"  result = $result")
-
-        result match {
-          case failure: Failure[ST@unchecked, H@unchecked, S@unchecked] =>
-            /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
-            result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
-            break()
-
-          case _: NonFatalResult => /* Nothing needs to be done*/
-        }
-      }
-    }
-
-    result
+    DefaultContext[H](program = program,
+                      qpFields = quantifiedFields,
+                      applyHeuristics = applyHeuristics)
   }
 
   def verify(method: ast.Method, c: C): VerificationResult = {
@@ -166,7 +87,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
               /* TODO: Checking self-framingness here fails if pold(e) reads a location
                *       to which access is not required by the precondition.
                */
-              checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
+              magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
         && inScope {
               produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
                 Success())}
@@ -174,27 +95,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
               exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
                 consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
                   Success()))})})}
-  }
-
-  /* TODO: Move into PredicateSupporter */
-  def verify(predicate: ast.Predicate, c: C): VerificationResult = {
-    log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
-    decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
-
-    val ins = predicate.formalArgs.map(_.localVar)
-
-    val γ = Γ(ins.map(v => (v, fresh(v))))
-    val σ = Σ(γ, Ø, Ø)
-
-    predicate.body match {
-      case None => Success()
-      case Some(body) =>
-           (inScope {
-             checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
-        && inScope {
-             produce(σ, fresh, terms.FullPerm(), body, PredicateNotWellformed(predicate), c)((_, c1) =>
-               Success())})
-    }
   }
 }
 
@@ -218,7 +118,8 @@ class DefaultElementVerifier[ST <: Store[ST],
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
-     val bookkeeper: Bookkeeper)
+     val bookkeeper: Bookkeeper,
+     val identifierFactory: IdentifierFactory)
     (protected implicit val manifestH: Manifest[H])
     extends NoOpStatefulComponent
        with AbstractElementVerifier[ST, H, PC, S]
@@ -226,9 +127,9 @@ class DefaultElementVerifier[ST <: Store[ST],
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
-       with FunctionSupporter[ST, H, PC, S]
+       with FunctionSupporterProvider[ST, H, PC, S]
        with ChunkSupporter[ST, H, PC, S]
-       with PredicateSupporter[ST, H, PC, S]
+       with PredicateSupporterProvider[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext[H]]
@@ -259,24 +160,31 @@ trait AbstractVerifier[ST <: Store[ST],
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
 
-    ev.predicateSupporter.handlePredicates(program)
+//    ev.predicateSupporter.handlePredicates(program)
 
-    ev.functionsSupporter.handleFunctions(program) ++ verifyMembersOtherThanFunctions(program)
-  }
-
-  private def verifyMembersOtherThanFunctions(program: ast.Program): List[VerificationResult] = {
-    val members = program.members.filterNot {
-      case func: ast.Function => true
-      case m => filter(m.name)
-    }
-
-    /* TODO: Verification could be parallelised by forking DefaultMemberVerifiers. */
-
-    /* Verify members. Verification continues if errors are found, i.e.
-     * all members are verified regardless of previous errors.
-     * However, verification of a single member is aborted on first error.
+    /* FIXME: A workaround for Silver issue #94.
+     * toList must be before flatMap. Otherwise Set will be used internally and some
+     * error messages will be lost.
      */
-    members.map(m => ev.verify(m, program)).toList
+    val functionVerificationResults = ev.functionsSupporter.units.toList flatMap (function =>
+      ev.functionsSupporter.verify(function, ev.createInitialContext(function, program)))
+
+    val predicateVerificationResults = ev.predicateSupporter.units.toList flatMap (predicate =>
+      ev.predicateSupporter.verify(predicate, ev.createInitialContext(predicate, program)))
+
+    /* Fields and domains don't need to be verified */
+    val methods = program.members.collect { case m: ast.Method => m }
+
+    val methodVerificationResults = methods map (method => {
+      val c = ev.createInitialContext(method, program)
+      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
+
+      ev.verify(method, c)
+    })
+
+    (   functionVerificationResults
+     ++ predicateVerificationResults
+     ++ methodVerificationResults)
   }
 
   private def filter(str: String) = (
@@ -295,6 +203,8 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
     fieldValueFunctionsEmitter.analyze(program)
+    ev.functionsSupporter.analyze(program)
+    ev.predicateSupporter.analyze(program)
 
     emitStaticPreamble()
 
@@ -303,6 +213,8 @@ trait AbstractVerifier[ST <: Store[ST],
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
     fieldValueFunctionsEmitter.declareSorts()
+    ev.functionsSupporter.declareSorts()
+    ev.predicateSupporter.declareSorts()
 
     /* Sequences depend on multisets ($Multiset.fromSeq, which is
      * additionally axiomatised in the sequences axioms).
@@ -314,11 +226,15 @@ trait AbstractVerifier[ST <: Store[ST],
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
     fieldValueFunctionsEmitter.declareSymbols()
+    ev.functionsSupporter.declareSymbols()
+    ev.predicateSupporter.declareSymbols()
 
     sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
+    ev.functionsSupporter.emitAxioms()
+    ev.predicateSupporter.emitAxioms()
 
     emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
     emitSortWrappers(sequencesEmitter.sorts)
@@ -326,6 +242,8 @@ trait AbstractVerifier[ST <: Store[ST],
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
     emitSortWrappers(fieldValueFunctionsEmitter.sorts)
+    emitSortWrappers(ev.functionsSupporter.sorts)
+    emitSortWrappers(ev.predicateSupporter.sorts)
 
     /* ATTENTION: The triggers mention the sort wrappers introduced for FVFs.
      * The axiom therefore needs to be emitted after the sort wrappers have
@@ -390,19 +308,20 @@ class DefaultVerifier[ST <: Store[ST],
      val stateFormatter: StateFormatter[ST, H, S, String],
      val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
      val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
-     val bookkeeper: Bookkeeper)
+     val bookkeeper: Bookkeeper,
+     val identifierFactory: IdentifierFactory)
     extends AbstractVerifier[ST, H, PC, S]
        with StatefulComponent
        with Logging {
 
   val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkSupporter, bookkeeper)
+                                      quantifiedChunkSupporter, bookkeeper, identifierFactory)
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
     fieldValueFunctionsEmitter, quantifiedChunkSupporter,
-    decider,
+    decider, identifierFactory.asInstanceOf[StatefulComponent],
     ev, ev.functionsSupporter, ev.predicateSupporter)
 
   /* Lifetime */

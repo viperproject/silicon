@@ -18,7 +18,7 @@ import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.terms._
-import viper.silicon.state.{QuantifiedChunk, SymbolConvert, DefaultContext, DirectFieldChunk, DirectChunk, FieldChunkIdentifier}
+import viper.silicon.state._
 import viper.silicon.utils.{Counter, consumeExactRead}
 
 case class InverseFunction(symbol: Var, function: Term => Term, invOfFct: Quantification, fctOfInv: Quantification) {
@@ -353,7 +353,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     val precomputedData = candidates map { ch =>
       val pTaken = Ite(conditionOfInv, PermMin(ch.perm, pNeeded), NoPerm())
-      val macroName = "pTaken" + permsTakenCounter.next()
+      val macroName = Identifier("pTaken" + permsTakenCounter.next())
       val macroDecl = MacroDecl(macroName, `?r` :: Nil, pTaken)
 
       decider.prover.declare(macroDecl)
@@ -515,7 +515,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     freshFVFInAction = true
     val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
     val freshFvf = fresh("fvf", fvfSort)
-    val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
+    val fvfTOP = Var(FvfTop(field.name), fvfSort)
     val fvf = lastFVF.getOrElse(field, fvfTOP)
     val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
@@ -540,7 +540,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
       if (codomainSort == newFvfSort.codomainSort) {
         val fvfSort = sorts.FieldValueFunction(codomainSort)
-        val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
+        val fvfTOP = Var(FvfTop(field.name), fvfSort)
         val fvf = lastFVF.getOrElse(field, fvfTOP)
         val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
@@ -599,8 +599,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   }
 
   def injectivityAxiom(qvar: Var, condition: Term, receiver: Term) = {
-    val vx = Var("x", qvar.sort)
-    val vy = Var("y", qvar.sort)
+    val vx = Var(Identifier("x"), qvar.sort)
+    val vy = Var(Identifier("y"), qvar.sort)
 
     val receiversEqual = receiver.replace(qvar, vx) === receiver.replace(qvar, vy)
 
@@ -706,7 +706,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     lastFVF = toMap(quantifiedFields.map{field =>
       val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
-      val fvfTOP = Var(s"fvfTOP_${field.name}", fvfSort)
+      val fvfTOP = Var(FvfTop(field.name), fvfSort)
 
       field -> fvfTOP
     })
