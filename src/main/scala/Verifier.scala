@@ -9,6 +9,7 @@ package viper.silicon
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
+import viper.silver.verifier.errors.{ContractNotWellformed, PostconditionViolated}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
