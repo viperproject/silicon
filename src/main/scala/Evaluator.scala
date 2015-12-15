@@ -98,7 +98,9 @@ trait DefaultEvaluator[ST <: Store[ST],
         if (c1.recordPossibleTriggers)
           e match {
             case pt: ast.PossibleTrigger =>
-              c1.copy(possibleTriggers = c1.possibleTriggers + (e -> t))
+              c1.copy(possibleTriggers = c1.possibleTriggers + (pt -> t))
+            case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
+              c1.copy(possibleTriggers = c1.possibleTriggers + (fa -> t))
             case _ =>
               c1}
         else
@@ -618,26 +620,57 @@ trait DefaultEvaluator[ST <: Store[ST],
 
   private def evalTriggers(σ: S,
                            silverTriggers: Seq[ast.Trigger],
-                           pathConditions: Set[Term],
+                           bodyPathConditions: Set[Term],
                            pve: PartialVerificationError,
                            c: C)
                           (Q: (Seq[Trigger], C) => VerificationResult)
                           : VerificationResult = {
 
     val eTriggerSets = silverTriggers map (_.exps)
+//    val πPre = decider.π
 
     evalTriggers(σ, eTriggerSets, Nil, pve, c)((tTriggersSets, c1) => {
       val hasFieldAccesses =
         eTriggerSets.exists(_.exists(_.existsDefined { case fa: ast.FieldAccess => fa }))
 
+      /* [2015-12-15 Malte]
+       *   Evaluating triggers that did not occur in the body (and whose corresponding term has
+       *   therefore not already been recorded in the context) might introduce new path conditions,
+       *   in particular, new constants/functions and their definitions.
+       *   This is, for example, the case in issue_0147.sil: the trigger generator can potentially
+       *   replace the arithmetic expression `j+1` by a fresh, quantified variable (in the trigger,
+       *   not necessarily in the quantifier body). Since it is part of the receiver of a quantified
+       *   field dereference, the trigger mentioning the fresh variable might only be evaluated when
+       *   evaluating the triggers, potentially leading to a newly introduced field value function.
+       *
+       *   TODO: Currently, new path conditions introduced while evaluating triggers will not be
+       *         added to the auxiliary quantifier, i.e. they will not survive when the scope in
+       *         which the quantifier (resp., its body and its triggers) is evaluated.
+       *         Using such effectively "undefined" symbols in triggers will most likely result in
+       *         incompletenesses because the corresponding quantifiers will not be triggered.
+       */
+      val allPathConditions = bodyPathConditions // ++ (decider.π -- πPre)
+
       val expandedTriggersSets =
         if (hasFieldAccesses)
-          QuantifiedChunkSupporter.expandFvfLookupsInTriggers(tTriggersSets, pathConditions)
+          QuantifiedChunkSupporter.expandFvfLookupsInTriggers(tTriggersSets, allPathConditions)
         else
-          tTriggersSets
+          Seq.empty
 
-      Q(expandedTriggersSets map Trigger, c1)
-    })
+      /* [2015-12-15 Malte]
+       *   The expanded trigger sets are not enough, the unexpanded triggers are needed as well.
+       *   This is, because the "unexpanded" field value function will be used in the actual
+       *   quantification (term), and it must therefore be possible to trigger the auxiliary
+       *   quantification by mentioning the "unexpanded" field value function.
+       *   Regression test quantifiedpermissions/misc/triggers_field_deref.sil, method test07a,
+       *   illustrates this issue.
+       *
+       *   NOTE: This might no longer be an issue once Silicon re-uses field value functions
+       *         (instead of introducing a fresh field value function for each field dereference).
+       */
+      val allTriggersSets = tTriggersSets ++ expandedTriggersSets
+
+      Q(allTriggersSets map Trigger, c1)})
   }
 
   /** Evaluates the given list of trigger sets `eTriggerSets` (expressions) and passes the result
@@ -677,7 +710,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
 
-        case pt: ast.PossibleTrigger =>
+        case pt @ (_: ast.PossibleTrigger | _: ast.FieldAccess) =>
           val cachedTrigger = c.possibleTriggers.get(pt)
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(pt))
