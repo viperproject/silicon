@@ -11,7 +11,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.{ReceiverNull, InsufficientPermission}
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.{Set, toMap, Map, Config, TriggerSet, TriggerSets}
+import viper.silicon.{Set, toMap, Map, Config, TriggerSets}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.{Chunk, Heap, PathConditions, ChunkIdentifier, State, StateFactory, Store}
 import viper.silicon.reporting.Bookkeeper
