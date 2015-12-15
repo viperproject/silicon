@@ -32,7 +32,6 @@ trait DefaultExecutor[ST <: Store[ST],
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
                     with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
-                    with PredicateSupporter[ST, H, PC, S]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
@@ -42,18 +41,17 @@ trait DefaultExecutor[ST <: Store[ST],
   protected implicit val manifestH: Manifest[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
-  import decider.{fresh, assume, inScope}
-
   protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
-
   protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
-
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
+  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+
+  import decider.{fresh, assume, inScope}
+  import stateFactory._
+  import symbolConverter.toSort
 
   private def follow(σ: S, edge: ast.Edge, c: C)
                     (Q: (S, C) => VerificationResult)

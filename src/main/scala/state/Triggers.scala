@@ -11,6 +11,7 @@ package state.terms
 import viper.silver.ast.utility.{GenericArithmeticSolver, GenericTriggerGenerator, GenericAxiomRewriter}
 import reporting.MultiRunLogger
 import silicon.utils.Counter
+import viper.silicon.state.Identifier
 
 class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
   override val toString = s"{${p.mkString(",")}}"
@@ -33,7 +34,7 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
   protected def transform[T <: Term](root: T)(f: PartialFunction[Term, Term]) = root.transform(f)()
   protected def Quantification_vars(q: Quantification) = q.vars
   protected def Exp_typ(term: Term): Sort = term.sort
-  protected def Var(id: String, sort: Sort) = state.terms.Var(id, sort)
+  protected def Var(id: String, sort: Sort) = state.terms.Var(Identifier(id), sort)
   protected val wrapperMap: Predef.Map[Class[_], PossibleTrigger => Nothing] = Predef.Map.empty
 
   def generateFirstTriggerGroup(vs: Seq[Var], toSearch: Seq[Term]): Option[(Seq[Trigger], Seq[Var])] =
@@ -111,7 +112,7 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
   protected def And(es: Seq[Exp]) = state.terms.And(es)
   protected def Implies(e1: Exp, e2: Exp) = state.terms.Implies(e1, e2)
 
-  protected def Var_id(v: Var) = v.id
+  protected def Var_id(v: Var) = v.id.name
 
   protected def Quantification_triggers(q: Quantification) = q.triggers
   protected def Quantification_vars(q: Quantification) = q.vars
@@ -129,7 +130,7 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
 
   protected val solver = SimpleArithmeticSolver
 
-  protected def fresh(name: String, typ: Type) = Var(s"$name@rw${counter.next()}", typ)
+  protected def fresh(name: String, typ: Type) = Var(Identifier(s"$name@rw${counter.next()}"), typ)
 
   protected def log(message: String): Unit = {
     logger.println(message)

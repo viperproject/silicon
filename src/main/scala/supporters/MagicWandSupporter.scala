@@ -4,22 +4,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
+import scala.util.control.Breaks._
 import org.slf4s.{LoggerFactory, Logging}
-import silver.ast
-import silver.verifier.PartialVerificationError
-import silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
-import interfaces.{Success, Evaluator, Consumer, Producer, VerificationResult, Failure}
-import interfaces.decider.Decider
-import interfaces.state.{StateFormatter, StateFactory, Chunk, ChunkIdentifier, State, PathConditions, Heap, Store,
-    HeapCompressor}
-import interfaces.state.factoryUtils.Ø
-import state.{DefaultContext, DirectChunk, DirectPredicateChunk, DirectFieldChunk, MagicWandChunk, QuantifiedChunk}
-import state.terms._
-import state.terms.perms.{IsNoAccess, IsNonNegative}
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
+import viper.silver.ast.utility.{Nodes, Visitor}
+import viper.silver.verifier.errors._
+import viper.silicon._
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state._
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.state._
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
 
 trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
@@ -28,23 +29,88 @@ trait MagicWandSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-            with PredicateSupporter[ST, H, PC, S] =>
+            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+
+  private[this] type C = DefaultContext[H]
+  private[this] type CH = Chunk
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
-  import decider.fresh
-
   protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
-
   protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
-
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
+  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+
+  import decider.{fresh, inScope}
+  import stateFactory._
 
   object magicWandSupporter {
-    private type C = DefaultContext[H]
-    private type CH = Chunk
+    def checkWandsAreSelfFraming(γ: ST, g: H, root: ast.Member, c: C): VerificationResult = {
+      val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
+      var result: VerificationResult = Success()
+
+      //    println("\n[checkWandsAreSelfFraming]")
+
+      breakable {
+        wands foreach {_wand =>
+          val err = MagicWandNotWellformed(_wand)
+
+          /* NOTE: Named wand, i.e. "wand w := A --* B", are currently not (separately) checked for
+           * self-framingness; instead, each such wand is replaced by "true --* true" (for the scope
+           * of the self-framingness checks implemented in this block of code).
+           * The reasoning here is that
+           *   (1) either A --* B is a wand that is actually used in the program, in which case
+           *       the other occurrences will be checked for self-framingness
+           *   (2) or A --* B is a wand that does not actually occur in the program, in which case
+           *       the verification will fail anyway
+           */
+          val trivialWand = (p: ast.Position) => ast.MagicWand(ast.TrueLit()(p), ast.TrueLit()(p))(p)
+          val wand = _wand.transform {
+            case v: ast.AbstractLocalVar if v.typ == ast.Wand => trivialWand(v.pos)
+          }()
+
+          val left = wand.left
+          val right = wand.withoutGhostOperations.right
+          val vs = Visitor.deepCollect(List(left, right), Nodes.subnodes){case v: ast.AbstractLocalVar => v}
+          val γ1 = Γ(vs.map(v => (v, fresh(v))).toIterable) + γ
+          val σ1 = Σ(γ1, Ø, g)
+
+          //        println(s"  left = $left")
+          //        println(s"  right = $right")
+          //        println(s"  s1.γ = ${σ1.γ}")
+          //        println(s"  s1.h = ${σ1.h}")
+          //        println(s"  s1.g = ${σ1.g}")
+
+          var σInner: S = null.asInstanceOf[S]
+
+          result =
+              inScope {
+                //            println("  checking left")
+                produce(σ1, fresh, terms.FullPerm(), left, err, c)((σ2, c2) => {
+                  σInner = σ2
+                  //              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
+                  //              val σ3 = σ1
+                  Success()})
+              } && inScope {
+                //            println("  checking right")
+                produce(σ1, fresh, terms.FullPerm(), right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
+                  Success())}
+
+          //        println(s"  result = $result")
+
+          result match {
+            case failure: Failure[ST@unchecked, H@unchecked, S@unchecked] =>
+              /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
+              result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
+              break()
+
+            case _: NonFatalResult => /* Nothing needs to be done*/
+          }
+        }
+      }
+
+      result
+    }
 
     def isDirectWand(exp: ast.Exp) = exp match {
       case wand: ast.MagicWand => true
@@ -464,10 +530,10 @@ trait MagicWandSupporter[ST <: Store[ST],
 
           /* TODO: Merge contexts */
           val c1 = contexts.head.copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
-                                    recordEffects = c.recordEffects,
-                                    producedChunks = c.producedChunks,
-                                    consumedChunks = consumedChunks,
-                                    branchConditions = c.branchConditions)
+                                      recordEffects = c.recordEffects,
+                                      producedChunks = c.producedChunks,
+                                      consumedChunks = consumedChunks,
+                                      branchConditions = c.branchConditions)
 
           Q(magicWandChunk, c1)
         }

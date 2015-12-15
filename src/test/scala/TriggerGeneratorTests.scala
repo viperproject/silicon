@@ -4,19 +4,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package tests
+package viper.silicon.tests
 
 import org.scalatest.FunSuite
-import state.terms._
-import state.terms.implicits._
-import TriggerGenerator.{TriggerSet, generateTriggerSetGroups}
+import viper.silicon.state.Identifier
+import viper.silicon.state.terms.TriggerGenerator.{TriggerSet, generateTriggerSetGroups}
+import viper.silicon.state.terms._
 
 class TriggerGeneratorTests extends FunSuite {
   test("Work in simple cases") {
-    val i = Var("i", sorts.Int)
-    val s = Var("S", sorts.Seq(sorts.Int))
+    val i = Var(Identifier("i"), sorts.Int)
+    val s = Var(Identifier("S"), sorts.Seq(sorts.Int))
     val t = SeqAt(s, i)
 
     assert(generateTriggerSetGroups(i :: Nil, t) match {
@@ -26,9 +24,9 @@ class TriggerGeneratorTests extends FunSuite {
   }
 
   test("Fail in these cases") {
-    val i = Var("i", sorts.Int)
-    val s = Var("S", sorts.Seq(sorts.Int))
-    val t = SeqAt(s, Plus(i, 1))
+    val i = Var(Identifier("i"), sorts.Int)
+    val s = Var(Identifier("S"), sorts.Seq(sorts.Int))
+    val t = SeqAt(s, Plus(i, IntLiteral(1)))
 
     assert(generateTriggerSetGroups(i :: Nil, t).isEmpty)
   }

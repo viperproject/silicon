@@ -9,153 +9,23 @@ package viper.silicon.supporters.functions
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors.{Internal, PostconditionViolated, ContractNotWellformed, FunctionNotWellformed}
-import viper.silicon.{Map, toSet}
+import viper.silver.verifier.errors.{PostconditionViolated, ContractNotWellformed, FunctionNotWellformed}
+import viper.silicon.supporters.PredicateSupporter
+import viper.silicon._
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
-import viper.silicon.{Config, Stack, toMap}
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{DefaultContext, SymbolConvert}
+import viper.silicon.state.{IdentifierFactory, DefaultContext, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 
-class FunctionData(val programFunction: ast.Function,
-                   val height: Int,
-                   val program: ast.Program,
-                   val symbolConverter: SymbolConvert,
-                   val expressionTranslator: HeapAccessReplacingExpressionTranslator,
-                   fresh: ast.LocalVar => Var) {
+trait FunctionSupporter[H <: Heap[H]] extends VerificationUnit[H, ast.Function]
 
-  val func = symbolConverter.toFunction(programFunction)
-
-  //    val formalArgs = programFunction.formalArgs map (v => Var(v.name, symbolConverter.toSort(v.typ)))
-  val formalArgs: Map[ast.AbstractLocalVar, Var] =
-    toMap(programFunction.formalArgs.map(_.localVar).map(v => v -> fresh(v)))
-
-  val args = Seq(`?s`) ++ formalArgs.values
-
-  val fapp = FApp(func, `?s`, formalArgs.values.toSeq)
-  val triggers = Trigger(fapp :: Nil) :: Nil
-
-  val limitedFunc = func.limitedVersion
-  val limitedFapp = FApp(limitedFunc, `?s`, formalArgs.values.toSeq)
-  val limitedTriggers = Trigger(limitedFapp :: Nil) :: Nil
-
-  val limitedAxiom = {
-    val limFApp = FApp(limitedFunc, `?s`, formalArgs.values.toSeq)
-
-    Quantification(Forall, args, limFApp === fapp, triggers)
-  }
-
-  var welldefined = false
-
-  /* If the program function isn't well-formed, the following field might remain empty */
-  private var optLocToSnap: Option[Map[ast.LocationAccess, Term]] = None
-  private var optFappToSnap: Option[Map[ast.FuncApp, Term]] = None
-  private var optQPTerms: Option[Set[(Seq[Var], Stack[Term], Iterable[Term])]] = None
-  private var optFreshFvfs: Option[Set[(ast.Field, Var)]] = None
-
-  /* TODO: Should be lazy vals, not methods */
-
-  def locToSnap = optLocToSnap.getOrElse(Map[ast.LocationAccess, Term]())
-  def fappToSnap = optFappToSnap.getOrElse(Map[ast.FuncApp, Term]())
-  def freshFvfs = optFreshFvfs.getOrElse(Set[(ast.Field, Var)]())
-
-  def qpTerms: Iterable[Term] = optQPTerms match {
-    case Some(qpts) =>
-      qpts.map { case (qvars, guards, ts) =>
-        val body = Implies(And(guards), And(ts))
-        val additionalQVars = qvars filterNot args.contains
-
-        if (additionalQVars.isEmpty) body
-        else Forall(additionalQVars, body, Seq[Trigger]()).autoTrigger }
-              /* TODO: Could use TriggerGenerator.generateFirstTriggers here */
-
-    case None =>
-      Nil
-  }
-
-  def locToSnap_=(lts: Map[ast.LocationAccess, Term]) { optLocToSnap = Some(lts) }
-  def fappToSnap_=(fts: Map[ast.FuncApp, Term]) { optFappToSnap = Some(fts) }
-
-  def freshFvfs_=(fvfs: Set[(ast.Field, Term)]) = {
-    assert(fvfs.forall(_._2.isInstanceOf[Var]))
-    optFreshFvfs = Some(fvfs.asInstanceOf[Set[(ast.Field, Var)]])
-  }
-
-  def qpTerms_=(qpts: Set[(Seq[Var], Stack[Term], Iterable[Term])]) { optQPTerms = Some(qpts) }
-
-  lazy val translatedPre: Option[Term] =
-    expressionTranslator.translatePrecondition(program, programFunction.pres, this)
-                        .map(And)
-
-  lazy val afterRelations: Set[Term] = translatedPre match {
-    case None => Set.empty
-    case Some(_) =>
-      var lastFVF = freshFvfs.map{case (field, fvf) =>
-        val fvfTOP = Var(s"fvfTOP_${field.name}", fvf.sort)
-        field -> fvfTOP
-      }.toMap
-
-      val afters: Set[Term] =
-      freshFvfs.map{case (field, freshFvf) =>
-        val fvf = lastFVF(field)
-        val after = FvfAfterRelation(field.name, freshFvf, fvf)
-
-        lastFVF = lastFVF.updated(field, freshFvf)
-
-        after
-      }
-
-      afters
-  }
-
-  lazy val axiom: Option[Term] = translatedPre match {
-    case None => None
-    case Some(pre) =>
-      val optBody = expressionTranslator.translate(program, programFunction, this)
-
-      /* TODO: We may only add non-null assumptions about receivers that are
-       * definitely dereferenced inside functions. That is, the receivers of
-       * field accesses that occur under a conditional may not be assumed to
-       * be non-null!
-       */
-      //      val nonNulls = And(
-      //        programFunction.exp.deepCollect{case fa: ast.FieldAccess => fa.rcv}
-      //                           .map(rcv => expressionTranslator.translate(program, rcv, locToSnap, fappToSnap) !== Null())
-      //                           .distinct: _*)
-      optBody.map(translatedBody => {
-        val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(fapp === translatedBody/*, nonNulls*/))))
-        val body =
-          if (freshFvfs.isEmpty) innermostBody
-          else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
-        Forall(args, body, triggers)})
-  }
-
-  lazy val postAxiom: Option[Term] = translatedPre match {
-    case None => None
-    case Some(pre) =>
-      if (programFunction.posts.nonEmpty) {
-        val optPosts =
-          expressionTranslator.translatePostcondition(program, programFunction.posts, this)
-
-        optPosts.map(posts => {
-          val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(posts))))
-          val body =
-            if (freshFvfs.isEmpty) innermostBody
-            else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
-          Forall(args, body, limitedTriggers)})
-      } else
-        Some(True())
-  }
-}
-
-trait FunctionSupporter[ST <: Store[ST],
-                        H <: Heap[H],
-                        PC <: PathConditions[PC],
-                        S <: State[ST, H, S]]
+trait FunctionSupporterProvider[ST <: Store[ST],
+                                H <: Heap[H],
+                                PC <: PathConditions[PC],
+                                S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
@@ -168,41 +38,30 @@ trait FunctionSupporter[ST <: Store[ST],
   val decider: Decider[ST, H, PC, S, C]
   val stateFactory: StateFactory[ST, H, S]
   val symbolConverter: SymbolConvert
+  val identifierFactory: IdentifierFactory
+  val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
 
-  import decider.{fresh, inScope}
+  import decider.fresh
   import stateFactory._
 
-  private val expressionTranslator =
-    new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
+  private case class Phase1Data(σPre: S, πPre: Set[Term], cPre: C)
 
-  object functionsSupporter extends StatefulComponent {
+  object functionsSupporter extends FunctionSupporter[H] {
     private var program: ast.Program = null
+    private var functionData: Map[ast.Function, FunctionData] = null
 
-    private var functionData = Map[ast.Function, FunctionData]()
+    private val expressionTranslator =
+      new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
 
-    def handleFunctions(program: ast.Program): List[VerificationResult] =  {
-      reset()
-      analyze(program)
-
-      decider.prover.logComment("-" * 60)
-      decider.prover.logComment("Declaring program functions")
-      decider.prover.declare(VarDecl(`?s`))
-      declareFunctions()
-
-      // FIXME: A workaround for Silver issue #94.
-      // toList must be before flatMap. Otherwise Set will be used internally and some
-      // error messages will be lost.
-      functionData.keys.toList.flatMap(function => handleFunction(function))
-    }
-
-    private def analyze(program: ast.Program) {
+    def analyze(program: ast.Program) {
       this.program = program
 
       val heights = Functions.heights(program).toSeq.sortBy(_._2).reverse
 
       functionData = toMap(
-        heights.map{case (func, height) =>
-          val data = new FunctionData(func, height, program, symbolConverter, expressionTranslator, fresh)
+        heights.map { case (func, height) =>
+          val data = new FunctionData(func, height, program)(symbolConverter, expressionTranslator,
+                                      identifierFactory, pred => predicateSupporter.data(pred))
           func -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
@@ -212,150 +71,155 @@ trait FunctionSupporter[ST <: Store[ST],
       expressionTranslator.functionData = functionData
     }
 
-    private def handleFunction(function: ast.Function): List[VerificationResult] = {
-      val data = functionData(function)
-      val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(function, program))
-      val c = DefaultContext[H](program = program,
-                                qpFields = quantifiedFields,
-                                quantifiedVariables = data.args,
-                                functionRecorder = ActualFunctionRecorder())
+    def units = functionData.keys.toSeq
 
-      val resultSpecsWellDefined = checkSpecificationsWellDefined(function, c)
+    def sorts: Set[Sort] = Set.empty
+    def declareSorts(): Unit = { /* No sorts need to be declared */ }
 
-      decider.prover.assume(data.limitedAxiom)
-      data.postAxiom foreach decider.prover.assume
+    /** Returns all functions introduced by the program function recorder, i.e. the function
+      * corresponding to the program function itself, the limited function and the stateless
+      * trigger function.
+      */
+    def symbols: Option[Set[Function]] = Some(toSet(
+      /* Note: Does not return constants that are used during program function verification, e.g.
+       * formal arguments.
+       */
+      functionData.values.flatMap(data =>
+        Seq(data.function, data.limitedFunction, data.statelessFunction))
+    ))
 
-      val result = verifyAndAxiomatize(function, c)
+    def declareSymbols(): Unit = {
+      decider.prover.logComment("Declaring program functions")
 
-      data.afterRelations foreach decider.prover.assume
-      data.axiom foreach decider.prover.assume
-
-      resultSpecsWellDefined :: result :: Nil
-    }
-
-    private def declareFunctions() {
-      functionData.values foreach {fd =>
-        decider.prover.declare(FunctionDecl(fd.func))
-        decider.prover.declare(FunctionDecl(fd.limitedFunc))
+      functionData.values foreach { data =>
+        decider.prover.declare(FunctionDecl(data.function))
+        decider.prover.declare(FunctionDecl(data.limitedFunction))
+        decider.prover.declare(FunctionDecl(data.statelessFunction))
       }
+
+      decider.prover.logComment("Snapshot variable to be used during function verification")
+      decider.prover.declare(VarDecl(`?s`))
     }
 
-    private def checkSpecificationsWellDefined(function: ast.Function, c: C): VerificationResult = {
-      val comment = ("-" * 10) + " FUNCTION " + function.name + " (specs well-defined) " + ("-" * 10)
+    def verify(function: ast.Function, c: DefaultContext[H]): Seq[VerificationResult] = {
+      val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
       log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
 
       val data = functionData(function)
-      val out = function.result
+      data.formalArgs.values foreach (v => decider.prover.declare(VarDecl(v)))
+      decider.prover.declare(VarDecl(data.formalResult))
 
-      val γ = Γ(data.formalArgs + (out -> fresh(out)))
+      Seq(handleFunction(function, c))
+    }
+
+    private def handleFunction(function: ast.Function, c0: DefaultContext[H]): VerificationResult = {
+      val data = functionData(function)
+      val c = c0.copy(quantifiedVariables = c0.quantifiedVariables ++ data.arguments,
+                      functionRecorder = ActualFunctionRecorder())
+
+      checkSpecificationWelldefinedness(function, c) match {
+        case (result1: FatalResult, _) =>
+          data.verificationFailures = data.verificationFailures :+ result1
+
+          result1
+
+        case (result1, phase1data) =>
+          decider.prover.assume(data.limitedAxiom)
+          decider.prover.assume(data.triggerAxiom)
+          data.postAxiom foreach decider.prover.assume
+
+          if (function.body.isEmpty)
+            result1
+          else {
+            val result2 = verify(function, phase1data, program)
+
+            result2 match {
+              case fatalResult: FatalResult =>
+                data.verificationFailures = data.verificationFailures :+ fatalResult
+              case _ =>
+                data.definitionalAxiom foreach decider.prover.assume
+            }
+
+            result1 && result2
+          }
+      }
+    }
+
+    private def checkSpecificationWelldefinedness(function: ast.Function, c: C)
+                                                 : (VerificationResult, Seq[Phase1Data]) = {
+
+      val comment = ("-" * 5) + " Well-definedness of specifications " + ("-" * 5)
+      log.debug(s"\n\n$comment\n")
+      decider.prover.logComment(comment)
+
+      val data = functionData(function)
+      val pres = function.pres
+      val posts = function.posts
+      val γ = Γ(data.formalArgs + (function.result -> data.formalResult))
       val σ = Σ(γ, Ø, Ø)
 
-      /* Recording function data in this phase is necessary for generating the
-       * post-axiom fpr each function. Consider a function f(x) with precondition
-       * P ≡ acc(x.f) && x.f > 0 and with postcondition Q ≡ result < 0.
-       * The corresponding post-axiom will be
-       *   forall s,x :: P[x.f |-> s] ==> Q[result |-> f(s,x), x.f |-> s]
-       * We therefore need to be able to map field accesses to the corresponding
-       * snapshot accesses.
-       */
-      var recorders = List[FunctionRecorder]()
+      var phase1Data: Seq[Phase1Data] = Vector.empty
+      var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result: VerificationResult =
-        inScope {
-          produces(σ, sort => `?s`.convert(sort), FullPerm(), function.pres, ContractNotWellformed, c)((σ1, c1) =>
-            evals(σ1, function.posts, ContractNotWellformed, c1)((tPosts, c2) => {
-              recorders ::= c2.functionRecorder
-              Success()}))}
+      val result = decider.inScope {
+        val πInit = decider.π
+        produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
+          phase1Data :+= Phase1Data(σ1, decider.π -- πInit, c1)
+          evals(σ1, posts, ContractNotWellformed, c1)((_, c2) => {
+            recorders :+= c2.functionRecorder
+            Success()})})}
 
-      if (recorders.nonEmpty) {
-        val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
-        data.locToSnap = summaryRecorder.locToSnap
-        data.fappToSnap = summaryRecorder.fappToSnap
-        data.qpTerms = summaryRecorder.qpTerms
-        data.freshFvfs = summaryRecorder.freshFvfs
-      }
+      data.advancePhase(recorders)
 
-      data.welldefined = !result.isFatal
+      (result, phase1Data)
+    }
+
+    private def verify(function: ast.Function, phase1data: Seq[Phase1Data], program: ast.Program)
+                      : VerificationResult = {
+
+      val comment = ("-" * 10) + " FUNCTION " + function.name + " (verify) " + ("-" * 10)
+      log.debug(s"\n\n$comment\n")
+      decider.prover.logComment(comment)
+
+      val data = functionData(function)
+      val posts = function.posts
+      val body = function.body.get /* NOTE: Only non-abstract functions are expected! */
+      val postconditionViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
+
+      var recorders: Seq[FunctionRecorder] = Vector.empty
+
+      val result = phase1data.foldLeft(Success(): VerificationResult) {
+        case (fatalResult: FatalResult, _) => fatalResult
+        case (intermediateResult, p1d) =>
+          intermediateResult && decider.inScope {
+            decider.assume(p1d.πPre)
+            eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
+              decider.assume(data.formalResult === tBody)
+              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, _, c2) => {
+                recorders :+= c2.functionRecorder
+                Success()})})}}
+
+      data.advancePhase(recorders)
 
       result
     }
 
-    private def verifyAndAxiomatize(function: ast.Function, c: C): VerificationResult = {
-      val comment = "-" * 10 + " FUNCTION " + function.name + "-" * 10
-      log.debug(s"\n\n$comment\n")
-      decider.prover.logComment(comment)
-
-      val data = functionData(function)
-      val out = function.result
-      val tOut = fresh(out)
-      val γ = Γ(data.formalArgs + (out -> tOut))
-      val σ = Σ(γ, Ø, Ø)
-
-      val postError = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, function)
-
-      var recorders = List[FunctionRecorder]()
-
-      val result =
-        inScope {
-          /* TODO: Re-use information from the first phase (i.e. from checkSpecificationsWellDefined)*/
-          produces(σ, sort => `?s`.convert(sort), FullPerm(), function.pres, Internal, c)((σ1, c2) =>
-            function.body match {
-              case None =>
-                recorders ::= c2.functionRecorder
-                Success()
-              case Some(body) =>
-                eval(σ1, body, FunctionNotWellformed(function), c2)((tBody, c3) => {
-                  recorders ::= c3.functionRecorder
-                  val c4 = c3.copy(functionRecorder = NoopFunctionRecorder)
-                  decider.assume(tOut === tBody)
-                  consumes(σ1, FullPerm(), function.posts, postError, c4)((_, _, _, _) =>
-                    Success())})})}
-
-      if (recorders.nonEmpty) {
-        val summaryRecorder = recorders.tail.foldLeft(recorders.head)((rAcc, r) => rAcc.merge(r))
-
-        data.locToSnap = summaryRecorder.locToSnap
-        data.fappToSnap = summaryRecorder.fappToSnap
-        data.qpTerms = summaryRecorder.qpTerms
-        data.freshFvfs = summaryRecorder.freshFvfs
-      }
-
-      data.welldefined &&= !result.isFatal
-
-      /* Ignore internal errors; the assumption is that they have already been
-       * recorded while checking well-framedness of function contracts.
-       */
-      result match {
-        case failure: Failure[ST, H, S] =>
-          if (!failure.message.isInstanceOf[Internal])
-            failure
-          else
-            Success()
-
-        case other => other
-      }
+    def emitAxioms(): Unit = {
+      /* No axioms need to be emitted (before function verification starts) */
     }
 
     /* Lifetime */
 
-    def start() {}
+    def start(): Unit = {
+      functionData = Map.empty
+    }
 
     def reset() {
       program = null
-      functionData = functionData.empty
+      functionData = Map.empty
     }
 
     def stop() {}
-
-    /* Debugging */
-
-    private def show(functionData: Map[ast.Function, FunctionData]) =
-      functionData.map { case (fun, fd) => (
-        fun.name,    // Function name only
-//        s"${fun.name}(${fun.formalArgs.mkString(", ")}}): ${fun.typ}",    // Function name and signature
-        s"${fd.getClass.getSimpleName}@${System.identityHashCode(fd)}(${fd.programFunction.name}})"
-      )}
   }
 }
-

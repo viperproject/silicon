@@ -32,7 +32,6 @@ trait DefaultEvaluator[ST <: Store[ST],
     extends Evaluator[ST, H, S, DefaultContext[H]]
     { this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
-                    with PredicateSupporter[ST, H, PC, S]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with Joiner[DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
@@ -40,20 +39,18 @@ trait DefaultEvaluator[ST <: Store[ST],
   private type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
-  import decider.{fresh, assume}
-
   protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
-
   protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
-
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-
+  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+
+  import decider.{fresh, assume}
+  import stateFactory._
+  import symbolConverter.toSort
 
   def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
@@ -447,13 +444,15 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
+                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
+                      decider.assume(FApp(predicateSupporter.data(predicate).triggerFunction, snap, tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c4.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c4)((σ2, c5) => {
-                        val c6 = c5.copy(recordVisited = c2.recordVisited)
+                      val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c5)((σ2, c6) => {
+                        val c7 = c6.copy(recordVisited = c2.recordVisited)
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/, eIn, pve, c6)(QB)})})
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
                   })(Q)
                 case false =>
                   Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))

@@ -16,7 +16,7 @@ import viper.silicon.supporters.ExpressionTranslator
 class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
-    with Logging {
+       with Logging {
 
   private val toSort = (typ: ast.Type, _: Any) => symbolConverter.toSort(typ)
 
@@ -31,7 +31,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   def translate(program: ast.Program,
                 func: ast.Function,
                 data: FunctionData)
-  : Option[Term] = {
+               : Option[Term] = {
 
     this.func = func
     this.program = program
@@ -51,30 +51,26 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
   def translatePostcondition(program: ast.Program,
                              posts: Seq[ast.Exp],
                              data: FunctionData)
-  : Option[Seq[Term]] = {
+                            : Seq[Term] = {
 
     this.program = program
     this.data = data
     this.failed = false
 
-    val results = posts map translate(toSort)
-
-    if (failed) None else Some(results)
+    posts map translate(toSort)
   }
 
   def translatePrecondition(program: ast.Program,
                             pres: Seq[ast.Exp],
                             data: FunctionData)
-  : Option[Seq[Term]] = {
+                           : Seq[Term] = {
 
     this.program = program
     this.data = data
     this.ignoreAccessPredicates = true
     this.failed = false
 
-    val results = pres map translate(toSort)
-
-    if (failed) None else Some(results)
+    pres map translate(toSort)
   }
 
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
@@ -86,7 +82,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
                                   : Term =
 
     e match {
-      case _: ast.Result => data.limitedFapp
+      case _: ast.Result => data.limitedFunctionApplication
 
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
@@ -94,14 +90,14 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
           case None => super.translate(toSort)(v)
         }
 
-      case loc: ast.LocationAccess => getOrRecordFailure(data.locToSnap, loc, toSort(loc.typ, Map()))
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ, Map()), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
         val func = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
-        val snap = getOrRecordFailure(data.fappToSnap, eFApp, sorts.Snap)
+        val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, data.programFunction.name)
         val fapp = FApp(func, snap, args)
 
         val callerHeight = data.height
@@ -117,17 +113,16 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
       case _ => super.translate(toSort)(e)
     }
 
-  private def getOrRecordFailure[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort): Term =
+  def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, fname: String): Term =
     map.get(key) match {
       case Some(s) =>
         s.convert(sort)
       case None =>
-        failed = true
-        if (data.welldefined) {
-          println(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
-          log.warn(s"Could not resolve $key (${key.pos}}) during function axiomatisation")
-        }
+        if (!failed && data.verificationFailures.isEmpty)
+          log.warn(s"Could not resolve $key (${key.pos}}) during the axiomatisation of function $fname")
 
-        Var("$unresolved", sort)
+        failed = true
+
+        fresh("$unresolved", sort)
     }
 }

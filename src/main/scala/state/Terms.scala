@@ -4,15 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state.terms
+package viper.silicon.state.terms
 
-import scala.reflect._
-import silver.ast.utility.{GenericTriggerGenerator, Visitor}
-import interfaces.state.{Store, Heap}
-import state.MagicWandChunk
-
+import scala.reflect.ClassTag
+import viper.silver.ast.utility.{Visitor, GenericTriggerGenerator}
+import viper.silicon.{Map, Set, toMap}
+import viper.silicon.state
+import viper.silicon.state.{MagicWandChunk, Identifier}
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -28,6 +26,10 @@ import state.MagicWandChunk
  * optimisations, as done in the work on the type safe builder pattern.
  */
 
+sealed trait Symbol {
+  def id: Identifier
+}
+
 /*
  * Sorts
  */
@@ -37,34 +39,34 @@ sealed trait Sort extends Symbol
 object sorts {
   import scala.collection.{Seq => SISeq}
 
-  object Snap extends Sort { val id = "Snap"; override val toString = id }
-  object Int extends Sort { val id = "Int"; override val toString = id }
-  object Bool extends Sort { val id = "Bool"; override val toString = id }
-  object Ref extends Sort { val id = "Ref"; override val toString = id }
-  object Perm extends Sort { val id = "Perm"; override val toString = id }
-  object Unit extends Sort { val id = "()"; override val toString = id }
+  object Snap extends Sort { val id = Identifier("Snap"); override val toString = id.toString }
+  object Int  extends Sort { val id = Identifier("Int");  override val toString = id.toString }
+  object Bool extends Sort { val id = Identifier("Bool"); override val toString = id.toString }
+  object Ref  extends Sort { val id = Identifier("Ref");  override val toString = id.toString }
+  object Perm extends Sort { val id = Identifier("Perm"); override val toString = id.toString }
+  object Unit extends Sort { val id = Identifier("()");   override val toString = id.toString }
 
   case class Seq(elementsSort: Sort) extends Sort {
-    val id = "Seq[%s]".format(elementsSort)
-    override val toString = id
+    val id = Identifier("Seq[%s]".format(elementsSort))
+    override val toString = id.toString
   }
 
   case class Set(elementsSort: Sort) extends Sort {
-    val id = "Set[%s]".format(elementsSort)
-    override val toString = id
+    val id = Identifier("Set[%s]".format(elementsSort))
+    override val toString = id.toString
   }
 
   case class Multiset(elementsSort: Sort) extends Sort {
-    val id = "Multiset[%s]".format(elementsSort)
-    override val toString = id
+    val id = Identifier("Multiset[%s]".format(elementsSort))
+    override val toString = id.toString
   }
 
   class Arrow private (val from: SISeq[Sort], val to: Sort) extends Sort
       with StructuralEquality {
 
     val equalityDefiningMembers = from :: to :: Nil
-    val id = s"${from mkString " x "} -> $to"
-    override val toString = id
+    val id = Identifier(s"${from mkString " x "} -> $to")
+    override val toString = id.toString
   }
 
   object Arrow extends ((SISeq[Sort], Sort) => Sort) {
@@ -85,13 +87,13 @@ object sorts {
     def unapply(arrow: Arrow) = Some((arrow.from, arrow.to))
   }
 
-  case class UserSort(id: String) extends Sort {
-    override val toString = id
+  case class UserSort(id: Identifier) extends Sort {
+    override val toString = id.toString
   }
 
   case class FieldValueFunction(codomainSort: Sort) extends Sort {
-    val id = "FVF[%s]".format(codomainSort)
-    override val toString = id
+    val id = Identifier("FVF[%s]".format(codomainSort))
+    override val toString = id.toString
   }
 }
 
@@ -105,7 +107,7 @@ case class VarDecl(v: Var) extends Decl
 case class SortDecl(sort: Sort) extends Decl
 case class FunctionDecl(func: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
-case class MacroDecl(id: String, args: Seq[Var], body: Term) extends Decl
+case class MacroDecl(id: Identifier, args: Seq[Var], body: Term) extends Decl
 
 /*
  * Basic terms
@@ -228,7 +230,7 @@ trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
 trait StructuralEquality { self: AnyRef =>
   val equalityDefiningMembers: Seq[Any]
 
-  override val hashCode = silver.utility.Common.generateHashCode(equalityDefiningMembers)
+  override val hashCode = viper.silver.utility.Common.generateHashCode(equalityDefiningMembers)
 
   override def equals(other: Any) = (
     this.eq(other.asInstanceOf[AnyRef])
@@ -241,42 +243,29 @@ trait StructuralEquality { self: AnyRef =>
 
 /* Symbols */
 
-sealed trait Symbol {
-  def id: String
+case class Var(id: Identifier, sort: Sort) extends Symbol with Term {
+  override val toString = id.toString
 }
 
-case class PlainSymbol(id: String) extends Symbol {
-  override val toString = id
-}
-
-case class Var(id: String, sort: Sort) extends Symbol with Term {
-  override val toString = id
-}
-
-/* TODO: id should be a Symbol, not a String. In general, no terms should talk a
- *       String where an id or some other kind of symbol is expected.
- *       The TermTo<SomeOutputLanguage>Converter should then take care of
- *       sanitising all symbols.
- *
- * TODO: As a related issue, it should also be the Converters that decide how to
+/* TODO: It should also be the Converters that decide how to
  *       distinguish limited functions from unlimited ones. The Function term
  *       could take a flag instead that indicates if this is the (un)limited
  *       version.
  */
-class Function(val id: String, val sort: sorts.Arrow)
+class Function(val id: Identifier, val sort: sorts.Arrow)
     extends Symbol
        with Term
        with StructuralEquality {
 
-  lazy val limitedVersion = Function(id + "$", sort)
+  lazy val limitedVersion = Function(id.copy(name = s"${id.name}%limited"), sort)
   val equalityDefiningMembers = id :: sort :: Nil
   override val toString = s"$id: $sort"
 }
 
 object Function {
-  def apply(id: String, sort: sorts.Arrow) = new Function(id, sort)
+  def apply(id: Identifier, sort: sorts.Arrow) = new Function(id, sort)
 
-  def apply(id: String, argSorts: Seq[Sort], toSort: Sort) = {
+  def apply(id: Identifier, argSorts: Seq[Sort], toSort: Sort) = {
     val symbolSort = sorts.Arrow(argSorts, toSort)
 
     new Function(id, symbolSort)
@@ -1078,6 +1067,10 @@ case class FApp(function: Function, snapshot: Term, actualArgs: Seq[Term])
     extends Application with PossibleTrigger {
 
   utils.assertSort(snapshot, "snapshot", sorts.Snap)
+  assert(function.sort.from.length - 1 == actualArgs.length,
+         s"Function ${function.id} takes ${function.sort.from.length - 1} arguments, but ${actualArgs.length} were provided.")
+  assert(function.sort.from.tail == actualArgs.map(_.sort),
+         s"Sorts don't match: ${function.sort.from.tail} vs. ${actualArgs.map(_.sort)}")
 
   val sort = function.sort.to
   val arrow = function.sort
@@ -1708,6 +1701,10 @@ case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends Boole
   def withArgs(args: Seq[Term]) = FvfAfterRelation(field, args.head, args(1))
 }
 
+object FvfTop extends (String => Identifier) {
+  def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
+}
+
 /* Sort wrappers */
 
 /* Note: Sort wrappers should probably not be used as (outermost) triggers
@@ -1836,8 +1833,8 @@ object Let extends ((Map[Var, Term], Term) => Term) {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var("s@$", sorts.Snap) // with SnapshotTerm
-  val `?r` = Var("r", sorts.Ref)
+  val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
+  val `?r` = Var(Identifier("r"), sorts.Ref)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)
@@ -1871,7 +1868,7 @@ object perms {
 
 object utils {
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
-    silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
+    viper.silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 
   def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
     case _: WildcardPerm => false

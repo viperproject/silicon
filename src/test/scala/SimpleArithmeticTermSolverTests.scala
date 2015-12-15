@@ -4,14 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package tests
+package viper.silicon.tests
 
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
-import state.terms._
+import viper.silicon.state.Identifier
 import DSL._
+import viper.silicon.state.terms._
 
 class SimpleArithmeticTermSolverTests extends FunSuite with Matchers {
   import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
@@ -64,23 +63,23 @@ private[tests] object DSL {
     def ==>(t2: Term) = Implies(t1, t2)
   }
 
-  val x = Var("x", sorts.Int)
-  val y = Var("y", sorts.Int)
-  val z = Var("z", sorts.Int)
-  val n = Var("n", sorts.Int)
-  val m = Var("m", sorts.Int)
-  val b = Var("b", sorts.Int)
+  val x = Var(Identifier("x"), sorts.Int)
+  val y = Var(Identifier("y"), sorts.Int)
+  val z = Var(Identifier("z"), sorts.Int)
+  val n = Var(Identifier("n"), sorts.Int)
+  val m = Var(Identifier("m"), sorts.Int)
+  val b = Var(Identifier("b"), sorts.Int)
 
   val `0` = IntLiteral(0)
   val `1` = IntLiteral(1)
   val `2` = IntLiteral(2)
 
-  private val f1 = Var("f", sorts.Arrow(sorts.Int, sorts.Int))
-  private val g1 = Var("g", sorts.Arrow(sorts.Int, sorts.Int))
-  private val f2 = Var("f", sorts.Arrow(Seq(sorts.Int, sorts.Int), sorts.Int))
-  private val g2 = Var("g", sorts.Arrow(Seq(sorts.Int, sorts.Int), sorts.Int))
-  private val f3 = Var("f", sorts.Arrow(Seq(sorts.Int, sorts.Int, sorts.Int), sorts.Int))
-  private val g3 = Var("g", sorts.Arrow(Seq(sorts.Int, sorts.Int, sorts.Int), sorts.Int))
+  private val f1 = Var(Identifier("f"), sorts.Arrow(sorts.Int, sorts.Int))
+  private val g1 = Var(Identifier("g"), sorts.Arrow(sorts.Int, sorts.Int))
+  private val f2 = Var(Identifier("f"), sorts.Arrow(Seq(sorts.Int, sorts.Int), sorts.Int))
+  private val g2 = Var(Identifier("g"), sorts.Arrow(Seq(sorts.Int, sorts.Int), sorts.Int))
+  private val f3 = Var(Identifier("f"), sorts.Arrow(Seq(sorts.Int, sorts.Int, sorts.Int), sorts.Int))
+  private val g3 = Var(Identifier("g"), sorts.Arrow(Seq(sorts.Int, sorts.Int, sorts.Int), sorts.Int))
 
   def f(t: Term) = Apply(f1, t :: Nil)
   def g(t: Term) = Apply(g1, t :: Nil)

@@ -9,7 +9,7 @@ package silicon
 package supporters
 
 import silver.ast
-import state.SymbolConvert
+import viper.silicon.state.{Identifier, SymbolConvert}
 import state.terms._
 
 trait ExpressionTranslator {
@@ -86,7 +86,7 @@ trait ExpressionTranslator {
         )))
 
         Quantification(qantOp,
-                       vars map (v => Var(v.name, toSort(v.typ, Map()))),
+                       vars map (v => Var(Identifier(v.name), toSort(v.typ, Map()))),
                        f(body),
                        translatedTriggers)
 
@@ -116,7 +116,7 @@ trait ExpressionTranslator {
 
       case _: ast.NullLit => Null()
 
-      case v: ast.AbstractLocalVar => Var(v.name, toSort(v.typ, Map()))
+      case v: ast.AbstractLocalVar => Var(Identifier(v.name), toSort(v.typ, Map()))
 
       case ast.DomainFuncApp(funcName, args, typeVarMap) =>
         val tArgs = args map f

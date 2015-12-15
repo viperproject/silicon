@@ -4,20 +4,19 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
 import org.slf4s.{LoggerFactory, Logging}
-import silver.ast
-import silver.verifier.PartialVerificationError
-import silver.verifier.errors.HeuristicsFailed
-import silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import interfaces.{Evaluator, Producer, Consumer, Executor, VerificationResult, Failure}
-import interfaces.state.{StateFactory, Chunk, State, PathConditions, Heap, Store, FieldChunk}
-import state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
-import state.terms._
-import reporting.Bookkeeper
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors.HeuristicsFailed
+import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silicon.{Config, Stack}
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.state._
+import viper.silicon.state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
+import viper.silicon.state.terms._
+import viper.silicon.reporting.Bookkeeper
 
 trait HeuristicsSupporter[ST <: Store[ST],
                         H <: Heap[H],
@@ -28,18 +27,19 @@ trait HeuristicsSupporter[ST <: Store[ST],
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[Chunk, ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
-            with PredicateSupporter[ST, H, PC, S]
             with MagicWandSupporter[ST, H, PC, S] =>
 
-      protected val stateFactory: StateFactory[ST, H, S]
-      import stateFactory._
+  private[this] type C = DefaultContext[H]
+  private[this] type CH = Chunk
 
+  protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
+  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+
+  import stateFactory._
 
   object heuristicsSupporter {
-    private type C = DefaultContext[H]
-    private type CH = Chunk
 
     /* tryOperation-Methods with varying output arity */
 
@@ -425,7 +425,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
     /* Helpers */
 
-    def predicateInstancesMatching(σ: S, h: H, c: C, f: PartialFunction[silver.ast.Node, _]): Seq[ast.PredicateAccessPredicate] = {
+    def predicateInstancesMatching(σ: S, h: H, c: C, f: PartialFunction[ast.Node, _]): Seq[ast.PredicateAccessPredicate] = {
       val allChunks = σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)
 
       val predicateChunks =
@@ -454,7 +454,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
       predicateAccesses
     }
 
-    def wandInstancesMatching(chunks: Seq[Chunk], f: PartialFunction[silver.ast.Node, _]): Seq[MagicWandChunk] = {
+    def wandInstancesMatching(chunks: Seq[Chunk], f: PartialFunction[ast.Node, _]): Seq[MagicWandChunk] = {
       val wands =
         chunks.collect {
           case ch: MagicWandChunk =>
@@ -468,11 +468,11 @@ trait HeuristicsSupporter[ST <: Store[ST],
     }
 
     object matchers {
-      def location(loc: ast.Location, program: ast.Program): PartialFunction[silver.ast.Node, Any] = {
+      def location(loc: ast.Location, program: ast.Program): PartialFunction[ast.Node, Any] = {
         case ast.AccessPredicate(locacc: ast.LocationAccess, _) if locacc.loc(program) == loc =>
       }
 
-      def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[silver.ast.Node, Any] = {
+      def structure(wand: ast.MagicWand, program: ast.Program): PartialFunction[ast.Node, Any] = {
         case other: ast.MagicWand if wand.structurallyMatches(other, program) =>
       }
     }

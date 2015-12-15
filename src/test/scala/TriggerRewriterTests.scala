@@ -4,21 +4,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package tests
+package viper.silicon.tests
 
 import java.io.{PrintWriter, StringWriter}
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
-import state.terms._
-import reporting.MultiRunLogger
+import viper.silicon.reporting.MultiRunLogger
+import viper.silicon.state.Identifier
 import DSL._
+import viper.silicon.state.terms._
 
 class TriggerRewriterTests extends FunSuite with Matchers {
   val dummySink = new PrintWriter(new StringWriter())
   val dummyLogger = new MultiRunLogger(dummySink, () => None)
-  val counter = new silicon.utils.Counter()
+  val counter = new viper.silicon.utils.Counter()
 
   val rewriter = new AxiomRewriter(counter, dummyLogger) {
     override def rewrite(quantification: Quantification) = {
@@ -28,14 +27,14 @@ class TriggerRewriterTests extends FunSuite with Matchers {
     }
 
     override protected def fresh(id: String, s: Sort): Var = {
-      Var(s"$id${counter.next()}", s)
+      Var(Identifier(s"$id${counter.next()}"), s)
     }
   }
 
-  val x0 = Var("x0", sorts.Int)
-  val x1 = Var("x1", sorts.Int)
-  val y0 = Var("y0", sorts.Int)
-  val z0 = Var("z0", sorts.Int)
+  val x0 = Var(Identifier("x0"), sorts.Int)
+  val x1 = Var(Identifier("x1"), sorts.Int)
+  val y0 = Var(Identifier("y0"), sorts.Int)
+  val z0 = Var(Identifier("z0"), sorts.Int)
 
   import rewriter.rewrite
 
