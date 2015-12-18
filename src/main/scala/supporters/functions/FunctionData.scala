@@ -17,6 +17,7 @@ import viper.silicon.supporters.PredicateData
 
 class FunctionData(val programFunction: ast.Function,
                    val height: Int,
+                   val quantifiedFields: Set[ast.Field],
                    val program: ast.Program)
                   (symbolConverter: SymbolConvert,
                    expressionTranslator: HeapAccessReplacingExpressionTranslator,
@@ -57,6 +58,13 @@ class FunctionData(val programFunction: ast.Function,
   val triggerAxiom =
     Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication))
 
+  val fvfGenerators: Map[ast.Field, Fun] = toMap(
+    quantifiedFields map (field => {
+        val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
+        val id = function.id.rename(name => s"${name}_fvfgen_${field.name}")
+
+        field -> Fun(id, function.argSorts, fvfSort) }))
+
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
    */
@@ -82,7 +90,7 @@ class FunctionData(val programFunction: ast.Function,
     freshFvfs = mergedFunctionRecorder.freshFvfs.asInstanceOf[Set[(ast.Field, Var)]]
 
     setQpTerms(mergedFunctionRecorder)
-    setAfterRelations(mergedFunctionRecorder)
+    setAfterRelations()
 
     phase += 1
   }
@@ -101,14 +109,14 @@ class FunctionData(val programFunction: ast.Function,
       else Forall(additionalQVars, body, Seq[Trigger]()).autoTrigger }
   }
 
-  private[this] def setAfterRelations(mergedFunctionRecorder: FunctionRecorder): Unit = {
-    var lastFVF = freshFvfs.map{case (field, fvf) =>
+  private[this] def setAfterRelations(): Unit = {
+    var lastFVF = freshFvfs.map { case (field, fvf) =>
       val fvfTOP = Var(FvfTop(field.name), fvf.sort)
       field -> fvfTOP
     }.toMap
 
     afterRelations =
-      freshFvfs.map{case (field, freshFvf) =>
+      freshFvfs.map { case (field, freshFvf) =>
         val fvf = lastFVF(field)
         val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
@@ -117,6 +125,16 @@ class FunctionData(val programFunction: ast.Function,
         after
       }
   }
+
+  private[this] def bindFvfs(innermostBody: Term): Term =
+    if (freshFvfs.isEmpty)
+      innermostBody
+    else {
+      val bindings =
+        freshFvfs.map { case (field, fvf) => fvf -> App(fvfGenerators(field), arguments) }
+
+      Let(toMap(bindings), innermostBody)
+    }
 
   /*
    * Properties resulting from phase 1 (well-definedness checking)
@@ -137,9 +155,7 @@ class FunctionData(val programFunction: ast.Function,
 
       val pre = And(translatedPres)
       val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(posts))))
-      val body =
-        if (freshFvfs.isEmpty) innermostBody
-        else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
+      val body = bindFvfs(innermostBody)
 
       Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
     } else
@@ -188,9 +204,7 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = And(translatedPres)
       val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(functionApplication === translatedBody))))
-      val body =
-        if (freshFvfs.isEmpty) innermostBody
-        else Exists(freshFvfs.map(_._2), innermostBody, Nil) // TODO: Triggers?
+      val body = bindFvfs(innermostBody)
       val allTriggers = (
            Seq(Trigger(functionApplication))
         ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))

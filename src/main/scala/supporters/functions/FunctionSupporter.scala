@@ -73,7 +73,8 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
       functionData = toMap(
         heights.map { case (func, height) =>
-          val data = new FunctionData(func, height, program)(symbolConverter, expressionTranslator,
+          val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
+          val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
                                       identifierFactory, pred => predicateSupporter.data(pred))
           func -> data})
 
@@ -96,6 +97,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
         decider.prover.declare(FunctionDecl(data.function))
         decider.prover.declare(FunctionDecl(data.limitedFunction))
         decider.prover.declare(FunctionDecl(data.statelessFunction))
+        data.fvfGenerators.values foreach (fvfGen => decider.prover.declare(FunctionDecl(fvfGen)))
       }
 
       decider.prover.logComment("Snapshot variable to be used during function verification")
@@ -119,6 +121,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       val c = c0.copy(quantifiedVariables = c0.quantifiedVariables ++ data.arguments,
                       functionRecorder = ActualFunctionRecorder())
 
+      /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(function, c) match {
         case (result1: FatalResult, _) =>
           data.verificationFailures = data.verificationFailures :+ result1
@@ -133,6 +136,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
           if (function.body.isEmpty)
             result1
           else {
+            /* Phase 2: Verify the function's postcondition */
             val result2 = verify(function, phase1data, program)
 
             result2 match {
