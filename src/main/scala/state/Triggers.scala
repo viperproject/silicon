@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state.terms
+package viper.silicon.state.terms
 
 import viper.silver.ast.utility.{GenericArithmeticSolver, GenericTriggerGenerator, GenericAxiomRewriter}
-import reporting.MultiRunLogger
-import silicon.utils.Counter
+import viper.silicon.reporting.MultiRunLogger
+import viper.silicon.utils.Counter
+import viper.silicon.state.terms
+import viper.silicon.state.terms._
 import viper.silicon.state.Identifier
 
 class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
@@ -24,9 +24,7 @@ object Trigger extends (Seq[Term] => Trigger) {
   def unapply(trigger: Trigger) = Some(trigger.p)
 }
 
-object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification, PossibleTrigger,
-                                                        Nothing, Nothing] {
-
+object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification] {
   protected def hasSubnode(root: Term, child: Term) = root.hasSubterm(child)
   protected def visit[A](root: Term)(f: PartialFunction[Term, A]) = root.visit(f)
   protected def deepCollect[A](root: Term)(f: PartialFunction[Term, A]) = root.deepCollect(f)
@@ -34,8 +32,7 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
   protected def transform[T <: Term](root: T)(f: PartialFunction[Term, Term]) = root.transform(f)()
   protected def Quantification_vars(q: Quantification) = q.vars
   protected def Exp_typ(term: Term): Sort = term.sort
-  protected def Var(id: String, sort: Sort) = state.terms.Var(Identifier(id), sort)
-  protected val wrapperMap: Predef.Map[Class[_], PossibleTrigger => Nothing] = Predef.Map.empty
+  protected def Var(id: String, sort: Sort) = terms.Var(Identifier(id), sort)
 
   def generateFirstTriggerGroup(vs: Seq[Var], toSearch: Seq[Term]): Option[(Seq[Trigger], Seq[Var])] =
     generateFirstTriggerSetGroup(vs, toSearch).map {
@@ -75,18 +72,66 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
     finalQuantification
   }
 
-  /* Note: If Plus and Minus were type arguments of GenericTriggerGenerator, the latter
-   *       could implement isForbiddenInTrigger already */
-  protected def isForbiddenInTrigger(term: Term) = term match {
-    case _: Plus | _: Minus if allowInvalidTriggers => false
-    case _: ForbiddenInTrigger => true
+  /* True iff the given node is a possible trigger */
+  def isPossibleTrigger(e: Term): Boolean = e match {
+    case _: Var => false
+    case app: App => app.applicable.isInstanceOf[Function]
+    case   _: CustomEquals
+         | _: PermMin
+         | _: SeqTerm
+         | _: SeqLength
+         | _: SeqAt
+         | _: SeqIn
+         | _: SetTerm
+         | _: SetIn
+         | _: SetCardinality
+         | _: MultisetTerm
+         | _: MultisetCardinality
+         | _: MultisetCount
+         | _: SnapshotTerm
+         | _: Domain
+         | _: Lookup
+         | _: FvfAfterRelation
+         => true
     case _ => false
   }
+
+  /* True iff the given node is not allowed in triggers */
+  def isForbiddenInTrigger(term: Term) = term match {
+    case _: Plus | _: Minus => !allowInvalidTriggers
+    case app: App => app.applicable.isInstanceOf[Macro]
+    case   _: Times | _: Div | _: Mod
+         | _: Not | _: Or | _: And | _: Implies | _: Iff | _: Ite
+         | _: BuiltinEquals
+         | _: Less | _: AtMost | _: Greater | _: AtLeast
+         | _: PermTimes | _: IntPermTimes | _: PermIntDiv | _: PermPlus | _: PermMinus
+         | _: PermLess | _: PermAtMost
+         | _: Distinct
+         | _: Let
+         => true
+    case _ => false
+  }
+
+  protected def withArgs(term: Term, args: Seq[Term]): Term = {
+    val subterms = term.subterms
+
+    assert(subterms.length == args.length,
+             s"Cannot create a new instance of ${term.getClass.getSimpleName} with arguments $args: "
+           + s"${term.getClass.getSimpleName} only requires ${subterms.length} subterms, but "
+           + s"${args.length} arguments were provided")
+
+    subterms.zip(args).foldLeft(term) { case (t, (sub, arg)) =>
+      if (sub == arg) t
+      else t.replace(sub, arg)
+    }
+  }
+
+  protected def getArgs(term: Term): Seq[Term] = term.subterms
 }
 
 class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
     extends GenericAxiomRewriter[Sort, Term, Var, Quantification, Equals, And, Implies, Plus, Minus,
-                                 Trigger, ForbiddenInTrigger] {
+                                 Trigger] {
 
   /*
    * Local members (not required by GenericAxiomRewriter)
@@ -108,9 +153,9 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
   protected def Exp_contains(node: Exp, other: Exp) = node.contains(other)
   protected def Exp_replace(node: Exp, original: Exp, replacement: Exp) = node.replace(original, replacement)
 
-  protected def Eq(e1: Exp, e2: Exp) = state.terms.Equals(e1, e2)
-  protected def And(es: Seq[Exp]) = state.terms.And(es)
-  protected def Implies(e1: Exp, e2: Exp) = state.terms.Implies(e1, e2)
+  protected def Eq(e1: Exp, e2: Exp) = terms.Equals(e1, e2)
+  protected def And(es: Seq[Exp]) = terms.And(es)
+  protected def Implies(e1: Exp, e2: Exp) = terms.Implies(e1, e2)
 
   protected def Var_id(v: Var) = v.id.name
 
@@ -122,7 +167,10 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
     q.copy(vars = vars, body = body, triggers = triggers)
 
   protected def Trigger_exps(t: Trigger) = t.p
-  protected def Trigger(exps: Seq[Exp]) = state.terms.Trigger(exps)
+  protected def Trigger(exps: Seq[Exp]) = terms.Trigger(exps)
+
+  /* True iff the given node is not allowed in triggers */
+  protected def isForbiddenInTrigger(e: Exp): Boolean = TriggerGenerator.isForbiddenInTrigger(e)
 
   /*
    * Abstract members - dependencies
@@ -170,9 +218,9 @@ object SimpleArithmeticSolver extends GenericArithmeticSolver[Sort, Term, Var, P
 
   protected def Type_isInt(typ: Type) = typ == sorts.Int
 
-  protected def Plus_apply(e1: Exp, e2: Exp) = state.terms.Plus(e1, e2)
+  protected def Plus_apply(e1: Exp, e2: Exp) = terms.Plus(e1, e2)
   protected def Plus_unapply(plus: Plus) = (plus.p0, plus.p1)
 
-  protected def Minus_apply(e1: Exp, e2: Exp) = state.terms.Minus(e1, e2)
+  protected def Minus_apply(e1: Exp, e2: Exp) = terms.Minus(e1, e2)
   protected def Minus_unapply(minus: Minus) = (minus.p0, minus.p1)
 }

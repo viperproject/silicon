@@ -9,7 +9,7 @@ package silicon
 package interfaces.decider
 
 import silver.components.StatefulComponent
-import state.terms.{Sort, Decl, Term, Var}
+import state.terms._
 
 sealed abstract class Result
 object Sat extends Result
@@ -22,7 +22,7 @@ trait Prover extends StatefulComponent {
   def assert(goal: Term, timeout: Option[Int] = None): Boolean
   def check(timeout: Option[Int] = None): Result
   def logComment(str: String)
-  def fresh(id: String, sort: Sort): Var
+  def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
   def declare(decl: Decl)
   def statistics(): Map[String, String]
   def proverRunStarts()

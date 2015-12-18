@@ -7,43 +7,41 @@
 package viper.silicon.state
 
 import viper.silver.components.StatefulComponent
-import viper.silicon.decider.NameSanitizer
 import viper.silicon.utils.Counter
 
-//trait Namespace {
-//  def id: Int
-//  def name: String
-//}
-//
-//trait NamespaceFactory {
-//  def fresh(name: String): Namespace
-//}
-//
-//case class DefaultNameSpace(id: Int, name: String) extends Namespace
-//
-//class DefaultNamespaceFactory extends NamespaceFactory with StatefulComponent {
-//  private val ids: Counter = new Counter
-//
-//  def fresh(name: String): Namespace = DefaultNameSpace(ids.next(), name)
-//
-//  def start(): Unit = {}
-//  def reset(): Unit = { ids.reset() }
-//  def stop(): Unit = {}
-//}
+sealed trait Identifier {
+  def name: String
+  def rename(fn: String => String): Identifier
+}
 
-//trait Identifier {
-//  def name: String
-////  def namespace: Namespace
-//}
+/* TODO: Remove object Identifier, make SimpleIdentifier's and SuffixedIdentifier's
+ *       constructors private, and force all clients to go through an
+ *       IdentifierFactory.
+ */
 
-case class Identifier(name: String/*, namespace: Namespace*/) extends AnyVal {
-  override def toString = name
+object Identifier {
+  def apply(name: String): Identifier = SimpleIdentifier(name)
+
+  def apply(prefix: String, separator: String, suffix: Int): Identifier =
+    SuffixedIdentifier(prefix, separator, suffix)
+}
+
+case class SimpleIdentifier /*private[Identifier]*/ (name: String) extends Identifier {
+  def rename(fn: String => String) = SimpleIdentifier(fn(name))
+  override val toString = name
+}
+
+case class SuffixedIdentifier /*private[Identifier]*/ (prefix: String, separator: String, suffix: Int)
+    extends Identifier {
+
+  val name = s"$prefix$separator$suffix"
+  def rename(fn: String => String) = SuffixedIdentifier(fn(prefix), separator, suffix)
+  override val toString = name
 }
 
 trait IdentifierFactory {
   def separator: String
   def fresh(name: String/*, namespace: Namespace*/): Identifier
-//  def fresh(name: String)(implicit namespace: Namespace) = fresh(name, namespace)
 }
 
 class DefaultIdentifierFactory/*(nameSanitizer: NameSanitizer)*/
@@ -54,12 +52,8 @@ class DefaultIdentifierFactory/*(nameSanitizer: NameSanitizer)*/
 
   val separator = "@"
 
-  def fresh(name: String/*, namespace: Namespace*/): Identifier = {
-//    val sanitizedName = nameSanitizer.sanitize(name + separator)
-//    val freshName = sanitizedName + ids.next()
-    val freshName = s"$name$separator${ids.next()}"
-
-    Identifier(freshName/*, namespace*/)
+  def fresh(name: String): Identifier = {
+    SuffixedIdentifier(name, separator, ids.next())
   }
 
   def start(): Unit = {}

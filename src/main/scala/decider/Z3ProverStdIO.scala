@@ -210,7 +210,7 @@ class Z3ProverStdIO(config: Config,
   }
 
   private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
-    val guard = fresh("grd", sorts.Bool)
+    val guard = fresh("grd", Nil, sorts.Bool)
 
     writeLine(s"(assert (implies $guard (not $goal)))")
     readSuccess()
@@ -287,17 +287,14 @@ class Z3ProverStdIO(config: Config,
     logToFile("; " + sanitisedStr)
   }
 
-  def fresh(name: String, sort: Sort) = {
+  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort) = {
     val id = identifierFactory.fresh(name)
-
-    val decl = sort match {
-      case arrow: sorts.Arrow => FunctionDecl(Function(id, arrow))
-      case _ => VarDecl(Var(id, sort))
-    }
+    val fun = Fun(id, argSorts, resultSort)
+    val decl = FunctionDecl(fun)
 
     write(convert(decl))
 
-    Var(id, sort)
+    fun
   }
 
   def declare(decl: Decl) {

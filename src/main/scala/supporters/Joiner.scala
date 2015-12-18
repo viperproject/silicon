@@ -12,7 +12,7 @@ import interfaces.{Success, VerificationResult}
 import interfaces.decider.Decider
 import interfaces.state.{State, PathConditions, Heap, Store, Context}
 import state.DefaultContext
-import state.terms.{Apply, sorts, True, Implies, And, Term, Sort}
+import state.terms.{App, sorts, True, Implies, And, Term, Sort}
 
 trait Joiner[C <: Context[C]] {
   def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
@@ -88,9 +88,8 @@ trait DefaultJoiner[ST <: Store[ST],
 
         case _ =>
           val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
-          val actualResultFuncSort = sorts.Arrow(quantifiedVarsSorts, joinSort)
-          val summarySymbol = decider.fresh(joinFunctionName, actualResultFuncSort)
-          val tActualVar = Apply(summarySymbol, joinFunctionArgs)
+          val summarySymbol = decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
+          val tActualVar = App(summarySymbol, joinFunctionArgs)
           val (tActualResult: Term, tAuxResult: Set[Term], cOpt) = combine(localResults, tActualVar === _)
           val c1 = cOpt.getOrElse(c)
 

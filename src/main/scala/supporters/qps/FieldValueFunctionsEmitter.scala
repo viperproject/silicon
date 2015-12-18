@@ -40,9 +40,6 @@ class DefaultFieldValueFunctionsEmitter(prover: Prover,
       + terms.sorts.FieldValueFunction(terms.sorts.Ref))
   }
 
-  /* Symbols are taken from a file, there currently isn't a way of retrieving them */
-  def symbols: Option[Set[Function]] = None
-
   def declareSorts() {
     collectedSorts foreach (s => prover.declare(SortDecl(s)))
   }

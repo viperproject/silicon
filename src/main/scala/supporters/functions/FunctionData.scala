@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silicon._
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.state.{Identifier, IdentifierFactory, SymbolConvert}
+import viper.silicon.state.{IdentifierFactory, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
 import viper.silicon.supporters.PredicateData
@@ -29,9 +29,9 @@ class FunctionData(val programFunction: ast.Function,
    * Properties computed from the constructor arguments
    */
 
-  val function: Function = symbolConverter.toFunction(programFunction)
-  val limitedFunction = function.limitedVersion
-  val statelessFunction = Function(Identifier(s"${function.id}%stateless"), function.sort.from.tail, sorts.Bool)
+  val function: HeapDepFun = symbolConverter.toFunction(programFunction)
+  val limitedFunction = FunctionSupporter.limitedVersion(function)
+  val statelessFunction = FunctionSupporter.statelessVersion(function)
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
     for (arg <- programFunction.formalArgs;
@@ -45,9 +45,9 @@ class FunctionData(val programFunction: ast.Function,
 
   val arguments = Seq(`?s`) ++ formalArgs.values
 
-  val functionApplication = FApp(function, `?s`, formalArgs.values.toSeq)
-  val limitedFunctionApplication = FApp(limitedFunction, `?s`, formalArgs.values.toSeq)
-  val triggerFunctionApplication = Apply(statelessFunction, formalArgs.values.toSeq)
+  val functionApplication = App(function, `?s` +: formalArgs.values.toSeq)
+  val limitedFunctionApplication = App(limitedFunction, `?s` +: formalArgs.values.toSeq)
+  val triggerFunctionApplication = App(statelessFunction, formalArgs.values.toSeq)
 
   val limitedAxiom =
     Forall(arguments,
@@ -150,7 +150,7 @@ class FunctionData(val programFunction: ast.Function,
    * Properties resulting from phase 2 (verification)
    */
 
-  lazy val predicateTriggers: Map[ast.Predicate, FApp] = {
+  lazy val predicateTriggers: Map[ast.Predicate, App] = {
     val recursiveCallsAndUnfoldings: Seq[(ast.FuncApp, Seq[ast.Unfolding])] =
       Functions.recursiveCallsAndSurroundingUnfoldings(programFunction)
 
@@ -170,13 +170,11 @@ class FunctionData(val programFunction: ast.Function,
       val triggerFunction = predicateData(predicate).triggerFunction
 
       /* TODO: Don't use translatePrecondition - refactor expressionTranslator */
-      val args =
-        expressionTranslator.translatePrecondition(program, predacc.args, this)
+      val args = (
+           expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap, programFunction.name)
+        +: expressionTranslator.translatePrecondition(program, predacc.args, this))
 
-      val fapp =
-        FApp(triggerFunction,
-          expressionTranslator.getOrFail(locToSnap, predacc, sorts.Snap, programFunction.name),
-          args)
+      val fapp = App(triggerFunction, args)
 
       predicate -> fapp
     }))

@@ -25,7 +25,7 @@ class PredicateData(predicate: ast.Predicate)
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
   val triggerFunction =
-    Function(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+    Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
 }
 
 trait PredicateSupporter[ST <: Store[ST],
@@ -95,8 +95,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
     def sorts: Set[Sort] = Set.empty
     def declareSorts(): Unit = { /* No sorts need to be declared */ }
 
-    def symbols: Option[Set[Function]] = Some(toSet(predicateData.values.map(_.triggerFunction)))
-
     def declareSymbols(): Unit = {
       decider.prover.logComment("Declaring predicate trigger functions")
       predicateData.values foreach (data =>
@@ -149,7 +147,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
           case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
           case _: QuantifiedChunk => None
           case _: MagicWandChunk => None}
-        decider.assume(FApp(predicateData(predicate).triggerFunction, snap, tArgs))
+        decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
         val ch = DirectPredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm, ncs)
         val (h1, c2) = chunkSupporter.produce(σ1, σ1.h, ch, c1)
         val h2 = h1 + H(ncs)
@@ -178,7 +176,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       chunkSupporter.consume(σ, σ.h, id, tPerm, pve, c, pa)((h1, snap, chs, c1) => {
         val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
         produce(σ \ h1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
-          decider.assume(FApp(predicateData(predicate).triggerFunction, snap, tArgs))
+          decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
           Q(σ2 /*\ σ.γ*/, c2)})})
     }
 

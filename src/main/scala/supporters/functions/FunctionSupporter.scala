@@ -17,10 +17,23 @@ import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state.{IdentifierFactory, DefaultContext, SymbolConvert}
+import viper.silicon.state.terms
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 
 trait FunctionSupporter[H <: Heap[H]] extends VerificationUnit[H, ast.Function]
+
+object FunctionSupporter {
+  def limitedVersion(function: HeapDepFun): Fun = {
+    val id = function.id.rename(name => s"$name%limited")
+    Fun(id, function.argSorts, function.resultSort)
+  }
+
+  def statelessVersion(function: HeapDepFun): Fun = {
+    val id = function.id.rename(name => s"$name%stateless")
+    Fun(id, function.argSorts.tail, terms.sorts.Bool)
+  }
+}
 
 trait FunctionSupporterProvider[ST <: Store[ST],
                                 H <: Heap[H],
@@ -76,18 +89,6 @@ trait FunctionSupporterProvider[ST <: Store[ST],
     def sorts: Set[Sort] = Set.empty
     def declareSorts(): Unit = { /* No sorts need to be declared */ }
 
-    /** Returns all functions introduced by the program function recorder, i.e. the function
-      * corresponding to the program function itself, the limited function and the stateless
-      * trigger function.
-      */
-    def symbols: Option[Set[Function]] = Some(toSet(
-      /* Note: Does not return constants that are used during program function verification, e.g.
-       * formal arguments.
-       */
-      functionData.values.flatMap(data =>
-        Seq(data.function, data.limitedFunction, data.statelessFunction))
-    ))
-
     def declareSymbols(): Unit = {
       decider.prover.logComment("Declaring program functions")
 
@@ -98,7 +99,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       }
 
       decider.prover.logComment("Snapshot variable to be used during function verification")
-      decider.prover.declare(VarDecl(`?s`))
+      decider.prover.declare(ConstDecl(`?s`))
     }
 
     def verify(function: ast.Function, c: DefaultContext[H]): Seq[VerificationResult] = {
@@ -107,8 +108,8 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       decider.prover.logComment(comment)
 
       val data = functionData(function)
-      data.formalArgs.values foreach (v => decider.prover.declare(VarDecl(v)))
-      decider.prover.declare(VarDecl(data.formalResult))
+      data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
+      decider.prover.declare(ConstDecl(data.formalResult))
 
       Seq(handleFunction(function, c))
     }

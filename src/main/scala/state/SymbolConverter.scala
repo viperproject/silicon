@@ -17,14 +17,14 @@ trait SymbolConvert {
 
   def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier
 
-  def toFunction(function: ast.DomainFunc): terms.Function
-  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.Function
+  def toFunction(function: ast.DomainFunc): terms.DomainFun
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun
 
-  def toFunction(function: ast.Function): terms.Function
+  def toFunction(function: ast.Function): terms.HeapDepFun
 }
 
 class DefaultSymbolConvert extends SymbolConvert {
-  def toSort(typ: ast.Type) = typ match {
+  def toSort(typ: ast.Type): Sort = typ match {
     case ast.Bool => sorts.Bool
     case ast.Int => sorts.Int
     case ast.Perm => sorts.Perm
@@ -48,27 +48,27 @@ class DefaultSymbolConvert extends SymbolConvert {
   def toSortSpecificId(name: String, sorts: Seq[Sort]) =
     Identifier(name + sorts.mkString("[",",","]"))
 
-  def toFunction(function: ast.DomainFunc) = {
+  def toFunction(function: ast.DomainFunc): terms.DomainFun = {
     val inSorts = function.formalArgs map (_.typ) map toSort
     val outSort = toSort(function.typ)
 
     toFunction(function, inSorts :+ outSort)
   }
 
-  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]) = {
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun = {
     assert(sorts.nonEmpty, "Expected at least one sort, but found none")
 
     val inSorts = sorts.init
     val outSort = sorts.last
     val id = toSortSpecificId(function.name, sorts)
 
-    terms.Function(id, inSorts, outSort)
+    terms.DomainFun(id, inSorts, outSort)
   }
 
-  def toFunction(function: ast.Function) = {
+  def toFunction(function: ast.Function): terms.HeapDepFun = {
     val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
     val outSort = toSort(function.typ)
 
-    terms.Function(Identifier(function.name), inSorts, outSort)
+    terms.HeapDepFun(Identifier(function.name), inSorts, outSort)
   }
 }

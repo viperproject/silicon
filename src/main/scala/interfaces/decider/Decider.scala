@@ -13,7 +13,7 @@ import silver.verifier.PartialVerificationError
 import silver.components.StatefulComponent
 import interfaces.{Failure, VerificationResult}
 import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import viper.silicon.state.terms.{FullPerm, Term, Var, Sort}
+import state.terms.{FullPerm, Term, Var, Sort, Function}
 import state.DirectChunk
 import utils.notNothing._
 
@@ -22,7 +22,6 @@ trait Decider[ST <: Store[ST],
               PC <: PathConditions[PC],
               S <: State[ST, H, S],
               C <: Context[C]]
-
     extends StatefulComponent {
 
   def prover: Prover
@@ -86,8 +85,10 @@ trait Decider[ST <: Store[ST],
 
   def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH]
 
-  def fresh(id: String, s: Sort): Var
-  def fresh(s: Sort): Var
+  def fresh(id: String, sort: Sort): Var
+  def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
+
+  def fresh(sort: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
 

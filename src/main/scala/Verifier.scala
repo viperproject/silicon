@@ -178,7 +178,7 @@ trait AbstractVerifier[ST <: Store[ST],
 
     val methodVerificationResults = methods map (method => {
       val c = ev.createInitialContext(method, program)
-      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
+//      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
 
       ev.verify(method, c)
     })

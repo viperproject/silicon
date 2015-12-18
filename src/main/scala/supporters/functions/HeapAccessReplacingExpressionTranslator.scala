@@ -95,10 +95,10 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
 
       case eFApp: ast.FuncApp =>
         val silverFunc = program.findFunction(eFApp.funcname)
-        val func = symbolConverter.toFunction(silverFunc)
+        val fun = symbolConverter.toFunction(silverFunc)
         val args = eFApp.args map (arg => translate(arg))
         val snap = getOrFail(data.fappToSnap, eFApp, sorts.Snap, data.programFunction.name)
-        val fapp = FApp(func, snap, args)
+        val fapp = App(fun, snap +: args)
 
         val callerHeight = data.height
         val calleeHeight = functionData(eFApp.func(program)).height
@@ -106,7 +106,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         if (callerHeight < calleeHeight)
           fapp
         else
-          fapp.copy(function = fapp.function.limitedVersion)
+          fapp.copy(applicable = FunctionSupporter.limitedVersion(fun))
 
       case _: ast.AccessPredicate if ignoreAccessPredicates => True()
       case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()

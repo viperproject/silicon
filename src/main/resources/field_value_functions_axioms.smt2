@@ -28,34 +28,35 @@
 ;               ($FVF.domain_$FLD$ ($SortWrappers.$SnapTo$FVF<$S$>($SortWrappers.$FVF<$S$>To$Snap ws))))
     :pattern (($SortWrappers.$FVF<$S$>To$Snap vs)
               ($SortWrappers.$FVF<$S$>To$Snap ws)
-              ($FVF.after_$FLD$ vs ws))
+;              ($FVF.after_$FLD$ vs ws)
+              )
     :qid |qp.$FVF<$S$>-eq-outer|
     )))
 
-(assert (forall ((fvf1 $FVF<$S$>) (fvf2 $FVF<$S$>) (fvf3 $FVF<$S$>)) (!
-    (implies
-      (and
-        ($FVF.after_$FLD$ fvf3 fvf2)
-        ($FVF.after_$FLD$ fvf2 fvf1))
-      ($FVF.after_$FLD$ fvf3 fvf1))
-    :pattern (($FVF.after_$FLD$ fvf3 fvf2) ($FVF.after_$FLD$ fvf2 fvf1))
-              ; ($SortWrappers.$FVF<Bool>To$Snap fvf1)
-              ; ($SortWrappers.$FVF<Bool>To$Snap fvf2)
-              ; ($SortWrappers.$FVF<Bool>To$Snap fvf3))
-    :qid |qp.$FVF<$S$>-after_$FLD$|
-    )))
-
-(assert (forall ((fvf1 $FVF<$S$>) (fvf2 $FVF<$S$>)) (!
-    (implies
-      (and
-        ($FVF.after_$FLD$ fvf1 $fvfTOP_$FLD$)
-        ($FVF.after_$FLD$ fvf2 $fvfTOP_$FLD$))
-      (or
-        (= fvf1 fvf2)
-        ($FVF.after_$FLD$ fvf1 fvf2)
-        ($FVF.after_$FLD$ fvf2 fvf1)
-      )
-    )
-    :pattern (($FVF.after_$FLD$ fvf1 $fvfTOP_$FLD$) ($FVF.after_$FLD$ fvf2 $fvfTOP_$FLD$))
-    :qid |qp.$FVF<$S$>-top|
-    )))
+;(assert (forall ((fvf1 $FVF<$S$>) (fvf2 $FVF<$S$>) (fvf3 $FVF<$S$>)) (!
+;    (implies
+;      (and
+;        ($FVF.after_$FLD$ fvf3 fvf2)
+;        ($FVF.after_$FLD$ fvf2 fvf1))
+;      ($FVF.after_$FLD$ fvf3 fvf1))
+;    :pattern (($FVF.after_$FLD$ fvf3 fvf2) ($FVF.after_$FLD$ fvf2 fvf1))
+;              ; ($SortWrappers.$FVF<Bool>To$Snap fvf1)
+;              ; ($SortWrappers.$FVF<Bool>To$Snap fvf2)
+;              ; ($SortWrappers.$FVF<Bool>To$Snap fvf3))
+;    :qid |qp.$FVF<$S$>-after_$FLD$|
+;    )))
+;
+;(assert (forall ((fvf1 $FVF<$S$>) (fvf2 $FVF<$S$>)) (!
+;    (implies
+;      (and
+;        ($FVF.after_$FLD$ fvf1 $fvfTOP_$FLD$)
+;        ($FVF.after_$FLD$ fvf2 $fvfTOP_$FLD$))
+;      (or
+;        (= fvf1 fvf2)
+;        ($FVF.after_$FLD$ fvf1 fvf2)
+;        ($FVF.after_$FLD$ fvf2 fvf1)
+;      )
+;    )
+;    :pattern (($FVF.after_$FLD$ fvf1 $fvfTOP_$FLD$) ($FVF.after_$FLD$ fvf2 $fvfTOP_$FLD$))
+;    :qid |qp.$FVF<$S$>-top|
+;    )))

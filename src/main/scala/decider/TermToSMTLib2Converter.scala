@@ -43,14 +43,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case sorts.Multiset(elementSort) => "$Multiset<" <> render(elementSort) <> ">"
     case sorts.UserSort(id) => sanitize(id)
 
-    case a: sorts.Arrow =>
-      val inStr = a.from match {
-        case Seq(sorts.Unit) => ""
-        case ss => ss.map(render).mkString("(", " ", ")")
-      }
-
-      inStr <+> render(a.to)
-
     case sorts.Unit =>
       /* Sort Unit corresponds to Scala's Unit type and is used, e.g., as the
        * domain sort of nullary functions.
@@ -68,19 +60,19 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case SortDecl(sort: Sort) =>
       parens("declare-sort" <+> render(sort))
 
-    case VarDecl(v: Var) =>
-      parens("declare-const" <+> sanitize(v.id) <+> render(v.sort))
+    case FunctionDecl(fun: Function) =>
+      val idDoc = sanitize(fun.id)
+      val argSortsDoc = fun.argSorts.map(render)
+      val resultSortDoc = render(fun.resultSort)
 
-    case FunctionDecl(Function(id, sort)) =>
-      val idDoc = sanitize(id)
-      val inSortDoc = sort.from.map(render)
-      val outSortDoc = render(sort.to)
-
-      parens("declare-fun" <+> idDoc <+> parens(ssep(inSortDoc.to[collection.immutable.Seq], space)) <+> outSortDoc)
+      if (argSortsDoc.isEmpty)
+        parens("declare-const" <+> idDoc <+> resultSortDoc)
+      else
+        parens("declare-fun" <+> idDoc <+> parens(ssep(argSortsDoc.to[collection.immutable.Seq], space)) <+> resultSortDoc)
 
     case SortWrapperDecl(from, to) =>
       val id = Identifier(sortWrapperName(from, to))
-      val fct = FunctionDecl(Function(id, from :: Nil, to))
+      val fct = FunctionDecl(Fun(id, from, to))
 
       render(fct)
 
@@ -98,22 +90,16 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
   }
 
   protected def render(term: Term): Doc =  term match {
-    case s: Symbol => sanitize(s.id)
     case lit: Literal => render(lit)
 
     case Ite(t0, t1, t2) =>
       renderNAryOp("ite", t0, t1, t2)
 
-    case fapp: FApp =>
-      parens(sanitize(fapp.function.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
-
-    case app: GenericApply =>
-      val docF = render(app.function)
-
-      app.arrow.from match {
-        case Seq(sorts.Unit) => docF
-        case _ => parens(docF <+> ssep((app.args map render).to[collection.immutable.Seq], space))
-      }
+    case fapp: Application[_] =>
+      if (fapp.args.isEmpty)
+        sanitize(fapp.applicable.id)
+      else
+        parens(sanitize(fapp.applicable.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
 
     case Quantification(quant, vars, body, triggers, name) =>
       val docVars = ssep((vars map (v => parens(sanitize(v.id) <+> render(v.sort)))).to[collection.immutable.Seq], space)
@@ -218,19 +204,20 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case bop: MultisetSubset => renderBinaryOp("$Multiset.subset", bop)
     case bop: MultisetCount => renderBinaryOp("$Multiset.count", bop)
 
-    /* Domains */
-
-    case DomainFApp(f, ts) =>
-      val docArgs = ssep((ts map render).to[collection.immutable.Seq], space)
-      val docId = sanitize(f.id)
-
-      if (ts.isEmpty) docId
-      else parens(docId <+> docArgs)
-
     /* Quantified Permissions */
 
     case Domain(id, fvf) => parens("$FVF.domain_" <> id <+> render(fvf))
-    case Lookup(field, fvf, at) => parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
+
+    case Lookup(field, fvf, at) => //fvf.sort match {
+//      case _: sorts.PartialFieldValueFunction =>
+        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
+//      case _: sorts.TotalFieldValueFunction =>
+//        render(Apply(fvf, Seq(at)))
+//        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
+//      case _ =>
+//        sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
+//    }
+
     case FvfAfterRelation(field, fvf2, fvf1) => parens("$FVF.after_" <> field <+> render(fvf2) <+> render(fvf1))
 
     /* Other terms */
@@ -245,7 +232,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
       parens(sortWrapperName(t.sort, to) <+> render(t))
 
     case Distinct(symbols) =>
-      parens("distinct" <+> ssep((symbols.toSeq map render).to[collection.immutable.Seq], space))
+      parens("distinct" <+> ssep((symbols.toSeq map (s => sanitize(s.id): Doc)).to[collection.immutable.Seq], space))
 
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
@@ -303,6 +290,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
   protected def sortWrapperName(from: Sort, to: Sort): String =
     s"$$SortWrappers.${convert(from)}To${convert(to)}"
 
+  @inline
   private def sanitize(id: Identifier): String = sanitize(id.name)
 
   private def sanitize(str: String): String = {

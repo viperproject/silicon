@@ -42,13 +42,18 @@ object FvfDefinition {
 case class SingletonChunkFvfDefinition(field: ast.Field,
                                        fvf: Term,
                                        rcvr: Term,
-                                       value: Term)
+                                       valueChoice: Either[Term, Seq[QuantifiedChunk]])
     extends FvfDefinition {
 
-  val valueDefinition = Lookup(field.name, fvf, rcvr) === value
-  val valueDefinitions = Seq(valueDefinition)
-  val domainDefinition = BuiltinEquals(Domain(field.name, fvf), SingletonSet(rcvr))
-  val domainDefinitions = Seq(domainDefinition)
+  val valueDefinitions = valueChoice match {
+    case Left(value) =>
+      Seq(Lookup(field.name, fvf, rcvr) === value)
+    case Right(sourceChunks) =>
+      sourceChunks map (sourceChunk =>
+        FvfDefinition.pointwiseValueDefinition(field, fvf, rcvr, sourceChunk, false))
+  }
+
+  val domainDefinitions = Seq(BuiltinEquals(Domain(field.name, fvf), SingletonSet(rcvr)))
 }
 
 case class QuantifiedChunkFvfDefinition(field: ast.Field,
@@ -123,7 +128,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
 
         domainDefinitions match {
           case Seq(Forall(Seq(`v`), body, triggers, name)) =>
-            Seq(Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.symbol}"))
+            Seq(Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.func.id}"))
           case others =>
             others map repl
         }
@@ -141,7 +146,14 @@ case class SummarisingFvfDefinition(field: ast.Field,
     extends FvfDefinition {
 
   val valueDefinitions =
-     sourceChunks.map(ch => FvfDefinition.pointwiseValueDefinition(field, fvf, rcvr, ch, false))
+//     sourceChunks.map(ch => FvfDefinition.pointwiseValueDefinition(field, fvf, rcvr, ch, false))
+     sourceChunks.map(ch =>
+       Implies(
+         PermLess(NoPerm(), ch.perm.replace(`?r`, rcvr)),
+//         Apply(fvf, Seq(rcvr)) === Lookup(field.name, ch.fvf, rcvr)
+         Lookup(field.name, fvf, rcvr) === Lookup(field.name, ch.fvf, rcvr)
+       )
+     )
 
   val domainDefinitions = Seq(True())
 }

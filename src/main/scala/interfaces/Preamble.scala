@@ -15,7 +15,6 @@ import silicon.state.terms.{Sort, Function}
 trait PreambleEmitter extends StatefulComponent {
   def analyze(program: ast.Program)
   def sorts: Set[Sort]
-  def symbols: Option[Set[Function]] /* TODO: Consider removing, doesn't appear to be useful */
   def declareSorts()
   def declareSymbols()
   def emitAxioms()

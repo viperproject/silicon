@@ -8,6 +8,7 @@ package viper
 package silicon
 package decider
 
+import scala.reflect.{ClassTag, classTag}
 import org.slf4s.Logging
 import silver.ast
 import silver.verifier.{PartialVerificationError, DependencyNotFoundError}
@@ -454,9 +455,11 @@ class DefaultDecider[ST <: Store[ST],
 
   /* Fresh symbols */
 
-  def fresh(s: Sort) = prover_fresh("$t", s)
-  def fresh(id: String, s: Sort) = prover_fresh(id, s)
-  def fresh(v: ast.AbstractLocalVar) = prover_fresh(v.name, symbolConverter.toSort(v.typ))
+  def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort) = prover_fresh[Fun](id, argSorts, resultSort)
+  def fresh(id: String, sort: Sort) = prover_fresh[Var](id, Nil, sort)
+
+  def fresh(s: Sort) = prover_fresh[Var]("$t", Nil, s)
+  def fresh(v: ast.AbstractLocalVar) = prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
 
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term) = {
     val permVar = fresh(id, sorts.Perm)
@@ -465,17 +468,40 @@ class DefaultDecider[ST <: Store[ST],
     (permVar, permVarConstraints)
   }
 
-  private def prover_fresh(id: String, s: Sort) = {
+  private def asVar(function: Function): Var = {
+    Predef.assert(function.argSorts.isEmpty)
+
+    Var(function.id, function.resultSort)
+  }
+
+  private def prover_fresh[F <: Function : ClassTag](id: String, argSorts: Seq[Sort], resultSort: Sort): F = {
     bookkeeper.freshSymbols += 1
 
-    val v = prover.fresh(id, s)
+    val proverFun = prover.fresh(id, argSorts, resultSort)
 
-    s match {
-      case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(v)
+    val destClass = classTag[F].runtimeClass
+
+    val fun: F =
+      if (proverFun.getClass == destClass)
+        proverFun.asInstanceOf[F]
+      else
+        destClass match {
+          case c if c == classOf[Var] =>
+            Predef.assert(proverFun.argSorts.isEmpty)
+            Var(proverFun.id, proverFun.resultSort).asInstanceOf[F]
+          case c if c == classOf[Fun] => proverFun.asInstanceOf[F]
+          case c if c == classOf[DomainFun] =>
+            DomainFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
+          case c if c == classOf[HeapDepFun] =>
+            HeapDepFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
+        }
+
+    resultSort match {
+      case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(fun.asInstanceOf[Var])
       case _ => /* Nothing special to do */
     }
 
-    v
+    fun
   }
 
   /* Misc */

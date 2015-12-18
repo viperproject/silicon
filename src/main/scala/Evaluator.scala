@@ -24,6 +24,7 @@ import state.terms.implicits._
 import state.terms.perms.IsNonNegative
 import supporters.{Joiner, Brancher, PredicateSupporter, MagicWandSupporter}
 import supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.functions.FunctionSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
@@ -162,12 +163,13 @@ trait DefaultEvaluator[ST <: Store[ST],
       case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
-            val fvfDomain = fvfDef.domainDefinitions
+//            val fvfDomain = fvfDef.domainDefinitions
             val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-            assume(fvfDomain ++ fvfDef.valueDefinitions)
+//            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
+            assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
             val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
             val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
-                                         .recordQPTerms(qvars, c1.branchConditions, fvfDomain ++ fvfDef.valueDefinitions)
+                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
             val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
             val c2 = c1.copy(functionRecorder = fr2)
             Q(fvfLookup, c2)})})
@@ -317,7 +319,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           val inSorts = tArgs map (_.sort)
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
-          Q(DomainFApp(fi, tArgs), c1)})
+          Q(App(fi, tArgs), c1)})
 
       case ast.ForPerm(varDecl, accessList, body) =>
         val h = c.partiallyConsumedHeap.getOrElse(σ.h)
@@ -412,7 +414,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             val c3 = c2.copy(recordVisited = true)
             consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
-              val tFApp = FApp(symbolConverter.toFunction(func), s1, tArgs)
+              val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
                                functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1))
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
@@ -445,7 +447,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                          QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
                       val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
-                      decider.assume(FApp(predicateSupporter.data(predicate).triggerFunction, snap, tArgs))
+                      decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c5)((σ2, c6) => {
@@ -702,10 +704,17 @@ trait DefaultEvaluator[ST <: Store[ST],
         case fapp: ast.FuncApp =>
           /** Heap-dependent functions that are used as tTriggerSets should be used
             * in the limited version, because it allows for more instantiations.
-            * Keep this code in sync with [[supporters.ExpressionTranslator.translate]]
+            * Keep this code in sync with [[viper.silicon.supporters.ExpressionTranslator.translate]]
             *
             */
-          val cachedTrigger = c.possibleTriggers.get(fapp).collect{case fa: FApp => fa.limitedVersion}
+          val cachedTrigger =
+            c.possibleTriggers.get(fapp) map {
+              case app @ App(fun: HeapDepFun, _) =>
+                app.copy(applicable = FunctionSupporter.limitedVersion(fun))
+              case other =>
+                sys.error(  s"Expected $fapp to map to an application of a heap-dependent function, "
+                          + s"but found $other")
+            }
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
 
@@ -775,9 +784,8 @@ trait DefaultEvaluator[ST <: Store[ST],
   private def partiallyAppliedFresh(id: String, c: C, result: ast.Type) = {
     val appliedArgs = c.quantifiedVariables
     val appliedSorts = appliedArgs.map(_.sort)
-    val sort = sorts.Arrow(appliedSorts, toSort(result))
-    val func = decider.fresh(id, sort)
+    val func = decider.fresh(id, appliedSorts, toSort(result))
 
-    Apply(func, appliedArgs)
+    App(func, appliedArgs)
   }
 }

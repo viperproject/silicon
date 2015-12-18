@@ -26,14 +26,6 @@ class DefaultSequencesEmitter(prover: Prover,
 
   def sorts = toSet(collectedSorts)
 
-  /**
-   * The symbols are take from a file and it is currently not possible to retrieve a list of
-   * symbols that have been declared.
-   *
-   * @return None
-   */
-  def symbols = None
-
   /* Lifetime */
 
   def reset() {

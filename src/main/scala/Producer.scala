@@ -147,7 +147,7 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (c.qpFields.contains(field)) {
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinition :: fvfDef.valueDefinition :: Nil))
+            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             (h + ch, c)
           } else {
@@ -243,7 +243,7 @@ trait DefaultProducer[ST <: Store[ST],
           val triggerForAuxQuant = invFct.invOfFct.triggers match {
             case Seq(trigger @ Trigger(Seq(lk: Lookup))) => /* TODO: Make more specific */
               var optSourceLkR: Option[Lookup] = None
-              val lkR = lk.copy(at = lk.at) /* Previously (794844ede494) was "at = `?r`" */
+              val lkR = lk/*.copy(at = lk.at)*/ /* Previously (794844ede494) was "at = `?r`" */
               tAuxQuantNoTriggers.visit { case BuiltinEquals(`lkR`, sourceLkR: Lookup) => optSourceLkR = Some(sourceLkR) }
               /* Trigger {lookup_g(fvf1, x), lookup_g(fvf0, x)} */
               Seq(optSourceLkR.fold(trigger)(sourceLkR => Trigger(sourceLkR.copy(at = lk.at) :: Nil)))
@@ -324,8 +324,8 @@ trait DefaultProducer[ST <: Store[ST],
 
         getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
 
-      case ast.Forall(_, _, ast.Implies(_, ast.FieldAccessPredicate(ast.FieldAccess(_, f), _))) =>
-      (sorts.FieldValueFunction(toSort(f.typ)), false)
+      case ast.utility.QuantifiedPermissions.QPForall(_, _, _, field, _, _, _) =>
+      (sorts.FieldValueFunction(toSort(field.typ)), false)
 
       case _ =>
         (sorts.Snap, false)

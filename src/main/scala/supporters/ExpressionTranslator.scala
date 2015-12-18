@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
+import viper.silver.ast
+import viper.silicon.{Map, toMap}
 import viper.silicon.state.{Identifier, SymbolConvert}
-import state.terms._
+import viper.silicon.state.terms._
+import viper.silicon.supporters.functions.FunctionSupporter
 
 trait ExpressionTranslator {
   val symbolConverter: SymbolConvert
@@ -29,7 +29,7 @@ trait ExpressionTranslator {
 
     val f = translate(toSort) _
 
-    def translateAnySetUnExp(exp: silver.ast.AnySetUnExp,
+    def translateAnySetUnExp(exp: ast.AnySetUnExp,
                              setTerm: Term => Term,
                              multisetTerm: Term => Term) =
 
@@ -40,7 +40,7 @@ trait ExpressionTranslator {
                             .format(exp, exp.getClass.getName, exp.typ))
       }
 
-    def translateAnySetBinExp(exp: silver.ast.AnySetBinExp,
+    def translateAnySetBinExp(exp: ast.AnySetBinExp,
                               setTerm: (Term, Term) => Term,
                               multisetTerm: (Term, Term) => Term,
                               anysetTypedExp: ast.Exp = exp) =
@@ -69,7 +69,7 @@ trait ExpressionTranslator {
 
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val autoTriggeredForall = silicon.utils.ast.autoTrigger(forall)
+            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall)
             (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
@@ -78,9 +78,11 @@ trait ExpressionTranslator {
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
 
+        /** IMPORTANT: Keep in sync with [[viper.silicon.DefaultEvaluator.evalTrigger]] */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
           f(trigger) match {
-            case fapp: FApp => fapp.limitedVersion /* IMPORTANT: Keep in sync with [[DefaultEvaluator.evalTrigger]] */
+            case app @ App(fun: HeapDepFun, _) =>
+              app.copy(applicable = FunctionSupporter.limitedVersion(fun))
             case other => other
           }
         )))
@@ -123,8 +125,8 @@ trait ExpressionTranslator {
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(exp.typ, toMap(typeVarMap))
         val id = symbolConverter.toSortSpecificId(funcName, inSorts :+ outSort)
-        val df = Function(id, inSorts, outSort)
-        DomainFApp(df, tArgs)
+        val df = Fun(id, inSorts, outSort)
+        App(df, tArgs)
 
       /* Permissions */
 
@@ -144,43 +146,43 @@ trait ExpressionTranslator {
 
       /* Sequences */
 
-      case silver.ast.SeqAppend(e0, e1) => SeqAppend(f(e0), f(e1))
-      case silver.ast.SeqContains(e0, e1) => SeqIn(f(e1), f(e0))
-      case silver.ast.SeqDrop(e0, e1) => SeqDrop(f(e0), f(e1))
-      case silver.ast.SeqIndex(e0, e1) => SeqAt(f(e0), f(e1))
-      case silver.ast.SeqLength(e) => SeqLength(f(e))
-      case silver.ast.SeqTake(e0, e1) => SeqTake(f(e0), f(e1))
-      case silver.ast.EmptySeq(typ) => SeqNil(toSort(typ, Map()))
-      case silver.ast.RangeSeq(e0, e1) => SeqRanged(f(e0), f(e1))
-      case silver.ast.SeqUpdate(e0, e1, e2) => SeqUpdate(f(e0), f(e1), f(e2))
+      case ast.SeqAppend(e0, e1) => SeqAppend(f(e0), f(e1))
+      case ast.SeqContains(e0, e1) => SeqIn(f(e1), f(e0))
+      case ast.SeqDrop(e0, e1) => SeqDrop(f(e0), f(e1))
+      case ast.SeqIndex(e0, e1) => SeqAt(f(e0), f(e1))
+      case ast.SeqLength(e) => SeqLength(f(e))
+      case ast.SeqTake(e0, e1) => SeqTake(f(e0), f(e1))
+      case ast.EmptySeq(typ) => SeqNil(toSort(typ, Map()))
+      case ast.RangeSeq(e0, e1) => SeqRanged(f(e0), f(e1))
+      case ast.SeqUpdate(e0, e1, e2) => SeqUpdate(f(e0), f(e1), f(e2))
 
-      case silver.ast.ExplicitSeq(es) =>
+      case ast.ExplicitSeq(es) =>
         es.tail.foldLeft[SeqTerm](SeqSingleton(f(es.head)))((tSeq, e) =>
           SeqAppend(SeqSingleton(f(e)), tSeq))
 
       /* Sets and multisets */
 
-      case silver.ast.EmptySet(typ) => EmptySet(toSort(typ, Map()))
-      case silver.ast.EmptyMultiset(typ) => EmptyMultiset(toSort(typ, Map()))
+      case ast.EmptySet(typ) => EmptySet(toSort(typ, Map()))
+      case ast.EmptyMultiset(typ) => EmptyMultiset(toSort(typ, Map()))
 
-      case silver.ast.ExplicitSet(es) =>
+      case ast.ExplicitSet(es) =>
         es.tail.foldLeft[SetTerm](SingletonSet(f(es.head)))((tSet, e) =>
           SetAdd(tSet, f(e)))
 
-      case silver.ast.ExplicitMultiset(es) =>
+      case ast.ExplicitMultiset(es) =>
         es.tail.foldLeft[MultisetTerm](SingletonMultiset(f(es.head)))((tMultiset, e) =>
           MultisetAdd(tMultiset, f(e)))
 
-      case as: silver.ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
-      case as: silver.ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
-      case as: silver.ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
-      case as: silver.ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
-      case as: silver.ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
-      case as: silver.ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality)
+      case as:ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
+      case as:ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
+      case as:ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
+      case as:ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
+      case as:ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
+      case as:ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality)
 
       /* Other expressions */
 
-      case silver.ast.Let(lvd, e, body) => Let(f(lvd.localVar).asInstanceOf[Var], f(e), f(body))
+      case ast.Let(lvd, e, body) => Let(f(lvd.localVar).asInstanceOf[Var], f(e), f(body))
 
       /* Unsupported (because unexpected) expressions */
 

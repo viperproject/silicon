@@ -21,7 +21,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.utils.Counter
 
-case class InverseFunction(symbol: Var, function: Term => Term, invOfFct: Quantification, fctOfInv: Quantification) {
+case class InverseFunction(func: Function, function: Term => Term, invOfFct: Quantification, fctOfInv: Quantification) {
   val definitionalAxioms = invOfFct :: fctOfInv :: Nil
   def apply(t: Term) = function(t)
 }
@@ -169,7 +169,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
           case true =>
             val (quantifiedChunks, _) = splitHeap(h, field.name)
-            val fvfDef = summarizeFieldValue(quantifiedChunks, field, qvars, condition, receiver)
+            val fvfDef = summarizeChunks(quantifiedChunks, field, qvars, condition, receiver, false)
 
             /* Optimisisations */
 
@@ -217,23 +217,28 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
             Q(fvfDefToReturn)}}
   }
 
-  @inline /* TODO: Consider removing this method */
-  private def summarizeFieldValue(chunks: Iterable[QuantifiedChunk],
-                                  field: ast.Field,
-                                  qvars: Seq[Var],
-                                  condition: Term,
-                                  receiver: Term)
-                                 : FvfDefinition = {
+  private def summarizeChunks(chunks: Seq[QuantifiedChunk],
+                              field: ast.Field,
+                              qvars: Seq[Var],
+                              condition: Term,
+                              receiver: Term,
+                              isChunkFvf: Boolean)
+                             : FvfDefinition = {
 
     Predef.assert(chunks.forall(_.name == field.name),
                   s"Expected all chunks to be about field $field, but got ${chunks.mkString(", ")}")
 
-    val fvf = freshFVF(field)
+    val fvf = freshFVF(field, isChunkFvf)
 
-    if (qvars.isEmpty)
+    if (isChunkFvf) {
+      if (qvars.isEmpty) {
+        SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
+      } else
+        QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(axiomRewriter)
+    } else {
+//      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
       SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)
-    else
-      QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks.toSeq/*, true*/)(axiomRewriter)
+    }
   }
 
   /* Manipulating quantified chunks */
@@ -347,7 +352,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
      * that talk about concrete receivers will not use the inverse function, and
      * thus will not trigger the axioms that define the values of the fvf.
      */
-    val fvfDef = summarizeFieldValue(candidates, field, qvar.toSeq, condition, receiver)
+    val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, condition, receiver, true)
 
     decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
 
@@ -358,8 +363,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
       decider.prover.declare(macroDecl)
 
-      val permsTakenFunc = Function(macroName, sorts.Arrow(`?r`.sort, sorts.Perm))
-      val permsTakenFApp = (t: Term) => ApplyMacro(permsTakenFunc, t :: Nil)
+      val permsTakenFunc = Macro(macroName, Seq(`?r`.sort), sorts.Perm)
+      val permsTakenFApp = (t: Term) => App(permsTakenFunc, t :: Nil)
 
       pNeeded = PermMinus(pNeeded, permsTakenFApp(`?r`))
 
@@ -511,17 +516,27 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   /* Misc */
 
   /* ATTENTION: Never create an FVF without calling this method! */
-  private def freshFVF(field: ast.Field) = {
+  private def freshFVF(field: ast.Field, isChunkFvf: Boolean) = {
     freshFVFInAction = true
-    val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
-    val freshFvf = fresh("fvf", fvfSort)
-    val fvfTOP = Var(FvfTop(field.name), fvfSort)
-    val fvf = lastFVF.getOrElse(field, fvfTOP)
-    val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
-    assume(after)
+    val freshFvf =
+      if (isChunkFvf) {
+        val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
+        val freshFvf = fresh("fvf#part", fvfSort)
 
-    lastFVF += (field -> freshFvf)
+        val fvfTOP = Var(FvfTop(field.name), fvfSort)
+        val fvf = lastFVF.getOrElse(field, fvfTOP)
+        val after = FvfAfterRelation(field.name, freshFvf, fvf)
+        assume(after)
+        lastFVF += (field -> freshFvf)
+
+        freshFvf
+      } else {
+        val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
+        val freshFvf = fresh("fvf#tot", fvfSort)
+
+        freshFvf
+      }
 
     freshFVFInAction = false
 
@@ -539,8 +554,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
       val codomainSort = toSort(field.typ)
 
       if (codomainSort == newFvfSort.codomainSort) {
-        val fvfSort = sorts.FieldValueFunction(codomainSort)
-        val fvfTOP = Var(FvfTop(field.name), fvfSort)
+        val fvfSortForTOP = sorts.FieldValueFunction(codomainSort)
+        val fvfTOP = Var(FvfTop(field.name), fvfSortForTOP)
         val fvf = lastFVF.getOrElse(field, fvfTOP)
         val after = FvfAfterRelation(field.name, freshFvf, fvf)
 
@@ -551,16 +566,22 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
     }
   }
 
-  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term): (Term, Option[SingletonChunkFvfDefinition]) = value.sort match {
-    case _: sorts.FieldValueFunction =>
-      /* The value is already a field value function, in which case we don't create a fresh one. */
-      (value, None)
+  /* TODO: Rename such that it becomes obvious that the methods constructs a
+   *       *SingletonChunk*FvfDefinition
+   */
+  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term)
+                              : (Term, Option[SingletonChunkFvfDefinition]) =
 
-    case _ =>
-      val fvf = freshFVF(field)
+    value.sort match {
+      case _: sorts.FieldValueFunction =>
+        /* The value is already a field value function, in which case we don't create a fresh one. */
+        (value, None)
 
-      (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, value)))
-  }
+      case _ =>
+        val fvf = freshFVF(field, true)
+
+        (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))))
+    }
 
   def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
     val axioms = cond match {
@@ -657,9 +678,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
 
     Predef.assert(fct.sort == sorts.Ref, s"Expected ref-sorted term, but found $fct of sort ${fct.sort}")
 
-    val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
-    val funcSymbol = decider.fresh("inv", funcSort)
-    val inverseFunc = (t: Term) => Apply(funcSymbol, additionalArgs :+ t)
+//    val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
+//    val funcSymbol = decider.fresh("inv", funcSort)
+    val func = decider.fresh("inv", (additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
+    val inverseFunc = (t: Term) => App(func, additionalArgs :+ t)
     val invOFct: Term = inverseFunc(fct)
     val fctOfInv = fct.replace(qvar, inverseFunc(`?r`))
     val condInv = condition.replace(qvar, inverseFunc(`?r`))
@@ -669,7 +691,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                               qvar :: Nil,
                                               Implies(condition, invOFct === qvar),
                                               fct :: And(condition, invOFct) :: Nil,
-                                              s"qp.${funcSymbol.id}-exp",
+                                              s"qp.${func.id}-exp",
                                               axiomRewriter)
 
     val finalAxFctOfInv =
@@ -677,10 +699,10 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                                               `?r` :: Nil,
                                               Implies(condInv, fctOfInv === `?r`),
                                               Trigger(inverseFunc(`?r`)) :: Nil,
-                                              s"qp.${funcSymbol.id}-imp",
+                                              s"qp.${func.id}-imp",
                                               axiomRewriter)
 
-    InverseFunction(funcSymbol, inverseFunc, finalAxInvOfFct, finalAxFctOfInv)
+    InverseFunction(func, inverseFunc, finalAxInvOfFct, finalAxFctOfInv)
   }
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]) = (chunks: Seq[QuantifiedChunk]) => {
@@ -701,16 +723,16 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   private var lastFVF: Map[ast.Field, Term] = Map.empty
   private var freshFVFInAction = false
 
-  def initLastFVF(quantifiedFields: Set[ast.Field]) {
-    this.quantifiedFields = quantifiedFields
-
-    lastFVF = toMap(quantifiedFields.map{field =>
-      val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
-      val fvfTOP = Var(FvfTop(field.name), fvfSort)
-
-      field -> fvfTOP
-    })
-  }
+//  def initLastFVF(quantifiedFields: Set[ast.Field]) {
+//    this.quantifiedFields = quantifiedFields
+//
+//    lastFVF = toMap(quantifiedFields.map{field =>
+//      val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
+//      val fvfTOP = Var(FvfTop(field.name), fvfSort)
+//
+//      field -> fvfTOP
+//    })
+//  }
 
   /* Lifetime */
 

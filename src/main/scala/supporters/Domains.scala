@@ -25,17 +25,16 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
   /* TODO: Group emitted declarations and axioms by source domain. */
 
   private var collectedSorts = Set[terms.Sort]()
-  private var collectedSymbols = Set[terms.Function]()
+  private var collectedSymbols = Set[terms.DomainFun]()
   private var collectedAxioms = Set[terms.Term]()
 
-  private var uniqueSymbols = Set[terms.Term]()
+  private var uniqueSymbols = Set[terms.Symbol]()
     /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
      * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
      * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
      */
 
   def sorts = collectedSorts
-  def symbols = Some(collectedSymbols)
 
   /* Lifetime */
 
@@ -99,7 +98,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
         val inSorts = fi.member.formalArgs map (a => symbolConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
         val outSort = symbolConverter.toSort(fi.member.typ.substitute(fi.typeVarsMap))
         val id = symbolConverter.toSortSpecificId(fi.member.name, inSorts :+ outSort)
-        val fct = terms.Function(id, inSorts, outSort)
+        val fct = terms.DomainFun(id, inSorts, outSort)
 
         collectedSymbols += fct
 
