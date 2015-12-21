@@ -260,7 +260,7 @@ trait DefaultProducer[ST <: Store[ST],
           val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
           decider.prover.logComment("Receivers are non-null")
           assume(Set(tNonNullQuant))
-          decider.prover.logComment("Definitional axioms for field value functions")
+//          decider.prover.logComment("Definitional axioms for field value functions")
           val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms))
           Q(σ.h + ch1, c2)}
 

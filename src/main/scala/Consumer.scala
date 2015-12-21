@@ -160,7 +160,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       decider.assert(σ, perms.IsNonNegative(pLoss)) {
                         case true =>
                           val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
-                            val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
+                          val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
                           val tAuxQuantNoTriggers = Forall(tQVar, And(tAuxNested), Nil, s"prog.l${utils.ast.sourceLine(forall)}-aux")
                           val c5 = c4.copy(quantifiedVariables = c4.quantifiedVariables.tail,
                                            branchConditions = c4.branchConditions.tail)
