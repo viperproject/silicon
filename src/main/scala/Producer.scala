@@ -147,7 +147,7 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (c.qpFields.contains(field)) {
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
+            optFvfDef.foreach(fvfDef => assume(fvfDef.valueDefinitions))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             (h + ch, c)
           } else {
