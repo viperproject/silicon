@@ -196,7 +196,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 val inverseReceiver = invFct(`?r`) // e⁻¹(r)
                 quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(pLoss, p), chunkOrderHeuristics, c1) {
                   case Some((h1, ch, fvfDef, c2)) =>
-                    val fvfDomain = fvfDef.domainDefinitions(invFct)
+                    val fvfDomain = if (c2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
                     decider.prover.logComment("Definitional axioms for field value function")
                     assume(fvfDomain ++ fvfDef.valueDefinitions)
                     //                if (!config.disableQPCaching())
@@ -224,7 +224,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
               case Some((h1, ch, fvfDef, c3)) =>
-                assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
+                val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
+                assume(fvfDomain ++ fvfDef.valueDefinitions)
                 Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))

@@ -39,7 +39,9 @@ case class DefaultContext[H <: Heap[H]]
                           recordEffects: Boolean = false,
                           producedChunks: Seq[(Stack[Term], DirectChunk)] = Nil,
                           consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] = Nil,
-                          letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil)
+                          letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
+
+                          fvfAsSnap: Boolean = false)
     extends Context[DefaultContext[H]] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -79,7 +81,8 @@ case class DefaultContext[H <: Heap[H]]
                         possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
-                        recordEffects1, producedChunks1, consumedChunks1, letBoundVars1) =>
+                        recordEffects1, producedChunks1, consumedChunks1, letBoundVars1,
+                        fvfAsSnap1) =>
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`, `branchConditions1`,
@@ -87,7 +90,8 @@ case class DefaultContext[H <: Heap[H]]
                             `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                            `recordEffects1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`) =>
+                            `recordEffects1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`,
+                            fvfAsSnap2) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -96,7 +100,8 @@ case class DefaultContext[H <: Heap[H]]
           copy(recordVisited = recordVisited1 || recordVisited2,
                retrying = retrying1 || retrying2,
                functionRecorder = functionRecorder3,
-               possibleTriggers = possibleTriggers3)
+               possibleTriggers = possibleTriggers3,
+               fvfAsSnap = fvfAsSnap1 || fvfAsSnap2)
 
         case _ =>
 //          println("\n[Context.merge]")

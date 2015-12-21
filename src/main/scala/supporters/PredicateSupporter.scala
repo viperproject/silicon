@@ -141,7 +141,8 @@ trait PredicateSupporterProvider[ST <: Store[ST],
        * inject them into the predicate body. See commented code below.
        */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-      consume(σ \ insγ, tPerm, body, pve, c)((σ1, snap, dcs, c1) => {
+      val c0 = c.copy(fvfAsSnap = true)
+      consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, dcs, c1) => {
         val ncs = dcs flatMap {
           case fc: DirectFieldChunk => Some(new NestedFieldChunk(fc))
           case pc: DirectPredicateChunk => Some(new NestedPredicateChunk(pc))
@@ -149,9 +150,10 @@ trait PredicateSupporterProvider[ST <: Store[ST],
           case _: MagicWandChunk => None}
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
         val ch = DirectPredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm, ncs)
-        val (h1, c2) = chunkSupporter.produce(σ1, σ1.h, ch, c1)
+        val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
+        val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
         val h2 = h1 + H(ncs)
-        Q(σ \ h2, c2)})
+        Q(σ \ h2, c3)})
     }
 
     def unfold(σ: S,

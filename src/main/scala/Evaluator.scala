@@ -411,12 +411,14 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       although the latter is not necessary.
            */
           join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
-            val c3 = c2.copy(recordVisited = true)
+            val c3 = c2.copy(recordVisited = true,
+                             fvfAsSnap = true)
             consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, _, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
-                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1))
+                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1),
+                               fvfAsSnap = c2.fvfAsSnap)
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val c6 = if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp)) else c5
               QB(tFApp, c6)})
