@@ -155,7 +155,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                 pve: PartialVerificationError,
                 locacc: ast.LocationAccess,
                 c: C)
-               (Q: FvfDefinition => VerificationResult)
+               (Q: SummarisingFvfDefinition => VerificationResult)
                : VerificationResult = {
 
     assert(σ, receiver !== Null()) {
@@ -200,7 +200,7 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
                 (_lookupRcvr, _fvfDef)
               } else */{
 //                if (config.disableQPCaching())
-                  fvfDef
+                  fvfDef.asInstanceOf[SummarisingFvfDefinition]
 //                else {
 //                  /* TODO: Caching needs to take the branch conditions into account! */
 //                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
@@ -518,6 +518,8 @@ class QuantifiedChunkSupporter[ST <: Store[ST],
   /* ATTENTION: Never create an FVF without calling this method! */
   private def freshFVF(field: ast.Field, isChunkFvf: Boolean) = {
     freshFVFInAction = true
+
+    bookkeeper.logfiles("fvfs").println(s"isChunkFvf = $isChunkFvf")
 
     val freshFvf =
       if (isChunkFvf) {

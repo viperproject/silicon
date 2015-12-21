@@ -11,6 +11,7 @@ package state
 import scala.collection.mutable
 import interfaces.state.{Heap, Store, State}
 import terms._
+import viper.silicon.supporters.qps.SummarisingFvfDefinition
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -67,7 +68,12 @@ package object utils {
   }
 
   def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
-    ts.partition(_.isInstanceOf[FvfAfterRelation])
+    ts.partition {
+      case   _: FvfAfterRelation
+           | _: Definition
+           => true
+      case _ => false
+    }
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
     var problems: List[String] = Nil
@@ -130,6 +136,7 @@ package object utils {
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
+    case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */

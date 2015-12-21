@@ -188,11 +188,21 @@ trait DefaultBrancher[ST <: Store[ST],
                   Success()}))
 
     r && {
+      val (tThenAuxTopLevel, tThenAuxNested) =
+        state.utils.partitionAuxiliaryTerms(πThen.getOrElse(Set.empty))
+
+      val (tElseAuxTopLevel, tElseAuxNested) =
+        state.utils.partitionAuxiliaryTerms(πElse.getOrElse(Set.empty))
+
       val tAuxIte = /* Ite with auxiliary terms */
         Ite(guard,
-            πThen.fold(True(): Term)(ts => And(ts)),
-            πElse.fold(True(): Term)(ts => And(ts)))
+            And(tThenAuxNested),
+            And(tElseAuxNested))
+//            πThen.fold(True(): Term)(ts => And(ts)),
+//            πElse.fold(True(): Term)(ts => And(ts)))
 
+      assume(tThenAuxTopLevel)
+      assume(tElseAuxTopLevel)
       assume(tAuxIte)
 
       val cJoined = (cThen, cElse) match {
