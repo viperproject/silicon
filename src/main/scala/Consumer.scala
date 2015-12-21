@@ -205,7 +205,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                                                 c2.branchConditions,
                                                                 invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
                     val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
-                        /* TODO: Is it really necessary to record this fvf? */
                     val c3 = c2.copy(functionRecorder = fr2)
                     Q(h1, ch.fvf.convert(sorts.Snap), /*ch :: */Nil, c3)
                   case None =>
