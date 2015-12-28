@@ -82,7 +82,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case _ =>
         log.debug(s"\nEVAL ${utils.ast.sourceLineColumn(e)}: $e")
-        log.debug(stateFormatter.format(σ))
+        log.debug(stateFormatter.format(σ, decider.π))
         if (c.reserveHeaps.nonEmpty)
           log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
         if (c.evalHeap.nonEmpty)

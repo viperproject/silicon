@@ -183,7 +183,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case _: silver.ast.Seqn =>
       case _ =>
         log.debug(s"\nEXECUTE ${utils.ast.sourceLineColumn(stmt)}: $stmt")
-        log.debug(stateFormatter.format(σ))
+        log.debug(stateFormatter.format(σ, decider.π))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString())
     }

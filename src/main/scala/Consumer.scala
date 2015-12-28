@@ -112,7 +112,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     if (!φ.isInstanceOf[ast.And]) {
       log.debug(s"\nCONSUME ${utils.ast.sourceLineColumn(φ)}: $φ")
-      log.debug(stateFormatter.format(σ))
+      log.debug(stateFormatter.format(σ, decider.π))
       log.debug("h = " + stateFormatter.format(h))
       if (c.reserveHeaps.nonEmpty)
         log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))

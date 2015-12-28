@@ -67,12 +67,11 @@ trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
   def \+(h: H): S
   def \-(c: Chunk): S
 
-  def π: Set[Term]
   def \(γ: ST = γ, h: H = h, g: H = g): S
 }
 
 trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
-  def format(σ: S): F
+  def format(σ: S, π: Set[Term]): F
   def format(γ: ST): F
   def format(h: H): F
   def format(π: Set[Term]): F

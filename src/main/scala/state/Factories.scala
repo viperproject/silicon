@@ -26,14 +26,13 @@ trait DefaultHeapFactory extends HeapFactory[ListBackedHeap] {
   def H(chunks: Iterable[Chunk]) = new ListBackedHeap(chunks)
 }
 
-class DefaultStateFactory
-    (private val π: () => Set[Term])
+class DefaultStateFactory()
     extends StateFactory[MapBackedStore, ListBackedHeap, DefaultState[MapBackedStore, ListBackedHeap]]
     with DefaultStoreFactory
     with DefaultHeapFactory {
 
   def Σ() = Σ(Ø, Ø, Ø)
-  def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g, π)
+  def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g)
 }
 
 class DefaultPathConditionsFactory

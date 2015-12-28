@@ -110,7 +110,7 @@ trait DefaultProducer[ST <: Store[ST],
 
     if (!φ.isInstanceOf[ast.And]) {
       log.debug(s"\nPRODUCE ${utils.ast.sourceLineColumn(φ)}: $φ")
-      log.debug(stateFormatter.format(σ))
+      log.debug(stateFormatter.format(σ, decider.π))
     }
 
     val produced = φ match {

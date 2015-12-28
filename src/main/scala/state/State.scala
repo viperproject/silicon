@@ -111,8 +111,7 @@ class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPa
 case class DefaultState[ST <: Store[ST], H <: Heap[H]]
                        (γ: ST,
                         h: H,
-                        g: H,
-                        getPathConditions: () => Set[Term])
+                        g: H)
     extends State[ST, H, DefaultState[ST, H]] {
 
   def \(γ: ST) = this.copy(γ = γ)
@@ -126,8 +125,6 @@ case class DefaultState[ST <: Store[ST], H <: Heap[H]]
   def \-(c: Chunk) = this.copy(h = this.h - c)
 
   def \(γ: ST = γ, h: H = h, g: H = g) = this.copy(γ, h, g)
-
-  lazy val π = getPathConditions()
 }
 
 /*

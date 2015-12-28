@@ -206,7 +206,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     val pathConditionFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
-    val stateFactory = new DefaultStateFactory(decider.π _)
+    val stateFactory = new DefaultStateFactory()
     val identifierFactory = new DefaultIdentifierFactory
 
     val dlb = FullPerm()
