@@ -326,7 +326,7 @@ trait MagicWandSupporter[ST <: Store[ST],
                            consumedChunks = Stack.fill(stackSize)(Nil))
           say(s"done: produced LHS ${wand.left}")
           say(s"next: consume RHS ${wand.right}")
-          consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, _, c3) => {
+          consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, c3) => {
             val c4 = c3.copy(recordEffects = false,
                              producedChunks = Nil,
                              consumedChunks = Stack(),
@@ -563,13 +563,9 @@ trait MagicWandSupporter[ST <: Store[ST],
        * TODO: The same for unfoldingPredicate, foldingPredicate
        * TODO: What about packageWand?
        */
-      consume(σEmp \ σ0.h, FullPerm(), lhsAndWand, pve, c0a)((σ1, _, chs1, c1) => { /* exhale_ext, σ1.h = σUsed' */
-        assert(chs1.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
-        val ch = chs1.last.asInstanceOf[MagicWandChunk]
+      consume(σEmp \ σ0.h, FullPerm(), lhsAndWand, pve, c0a)((σ1, _, c1) => { /* exhale_ext, σ1.h = σUsed' */
         val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
-        consume(σ0 \ σ1.h, FullPerm(), lhsAndWand, pve, c1a)((σ2, _, chs2, c2) => { /* σUsed'.apply */
-          assert(chs2.last.isInstanceOf[MagicWandChunk], s"Unexpected list of consumed chunks: $chs1")
-          assert(ch == chs2.last.asInstanceOf[MagicWandChunk], s"Expected $chs1 == $chs2")
+        consume(σ0 \ σ1.h, FullPerm(), lhsAndWand, pve, c1a)((σ2, _, c2) => { /* σUsed'.apply */
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
           produce(σ0 \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
             val (topReserveHeap, _) = heapCompressor.merge(σ3, c1.reserveHeaps.head, σ3.h, c)
@@ -594,9 +590,9 @@ trait MagicWandSupporter[ST <: Store[ST],
         eval(σC, ePerm, pve, c0)((tPerm, c1) =>
           if (decider.check(σC, IsNonNegative(tPerm), config.checkTimeout()))
             evals(σC, eArgs, _ => pve, c1)((tArgs, c2) =>
-              consume(σEmp \ σ.h, FullPerm(), acc, pve, c2)((σ1, _, _, c3) => { /* exhale_ext, h1 = σUsed' */
+              consume(σEmp \ σ.h, FullPerm(), acc, pve, c2)((σ1, _, c3) => { /* exhale_ext, h1 = σUsed' */
               val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
-                consume(σ \ σ1.h, FullPerm(), acc, pve, c3a)((σ2, snap, _, c3b) => { /* σUsed'.unfold */
+                consume(σ \ σ1.h, FullPerm(), acc, pve, c3a)((σ2, snap, c3b) => { /* σUsed'.unfold */
                 val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                 val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                 produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
@@ -663,7 +659,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       //      val body = Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
       //      val σEmp = Σ(σ.γ + Γ(args.zip(tArgs)), Ø, σ.g)
 
-      consume(σEmp \ σ.h, tPerm, body, pve, c)((σ1, _, _, c1) => { /* exhale_ext, σ1 = σUsed' */
+      consume(σEmp \ σ.h, tPerm, body, pve, c)((σ1, _, c1) => { /* exhale_ext, σ1 = σUsed' */
         val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false)
         predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c2)((σ2, c3) => { /* σ2.h = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + σ2.h

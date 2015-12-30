@@ -71,7 +71,7 @@ trait Consumer[CH <: Chunk,
                C <: Context[C]] {
 
   def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
-             (Q: (S, Term, List[CH], C) => VerificationResult)
+             (Q: (S, Term, C) => VerificationResult)
              : VerificationResult
 
   def consumes(σ: S,
@@ -79,7 +79,7 @@ trait Consumer[CH <: Chunk,
                φ: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
-              (Q: (S, Term, List[CH], C) => VerificationResult)
+              (Q: (S, Term, C) => VerificationResult)
               : VerificationResult
 }
 

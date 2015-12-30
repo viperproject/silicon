@@ -413,7 +413,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
             val c3 = c2.copy(recordVisited = true,
                              fvfAsSnap = true)
-            consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, _, c4) => {
+            consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
@@ -447,7 +447,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, chs, c4) => {
+                    consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, c4) => {
                       val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
                       decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)

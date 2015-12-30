@@ -201,7 +201,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
             decider.assume(p1d.πPre)
             eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
               decider.assume(data.formalResult === tBody)
-              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, _, c2) => {
+              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, c2) => {
                 recorders :+= c2.functionRecorder
                 Success()})})}}
 

@@ -63,18 +63,18 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * that has been consumed, but the amount that was found in the heap.
    */
   def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
-             (Q: (S, Term, List[CH], C) => VerificationResult)
+             (Q: (S, Term, C) => VerificationResult)
              : VerificationResult =
 
-    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, dcs, c1) =>
-      Q(σ \ h1, t, dcs, c1))
+    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, c1) =>
+      Q(σ \ h1, t, c1))
 
   def consumes(σ: S,
                p: Term,
                φs: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
-              (Q: (S, Term, List[CH], C) => VerificationResult)
+              (Q: (S, Term, C) => VerificationResult)
               : VerificationResult =
 
     consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)(Q)
@@ -85,7 +85,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                        φs: Seq[ast.Exp],
                        pvef: ast.Exp => PartialVerificationError,
                        c: C)
-                       (Q: (S, Term, List[CH], C) => VerificationResult)
+                       (Q: (S, Term, C) => VerificationResult)
                        : VerificationResult =
 
     /* Note: See the code comment about produce vs. produces in
@@ -93,21 +93,21 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
      */
 
     if (φs.isEmpty)
-      Q(σ \ h, Unit, Nil, c)
+      Q(σ \ h, Unit, c)
     else {
       val φ = φs.head
 
       if (φs.tail.isEmpty)
-        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
-          Q(σ \ h1, s1, dcs1, c1))
+        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, c1) =>
+          Q(σ \ h1, s1, c1))
       else
-        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, dcs1, c1) =>
-          consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, dcs2, c2) => {
-            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
+        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, c1) =>
+          consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, c2) => {
+            Q(h2, Combine(s1, s2), c2)}))
     }
 
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
-                       (Q: (H, Term, List[CH], C) => VerificationResult)
+                       (Q: (H, Term, C) => VerificationResult)
                        : VerificationResult = {
 
     if (!φ.isInstanceOf[ast.And]) {
@@ -120,16 +120,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure || config.handlePureConjunctsIndividually() =>
-        consume(σ, h, p, a1, pve, c)((h1, s1, dcs1, c1) =>
-          consume(σ, h1, p, a2, pve, c1)((h2, s2, dcs2, c2) => {
-            Q(h2, Combine(s1, s2), dcs1 ::: dcs2, c2)}))
+        consume(σ, h, p, a1, pve, c)((h1, s1, c1) =>
+          consume(σ, h1, p, a2, pve, c1)((h2, s2, c2) => {
+            Q(h2, Combine(s1, s2), c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
         eval(σC, e0, pve, c)((t0, c1) =>
           branch(σC, t0, c1,
             (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
-            (c2: C) => Q(h, Unit, Nil, c2)))
+            (c2: C) => Q(h, Unit, c2)))
 
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
@@ -149,7 +149,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             if (decider.check(σQVar, Not(tCond), config.checkTimeout())) {
               /* The condition cannot be satisfied, hence we don't need to consume anything. */
               val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
-              Q(h, Unit, Nil, c2)
+              Q(h, Unit, c2)
             } else {
               decider.assume(tCond)
               val c2 = c1.copy(branchConditions = tCond +: c1.branchConditions)
@@ -206,7 +206,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                                                 invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
                     val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
                     val c3 = c2.copy(functionRecorder = fr2)
-                    Q(h1, ch.fvf.convert(sorts.Snap), /*ch :: */Nil, c3)
+                    Q(h1, ch.fvf.convert(sorts.Snap), c3)
                   case None =>
                     Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
               case false =>
@@ -226,7 +226,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case Some((h1, ch, fvfDef, c3)) =>
                 val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
                 assume(fvfDomain ++ fvfDef.valueDefinitions)
-                Q(h1, ch.valueAt(tRcvr), /*ch :: */ Nil, c3)
+                Q(h1, ch.valueAt(tRcvr), c3)
               case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
             }}))
 
@@ -256,7 +256,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
-          heuristicsSupporter.tryOperation[H, Term, List[Chunk]](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
+          heuristicsSupporter.tryOperation[H, Term](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
             val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
             val hs =
               if (c.exhaleExt) c.reserveHeaps
@@ -272,11 +272,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 if (c.exhaleExt) {
                   /* transfer: move ch into h = σUsed*/
                   assert(hs1.size == c.reserveHeaps.size)
-                  QS(h + ch, decider.fresh(sorts.Snap), List(ch), c1.copy(reserveHeaps = hs1))
+                  QS(h + ch, decider.fresh(sorts.Snap), c1.copy(reserveHeaps = hs1))
                 } else {
                   assert(hs1.size == 1)
                   assert(c.reserveHeaps == c1.reserveHeaps)
-                  QS(hs1.head, decider.fresh(sorts.Snap), List(ch), c1)
+                  QS(hs1.head, decider.fresh(sorts.Snap), c1)
                 }
 
               case _ => Failure[ST, H, S](ve)}
@@ -305,8 +305,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                            lhsHeap = None,
                            consumedChunks = Nil +: c1.consumedChunks.drop(2))
           val σEmp = Σ(σ.γ, Ø, σ.g)
-          consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, _, c3) =>
-            Q(h3, decider.fresh(sorts.Snap), Nil, c3))})
+          consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, c3) =>
+            Q(h3, decider.fresh(sorts.Snap), c3))})
 
       case ast.Applying(eWandOrVar, eIn) =>
         val (eWand, eLHSAndWand, γ1) = eWandOrVar match {
@@ -326,31 +326,31 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
         heuristicsSupporter.tryOperation[S, H](s"applying $eWand")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.applyingWand(σ, γ1, eWand, eLHSAndWand, pve, c)(QS)){case (σ1, h1, c1) =>
-            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
-              Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
+            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
+              Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case ast.Folding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                        eIn) =>
 
         heuristicsSupporter.tryOperation[S, H](s"folding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.foldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
-            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
-              Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
+            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
+              Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
                        eIn) if c.exhaleExt && !φ.isPure =>
 
         heuristicsSupporter.tryOperation[S, H](s"unfolding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.unfoldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
-            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, _, c4) =>
-              Q(h4, decider.fresh(sorts.Snap), Nil, c4))}
+            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
+              Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case _ =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
-        evalAndAssert(σC, h, φ, pve, c0)((h1, t, dcs, c1) => {
+        evalAndAssert(σC, h, φ, pve, c0)((h1, t, c1) => {
           val c2 = c1.copy(reserveHeaps = c.reserveHeaps, exhaleExt = c.exhaleExt)
-          Q(h1, t, dcs, c2)
+          Q(h1, t, c2)
         })
     }
 
@@ -361,7 +361,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
    * is made available to the evaluation via the context (C.partiallyConsumedHeap).
    */
   private def evalAndAssert(σ: S, h: H, e: ast.Exp, pve: PartialVerificationError, c: C)
-                           (Q: (H, Term, List[DirectChunk], C) => VerificationResult)
+                           (Q: (H, Term, C) => VerificationResult)
                            : VerificationResult = {
 
     val c0 = c.copy(partiallyConsumedHeap = Some(h))
@@ -376,7 +376,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             QF(Failure[ST, H, S](pve dueTo AssertionFalse(e)))
         })
     })((σ1, c1) => {
-      Q(h, Unit, Nil, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))
+      Q(h, Unit, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))
     })
   }
 

@@ -137,13 +137,13 @@ trait DefaultExecutor[ST <: Store[ST],
               Success() /* TODO: Mark branch as dead? */
             else
               exec(σ1, lb.body, c1)((σ2, c2) =>
-                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, _, c3) =>
+                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
                   Success())))}
             &&
           inScope {
             /* Verify call-site */
             decider.prover.logComment("Establish loop invariant")
-            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, _, c1) => {
+            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
               produces(σ2, fresh,  FullPerm(), lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ3, c2) =>
@@ -290,7 +290,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+        consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
           Q(σ1, c1))
 
       case assert @ ast.Assert(a) =>
@@ -314,11 +314,11 @@ trait DefaultExecutor[ST <: Store[ST],
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+                consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
                   Success())
               r && Q(σ, c)
             } else
-              consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+              consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
                 Q(σ, c1))
         }
 
@@ -329,7 +329,7 @@ trait DefaultExecutor[ST <: Store[ST],
         evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {
           val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, _, c3) => {
+          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
@@ -391,7 +391,7 @@ trait DefaultExecutor[ST <: Store[ST],
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, _, c2) => {
+          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, c2) => {
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
               val c4 = c3.copy(lhsHeap = None)
@@ -400,7 +400,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
         e match {
           case wand: ast.MagicWand =>
-            consume(σ, FullPerm(), wand, pve, c)((σ1, _, chs, c1) => {
+            consume(σ, FullPerm(), wand, pve, c)((σ1, _, c1) => {
               QL(σ1, σ1.γ, wand, c1)})
 
           case v: ast.AbstractLocalVar =>

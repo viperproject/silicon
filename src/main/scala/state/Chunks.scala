@@ -4,17 +4,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import silver.ast
-import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import terms.{Lookup, PermMinus, PermPlus, Term, sorts}
-import state.terms.predef.`?r`
-import supporters.qps.InverseFunction
+import viper.silver.ast
+import viper.silicon.interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
+import viper.silicon.state.terms.{Lookup, PermMinus, PermPlus, Term, sorts}
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters.qps.InverseFunction
 
-sealed trait DirectChunk extends PermissionChunk[DirectChunk]
+sealed trait DirectChunk extends PermissionChunk[DirectChunk] {
+  def snap: Term
+}
 
 case class FieldChunkIdentifier(rcvr: Term, name: String) extends ChunkIdentifier {
   val args = rcvr :: Nil
@@ -29,6 +29,7 @@ case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
 
   val args = rcvr :: Nil
   val id = FieldChunkIdentifier(rcvr, name)
+  val snap = value
 
   def +(perm: Term): DirectFieldChunk = this.copy(perm = PermPlus(this.perm, perm))
   def -(perm: Term): DirectFieldChunk = this.copy(perm = PermMinus(this.perm, perm))
@@ -54,6 +55,7 @@ case class QuantifiedChunk(name: String,
   val args = `?r` :: Nil
   val id = FieldChunkIdentifier(`?r`, name)
   val value = fvf
+  val snap = value
 
   def +(perm: Term): QuantifiedChunk = this.copy(perm = PermPlus(this.perm, perm))
   def -(perm: Term): QuantifiedChunk = this.copy(perm = PermMinus(this.perm, perm))
@@ -71,8 +73,7 @@ case class PredicateChunkIdentifier(name: String, args: List[Term]) extends Chun
 case class DirectPredicateChunk(name: String,
                                 args: List[Term],
                                 snap: Term,
-                                perm: Term,
-                                nested: List[NestedChunk] = Nil)
+                                perm: Term)
     extends PredicateChunk with DirectChunk {
 
   assert(snap.sort == sorts.Snap, s"Snapshot $snap must be of sort Snap, but found ${snap.sort}")
@@ -85,28 +86,6 @@ case class DirectPredicateChunk(name: String,
   def \(perm: Term) = this.copy(perm = perm)
 
   override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
-}
-
-
-sealed trait NestedChunk extends Chunk
-
-case class NestedFieldChunk(rcvr: Term, name: String, value: Term) extends FieldChunk with NestedChunk {
-  val args = rcvr :: Nil
-  val id = FieldChunkIdentifier(rcvr, name)
-
-  def this(fc: DirectFieldChunk) = this(fc.rcvr, fc.name, fc.value)
-
-  override def toString = "%s.%s -> %s".format(rcvr, name, value)
-}
-
-case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nested: List[NestedChunk] = Nil)
-    extends PredicateChunk with NestedChunk {
-
-  val id = PredicateChunkIdentifier(name, args)
-
-  def this(pc: DirectPredicateChunk) = this(pc.name, pc.args, pc.snap, pc.nested)
-
-  override def toString = "%s(%s;%s)".format(name, args.mkString(","), snap)
 }
 
 abstract class MagicWandChunkLike extends {

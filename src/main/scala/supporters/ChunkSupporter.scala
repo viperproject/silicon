@@ -51,7 +51,7 @@ trait ChunkSupporter[ST <: Store[ST],
                 c: C,
                 locacc: ast.LocationAccess,
                 optNode: Option[ast.Node with ast.Positioned] = None)
-               (Q: (H, Term, List[CH], C) => VerificationResult)
+               (Q: (H, Term, C) => VerificationResult)
                : VerificationResult = {
 
       val description = optNode.orElse(Some(locacc)).map(node => s"consume ${node.pos}: $node").get
@@ -60,28 +60,16 @@ trait ChunkSupporter[ST <: Store[ST],
 //        case None => s"consume $id"
 //      }
 
-      heuristicsSupporter.tryOperation[H, Term, List[Chunk]](description)(σ, h, c)((σ1, h1, c1, QS) => {
+      heuristicsSupporter.tryOperation[H, Term](description)(σ, h, c)((σ1, h1, c1, QS) => {
         consume(σ, h1, id, tPerm, locacc, pve, c1)((h2, optCh, c2, results) =>
           optCh match {
             case Some(ch) =>
-              ch match {
-                case fc: DirectFieldChunk =>
-                  val snap = fc.value.convert(sorts.Snap)
-                QS(h2, snap, fc :: Nil, c2)
-                case pc: DirectPredicateChunk =>
-                  val h3 =
-                    if (results.consumedCompletely)
-                      pc.nested.foldLeft(h2){case (ha, nc) => ha - nc}
-                    else
-                      h2
-                QS(h3, pc.snap, pc :: Nil, c2)
-              case qch: QuantifiedChunk =>
-                sys.error(s"Found unexpected quantified chunk $qch")}
+              QS(h2, ch.snap.convert(sorts.Snap), c2)
             case None =>
               /* Not having consumed anything could mean that we are in an infeasible
                * branch, or that the permission amount to consume was zero.
                */
-              QS(h2, Unit, Nil, c2)
+            QS(h2, Unit, c2)
           })
       })(Q)
     }

@@ -442,7 +442,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       val predicateAccesses =
         predicateChunks.flatMap {
-          case DirectPredicateChunk(name, args, _, _, _) =>
+          case DirectPredicateChunk(name, args, _, _) =>
             val reversedArgs: Seq[ast.Exp] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
 
             if (args.length == reversedArgs.length)

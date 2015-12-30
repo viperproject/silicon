@@ -94,7 +94,7 @@ trait AbstractElementVerifier[ST <: Store[ST],
                 Success())}
         && inScope {
               exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-                consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, _, c4) =>
+                consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, c4) =>
                   Success()))})})}
   }
 }

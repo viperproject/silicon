@@ -4,11 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.state
+package viper.silicon.interfaces.state
 
-import state.terms.Term
+import viper.silicon.state.terms.Term
 
 trait ChunkIdentifier {
   def name: String
