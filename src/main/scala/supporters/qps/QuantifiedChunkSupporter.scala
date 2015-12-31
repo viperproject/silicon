@@ -110,12 +110,12 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
   private[this] type C = DefaultContext[H]
 
-  val decider: Decider[ST, H, PC, S, DefaultContext[H]]
-  val symbolConverter: SymbolConvert
-  val stateFactory: StateFactory[ST, H, S]
-  val axiomRewriter: AxiomRewriter
-  val config: Config
-  val bookkeeper: Bookkeeper
+  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected val symbolConverter: SymbolConvert
+  protected val stateFactory: StateFactory[ST, H, S]
+  protected val axiomRewriter: AxiomRewriter
+  protected val config: Config
+  protected val bookkeeper: Bookkeeper
 
   import symbolConverter.toSort
   import stateFactory._

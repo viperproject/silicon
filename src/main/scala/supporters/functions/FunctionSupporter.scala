@@ -47,12 +47,12 @@ trait FunctionSupporterProvider[ST <: Store[ST],
   private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification
 
-  val config: Config
-  val decider: Decider[ST, H, PC, S, C]
-  val stateFactory: StateFactory[ST, H, S]
-  val symbolConverter: SymbolConvert
-  val identifierFactory: IdentifierFactory
-  val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val config: Config
+  protected val decider: Decider[ST, H, PC, S, C]
+  protected val stateFactory: StateFactory[ST, H, S]
+  protected val symbolConverter: SymbolConvert
+  protected val identifierFactory: IdentifierFactory
+  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
 
   import decider.fresh
   import stateFactory._
