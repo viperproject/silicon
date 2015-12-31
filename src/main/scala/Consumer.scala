@@ -20,6 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.utils.NoOpStatefulComponent
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
@@ -161,9 +162,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                                            branchConditions = c4.branchConditions.tail)
                           QB(tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c5)
                         case false =>
-                          Failure[ST, H, S](pve dueTo NegativePermission(loss))})
+                          Failure(pve dueTo NegativePermission(loss))})
                   case false =>
-                    Failure[ST, H, S](pve dueTo ReceiverNull(fa))})})
+                    Failure(pve dueTo ReceiverNull(fa))})})
         ){case (tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
@@ -203,9 +204,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     val c3 = c2.copy(functionRecorder = fr2)
                     Q(h1, ch.fvf.convert(sorts.Snap), c3)
                   case None =>
-                    Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}
+                    Failure(pve dueTo InsufficientPermission(fa))}
               case false =>
-                Failure[ST, H, S](pve dueTo ReceiverNotInjective(fa))}
+                Failure(pve dueTo ReceiverNotInjective(fa))}
             //}
         }
 
@@ -222,7 +223,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                 val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
                 assume(fvfDomain ++ fvfDef.valueDefinitions)
                 Q(h1, ch.valueAt(tRcvr), c3)
-              case None => Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
+              case None => Failure(pve dueTo InsufficientPermission(fa))
             }}))
 
       case let: ast.Let if !let.isPure =>
@@ -243,10 +244,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               case true =>
                 chunkSupporter.consume(σC, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
-                Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
+                Failure(pve dueTo NegativePermission(perm))}))
 
       case _: ast.InhaleExhaleExp =>
-        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+        Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.Wand && magicWandSupporter.isDirectWand(φ) =>
@@ -274,7 +275,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                   QS(hs1.head, decider.fresh(sorts.Snap), c1)
                 }
 
-              case _ => Failure[ST, H, S](ve)}
+              case _ => Failure(ve)}
           })(Q)
         }
 
@@ -368,7 +369,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
             assume(t)
             QS(σ1, c2)
           case false =>
-            QF(Failure[ST, H, S](pve dueTo AssertionFalse(e)))
+            QF(Failure(pve dueTo AssertionFalse(e)))
         })
     })((σ1, c1) => {
       Q(h, Unit, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))

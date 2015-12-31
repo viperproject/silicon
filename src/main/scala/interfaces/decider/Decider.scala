@@ -37,7 +37,7 @@ trait Decider[ST <: Store[ST],
   def assume(ts: Iterable[Term])
 
   def tryOrFail[R](σ: S, c: C)
-                  (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
+                  (block:    (S, C, (R, C) => VerificationResult, Failure => VerificationResult)
                           => VerificationResult)
                   (Q: (R, C) => VerificationResult)
                   : VerificationResult

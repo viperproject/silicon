@@ -191,7 +191,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case old @ ast.LabelledOld(e0, lbl) =>
         c.oldHeaps.get(lbl) match {
           case None =>
-            Failure[ST, H, S](pve dueTo LabelledStateNotReached(old))
+            Failure(pve dueTo LabelledStateNotReached(old))
           case Some(h) =>
             evalOld(σ, h, e0, pve, c)(Q)}
 
@@ -457,7 +457,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                         eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
                   })(Q)
                 case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                  Failure(pve dueTo NegativePermission(ePerm))}))
         } else {
           val unknownValue = partiallyAppliedFresh("recunf", c, eIn.typ)
           Q(unknownValue, c)
@@ -552,7 +552,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       /* Unexpected nodes */
 
       case _: ast.InhaleExhaleExp =>
-        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
+        Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(e))
     }
 
     resultTerm
@@ -579,7 +579,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             case true =>
               Q(field.name, tRcvr :: Nil, c1)
             case false =>
-              Failure[ST, H, S](pve dueTo ReceiverNull(locacc))})
+              Failure(pve dueTo ReceiverNull(locacc))})
       case ast.PredicateAccess(eArgs, predicateName) =>
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           Q(predicateName, tArgs, c1))
@@ -613,7 +613,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
     decider.assert(σ, tDivisor !== tZero){
       case true => Q(t, c)
-      case false => Failure[ST, H, S](pve dueTo DivisionByZero(eDivisor))
+      case false => Failure(pve dueTo DivisionByZero(eDivisor))
     }
   }
 

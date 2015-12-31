@@ -99,9 +99,9 @@ trait MagicWandSupporter[ST <: Store[ST],
           //        println(s"  result = $result")
 
           result match {
-            case failure: Failure[ST@unchecked, H@unchecked, S@unchecked] =>
+            case failure: Failure =>
               /* Failure occurred. We transform the original failure into a MagicWandNotWellformed one. */
-              result = failure.copy[ST, H, S](message = MagicWandNotWellformed(wand, failure.message.reason))
+              result = failure.copy(message = MagicWandNotWellformed(wand, failure.message.reason))
               break()
 
             case _: NonFatalResult => /* Nothing needs to be done*/
@@ -224,7 +224,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 
         Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
       } else
-        Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(args)
+        Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
     }
 
     /* TODO: This is similar, but not as general, as the consumption algorithm
@@ -602,9 +602,9 @@ trait MagicWandSupporter[ST <: Store[ST],
                                     exhaleExt = c3.exhaleExt)
                   QI(σEmp, σEmp.h, c4a)})})}))
           else
-            Failure[ST, H, S](pve dueTo NegativePermission(ePerm)))
+            Failure(pve dueTo NegativePermission(ePerm)))
       } else {
-        Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested unfolding ghost operations."))
+        Failure(pve dueTo InternalReason(acc, "Too many nested unfolding ghost operations."))
       }
     }
 
@@ -626,9 +626,9 @@ trait MagicWandSupporter[ST <: Store[ST],
                 foldingPredicate(σ, predicate, tArgs, tPerm, pve, c2, Some(pa))((σ1, h1, c3) =>
                   QI(σEmp, σEmp.h, c3.decCycleCounter(predicate)))
             case false =>
-              Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+              Failure(pve dueTo NegativePermission(ePerm))}))
       } else
-        Failure[ST, H, S](pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
+        Failure(pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
     }
 
     def foldingPredicate(σ: S,

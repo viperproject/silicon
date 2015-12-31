@@ -188,13 +188,13 @@ trait DeciderProvider[ST <: Store[ST],
     def checkSmoke() = prover.check(config.checkTimeout.get) == Unsat
 
     def tryOrFail[R](σ: S, c: C)
-                    (block:    (S, C, (R, C) => VerificationResult, Failure[ST, H, S] => VerificationResult)
+                    (block:    (S, C, (R, C) => VerificationResult, Failure => VerificationResult)
                             => VerificationResult)
                     (Q: (R, C) => VerificationResult)
                     : VerificationResult = {
 
       val chunks = σ.h.values
-      var failure: Option[Failure[ST, H, S]] = None
+      var failure: Option[Failure] = None
 
       var r =
         block(

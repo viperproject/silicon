@@ -14,13 +14,14 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.decider.{DeciderProvider, SMTLib2PreambleEmitter, PreambleFileEmitter}
-import viper.silicon.state.{IdentifierFactory, terms, SymbolConvert, DefaultContext}
-import viper.silicon.state.terms.{Term, AxiomRewriter, sorts, Sort}
+import viper.silicon.decider.{DeciderProvider, SMTLib2PreambleEmitter}
+import viper.silicon.state._
+import viper.silicon.state.terms.{AxiomRewriter, sorts, Sort}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.FunctionSupporterProvider
-import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporterProvider, FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
-import viper.silicon.reporting.Bookkeeper
+import viper.silicon.supporters.qps._
+import viper.silicon.reporting.{DefaultStateFormatter, Bookkeeper}
+import viper.silicon.utils.NoOpStatefulComponent
 
 /* TODO: 1. Extract method verification code into a MethodSupporter
  *       2. Remove this trait
@@ -96,15 +97,6 @@ trait AbstractElementVerifier[ST <: Store[ST],
   }
 }
 
-/* A base implementation of start/reset/stop is required by the
- * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
- */
-class NoOpStatefulComponent extends StatefulComponent {
-  @inline def start() {}
-  @inline def reset() {}
-  @inline def stop() {}
-}
-
 class DefaultElementVerifier[ST <: Store[ST],
                              H <: Heap[H],
                              PC <: PathConditions[PC],
@@ -137,25 +129,61 @@ class DefaultElementVerifier[ST <: Store[ST],
        with QuantifiedChunkSupporterProvider[ST, H, PC, S]
        with Logging
 
-trait AbstractVerifier[ST <: Store[ST],
-                       H <: Heap[H],
-                       PC <: PathConditions[PC],
-                       S <: State[ST, H, S]]
-    extends Logging {
+class DefaultVerifier(val config: Config)
+    extends StatefulComponent
+       with Logging {
 
-  protected def decider: Decider[ST, H, PC, S, DefaultContext[H]]
-  protected def config: Config
-  protected def bookkeeper: Bookkeeper
-  protected def preambleEmitter: PreambleFileEmitter[String, String]
-  protected def sequencesEmitter: SequencesEmitter
-  protected def setsEmitter: SetsEmitter
-  protected def multisetsEmitter: MultisetsEmitter
-  protected def domainsEmitter: DomainsEmitter
-  protected def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
+  private type ST = MapBackedStore
+  private type H = ListBackedHeap
+  private type PC = MutableSetBackedPathConditions
+  private type S = DefaultState[ST, H]
+  private type C = DefaultContext[H]
 
-  val ev: DefaultElementVerifier[ST, H, PC, S]
+  val bookkeeper = new Bookkeeper(config)
+  val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
+  val pathConditionsFactory = new DefaultPathConditionsFactory()
+  val symbolConverter = new DefaultSymbolConvert()
+  val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
+  val stateFactory = new DefaultStateFactory()
+  val identifierFactory = new DefaultIdentifierFactory
+  val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
 
-  /* Functionality */
+  val ev =
+    new DefaultElementVerifier(config, stateFactory, pathConditionsFactory, symbolConverter,
+                               stateFormatter, bookkeeper, identifierFactory, axiomRewriter)
+
+  val decider = ev.decider
+
+  val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover)
+  val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val domainsEmitter = new DefaultDomainsEmitter(decider.prover, domainTranslator, symbolConverter)
+  val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
+
+  private val statefulSubcomponents = List[StatefulComponent](
+    bookkeeper,
+    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
+    fieldValueFunctionsEmitter,
+    decider, identifierFactory,
+    ev,
+    ev.functionsSupporter, ev.predicateSupporter, ev.quantifiedChunkSupporter)
+
+  /* Lifetime */
+
+  override def start() {
+    statefulSubcomponents foreach (_.start())
+  }
+
+  override def reset() {
+    statefulSubcomponents foreach (_.reset())
+  }
+
+  override def stop() {
+    statefulSubcomponents foreach (_.stop())
+  }
+
+  /* Program verification */
 
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
@@ -190,6 +218,8 @@ trait AbstractVerifier[ST <: Store[ST],
   private def filter(str: String) = (
        !str.matches(config.includeMembers())
     || str.matches(config.excludeMembers()))
+
+  /* Prover preamble */
 
   private def emitPreamble(program: ast.Program) {
     decider.prover.logComment("Started: " + bookkeeper.formattedStartTime)
@@ -288,58 +318,5 @@ trait AbstractVerifier[ST <: Store[ST],
     preambleEmitter.emitPreamble("/preamble.smt2")
 
     decider.pushScope()
-  }
-}
-
-class DefaultVerifier[ST <: Store[ST],
-                      H <: Heap[H] : Manifest,
-                      PC <: PathConditions[PC],
-                      S <: State[ST, H, S]]
-    (val config: Config,
-     val stateFactory: StateFactory[ST, H, S],
-     val pathConditionsFactory: PathConditionsFactory[PC],
-     val symbolConverter: SymbolConvert,
-     val stateFormatter: StateFormatter[ST, H, S, String],
-     val domainTranslator: DomainsTranslator[Term],
-     val bookkeeper: Bookkeeper,
-     val identifierFactory: IdentifierFactory,
-     val axiomRewriter: AxiomRewriter)
-    extends AbstractVerifier[ST, H, PC, S]
-       with StatefulComponent
-       with Logging {
-
-  val ev =
-    new DefaultElementVerifier(config, stateFactory, pathConditionsFactory, symbolConverter,
-                               stateFormatter, bookkeeper, identifierFactory, axiomRewriter)
-
-  val decider = ev.decider
-
-  val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover)
-  val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
-  val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
-  val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
-  val domainsEmitter = new DefaultDomainsEmitter(decider.prover, domainTranslator, symbolConverter)
-  val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
-
-  private val statefulSubcomponents = List[StatefulComponent](
-    bookkeeper,
-    preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-    fieldValueFunctionsEmitter,
-    decider, identifierFactory.asInstanceOf[StatefulComponent],
-    ev,
-    ev.functionsSupporter, ev.predicateSupporter, ev.quantifiedChunkSupporter)
-
-  /* Lifetime */
-
-  override def start() {
-    statefulSubcomponents foreach (_.start())
-  }
-
-  override def reset() {
-    statefulSubcomponents foreach (_.reset())
-  }
-
-  override def stop() {
-    statefulSubcomponents foreach (_.stop())
   }
 }

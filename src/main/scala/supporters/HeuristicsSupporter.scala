@@ -100,7 +100,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
                                 (description: String)
                                 (σ: S, h: H, _c: C)
                                 (action: (S, H, C, (O, C) => VerificationResult) => VerificationResult,
-                                 initialFailure: Option[Failure[ST, H, S]])
+                                 initialFailure: Option[Failure])
                                 (Q: (O, C) => VerificationResult)
                                 : VerificationResult = {
 
@@ -190,7 +190,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 //            Thread.sleep(2500)
           }
 
-        case actionFailure: Failure[ST, H, S] =>
+        case actionFailure: Failure =>
           stack ::= myId
 
           say(s"action $myId failed (locally and globally)")
@@ -245,12 +245,12 @@ trait HeuristicsSupporter[ST <: Store[ST],
         case _ if !reactionResult.isFatal =>
           reactionResult
 
-        case reactionFailure: Failure[ST, H, S] =>
+        case reactionFailure: Failure =>
           initialFailure.getOrElse(globalActionResult)
       }
     }
 
-    def generateReactions(σ: S, h: H, c: C, cause: Failure[ST, H, S])
+    def generateReactions(σ: S, h: H, c: C, cause: Failure)
                          : Seq[(S, H, C) => ((S, H, C) => VerificationResult) => VerificationResult] = {
 
       val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */

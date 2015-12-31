@@ -7,6 +7,7 @@
 package viper.silicon
 
 import viper.silver
+import viper.silver.components.StatefulComponent
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
@@ -52,6 +53,15 @@ package object utils {
     def reset() {
       value = -1
     }
+  }
+
+  /* A base implementation of start/reset/stop is required by the
+   * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
+   */
+  class NoOpStatefulComponent extends StatefulComponent {
+    @inline def start() {}
+    @inline def reset() {}
+    @inline def stop() {}
   }
 
   /* http://www.tikalk.com/java/blog/avoiding-nothing */

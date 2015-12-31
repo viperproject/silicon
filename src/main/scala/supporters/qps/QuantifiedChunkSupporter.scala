@@ -238,12 +238,12 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
       assert(σ, receiver !== Null()) {
         case false =>
-          Failure[ST, H, S](pve dueTo ReceiverNull(locacc))
+          Failure(pve dueTo ReceiverNull(locacc))
 
         case true =>
           assert(σ, PermLess(NoPerm(), permission(h, receiver, field))) {
             case false =>
-              Failure[ST, H, S](pve dueTo InsufficientPermission(locacc))
+              Failure(pve dueTo InsufficientPermission(locacc))
 
             case true =>
               val (quantifiedChunks, _) = splitHeap(h, field.name)

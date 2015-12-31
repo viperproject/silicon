@@ -213,7 +213,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
           if (decider.checkSmoke())
             Success() /* TODO: Mark branch as dead? */
           else
-            QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(args))}
+            QF(Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args))}
       )(Q)
     }
 
@@ -245,7 +245,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
               decider.assume(permCheck)
               QS(ch, c2)
             case false =>
-              QF(Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(args))}})
+              QF(Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args))}})
       )(Q)
 
     def getChunk(σ: S, h: H, name: String, args: Seq[Term], c: C): Option[BasicChunk] =

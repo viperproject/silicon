@@ -16,18 +16,14 @@ import scala.util.Try
 import scala.util.Properties.envOrNone
 import org.slf4s.Logging
 import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
-import viper.silicon.reporting.DefaultStateFormatter
 import viper.silver.ast
 import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
     TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.{Failure => SiliconFailure}
-import viper.silicon.state.terms.AxiomRewriter
-import viper.silicon.state._
-import viper.silicon.supporters.DefaultDomainsTranslator
-import viper.silicon.reporting.{VerificationException, Bookkeeper}
+import viper.silicon.interfaces.Failure
+import viper.silicon.reporting.VerificationException
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -104,13 +100,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
          with Logging {
 
-  private type ST = MapBackedStore
-  private type H = ListBackedHeap
-  private type PC = MutableSetBackedPathConditions
-  private type S = DefaultState[ST, H]
-  private type C = DefaultContext[H]
-  private type V = DefaultVerifier[ST, H, PC, S]
-  private type Failure = SiliconFailure[ST, H, S]
+  private type V = DefaultVerifier
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -167,8 +157,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
          */
 
     setLogLevelsFromConfig()
-    verifier = createVerifier()
 
+    verifier = new DefaultVerifier(config)
     verifier.start()
   }
 
@@ -188,26 +178,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         _config.printHelp()
         throw ex
     }
-  }
-
-  /** Creates and sets up an instance of a [[viper.silicon.AbstractVerifier]], which can be used
-    * to verify a Silver program.
-    *
-    * @return A fully set up verifier, ready to be used.
-    */
-  private def createVerifier(): V = {
-    val bookkeeper = new Bookkeeper(config)
-    val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
-    val pathConditionsFactory = new DefaultPathConditionsFactory()
-    val symbolConverter = new DefaultSymbolConvert()
-    val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
-    val stateFactory = new DefaultStateFactory()
-    val identifierFactory = new DefaultIdentifierFactory
-    val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
-
-    new DefaultVerifier[ST, H, PC, S](config, stateFactory, pathConditionsFactory, symbolConverter,
-                                      stateFormatter, domainTranslator, bookkeeper,
-                                      identifierFactory, axiomRewriter)
   }
 
   private def reset() {

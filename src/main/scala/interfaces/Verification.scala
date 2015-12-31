@@ -71,9 +71,9 @@ case class Unreachable() extends NonFatalResult {
   override val toString = "Unreachable"
 }
 
-case class Failure[ST <: Store[ST],
+case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
-                   S <: State[ST, H, S]]
+                   S <: State[ST, H, S]]*/
                   (message: VerificationError)
     extends FatalResult {
 

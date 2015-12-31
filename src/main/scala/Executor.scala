@@ -214,7 +214,7 @@ trait DefaultExecutor[ST <: Store[ST],
           eval(σ, rhs, pve, c1)((tRhs, c2) =>
             decider.assert(σ, tRcvr !== Null()){
               case false =>
-                Failure[ST, H, S](pve dueTo ReceiverNull(fa))
+                Failure(pve dueTo ReceiverNull(fa))
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
@@ -225,7 +225,7 @@ trait DefaultExecutor[ST <: Store[ST],
                     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
                     Q(σ \ h1 \+ ch, c3)
                   case None =>
-                    Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
+                    Failure(pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
@@ -236,7 +236,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) =>
                   Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)))
             case false =>
-              Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
+              Failure(pve dueTo ReceiverNull(fa))})
 
       case ast.NewStmt(v, fields) =>
         val tRcvr = fresh(v)
@@ -303,7 +303,7 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.checkSmoke())
                   QS(σ1, c1)
               else
-                  QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
+                  QF(Failure(pve dueTo AssertionFalse(a)))
               })((_, _) => Success())
 
           case _ =>
@@ -343,7 +343,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 case true =>
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                  Failure(pve dueTo NegativePermission(ePerm))}))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -354,7 +354,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 case true =>
                   predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                  Failure(pve dueTo NegativePermission(ePerm))}))
 
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
@@ -404,7 +404,7 @@ trait DefaultExecutor[ST <: Store[ST],
               case Some(ch) =>
                 QL(σ \- ch, Γ(chWand.bindings), chWand.ghostFreeWand, c)
               case None =>
-                Failure[ST, H, S](pve dueTo NamedMagicWandChunkNotFound(v))}
+                Failure(pve dueTo NamedMagicWandChunkNotFound(v))}
 
           case _ => sys.error(s"Expected a magic wand, but found node $e")}
 
