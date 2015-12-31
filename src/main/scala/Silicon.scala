@@ -16,6 +16,7 @@ import scala.util.Try
 import scala.util.Properties.envOrNone
 import org.slf4s.Logging
 import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
+import viper.silicon.reporting.DefaultStateFormatter
 import viper.silver.ast
 import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
@@ -23,12 +24,9 @@ import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => Sil
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.{Failure => SiliconFailure}
-import viper.silicon.decider.SMTLib2PreambleEmitter
-import viper.silicon.state.terms.{AxiomRewriter, FullPerm}
+import viper.silicon.state.terms.AxiomRewriter
 import viper.silicon.state._
-import viper.silicon.supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
-    DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, MagicWandSupporter}
-import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
+import viper.silicon.supporters.DefaultDomainsTranslator
 import viper.silicon.reporting.{VerificationException, Bookkeeper}
 
 object Silicon {

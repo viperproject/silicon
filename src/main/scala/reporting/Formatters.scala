@@ -4,9 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper.silicon
+package viper.silicon.reporting
 
-import viper.silicon.interfaces.state.{Store, Heap, State, StateFormatter}
+import viper.silicon._
+import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
 import viper.silicon.state.terms._
 
 class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
