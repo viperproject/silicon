@@ -12,7 +12,7 @@ import viper.silver.ast.Program
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.{Set, Map, toMap, toSet}
+import viper.silicon.{Set, Map, toMap}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
@@ -69,7 +69,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
-  private type CH = Chunk
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
