@@ -4,14 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import silver.ast
-import interfaces.state.{Chunk, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory}
-import interfaces.state.factoryUtils.Ø
-import state.terms.Term
+import viper.silver.ast
+import viper.silicon.{Map, toMap, Set}
+import viper.silicon.interfaces.state.{Chunk, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory}
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.state.terms.Term
 
 trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
   def Γ() = new MapBackedStore()

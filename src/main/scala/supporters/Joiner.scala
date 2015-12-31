@@ -4,15 +4,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import interfaces.{Success, VerificationResult}
-import interfaces.decider.Decider
-import interfaces.state.{State, PathConditions, Heap, Store, Context}
-import state.DefaultContext
-import state.terms.{App, sorts, True, Implies, And, Term, Sort}
+import viper.silicon.Stack
+import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state.{State, PathConditions, Heap, Store, Context}
+import viper.silicon.state.DefaultContext
+import viper.silicon.state.terms.{App, True, Implies, And, Term, Sort}
 
 trait Joiner[C <: Context[C]] {
   def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)

@@ -4,9 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package reporting
+package viper.silicon.reporting
 
 /* TODO: Move output formatting (of Silicon's and Z3's statistics) to its own class. */
 
@@ -17,7 +15,8 @@ package reporting
 
 import java.io.File
 import java.text.SimpleDateFormat
-import silver.components.StatefulComponent
+import viper.silver.components.StatefulComponent
+import viper.silicon.{Config, Map}
 
 class Bookkeeper(config: Config) extends StatefulComponent {
   var branches: Long = 0
@@ -37,7 +36,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   /* TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided */
   var logfiles: scala.collection.immutable.Map[String, MultiRunLogger] =
     scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
-      val writer = silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
+      val writer = viper.silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
       val logger = new MultiRunLogger(writer, () => config.inputFile.map(_.toString))
 
       logfiles += (name -> logger)

@@ -4,26 +4,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import org.slf4s.Logging
-import silver.ast
-import silver.verifier.PartialVerificationError
-import silver.verifier.errors.PreconditionInAppFalse
-import silver.verifier.reasons.{DivisionByZero, ReceiverNull, NegativePermission, LabelledStateNotReached}
-import reporting.Bookkeeper
-import interfaces.{Evaluator, Consumer, Producer, VerificationResult, Failure, Success}
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor,
-    ChunkIdentifier, Chunk}
-import interfaces.decider.Decider
-import state.{DefaultContext, PredicateChunkIdentifier, FieldChunkIdentifier, SymbolConvert, DirectChunk,
-    DirectFieldChunk, DirectPredicateChunk}
-import state.terms._
-import state.terms.implicits._
-import state.terms.perms.IsNonNegative
-import supporters.{Joiner, Brancher, PredicateSupporter, MagicWandSupporter}
-import supporters.qps.QuantifiedChunkSupporter
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors.PreconditionInAppFalse
+import viper.silver.verifier.reasons._
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.state._
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.state._
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.implicits._
+import viper.silicon.state.terms.perms.IsNonNegative
+import viper.silicon.supporters._
+import viper.silicon.supporters.qps.QuantifiedChunkSupporter
 import viper.silicon.supporters.functions.FunctionSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
@@ -31,13 +28,13 @@ trait DefaultEvaluator[ST <: Store[ST],
                        PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
     extends Evaluator[ST, H, S, DefaultContext[H]]
-    { this: Logging with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+    { this: Logging with Consumer[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with Joiner[DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S] =>
 
-  private type C = DefaultContext[H]
+  private[this] type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
@@ -47,7 +44,8 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
   protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
 
   import decider.{fresh, assume}
   import stateFactory._
@@ -154,13 +152,13 @@ trait DefaultEvaluator[ST <: Store[ST],
         Q(WildcardPerm(tVar), c)
 
       case ast.CurrentPerm(locacc) =>
-        withChunkIdentifier(σ, locacc, true, pve, c)((id, c1) =>
-          decider.getChunk[DirectChunk](σ, c.partiallyConsumedHeap.getOrElse(σ.h), id, c1) match {
+        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) =>
+          chunkSupporter.getChunk(σ, c.partiallyConsumedHeap.getOrElse(σ.h), name, args, c1) match {
             case Some(ch) => Q(ch.perm, c1)
             case None => Q(NoPerm(), c1)
           })
 
-      case fa: ast.FieldAccess if quantifiedChunkSupporter.isQuantifiedFor(σ.h, fa.field.name) =>
+      case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
 //            val fvfDomain = fvfDef.domainDefinitions
@@ -175,10 +173,10 @@ trait DefaultEvaluator[ST <: Store[ST],
             Q(fvfLookup, c2)})})
 
       case fa: ast.FieldAccess =>
-        withChunkIdentifier(σ, fa, true, pve, c)((id, c1) =>
-          decider.withChunk[DirectFieldChunk](σ, σ.h, id, None, fa, pve, c1)((ch, c2) => {
-            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, c2.branchConditions, ch.value))
-            Q(ch.value, c3)}))
+        evalLocationAccess(σ, fa, pve, c)((name, args, c1) =>
+          chunkSupporter.withChunk(σ, σ.h, name, args, None, fa, pve, c1)((ch, c2) => {
+            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, c2.branchConditions, ch.snap))
+            Q(ch.snap, c3)}))
 
       case ast.Not(e0) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -190,7 +188,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.Old(e0) => evalOld(σ, σ.g, e0, pve, c)(Q)
 
-      case old @ silver.ast.LabelledOld(e0, lbl) =>
+      case old @ ast.LabelledOld(e0, lbl) =>
         c.oldHeaps.get(lbl) match {
           case None =>
             Failure[ST, H, S](pve dueTo LabelledStateNotReached(old))
@@ -342,8 +340,8 @@ trait DefaultEvaluator[ST <: Store[ST],
               bindRcvrAndEvalBody(rcvrs.tail, tBody +: ts, c1)(Q))
 
         val rcvrs: Iterable[Term] = h.values.collect {
-          case fch: DirectFieldChunk if locs contains fch.name => (fch.rcvr, fch.perm)
-          case pch: DirectPredicateChunk if locs contains pch.name => (pch.args.head, pch.perm)
+          case fch: FieldChunk if locs contains fch.name => (fch.rcvr, fch.perm)
+          case pch: PredicateChunk if locs contains pch.name => (pch.args.head, pch.perm)
         }.collect {
           case (rcvr, perm) if decider.check(σ, PermLess(NoPerm(), perm), config.checkTimeout()) => rcvr
         }
@@ -567,28 +565,26 @@ trait DefaultEvaluator[ST <: Store[ST],
     eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
       Q(t, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)))
 
-  def withChunkIdentifier(σ: S,
-                          locacc: ast.LocationAccess,
-                          assertRcvrNonNull: Boolean,
-                          pve: PartialVerificationError,
-                          c: C)
-                         (Q: (ChunkIdentifier, C) => VerificationResult)
-                         : VerificationResult =
+  def evalLocationAccess(σ: S,
+                         locacc: ast.LocationAccess,
+                         pve: PartialVerificationError,
+                         c: C)
+                        (Q: (String, Seq[Term], C) => VerificationResult)
+                        : VerificationResult = {
 
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          if (assertRcvrNonNull)
-            decider.assert(σ, tRcvr !== Null()){
-              case true => Q(FieldChunkIdentifier(tRcvr, field.name), c1)
-              case false => Failure[ST, H, S](pve dueTo ReceiverNull(locacc))}
-          else
-            Q(FieldChunkIdentifier(tRcvr, field.name), c1))
-
+          decider.assert(σ, tRcvr !== Null()){
+            case true =>
+              Q(field.name, tRcvr :: Nil, c1)
+            case false =>
+              Failure[ST, H, S](pve dueTo ReceiverNull(locacc))})
       case ast.PredicateAccess(eArgs, predicateName) =>
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
-          Q(PredicateChunkIdentifier(predicateName, tArgs), c1))
+          Q(predicateName, tArgs, c1))
     }
+  }
 
   private def evalBinOp[T <: Term]
                        (σ: S,

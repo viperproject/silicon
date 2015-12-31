@@ -4,19 +4,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package decider
+package viper.silicon.decider
 
 import java.io.{PrintWriter, BufferedWriter, InputStreamReader, BufferedReader, OutputStreamWriter}
 import java.nio.file.{Path, Paths}
 import org.slf4s.Logging
 import org.apache.commons.io.FileUtils
-import common.config.Version
-import interfaces.decider.{Prover, Sat, Unsat, Unknown}
-import reporting.{Bookkeeper, Z3InteractionFailed}
-import state.IdentifierFactory
-import state.terms._
+import viper.silicon.{Config, Map, toMap}
+import viper.silicon.common.config.Version
+import viper.silicon.interfaces.decider.{Prover, Sat, Unsat, Unknown}
+import viper.silicon.reporting.{Bookkeeper, Z3InteractionFailed}
+import viper.silicon.state.IdentifierFactory
+import viper.silicon.state.terms._
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(config: Config,
@@ -57,7 +56,7 @@ class Z3ProverStdIO(config: Config,
     pushPopScopeDepth = 0
     lastTimeout = -1
     logPath = config.z3LogFile
-    logFile = silver.utility.Common.PrintWriter(logPath.toFile)
+    logFile = viper.silver.utility.Common.PrintWriter(logPath.toFile)
     z3Path = Paths.get(config.z3Exe)
     termConverter.start()
     z3 = createZ3Instance()
@@ -143,7 +142,7 @@ class Z3ProverStdIO(config: Config,
     readSuccess()
   }
 
-  def write(content: String) {
+  def emit(content: String) {
     writeLine(content)
     readSuccess()
   }
@@ -156,7 +155,7 @@ class Z3ProverStdIO(config: Config,
      * quantification occurs in positive or negative position.
      */
     term.deepCollect{case q: Quantification => q}.foreach(q => {
-      val problems = state.utils.detectQuantificationProblems(q)
+      val problems = viper.silicon.state.utils.detectQuantificationProblems(q)
 
       if (problems.nonEmpty) {
         quantificationLogger.println(s"\n\n${q.toString(true)}")
@@ -187,7 +186,7 @@ class Z3ProverStdIO(config: Config,
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
     }
 
-    logComment(s"${common.format.formatMillisReadably(duration)}")
+    logComment(s"${viper.silicon.common.format.formatMillisReadably(duration)}")
     logComment("(get-info :all-statistics)")
 
     result
@@ -292,14 +291,14 @@ class Z3ProverStdIO(config: Config,
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
 
-    write(convert(decl))
+    emit(convert(decl))
 
     fun
   }
 
   def declare(decl: Decl) {
     val str = convert(decl)
-    write(str)
+    emit(str)
   }
 
   def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }

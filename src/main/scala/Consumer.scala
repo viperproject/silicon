@@ -4,55 +4,50 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import org.slf4s.Logging
-import silver.ast
-import silver.verifier.{VerificationError, PartialVerificationError}
-import silver.verifier.reasons.{ReceiverNotInjective, InsufficientPermission, NegativePermission, AssertionFalse,
-    ReceiverNull, NamedMagicWandChunkNotFound, MagicWandChunkNotFound}
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
-import interfaces.{Consumer, Evaluator, VerificationResult, Failure}
-import interfaces.decider.Decider
-import interfaces.state.factoryUtils.Ø
-import reporting.Bookkeeper
-import state.{QuantifiedChunk, SymbolConvert, DirectChunk, DefaultContext, MagicWandChunk, MagicWandChunkIdentifier}
-import state.terms._
-import state.terms.predef.`?r`
-import supporters.{LetHandler, Brancher, ChunkSupporter, HeuristicsSupporter, MagicWandSupporter}
-import supporters.qps.QuantifiedChunkSupporter
+import viper.silver.ast
+import viper.silver.verifier.{VerificationError, PartialVerificationError}
+import viper.silver.verifier.reasons._
+import viper.silicon.interfaces.state._
+import viper.silicon.interfaces.{Consumer, Evaluator, VerificationResult, Failure}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.{QuantifiedChunk, SymbolConvert, DefaultContext, MagicWandChunk}
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters._
+import viper.silicon.supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
     extends NoOpStatefulComponent
-       with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+       with Consumer[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
-                    with ChunkSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
                     with HeuristicsSupporter[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
-  private type C = DefaultContext[H]
-  private type CH = Chunk
+  private[this] type C = DefaultContext[H]
 
   protected implicit val manifestH: Manifest[H]
 
   protected val decider: Decider[ST, H, PC, S, C]
-  import decider.assume
-
   protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
-
   protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
-
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
+  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
+
+  import decider.assume
+  import stateFactory._
+  import symbolConverter.toSort
 
   private val qpForallCache = MMap[(ast.Forall, Set[QuantifiedChunk]), (Var, Term, Term, Seq[Term], H, QuantifiedChunk, C)]()
 
@@ -242,11 +237,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       case ast.AccessPredicate(locacc, perm) =>
         val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
-        withChunkIdentifier(σC, locacc, true, pve, c)((id, c1) =>
+        evalLocationAccess(σC, locacc, pve, c)((name, args, c1) =>
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm)){
               case true =>
-                chunkSupporter.consume(σC, h, id, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
+                chunkSupporter.consume(σC, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
                 Failure[ST, H, S](pve dueTo NegativePermission(perm))}))
 
@@ -255,7 +250,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
 
       /* Handle wands or wand-typed variables */
       case _ if φ.typ == ast.Wand && magicWandSupporter.isDirectWand(φ) =>
-        def QL(σ: S, h: H, id: MagicWandChunkIdentifier, wand: ast.MagicWand, ve: VerificationError, c: C) = {
+        def QL(σ: S, h: H, chWand: MagicWandChunk, wand: ast.MagicWand, ve: VerificationError, c: C) = {
           heuristicsSupporter.tryOperation[H, Term](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
             val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
             val hs =
@@ -263,7 +258,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               else Stack(h)
 
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-              decider.getChunk[MagicWandChunk](σC, h1, id, c1) match {
+              magicWandSupporter.getChunk(σC, h1, chWand, c1) match {
                 case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
                 case _ => (None, h1, c1)
               }
@@ -287,11 +282,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
           case wand: ast.MagicWand =>
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) => {
               val ve = pve dueTo MagicWandChunkNotFound(wand)
-              QL(σ, h, chWand.id, wand, ve, c1)})
+              QL(σ, h, chWand, wand, ve, c1)})
           case v: ast.AbstractLocalVar =>
             val tWandChunk = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
             val ve = pve dueTo NamedMagicWandChunkNotFound(v)
-            QL(σ, h, tWandChunk.id, tWandChunk.ghostFreeWand, ve, c)
+            QL(σ, h, tWandChunk, tWandChunk.ghostFreeWand, ve, c)
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 

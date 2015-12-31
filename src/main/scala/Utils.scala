@@ -4,16 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
-import scala.collection.mutable
-import silver.verifier.VerificationError
-import silver.verifier.errors.Internal
-import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
-import interfaces.state.Heap
-import state.DefaultContext
-import state.terms._
+import viper.silver
+import viper.silver.verifier.VerificationError
+import viper.silver.verifier.errors.Internal
+import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 
 package object utils {
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =

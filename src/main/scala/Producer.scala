@@ -4,21 +4,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import org.slf4s.Logging
-import silver.ast
-import silver.verifier.PartialVerificationError
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
-import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
-import interfaces.decider.Decider
-import reporting.Bookkeeper
-import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
-import state.terms._
-import supporters.{LetHandler, Brancher, ChunkSupporter, MagicWandSupporter}
-import supporters.qps.QuantifiedChunkSupporter
-import supporters.functions.NoopFunctionRecorder
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silicon.interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
+import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert}
+import viper.silicon.state.terms._
+import viper.silicon.supporters._
+import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
@@ -26,10 +25,10 @@ trait DefaultProducer[ST <: Store[ST],
                       S <: State[ST, H, S]]
     extends Producer[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
-                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+                    with Consumer[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with MagicWandSupporter[ST, H, PC, S]
-                    with ChunkSupporter[ST, H, PC, S]
+                    with ChunkSupporterProvider[ST, H, PC, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
@@ -43,7 +42,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -151,7 +150,7 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             (h + ch, c)
           } else {
-            val ch = DirectFieldChunk(rcvr, field.name, s, p)
+            val ch = FieldChunk(rcvr, field.name, s, p)
             val (h1, c1) = chunkSupporter.produce(σ, h, ch, c)
             (h1, c1)
           }
@@ -172,7 +171,7 @@ trait DefaultProducer[ST <: Store[ST],
             assume(PermAtMost(NoPerm(), pGain))
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
-            val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
+            val ch = PredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 

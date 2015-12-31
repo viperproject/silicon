@@ -4,13 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces
+package viper.silicon.interfaces
 
-import silver.verifier.VerificationError
-import state.{Store, Heap, State}
-import silicon.state.terms.Term
+import viper.silver.verifier.VerificationError
+import viper.silicon.interfaces.state.{Store, Heap, State}
+import viper.silicon.state.terms.Term
 
 /*
  * Results

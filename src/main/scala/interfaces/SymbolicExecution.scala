@@ -4,15 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces
+package viper.silicon.interfaces
 
-import silver.ast
-import silver.verifier.PartialVerificationError
-import interfaces.state.Context
-import state.{ChunkIdentifier, Store, Heap, State, Chunk}
-import silicon.state.terms.{Sort, Term}
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silicon.interfaces.state.Context
+import viper.silicon.interfaces.state.{Store, Heap, State, Chunk}
+import viper.silicon.state.terms.{Sort, Term}
 
 /*
  * Symbolic execution primitives
@@ -31,12 +29,11 @@ trait Evaluator[ST <: Store[ST],
           (Q: (Term, C) => VerificationResult)
           : VerificationResult
 
-  def withChunkIdentifier(σ: S,
+  def evalLocationAccess(σ: S,
                           locacc: ast.LocationAccess,
-                          assertRcvrNonNull: Boolean,
                           pve: PartialVerificationError,
                           c: C)
-                         (Q: (ChunkIdentifier, C) => VerificationResult)
+                        (Q: (String, Seq[Term], C) => VerificationResult)
                          : VerificationResult
 }
 
@@ -64,8 +61,7 @@ trait Producer[ST <: Store[ST],
               : VerificationResult
 }
 
-trait Consumer[CH <: Chunk,
-               ST <: Store[ST],
+trait Consumer[ST <: Store[ST],
                H <: Heap[H],
                S <: State[ST, H, S],
                C <: Context[C]] {

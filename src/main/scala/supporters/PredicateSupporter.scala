@@ -64,8 +64,8 @@ trait PredicateSupporterProvider[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
-            with ChunkSupporter[ST, H, PC, S]
+            with Consumer[ST, H, S, DefaultContext[H]]
+            with ChunkSupporterProvider[ST, H, PC, S]
             with MagicWandSupporter[ST, H, PC, S] =>
 
   private type C = DefaultContext[H]
@@ -144,7 +144,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-        val ch = DirectPredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
+        val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
         val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
         val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
         Q(σ \ h1, c3)})
@@ -168,8 +168,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
        */
 
 //      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-      val id = PredicateChunkIdentifier(predicate.name, tArgs)
-      chunkSupporter.consume(σ, σ.h, id, tPerm, pve, c, pa)((h1, snap, c1) => {
+      chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
         val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
         produce(σ \ h1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
           decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))

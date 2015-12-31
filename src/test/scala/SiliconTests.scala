@@ -4,13 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package tests
+package viper.silicon.tests
 
 import java.nio.file.Path
-import silver.testing.SilSuite
-import silver.verifier.Verifier
+import viper.silver.testing.SilSuite
+import viper.silver.verifier.Verifier
+import viper.silicon.{Silicon, SiliconFrontend}
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")

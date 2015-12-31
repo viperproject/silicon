@@ -16,7 +16,7 @@ import viper.silicon.state.{terms, SymbolConvert}
 
 trait FieldValueFunctionsEmitter extends PreambleEmitter
 
-class DefaultFieldValueFunctionsEmitter(prover: Prover,
+class DefaultFieldValueFunctionsEmitter(prover: => Prover,
                                         symbolConverter: SymbolConvert,
                                         preambleFileEmitter: PreambleFileEmitter[String, String])
     extends FieldValueFunctionsEmitter {

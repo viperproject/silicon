@@ -37,8 +37,8 @@ case class DefaultContext[H <: Heap[H]]
                           triggerAction: AnyRef = null,
 
                           recordEffects: Boolean = false,
-                          producedChunks: Seq[(Stack[Term], DirectChunk)] = Nil,
-                          consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] = Nil,
+                          producedChunks: Seq[(Stack[Term], BasicChunk)] = Nil,
+                          consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
                           fvfAsSnap: Boolean = false)

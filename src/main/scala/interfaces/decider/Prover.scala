@@ -4,12 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.decider
+package viper.silicon.interfaces.decider
 
-import silver.components.StatefulComponent
-import state.terms._
+import viper.silver.components.StatefulComponent
+import viper.silicon.Map
+import viper.silicon.state.terms._
 
 sealed abstract class Result
 object Sat extends Result
@@ -18,6 +17,7 @@ object Unknown extends Result
 
 trait Prover extends StatefulComponent {
   def termConverter: TermConverter[String, String, String] /* TODO: Should be type-parametric */
+  def emit(content: String) /* TODO: Should be type-parametric */
   def assume(term: Term)
   def assert(goal: Term, timeout: Option[Int] = None): Boolean
   def check(timeout: Option[Int] = None): Result

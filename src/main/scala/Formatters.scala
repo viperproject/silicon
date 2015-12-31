@@ -4,11 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
-import interfaces.state.{Store, Heap, State, StateFormatter}
-import state.terms._
+import viper.silicon.interfaces.state.{Store, Heap, State, StateFormatter}
+import viper.silicon.state.terms._
 
 class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                            (val config: Config)

@@ -4,8 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
@@ -17,20 +16,20 @@ import scala.util.Try
 import scala.util.Properties.envOrNone
 import org.slf4s.Logging
 import org.rogach.scallop.{ScallopOption, ValueConverter, singleArgConverter}
-import silver.ast
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
+import viper.silver.ast
+import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
     TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
-import silver.frontend.{SilFrontend, SilFrontendConfig}
-import common.config.Version
-import interfaces.{Failure => SiliconFailure}
-import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import state.terms.{AxiomRewriter, FullPerm}
+import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
+import viper.silicon.common.config.Version
+import viper.silicon.interfaces.{Failure => SiliconFailure}
+import viper.silicon.decider.SMTLib2PreambleEmitter
+import viper.silicon.state.terms.{AxiomRewriter, FullPerm}
 import viper.silicon.state._
-import supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
+import viper.silicon.supporters.{DefaultDomainsEmitter, DefaultDomainsTranslator,
     DefaultMultisetsEmitter, DefaultSequencesEmitter, DefaultSetsEmitter, MagicWandSupporter}
-import supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
-import reporting.{VerificationException, Bookkeeper}
+import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporter}
+import viper.silicon.reporting.{VerificationException, Bookkeeper}
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -200,45 +199,17 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     */
   private def createVerifier(): V = {
     val bookkeeper = new Bookkeeper(config)
-    val decider = new DefaultDecider[ST, H, PC, S]()
-
     val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
-    val pathConditionFactory = new DefaultPathConditionsFactory()
+    val pathConditionsFactory = new DefaultPathConditionsFactory()
     val symbolConverter = new DefaultSymbolConvert()
     val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
     val stateFactory = new DefaultStateFactory()
     val identifierFactory = new DefaultIdentifierFactory
-
-    val dlb = FullPerm()
-
-    val heapCompressor =
-      new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, stateFormatter, stateFactory, config, bookkeeper)
-
     val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
 
-    val quantifiedChunkSupporter =
-      new QuantifiedChunkSupporter[ST, H, PC, S](decider, symbolConverter, stateFactory, axiomRewriter, config,
-                                                 bookkeeper)
-
-    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper, quantifiedChunkSupporter,
-                 identifierFactory)
-           .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
-
-    decider.start()
-
-    val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
-    val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
-
-    val fieldValueFunctionsEmitter =
-      new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
-
-    new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-                                      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-                                      fieldValueFunctionsEmitter, stateFormatter, heapCompressor,
-                                      quantifiedChunkSupporter, bookkeeper, identifierFactory)
+    new DefaultVerifier[ST, H, PC, S](config, stateFactory, pathConditionsFactory, symbolConverter,
+                                      stateFormatter, domainTranslator, bookkeeper,
+                                      identifierFactory, axiomRewriter)
   }
 
   private def reset() {
@@ -391,7 +362,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           log.info("")
 
         case Some((Config.Sink.File, path)) =>
-          silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
+          viper.silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
 
         case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }
@@ -400,7 +371,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     failures foreach (f => logFailure(f, s => log.info(s)))
 
     log.info("\nVerification finished in %s with %s error(s)".format(
-        silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
+        viper.silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
         failures.length))
 
     failures
@@ -549,7 +520,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(".*"),
     noshort = true,
     hidden = false
-  )(singleArgConverter[String](s => silicon.common.config.wildcardToRegex(s)))
+  )(singleArgConverter[String](s => viper.silicon.common.config.wildcardToRegex(s)))
 
   val excludeMembers = opt[String]("excludeMembers",
     descr = "Exclude members from verification (default: ''). Is applied after the include pattern.",

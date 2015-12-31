@@ -4,13 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.state
+package viper.silicon.interfaces.state
 
 import scala.language.implicitConversions
-import silver.ast
-import silicon.state.terms.Term
+import viper.silver.ast
+import viper.silicon.{Map, Set}
+import viper.silicon.state.terms.Term
 
 object factoryUtils {
   trait Ø

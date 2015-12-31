@@ -14,12 +14,12 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.decider.{DeciderProvider, SMTLib2PreambleEmitter, PreambleFileEmitter}
 import viper.silicon.state.{IdentifierFactory, terms, SymbolConvert, DefaultContext}
-import viper.silicon.state.terms.{sorts, Sort}
+import viper.silicon.state.terms.{Term, AxiomRewriter, sorts, Sort}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.FunctionSupporterProvider
-import viper.silicon.supporters.qps.{FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
+import viper.silicon.supporters.qps.{DefaultFieldValueFunctionsEmitter, QuantifiedChunkSupporterProvider, FieldValueFunctionsEmitter, QuantifiedChunkSupporter}
 import viper.silicon.reporting.Bookkeeper
 
 /* TODO: 1. Extract method verification code into a MethodSupporter
@@ -31,24 +31,21 @@ trait AbstractElementVerifier[ST <: Store[ST],
     extends Logging
        with Evaluator[ST, H, S, DefaultContext[H]]
        with Producer[ST, H, S, DefaultContext[H]]
-       with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+       with Consumer[ST, H, S, DefaultContext[H]]
        with Executor[ST, H, S, DefaultContext[H]]
    { this: MagicWandSupporter[ST, H, PC, S] =>
 
-  private type C = DefaultContext[H]
+  private[this] type C = DefaultContext[H]
 
-  /*protected*/ val config: Config
+  protected val config: Config
+  protected val decider: Decider[ST, H, PC, S, C]
+  protected val stateFactory: StateFactory[ST, H, S]
+  protected val stateFormatter: StateFormatter[ST, H, S, String]
+  protected val symbolConverter: SymbolConvert
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
 
-  /*protected*/ val decider: Decider[ST, H, PC, S, C]
   import decider.{fresh, inScope}
-
-  /*protected*/ val stateFactory: StateFactory[ST, H, S]
   import stateFactory._
-
-  /*protected*/ val stateFormatter: StateFormatter[ST, H, S, String]
-  /*protected*/ val symbolConverter: SymbolConvert
-
-  val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
 
   def createInitialContext(member: ast.Member, program: ast.Program): DefaultContext[H] = {
     val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
@@ -113,29 +110,31 @@ class DefaultElementVerifier[ST <: Store[ST],
                              PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
     (val config: Config,
-     val decider: Decider[ST, H, PC, S, DefaultContext[H]],
      val stateFactory: StateFactory[ST, H, S],
+     val pathConditionsFactory: PathConditionsFactory[PC],
      val symbolConverter: SymbolConvert,
      val stateFormatter: StateFormatter[ST, H, S, String],
-     val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
-     val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
      val bookkeeper: Bookkeeper,
-     val identifierFactory: IdentifierFactory)
+     val identifierFactory: IdentifierFactory,
+     val axiomRewriter: AxiomRewriter)
     (protected implicit val manifestH: Manifest[H])
     extends NoOpStatefulComponent
        with AbstractElementVerifier[ST, H, PC, S]
+       with DeciderProvider[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
        with DefaultConsumer[ST, H, PC, S]
        with DefaultExecutor[ST, H, PC, S]
        with FunctionSupporterProvider[ST, H, PC, S]
-       with ChunkSupporter[ST, H, PC, S]
+       with ChunkSupporterProvider[ST, H, PC, S]
        with PredicateSupporterProvider[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
        with DefaultLetHandler[ST, H, S, DefaultContext[H]]
        with MagicWandSupporter[ST, H, PC, S]
        with HeuristicsSupporter[ST, H, PC, S]
+       with HeapCompressorProvider[ST, H, PC, S, DefaultContext[H]]
+       with QuantifiedChunkSupporterProvider[ST, H, PC, S]
        with Logging
 
 trait AbstractVerifier[ST <: Store[ST],
@@ -144,15 +143,15 @@ trait AbstractVerifier[ST <: Store[ST],
                        S <: State[ST, H, S]]
     extends Logging {
 
-  /*protected*/ def decider: Decider[ST, H, PC, S, DefaultContext[H]]
-  /*protected*/ def config: Config
-  /*protected*/ def bookkeeper: Bookkeeper
-  /*protected*/ def preambleEmitter: PreambleFileEmitter[String, String]
-  /*protected*/ def sequencesEmitter: SequencesEmitter
-  /*protected*/ def setsEmitter: SetsEmitter
-  /*protected*/ def multisetsEmitter: MultisetsEmitter
-  /*protected*/ def domainsEmitter: DomainsEmitter
-  /*protected*/ def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
+  protected def decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected def config: Config
+  protected def bookkeeper: Bookkeeper
+  protected def preambleEmitter: PreambleFileEmitter[String, String]
+  protected def sequencesEmitter: SequencesEmitter
+  protected def setsEmitter: SetsEmitter
+  protected def multisetsEmitter: MultisetsEmitter
+  protected def domainsEmitter: DomainsEmitter
+  protected def fieldValueFunctionsEmitter: FieldValueFunctionsEmitter
 
   val ev: DefaultElementVerifier[ST, H, PC, S]
 
@@ -297,33 +296,38 @@ class DefaultVerifier[ST <: Store[ST],
                       PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     (val config: Config,
-     val decider: Decider[ST, H, PC, S, DefaultContext[H]],
      val stateFactory: StateFactory[ST, H, S],
+     val pathConditionsFactory: PathConditionsFactory[PC],
      val symbolConverter: SymbolConvert,
-     val preambleEmitter: PreambleFileEmitter[String, String],
-     val sequencesEmitter: SequencesEmitter,
-     val setsEmitter: SetsEmitter,
-     val multisetsEmitter: MultisetsEmitter,
-     val domainsEmitter: DomainsEmitter,
-     val fieldValueFunctionsEmitter: FieldValueFunctionsEmitter,
      val stateFormatter: StateFormatter[ST, H, S, String],
-     val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]],
-     val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S],
+     val domainTranslator: DomainsTranslator[Term],
      val bookkeeper: Bookkeeper,
-     val identifierFactory: IdentifierFactory)
+     val identifierFactory: IdentifierFactory,
+     val axiomRewriter: AxiomRewriter)
     extends AbstractVerifier[ST, H, PC, S]
        with StatefulComponent
        with Logging {
 
-  val ev = new DefaultElementVerifier(config, decider, stateFactory, symbolConverter, stateFormatter, heapCompressor,
-                                      quantifiedChunkSupporter, bookkeeper, identifierFactory)
+  val ev =
+    new DefaultElementVerifier(config, stateFactory, pathConditionsFactory, symbolConverter,
+                               stateFormatter, bookkeeper, identifierFactory, axiomRewriter)
+
+  val decider = ev.decider
+
+  val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover)
+  val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val domainsEmitter = new DefaultDomainsEmitter(decider.prover, domainTranslator, symbolConverter)
+  val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-    fieldValueFunctionsEmitter, quantifiedChunkSupporter,
+    fieldValueFunctionsEmitter,
     decider, identifierFactory.asInstanceOf[StatefulComponent],
-    ev, ev.functionsSupporter, ev.predicateSupporter)
+    ev,
+    ev.functionsSupporter, ev.predicateSupporter, ev.quantifiedChunkSupporter)
 
   /* Lifetime */
 

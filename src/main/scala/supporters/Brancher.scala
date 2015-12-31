@@ -4,18 +4,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.components.StatefulComponent
-import interfaces.{Success, Unreachable, VerificationResult}
-import interfaces.decider.Decider
-import interfaces.state.{PathConditions, Context, State, Heap, Store, Chunk, HeapCompressor}
-import reporting.Bookkeeper
-import state.terms.{Ite, True, Not, And, Term}
-import state.DefaultContext
-import utils.Counter
+import viper.silver.components.StatefulComponent
+import viper.silicon.Config
+import viper.silicon.interfaces.{Success, Unreachable, VerificationResult}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state._
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.terms.{Ite, True, Not, And, Term}
+import viper.silicon.state.DefaultContext
+import viper.silicon.utils.Counter
 
 trait Brancher[ST <: Store[ST],
                H <: Heap[H],
@@ -61,12 +60,12 @@ trait DefaultBrancher[ST <: Store[ST],
 
   private var branchCounter: Counter = _
 
-  val decider: Decider[ST, H, PC, S, C]
-  import decider.assume
+  protected val decider: Decider[ST, H, PC, S, C]
+  protected val config: Config
+  protected val bookkeeper: Bookkeeper
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  val config: Config
-  val bookkeeper: Bookkeeper
-  val heapCompressor: HeapCompressor[ST, H, S, C]
+  import decider.assume
 
   def branch(σ: S,
              t: Term,

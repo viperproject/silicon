@@ -29,10 +29,9 @@ trait MagicWandSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+            with Consumer[ST, H, S, DefaultContext[H]] =>
 
   private[this] type C = DefaultContext[H]
-  private[this] type CH = Chunk
 
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
@@ -40,6 +39,7 @@ trait MagicWandSupporter[ST <: Store[ST],
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
 
   import decider.{fresh, inScope}
   import stateFactory._
@@ -161,12 +161,13 @@ trait MagicWandSupporter[ST <: Store[ST],
 
     def consumeFromMultipleHeaps(σ: S,
                                  hs: Stack[H],
-                                 id: ChunkIdentifier,
+                                 name: String,
+                                 args: Seq[Term],
                                  pLoss: Term,
                                  locacc: ast.LocationAccess,
                                  pve: PartialVerificationError,
                                  c: C)
-                                (Q: (Stack[H], Stack[Option[DirectChunk]], C) => VerificationResult)
+                                (Q: (Stack[H], Stack[Option[BasicChunk]], C) => VerificationResult)
                                 : VerificationResult = {
 
       var toLose = pLoss
@@ -174,7 +175,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       var visitedHeaps: List[H] = Nil
 //      var chunks: List[DirectChunk] = Nil
       var cCurr = c
-      val consumedChunks: Array[Option[DirectChunk]] = Array.fill(hs.length)(None)
+      val consumedChunks: Array[Option[BasicChunk]] = Array.fill(hs.length)(None)
 
 //      println("\n[consumeFromMultipleHeaps]")
 //      println(s"  heaps = ${hs.length}")
@@ -188,7 +189,7 @@ trait MagicWandSupporter[ST <: Store[ST],
         heapsToVisit = heapsToVisit.tail
 
 //        println(s"\n  h = $h")
-        val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, id, toLose, cCurr)
+        val (h1, optCh1, toLose1, c1) = consumeMaxPermissions(σ, h, name, args, toLose, cCurr)
 //        println(s"  h1 = $h1")
 //        println(s"  optCh1 = $optCh1")
 //        println(s"  toLose1 = $toLose1")
@@ -215,10 +216,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       if (decider.check(σ, IsNoAccess(toLose), config.checkTimeout())) {
         val tEqs =
           consumedChunks.flatten.sliding(2).map {
-  //          case List((fc1: DirectFieldChunk, _), (fc2: DirectFieldChunk, _)) => fc1.value === fc2.value
-            case Array(fc1: DirectFieldChunk, fc2: DirectFieldChunk) => fc1.value === fc2.value
-  //          case List((pc1: DirectPredicateChunk, _), (pc2: DirectPredicateChunk, _)) => pc1.snap === pc2.snap
-            case Array(pc1: DirectPredicateChunk, pc2: DirectPredicateChunk) => pc1.snap === pc2.snap
+            case Array(ch1: BasicChunk, ch2: BasicChunk) => ch1.snap === ch2.snap
             case _ => True()
           }
 
@@ -226,7 +224,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 
         Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
       } else
-        Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(id.args)
+        Failure[ST, H, S](pve dueTo InsufficientPermission(locacc)).withLoad(args)
     }
 
     /* TODO: This is similar, but not as general, as the consumption algorithm
@@ -240,12 +238,13 @@ trait MagicWandSupporter[ST <: Store[ST],
      */
     private def consumeMaxPermissions(σ: S,
                                       h: H,
-                                      id: ChunkIdentifier,
+                                      name: String,
+                                      args: Seq[Term],
                                       pLoss: Term,
                                       c: C)
-                                     : (H, Option[DirectChunk], Term, C) = {
+                                     : (H, Option[BasicChunk], Term, C) = {
 
-      decider.getChunk[DirectChunk](σ, h, id, c) match {
+      chunkSupporter.getChunk(σ, h, name, args, c) match {
         case result @ Some(ch) =>
           val (pLost, pKeep, pToConsume) =
             if (decider.check(σ, PermAtMost(pLoss, ch.perm), config.checkTimeout()))
@@ -308,8 +307,8 @@ trait MagicWandSupporter[ST <: Store[ST],
       c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
 
       val stackSize = c.reserveHeaps.length + 1 /* IMPORTANT: Must match size of reserveHeaps at [CTX] below */
-      val allProducedChunks: MMap[Stack[Term], MList[DirectChunk]] = MMap()
-      val allConsumedChunks: Stack[MMap[Stack[Term], MList[DirectChunk]]] = Stack.fill(stackSize)(MMap())
+      val allProducedChunks: MMap[Stack[Term], MList[BasicChunk]] = MMap()
+      val allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize)(MMap())
 
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
@@ -343,7 +342,7 @@ trait MagicWandSupporter[ST <: Store[ST],
               lnsay(s"-- reached local end of packageWand $myId --")
               say(s"c3.producedChunks = ${c3.producedChunks}", 2)
 
-              val producedChunks: MMap[Stack[Term], MList[DirectChunk]] = MMap()
+              val producedChunks: MMap[Stack[Term], MList[BasicChunk]] = MMap()
 
               c3.producedChunks.foreach{ case (guards, chunk) =>
                 producedChunks.getOrElseUpdate(guards, MList()) += chunk}
@@ -363,9 +362,9 @@ trait MagicWandSupporter[ST <: Store[ST],
 
               assert(c3.consumedChunks.length == allConsumedChunks.length)
 
-              val consumedChunks: Stack[MMap[Stack[Term], MList[DirectChunk]]] =
+              val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
                 c3.consumedChunks.map(pairs => {
-                  val cchs: MMap[Stack[Term], MList[DirectChunk]] = MMap()
+                  val cchs: MMap[Stack[Term], MList[BasicChunk]] = MMap()
 
                   pairs.foreach {
                     case (guards, chunk) => cchs.getOrElseUpdate(guards, MList()) += chunk
@@ -448,23 +447,23 @@ trait MagicWandSupporter[ST <: Store[ST],
               var added = false
 
               ch match {
-                case fc: DirectFieldChunk =>
+                case fc: FieldChunk =>
                   joinedReserveHeaps.head.transform {
-                    case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
+                    case ch1: BasicChunk if ch1.args == fc.args && ch1.name == fc.name =>
                       added = true
                       fc.copy(perm = PermPlus(ch1.perm, pGain))
                     case ch1 => ch1
                   }
 
-                case pc: DirectPredicateChunk =>
+                case pc: PredicateChunk =>
                   joinedReserveHeaps.head.transform {
-                    case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
+                    case ch1: BasicChunk if ch1.args == pc.args && ch1.name == pc.name =>
                       added = true
                       pc.copy(perm = PermPlus(ch1.perm, pGain))
                     case ch1 => ch1
                   }
 
-                case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
+//                case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
               }
 
               if (!added) joinedReserveHeaps.head += ch
@@ -487,23 +486,23 @@ trait MagicWandSupporter[ST <: Store[ST],
                 var matched = false
 
                 ch match {
-                  case fc: DirectFieldChunk =>
+                  case fc: FieldChunk =>
                     hR.transform {
-                      case ch1: DirectChunk if ch1.args == fc.args && ch1.name == fc.name =>
+                      case ch1: BasicChunk if ch1.args == fc.args && ch1.name == fc.name =>
                         matched = true
                         fc.copy(perm = PermMinus(ch1.perm, pLoss))
                       case ch1 => ch1
                     }
 
-                  case pc: DirectPredicateChunk =>
+                  case pc: PredicateChunk =>
                     hR.transform {
-                      case ch1: DirectChunk if ch1.args == pc.args && ch1.name == pc.name =>
+                      case ch1: BasicChunk if ch1.args == pc.args && ch1.name == pc.name =>
                         matched = true
                         pc.copy(perm = PermMinus(ch1.perm, pLoss))
                       case ch1 => ch1
                     }
 
-                  case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
+//                  case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
                 }
 
                 if (!matched) {
@@ -521,7 +520,7 @@ trait MagicWandSupporter[ST <: Store[ST],
 
           assert(allConsumedChunks.length == c.consumedChunks.length + 1)
 
-          val consumedChunks: Stack[Seq[(Stack[Term], DirectChunk)]] =
+          val consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] =
             allConsumedChunks.zip(c.consumedChunks.head +: Nil +: c.consumedChunks.tail).map { case (allcchs, cchs) =>
               cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
 
@@ -568,7 +567,7 @@ trait MagicWandSupporter[ST <: Store[ST],
         consume(σ0 \ σ1.h, FullPerm(), lhsAndWand, pve, c1a)((σ2, _, c2) => { /* σUsed'.apply */
           val c2a = c2.copy(lhsHeap = Some(σ1.h))
           produce(σ0 \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* σ3.h = σUsed'' */
-            val (topReserveHeap, _) = heapCompressor.merge(σ3, c1.reserveHeaps.head, σ3.h, c)
+            val topReserveHeap = heapCompressor.merge(σ3, c1.reserveHeaps.head, σ3.h, c)
             val c3a = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
                               exhaleExt = c1.exhaleExt,
                               lhsHeap = c2.lhsHeap,
@@ -597,7 +596,7 @@ trait MagicWandSupporter[ST <: Store[ST],
                 val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
                 produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
 //                  val topReserveHeap = c3.reserveHeaps.head + σ3.h
-                  val (topReserveHeap, _) = heapCompressor.merge(σ3, c3.reserveHeaps.head, σ3.h, c)
+                  val topReserveHeap = heapCompressor.merge(σ3, c3.reserveHeaps.head, σ3.h, c)
                   val c4a = c4.decCycleCounter(predicate)
                               .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                     exhaleExt = c3.exhaleExt)
@@ -672,6 +671,29 @@ trait MagicWandSupporter[ST <: Store[ST],
     def getEvalHeap(σ: S, h: H, c: C): H = {
       if (c.exhaleExt) c.reserveHeaps.headOption.fold(h)(h + _)
       else σ.h
+    }
+
+    def getChunk(σ: S, h: H, chunk: MagicWandChunk, c: C): Option[MagicWandChunk] = {
+      val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }
+      mwChunks.find(ch => compareWandChunks(σ, chunk, ch, c))
+    }
+
+    private def compareWandChunks(σ: S,
+                                  chWand1: MagicWandChunk,
+                                  chWand2: MagicWandChunk,
+                                  c: C)
+                                 : Boolean = {
+  //    println(s"\n[compareWandChunks]")
+  //    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
+  //    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
+      var b = chWand1.ghostFreeWand.structurallyMatches(chWand2.ghostFreeWand, c.program)
+  //    println(s"  after structurallyMatches: b = $b")
+      b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
+  //    println(s"  after comparing evaluatedTerms.length's: b = $b")
+      b = b && decider.check(σ, And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)), config.checkTimeout())
+  //    println(s"  after comparing evaluatedTerms: b = $b")
+
+      b
     }
   }
 }

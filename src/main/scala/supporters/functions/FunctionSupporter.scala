@@ -42,7 +42,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+            with Consumer[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification

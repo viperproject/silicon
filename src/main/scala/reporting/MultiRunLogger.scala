@@ -4,9 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package reporting
+package viper.silicon.reporting
 
 import java.io.PrintWriter
 

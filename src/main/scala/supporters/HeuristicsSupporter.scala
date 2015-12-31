@@ -14,7 +14,7 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 import viper.silicon.{Config, Stack}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
+import viper.silicon.state.{FieldChunk, MagicWandChunk, PredicateChunk, DefaultContext}
 import viper.silicon.state.terms._
 import viper.silicon.reporting.Bookkeeper
 
@@ -25,12 +25,11 @@ trait HeuristicsSupporter[ST <: Store[ST],
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+            with Consumer[ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
             with MagicWandSupporter[ST, H, PC, S] =>
 
   private[this] type C = DefaultContext[H]
-  private[this] type CH = Chunk
 
   protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
@@ -430,7 +429,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       val predicateChunks =
         allChunks.collect {
-          case ch: DirectPredicateChunk =>
+          case ch: PredicateChunk =>
             val body = c.program.findPredicate(ch.name)
 
             body.existsDefined(f) match {
@@ -442,7 +441,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       val predicateAccesses =
         predicateChunks.flatMap {
-          case DirectPredicateChunk(name, args, _, _) =>
+          case PredicateChunk(name, args, _, _) =>
             val reversedArgs: Seq[ast.Exp] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
 
             if (args.length == reversedArgs.length)
@@ -490,7 +489,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
                       /* Found a local variable v s.t. v |-> t */
                     .orElse(
                       chunks.collectFirst {
-                        case fc: FieldChunk if fc.value == t =>
+                        case fc: FieldChunk if fc.snap == t =>
                           bindings.find(p => p._2 == fc.args.head)
                                   .map(_._1)
                                   .map(v => ast.FieldAccess(v, program.findField(fc.name))())

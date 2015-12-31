@@ -4,18 +4,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.decider
+package viper.silicon.interfaces.decider
 
-import silver.ast
-import silver.verifier.PartialVerificationError
-import silver.components.StatefulComponent
-import interfaces.{Failure, VerificationResult}
-import interfaces.state.{Context, Chunk, Store, Heap, PathConditions, State, ChunkIdentifier}
-import state.terms.{FullPerm, Term, Var, Sort, Function}
-import state.DirectChunk
-import utils.notNothing._
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silicon.{Map, Set}
+import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.interfaces.state.{Context, Store, Heap, PathConditions, State}
+import viper.silicon.state.terms.{FullPerm, Term, Var, Sort, Function}
 
 trait Decider[ST <: Store[ST],
               H <: Heap[H],
@@ -37,9 +33,6 @@ trait Decider[ST <: Store[ST],
                 (Q: R => VerificationResult)
                 : VerificationResult
 
-  /* TODO: Should these take continuations to make it explicit that the state
-   *       is changed?
-   */
   def assume(t: Term)
   def assume(ts: Iterable[Term])
 
@@ -51,39 +44,6 @@ trait Decider[ST <: Store[ST],
 
   def check(σ: S, t: Term, timeout: Int): Boolean
   def assert(σ: S, t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult): VerificationResult
-
-  /** Try to find a chunk identified by `id`. If not present, a failure is
-    * returned, otherwise, `Q` is invoked with the found chunk.
-    */
-  def withChunk[CH <: Chunk : NotNothing : Manifest]
-               (σ: S,
-                h: H,
-                id: ChunkIdentifier,
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                c: C)
-               (Q: (CH, C) => VerificationResult)
-               : VerificationResult
-
-  /** Try to find a chunk identified by `id`. If not present, or if it comes
-    * with insufficient permissions, then a failure is returned, otherwise,
-    * `Q` is invoked with the found chunk.
-    * The found permissions `p2` are considered insufficient if `optPerms` is
-    * `Some(p1)` and `p2` is not at least `p1`, or if `optPerms` is `None` and
-    * `p2` is potentially `none`.
-    */
-  def withChunk[CH <: DirectChunk : NotNothing : Manifest]
-               (σ: S,
-                h: H,
-                id: ChunkIdentifier,
-                optPerms: Option[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                c: C)
-               (Q: (CH, C) => VerificationResult)
-               : VerificationResult
-
-  def getChunk[CH <: Chunk: NotNothing: Manifest](σ: S, h: H, id: ChunkIdentifier, c: C): Option[CH]
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function

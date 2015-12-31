@@ -4,15 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import silver.verifier.PartialVerificationError
-import interfaces.{Evaluator, VerificationResult}
-import interfaces.state.{StateFactory, Context, State, Heap, Store}
-import state.terms.Term
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silicon.interfaces.{Evaluator, VerificationResult}
+import viper.silicon.interfaces.state.{StateFactory, Context, State, Heap, Store}
+import viper.silicon.state.terms.Term
 
 trait LetHandler[ST <: Store[ST],
                  H <: Heap[H],
