@@ -9,11 +9,8 @@ package viper.silicon
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.errors.{ContractNotWellformed, PostconditionViolated}
+import viper.silicon.DefaultVerifier._
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.decider.{DeciderProvider, SMTLib2PreambleEmitter}
 import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, sorts, Sort}
@@ -23,95 +20,16 @@ import viper.silicon.supporters.qps._
 import viper.silicon.reporting.{DefaultStateFormatter, Bookkeeper}
 import viper.silicon.utils.NoOpStatefulComponent
 
-/* TODO: 1. Extract method verification code into a MethodSupporter
- *       2. Remove this trait
- */
-trait AbstractElementVerifier[ST <: Store[ST],
-                             H <: Heap[H], PC <: PathConditions[PC],
-                             S <: State[ST, H, S]]
-    extends Logging
-       with Evaluator[ST, H, S, DefaultContext[H]]
-       with Producer[ST, H, S, DefaultContext[H]]
-       with Consumer[ST, H, S, DefaultContext[H]]
-       with Executor[ST, H, S, DefaultContext[H]]
-   { this: MagicWandSupporter[ST, H, PC, S] =>
-
-  private[this] type C = DefaultContext[H]
-
-  protected val config: Config
-  protected val decider: Decider[ST, H, PC, S, C]
-  protected val stateFactory: StateFactory[ST, H, S]
-  protected val stateFormatter: StateFormatter[ST, H, S, String]
-  protected val symbolConverter: SymbolConvert
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
-
-  import decider.{fresh, inScope}
-  import stateFactory._
-
-  def createInitialContext(member: ast.Member, program: ast.Program): DefaultContext[H] = {
-    val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
-    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
-
-    DefaultContext[H](program = program,
-                      qpFields = quantifiedFields,
-                      applyHeuristics = applyHeuristics)
-  }
-
-  def verify(method: ast.Method, c: C): VerificationResult = {
-    log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
-    decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
-
-    val ins = method.formalArgs.map(_.localVar)
-    val outs = method.formalReturns.map(_.localVar)
-
-    val γ = Γ(   ins.map(v => (v, fresh(v)))
-              ++ outs.map(v => (v, fresh(v)))
-              ++ method.locals.map(_.localVar).map(v => (v, fresh(v))))
-
-    val σ = Σ(γ, Ø, Ø)
-
-    val pres = method.pres
-    val posts = method.posts
-    val body = method.body.toCfg
-
-    val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
-
-    /* Combined the well-formedness check and the execution of the body, which are two separate
-     * rules in Smans' paper.
-     */
-    inScope {
-      produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
-        val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-           (inScope {
-              /* TODO: Checking self-framingness here fails if pold(e) reads a location
-               *       to which access is not required by the precondition.
-               */
-              magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
-        && inScope {
-              produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
-                Success())}
-        && inScope {
-              exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-                consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, c4) =>
-                  Success()))})})}
-  }
+object DefaultVerifier {
+  type ST = MapBackedStore
+  type H = ListBackedHeap
+  type PC = MutableSetBackedPathConditions
+  type S = DefaultState[ST, H]
+  type C = DefaultContext[H]
 }
 
-class DefaultElementVerifier[ST <: Store[ST],
-                             H <: Heap[H],
-                             PC <: PathConditions[PC],
-                             S <: State[ST, H, S]]
-    (val config: Config,
-     val stateFactory: StateFactory[ST, H, S],
-     val pathConditionsFactory: PathConditionsFactory[PC],
-     val symbolConverter: SymbolConvert,
-     val stateFormatter: StateFormatter[ST, H, S, String],
-     val bookkeeper: Bookkeeper,
-     val identifierFactory: IdentifierFactory,
-     val axiomRewriter: AxiomRewriter)
-    (protected implicit val manifestH: Manifest[H])
+class DefaultVerifier(val config: Config)
     extends NoOpStatefulComponent
-       with AbstractElementVerifier[ST, H, PC, S]
        with DeciderProvider[ST, H, PC, S]
        with DefaultEvaluator[ST, H, PC, S]
        with DefaultProducer[ST, H, PC, S]
@@ -122,22 +40,15 @@ class DefaultElementVerifier[ST <: Store[ST],
        with PredicateSupporterProvider[ST, H, PC, S]
        with DefaultBrancher[ST, H, PC, S]
        with DefaultJoiner[ST, H, PC, S]
-       with DefaultLetHandler[ST, H, S, DefaultContext[H]]
+       with DefaultLetHandler[ST, H, S, C]
        with MagicWandSupporter[ST, H, PC, S]
        with HeuristicsSupporter[ST, H, PC, S]
-       with HeapCompressorProvider[ST, H, PC, S, DefaultContext[H]]
+       with HeapCompressorProvider[ST, H, PC, S, C]
        with QuantifiedChunkSupporterProvider[ST, H, PC, S]
-       with Logging
-
-class DefaultVerifier(val config: Config)
-    extends StatefulComponent
+       with MethodSupporterProvider[ST, H, PC, S]
        with Logging {
 
-  private type ST = MapBackedStore
-  private type H = ListBackedHeap
-  private type PC = MutableSetBackedPathConditions
-  private type S = DefaultState[ST, H]
-  private type C = DefaultContext[H]
+  protected implicit val manifestH: Manifest[H] = manifest[H]
 
   val bookkeeper = new Bookkeeper(config)
   val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
@@ -147,13 +58,6 @@ class DefaultVerifier(val config: Config)
   val stateFactory = new DefaultStateFactory()
   val identifierFactory = new DefaultIdentifierFactory
   val axiomRewriter = new AxiomRewriter(new utils.Counter(), bookkeeper.logfiles("axiomRewriter"))
-
-  val ev =
-    new DefaultElementVerifier(config, stateFactory, pathConditionsFactory, symbolConverter,
-                               stateFormatter, bookkeeper, identifierFactory, axiomRewriter)
-
-  val decider = ev.decider
-
   val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover)
   val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
   val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
@@ -166,20 +70,23 @@ class DefaultVerifier(val config: Config)
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
     fieldValueFunctionsEmitter,
     decider, identifierFactory,
-    ev,
-    ev.functionsSupporter, ev.predicateSupporter, ev.quantifiedChunkSupporter)
+    functionsSupporter, predicateSupporter, methodSupporter,
+    quantifiedChunkSupporter)
 
   /* Lifetime */
 
   override def start() {
+    super.start()
     statefulSubcomponents foreach (_.start())
   }
 
   override def reset() {
+    super.reset()
     statefulSubcomponents foreach (_.reset())
   }
 
   override def stop() {
+    super.stop()
     statefulSubcomponents foreach (_.stop())
   }
 
@@ -194,25 +101,31 @@ class DefaultVerifier(val config: Config)
      * toList must be before flatMap. Otherwise Set will be used internally and some
      * error messages will be lost.
      */
-    val functionVerificationResults = ev.functionsSupporter.units.toList flatMap (function =>
-      ev.functionsSupporter.verify(function, ev.createInitialContext(function, program)))
+    val functionVerificationResults = functionsSupporter.units.toList flatMap (function =>
+      functionsSupporter.verify(function, createInitialContext(function, program)))
 
-    val predicateVerificationResults = ev.predicateSupporter.units.toList flatMap (predicate =>
-      ev.predicateSupporter.verify(predicate, ev.createInitialContext(predicate, program)))
+    val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate =>
+      predicateSupporter.verify(predicate, createInitialContext(predicate, program)))
 
-    /* Fields and domains don't need to be verified */
-    val methods = program.members.collect { case m: ast.Method => m }
-
-    val methodVerificationResults = methods map (method => {
-      val c = ev.createInitialContext(method, program)
+    val methodVerificationResults = methodSupporter.units.toList flatMap (method => {
+      val c = createInitialContext(method, program)
 //      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
 
-      ev.verify(method, c)
+      methodSupporter.verify(method, c)
     })
 
     (   functionVerificationResults
      ++ predicateVerificationResults
      ++ methodVerificationResults)
+  }
+
+  private def createInitialContext(member: ast.Member, program: ast.Program): C = {
+    val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
+    val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
+
+    DefaultContext[H](program = program,
+                      qpFields = quantifiedFields,
+                      applyHeuristics = applyHeuristics)
   }
 
   private def filter(str: String) = (
@@ -233,8 +146,9 @@ class DefaultVerifier(val config: Config)
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
     fieldValueFunctionsEmitter.analyze(program)
-    ev.functionsSupporter.analyze(program)
-    ev.predicateSupporter.analyze(program)
+    functionsSupporter.analyze(program)
+    predicateSupporter.analyze(program)
+    methodSupporter.analyze(program)
 
     emitStaticPreamble()
 
@@ -243,8 +157,9 @@ class DefaultVerifier(val config: Config)
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
     fieldValueFunctionsEmitter.declareSorts()
-    ev.functionsSupporter.declareSorts()
-    ev.predicateSupporter.declareSorts()
+    functionsSupporter.declareSorts()
+    predicateSupporter.declareSorts()
+    methodSupporter.declareSorts()
 
     /* Sequences depend on multisets ($Multiset.fromSeq, which is
      * additionally axiomatised in the sequences axioms).
@@ -256,15 +171,17 @@ class DefaultVerifier(val config: Config)
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
     fieldValueFunctionsEmitter.declareSymbols()
-    ev.functionsSupporter.declareSymbols()
-    ev.predicateSupporter.declareSymbols()
+    functionsSupporter.declareSymbols()
+    predicateSupporter.declareSymbols()
+    methodSupporter.declareSymbols()
 
     sequencesEmitter.emitAxioms()
     setsEmitter.emitAxioms()
     multisetsEmitter.emitAxioms()
     domainsEmitter.emitAxioms()
-    ev.functionsSupporter.emitAxioms()
-    ev.predicateSupporter.emitAxioms()
+    functionsSupporter.emitAxioms()
+    predicateSupporter.emitAxioms()
+    methodSupporter.emitAxioms()
 
     emitSortWrappers(Set(sorts.Int, sorts.Bool, sorts.Ref, sorts.Perm))
     emitSortWrappers(sequencesEmitter.sorts)
@@ -272,8 +189,9 @@ class DefaultVerifier(val config: Config)
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
     emitSortWrappers(fieldValueFunctionsEmitter.sorts)
-    emitSortWrappers(ev.functionsSupporter.sorts)
-    emitSortWrappers(ev.predicateSupporter.sorts)
+    emitSortWrappers(functionsSupporter.sorts)
+    emitSortWrappers(predicateSupporter.sorts)
+    emitSortWrappers(methodSupporter.sorts)
 
     /* ATTENTION: The triggers mention the sort wrappers introduced for FVFs.
      * The axiom therefore needs to be emitted after the sort wrappers have
