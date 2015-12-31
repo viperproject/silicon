@@ -107,7 +107,10 @@ class DefaultVerifier(val config: Config)
     val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate =>
       predicateSupporter.verify(predicate, createInitialContext(predicate, program)))
 
-    val methodVerificationResults = methodSupporter.units.toList flatMap (method => {
+    val methodVerificationResults =
+      methodSupporter.units.toList
+                           .filterNot(excludeMethod)
+                           .flatMap(method => {
       val c = createInitialContext(method, program)
 //      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
 
@@ -128,9 +131,9 @@ class DefaultVerifier(val config: Config)
                       applyHeuristics = applyHeuristics)
   }
 
-  private def filter(str: String) = (
-       !str.matches(config.includeMembers())
-    || str.matches(config.excludeMembers()))
+  private def excludeMethod(method: ast.Method) = (
+       !method.name.matches(config.includeMethods())
+    || method.name.matches(config.excludeMethods()))
 
   /* Prover preamble */
 

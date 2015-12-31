@@ -125,15 +125,15 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  val includeMembers = opt[String]("includeMembers",
-    descr = "Include members in verification (default: '*'). Wildcard characters are '?' and '*'. ",
+  val includeMethods = opt[String]("includeMethods",
+    descr = "Include methods in verification (default: '*'). Wildcard characters are '?' and '*'. ",
     default = Some(".*"),
     noshort = true,
     hidden = false
   )(singleArgConverter[String](s => viper.silicon.common.config.wildcardToRegex(s)))
 
-  val excludeMembers = opt[String]("excludeMembers",
-    descr = "Exclude members from verification (default: ''). Is applied after the include pattern.",
+  val excludeMethods = opt[String]("excludeMethods",
+    descr = "Exclude methods from verification (default: ''). Is applied after the include pattern.",
     default = Some(""),
     noshort = true,
     hidden = false
