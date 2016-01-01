@@ -110,20 +110,17 @@ trait DeciderProvider[ST <: Store[ST],
                   (Q: D => VerificationResult)
                   : VerificationResult = {
 
-      var optLocalData: Option[D] = None
+      var optBlockData: Option[D] = None
 
       pushScope()
 
       val blockResult: VerificationResult =
-        block(localData => {
-          Predef.assert(localData != null,
-                        s"Expected local data to be non null, but found $localData")
+        block(blockData => {
+          Predef.assert(optBlockData.isEmpty,
+                          "Unexpectedly found more than one block data result. Note that the local "
+                        + "block is not expected to branch (non-locally)")
 
-          Predef.assert(optLocalData.isEmpty,
-                          "Expected only one local data result. Note that the local block is not "
-                        + "expected to branch (non-locally)")
-
-          optLocalData = Some(localData)
+          optBlockData = Some(blockData)
 
           Success()})
 
@@ -139,12 +136,12 @@ trait DeciderProvider[ST <: Store[ST],
 
         case _: NonFatalResult =>
           /* If the local block yielded a non-fatal result, then the continuation
-           * will only be invoked if the execution of the block yielded a result
+           * will only be invoked if the execution of the block yielded data
            * that the continuation Q can be invoked with, i.e. a result of type D.
            * If the block's execution did not yield such a result, then the
            * current execution path will be terminated.
            */
-          optLocalData match {
+          optBlockData match {
             case Some(localData) => blockResult && Q(localData)
             case None => blockResult
           }
