@@ -24,8 +24,7 @@ import viper.silicon.utils.NoOpStatefulComponent
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                       PC <: PathConditions[PC], S <: State[ST, H, S]]
-    extends NoOpStatefulComponent
-       with Consumer[ST, H, S, DefaultContext[H]]
+    extends Consumer[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with LetHandler[ST, H, S, DefaultContext[H]]
@@ -49,8 +48,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
   import decider.assume
   import stateFactory._
   import symbolConverter.toSort
-
-  private val qpForallCache = MMap[(ast.Forall, Set[QuantifiedChunk]), (Var, Term, Term, Seq[Term], H, QuantifiedChunk, C)]()
 
   /*
    * ATTENTION: The DirectChunks passed to the continuation correspond to the
@@ -259,7 +256,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
               else Stack(h)
 
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-              magicWandSupporter.getChunk(σC, h1, chWand, c1) match {
+              magicWandSupporter.getMatchingChunk(σC, h1, chWand, c1) match {
                 case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
                 case _ => (None, h1, c1)
               }
@@ -374,13 +371,5 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
     })((σ1, c1) => {
       Q(h, Unit, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))
     })
-  }
-
-  /* Lifetime */
-
-  override def reset() {
-    super.reset()
-
-    qpForallCache.clear()
   }
 }
