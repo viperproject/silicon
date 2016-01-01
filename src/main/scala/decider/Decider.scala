@@ -96,12 +96,12 @@ trait DeciderProvider[ST <: Store[ST],
 
     /* Assumption scope handling */
 
-    def pushScope() {
+    private def pushScope() {
       pathConditions.pushScope()
       z3.push()
     }
 
-    def popScope() {
+    private def popScope() {
       z3.pop()
       pathConditions.popScope()
     }

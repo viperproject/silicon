@@ -49,41 +49,28 @@ trait HeapCompressorProvider[ST <: Store[ST],
     def compress(σ: S, h: H, c: C) {
       val (permissionChunks, otherChunk) = partition(h)
 
-      var snapEqs = Set[Term]()
-      var allSnapEqs = Set[Term]()
+      var continue = false
 
       var mergedChunks: Seq[PermissionChunk] = Nil
       var destChunks: Seq[PermissionChunk] = Nil
       var newChunks: Seq[PermissionChunk] = permissionChunks
 
-      /* TODO: Possible improvements
-       *  - Pushing path conditions directly via prover.assume means that they are not
-       *    reflected in the State, which could cause confusion while debugging.
-       *  - Path conditions are prover.push'ed, then prover.pop'ped again, and then
-       *    later on decider.assume'ed again.
-       *
-       * TODO: Don't use heaps during compression, just work on Iterable[Chunk] or Set[Chunk]
-       */
-
-      decider.pushScope()
       do {
-        val (_mergedChunks, _, _snapEqs) = singleMerge(σ, destChunks, newChunks, c)
+        val (_mergedChunks, _, snapEqs) = singleMerge(σ, destChunks, newChunks, c)
+
+        snapEqs foreach decider.assume
+
         mergedChunks = _mergedChunks
-        snapEqs = _snapEqs
-
-        snapEqs foreach decider.prover.assume
-
-        allSnapEqs = allSnapEqs ++ snapEqs
         destChunks = Nil
         newChunks = mergedChunks
-      } while(snapEqs.nonEmpty)
-      decider.popScope()
+        continue = snapEqs.nonEmpty
+      } while(continue)
 
       assumeValidPermissionAmounts(mergedChunks)
 
       val referenceIneqs = deriveReferenceInequalities(σ, mergedChunks)
 
-      decider.assume(allSnapEqs ++ referenceIneqs)
+      decider.assume(referenceIneqs)
 
       h.replace(mergedChunks ++ otherChunk)
     }

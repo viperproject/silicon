@@ -25,9 +25,6 @@ trait Decider[ST <: Store[ST],
 
   def checkSmoke(): Boolean
 
-  def pushScope()
-  def popScope()
-
   def locally[R](block: (R => VerificationResult) => VerificationResult)
                 (Q: R => VerificationResult)
                 : VerificationResult

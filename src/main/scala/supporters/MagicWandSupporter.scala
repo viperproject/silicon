@@ -313,9 +313,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
 
-      decider.pushScope()
-
-      val r =
+      val r = locally {
         produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
           val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail, /* [CTX] */
                            exhaleExt = true,
@@ -391,9 +389,7 @@ trait MagicWandSupporter[ST <: Store[ST],
               allConsumedChunks.foreach(x => say(x.toString(), 3))
 
               contexts :+= c5
-              Success()})})})
-
-      decider.popScope()
+              Success()})})})}
 
       cnt -= 1
       lnsay(s"[end packageWand $myId]")

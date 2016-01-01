@@ -237,7 +237,5 @@ class DefaultVerifier(val config: Config)
 
     decider.prover.logComment("\n; /preamble.smt2")
     preambleEmitter.emitPreamble("/preamble.smt2")
-
-    decider.pushScope()
   }
 }
