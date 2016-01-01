@@ -106,53 +106,55 @@ trait DeciderProvider[ST <: Store[ST],
       pathConditions.popScope()
     }
 
-    def inScope[R](block: => R): R = {
-      pushScope()
-      val r: R = block
-      popScope()
-
-      r
-    }
-
-    def locally[R](block: (R => VerificationResult) => VerificationResult)
-                  (Q: R => VerificationResult)
+    def locally[D](block: (D => VerificationResult) => VerificationResult)
+                  (Q: D => VerificationResult)
                   : VerificationResult = {
 
-      var ir: R = null.asInstanceOf[R]
+      var optLocalData: Option[D] = None
 
       pushScope()
 
-      val r: VerificationResult = block(_ir  => {
-        Predef.assert(_ir != null, s"Unexpected block result $ir")
-        Predef.assert(ir == null, s"Unexpected intermediate result $ir")
+      val blockResult: VerificationResult =
+        block(localData => {
+          Predef.assert(localData != null,
+                        s"Expected local data to be non null, but found $localData")
 
-        ir = _ir
+          Predef.assert(optLocalData.isEmpty,
+                          "Expected only one local data result. Note that the local block is not "
+                        + "expected to branch (non-locally)")
 
-        Success()})
+          optLocalData = Some(localData)
+
+          Success()})
 
       popScope()
 
-      r match {
+      blockResult match {
         case _: FatalResult =>
-          /* If the locally-block yielded a fatal result, then the continuation Q
+          /* If the local block yielded a fatal result, then the continuation Q
            * will not be invoked. That is, the current execution path will be
-           * aborted.
+           * terminated.
            */
-          r
+          blockResult
 
         case _: NonFatalResult =>
-          /* If the locally-block yielded a non-fatal result, then the
-           * continuation will only be invoked if the execution of the block
-           * yielded a result that the continuation Q can be invoked with.
-           * That is, a result of type R (excluding null).
+          /* If the local block yielded a non-fatal result, then the continuation
+           * will only be invoked if the execution of the block yielded a result
+           * that the continuation Q can be invoked with, i.e. a result of type D.
            * If the block's execution did not yield such a result, then the
-           * current execution path will be aborted.
-           *
+           * current execution path will be terminated.
            */
-          if (ir != null) r && Q(ir)
-          else r
+          optLocalData match {
+            case Some(localData) => blockResult && Q(localData)
+            case None => blockResult
+          }
       }
     }
+
+    def inScope(block: => VerificationResult): VerificationResult = {
+      locally[VerificationResult](QS => QS(block))(Predef.identity)
+    }
+
 
     /* Assuming facts */
 

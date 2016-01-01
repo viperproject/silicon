@@ -27,11 +27,12 @@ trait Decider[ST <: Store[ST],
 
   def pushScope()
   def popScope()
-  def inScope[R](block: => R): R
 
   def locally[R](block: (R => VerificationResult) => VerificationResult)
                 (Q: R => VerificationResult)
                 : VerificationResult
+
+  def inScope(block: => VerificationResult): VerificationResult
 
   def assume(t: Term)
   def assume(ts: Iterable[Term])
