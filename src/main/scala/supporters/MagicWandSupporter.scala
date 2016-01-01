@@ -673,7 +673,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       else σ.h
     }
 
-    def getChunk(σ: S, h: H, chunk: MagicWandChunk, c: C): Option[MagicWandChunk] = {
+    def getMatchingChunk(σ: S, h: H, chunk: MagicWandChunk, c: C): Option[MagicWandChunk] = {
       val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }
       mwChunks.find(ch => compareWandChunks(σ, chunk, ch, c))
     }

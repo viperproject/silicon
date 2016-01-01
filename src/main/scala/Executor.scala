@@ -400,7 +400,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
           case v: ast.AbstractLocalVar =>
             val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
-            magicWandSupporter.getChunk(σ, σ.h, chWand, c) match {
+            magicWandSupporter.getMatchingChunk(σ, σ.h, chWand, c) match {
               case Some(ch) =>
                 QL(σ \- ch, Γ(chWand.bindings), chWand.ghostFreeWand, c)
               case None =>
