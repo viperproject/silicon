@@ -74,7 +74,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
 
-  import decider.{fresh, inScope}
+  import decider.{fresh, locally}
   import stateFactory._
 
   object predicateSupporter extends PredicateSupporter[ST, H, PC, S, C] {
@@ -114,9 +114,9 @@ trait PredicateSupporterProvider[ST <: Store[ST],
         case None =>
           Success()
         case Some(body) => (
-                inScope {
+                locally {
                   magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
-            &&  inScope {
+            &&  locally {
                   produce(σ, decider.fresh, terms.FullPerm(), body, err, c)((_, c1) =>
                     Success())})
       }

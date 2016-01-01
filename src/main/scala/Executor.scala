@@ -45,7 +45,7 @@ trait DefaultExecutor[ST <: Store[ST],
   protected val config: Config
   protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
 
-  import decider.{fresh, assume, inScope}
+  import decider.{fresh, assume, locally}
   import stateFactory._
   import symbolConverter.toSort
 
@@ -121,7 +121,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
-        (inScope {
+        (locally {
           /* Verify loop body (including well-formedness check) */
           decider.prover.logComment("Verify loop body")
           produces(σBody, fresh,  FullPerm(), lb.invs :+ lb.cond, _ => WhileFailed(loopStmt), c)((σ1, c1) =>
@@ -136,7 +136,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
                   Success())))}
             &&
-          inScope {
+          locally {
             /* Verify call-site */
             decider.prover.logComment("Establish loop invariant")
             consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {

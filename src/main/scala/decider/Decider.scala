@@ -151,7 +151,7 @@ trait DeciderProvider[ST <: Store[ST],
       }
     }
 
-    def inScope(block: => VerificationResult): VerificationResult = {
+    def locally(block: => VerificationResult): VerificationResult = {
       locally[VerificationResult](QS => QS(block))(Predef.identity)
     }
 

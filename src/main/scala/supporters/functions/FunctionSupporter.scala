@@ -167,7 +167,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = decider.inScope {
+      val result = decider.locally {
         val πInit = decider.π
         produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
           phase1Data :+= Phase1Data(σ1, decider.π -- πInit, c1)
@@ -197,7 +197,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, p1d) =>
-          intermediateResult && decider.inScope {
+          intermediateResult && decider.locally {
             decider.assume(p1d.πPre)
             eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
               decider.assume(data.formalResult === tBody)

@@ -32,7 +32,7 @@ trait Decider[ST <: Store[ST],
                 (Q: R => VerificationResult)
                 : VerificationResult
 
-  def inScope(block: => VerificationResult): VerificationResult
+  def locally(block: => VerificationResult): VerificationResult
 
   def assume(t: Term)
   def assume(ts: Iterable[Term])

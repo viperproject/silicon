@@ -116,7 +116,7 @@ trait DefaultBrancher[ST <: Store[ST],
       val cTrue = c.copy(branchConditions = guardsTrue +: c.branchConditions)
 
       val result =
-        decider.inScope {
+        decider.locally {
           decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
           assume(guardsTrue)
           compressHeapIfRetrying(cTrue, σ)
@@ -135,7 +135,7 @@ trait DefaultBrancher[ST <: Store[ST],
       val cFalse = c.copy(branchConditions = guardsFalse +: c.branchConditions)
 
       val result =
-        decider.inScope {
+        decider.locally {
           decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
           assume(guardsFalse)
           compressHeapIfRetrying(cFalse, σ)

@@ -43,7 +43,7 @@ trait MethodSupporterProvider[ST <: Store[ST],
   protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
 
-  import decider.{fresh, inScope}
+  import decider.{fresh, locally}
   import stateFactory._
 
   object methodSupporter extends MethodSupporter[ST, H, PC, S, C] {
@@ -83,18 +83,18 @@ trait MethodSupporterProvider[ST <: Store[ST],
           /* Combined the well-formedness check and the execution of the body, which are two separate
            * rules in Smans' paper.
            */
-          inScope {
+          locally {
             produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
               val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-                 (inScope {
+                 (locally {
                     /* TODO: Checking self-framingness here fails if pold(e) reads a location
                      *       to which access is not required by the precondition.
                      */
                     magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
-              && inScope {
+              && locally {
                     produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
                       Success())}
-              && inScope {
+              && locally {
                     exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
                       consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, c4) =>
                         Success()))})})}

@@ -41,7 +41,7 @@ trait MagicWandSupporter[ST <: Store[ST],
   protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
   protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
 
-  import decider.{fresh, inScope}
+  import decider.{fresh, locally}
   import stateFactory._
 
   object magicWandSupporter {
@@ -84,14 +84,14 @@ trait MagicWandSupporter[ST <: Store[ST],
           var σInner: S = null.asInstanceOf[S]
 
           result =
-              inScope {
+              locally {
                 //            println("  checking left")
                 produce(σ1, fresh, terms.FullPerm(), left, err, c)((σ2, c2) => {
                   σInner = σ2
                   //              val c3 = c2 /*.copy(givenHeap = Some(σ2.h))*/
                   //              val σ3 = σ1
                   Success()})
-              } && inScope {
+              } && locally {
                 //            println("  checking right")
                 produce(σ1, fresh, terms.FullPerm(), right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
                   Success())}
