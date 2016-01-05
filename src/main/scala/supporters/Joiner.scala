@@ -6,18 +6,23 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.Stack
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.{State, PathConditions, Heap, Store, Context}
 import viper.silicon.state.DefaultContext
 import viper.silicon.state.terms.{App, True, Implies, And, Term, Sort}
 
+case class JoinDataEntry[C <: Context[C], D]
+                        (data: D,
+                         branchConditions: Seq[Term],
+                         πDelta: Set[Term],
+                         c: C)
+
 trait Joiner[C <: Context[C]] {
-  def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
-          (block: ((Term, C) => VerificationResult) => VerificationResult)
-          (Q: (Term, C) => VerificationResult)
-          : VerificationResult
+  def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
+                 (merge: (Seq[JoinDataEntry[C, D]]) => JD)
+                 (Q: (JD, C) => VerificationResult)
+                 : VerificationResult
 }
 
 trait DefaultJoiner[ST <: Store[ST],
@@ -31,15 +36,14 @@ trait DefaultJoiner[ST <: Store[ST],
 
   val decider: Decider[ST, H, PC, S, C]
 
-  def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
-          (block: ((Term, C) => VerificationResult) => VerificationResult)
-          (Q: (Term, C) => VerificationResult)
-          : VerificationResult = {
+  def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
+                 (merge: (Seq[JoinDataEntry[C, D]]) => JD)
+                 (Q: (JD, C) => VerificationResult)
+                 : VerificationResult = {
 
-    val πPre: Set[Term] = decider.π
-    var localResults: List[LocalEvaluationResult] = Nil
+    val πInit: Set[Term] = decider.π
+    var entries: Seq[JoinDataEntry[C, D]] = Vector.empty
 
-    //    decider.pushScope()
     /* Note: Executing the block in its own scope may result in incompletenesses:
      *   1. Let A be an assumption, e.g., a combine-term, that is added during
      *      the execution of block, but before the block's execution branches
@@ -49,83 +53,40 @@ trait DefaultJoiner[ST <: Store[ST],
      *      the branching took place.
      */
 
-    val r =
-      block((tR, cR) => {
-        localResults ::= LocalEvaluationResult(cR.branchConditions.filterNot(c.branchConditions.contains),
-                                               tR,
-                                               decider.π -- πPre,
-                                               cR.copy(branchConditions = c.branchConditions))
-            /* TODO: Storing a copy of cR with modified branchConditions is only necessary
-             *       because DefaultContext.merge (correctly) insists on equal branchConditions,
-             *       which cannot be circumvented/special-cased when merging contexts here (more
-             *       precisely, a bit further down via combine(localResults, ...)).
-             *       See DefaultBrancher.branchAndJoin for a similar comment.
-             */
+    /*decider.locally*/ {
+      block((data, c1) => {
+        val newBranchConditions = c1.branchConditions.filterNot(c.branchConditions.contains)
+        val πDelta = decider.π -- πInit -- newBranchConditions
+        val c2 = c1.copy(branchConditions = c.branchConditions)
+
+        entries :+= JoinDataEntry(data, newBranchConditions, πDelta, c2)
+
         Success()
       })
+    } && {
+      if (entries.isEmpty) {
+        /* Note: No block data was collected, which we interpret as all branches through the block
+         * being infeasible. Instead of calling Q, we terminate (the current branch of) the
+         * verification.
+         */
+        Success()
+      } else {
+        val cJoined =
+          entries.foldLeft(entries.head.c)((cAcc, localData) => {
+            val (πTopLevel, πNested) = viper.silicon.state.utils.partitionAuxiliaryTerms(localData.πDelta)
 
-    //    decider.popScope()
+            decider.prover.logComment("Top-level path conditions")
+            decider.assume(πTopLevel)
+            decider.prover.logComment("Nested path conditions")
+            decider.assume(Implies(And(localData.branchConditions), And(πNested)))
 
-    r && {
-      //        var tJoined: Term = null
-      //        var cJoined: C = null
+            cAcc.merge(localData.c)
+          })
 
-      localResults match {
-        case List() =>
-          /* Should imply that Silicon is exploring an infeasible proof branch */
-          Success()
+        val joinedData = merge(entries)
 
-        case List(localResult) =>
-          //            assert(localResult.πGuards.isEmpty,
-          //                   s"Joining single branch, expected no guard, but found ${localResult.πGuards}")
-
-          decider.assume(localResult.auxiliaryTerms)
-
-          val tJoined = localResult.actualResult
-          val cJoined = localResult.context.copy(branchConditions = c.branchConditions)
-          Q(tJoined, cJoined)
-
-        case _ =>
-          val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
-          val summarySymbol = decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
-          val tActualVar = App(summarySymbol, joinFunctionArgs)
-          val (tActualResult: Term, tAuxResult: Set[Term], cOpt) = combine(localResults, tActualVar === _)
-          val c1 = cOpt.getOrElse(c)
-
-          decider.assume(tAuxResult + tActualResult)
-
-          val tJoined = tActualVar
-          val cJoined = c1.copy(branchConditions = c.branchConditions)
-
-          Q(tJoined, cJoined)
+        Q(joinedData, cJoined)
       }
     }
-  }
-
-  private case class LocalEvaluationResult(πGuards: Stack[Term],
-                                           actualResult: Term,
-                                           auxiliaryTerms: Set[Term],
-                                           context: C)
-
-  private def combine(localResults: Seq[LocalEvaluationResult],
-                      actualResultTransformer: Term => Term = Predef.identity)
-                     : (Term, Set[Term], Option[C]) = {
-
-    val (t1: Term, tAux: Set[Term], optC) =
-      localResults.map { lr =>
-        val newGuards = lr.πGuards filterNot decider.π.contains
-        val guard: Term = And(newGuards)
-        val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
-        val tAux: Term = Implies(guard, And(lr.auxiliaryTerms))
-
-        (tAct, tAux, lr.context)
-      }.foldLeft((True(): Term, Set[Term](), None: Option[C])) {
-        case ((tActAcc, tAuxAcc, optCAcc), (tAct, _tAux, _c)) =>
-          val cAcc = optCAcc.fold(_c)(cAcc => cAcc.merge(_c))
-
-          (And(tActAcc, tAct), tAuxAcc + _tAux, Some(cAcc))
-      }
-
-    (t1, tAux, optC)
   }
 }

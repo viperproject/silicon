@@ -408,7 +408,7 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, c2)(QB => {
+          join[Term, Term](c2, QB => {
             val c3 = c2.copy(recordVisited = true,
                              fvfAsSnap = true)
             consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, c4) => {
@@ -420,7 +420,7 @@ trait DefaultEvaluator[ST <: Store[ST],
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val c6 = if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp)) else c5
               QB(tFApp, c6)})
-            })(Q)})
+            })(join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs))(Q)})
 
       case ast.Unfolding(
               acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -433,7 +433,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
                 case true =>
-                  join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables, c2)(QB => {
+                  join[Term, Term](c2, QB => {
                     val c3 = c2.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
@@ -455,7 +455,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
                         eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
-                  })(Q)
+                  })(join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables))(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
         } else {
@@ -785,5 +785,30 @@ trait DefaultEvaluator[ST <: Store[ST],
     val func = decider.fresh(id, appliedSorts, toSort(result))
 
     App(func, appliedArgs)
+  }
+
+  private def join(joinSort: Sort,
+                   joinFunctionName: String,
+                   joinFunctionArgs: Seq[Term])
+                  (entries: Seq[JoinDataEntry[C, Term]])
+                  : Term = {
+
+    assert(entries.nonEmpty, "Expected at least one join data entry")
+
+    entries match {
+      case Seq(entry) if entry.branchConditions.isEmpty =>
+        entry.data
+      case _ =>
+        val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
+        val joinSymbol = decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
+        val joinTerm = App(joinSymbol, joinFunctionArgs)
+
+        val joinDefEqs = entries map (entry =>
+          Implies(And(entry.branchConditions), joinTerm === entry.data))
+
+        decider.assume(joinDefEqs)
+
+        joinTerm
+    }
   }
 }
