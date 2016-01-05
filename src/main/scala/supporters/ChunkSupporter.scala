@@ -20,7 +20,6 @@ import viper.silicon.state.terms.perms.IsNoAccess
 
 trait ChunkSupporter[ST <: Store[ST],
                      H <: Heap[H],
-                     PC <: PathConditions[PC],
                      S <: State[ST, H, S],
                      C <: Context[C]] {
 
@@ -65,26 +64,25 @@ trait ChunkSupporter[ST <: Store[ST],
 
 trait ChunkSupporterProvider[ST <: Store[ST],
                              H <: Heap[H],
-                             PC <: PathConditions[PC],
                              S <: State[ST, H, S]]
   { this:      Logging
           with Evaluator[ST, H, S, DefaultContext[H]]
           with Producer[ST, H, S, DefaultContext[H]]
           with Consumer[ST, H, S, DefaultContext[H]]
           with Brancher[ST, H, S, DefaultContext[H]]
-          with MagicWandSupporter[ST, H, PC, S]
-          with HeuristicsSupporter[ST, H, PC, S] =>
+          with MagicWandSupporter[ST, H, S]
+          with HeuristicsSupporter[ST, H, S] =>
 
   private[this] type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
 
   import stateFactory._
 
-  object chunkSupporter extends ChunkSupporter[ST, H, PC, S, C] {
+  object chunkSupporter extends ChunkSupporter[ST, H, S, C] {
     private case class PermissionsConsumptionResult(consumedCompletely: Boolean)
 
     def consume(σ: S,
@@ -143,12 +141,13 @@ trait ChunkSupporterProvider[ST <: Store[ST],
           val c3 =
             if (c2.recordEffects) {
               assert(chs.length == c2.consumedChunks.length)
-
+              val bcs = decider.pcs.branchConditions
               val consumedChunks3 =
                 chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], BasicChunk)]]()) {
                   case (accConsumedChunks, (optCh, consumed)) =>
                     optCh match {
-                      case Some(ch) => ((c2.branchConditions -> ch) +: consumed) :: accConsumedChunks
+//                      case Some(ch) => ((c2.branchConditions -> ch) +: consumed) :: accConsumedChunks
+                      case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
                       case None => consumed :: accConsumedChunks
                     }
                 }.reverse
@@ -185,7 +184,8 @@ trait ChunkSupporterProvider[ST <: Store[ST],
     def produce(σ: S, h: H, ch: BasicChunk, c: C): (H, C) = {
       val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
       val c1 = c//recordSnapshot(c, matchedChunk, ch)
-      val c2 = recordProducedChunk(c1, ch, c.branchConditions)
+//      val c2 = recordProducedChunk(c1, ch, c.branchConditions)
+      val c2 = recordProducedChunk(c1, ch, decider.pcs.branchConditions)
 
       (h1, c2)
     }

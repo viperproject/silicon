@@ -25,14 +25,6 @@ trait StoreFactory[ST <: Store[ST]] {
   def Γ(pairs: Iterable[(ast.AbstractLocalVar, Term)]): ST
 }
 
-trait PathConditionsFactory[PC <: PathConditions[PC]] {
-  implicit def ØToEmptyPathConditions(ø: factoryUtils.Ø): PC = Π()
-
-  def Π(): PC
-  def Π(terms: Term): PC
-  def Π(terms: Set[Term]): PC
-}
-
 trait HeapFactory[H <: Heap[H]] {
   implicit def ØToEmptyHeap(ø: factoryUtils.Ø): H = H()
 

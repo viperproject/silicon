@@ -22,28 +22,27 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
 import viper.silicon.utils.NoOpStatefulComponent
 
-trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
-                      PC <: PathConditions[PC], S <: State[ST, H, S]]
+trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     extends Consumer[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with LetHandler[ST, H, S, DefaultContext[H]]
-                    with MagicWandSupporter[ST, H, PC, S]
-                    with HeuristicsSupporter[ST, H, PC, S]
+                    with MagicWandSupporter[ST, H, S]
+                    with HeuristicsSupporter[ST, H, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private[this] type C = DefaultContext[H]
 
   protected implicit val manifestH: Manifest[H]
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
-  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
 
   import decider.assume
   import stateFactory._
@@ -135,34 +134,32 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
-        val πPre = decider.π
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
-        decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB =>
+        decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB => {
+          val preMark = decider.setPathConditionMark()
           eval(σQVar, condition, pve, c0)((tCond, c1) =>
             if (decider.check(σQVar, Not(tCond), config.checkTimeout())) {
               /* The condition cannot be satisfied, hence we don't need to consume anything. */
               val c2 = c1.copy(quantifiedVariables = c1.quantifiedVariables.tail)
               Q(h, Unit, c2)
             } else {
-              decider.assume(tCond)
-              val c2 = c1.copy(branchConditions = tCond +: c1.branchConditions)
-              eval(σQVar, rcvr, pve, c2)((tRcvr, c3) =>
+              decider.setCurrentBranchCondition(tCond)
+              eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
                 decider.assert(σ, tRcvr !== Null()) {
                   case true =>
-                    eval(σQVar, loss, pve, c3)((pLoss, c4) =>
+                    eval(σQVar, loss, pve, c2)((pLoss, c3) =>
                       decider.assert(σ, perms.IsNonNegative(pLoss)) {
                         case true =>
-                          val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
+                          val πDelta = decider.pcs.after(preMark).assumptions - tCond /* Removing tCond is crucial */
                           val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
                           val tAuxQuantNoTriggers = Forall(tQVar, And(tAuxNested), Nil, s"prog.l${utils.ast.sourceLine(forall)}-aux")
-                          val c5 = c4.copy(quantifiedVariables = c4.quantifiedVariables.tail,
-                                           branchConditions = c4.branchConditions.tail)
-                          QB(tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c5)
+                          val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.tail)
+                          QB(tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c4)
                         case false =>
                           Failure(pve dueTo NegativePermission(loss))})
                   case false =>
                     Failure(pve dueTo ReceiverNull(fa))})})
-        ){case (tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
+        }){case (tCond, tRcvr, pLoss, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             val invFct =
@@ -195,7 +192,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H],
                     //                if (!config.disableQPCaching())
                     //                  qpForallCache.update((forall, toSet(quantifiedChunks)), (tQVar, tRcvr, tCond, invFct.definitionalAxioms, h3, ch, c2))
                     val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
-                                                                c2.branchConditions,
+//                                                                c2.branchConditions,
+                                                                decider.pcs.branchConditions,
                                                                 invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
                     val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
                     val c3 = c2.copy(functionRecorder = fr2)

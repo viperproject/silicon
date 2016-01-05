@@ -9,7 +9,7 @@ package viper.silicon.state
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silicon.{Map, MSet, toSet}
-import viper.silicon.interfaces.state.{Store, Heap, PathConditions, State, Chunk}
+import viper.silicon.interfaces.state.{Store, Heap, State, Chunk}
 import viper.silicon.state.terms.Term
 
 /*
@@ -57,44 +57,6 @@ case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBack
   def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ::: chunks)
 
   def -(ch: Chunk) = new ListBackedHeap(chunks.filterNot(_ == ch))
-}
-
-class MutableSetBackedPathConditions() extends PathConditions[MutableSetBackedPathConditions] {
-  private val stack = mutable.Stack[Term]()
-  private val set  = MSet[Term]()
-  private val scopeMarker: Term = null
-
-  def empty = new MutableSetBackedPathConditions()
-
-  def values = toSet(set.collect{case t: Term if t != null => t})
-  def contains(t: Term) = if (t == null) false else set.contains(t)
-
-  def push(t: Term) = {
-    assert(t != null, "Term must not be null.")
-    stack.push(t)
-    set.add(t)
-    this
-  }
-
-  def pop() = {
-    set.remove(stack.pop())
-    this
-  }
-
-  def pushScope() = {
-    stack.push(scopeMarker)
-    this
-  }
-
-  def popScope() = {
-    var t: Term = null
-
-    while ({t = stack.pop(); t != null}) {
-      set.remove(t)
-    }
-
-    this
-  }
 }
 
 /*

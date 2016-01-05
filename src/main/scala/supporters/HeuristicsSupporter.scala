@@ -20,21 +20,20 @@ import viper.silicon.reporting.Bookkeeper
 
 trait HeuristicsSupporter[ST <: Store[ST],
                         H <: Heap[H],
-                        PC <: PathConditions[PC],
                         S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
-            with MagicWandSupporter[ST, H, PC, S] =>
+            with MagicWandSupporter[ST, H, S] =>
 
   private[this] type C = DefaultContext[H]
 
   protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
 
   import stateFactory._
 

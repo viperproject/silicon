@@ -30,7 +30,6 @@ class PredicateData(predicate: ast.Predicate)
 
 trait PredicateSupporter[ST <: Store[ST],
                          H <: Heap[H],
-                         PC <: PathConditions[PC],
                          S <: State[ST, H, S],
                          C <: Context[C]]
     extends VerificationUnit[H, ast.Predicate] {
@@ -59,25 +58,24 @@ trait PredicateSupporter[ST <: Store[ST],
 
 trait PredicateSupporterProvider[ST <: Store[ST],
                                  H <: Heap[H],
-                                 PC <: PathConditions[PC],
                                  S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[ST, H, S, DefaultContext[H]]
-            with ChunkSupporterProvider[ST, H, PC, S]
-            with MagicWandSupporter[ST, H, PC, S] =>
+            with ChunkSupporterProvider[ST, H, S]
+            with MagicWandSupporter[ST, H, S] =>
 
   private type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected val decider: Decider[ST, H, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
 
   import decider.{fresh, locally}
   import stateFactory._
 
-  object predicateSupporter extends PredicateSupporter[ST, H, PC, S, C] {
+  object predicateSupporter extends PredicateSupporter[ST, H, S, C] {
     private var program: ast.Program = null
     private var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
 

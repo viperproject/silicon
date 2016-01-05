@@ -11,7 +11,7 @@ import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon.{Silicon, Config, toSet}
+import viper.silicon._
 import viper.silicon.interfaces.{VerificationResult, Failure, Success, FatalResult, NonFatalResult}
 import viper.silicon.interfaces.decider.{Decider, Prover, Unsat}
 import viper.silicon.interfaces.state._
@@ -23,34 +23,31 @@ import viper.silicon.supporters.qps.QuantifiedChunkSupporter
 
 trait DeciderProvider[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     { this: Logging =>
 
   private[this] type C = DefaultContext[H]
 
-  protected val pathConditionsFactory: PathConditionsFactory[PC]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val symbolConverter: SymbolConvert
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val identifierFactory: IdentifierFactory
-  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  object decider extends Decider[ST, H, PC, S, C] with StatefulComponent {
+  object decider extends Decider[ST, H, S, C] with StatefulComponent {
     private var z3: Z3ProverStdIO = _
-    private var pathConditions: PC = _
+    private var pathConditions: DefaultPathConditions = _
 
   //  val paLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
   //  val proverAssertionTimingsLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
   //  lazy val fcwpLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
 
-    @inline
     def prover: Prover = z3
 
-    @inline
-    def π = pathConditions.values
+    def pcs: PathConditionStack = pathConditions.stack
+    def π: Set[Term] = pathConditions.assumptions
 
     private def createProver(): Option[DependencyNotFoundError] = {
       try {
@@ -81,13 +78,13 @@ trait DeciderProvider[ST <: Store[ST],
     /* Life cycle */
 
     def start() {
-      pathConditions = pathConditionsFactory.Π()
+      pathConditions = new DefaultPathConditions()
       createProver()
     }
 
     def reset() {
       z3.reset()
-      pathConditions = pathConditions.empty
+      pathConditions = new DefaultPathConditions()
     }
 
     def stop() {
@@ -152,6 +149,12 @@ trait DeciderProvider[ST <: Store[ST],
       locally[VerificationResult](QS => QS(block))(Predef.identity)
     }
 
+    def setCurrentBranchCondition(t: Term) {
+      pathConditions.setCurrentBranchCondition(t)
+      assume(Set(t))
+    }
+
+    def setPathConditionMark() = pathConditions.mark()
 
     /* Assuming facts */
 
@@ -174,7 +177,7 @@ trait DeciderProvider[ST <: Store[ST],
 
     private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
       /* Add terms to Silicon-managed path conditions */
-      terms foreach pathConditions.push
+      terms foreach pathConditions.add
 
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
@@ -275,7 +278,7 @@ trait DeciderProvider[ST <: Store[ST],
     private def isKnownToBeTrue(t: Term) = t match {
       case True() => true
   //    case eq: BuiltinEquals => eq.p0 == eq.p1 /* WARNING: Blocking trivial equalities might hinder axiom triggering. */
-      case _ if π contains t => true
+      case _ if pcs.assumptions contains t => true
       case q: Quantification if q.body == True() => true
       case _ => false
     }

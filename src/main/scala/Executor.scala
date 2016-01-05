@@ -12,7 +12,7 @@ import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter}
+import viper.silicon.interfaces.state.{Store, Heap, State, StateFactory, StateFormatter}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.state.terms._
 import viper.silicon.state.{FieldChunk, SymbolConvert, DefaultContext}
@@ -22,28 +22,27 @@ import viper.silicon.supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Executor[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
                     with Consumer[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
-                    with MagicWandSupporter[ST, H, PC, S]
+                    with MagicWandSupporter[ST, H, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
 
   protected implicit val manifestH: Manifest[H]
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
 
   import decider.{fresh, assume, locally}
   import stateFactory._

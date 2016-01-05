@@ -26,18 +26,17 @@ trait HeapCompressor[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], C <: C
 
 trait HeapCompressorProvider[ST <: Store[ST],
                              H <: Heap[H],
-                             PC <: PathConditions[PC],
                              S <: State[ST, H, S],
                              C <: Context[C]]
     { this: Logging =>
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
-  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
 
   import stateFactory.H
 

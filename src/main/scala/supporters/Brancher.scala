@@ -43,7 +43,6 @@ trait Brancher[ST <: Store[ST],
 
 trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Brancher[ST, H, S, DefaultContext[H]]
        with StatefulComponent {
@@ -52,7 +51,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
   private var branchCounter: Counter = _
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
@@ -105,12 +104,13 @@ trait DefaultBrancher[ST <: Store[ST],
     }
 
     ((if (exploreTrueBranch) {
-      val cTrue = c.copy(branchConditions = guardsTrue +: c.branchConditions)
+      val cTrue = c//.copy(branchConditions = guardsTrue +: c.branchConditions)
 
       val result =
         decider.locally {
           decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
-          assume(guardsTrue)
+//          assume(guardsTrue)
+          decider.setCurrentBranchCondition(guardsTrue)
           compressHeapIfRetrying(cTrue, σ)
           val r = fTrue(cTrue)
           restoreHeapIfPreviouslyCompressed(σ)
@@ -124,12 +124,13 @@ trait DefaultBrancher[ST <: Store[ST],
     })
       &&
     (if (exploreFalseBranch) {
-      val cFalse = c.copy(branchConditions = guardsFalse +: c.branchConditions)
+      val cFalse = c//.copy(branchConditions = guardsFalse +: c.branchConditions)
 
       val result =
         decider.locally {
           decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
-          assume(guardsFalse)
+//          assume(guardsFalse)
+          decider.setCurrentBranchCondition(guardsFalse)
           compressHeapIfRetrying(cFalse, σ)
           val r = fFalse(cFalse)
           restoreHeapIfPreviouslyCompressed(σ)

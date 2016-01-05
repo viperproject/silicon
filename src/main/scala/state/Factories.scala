@@ -8,7 +8,7 @@ package viper.silicon.state
 
 import viper.silver.ast
 import viper.silicon.{Map, toMap, Set}
-import viper.silicon.interfaces.state.{Chunk, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory}
+import viper.silicon.interfaces.state.{Chunk, StoreFactory, HeapFactory, StateFactory}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.state.terms.Term
 
@@ -32,17 +32,4 @@ class DefaultStateFactory()
 
   def Σ() = Σ(Ø, Ø, Ø)
   def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g)
-}
-
-class DefaultPathConditionsFactory
-    extends PathConditionsFactory[MutableSetBackedPathConditions] {
-
-  def Π() = new MutableSetBackedPathConditions()
-  def Π(term: Term) = new MutableSetBackedPathConditions().push(term)
-
-  def Π(terms: Set[Term]) = {
-    val π = new MutableSetBackedPathConditions()
-    terms foreach π.push
-    π
-  }
 }

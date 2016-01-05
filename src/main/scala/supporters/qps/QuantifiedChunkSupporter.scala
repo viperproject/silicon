@@ -28,7 +28,6 @@ case class InverseFunction(func: Function, function: Term => Term, invOfFct: Qua
 
 trait QuantifiedChunkSupporter[ST <: Store[ST],
                                H <: Heap[H],
-                               PC <: PathConditions[PC],
                                S <: State[ST, H, S],
                                C <: Context[C]] {
 
@@ -104,13 +103,12 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
 
 trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                        H <: Heap[H],
-                                       PC <: PathConditions[PC],
                                        S <: State[ST, H, S]]
     extends StatefulComponent {
 
   private[this] type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected val decider: Decider[ST, H, S, DefaultContext[H]]
   protected val symbolConverter: SymbolConvert
   protected val stateFactory: StateFactory[ST, H, S]
   protected val axiomRewriter: AxiomRewriter
@@ -121,7 +119,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
   import stateFactory._
   import decider.{assert, fresh, check, assume}
 
-  object quantifiedChunkSupporter extends QuantifiedChunkSupporter[ST, H, PC, S, C]
+  object quantifiedChunkSupporter extends QuantifiedChunkSupporter[ST, H, S, C]
                                      with StatefulComponent {
 
     private var permsTakenCounter: Counter = _

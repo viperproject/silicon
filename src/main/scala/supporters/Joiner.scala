@@ -6,16 +6,15 @@
 
 package viper.silicon.supporters
 
+import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state.{State, PathConditions, Heap, Store, Context}
+import viper.silicon.interfaces.state.{State, Heap, Store, Context}
 import viper.silicon.state.DefaultContext
-import viper.silicon.state.terms.{Implies, And, Term}
 
 case class JoinDataEntry[C <: Context[C], D]
                         (data: D,
-                         newBranchConditions: Seq[Term],
-                         newPathConditions: Set[Term],
+                         pathConditionStack: PathConditionStack,
                          c: C)
 
 trait Joiner[C <: Context[C]] {
@@ -27,21 +26,19 @@ trait Joiner[C <: Context[C]] {
 
 trait DefaultJoiner[ST <: Store[ST],
                     H <: Heap[H],
-                    PC <: PathConditions[PC],
                     S <: State[ST, H, S]]
     extends Joiner[DefaultContext[H]]
-{ this: DefaultBrancher[ST, H, PC, S] =>
+{ this: DefaultBrancher[ST, H, S] =>
 
   private[this] type C = DefaultContext[H]
 
-  val decider: Decider[ST, H, PC, S, C]
+  val decider: Decider[ST, H, S, C]
 
   def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
                  (merge: (Seq[JoinDataEntry[C, D]]) => JD)
                  (Q: (JD, C) => VerificationResult)
                  : VerificationResult = {
 
-    val πInit: Set[Term] = decider.π
     var entries: Seq[JoinDataEntry[C, D]] = Vector.empty
 
     /* Note: Executing the block in its own scope may result in incompletenesses:
@@ -53,13 +50,11 @@ trait DefaultJoiner[ST <: Store[ST],
      *      the branching took place.
      */
 
-    /*decider.locally*/ {
+    decider.locally {
+      val preMark = decider.setPathConditionMark()
+
       block((data, c1) => {
-        val newBranchConditions = c1.branchConditions.filterNot(c.branchConditions.contains)
-        val πDelta = decider.π -- πInit -- newBranchConditions
-
-        entries :+= JoinDataEntry(data, newBranchConditions, πDelta, c1)
-
+        entries :+= JoinDataEntry(data, decider.pcs.after(preMark), c1)
         Success()
       })
     } && {
@@ -75,18 +70,15 @@ trait DefaultJoiner[ST <: Store[ST],
          * which cannot be circumvented/special-cased when merging contexts here.
          */
 
-        val cInit = entries.head.c.copy(branchConditions = c.branchConditions)
+        val cInit = entries.head.c
 
         val cJoined =
           entries.foldLeft(cInit)((cAcc, localData) => {
-            val (πTopLevel, πNested) = viper.silicon.state.utils.partitionAuxiliaryTerms(localData.newPathConditions)
+            val pcs = localData.pathConditionStack.asConditionals
+            decider.prover.logComment("Joined path conditions")
+            decider.assume(pcs)
 
-            decider.prover.logComment("Top-level path conditions")
-            decider.assume(πTopLevel)
-            decider.prover.logComment("Nested path conditions")
-            decider.assume(Implies(And(localData.newBranchConditions), And(πNested)))
-
-            cAcc.merge(localData.c.copy(branchConditions = c.branchConditions))
+            cAcc.merge(localData.c)
           })
 
         val joinedData = merge(entries)

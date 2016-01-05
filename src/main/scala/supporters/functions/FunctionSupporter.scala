@@ -37,7 +37,6 @@ object FunctionSupporter {
 
 trait FunctionSupporterProvider[ST <: Store[ST],
                                 H <: Heap[H],
-                                PC <: PathConditions[PC],
                                 S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
@@ -48,11 +47,11 @@ trait FunctionSupporterProvider[ST <: Store[ST],
   private type AxiomGenerator = () => Quantification
 
   protected val config: Config
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
   protected val identifierFactory: IdentifierFactory
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
 
   import decider.fresh
   import stateFactory._
@@ -168,9 +167,9 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
       val result = decider.locally {
-        val πInit = decider.π
+        val preMark = decider.setPathConditionMark()
         produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
-          phase1Data :+= Phase1Data(σ1, decider.π -- πInit, c1)
+          phase1Data :+= Phase1Data(σ1, decider.pcs.after(preMark).assumptions, c1)
           evals(σ1, posts, ContractNotWellformed, c1)((_, c2) => {
             recorders :+= c2.functionRecorder
             Success()})})}

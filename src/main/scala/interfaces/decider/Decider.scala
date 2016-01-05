@@ -8,19 +8,21 @@ package viper.silicon.interfaces.decider
 
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
+import viper.silicon.decider.{Mark, PathConditionStack}
 import viper.silicon.{Map, Set}
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.interfaces.state.{Context, Store, Heap, PathConditions, State}
+import viper.silicon.interfaces.state.{Context, Store, Heap, State}
 import viper.silicon.state.terms.{FullPerm, Term, Var, Sort, Function}
 
 trait Decider[ST <: Store[ST],
               H <: Heap[H],
-              PC <: PathConditions[PC],
               S <: State[ST, H, S],
               C <: Context[C]]
     extends StatefulComponent {
 
   def prover: Prover
+
+  def pcs: PathConditionStack
   def π: Set[Term]
 
   def checkSmoke(): Boolean
@@ -30,6 +32,9 @@ trait Decider[ST <: Store[ST],
                 : VerificationResult
 
   def locally(block: => VerificationResult): VerificationResult
+
+  def setCurrentBranchCondition(t: Term)
+  def setPathConditionMark(): Mark
 
   def assume(t: Term)
   def assume(ts: Iterable[Term])

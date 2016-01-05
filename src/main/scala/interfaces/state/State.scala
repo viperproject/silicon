@@ -37,16 +37,6 @@ trait Heap[S <: Heap[S]] {
   def -(chunk: Chunk): S
 }
 
-trait PathConditions[S <: PathConditions[S]] {
-  def empty: S
-  def values: Set[Term]
-  def contains(t: Term): Boolean
-  def push(term: Term): S
-  def pop(): S
-  def pushScope(): S
-  def popScope(): S
-}
-
 /*
  * State
  */

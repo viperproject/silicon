@@ -19,7 +19,6 @@ import viper.silicon.state.{DefaultContext, terms}
 
 trait MethodSupporter[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S],
                       C <: Context[C]]
     extends VerificationUnit[H, ast.Method] {
@@ -28,25 +27,24 @@ trait MethodSupporter[ST <: Store[ST],
 
 trait MethodSupporterProvider[ST <: Store[ST],
                               H <: Heap[H],
-                              PC <: PathConditions[PC],
                               S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
-            with ChunkSupporterProvider[ST, H, PC, S]
-            with MagicWandSupporter[ST, H, PC, S] =>
+            with ChunkSupporterProvider[ST, H, S]
+            with MagicWandSupporter[ST, H, S] =>
 
   private type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected val decider: Decider[ST, H, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
 
   import decider.{fresh, locally}
   import stateFactory._
 
-  object methodSupporter extends MethodSupporter[ST, H, PC, S, C] {
+  object methodSupporter extends MethodSupporter[ST, H, S, C] {
     private var program: ast.Program = null
 
     def analyze(program: ast.Program): Unit = {

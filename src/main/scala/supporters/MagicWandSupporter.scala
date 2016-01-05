@@ -24,7 +24,6 @@ import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
 
 trait MagicWandSupporter[ST <: Store[ST],
                          H <: Heap[H],
-                         PC <: PathConditions[PC],
                          S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
@@ -33,13 +32,13 @@ trait MagicWandSupporter[ST <: Store[ST],
 
   private[this] type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, DefaultContext[H]]
+  protected val decider: Decider[ST, H, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val heapCompressor: HeapCompressor[ST, H, S, DefaultContext[H]]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
-  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
 
   import decider.{fresh, locally}
   import stateFactory._
@@ -313,6 +312,8 @@ trait MagicWandSupporter[ST <: Store[ST],
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
 
+//      decider.pushScope()
+
       val r = locally {
         produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
           val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail, /* [CTX] */
@@ -390,6 +391,8 @@ trait MagicWandSupporter[ST <: Store[ST],
 
               contexts :+= c5
               Success()})})})}
+
+//      decider.popScope()
 
       cnt -= 1
       lnsay(s"[end packageWand $myId]")
@@ -527,8 +530,8 @@ trait MagicWandSupporter[ST <: Store[ST],
           val c1 = contexts.head.copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
                                       recordEffects = c.recordEffects,
                                       producedChunks = c.producedChunks,
-                                      consumedChunks = consumedChunks,
-                                      branchConditions = c.branchConditions)
+                                      consumedChunks = consumedChunks/*,
+                                      branchConditions = c.branchConditions*/)
 
           Q(magicWandChunk, c1)
         }

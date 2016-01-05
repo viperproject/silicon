@@ -25,27 +25,26 @@ import viper.silicon.supporters.functions.FunctionSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
                        H <: Heap[H],
-                       PC <: PathConditions[PC],
                        S <: State[ST, H, S]]
     extends Evaluator[ST, H, S, DefaultContext[H]]
     { this: Logging with Consumer[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
                     with Joiner[DefaultContext[H]]
-                    with MagicWandSupporter[ST, H, PC, S] =>
+                    with MagicWandSupporter[ST, H, S] =>
 
   private[this] type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S, C]
-  protected val chunkSupporter: ChunkSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
+  protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
 
   import decider.{fresh, assume}
   import stateFactory._
@@ -166,8 +165,11 @@ trait DefaultEvaluator[ST <: Store[ST],
 //            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
             assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
             val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
-                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
+//            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
+//                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
+            val bcs = decider.pcs.branchConditions
+            val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, fvfLookup)
+                                         .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.valueDefinitions)
             val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
             val c2 = c1.copy(functionRecorder = fr2)
             Q(fvfLookup, c2)})})
@@ -175,7 +177,8 @@ trait DefaultEvaluator[ST <: Store[ST],
       case fa: ast.FieldAccess =>
         evalLocationAccess(σ, fa, pve, c)((name, args, c1) =>
           chunkSupporter.withChunk(σ, σ.h, name, args, None, fa, pve, c1)((ch, c2) => {
-            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, c2.branchConditions, ch.snap))
+//            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, c2.branchConditions, ch.snap))
+            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, ch.snap))
             Q(ch.snap, c3)}))
 
       case ast.Not(e0) =>
@@ -241,9 +244,9 @@ trait DefaultEvaluator[ST <: Store[ST],
               (c2: C) => eval(σ, e2, pve, c2)(QB))
           )(entries => {
             val (t1, t2) = entries match {
-              case Seq(entry) if entry.c.branchConditions.head == t0 =>
+              case Seq(entry) if entry.pathConditionStack.branchConditions.head == t0 =>
                 (entry.data, partiallyAppliedFresh("$deadElse", c.quantifiedVariables, e2.typ))
-              case Seq(entry) if entry.c.branchConditions.head == Not(t0) =>
+              case Seq(entry) if entry.pathConditionStack.branchConditions.head == Not(t0) =>
                 (partiallyAppliedFresh("$deadThen", c.quantifiedVariables, e1.typ), entry.data)
               case Seq(entry1, entry2) =>
                 (entry1.data, entry2.data)
@@ -377,9 +380,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                         possibleTriggers = Map.empty)
 
         decider.locally[(Quantification, Iterable[Term], Quantification, C)](QB => {
-          val πPre: Set[Term] = decider.π
+          val preMark = decider.setPathConditionMark()
           eval(σQuant, body, pve, c0)((tBody, c1) => {
-            val πDelta = decider.π -- πPre
+            val πDelta = decider.pcs.after(preMark).assumptions
             evalTriggers(σQuant, eTriggers, πDelta, pve, c1)((triggers, c2) => {
               val sourceLine = utils.ast.sourceLine(sourceQuant)
               val tQuant = Quantification(qantOp, tVars, tBody, triggers, s"prog.l$sourceLine")
@@ -422,7 +425,8 @@ trait DefaultEvaluator[ST <: Store[ST],
               val s1 = s.convert(sorts.Snap)
               val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
-                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1),
+//                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1),
+                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, decider.pcs.branchConditions, s1),
                                fvfAsSnap = c2.fvfAsSnap)
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val c6 = if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp)) else c5
@@ -453,7 +457,8 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, c4) => {
-                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
+//                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
+                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, snap))
                       decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
@@ -741,19 +746,14 @@ trait DefaultEvaluator[ST <: Store[ST],
      */
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
-    val πPre: Set[Term] = decider.π
-    var πAux: Set[Term] = Set()
+//    val πPre: Set[Term] = decider.π
+    val preMark = decider.setPathConditionMark()
+    var πDelta: Set[Term] = Set()
 
     /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
      *       stop if evaluating one fails
-     */
-    val r =
-      evals(σ, remainingTriggerExpressions, _ => pve, c)((remainingTriggerTerms, c1) => {
-        optRemainingTriggerTerms = Some(remainingTriggerTerms)
-        πAux = decider.π -- πPre
-        Success()})
-
-    /* TODO: Here is an example where evaluating remainingTriggerExpressions will
+     *
+     *       Here is an example where evaluating remainingTriggerExpressions will
      *       fail: Assume a conjunction f(x) && g(x) where f(x) is the
      *       precondition of g(x). This gives rise to the trigger {f(x), g(x)}.
      *       If the two trigger expressions are evaluated individually, evaluating
@@ -776,9 +776,21 @@ trait DefaultEvaluator[ST <: Store[ST],
      *       variables.
      */
 
+    /* TODO: Use Decider.locally instead of val r = ...; r && { ... }.
+     *       This is currently not possible because Decider.locally will only continue after
+     *       the local block if the block was successful (i.e. if it yielded Success()).
+     *       However, here we want to continue in any case.
+     */
+
+    val r =
+      evals(σ, remainingTriggerExpressions, _ => pve, c)((remainingTriggerTerms, c1) => {
+        optRemainingTriggerTerms = Some(remainingTriggerTerms)
+        πDelta = decider.pcs.after(preMark).assumptions //decider.π -- πPre
+        Success()})
+
     (r, optRemainingTriggerTerms) match {
       case (Success(), Some(remainingTriggerTerms)) =>
-        assume(πAux)
+        assume(πDelta)
         Q(cachedTriggerTerms ++ remainingTriggerTerms, c)
       case _ =>
         bookkeeper.logfiles("evalTrigger").println(s"Couldn't evaluate some trigger expressions:\n  $remainingTriggerExpressions\nReason:\n  $r")
@@ -801,8 +813,13 @@ trait DefaultEvaluator[ST <: Store[ST],
 
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
+//    println("\n[Evaluator.join]")
+//    println("  entries = ")
+//    entries foreach (e => println(s"  $e"))
+
     entries match {
-      case Seq(entry) if entry.newBranchConditions.isEmpty =>
+//      case Seq(entry) if entry.newBranchConditions.isEmpty =>
+      case Seq(entry) if entry.pathConditionStack.branchConditions.isEmpty =>
         entry.data
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
@@ -810,7 +827,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         val joinTerm = App(joinSymbol, joinFunctionArgs)
 
         val joinDefEqs = entries map (entry =>
-          Implies(And(entry.newBranchConditions), joinTerm === entry.data))
+          Implies(And(entry.pathConditionStack.branchConditions), joinTerm === entry.data))
+
+//        println(s"  joinTerm = $joinTerm")
+//        println(s"  joinDefEqs = ")
+//        joinDefEqs foreach (e => println(s"  $e"))
 
         decider.assume(joinDefEqs)
 

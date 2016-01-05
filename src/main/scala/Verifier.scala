@@ -23,36 +23,34 @@ import viper.silicon.utils.NoOpStatefulComponent
 object DefaultVerifier {
   type ST = MapBackedStore
   type H = ListBackedHeap
-  type PC = MutableSetBackedPathConditions
   type S = DefaultState[ST, H]
   type C = DefaultContext[H]
 }
 
 class DefaultVerifier(val config: Config)
     extends NoOpStatefulComponent
-       with DeciderProvider[ST, H, PC, S]
-       with DefaultEvaluator[ST, H, PC, S]
-       with DefaultProducer[ST, H, PC, S]
-       with DefaultConsumer[ST, H, PC, S]
-       with DefaultExecutor[ST, H, PC, S]
-       with FunctionSupporterProvider[ST, H, PC, S]
-       with ChunkSupporterProvider[ST, H, PC, S]
-       with PredicateSupporterProvider[ST, H, PC, S]
-       with DefaultBrancher[ST, H, PC, S]
-       with DefaultJoiner[ST, H, PC, S]
+       with DeciderProvider[ST, H, S]
+       with DefaultEvaluator[ST, H, S]
+       with DefaultProducer[ST, H, S]
+       with DefaultConsumer[ST, H, S]
+       with DefaultExecutor[ST, H, S]
+       with FunctionSupporterProvider[ST, H, S]
+       with ChunkSupporterProvider[ST, H, S]
+       with PredicateSupporterProvider[ST, H, S]
+       with DefaultBrancher[ST, H, S]
+       with DefaultJoiner[ST, H, S]
        with DefaultLetHandler[ST, H, S, C]
-       with MagicWandSupporter[ST, H, PC, S]
-       with HeuristicsSupporter[ST, H, PC, S]
-       with HeapCompressorProvider[ST, H, PC, S, C]
-       with QuantifiedChunkSupporterProvider[ST, H, PC, S]
-       with MethodSupporterProvider[ST, H, PC, S]
+       with MagicWandSupporter[ST, H, S]
+       with HeuristicsSupporter[ST, H, S]
+       with HeapCompressorProvider[ST, H, S, C]
+       with QuantifiedChunkSupporterProvider[ST, H, S]
+       with MethodSupporterProvider[ST, H, S]
        with Logging {
 
   protected implicit val manifestH: Manifest[H] = manifest[H]
 
   val bookkeeper = new Bookkeeper(config)
   val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
-  val pathConditionsFactory = new DefaultPathConditionsFactory()
   val symbolConverter = new DefaultSymbolConvert()
   val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
   val stateFactory = new DefaultStateFactory()
