@@ -21,7 +21,7 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
     val πStr =
       if (config.logLevel().equalsIgnoreCase("TRACE") || config.logLevel().equalsIgnoreCase("ALL"))
-        s"  ${format(π)}\n"
+        s"${format(π)}\n"
       else
         ""
 
