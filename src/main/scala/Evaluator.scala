@@ -224,26 +224,33 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.Implies(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
-          branchAndJoin(σ, t0, c1,
-            (c2, QB) => eval(σ, e1, pve, c2)(QB),
-            (c2, QB) => Success()
-          )((optT1, optT2, cJoined) => {
-          val tImplies = Implies(t0, optT1.getOrElse(True()))
-            Q(tImplies, cJoined)
-          }))
+          join[Term, Term](c1, QB =>
+            branch(σ, t0, c1,
+              (c2: C) => eval(σ, e1, pve, c2)(QB),
+              (c2: C) => QB(True(), c2))
+          )(entries => {
+            assert(entries.length <= 2)
+            Implies(t0, entries.headOption.map(_.data).getOrElse(True()))
+          })(Q))
 
       case ite @ ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
-          branchAndJoin(σ, t0, c1,
-            (c2, QB) => eval(σ, e1, pve, c2)(QB),
-            (c2, QB) => eval(σ, e2, pve, c2)(QB)
-          )((optT1, optT2, cJoined) => {
-            val tIte =
-              Ite(t0,
-                  optT1.getOrElse(partiallyAppliedFresh("$deadThen", cJoined, e1.typ)),
-                  optT2.getOrElse(partiallyAppliedFresh("$deadElse", cJoined, e2.typ)))
-            Q(tIte, cJoined)
-          }))
+          join[Term, Term](c1, QB =>
+            branch(σ, t0, c1,
+              (c2: C) => eval(σ, e1, pve, c2)(QB),
+              (c2: C) => eval(σ, e2, pve, c2)(QB))
+          )(entries => {
+            val (t1, t2) = entries match {
+              case Seq(entry) if entry.c.branchConditions.head == t0 =>
+                (entry.data, partiallyAppliedFresh("$deadElse", c.quantifiedVariables, e2.typ))
+              case Seq(entry) if entry.c.branchConditions.head == Not(t0) =>
+                (partiallyAppliedFresh("$deadThen", c.quantifiedVariables, e1.typ), entry.data)
+              case Seq(entry1, entry2) =>
+                (entry1.data, entry2.data)
+              case _ =>
+                sys.error(s"Unexpected join data entries: $entries")}
+            Ite(t0, t1, t2)
+          })(Q))
 
       /* Integers */
 
@@ -459,7 +466,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
         } else {
-          val unknownValue = partiallyAppliedFresh("recunf", c, eIn.typ)
+          val unknownValue = partiallyAppliedFresh("recunf", c.quantifiedVariables, eIn.typ)
           Q(unknownValue, c)
         }
 
@@ -779,8 +786,7 @@ trait DefaultEvaluator[ST <: Store[ST],
     }
   }
 
-  private def partiallyAppliedFresh(id: String, c: C, result: ast.Type) = {
-    val appliedArgs = c.quantifiedVariables
+  private def partiallyAppliedFresh(id: String, appliedArgs: Seq[Term], result: ast.Type) = {
     val appliedSorts = appliedArgs.map(_.sort)
     val func = decider.fresh(id, appliedSorts, toSort(result))
 
@@ -796,7 +802,7 @@ trait DefaultEvaluator[ST <: Store[ST],
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
     entries match {
-      case Seq(entry) if entry.branchConditions.isEmpty =>
+      case Seq(entry) if entry.newBranchConditions.isEmpty =>
         entry.data
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
@@ -804,7 +810,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         val joinTerm = App(joinSymbol, joinFunctionArgs)
 
         val joinDefEqs = entries map (entry =>
-          Implies(And(entry.branchConditions), joinTerm === entry.data))
+          Implies(And(entry.newBranchConditions), joinTerm === entry.data))
 
         decider.assume(joinDefEqs)
 

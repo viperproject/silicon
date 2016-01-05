@@ -8,11 +8,11 @@ package viper.silicon.supporters
 
 import viper.silver.components.StatefulComponent
 import viper.silicon.Config
-import viper.silicon.interfaces.{Success, Unreachable, VerificationResult}
+import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.terms.{Ite, True, Not, And, Term}
+import viper.silicon.state.terms.{Not, And, Term}
 import viper.silicon.state.DefaultContext
 import viper.silicon.utils.Counter
 
@@ -35,14 +35,6 @@ trait Brancher[ST <: Store[ST],
              fTrue: C => VerificationResult,
              fFalse: C => VerificationResult)
             : VerificationResult
-
-  def branchAndJoin(σ: S,
-                    guard: Term,
-                    c: C,
-                    fTrue: (C, (Term, C) => VerificationResult) => VerificationResult,
-                    fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
-                   (Q: (Option[Term], Option[Term], C) => VerificationResult)
-                   : VerificationResult
 }
 
 /*
@@ -149,68 +141,6 @@ trait DefaultBrancher[ST <: Store[ST],
       decider.prover.logComment(s"[dead else-branch $cnt] $guardsFalse")
       Unreachable()
     }))
-  }
-
-  def branchAndJoin(σ: S,
-                    guard: Term,
-                    c: C,
-                    fTrue: (C, (Term, C) => VerificationResult) => VerificationResult,
-                    fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
-                   (Q: (Option[Term], Option[Term], C) => VerificationResult)
-                   : VerificationResult = {
-
-    val πPre: Set[Term] = decider.π
-    var πThen: Option[Set[Term]] = None
-    var tThen: Option[Term] = None
-    var cThen: Option[C] = None
-    var πElse: Option[Set[Term]] = None
-    var tElse: Option[Term] = None
-    var cElse: Option[C] = None
-
-    val r =
-      branch(σ, guard, c,
-        (c1: C) =>
-          fTrue(c1,
-                (t, c2) => {
-                  assert(πThen.isEmpty, s"Unexpected branching occurred")
-                  πThen = Some(decider.π -- (πPre + guard))
-                  tThen = Some(t)
-                  cThen = Some(c2)
-                  Success()}),
-        (c1: C) =>
-          fFalse(c1,
-                (t, c2) => {
-                  assert(πElse.isEmpty, s"Unexpected branching occurred")
-                  πElse = Some(decider.π -- (πPre + guard))
-                  tElse = Some(t)
-                  cElse = Some(c2)
-                  Success()}))
-
-    r && {
-      val tAuxIte = /* Ite with auxiliary terms */
-        Ite(guard,
-            πThen.fold(True(): Term)(ts => And(ts)),
-            πElse.fold(True(): Term)(ts => And(ts)))
-
-      assume(tAuxIte)
-
-      val cJoined = (cThen, cElse) match {
-        case (Some(_cThen), Some(_cElse)) =>
-          val cThen0 = _cThen.copy(branchConditions = c.branchConditions)
-          val cElse0 = _cElse.copy(branchConditions = c.branchConditions)
-          /* TODO: Modifying the branchConditions before merging contexts is only necessary
-           *       because DefaultContext.merge (correctly) insists on equal branchConditions,
-           *       which cannot be circumvented/special-cased when merging contexts here.
-           *       See DefaultJoiner.join for a similar comment.
-           */
-          cThen0.merge(cElse0)
-        case (None, Some(_cElse)) => _cElse
-        case (Some(_cThen), None) => _cThen
-        case (None, None) => c
-      }
-
-      Q(tThen, tElse, cJoined.copy(branchConditions = c.branchConditions))
-    }
   }
 
   /* Lifecycle */

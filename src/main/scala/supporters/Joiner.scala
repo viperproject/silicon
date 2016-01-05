@@ -10,12 +10,12 @@ import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.{State, PathConditions, Heap, Store, Context}
 import viper.silicon.state.DefaultContext
-import viper.silicon.state.terms.{App, True, Implies, And, Term, Sort}
+import viper.silicon.state.terms.{Implies, And, Term}
 
 case class JoinDataEntry[C <: Context[C], D]
                         (data: D,
-                         branchConditions: Seq[Term],
-                         πDelta: Set[Term],
+                         newBranchConditions: Seq[Term],
+                         newPathConditions: Set[Term],
                          c: C)
 
 trait Joiner[C <: Context[C]] {
@@ -57,30 +57,36 @@ trait DefaultJoiner[ST <: Store[ST],
       block((data, c1) => {
         val newBranchConditions = c1.branchConditions.filterNot(c.branchConditions.contains)
         val πDelta = decider.π -- πInit -- newBranchConditions
-        val c2 = c1.copy(branchConditions = c.branchConditions)
 
-        entries :+= JoinDataEntry(data, newBranchConditions, πDelta, c2)
+        entries :+= JoinDataEntry(data, newBranchConditions, πDelta, c1)
 
         Success()
       })
     } && {
       if (entries.isEmpty) {
-        /* Note: No block data was collected, which we interpret as all branches through the block
-         * being infeasible. Instead of calling Q, we terminate (the current branch of) the
-         * verification.
+        /* Note: No block data was collected, which we interpret as all branches through
+         * the block being infeasible. In turn, we assume that the overall verification path
+         * is infeasible. Instead of calling Q, we therefore terminate this path.
          */
         Success()
       } else {
+        /* Note: Modifying the branchConditions before merging contexts is only necessary
+         * because DefaultContext.merge (correctly) insists on equal branchConditions,
+         * which cannot be circumvented/special-cased when merging contexts here.
+         */
+
+        val cInit = entries.head.c.copy(branchConditions = c.branchConditions)
+
         val cJoined =
-          entries.foldLeft(entries.head.c)((cAcc, localData) => {
-            val (πTopLevel, πNested) = viper.silicon.state.utils.partitionAuxiliaryTerms(localData.πDelta)
+          entries.foldLeft(cInit)((cAcc, localData) => {
+            val (πTopLevel, πNested) = viper.silicon.state.utils.partitionAuxiliaryTerms(localData.newPathConditions)
 
             decider.prover.logComment("Top-level path conditions")
             decider.assume(πTopLevel)
             decider.prover.logComment("Nested path conditions")
-            decider.assume(Implies(And(localData.branchConditions), And(πNested)))
+            decider.assume(Implies(And(localData.newBranchConditions), And(πNested)))
 
-            cAcc.merge(localData.c)
+            cAcc.merge(localData.c.copy(branchConditions = c.branchConditions))
           })
 
         val joinedData = merge(entries)
