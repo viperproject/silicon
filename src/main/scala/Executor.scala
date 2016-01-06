@@ -200,8 +200,9 @@ trait DefaultExecutor[ST <: Store[ST],
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
               Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
           case _ =>
-            eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
-              Q(σ \+ (v, tRhs), c1))
+            eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) => {
+              val t = ssaifyRhs(tRhs, v.name, v.typ)
+              Q(σ \+ (v, t), c1)})
         }
 
       /* Assignment for a field that contains quantified chunks */
@@ -232,8 +233,9 @@ trait DefaultExecutor[ST <: Store[ST],
           decider.assert(σ, tRcvr !== Null()){
             case true =>
               eval(σ, rhs, pve, c1)((tRhs, c2) =>
-                chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) =>
-                  Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)))
+                chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) => {
+                  val t = ssaifyRhs(tRhs, field.name, field.typ)
+                  Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)}))
             case false =>
               Failure(pve dueTo ReceiverNull(fa))})
 
@@ -419,4 +421,24 @@ trait DefaultExecutor[ST <: Store[ST],
 
     executed
   }
+
+   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type): Term =
+     rhs match {
+       case _: Var | _: Literal =>
+         /* Cheap (and likely to succeed) matches come first */
+         rhs
+
+       case _ if    rhs.existsDefined { case t if TriggerGenerator.isForbiddenInTrigger(t) => true }
+                 || rhs.isInstanceOf[WildcardPerm] /* Fixes issue #110 (somewhat indirectly) */
+            =>
+
+         val t = fresh(name, toSort(typ))
+         assume(t === rhs)
+
+         t
+
+       case _ =>
+         /* Catch-all case */
+         rhs
+     }
 }
