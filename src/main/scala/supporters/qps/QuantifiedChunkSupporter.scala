@@ -428,7 +428,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
        * that talk about concrete receivers will not use the inverse function, and
        * thus will not trigger the axioms that define the values of the fvf.
        */
-      val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, condition, receiver, true)
+      val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, Ite(condition, perms, NoPerm()), receiver, true)
 
       decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
 

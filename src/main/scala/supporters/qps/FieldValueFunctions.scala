@@ -115,7 +115,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
                       .getOrElse((Nil, Nil))
     TriggerGenerator.allowInvalidTriggers = false
 
-    val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, condition), triggers, s"qp.$fvf-dom")
+    val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$fvf-dom")
     val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
 
     Seq(finalForall)
