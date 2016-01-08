@@ -13,6 +13,7 @@ import viper.silicon.interfaces.state.Mergeable
 import viper.silicon.state.terms._
 
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
+  def data: Option[FunctionData]
   private[functions] def locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]]
   def locToSnap: Map[ast.LocationAccess, Term]
   private[functions] def fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]]
@@ -25,11 +26,14 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def recordFvf(field: ast.Field, fvf: Term): FunctionRecorder
 }
 
-case class ActualFunctionRecorder(private[functions] val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
+case class ActualFunctionRecorder(private val _data: FunctionData,
+                                  private[functions] val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
                                   private[functions] val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
                                   freshFvfs: Set[(ast.Field, Term)] = Set(),
                                   qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
     extends FunctionRecorder {
+
+  val data = Some(_data)
 
   def locToSnap: Map[ast.LocationAccess, Term] = {
     locToSnaps.map { case (loc, guardsToSnap) =>
@@ -79,6 +83,7 @@ case class ActualFunctionRecorder(private[functions] val locToSnaps: Map[ast.Loc
 
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other.getClass == this.getClass)
+    assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
 
     val lts =
       other.locToSnaps.foldLeft(locToSnaps){case (accLts, (loc, guardsToSnaps)) =>
@@ -157,6 +162,7 @@ case class ActualFunctionRecorder(private[functions] val locToSnaps: Map[ast.Loc
 }
 
 case object NoopFunctionRecorder extends FunctionRecorder {
+  val data = None
   private[functions] val fappToSnaps: Map[FuncApp, Set[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[functions] val locToSnaps: Map[LocationAccess, Set[(Stack[Term], Term)]] = Map.empty

@@ -168,7 +168,26 @@ trait DefaultEvaluator[ST <: Store[ST],
 //            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
 //                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
             val bcs = decider.pcs.branchConditions
-            val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, fvfLookup)
+            /* TODO: Implement less hacky.
+             *       When a function's precondition is translated (when its definitional axiom
+             *       is generated), local variables that are not parameters of the function
+             *       itself will be translated as-is, i.e. 'x' will be translated to 'x', not to
+             *       some 'x@1'. This (currently) only affects quantified variables: at this
+             *       point, where the snapshot mapping 'e.f |-> lookup(..., e.f)' is recorded
+             *       by the function recorder, a quantified variable 'y' is bound to some 'y@2',
+             *       which might occur in 'e.f', and therefore, in 'lookup(..., e.f)'.
+             *       To prevent that 'y@2' ends up in the function definition axiom, all such
+             *       occurrences 'z@i' are replaced by just 'z'.
+             */
+            val lk = c1.functionRecorder.data match {
+              case Some(data) =>
+                val v2qv = toMap(σ.γ.values collect {
+                  case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
+                    v -> Var(SimpleIdentifier(k.name), v.sort)})
+                fvfLookup.replace(v2qv)
+              case None =>
+                fvfLookup}
+            val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
                                          .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.valueDefinitions)
             val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
             val c2 = c1.copy(functionRecorder = fr2)

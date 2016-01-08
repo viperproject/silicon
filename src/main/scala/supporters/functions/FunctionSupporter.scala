@@ -118,7 +118,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
     private def handleFunction(function: ast.Function, c0: DefaultContext[H]): VerificationResult = {
       val data = functionData(function)
       val c = c0.copy(quantifiedVariables = c0.quantifiedVariables ++ data.arguments,
-                      functionRecorder = ActualFunctionRecorder())
+                      functionRecorder = ActualFunctionRecorder(data))
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(function, c) match {
