@@ -381,10 +381,11 @@ trait DefaultEvaluator[ST <: Store[ST],
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val autoTriggeredForall = utils.ast.autoTrigger(forall)
+            val autoTriggeredForall = utils.ast.autoTrigger(forall, c.qpFields)
             (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
+          case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
 
         val body = eQuant.exp

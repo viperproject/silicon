@@ -100,34 +100,47 @@ package object utils {
           )(e.pos)
       })(recursive = _ => true)
 
-    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
-      val forallAutoTriggered = forall.autoTrigger
+    def autoTrigger(forall: silver.ast.Forall, qpFields: Set[silver.ast.Field]): silver.ast.Forall = {
+      /* Allow qp-fields in triggers */
+//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger {
+//        case fa: silver.ast.FieldAccess => qpFields contains fa.field
+//      }
 
-      if (forallAutoTriggered.triggers.nonEmpty)
-      /* Standard trigger generation code succeeded */
-        forallAutoTriggered
-      else {
-        /* Standard trigger generation code failed.
-         * Let's try generating (certain) invalid triggers, which will then be rewritten
-         */
-        silver.ast.utility.Triggers.TriggerGeneration.allowInvalidTriggers = true
+      val defaultTriggerForall = forall.autoTrigger
 
-        val finalForall =
-          silver.ast.utility.Expressions.generateTriggerSet(forall) match {
-            case Some((variables, triggerSets)) =>
-              /* Invalid triggers could be generated, now try to rewrite them */
-              val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
-
-              silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
-            case None =>
-              /* Invalid triggers could not be generated -> give up */
-              forall
+      val autoTriggeredForall =
+        if (defaultTriggerForall.triggers.nonEmpty)
+          /* Standard trigger generation code succeeded */
+          defaultTriggerForall
+        else {
+          /* Standard trigger generation code failed.
+           * Let's try generating (certain) invalid triggers, which will then be rewritten
+           */
+          silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger {
+            case _: silver.ast.Add | _: silver.ast.Sub => false
           }
 
-        silver.ast.utility.Triggers.TriggerGeneration.allowInvalidTriggers = false
+          val advancedTriggerForall =
+            silver.ast.utility.Expressions.generateTriggerSet(forall) match {
+              case Some((variables, triggerSets)) =>
+                /* Invalid triggers could be generated, now try to rewrite them */
+                val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
 
-        finalForall
-      }
+                silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
+              case None =>
+                /* Invalid triggers could not be generated -> give up */
+                forall
+            }
+
+
+          silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+
+          advancedTriggerForall
+        }
+
+//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger(PartialFunction.empty)
+
+      autoTriggeredForall
     }
 
     def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {

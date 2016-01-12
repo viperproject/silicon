@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silicon.Map
+import viper.silicon.{Map, Set}
 import viper.silicon.state.SymbolConvert
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
@@ -77,7 +77,8 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
    * set, depending on which kind of translation is performed.
    * See public `translate` methods.
    */
-  override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
+  override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
+                                   qpFields: Set[ast.Field] = data.quantifiedFields)
                                   (e: ast.Exp)
                                   : Term =
 
@@ -87,7 +88,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
           case Some(t) => t
-          case None => super.translate(toSort)(v)
+          case None => super.translate(toSort, qpFields)(v)
         }
 
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ, Map()), data.programFunction.name)
@@ -110,7 +111,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
 
       case _: ast.AccessPredicate if ignoreAccessPredicates => True()
       case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()
-      case _ => super.translate(toSort)(e)
+      case _ => super.translate(toSort, qpFields)(e)
     }
 
   def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, fname: String): Term =

@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{Map, toMap}
+import viper.silicon.{Map, Set, toMap}
 import viper.silicon.state.{Identifier, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.functions.FunctionSupporter
@@ -23,17 +23,19 @@ trait ExpressionTranslator {
    *
    * TODO: Can't we do without toSort? Or at least with a less type-specific one?
    */
-  protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
+  protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
+                          qpFields: Set[ast.Field])
                          (exp: ast.Exp)
                          : Term = {
 
-    val f = translate(toSort) _
+    val f = translate(toSort, qpFields) _
 
     def translateAnySetUnExp(exp: ast.AnySetUnExp,
                              setTerm: Term => Term,
-                             multisetTerm: Term => Term) =
+                             multisetTerm: Term => Term,
+                             anysetTypedExp: ast.Exp = exp) =
 
-      exp.typ match {
+      anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.exp))
         case _: ast.MultisetType => multisetTerm(f(exp.exp))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
@@ -69,10 +71,11 @@ trait ExpressionTranslator {
 
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall)
+            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall, qpFields)
             (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
+          case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
 
         val body = eQuant.exp
@@ -173,12 +176,12 @@ trait ExpressionTranslator {
         es.tail.foldLeft[MultisetTerm](SingletonMultiset(f(es.head)))((tMultiset, e) =>
           MultisetAdd(tMultiset, f(e)))
 
-      case as:ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
-      case as:ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
-      case as:ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
-      case as:ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
-      case as:ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
-      case as:ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality)
+      case as: ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
+      case as: ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
+      case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
+      case as: ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
+      case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
+      case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
 
       /* Other expressions */
 

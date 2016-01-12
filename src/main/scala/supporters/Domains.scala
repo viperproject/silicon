@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{MMultiMap, Map, MSet, MMap}
+import viper.silicon.{MMultiMap, Map, MSet, MMap, Set}
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
 import viper.silicon.state.{SymbolConvert, terms}
@@ -375,7 +375,7 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
       symbolConverter.toSort(concreteType)
     }
 
-    translate(toSort)(ax.exp) match {
+    translate(toSort, Set.empty)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 

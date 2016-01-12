@@ -109,11 +109,13 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
   val domainDefinitions: Seq[Term] = {
     val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
 
-    TriggerGenerator.allowInvalidTriggers = true
+    TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
+
     val (triggers, extraVars) =
       TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
                       .getOrElse((Nil, Nil))
-    TriggerGenerator.allowInvalidTriggers = false
+
+    TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
     val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$fvf-dom")
     val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
