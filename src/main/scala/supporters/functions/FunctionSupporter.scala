@@ -170,7 +170,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
         val preMark = decider.setPathConditionMark()
         produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
           phase1Data :+= Phase1Data(σ1, decider.pcs.after(preMark).assumptions, c1)
-          evals(σ1, posts, ContractNotWellformed, c1)((_, c2) => {
+            produces(σ1, sort => `?s`.convert(sort), FullPerm(), posts, ContractNotWellformed, c1)((_, c2) => {
             recorders :+= c2.functionRecorder
             Success()})})}
 
