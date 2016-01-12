@@ -4,52 +4,47 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import org.slf4s.Logging
-import silver.ast
-import silver.verifier.errors.{IfFailed, InhaleFailed, LoopInvariantNotPreserved,
-    LoopInvariantNotEstablished, WhileFailed, AssignmentFailed, ExhaleFailed, PreconditionInCallFalse, FoldFailed,
-    UnfoldFailed, AssertFailed, PackageFailed, ApplyFailed, LetWandFailed, CallFailed}
-import silver.verifier.reasons.{NegativePermission, ReceiverNull, AssertionFalse, InsufficientPermission,
-    NamedMagicWandChunkNotFound}
-import interfaces.{Executor, Evaluator, Producer, Consumer, VerificationResult, Failure, Success}
-import interfaces.decider.Decider
-import interfaces.state.{Store, Heap, PathConditions, State, StateFactory, StateFormatter, HeapCompressor, Chunk}
-import interfaces.state.factoryUtils.Ø
-import state.terms._
-import state.{MagicWandChunk, FieldChunkIdentifier, DirectFieldChunk, SymbolConvert, DirectChunk, DefaultContext}
-import state.terms.perms.IsNonNegative
-import supporters.{LetHandler, Brancher, PredicateSupporter, MagicWandSupporter}
-import supporters.qps.QuantifiedChunkSupporter
+import viper.silver.ast
+import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons._
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state.{Store, Heap, State, StateFactory, StateFormatter}
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.state.terms._
+import viper.silicon.state.{FieldChunk, SymbolConvert, DefaultContext}
+import viper.silicon.state.terms.perms.IsNonNegative
+import viper.silicon.supporters._
+import viper.silicon.supporters.qps.QuantifiedChunkSupporter
 
 trait DefaultExecutor[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Executor[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
-                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+                    with Consumer[ST, H, S, DefaultContext[H]]
                     with Producer[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
-                    with MagicWandSupporter[ST, H, PC, S]
+                    with MagicWandSupporter[ST, H, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
 
   protected implicit val manifestH: Manifest[H]
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val config: Config
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
 
-  import decider.{fresh, assume, inScope}
+  import decider.{fresh, assume, locally}
   import stateFactory._
   import symbolConverter.toSort
 
@@ -58,14 +53,14 @@ trait DefaultExecutor[ST <: Store[ST],
                     : VerificationResult = {
 
     edge match {
-      case ce: silver.ast.ConditionalEdge =>
+      case ce: ast.ConditionalEdge =>
         eval(σ, ce.cond, IfFailed(ce.cond), c)((tCond, c1) =>
         /* TODO: Use FollowEdge instead of IfBranching */
           branch(σ, tCond, c1,
             (c2: C) => exec(σ, ce.dest, c2)(Q),
             (c2: C) => Success()))
 
-      case ue: silver.ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
+      case ue: ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
     }
   }
 
@@ -102,11 +97,11 @@ trait DefaultExecutor[ST <: Store[ST],
           : VerificationResult = {
 
     block match {
-      case block @ silver.ast.StatementBlock(stmt, _) =>
+      case block @ ast.StatementBlock(stmt, _) =>
         exec(σ, stmt, c)((σ1, c1) =>
           leave(σ1, block, c1)(Q))
 
-      case lb: silver.ast.LoopBlock =>
+      case lb: ast.LoopBlock =>
         decider.prover.logComment(s"loop at ${lb.pos}")
 
         /* TODO: We should avoid roundtripping, i.e., parsing a SIL file into an AST,
@@ -125,7 +120,7 @@ trait DefaultExecutor[ST <: Store[ST],
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
-        (inScope {
+        (locally {
           /* Verify loop body (including well-formedness check) */
           decider.prover.logComment("Verify loop body")
           produces(σBody, fresh,  FullPerm(), lb.invs :+ lb.cond, _ => WhileFailed(loopStmt), c)((σ1, c1) =>
@@ -137,13 +132,13 @@ trait DefaultExecutor[ST <: Store[ST],
               Success() /* TODO: Mark branch as dead? */
             else
               exec(σ1, lb.body, c1)((σ2, c2) =>
-                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, _, c3) =>
+                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
                   Success())))}
             &&
-          inScope {
+          locally {
             /* Verify call-site */
             decider.prover.logComment("Establish loop invariant")
-            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, _, c1) => {
+            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
               val σ2 = σ1 \ γBody
               decider.prover.logComment("Continue after loop")
               produces(σ2, fresh,  FullPerm(), lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ3, c2) =>
@@ -156,7 +151,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 else
                   leave(σ3, lb, c2)(Q))})})
 
-        case frp @ silver.ast.ConstrainingBlock(vars, body, succ) =>
+        case frp @ ast.ConstrainingBlock(vars, body, succ) =>
           val arps = vars map σ.γ.apply
           val c1 = c.setConstrainable(arps, true)
           exec(σ, body, c1)((σ1, c2) =>
@@ -180,19 +175,19 @@ trait DefaultExecutor[ST <: Store[ST],
 
     /* For debugging-purposes only */
     stmt match {
-      case _: silver.ast.Seqn =>
+      case _: ast.Seqn =>
       case _ =>
         log.debug(s"\nEXECUTE ${utils.ast.sourceLineColumn(stmt)}: $stmt")
-        log.debug(stateFormatter.format(σ))
+        log.debug(stateFormatter.format(σ, decider.π))
         decider.prover.logComment("[exec]")
         decider.prover.logComment(stmt.toString())
     }
 
     val executed = stmt match {
-      case silver.ast.Seqn(stmts) =>
+      case ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
 
-      case label @ silver.ast.Label(name) =>
+      case label @ ast.Label(name) =>
         val c1 = c.copy(oldHeaps = c.oldHeaps + (name -> σ.h))
         Q(σ, c1)
 
@@ -205,8 +200,9 @@ trait DefaultExecutor[ST <: Store[ST],
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
               Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
           case _ =>
-            eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) =>
-              Q(σ \+ (v, tRhs), c1))
+            eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) => {
+              val t = ssaifyRhs(tRhs, v.name, v.typ)
+              Q(σ \+ (v, t), c1)})
         }
 
       /* Assignment for a field that contains quantified chunks */
@@ -218,7 +214,7 @@ trait DefaultExecutor[ST <: Store[ST],
           eval(σ, rhs, pve, c1)((tRhs, c2) =>
             decider.assert(σ, tRcvr !== Null()){
               case false =>
-                Failure[ST, H, S](pve dueTo ReceiverNull(fa))
+                Failure(pve dueTo ReceiverNull(fa))
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
@@ -229,19 +225,19 @@ trait DefaultExecutor[ST <: Store[ST],
                     val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
                     Q(σ \ h1 \+ ch, c3)
                   case None =>
-                    Failure[ST, H, S](pve dueTo InsufficientPermission(fa))}}))
+                    Failure(pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           decider.assert(σ, tRcvr !== Null()){
             case true =>
-              eval(σ, rhs, pve, c1)((tRhs, c2) => {
-                val id = FieldChunkIdentifier(tRcvr, field.name)
-                decider.withChunk[DirectChunk](σ, σ.h, id, Some(FullPerm()), fa, pve, c2)((fc, c3) =>
-                  Q(σ \- fc \+ DirectFieldChunk(tRcvr, field.name, tRhs, fc.perm), c3))})
+              eval(σ, rhs, pve, c1)((tRhs, c2) =>
+                chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) => {
+                  val t = ssaifyRhs(tRhs, field.name, field.typ)
+                  Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)}))
             case false =>
-              Failure[ST, H, S](pve dueTo ReceiverNull(fa))})
+              Failure(pve dueTo ReceiverNull(fa))})
 
       case ast.NewStmt(v, fields) =>
         val tRcvr = fresh(v)
@@ -255,7 +251,7 @@ trait DefaultExecutor[ST <: Store[ST],
             optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
           } else
-            DirectFieldChunk(tRcvr, field.name, s, p)})
+            FieldChunk(tRcvr, field.name, s, p)})
         val σ1 = σ \+ (v, tRcvr) \+ H(newChunks)
         val ts = state.utils.computeReferenceDisjointnesses[ST, H, S](σ1, tRcvr)
           /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that
@@ -290,7 +286,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+        consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
           Q(σ1, c1))
 
       case assert @ ast.Assert(a) =>
@@ -308,17 +304,17 @@ trait DefaultExecutor[ST <: Store[ST],
               if (decider.checkSmoke())
                   QS(σ1, c1)
               else
-                  QF(Failure[ST, H, S](pve dueTo AssertionFalse(a)))
+                  QF(Failure(pve dueTo AssertionFalse(a)))
               })((_, _) => Success())
 
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+                consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
                   Success())
               r && Q(σ, c)
             } else
-              consume(σ, FullPerm(), a, pve, c)((σ1, _, _, c1) =>
+              consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
                 Q(σ, c1))
         }
 
@@ -329,7 +325,7 @@ trait DefaultExecutor[ST <: Store[ST],
         evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {
           val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, _, c3) => {
+          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, c3) => {
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
@@ -348,7 +344,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 case true =>
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                  Failure(pve dueTo NegativePermission(ePerm))}))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -359,7 +355,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 case true =>
                   predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
                 case false =>
-                  Failure[ST, H, S](pve dueTo NegativePermission(ePerm))}))
+                  Failure(pve dueTo NegativePermission(ePerm))}))
 
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
@@ -391,7 +387,7 @@ trait DefaultExecutor[ST <: Store[ST],
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, _, c2) => {
+          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, c2) => {
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
             produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
               val c4 = c3.copy(lhsHeap = None)
@@ -400,29 +396,49 @@ trait DefaultExecutor[ST <: Store[ST],
 
         e match {
           case wand: ast.MagicWand =>
-            consume(σ, FullPerm(), wand, pve, c)((σ1, _, chs, c1) => {
+            consume(σ, FullPerm(), wand, pve, c)((σ1, _, c1) => {
               QL(σ1, σ1.γ, wand, c1)})
 
           case v: ast.AbstractLocalVar =>
             val chWand = σ.γ(v).asInstanceOf[MagicWandChunkTerm].chunk
-            decider.getChunk[MagicWandChunk](σ, σ.h, chWand.id, c) match {
+            magicWandSupporter.getMatchingChunk(σ, σ.h, chWand, c) match {
               case Some(ch) =>
                 QL(σ \- ch, Γ(chWand.bindings), chWand.ghostFreeWand, c)
               case None =>
-                Failure[ST, H, S](pve dueTo NamedMagicWandChunkNotFound(v))}
+                Failure(pve dueTo NamedMagicWandChunkNotFound(v))}
 
           case _ => sys.error(s"Expected a magic wand, but found node $e")}
 
 
       /* These cases should not occur when working with the CFG-representation of the program. */
-      case   _: silver.ast.Goto
-           | _: silver.ast.If
-           | _: silver.ast.Label
-           | _: silver.ast.Seqn
-           | _: silver.ast.Constraining
-           | _: silver.ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
+      case   _: ast.Goto
+           | _: ast.If
+           | _: ast.Label
+           | _: ast.Seqn
+           | _: ast.Constraining
+           | _: ast.While => sys.error(s"Unexpected statement (${stmt.getClass.getName}): $stmt")
     }
 
     executed
   }
+
+   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type): Term =
+     rhs match {
+       case _: Var | _: Literal =>
+         /* Cheap (and likely to succeed) matches come first */
+         rhs
+
+       case _ if    rhs.existsDefined { case t if TriggerGenerator.isForbiddenInTrigger(t) => true }
+                 || rhs.isInstanceOf[WildcardPerm] /* Fixes issue #110 (somewhat indirectly) */
+            =>
+
+         val t = fresh(name, toSort(typ))
+         assume(t === rhs)
+
+         t
+
+       case _ =>
+         /* Catch-all case */
+         rhs
+     }
 }

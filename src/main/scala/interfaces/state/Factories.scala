@@ -4,13 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.state
+package viper.silicon.interfaces.state
 
 import scala.language.implicitConversions
-import silver.ast
-import silicon.state.terms.Term
+import viper.silver.ast
+import viper.silicon.{Map, Set}
+import viper.silicon.state.terms.Term
 
 object factoryUtils {
   trait Ø
@@ -24,14 +23,6 @@ trait StoreFactory[ST <: Store[ST]] {
   def Γ(store: Map[ast.AbstractLocalVar, Term]): ST
   def Γ(pair: (ast.AbstractLocalVar, Term)): ST
   def Γ(pairs: Iterable[(ast.AbstractLocalVar, Term)]): ST
-}
-
-trait PathConditionsFactory[PC <: PathConditions[PC]] {
-  implicit def ØToEmptyPathConditions(ø: factoryUtils.Ø): PC = Π()
-
-  def Π(): PC
-  def Π(terms: Term): PC
-  def Π(terms: Set[Term]): PC
 }
 
 trait HeapFactory[H <: Heap[H]] {

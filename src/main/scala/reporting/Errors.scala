@@ -4,14 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package reporting
+package viper.silicon.reporting
 
-import silver.ast
-import silver.verifier.AbstractError
+import viper.silver.ast
+import viper.silver.verifier.AbstractError
 
-/* TODO: Distinguish between the exception that can be thrown and the error that is reported back to e.g. Scala2Sil. */
 case class Z3InteractionFailed(message: String) extends RuntimeException(message) with AbstractError {
   def pos = ast.NoPosition
   def fullId = "z3.interaction.failed"

@@ -4,9 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.state
+package viper.silicon.interfaces.state
 
 trait Mergeable[S <: Mergeable[S]] {
   def merge(other: S): S

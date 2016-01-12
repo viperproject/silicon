@@ -4,13 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
 import scala.collection.mutable
-import interfaces.state.{Heap, Store, State}
-import terms._
+import viper.silicon.interfaces.state.{Heap, Store, State}
+import viper.silicon.state.terms._
 import viper.silicon.supporters.qps.SummarisingFvfDefinition
 
 package object utils {
@@ -39,12 +37,9 @@ package object utils {
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
     σ.h.values.foreach {
-      case dfc: DirectFieldChunk =>
-        collect(dfc.rcvr)
-        collect(dfc.value)
-      case dpc: DirectPredicateChunk =>
-        dpc.args foreach collect
-        collect(dpc.snap)
+      case bc: BasicChunk =>
+        bc.args foreach collect
+        collect(bc.snap)
       case qch: QuantifiedChunk =>
         /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
          * hence, they can only be used under quantifiers that bind `?r`.

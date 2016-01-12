@@ -47,9 +47,11 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
                              axiomRewriter: AxiomRewriter)
                             : Quantification = {
 
-    allowInvalidTriggers = true
+    setCustomIsForbiddenInTrigger(advancedIsForbiddenInTrigger)
+
     val (triggers, extraVars) = generateFirstTriggerGroup(qvars, toSearch).getOrElse((Nil, Nil))
-    allowInvalidTriggers = false
+
+    setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
     val quantification = Quantification(quantifier, qvars ++ extraVars, body, triggers, qid)
     val finalQuantification = axiomRewriter.rewrite(quantification).getOrElse(quantification)
@@ -98,9 +100,8 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
 
   /* True iff the given node is not allowed in triggers */
   def isForbiddenInTrigger(term: Term) = term match {
-    case _: Plus | _: Minus => !allowInvalidTriggers
     case app: App => app.applicable.isInstanceOf[Macro]
-    case   _: Times | _: Div | _: Mod
+    case   _: Plus | _: Minus | _: Times | _: Div | _: Mod
          | _: Not | _: Or | _: And | _: Implies | _: Iff | _: Ite
          | _: BuiltinEquals
          | _: Less | _: AtMost | _: Greater | _: AtLeast
@@ -110,6 +111,10 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
          | _: Let
          => true
     case _ => false
+  }
+
+  val advancedIsForbiddenInTrigger:PartialFunction[Term, Boolean] = {
+    case _: Plus | _: Minus => false
   }
 
   protected def withArgs(term: Term, args: Seq[Term]): Term = {

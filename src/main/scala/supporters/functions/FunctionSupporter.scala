@@ -37,22 +37,21 @@ object FunctionSupporter {
 
 trait FunctionSupporterProvider[ST <: Store[ST],
                                 H <: Heap[H],
-                                PC <: PathConditions[PC],
                                 S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]] =>
+            with Consumer[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
   private type AxiomGenerator = () => Quantification
 
-  val config: Config
-  val decider: Decider[ST, H, PC, S, C]
-  val stateFactory: StateFactory[ST, H, S]
-  val symbolConverter: SymbolConvert
-  val identifierFactory: IdentifierFactory
-  val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val config: Config
+  protected val decider: Decider[ST, H, S, C]
+  protected val stateFactory: StateFactory[ST, H, S]
+  protected val symbolConverter: SymbolConvert
+  protected val identifierFactory: IdentifierFactory
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
 
   import decider.fresh
   import stateFactory._
@@ -119,7 +118,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
     private def handleFunction(function: ast.Function, c0: DefaultContext[H]): VerificationResult = {
       val data = functionData(function)
       val c = c0.copy(quantifiedVariables = c0.quantifiedVariables ++ data.arguments,
-                      functionRecorder = ActualFunctionRecorder())
+                      functionRecorder = ActualFunctionRecorder(data))
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(function, c) match {
@@ -167,11 +166,11 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = decider.inScope {
-        val πInit = decider.π
+      val result = decider.locally {
+        val preMark = decider.setPathConditionMark()
         produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
-          phase1Data :+= Phase1Data(σ1, decider.π -- πInit, c1)
-          evals(σ1, posts, ContractNotWellformed, c1)((_, c2) => {
+          phase1Data :+= Phase1Data(σ1, decider.pcs.after(preMark).assumptions, c1)
+            produces(σ1, sort => `?s`.convert(sort), FullPerm(), posts, ContractNotWellformed, c1)((_, c2) => {
             recorders :+= c2.functionRecorder
             Success()})})}
 
@@ -197,11 +196,11 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
         case (intermediateResult, p1d) =>
-          intermediateResult && decider.inScope {
+          intermediateResult && decider.locally {
             decider.assume(p1d.πPre)
             eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
               decider.assume(data.formalResult === tBody)
-              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, _, c2) => {
+              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, c2) => {
                 recorders :+= c2.functionRecorder
                 Success()})})}}
 

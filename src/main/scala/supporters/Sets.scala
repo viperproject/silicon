@@ -4,22 +4,21 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import interfaces.PreambleEmitter
-import interfaces.decider.Prover
-import decider.PreambleFileEmitter
-import state.SymbolConvert
-import state.terms
+import viper.silver.ast
+import viper.silicon.{Set, toSet}
+import viper.silicon.interfaces.PreambleEmitter
+import viper.silicon.interfaces.decider.Prover
+import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.state.SymbolConvert
+import viper.silicon.state.terms
 
 trait SetsEmitter extends PreambleEmitter
 
 /* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
 
-class DefaultSetsEmitter(prover: Prover,
+class DefaultSetsEmitter(prover: => Prover,
                          symbolConverter: SymbolConvert,
                          preambleFileEmitter: PreambleFileEmitter[String, String])
     extends SetsEmitter {
@@ -50,12 +49,12 @@ class DefaultSetsEmitter(prover: Prover,
         program.fields foreach {f => setTypes += ast.SetType(f.typ)}
         setTypes += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */
 
-      case t: silver.ast.Typed =>
+      case t: ast.Typed =>
         /* Process the type itself and its type constituents, but ignore types
          * that use type parameters. The assumption is that the latter are
          * handled by the domain emitter.
          */
-        t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
+        t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
           case s: ast.SetType =>
             setTypes += s
           case s: ast.MultisetType =>

@@ -4,13 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package tests
+package viper.silicon.tests
 
 import org.scalatest.{Tag, FlatSpec}
-import silver.frontend.SilFrontend
 import java.nio.file.Paths
+import viper.silver.frontend.SilFrontend
+import viper.silicon.Silicon
 
 /** This test is intended to benchmark the memory consumption of Silicon over
   * many runs in order to detect memory leaks. However, it is hard to tell

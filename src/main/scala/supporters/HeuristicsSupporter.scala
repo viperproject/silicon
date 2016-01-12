@@ -14,28 +14,26 @@ import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotF
 import viper.silicon.{Config, Stack}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{MagicWandChunk, DirectPredicateChunk, DefaultContext}
+import viper.silicon.state.{FieldChunk, MagicWandChunk, PredicateChunk, DefaultContext}
 import viper.silicon.state.terms._
 import viper.silicon.reporting.Bookkeeper
 
 trait HeuristicsSupporter[ST <: Store[ST],
                         H <: Heap[H],
-                        PC <: PathConditions[PC],
                         S <: State[ST, H, S]]
     { this:      Logging
             with Evaluator[ST, H, S, DefaultContext[H]]
             with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+            with Consumer[ST, H, S, DefaultContext[H]]
             with Executor[ST, H, S, DefaultContext[H]]
-            with MagicWandSupporter[ST, H, PC, S] =>
+            with MagicWandSupporter[ST, H, S] =>
 
   private[this] type C = DefaultContext[H]
-  private[this] type CH = Chunk
 
   protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
   protected val bookkeeper: Bookkeeper
-  protected val predicateSupporter: PredicateSupporter[ST, H, PC, S, C]
+  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
 
   import stateFactory._
 
@@ -101,7 +99,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
                                 (description: String)
                                 (σ: S, h: H, _c: C)
                                 (action: (S, H, C, (O, C) => VerificationResult) => VerificationResult,
-                                 initialFailure: Option[Failure[ST, H, S]])
+                                 initialFailure: Option[Failure])
                                 (Q: (O, C) => VerificationResult)
                                 : VerificationResult = {
 
@@ -191,7 +189,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 //            Thread.sleep(2500)
           }
 
-        case actionFailure: Failure[ST, H, S] =>
+        case actionFailure: Failure =>
           stack ::= myId
 
           say(s"action $myId failed (locally and globally)")
@@ -246,12 +244,12 @@ trait HeuristicsSupporter[ST <: Store[ST],
         case _ if !reactionResult.isFatal =>
           reactionResult
 
-        case reactionFailure: Failure[ST, H, S] =>
+        case reactionFailure: Failure =>
           initialFailure.getOrElse(globalActionResult)
       }
     }
 
-    def generateReactions(σ: S, h: H, c: C, cause: Failure[ST, H, S])
+    def generateReactions(σ: S, h: H, c: C, cause: Failure)
                          : Seq[(S, H, C) => ((S, H, C) => VerificationResult) => VerificationResult] = {
 
       val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
@@ -430,7 +428,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       val predicateChunks =
         allChunks.collect {
-          case ch: DirectPredicateChunk =>
+          case ch: PredicateChunk =>
             val body = c.program.findPredicate(ch.name)
 
             body.existsDefined(f) match {
@@ -442,7 +440,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
 
       val predicateAccesses =
         predicateChunks.flatMap {
-          case DirectPredicateChunk(name, args, _, _, _) =>
+          case PredicateChunk(name, args, _, _) =>
             val reversedArgs: Seq[ast.Exp] = backtranslate(σ.γ.values, allChunks.toSeq, args, c.program)
 
             if (args.length == reversedArgs.length)
@@ -490,7 +488,7 @@ trait HeuristicsSupporter[ST <: Store[ST],
                       /* Found a local variable v s.t. v |-> t */
                     .orElse(
                       chunks.collectFirst {
-                        case fc: FieldChunk if fc.value == t =>
+                        case fc: FieldChunk if fc.snap == t =>
                           bindings.find(p => p._2 == fc.args.head)
                                   .map(_._1)
                                   .map(v => ast.FieldAccess(v, program.findField(fc.name))())

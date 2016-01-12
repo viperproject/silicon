@@ -4,22 +4,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import interfaces.PreambleEmitter
-import interfaces.decider.Prover
-import state.{SymbolConvert, terms}
-import state.terms.Term
-import implicits._
+import viper.silver.ast
+import viper.silicon.{MMultiMap, Map, MSet, MMap, Set}
+import viper.silicon.interfaces.PreambleEmitter
+import viper.silicon.interfaces.decider.Prover
+import viper.silicon.state.{SymbolConvert, terms}
+import viper.silicon.state.terms.Term
+import viper.silicon.implicits._
 
 trait DomainsEmitter extends PreambleEmitter {
   def emitUniquenessAssumptions()
 }
 
-class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
+class DefaultDomainsEmitter(prover: => Prover,
+                            domainTranslator: DomainsTranslator[Term],
+                            symbolConverter: SymbolConvert)
     extends DomainsEmitter {
 
   /* TODO: Group emitted declarations and axioms by source domain. */
@@ -374,7 +375,7 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
       symbolConverter.toSort(concreteType)
     }
 
-    translate(toSort)(ax.exp) match {
+    translate(toSort, Set.empty)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 

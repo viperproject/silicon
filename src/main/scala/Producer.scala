@@ -4,37 +4,35 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import org.slf4s.Logging
-import silver.ast
-import silver.verifier.PartialVerificationError
-import interfaces.state.{StateFactory, Store, Heap, PathConditions, State, StateFormatter, Chunk}
-import interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
-import interfaces.decider.Decider
-import reporting.Bookkeeper
-import state.{DefaultContext, DirectFieldChunk, DirectPredicateChunk, SymbolConvert}
-import state.terms._
-import supporters.{LetHandler, Brancher, ChunkSupporter, MagicWandSupporter}
-import supporters.qps.QuantifiedChunkSupporter
-import supporters.functions.NoopFunctionRecorder
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silicon.interfaces.state.{StateFactory, Store, Heap, State, StateFormatter, Chunk}
+import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert}
+import viper.silicon.state.terms._
+import viper.silicon.supporters._
+import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 
 trait DefaultProducer[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
     extends Producer[ST, H, S, DefaultContext[H]]
     { this: Logging with Evaluator[ST, H, S, DefaultContext[H]]
-                    with Consumer[Chunk, ST, H, S, DefaultContext[H]]
+                    with Consumer[ST, H, S, DefaultContext[H]]
                     with Brancher[ST, H, S, DefaultContext[H]]
-                    with MagicWandSupporter[ST, H, PC, S]
-                    with ChunkSupporter[ST, H, PC, S]
+                    with MagicWandSupporter[ST, H, S]
+                    with ChunkSupporterProvider[ST, H, S]
                     with LetHandler[ST, H, S, DefaultContext[H]] =>
 
   private type C = DefaultContext[H]
 
-  protected val decider: Decider[ST, H, PC, S, C]
+  protected val decider: Decider[ST, H, S, C]
   import decider.{fresh, assume}
 
   protected val stateFactory: StateFactory[ST, H, S]
@@ -43,7 +41,7 @@ trait DefaultProducer[ST <: Store[ST],
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
 
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, PC, S]
+  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -110,7 +108,7 @@ trait DefaultProducer[ST <: Store[ST],
 
     if (!φ.isInstanceOf[ast.And]) {
       log.debug(s"\nPRODUCE ${utils.ast.sourceLineColumn(φ)}: $φ")
-      log.debug(stateFormatter.format(σ))
+      log.debug(stateFormatter.format(σ, decider.π))
     }
 
     val produced = φ match {
@@ -147,11 +145,11 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (c.qpFields.contains(field)) {
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
+            optFvfDef.foreach(fvfDef => assume(fvfDef.valueDefinitions))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             (h + ch, c)
           } else {
-            val ch = DirectFieldChunk(rcvr, field.name, s, p)
+            val ch = FieldChunk(rcvr, field.name, s, p)
             val (h1, c1) = chunkSupporter.produce(σ, h, ch, c)
             (h1, c1)
           }
@@ -172,7 +170,7 @@ trait DefaultProducer[ST <: Store[ST],
             assume(PermAtMost(NoPerm(), pGain))
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
-            val ch = DirectPredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
+            val ch = PredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
@@ -184,22 +182,20 @@ trait DefaultProducer[ST <: Store[ST],
         val tQVar = decider.fresh(qvar.name, toSort(qvar.typ))
         val γQVar = Γ(ast.LocalVar(qvar.name)(qvar.typ), tQVar)
         val σQVar = σ \+ γQVar
-        val πPre = decider.π
         val c0 = c.copy(quantifiedVariables = tQVar +: c.quantifiedVariables)
-        decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB =>
+        decider.locally[(Term, Term, Term, Iterable[Term], Quantification, C)](QB => {
+          val preMark = decider.setPathConditionMark()
           eval(σQVar, cond, pve, c0)((tCond, c1) => {
-            assume(tCond)
-            val c1a = c1.copy(branchConditions = tCond +: c1.branchConditions)
-            eval(σQVar, rcvr, pve, c1a)((tRcvr, c2) =>
+            decider.setCurrentBranchCondition(tCond)
+            eval(σQVar, rcvr, pve, c1)((tRcvr, c2) =>
               eval(σQVar, gain, pve, c2)((pGain, c3) => {
                 assume(PermAtMost(NoPerm(), pGain))
-                val πDelta = decider.π -- πPre - tCond /* Removing tCond is crucial since it is not an auxiliary term */
+                val πDelta = decider.pcs.after(preMark).assumptions - tCond /* Removing tCond is crucial */
                 val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
                 val tAuxQuantNoTriggers = Forall(tQVar, And(tAuxNested), Nil, s"prog.l${utils.ast.sourceLine(forall)}-aux")
-                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables,
-                                 branchConditions = c.branchConditions)
+                val c4 = c3.copy(quantifiedVariables = c.quantifiedVariables)
                 QB(tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c4)}))})
-        ){case (tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
+        }){case (tCond, tRcvr, pGain, tAuxTopLevel, tAuxQuantNoTriggers, c1) =>
           val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
           val additionalInvFctArgs = c1.quantifiedVariables
           val (ch, invFct) =
@@ -238,7 +234,7 @@ trait DefaultProducer[ST <: Store[ST],
            * of the shape lookup_g(fvf1, x), then we search the body for the equality
            * lookup_g(fvf1, x) == lookup_g(fvf0, x), and we use lookup_g(fvf0, x) as the
            * trigger. Searching the body is only necessary because, at the current point, we
-           * no longer no the relation between fvf1 and fvf0 (it could be preserved, though).
+           * no longer know the relation between fvf1 and fvf0 (it could be preserved, though).
            */
           val triggerForAuxQuant = invFct.invOfFct.triggers match {
             case Seq(trigger @ Trigger(Seq(lk: Lookup))) => /* TODO: Make more specific */
@@ -260,12 +256,13 @@ trait DefaultProducer[ST <: Store[ST],
           val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(pGain, p))
           decider.prover.logComment("Receivers are non-null")
           assume(Set(tNonNullQuant))
-          decider.prover.logComment("Definitional axioms for field value functions")
-          val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms))
+//          decider.prover.logComment("Definitional axioms for field value functions")
+//          val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms))
+          val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
           Q(σ.h + ch1, c2)}
 
       case _: ast.InhaleExhaleExp =>
-        Failure[ST, H, S](utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
+        Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>

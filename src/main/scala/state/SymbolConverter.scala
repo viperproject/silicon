@@ -4,12 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import silver.ast
-import terms.{Sort, sorts}
+import viper.silver.ast
+import viper.silicon.state.terms.{Sort, sorts}
 
 /* TODO: Move to interfaces package */
 trait SymbolConvert {
@@ -38,9 +36,9 @@ class DefaultSymbolConvert extends SymbolConvert {
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
       sorts.UserSort(Identifier(dt.toString()))
 
-    case   silver.ast.InternalType
-         | _: silver.ast.TypeVar
-         | silver.ast.Wand
+    case   ast.InternalType
+         | _: ast.TypeVar
+         | ast.Wand
          =>
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }

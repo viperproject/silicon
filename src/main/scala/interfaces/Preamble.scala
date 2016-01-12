@@ -4,13 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces
+package viper.silicon.interfaces
 
-import silver.ast
-import silver.components.StatefulComponent
-import silicon.state.terms.{Sort, Function}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silicon.Set
+import viper.silicon.state.terms.Sort
 
 trait PreambleEmitter extends StatefulComponent {
   def analyze(program: ast.Program)
