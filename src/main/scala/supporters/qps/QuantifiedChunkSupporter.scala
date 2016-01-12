@@ -69,7 +69,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                 pve: PartialVerificationError,
                 locacc: ast.LocationAccess,
                 c: C)
-               (Q: FvfDefinition => VerificationResult)
+               (Q: SummarisingFvfDefinition => VerificationResult)
                : VerificationResult
 
   def splitSingleLocation(σ: S,
@@ -94,6 +94,8 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
                     : VerificationResult
+
+  def splitHeap(h: H, field: String): (Seq[QuantifiedChunk], Seq[Chunk])
 
   def injectFVF(freshFvf: Var): Unit
 

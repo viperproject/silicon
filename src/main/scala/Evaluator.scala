@@ -20,7 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.supporters._
-import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition, QuantifiedChunkSupporter}
 import viper.silicon.supporters.functions.FunctionSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
@@ -164,7 +164,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             case Some(fvfDef: SummarisingFvfDefinition) =>
               decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
                 case false =>
-                  Failure[ST, H, S](pve dueTo InsufficientPermission(fa))
+                  Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
                   val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                   //              println(s"\nfa = $fa")
