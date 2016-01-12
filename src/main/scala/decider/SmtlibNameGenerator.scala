@@ -83,6 +83,8 @@ class SmtlibNameSanitizer extends AbstractNameSanitizer {
     "BitVec", "concat", "extract", "bvnot", "bvneg", "bvand", "bvor", "bvadd", "bvmul", "bvudiv",
     "bvurem", "bvshl", "bvlshr", "bvult",
     /* SMTLIB 2.5 - Theory Reals_Ints */
-    "to_real", "to_int", "is_int"
+    "to_real", "to_int", "is_int",
+    /* Other reserved words (Z3 specific?) */
+    "min"
   )
 }
