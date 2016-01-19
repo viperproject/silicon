@@ -7,6 +7,7 @@
 package viper.silicon
 
 import org.slf4s.Logging
+import viper.silicon.decider.PathConditionStack
 import viper.silver.ast
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
@@ -120,36 +121,48 @@ trait DefaultExecutor[ST <: Store[ST],
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
+        var phase1data: Vector[(S, PathConditionStack, C)] = Vector.empty
+        var phase2data: Vector[(S, PathConditionStack, C)] = Vector.empty
+
         (locally {
-          /* Verify loop body (including well-formedness check) */
-          decider.prover.logComment("Verify loop body")
-          produces(σBody, fresh,  FullPerm(), lb.invs :+ lb.cond, _ => WhileFailed(loopStmt), c)((σ1, c1) =>
-          /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
-           *       Should no longer be necessary once we have an on-demand handling of merging and
-           *       false-checking.
-           */
-            if (decider.checkSmoke())
-              Success() /* TODO: Mark branch as dead? */
-            else
-              exec(σ1, lb.body, c1)((σ2, c2) =>
-                consumes(σ2,  FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
-                  Success())))}
-            &&
-          locally {
-            /* Verify call-site */
-            decider.prover.logComment("Establish loop invariant")
-            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
-              val σ2 = σ1 \ γBody
-              decider.prover.logComment("Continue after loop")
-              produces(σ2, fresh,  FullPerm(), lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ3, c2) =>
-              /* TODO: Detect potential contradictions between path conditions from loop guard and invariant.
-               *       Should no longer be necessary once we have an on-demand handling of merging and
-               *       false-checking.
+            val mark = decider.setPathConditionMark()
+            decider.prover.logComment("Loop: Check specs well-definedness")
+            produces(σBody, fresh,  FullPerm(), lb.invs :+ lb.cond, _ => WhileFailed(loopStmt), c)((σ1, c1) => {
+              /* Detect potential contradictions between path conditions from the loop guard and
+               * from the invariant (e.g. due to conditionals)
                */
-                if (decider.checkSmoke())
-                  Success() /* TODO: Mark branch as dead? */
-                else
-                  leave(σ3, lb, c2)(Q))})})
+              if (!decider.checkSmoke())
+                phase1data = phase1data :+ (σ1, decider.pcs.after(mark), c1)
+              Success()})}
+        && locally {
+            val mark = decider.setPathConditionMark()
+            decider.prover.logComment("Loop: Establish loop invariant")
+            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
+              phase2data = phase2data :+ (σ1, decider.pcs.after(mark), c1)
+              Success()})}
+        && {
+            decider.prover.logComment("Loop: Verify loop body")
+            phase1data.foldLeft(Success(): VerificationResult) {
+              case (fatalResult: FatalResult, _) => fatalResult
+              case (intermediateResult, (σ1, pcs1, c1)) =>
+                intermediateResult && locally {
+                  assume(pcs1.assumptions)
+                  exec(σ1, lb.body, c1)((σ2, c2) =>
+                    consumes(σ2, FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
+                      Success()))}}}
+        && {
+            decider.prover.logComment("Loop: Continue after loop")
+            phase2data.foldLeft(Success(): VerificationResult) {
+              case (fatalResult: FatalResult, _) => fatalResult
+              case (intermediateResult, (σ1, pcs1, c1)) =>
+                intermediateResult && locally {
+                  assume(pcs1.assumptions)
+                  produces(σ1 \ γBody, fresh,  FullPerm(), lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ2, c2) =>
+                    /* Detect potential contradictions (as before) */
+                    if (decider.checkSmoke())
+                      Success() /* TODO: Mark branch as dead? */
+                    else
+                      leave(σ2, lb, c2)(Q))}}})
 
         case frp @ ast.ConstrainingBlock(vars, body, succ) =>
           val arps = vars map σ.γ.apply

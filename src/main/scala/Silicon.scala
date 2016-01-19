@@ -50,7 +50,7 @@ object Silicon {
   val name = sbtProjectName
   val version = s"$sbtProjectVersion (${hgid.version})"
   val buildVersion = s"$sbtProjectVersion ${hgid.version} ${hgid.branch} $buildDate"
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2015"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2016"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.3.2")
   val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
