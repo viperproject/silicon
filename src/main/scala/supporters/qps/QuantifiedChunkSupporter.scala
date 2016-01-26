@@ -60,6 +60,9 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                             additionalArgs: Seq[Var])
                            : (QuantifiedChunk, InverseFunction)
 
+  def permission(h: H, receiver: Term, field: ast.Field): Term
+  def permission(chs: Seq[QuantifiedChunk], receiver: Term, field: ast.Field): Term
+
   def withValue(σ: S,
                 h: H,
                 field: ast.Field,
@@ -215,6 +218,15 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       */
     def permission(h: H, receiver: Term, field: ast.Field): Term = {
       val perms = h.values.toSeq.collect {
+        case permChunk: QuantifiedChunk if permChunk.name == field.name =>
+          permChunk.perm.replace(`?r`, receiver)
+      }
+
+      BigPermSum(perms, Predef.identity)
+    }
+
+    def permission(chs: Seq[QuantifiedChunk], receiver: Term, field: ast.Field): Term = {
+      val perms = chs map {
         case permChunk: QuantifiedChunk if permChunk.name == field.name =>
           permChunk.perm.replace(`?r`, receiver)
       }

@@ -162,27 +162,38 @@ trait DefaultEvaluator[ST <: Store[ST],
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
           c.fvfCache.get((fa.field, quantifiedChunks)) match {
             case Some(fvfDef: SummarisingFvfDefinition) =>
+//              decider.assert(σ, PermLess(NoPerm(), quantifiedChunkSupporter.permission(quantifiedChunks, tRcvr, fa.field))) {
               decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
+                  /* TODO: Re-use code between this and the 'case None' further down */
                   val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-                  //              println(s"\nfa = $fa")
-                  //              println(s"fvfLookup = $fvfLookup")
-                  Q(fvfLookup, c1)}
+                  val qvars = c1.quantifiedVariables//.filter(qv => tRcvr.existsDefined{case `qv` => true})
+                  val bcs = List.empty[Term]//decider.pcs.branchConditions
+                  val lk = c1.functionRecorder.data match {
+                    case Some(data) =>
+                      val v2qv = toMap(σ.γ.values collect {
+                        case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
+                          v -> Var(SimpleIdentifier(k.name), v.sort)})
+                      fvfLookup.replace(v2qv)
+                    case None =>
+                      fvfLookup}
+                  val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
+                  val c2 = c1.copy(functionRecorder = fr1)
+                  Q(fvfLookup, c2)}
 
             case None =>
-//            case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
                 //            val fvfDomain = fvfDef.domainDefinitions
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                 //            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
 //                assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
                 assume(fvfDef)
-                val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+                val qvars = c1.quantifiedVariables//.filter(qv => tRcvr.existsDefined{case `qv` => true})
 //            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
 //                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
-            val bcs = decider.pcs.branchConditions
+            val bcs = List.empty[Term]//decider.pcs.branchConditions
             /* TODO: Implement less hacky.
              *       When a function's precondition is translated (when its definitional axiom
              *       is generated), local variables that are not parameters of the function
@@ -203,14 +214,11 @@ trait DefaultEvaluator[ST <: Store[ST],
               case None =>
                 fvfLookup}
             val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
-                                         .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.valueDefinitions)
-                val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
-                val c2 = c1.copy(functionRecorder = fr2,
-                                 fvfCache = c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
-//                println(s"\nfa = $fa")
-//                println(s"fvfLookup = $fvfLookup")
-                Q(fvfLookup, c2)})
-        }})
+                                         .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
+            val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
+            val c2 = c1.copy(functionRecorder = fr2,
+                             fvfCache = c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
+            Q(fvfLookup, c2)})}})
 
 //        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
 //          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
