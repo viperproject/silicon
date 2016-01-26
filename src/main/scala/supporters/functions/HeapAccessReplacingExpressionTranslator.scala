@@ -120,7 +120,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         s.convert(sort)
       case None =>
         if (!failed && data.verificationFailures.isEmpty)
-          log.warn(s"Could not resolve $key (${key.pos}}) during the axiomatisation of function $fname")
+          log.warn(s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname")
 
         failed = true
 
