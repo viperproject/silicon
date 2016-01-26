@@ -60,6 +60,9 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                             additionalArgs: Seq[Var])
                            : (QuantifiedChunk, InverseFunction)
 
+  def permission(h: H, receiver: Term, field: ast.Field): Term
+  def permission(chs: Seq[QuantifiedChunk], receiver: Term, field: ast.Field): Term
+
   def withValue(σ: S,
                 h: H,
                 field: ast.Field,
@@ -69,7 +72,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                 pve: PartialVerificationError,
                 locacc: ast.LocationAccess,
                 c: C)
-               (Q: FvfDefinition => VerificationResult)
+               (Q: SummarisingFvfDefinition => VerificationResult)
                : VerificationResult
 
   def splitSingleLocation(σ: S,
@@ -94,6 +97,8 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                      c: C)
                     (Q: Option[(H, QuantifiedChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
                     : VerificationResult
+
+  def splitHeap(h: H, field: String): (Seq[QuantifiedChunk], Seq[Chunk])
 
   def injectFVF(freshFvf: Var): Unit
 
@@ -220,6 +225,15 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       BigPermSum(perms, Predef.identity)
     }
 
+    def permission(chs: Seq[QuantifiedChunk], receiver: Term, field: ast.Field): Term = {
+      val perms = chs map {
+        case permChunk: QuantifiedChunk if permChunk.name == field.name =>
+          permChunk.perm.replace(`?r`, receiver)
+      }
+
+      BigPermSum(perms, Predef.identity)
+    }
+
   //  private val withValueCache = MMap[(Term, Set[QuantifiedChunk]), MultiLocationFvf]()
 
     def withValue(σ: S,
@@ -231,7 +245,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                   pve: PartialVerificationError,
                   locacc: ast.LocationAccess,
                   c: C)
-                 (Q: FvfDefinition => VerificationResult)
+                 (Q: SummarisingFvfDefinition => VerificationResult)
                  : VerificationResult = {
 
       assert(σ, receiver !== Null()) {
@@ -276,7 +290,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                   (_lookupRcvr, _fvfDef)
                 } else */{
   //                if (config.disableQPCaching())
-                    fvfDef
+                  fvfDef.asInstanceOf[SummarisingFvfDefinition]
   //                else {
   //                  /* TODO: Caching needs to take the branch conditions into account! */
   //                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
@@ -594,6 +608,8 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     /* ATTENTION: Never create an FVF without calling this method! */
     private def freshFVF(field: ast.Field, isChunkFvf: Boolean) = {
       freshFVFInAction = true
+
+    bookkeeper.logfiles("fvfs").println(s"isChunkFvf = $isChunkFvf")
 
       val freshFvf =
         if (isChunkFvf) {

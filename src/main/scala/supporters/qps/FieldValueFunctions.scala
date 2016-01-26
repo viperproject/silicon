@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.QuantifiedChunk
 
 trait FvfDefinition {
@@ -19,7 +20,7 @@ trait FvfDefinition {
   def domainDefinitions: Seq[Term]
 }
 
-object FvfDefinition {
+private[qps] object FvfDefinition {
   @inline
   private[qps] def pointwiseValueDefinition(field: ast.Field,
                                             fvf: Term,
@@ -145,17 +146,35 @@ case class SummarisingFvfDefinition(field: ast.Field,
                                     fvf: Term,
                                     rcvr: Term,
                                     sourceChunks: Seq[QuantifiedChunk])
-    extends FvfDefinition {
+    extends FvfDefinition with Definition {
 
-  val valueDefinitions =
-//     sourceChunks.map(ch => FvfDefinition.pointwiseValueDefinition(field, fvf, rcvr, ch, false))
-     sourceChunks.map(ch =>
-       Implies(
-         PermLess(NoPerm(), ch.perm.replace(`?r`, rcvr)),
-//         Apply(fvf, Seq(rcvr)) === Lookup(field.name, ch.fvf, rcvr)
-         Lookup(field.name, fvf, rcvr) === Lookup(field.name, ch.fvf, rcvr)
-       )
-     )
+  private val triples =
+    sourceChunks.map(ch =>
+      (ch.perm, Lookup(field.name, fvf, `?r`), Lookup(field.name, ch.fvf, `?r`)))
+
+  private val valDefs =
+    triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
+
+  val valueDefinitions: Seq[Term] = Seq(valueDefinitions(rcvr))
 
   val domainDefinitions = Seq(True())
+
+  val declaration: Decl = ConstDecl(fvf.asInstanceOf[Var])
+  val definition: Seq[Term] = valueDefinitions ++ domainDefinitions
+
+  def valueDefinitions(rcvr: Term) = Let(`?r`, rcvr, And(valDefs))
+
+  val quantifiedValueDefinitions =
+    triples map { case (p, lk1, lk2) =>
+      Forall(
+        `?r`,
+        Implies(PermLess(NoPerm(), p), lk1 === lk2),
+        Seq(Trigger(lk1), Trigger(lk2)))
+    }
+
+  def totalPermissions(rcvr: Term) = {
+    val sum = BigPermSum(sourceChunks map (ch => ch.perm), Predef.identity)
+
+    Let(`?r`, rcvr, sum)
+  }
 }

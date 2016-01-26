@@ -20,7 +20,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.supporters._
-import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition, QuantifiedChunkSupporter}
 import viper.silicon.supporters.functions.FunctionSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
@@ -159,15 +159,41 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
-//            val fvfDomain = fvfDef.domainDefinitions
-            val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-//            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
-            assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
-            val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+          val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
+          c.fvfCache.get((fa.field, quantifiedChunks)) match {
+            case Some(fvfDef: SummarisingFvfDefinition) =>
+//              decider.assert(σ, PermLess(NoPerm(), quantifiedChunkSupporter.permission(quantifiedChunks, tRcvr, fa.field))) {
+              decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
+                case false =>
+                  Failure(pve dueTo InsufficientPermission(fa))
+                case true =>
+                  /* TODO: Re-use code between this and the 'case None' further down */
+                  val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+                  val qvars = c1.quantifiedVariables//.filter(qv => tRcvr.existsDefined{case `qv` => true})
+                  val bcs = List.empty[Term]//decider.pcs.branchConditions
+                  val lk = c1.functionRecorder.data match {
+                    case Some(data) =>
+                      val v2qv = toMap(σ.γ.values collect {
+                        case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
+                          v -> Var(SimpleIdentifier(k.name), v.sort)})
+                      fvfLookup.replace(v2qv)
+                    case None =>
+                      fvfLookup}
+                  val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
+                  val c2 = c1.copy(functionRecorder = fr1)
+                  Q(fvfLookup, c2)}
+
+            case None =>
+              quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
+                //            val fvfDomain = fvfDef.domainDefinitions
+                val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+                //            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
+//                assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
+                assume(fvfDef)
+                val qvars = c1.quantifiedVariables//.filter(qv => tRcvr.existsDefined{case `qv` => true})
 //            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
 //                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
-            val bcs = decider.pcs.branchConditions
+            val bcs = List.empty[Term]//decider.pcs.branchConditions
             /* TODO: Implement less hacky.
              *       When a function's precondition is translated (when its definitional axiom
              *       is generated), local variables that are not parameters of the function
@@ -188,10 +214,24 @@ trait DefaultEvaluator[ST <: Store[ST],
               case None =>
                 fvfLookup}
             val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
-                                         .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.valueDefinitions)
+                                         .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
             val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
-            val c2 = c1.copy(functionRecorder = fr2)
-            Q(fvfLookup, c2)})})
+            val c2 = c1.copy(functionRecorder = fr2,
+                             fvfCache = c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
+            Q(fvfLookup, c2)})}})
+
+//        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
+//          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
+////            val fvfDomain = fvfDef.domainDefinitions
+//            val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+////            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
+//            assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
+//            val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
+//            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
+//                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
+//            val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
+//            val c2 = c1.copy(functionRecorder = fr2)
+//            Q(fvfLookup, c2)})})
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(σ, fa, pve, c)((name, args, c1) =>
@@ -413,8 +453,13 @@ trait DefaultEvaluator[ST <: Store[ST],
                                possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
               QB(tQuant, tAuxTopLevel, tAuxQuant, c3)})})
         }){case (tQuant, tAuxTopLevel, tAuxQuant, c1) =>
+//          val (_fvfDefs, _tOthers) =
+//            tAuxTopLevel.partition(_.isInstanceOf[SummarisingFvfDefinition])
+//                        .asInstanceOf[(Iterable[SummarisingFvfDefinition], Iterable[Term])]
           decider.prover.logComment("Top-level auxiliary terms")
           assume(tAuxTopLevel)
+//          assume(_tOthers)
+//          assume(_fvfDefs.flatMap(_.quantifiedValueDefinitions))
           decider.prover.logComment("Nested auxiliary terms")
           assume(tAuxQuant)
           Q(tQuant, c1)

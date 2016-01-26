@@ -7,6 +7,7 @@
 package viper.silicon.state
 
 import viper.silver.ast
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition}
 import viper.silicon.{Map, Set, Stack}
 import viper.silicon.interfaces.state.{Mergeable, Context, Heap}
 import viper.silicon.state.terms.{Var, Term}
@@ -41,6 +42,7 @@ case class DefaultContext[H <: Heap[H]]
                           consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
+                          fvfCache: Map[(ast.Field, Seq[QuantifiedChunk]), SummarisingFvfDefinition] = Map.empty,
                           fvfAsSnap: Boolean = false)
     extends Context[DefaultContext[H]] {
 
@@ -82,7 +84,7 @@ case class DefaultContext[H <: Heap[H]]
                         reserveHeaps1, exhaleExt1, lhsHeap1, evalHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
                         recordEffects1, producedChunks1, consumedChunks1, letBoundVars1,
-                        fvfAsSnap1) =>
+                        fvfCache1, fvfAsSnap1) =>
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`, /*`branchConditions1`,*/
@@ -91,16 +93,33 @@ case class DefaultContext[H <: Heap[H]]
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`, `evalHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                             `recordEffects1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`,
-                            fvfAsSnap2) =>
+                            fvfCache2, fvfAsSnap2) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
           val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
 
+          val fvfCache3 =
+            viper.silicon.utils.conflictFreeUnion(fvfCache1, fvfCache2) match {
+              case Right(m3) => m3
+              case _ =>
+                /* TODO: Comparing size is not sufficient - we should compare cache entries for
+                 *       equality modulo renaming of FVFs.
+                 *       Even better: when branching (locally/in general?), there the fvfCache from the
+                 *       first branch should be made available to the second branch in order to avoid
+                 *       axiomatising a fresh but equivalent FVF.
+                 *       This should be sound because the branch condition (of a local branch?) cannot
+                 *       influence the available chunks.
+                 */
+                assert(fvfCache1.size == fvfCache2.size)
+                fvfCache1
+            }
+
           copy(recordVisited = recordVisited1 || recordVisited2,
                retrying = retrying1 || retrying2,
                functionRecorder = functionRecorder3,
                possibleTriggers = possibleTriggers3,
+               fvfCache = fvfCache3,
                fvfAsSnap = fvfAsSnap1 || fvfAsSnap2)
 
         case _ =>
