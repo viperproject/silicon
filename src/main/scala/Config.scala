@@ -302,8 +302,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-  val disableQPCaching = opt[Boolean]("disableQPCaching",
-    descr = "Disable caching of qp-related symbols and axioms.",
+  val disableValueMapCaching = opt[Boolean]("disableValueMapCaching",
+    descr = "Disable caching of value maps (context: quantified permissions/iterated separating conjunctions).",
     default = Some(false),
     noshort = true,
     hidden = Silicon.hideInternalOptions

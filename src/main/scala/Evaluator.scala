@@ -161,7 +161,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
           c.fvfCache.get((fa.field, quantifiedChunks)) match {
-            case Some(fvfDef: SummarisingFvfDefinition) =>
+            case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
 //              decider.assert(σ, PermLess(NoPerm(), quantifiedChunkSupporter.permission(quantifiedChunks, tRcvr, fa.field))) {
               decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
                 case false =>
@@ -183,7 +183,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                   val c2 = c1.copy(functionRecorder = fr1)
                   Q(fvfLookup, c2)}
 
-            case None =>
+            case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
                 //            val fvfDomain = fvfDef.domainDefinitions
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
