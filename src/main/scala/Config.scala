@@ -316,6 +316,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false //Silicon.hideInternalOptions
   )
 
+  val disableChunkOrderHeuristics = opt[Boolean]("disableChunkOrderHeuristics",
+    descr = "Disable heuristic ordering of quantified chunks (context: iterated separating conjunctions).",
+    default = Some(false),
+    noshort = true,
+    hidden = false //Silicon.hideInternalOptions
+  )
+
   /* Option validation */
 
   validateOpt(timeout) {

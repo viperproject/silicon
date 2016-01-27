@@ -426,7 +426,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                      : (H, QuantifiedChunk, FvfDefinition, Boolean) = {
 
       val (quantifiedChunks, otherChunks) = splitHeap(h, field.name)
-      val candidates = chunkOrderHeuristic(quantifiedChunks)
+      val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
       val pInit = qvar.fold(perms)(x => perms.replace(x, inverseReceiver)) // p(e⁻¹(r))
       val conditionOfInv = qvar.fold(condition)(x => condition.replace(x, inverseReceiver)) // c(e⁻¹(r))
       val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(r)) ? p_init(r) : 0
