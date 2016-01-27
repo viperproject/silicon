@@ -303,10 +303,17 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val disableValueMapCaching = opt[Boolean]("disableValueMapCaching",
-    descr = "Disable caching of value maps (context: quantified permissions/iterated separating conjunctions).",
+    descr = "Disable caching of value maps (context: iterated separating conjunctions).",
     default = Some(false),
     noshort = true,
-    hidden = Silicon.hideInternalOptions
+    hidden = false //Silicon.hideInternalOptions
+  )
+
+  val disableISCTriggers = opt[Boolean]("disableISCTriggers",
+    descr = "Don't pick triggers for quantifiers, let the SMT solver do it (context: iterated separating conjunctions).",
+    default = Some(false),
+    noshort = true,
+    hidden = false //Silicon.hideInternalOptions
   )
 
   /* Option validation */

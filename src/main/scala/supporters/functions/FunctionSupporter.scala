@@ -74,7 +74,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
         heights.map { case (func, height) =>
           val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => predicateSupporter.data(pred))
+                                      identifierFactory, pred => predicateSupporter.data(pred), config)
           func -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend

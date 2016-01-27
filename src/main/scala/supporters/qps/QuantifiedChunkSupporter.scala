@@ -324,10 +324,10 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         if (qvars.isEmpty) {
           SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
         } else
-          QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(axiomRewriter)
+          QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(axiomRewriter, config)
       } else {
   //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
-        SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)
+        SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)(config)
       }
     }
 
@@ -523,11 +523,14 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         if (constrainPermissions)
           result match {
             case None =>
-              Forall(`?r`,
-                Implies(
-                  ithChunk.perm !== NoPerm(),
-                  PermLess(conditionalizedPermsOfInv, ithChunk.perm)),
-                Nil: Seq[Trigger], s"qp.srp${qidCounter.next()}").autoTrigger
+              val q1 = Forall(`?r`,
+                         Implies(
+                           ithChunk.perm !== NoPerm(),
+                           PermLess(conditionalizedPermsOfInv, ithChunk.perm)),
+                         Nil: Seq[Trigger], s"qp.srp${qidCounter.next()}")
+
+              if (config.disableISCTriggers()) q1 else q1.autoTrigger
+
             case Some((perms, singleRcvr)) =>
               Implies(
                 perms !== NoPerm(),
@@ -692,7 +695,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
               SetIn(rcvr, Domain(field.name, fvf)),
               cond),
   //          Trigger(Lookup(field.name, fvf, receiver)))
-            Trigger(SetIn(rcvr, Domain(field.name, fvf))),
+            if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(SetIn(rcvr, Domain(field.name, fvf))) :: Nil,
             s"qp.$fvf-dom")
           /* Create an axiom of the shape "forall r :: r in domain(fvf) ==> cond[x |-> inv(r)]" */
   //        Forall(`?r`,
@@ -733,13 +736,13 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     }
 
     def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term) = {
-      val axRaw =
+      val q1 =
         Forall(
           qvar,
           Implies(cond, rcvr !== Null()),
           Nil,
-          s"qp.null${qidCounter.next()}"
-        ).autoTrigger
+          s"qp.null${qidCounter.next()}")
+      val axRaw = if (config.disableISCTriggers()) q1 else q1.autoTrigger
 
       val ax = axiomRewriter.rewrite(axRaw).getOrElse(axRaw)
 
@@ -782,7 +785,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         TriggerGenerator.assembleQuantification(Forall,
                                                 qvar :: Nil,
                                                 Implies(condition, invOFct === qvar),
-                                                fct :: And(condition, invOFct) :: Nil,
+                                                if (config.disableISCTriggers()) Nil: Seq[Term] else fct :: And(condition, invOFct) :: Nil,
                                                 s"qp.${func.id}-exp",
                                                 axiomRewriter)
 
@@ -790,7 +793,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         TriggerGenerator.assembleQuantification(Forall,
                                                 `?r` :: Nil,
                                                 Implies(condInv, fctOfInv === `?r`),
-                                                Trigger(inverseFunc(`?r`)) :: Nil,
+                                                if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inverseFunc(`?r`)) :: Nil,
                                                 s"qp.${func.id}-imp",
                                                 axiomRewriter)
 

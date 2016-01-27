@@ -7,6 +7,7 @@
 package viper.silicon.supporters.qps
 
 import viper.silver.ast
+import viper.silicon.Config
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms._
@@ -64,7 +65,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
                                         rcvr: Term,
                                         sourceChunks: Seq[QuantifiedChunk] /*,
                                         freshFvf: Boolean*/)
-                                       (axiomRewriter: AxiomRewriter)
+                                       (axiomRewriter: AxiomRewriter, config: Config)
     extends FvfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationFieldValueFunctionDefinition must be used "
@@ -102,7 +103,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
       Forall(
         `?r`,
         valueDefinition,
-        Trigger(newFvfLookupTriggers) :: Trigger(sourceFvfLookupTriggers) :: Nil,
+        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newFvfLookupTriggers) :: Trigger(sourceFvfLookupTriggers) :: Nil,
         s"qp.$fvf-lookup-${axiomCounter.next()}")
     }
   }
@@ -113,8 +114,11 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
-      TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
-                      .getOrElse((Nil, Nil))
+      if (config.disableISCTriggers())
+        (Nil, Nil)
+      else
+        TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
+                        .getOrElse((Nil, Nil))
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
@@ -146,6 +150,7 @@ case class SummarisingFvfDefinition(field: ast.Field,
                                     fvf: Term,
                                     rcvr: Term,
                                     sourceChunks: Seq[QuantifiedChunk])
+                                   (config: Config)
     extends FvfDefinition with Definition {
 
   private val triples =
@@ -169,7 +174,7 @@ case class SummarisingFvfDefinition(field: ast.Field,
       Forall(
         `?r`,
         Implies(PermLess(NoPerm(), p), lk1 === lk2),
-        Seq(Trigger(lk1), Trigger(lk2)))
+        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
     }
 
   def totalPermissions(rcvr: Term) = {

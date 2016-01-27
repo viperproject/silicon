@@ -22,7 +22,8 @@ class FunctionData(val programFunction: ast.Function,
                   (symbolConverter: SymbolConvert,
                    expressionTranslator: HeapAccessReplacingExpressionTranslator,
                    identifierFactory: IdentifierFactory,
-                   predicateData: ast.Predicate => PredicateData) {
+                   predicateData: ast.Predicate => PredicateData,
+                   config: Config) {
 
   private[this] var phase = 0
 
@@ -105,8 +106,13 @@ class FunctionData(val programFunction: ast.Function,
       val body = Implies(And(guards), And(ts))
       val additionalQVars = qvars filterNot arguments.contains
 
-      if (additionalQVars.isEmpty) body
-      else Forall(additionalQVars, body, Seq[Trigger]()).autoTrigger }
+      if (additionalQVars.isEmpty)
+        body
+      else {
+        val q1 = Forall(additionalQVars, body, Seq[Trigger]())
+        if (config.disableISCTriggers()) q1 else q1.autoTrigger
+      }
+    }
   }
 
   private[this] def setAfterRelations(): Unit = {
