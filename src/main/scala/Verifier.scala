@@ -61,7 +61,7 @@ class DefaultVerifier(val config: Config)
   val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
   val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
   val domainsEmitter = new DefaultDomainsEmitter(decider.prover, domainTranslator, symbolConverter)
-  val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter)
+  val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, config)
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,

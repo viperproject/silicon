@@ -7,7 +7,7 @@
 package viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon.{Map, toSet, Set}
+import viper.silicon.{Config, Map, toSet, Set}
 import viper.silicon.decider.PreambleFileEmitter
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
@@ -18,7 +18,8 @@ trait FieldValueFunctionsEmitter extends PreambleEmitter
 
 class DefaultFieldValueFunctionsEmitter(prover: => Prover,
                                         symbolConverter: SymbolConvert,
-                                        preambleFileEmitter: PreambleFileEmitter[String, String])
+                                        preambleFileEmitter: PreambleFileEmitter[String, String],
+                                        config: Config)
     extends FieldValueFunctionsEmitter {
 
   private var collectedFields = Set[ast.Field]()
@@ -64,7 +65,7 @@ class DefaultFieldValueFunctionsEmitter(prover: => Prover,
       val sort = symbolConverter.toSort(f.typ)
       val id = f.name
       val fvfSubstitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
-      val fvfAxioms = "/field_value_functions_axioms.smt2"
+      val fvfAxioms = if (config.disableISCTriggers()) "/field_value_functions_axioms_no_triggers.smt2" else "/field_value_functions_axioms.smt2"
 
       prover.logComment(s"$fvfAxioms [$id: $sort]")
       preambleFileEmitter.emitParametricAssertions(fvfAxioms, fvfSubstitutions)

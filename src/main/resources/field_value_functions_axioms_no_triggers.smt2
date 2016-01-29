@@ -18,14 +18,8 @@
           (implies
             ($Set.in x ($FVF.domain_$FLD$ vs))
             (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
-          ; :pattern (($Set.in x ($FVF.domain_$FLD$ vs)))
-          :pattern (($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x))
           :qid |qp.$FVF<$S$>-eq-inner|
           )))
       (= vs ws))
-    :pattern (($SortWrappers.$FVF<$S$>To$Snap vs)
-              ($SortWrappers.$FVF<$S$>To$Snap ws)
-;              ($FVF.after_$FLD$ vs ws)
-              )
     :qid |qp.$FVF<$S$>-eq-outer|
     )))

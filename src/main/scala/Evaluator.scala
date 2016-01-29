@@ -217,7 +217,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                                          .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
             val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
             val c2 = c1.copy(functionRecorder = fr2,
-                             fvfCache = c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
+                             fvfCache = if (config.disableValueMapCaching()) c1.fvfCache else c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
             Q(fvfLookup, c2)})}})
 
 //        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
