@@ -161,7 +161,7 @@ trait ExpressionTranslator {
 
       case ast.ExplicitSeq(es) =>
         es.tail.foldLeft[SeqTerm](SeqSingleton(f(es.head)))((tSeq, e) =>
-          SeqAppend(SeqSingleton(f(e)), tSeq))
+          SeqAppend(tSeq, SeqSingleton(f(e))))
 
       /* Sets and multisets */
 
