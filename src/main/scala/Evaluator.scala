@@ -558,10 +558,10 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(SeqUpdate(ts.head, ts(1), ts(2)), c1))
 
       case ast.ExplicitSeq(es) =>
-        evals2(σ, es.reverse, Nil, _ => pve, c)((tEs, c1) => {
+        evals2(σ, es, Nil, _ => pve, c)((tEs, c1) => {
           val tSeq =
             tEs.tail.foldLeft[SeqTerm](SeqSingleton(tEs.head))((tSeq, te) =>
-              SeqAppend(SeqSingleton(te), tSeq))
+              SeqAppend(tSeq, SeqSingleton(te)))
           assume(SeqLength(tSeq) === IntLiteral(es.size))
           Q(tSeq, c1)})
 
