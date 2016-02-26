@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{MMultiMap, Map, MSet, MMap, Set}
+import viper.silicon.{MultiMap, MMultiMap, Map, MSet, MMap, Set}
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
 import viper.silicon.state.{SymbolConvert, terms}
@@ -28,12 +28,7 @@ class DefaultDomainsEmitter(prover: => Prover,
   private var collectedSorts = Set[terms.Sort]()
   private var collectedSymbols = Set[terms.DomainFun]()
   private var collectedAxioms = Set[terms.Term]()
-
-  private var uniqueSymbols = Set[terms.Symbol]()
-    /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
-     * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
-     * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
-     */
+  private var uniqueSymbols = MultiMap.empty[terms.Sort, terms.Symbol]
 
   def sorts = collectedSorts
 
@@ -43,7 +38,7 @@ class DefaultDomainsEmitter(prover: => Prover,
     collectedSorts = collectedSorts.empty
     collectedSymbols = collectedSymbols.empty
     collectedAxioms = collectedAxioms.empty
-    uniqueSymbols = uniqueSymbols.empty
+    uniqueSymbols = MultiMap.empty
   }
 
   def start() {}
@@ -107,7 +102,7 @@ class DefaultDomainsEmitter(prover: => Prover,
           assert(fi.member.formalArgs.isEmpty,
             s"Expected unique domain functions to not take arguments, but found ${fi.member}")
 
-          uniqueSymbols += fct
+          uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
         }
       })
     }
@@ -136,7 +131,7 @@ class DefaultDomainsEmitter(prover: => Prover,
   }
 
   def emitUniquenessAssumptions() {
-    prover.assume(terms.Distinct(uniqueSymbols))
+    uniqueSymbols.map.values foreach (symbols => prover.assume(terms.Distinct(symbols)))
   }
 
   private def domainMembers(domain: ast.Domain): Map[ast.DomainMember, ast.Domain] = {
