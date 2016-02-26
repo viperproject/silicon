@@ -120,20 +120,20 @@ package object utils {
             case _: silver.ast.Add | _: silver.ast.Sub => false
           }
 
+          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(forall)
+
+          silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+
           val advancedTriggerForall =
-            silver.ast.utility.Expressions.generateTriggerSet(forall) match {
+            optTriggerSet match {
               case Some((variables, triggerSets)) =>
                 /* Invalid triggers could be generated, now try to rewrite them */
                 val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
-
                 silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
               case None =>
                 /* Invalid triggers could not be generated -> give up */
                 forall
             }
-
-
-          silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
           advancedTriggerForall
         }
