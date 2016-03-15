@@ -84,12 +84,10 @@ trait MethodSupporterProvider[ST <: Store[ST],
           locally {
             produces(σ, fresh, terms.FullPerm(), pres, ContractNotWellformed, c)((σ1, c2) => {
               val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-                 (locally {
-                    /* TODO: Checking self-framingness here fails if pold(e) reads a location
-                     *       to which access is not required by the precondition.
-                     */
-                    magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}
-              && locally {
+                 (/* Commented due to #201: Self-framingness checks are made too eagerly */
+                  /*locally {
+                    magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}*/
+              /*&&*/ locally {
                     produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
                       Success())}
               && locally {
