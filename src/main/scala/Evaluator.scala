@@ -175,7 +175,9 @@ trait DefaultEvaluator[ST <: Store[ST],
                     case Some(data) =>
                       val v2qv = toMap(σ.γ.values collect {
                         case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
-                          v -> Var(SimpleIdentifier(k.name), v.sort)})
+                          v -> Var(SimpleIdentifier(k.name), v.sort)
+                        case (k, v: Var) if v == data.formalResult =>
+                          v -> data.limitedFunctionApplication})
                       fvfLookup.replace(v2qv)
                     case None =>
                       fvfLookup}
@@ -204,12 +206,20 @@ trait DefaultEvaluator[ST <: Store[ST],
              *       which might occur in 'e.f', and therefore, in 'lookup(..., e.f)'.
              *       To prevent that 'y@2' ends up in the function definition axiom, all such
              *       occurrences 'z@i' are replaced by just 'z'.
+             *
+             *       Similarly, HeapAccessReplacingExpressionTranslator translates 'result',
+             *       as used in function postconditions, to an application of the limited
+             *       function symbol. However, if 'result' occurs in the receiver expression
+             *       of a QP field access, e.g. in 'loc(a, result).val', then the function
+             *       recorder records 'loc(a, result@99).val'.
              */
             val lk = c1.functionRecorder.data match {
               case Some(data) =>
                 val v2qv = toMap(σ.γ.values collect {
                   case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
-                    v -> Var(SimpleIdentifier(k.name), v.sort)})
+                    v -> Var(SimpleIdentifier(k.name), v.sort)
+                  case (k, v: Var) if v == data.formalResult =>
+                    v -> data.limitedFunctionApplication})
                 fvfLookup.replace(v2qv)
               case None =>
                 fvfLookup}
