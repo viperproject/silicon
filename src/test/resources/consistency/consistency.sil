@@ -1,12 +1,6 @@
 field f: Int
 field r: Ref
 
-function recfun(x: Int): Int
-  requires x > 0
-  //:: ExpectedOutput(internal:feature.unsupported)
-  ensures recfun(x) < 0
-{ -x }
-
 method epstest(x: Ref)
   //:: ExpectedOutput(internal:feature.unsupported)
   requires acc(x.f, epsilon)

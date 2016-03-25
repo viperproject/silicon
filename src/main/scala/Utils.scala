@@ -158,26 +158,8 @@ package object utils {
     type PositionedNode = silver.ast.Node with silver.ast.Positioned
 
     def check(program: silver.ast.Program) = (
-         program.functions.flatMap(checkFunctionPostconditionNotRecursive)
-      ++ checkPermissions(program)
+         checkPermissions(program)
       ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program)))
-
-    def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
-      val message = (
-        "Silicon cannot handle function postconditions that mention the function itself. "
-          + "Try to replace the function application by 'result'.")
-
-      Internal(fapp, FeatureUnsupported(fapp, message))
-    }
-
-    def checkFunctionPostconditionNotRecursive(function: silver.ast.Function): Seq[VerificationError] =
-    /* TODO: Most likely doesn't detect mutual recursion. */
-      function.posts.flatMap(_.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        case fapp @ silver.ast.FuncApp(functionName, _) if function.name == functionName =>
-          createUnsupportedRecursiveFunctionPostconditionError(fapp) +: errors.flatten
-
-        case _ => errors.flatten
-      }))
 
     def createUnsupportedPermissionExpressionError(offendingNode: PositionedNode) = {
       val message = s"Silicon doesn't support the permission expression $offendingNode."
