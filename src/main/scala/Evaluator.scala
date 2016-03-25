@@ -534,6 +534,11 @@ trait DefaultEvaluator[ST <: Store[ST],
                     consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, c4) => {
 //                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
                       val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, snap))
+                        /* Recording the unfolded predicate's snapshot is necessary in order to create the
+                         * additional predicate-based trigger function applications because these are applied
+                         * to the function arguments and the predicate snapshot
+                         * (see 'predicateTriggers' in FunctionData.scala).
+                         */
                       decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
