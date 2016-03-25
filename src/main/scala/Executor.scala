@@ -127,13 +127,14 @@ trait DefaultExecutor[ST <: Store[ST],
         (locally {
             val mark = decider.setPathConditionMark()
             decider.prover.logComment("Loop: Check specs well-definedness")
-            produces(σBody, fresh,  FullPerm(), lb.invs :+ lb.cond, _ => WhileFailed(loopStmt), c)((σ1, c1) => {
-              /* Detect potential contradictions between path conditions from the loop guard and
-               * from the invariant (e.g. due to conditionals)
-               */
-              if (!decider.checkSmoke())
-                phase1data = phase1data :+ (σ1, decider.pcs.after(mark), c1)
-              Success()})}
+            produces(σBody, fresh,  FullPerm(), lb.invs, ContractNotWellformed, c)((σ1, c1) =>
+              produce(σ1, fresh,  FullPerm(), lb.cond, WhileFailed(loopStmt), c1)((σ2, c2) => {
+                /* Detect potential contradictions between path conditions from the loop guard and
+                 * from the invariant (e.g. due to conditionals)
+                 */
+                if (!decider.checkSmoke())
+                  phase1data = phase1data :+ (σ2, decider.pcs.after(mark), c2)
+                Success()}))}
         && locally {
             val mark = decider.setPathConditionMark()
             decider.prover.logComment("Loop: Establish loop invariant")
