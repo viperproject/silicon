@@ -363,6 +363,10 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.PermSub(e0, e1) =>
         evalBinOp(σ, e0, e1, PermMinus, pve, c)(Q)
 
+      case ast.PermMinus(e0) =>
+        eval(σ, e0, pve, c)((t0, c1) =>
+          Q(PermMinus(NoPerm(), t0), c1))
+
       case ast.PermMul(e0, e1) =>
         evalBinOp(σ, e0, e1, PermTimes, pve, c)(Q)
 
