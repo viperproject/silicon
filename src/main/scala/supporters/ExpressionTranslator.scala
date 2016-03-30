@@ -137,6 +137,7 @@ trait ExpressionTranslator {
       case _: ast.NoPerm => NoPerm()
       case ast.FractionalPerm(e0, e1) => FractionPerm(f(e0), f(e1))
 
+      case ast.PermMinus(e0) => PermMinus(NoPerm(), f(e0))
       case ast.PermAdd(e0, e1) => PermPlus(f(e0), f(e1))
       case ast.PermSub(e0, e1) => PermMinus(f(e0), f(e1))
       case ast.PermMul(e0, e1) => PermTimes(f(e0), f(e1))
