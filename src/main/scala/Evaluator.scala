@@ -654,8 +654,32 @@ trait DefaultEvaluator[ST <: Store[ST],
              (Q: (Term, C) => VerificationResult)
              : VerificationResult =
 
-    eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
-      Q(t, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)))
+    if (c.retrying) {
+      /* See comment in DefaultDecider.tryOrFail */
+      var originalChunks: Option[Iterable[Chunk]] = None
+      def compressHeapIfRetrying(c: C, σ: S, h: H) {
+        if (c.retrying) {
+          originalChunks = Some(h.values)
+          heapCompressor.compress(σ, h, c)
+        }
+      }
+      def restoreHeapIfPreviouslyCompressed(h: H) {
+        originalChunks match {
+          case Some(chunks) => h.replace(chunks)
+          case None => /* Nothing to do here */
+        }
+      }
+
+      compressHeapIfRetrying(c, σ, h)
+      val r =
+        eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
+          Q(t, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)))
+      restoreHeapIfPreviouslyCompressed(h)
+      
+      r
+    } else
+      eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
+        Q(t, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)))
 
   def evalLocationAccess(σ: S,
                          locacc: ast.LocationAccess,
