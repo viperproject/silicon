@@ -102,6 +102,16 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
       else
         parens(sanitize(fapp.applicable.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
 
+    /* Split axioms with more than one trigger set into multiple copies of the same
+     * axiom, each with a single trigger. This can avoid incompletenesses due to Z3
+     * potentially ignoring all but the first trigger set. (I can't find the post
+     * by Nikolaj now, but he described it somewhere, either on Stackoverflow or in
+     * Z3's issue tracker).
+     */
+    case q: Quantification if q.triggers.lengthCompare(1) > 0 =>
+      render(And(q.triggers.map(trg => q.copy(triggers = Vector(trg)))))
+
+    /* Handle quantifiers that have at most one trigger set */
     case Quantification(quant, vars, body, triggers, name) =>
       val docVars = ssep((vars map (v => parens(sanitize(v.id) <+> render(v.sort)))).to[collection.immutable.Seq], space)
       val docBody = render(body)
