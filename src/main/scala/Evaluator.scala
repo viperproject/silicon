@@ -679,7 +679,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
           Q(t, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)))
       restoreHeapIfPreviouslyCompressed(h)
-      
+
       r
     } else
       eval(σ \ h, e, pve, c.copy(partiallyConsumedHeap = None))((t, c1) =>
@@ -770,12 +770,6 @@ trait DefaultEvaluator[ST <: Store[ST],
        */
       val allPathConditions = bodyPathConditions // ++ (decider.π -- πPre)
 
-      val expandedTriggersSets =
-        if (hasFieldAccesses)
-          QuantifiedChunkSupporter.expandFvfLookupsInTriggers(tTriggersSets, allPathConditions)
-        else
-          Seq.empty
-
       /* [2015-12-15 Malte]
        *   The expanded trigger sets are not enough, the unexpanded triggers are needed as well.
        *   This is, because the "unexpanded" field value function will be used in the actual
@@ -783,11 +777,18 @@ trait DefaultEvaluator[ST <: Store[ST],
        *   quantification by mentioning the "unexpanded" field value function.
        *   Regression test quantifiedpermissions/misc/triggers_field_deref.sil, method test07a,
        *   illustrates this issue.
-       *
-       *   NOTE: This might no longer be an issue once Silicon re-uses field value functions
-       *         (instead of introducing a fresh field value function for each field dereference).
        */
-      val allTriggersSets = tTriggersSets ++ expandedTriggersSets
+
+      val allTriggersSets =
+        if (hasFieldAccesses) {
+          val expandedTriggersSets = QuantifiedChunkSupporter.expandFvfLookupsInTriggers(tTriggersSets, allPathConditions)
+          /* [2016-03-31 Malte]
+           *   In some cases triggers are not expanded, and concatenating tTriggersSets and
+           *   expandedTriggersSets will therefore result in duplicated triggers.
+           */
+          (tTriggersSets ++ expandedTriggersSets).distinct
+        } else
+          tTriggersSets
 
       Q(allTriggersSets map Trigger, c1)})
   }
