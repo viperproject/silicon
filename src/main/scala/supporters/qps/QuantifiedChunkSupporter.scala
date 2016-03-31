@@ -948,7 +948,7 @@ object QuantifiedChunkSupporter {
 
         /* All lookup terms inside `trigger` that need to be expanded */
         val newLookups = trigger.deepCollect { case lk: Lookup if lookupDefs.contains(lk) => lk }
-            .distinct
+                                .distinct
 
         /* Iterate over each lookup term that needs to be expanded, and expand each such term in
          * all possible ways. For example, if `triggerExpansions` were initially
@@ -970,8 +970,8 @@ object QuantifiedChunkSupporter {
           triggerExpansions =
               for (expansion <- triggerExpansions;
                    sourceLookup <- lookupDefs(newLookup))
-                yield
-                  expansion.replace(newLookup, sourceLookup)
+              yield
+                expansion.replace(newLookup, sourceLookup)
         })
 
         /* Update the list of already expanded prefixes */
@@ -986,8 +986,8 @@ object QuantifiedChunkSupporter {
              */
               for (prefix <- expandedPrefixes;
                    expansion <- triggerExpansions)
-                yield
-                  prefix :+ expansion
+              yield
+                prefix :+ expansion
       })
 
       expandedPrefixes
