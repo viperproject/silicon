@@ -151,11 +151,14 @@ trait DefaultEvaluator[ST <: Store[ST],
         Q(WildcardPerm(tVar), c)
 
       case ast.CurrentPerm(locacc) =>
-        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) =>
-          chunkSupporter.getChunk(σ, c.partiallyConsumedHeap.getOrElse(σ.h), name, args, c1) match {
-            case Some(ch) => Q(ch.perm, c1)
-            case None => Q(NoPerm(), c1)
-          })
+        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) => {
+          val loc = locacc.loc(c1.program)
+          val chs = σ.h.values.collect { case ch: BasicChunk if ch.name == name => ch }
+          val perm =
+            chs.foldLeft(NoPerm(): Term)((q, ch) => {
+              val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
+              PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
+          Q(perm, c1)})
 
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
