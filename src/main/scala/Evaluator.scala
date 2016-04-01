@@ -299,14 +299,15 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.Implies(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
-          join[Term, Term](c1, QB =>
-            branch(σ, t0, c1,
-              (c2: C) => eval(σ, e1, pve, c2)(QB),
-              (c2: C) => QB(True(), c2))
-          )(entries => {
-            assert(entries.length <= 2)
-            Implies(t0, entries.headOption.map(_.data).getOrElse(True()))
-          })(Q))
+          evalImplies(σ, t0, e1, pve, c1)(Q))
+//          join[Term, Term](c1, QB =>
+//            branch(σ, t0, c1,
+//              (c2: C) => eval(σ, e1, pve, c2)(QB),
+//              (c2: C) => QB(True(), c2))
+//          )(entries => {
+//            assert(entries.length <= 2)
+//            Implies(t0, entries.headOption.map(_.data).getOrElse(True()))
+//          })(Q))
 
       case ite @ ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
@@ -406,33 +407,29 @@ trait DefaultEvaluator[ST <: Store[ST],
           Q(App(fi, tArgs), c1)})
 
       case ast.ForPerm(varDecl, accessList, body) =>
-        val h = c.partiallyConsumedHeap.getOrElse(σ.h)
+        val σ1 = σ \ c.partiallyConsumedHeap.getOrElse(σ.h)
         val qvar = varDecl.localVar
         val locs = accessList.map(_.name)
+        val chs = σ1.h.values.collect { case ch: BasicChunk if locs contains ch.name => ch }
 
         /* Iterate over the list of relevant chunks in continuation passing style (very similar
          * to evals), and evaluate the forperm-body with a different qvar assignment each time.
          */
-        def bindRcvrAndEvalBody(rcvrs: Iterable[Term],
+        def bindRcvrAndEvalBody(chs: Iterable[BasicChunk],
                                 ts: Seq[Term],
                                 c: C)
                                (Q: (Seq[Term], C) => VerificationResult)
-                               : VerificationResult =
-
-          if (rcvrs.isEmpty)
+                               : VerificationResult = {
+          if (chs.isEmpty)
             Q(ts.reverse, c)
-          else
-            eval(σ \+ (qvar, rcvrs.head), body, pve, c)((tBody, c1) =>
-              bindRcvrAndEvalBody(rcvrs.tail, tBody +: ts, c1)(Q))
-
-        val rcvrs: Iterable[Term] = h.values.collect {
-          case fch: FieldChunk if locs contains fch.name => (fch.rcvr, fch.perm)
-          case pch: PredicateChunk if locs contains pch.name => (pch.args.head, pch.perm)
-        }.collect {
-          case (rcvr, perm) if decider.check(σ, PermLess(NoPerm(), perm), config.checkTimeout()) => rcvr
+          else {
+            val ch = chs.head
+            val rcvr = ch.args.head /* NOTE: If ch is a predicate chunk, only the first argument is used */
+            evalImplies(σ1 \+ (qvar, rcvr), PermLess(NoPerm(), ch.perm), body, pve, c)((tImplies, c1) =>
+              bindRcvrAndEvalBody(chs.tail, tImplies +: ts, c1)(Q))}
         }
 
-        bindRcvrAndEvalBody(rcvrs, Seq.empty, c)((ts, c1) =>
+        bindRcvrAndEvalBody(chs, Seq.empty, c)((ts, c1) =>
           Q(And(ts), c1))
 
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
@@ -655,6 +652,20 @@ trait DefaultEvaluator[ST <: Store[ST],
     }
 
     resultTerm
+  }
+
+  def evalImplies(σ: S, tLhs: Term, eRhs: ast.Exp, pve: PartialVerificationError, c: C)
+                 (Q: (Term, C) => VerificationResult)
+                 : VerificationResult = {
+
+    join[Term, Term](c, QB =>
+      branch(σ, tLhs, c,
+        (c1: C) => eval(σ, eRhs, pve, c1)(QB),
+        (c1: C) => QB(True(), c1))
+    )(entries => {
+      assert(entries.length <= 2)
+      Implies(tLhs, entries.headOption.map(_.data).getOrElse(True()))
+    })(Q)
   }
 
   def evalOld(σ: S, h: H, e: ast.Exp, pve: PartialVerificationError, c: C)
