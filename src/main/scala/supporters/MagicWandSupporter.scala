@@ -18,6 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.decider.PathConditionStack
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
@@ -314,6 +315,8 @@ trait MagicWandSupporter[ST <: Store[ST],
 
 //      decider.pushScope()
 
+      var pcsFromHeapIndepExprs = Vector[PathConditionStack]()
+
       val r = locally {
         produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
           val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: σLhs.h +: c.reserveHeaps.tail, /* [CTX] */
@@ -331,8 +334,10 @@ trait MagicWandSupporter[ST <: Store[ST],
                              letBoundVars = Nil)
             say(s"done: consumed RHS ${wand.right}")
             say(s"next: create wand chunk")
+            val preMark = decider.setPathConditionMark()
             magicWandSupporter.createChunk(σ \+ Γ(c3.letBoundVars), wand, pve, c4)((ch, c5) => {
               say(s"done: create wand chunk: $ch")
+              pcsFromHeapIndepExprs :+= decider.pcs.after(preMark)
               magicWandChunk = ch
                 /* TODO: Assert that all produced chunks are identical (due to
                  * branching, we might get here multiple times per package).
@@ -427,6 +432,9 @@ trait MagicWandSupporter[ST <: Store[ST],
             say(s"done: create wand chunk: $ch")
             Q(ch, c2)})
         } else {
+          lnsay("Restoring path conditions obtained from evaluating heap-independent expressions")
+          pcsFromHeapIndepExprs.foreach(pcs => decider.assume(pcs.asConditionals))
+
           assert(contexts.map(_.reserveHeaps).map(_.length).toSet.size == 1)
 
           val joinedReserveHeaps: Stack[MList[Chunk]] = ( /* IMPORTANT: Must match structure of [CTX] above */
