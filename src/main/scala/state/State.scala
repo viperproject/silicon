@@ -34,10 +34,10 @@ case class MapBackedStore(private val map: Map[ast.AbstractLocalVar, Term])
   def +(other: MapBackedStore) = MapBackedStore(map ++ other.map)
 }
 
-case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBackedHeap] {
-  def this() = this(Nil)
+case class ListBackedHeap(private var chunks: IndexedSeq[Chunk]) extends Heap[ListBackedHeap] {
+  def this() = this(Vector())
   def this(h: ListBackedHeap) = this(h.chunks)
-  def this(chunks: Iterable[Chunk]) = this(chunks.toList)
+  def this(chunks: Iterable[Chunk]) = this(chunks.toIndexedSeq)
 
   @inline
   def values = chunks
@@ -48,15 +48,18 @@ case class ListBackedHeap(private var chunks: List[Chunk]) extends Heap[ListBack
     * instead.
     */
   def replace(chunks: Iterable[Chunk]) {
-    this.chunks = chunks.toList
+    this.chunks = chunks.toIndexedSeq
   }
 
   def empty = new ListBackedHeap()
 
   def +(ch: Chunk) = ListBackedHeap(chunks :+ ch)
-  def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ::: chunks)
+  def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ++ chunks)
 
-  def -(ch: Chunk) = new ListBackedHeap(chunks.filterNot(_ == ch))
+  def -(ch: Chunk) = {
+    val (prefix, suffix) = chunks.span(_ != ch)
+    new ListBackedHeap(prefix ++ suffix.drop(1))
+  }
 }
 
 /*
