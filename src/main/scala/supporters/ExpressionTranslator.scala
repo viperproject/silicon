@@ -206,10 +206,11 @@ trait ExpressionTranslator {
              | _: ast.EpsilonPerm
              | _: ast.ForPerm
              | _: ast.ApplyOld
-             | _: ast.Applying
-             | _: ast.Folding
              | _: ast.MagicWand
-             | _: ast.Packaging
+             | _: ast.FoldingGhostOp
+             | _: ast.UnfoldingGhostOp
+             | _: ast.ApplyingGhostOp
+             | _: ast.PackagingGhostOp
              =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")

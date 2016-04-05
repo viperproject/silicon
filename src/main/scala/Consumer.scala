@@ -286,7 +286,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           case _ => sys.error(s"Expected a magic wand, but found node $φ")
         }
 
-      case pckg @ ast.Packaging(eWand, eIn) =>
+      case pckg @ ast.PackagingGhostOp(eWand, eIn) =>
 //        val pve = PackagingFailed(pckg)
         magicWandSupporter.packageWand(σ, eWand, pve, c)((chWand, c1) => {
           val h2 = h + chWand /* h2 = σUsed'' */
@@ -299,7 +299,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, c3) =>
             Q(h3, decider.fresh(sorts.Snap), c3))})
 
-      case ast.Applying(eWandOrVar, eIn) =>
+      case ast.ApplyingGhostOp(eWandOrVar, eIn) =>
         val (eWand, eLHSAndWand, γ1) = eWandOrVar match {
           case _eWand: ast.MagicWand =>
             (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info), σ.γ)
@@ -320,16 +320,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
-      case ast.Folding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
-                       eIn) =>
+      case ast.FoldingGhostOp(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
+                              eIn) =>
 
         heuristicsSupporter.tryOperation[S, H](s"folding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.foldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
             consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
-      case ast.Unfolding(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
-                       eIn) if c.exhaleExt && !φ.isPure =>
+      case ast.UnfoldingGhostOp(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
+                                eIn) =>
 
         heuristicsSupporter.tryOperation[S, H](s"unfolding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.unfoldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
