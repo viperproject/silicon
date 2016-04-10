@@ -151,9 +151,10 @@ trait DefaultEvaluator[ST <: Store[ST],
         Q(WildcardPerm(tVar), c)
 
       case ast.CurrentPerm(locacc) =>
+        val h = c.partiallyConsumedHeap.getOrElse(σ.h)
         evalLocationAccess(σ, locacc, pve, c)((name, args, c1) => {
           val loc = locacc.loc(c1.program)
-          val chs = σ.h.values.collect { case ch: BasicChunk if ch.name == name => ch }
+          val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
           val perm =
             chs.foldLeft(NoPerm(): Term)((q, ch) => {
               val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
