@@ -364,7 +364,11 @@ trait MagicWandSupporter[ST <: Store[ST],
               lnsay(s"c3.consumedChunks:", 2)
               c3.consumedChunks.foreach(x => say(x.toString(), 3))
 
-              assert(c3.consumedChunks.length == allConsumedChunks.length)
+              assert(c3.consumedChunks.length <= allConsumedChunks.length)
+                /* c3.consumedChunks can have fewer layers due to infeasible execution paths,
+                 * as illustrated by test case wands/regression/folding_inc1.sil.
+                 * Hence the at-most comparison.
+                 */
 
               val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
                 c3.consumedChunks.map(pairs => {
@@ -380,7 +384,8 @@ trait MagicWandSupporter[ST <: Store[ST],
               say(s"consumedChunks:", 2)
               consumedChunks.foreach(x => say(x.toString(), 3))
 
-              assert(consumedChunks.length == allConsumedChunks.length)
+              assert(consumedChunks.length <= allConsumedChunks.length)
+                /* At-most comparison due to infeasible execution paths */
 
               consumedChunks.zip(allConsumedChunks).foreach { case (cchs, allcchs) =>
                 cchs.foreach { case (guards, chunks) =>
