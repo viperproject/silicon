@@ -7,7 +7,7 @@
 package viper.silicon.tests
 
 import java.nio.file.Path
-import viper.silver.testing.SilSuite
+import viper.silver.testing.{MissingOutput, UnexpectedOutput, LocatedAnnotation, SilSuite}
 import viper.silver.verifier.Verifier
 import viper.silicon.{Silicon, SiliconFrontend}
 
@@ -24,6 +24,15 @@ class SiliconTests extends SilSuite {
     fe.init(verifier)
     fe.reset(files.head)
     fe
+  }
+
+  override def shouldLeadToTestCancel(ann: LocatedAnnotation) = {
+    ann match {
+      case UnexpectedOutput(_, _, _, _, _, _) => true
+      case MissingOutput(_, _, _, _, _, issue) =>
+        issue != 34
+      case _ => false
+    }
   }
 
   lazy val verifiers = List(createSiliconInstance())
