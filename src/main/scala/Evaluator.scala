@@ -19,6 +19,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsNonNegative
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.{SummarisingFvfDefinition, QuantifiedChunkSupporter}
 import viper.silicon.supporters.functions.FunctionSupporter
@@ -149,17 +150,6 @@ trait DefaultEvaluator[ST <: Store[ST],
         val (tVar, tConstraints) = decider.freshARP()
         assume(tConstraints)
         Q(WildcardPerm(tVar), c)
-
-      case ast.CurrentPerm(locacc) =>
-        val h = c.partiallyConsumedHeap.getOrElse(σ.h)
-        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) => {
-          val loc = locacc.loc(c1.program)
-          val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
-          val perm =
-            chs.foldLeft(NoPerm(): Term)((q, ch) => {
-              val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
-              PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
-          Q(perm, c1)})
 
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
@@ -406,6 +396,31 @@ trait DefaultEvaluator[ST <: Store[ST],
           val outSort = toSort(dfa.typ)
           val fi = symbolConverter.toFunction(c.program.findDomainFunction(funcName), inSorts :+ outSort)
           Q(App(fi, tArgs), c1)})
+
+      case ast.CurrentPerm(locacc) =>
+        val h = c.partiallyConsumedHeap.getOrElse(σ.h)
+        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) => {
+          val loc = locacc.loc(c1.program)
+          /* It is assumed that, for a given field/predicate identifier (loc)
+           * either only quantified or only non-quantified chunks are used.
+           */
+          val usesQPChunks =
+            loc match {
+              case field: ast.Field => c.qpFields.contains(field)
+              case pred: ast.Predicate => false /* TODO: Support predicates under QPs */
+            }
+          val perm =
+            if (usesQPChunks) {
+              val chs = h.values.collect { case ch: QuantifiedChunk if ch.name == name => ch }
+              chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                PermPlus(q, ch.perm.replace(`?r`, args.head))) /* TODO: Support predicates under QPs */
+            } else {
+              val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
+              chs.foldLeft(NoPerm(): Term)((q, ch) => {
+                val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
+                PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
+            }
+          Q(perm, c1)})
 
       case ast.ForPerm(varDecl, accessList, body) =>
         val σ1 = σ \ c.partiallyConsumedHeap.getOrElse(σ.h)
