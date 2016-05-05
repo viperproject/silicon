@@ -169,9 +169,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                     case Some(data) =>
                       val v2qv = toMap(σ.γ.values collect {
                         case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
-                          v -> Var(SimpleIdentifier(k.name), v.sort)
-                        case (k, v: Var) if v == data.formalResult =>
-                          v -> data.limitedFunctionApplication})
+                          v -> Var(SimpleIdentifier(k.name), v.sort)})
                       fvfLookup.replace(v2qv)
                     case None =>
                       fvfLookup}
@@ -211,9 +209,7 @@ trait DefaultEvaluator[ST <: Store[ST],
               case Some(data) =>
                 val v2qv = toMap(σ.γ.values collect {
                   case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
-                    v -> Var(SimpleIdentifier(k.name), v.sort)
-                  case (k, v: Var) if v == data.formalResult =>
-                    v -> data.limitedFunctionApplication})
+                    v -> Var(SimpleIdentifier(k.name), v.sort)})
                 fvfLookup.replace(v2qv)
               case None =>
                 fvfLookup}

@@ -83,7 +83,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
                                   : Term =
 
     e match {
-      case _: ast.Result => data.limitedFunctionApplication
+      case _: ast.Result => data.formalResult
 
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {

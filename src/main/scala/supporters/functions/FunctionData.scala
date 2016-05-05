@@ -132,15 +132,12 @@ class FunctionData(val programFunction: ast.Function,
       }
   }
 
-  private[this] def bindFvfs(innermostBody: Term): Term =
-    if (freshFvfs.isEmpty)
-      innermostBody
-    else {
-      val bindings =
-        freshFvfs.map { case (field, fvf) => fvf -> App(fvfGenerators(field), arguments) }
+  private[this] def bindSymbols(innermostBody: Term): Term = {
+    var bindings = Map(formalResult -> limitedFunctionApplication)
+    bindings ++= toMap(freshFvfs.map { case (field, fvf) => fvf -> App(fvfGenerators(field), arguments) })
 
-      Let(toMap(bindings), innermostBody)
-    }
+    Let(toMap(bindings), innermostBody)
+  }
 
   /*
    * Properties resulting from phase 1 (well-definedness checking)
@@ -161,7 +158,7 @@ class FunctionData(val programFunction: ast.Function,
 
       val pre = And(translatedPres)
       val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(posts))))
-      val body = bindFvfs(innermostBody)
+      val body = bindSymbols(innermostBody)
 
       Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
     } else
@@ -210,7 +207,7 @@ class FunctionData(val programFunction: ast.Function,
     optBody.map(translatedBody => {
       val pre = And(translatedPres)
       val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(functionApplication === translatedBody))))
-      val body = bindFvfs(innermostBody)
+      val body = bindSymbols(innermostBody)
       val allTriggers = (
            Seq(Trigger(functionApplication))
         ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))
