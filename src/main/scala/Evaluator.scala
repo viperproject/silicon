@@ -780,13 +780,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                           (Q: (Seq[Trigger], C) => VerificationResult)
                           : VerificationResult = {
 
-    val eTriggerSets = silverTriggers map (_.exps)
-//    val πPre = decider.π
-
-    evalTriggers(σ, eTriggerSets, Nil, pve, c)((tTriggersSets, c1) => {
-      val hasFieldAccesses =
-        eTriggerSets.exists(_.exists(_.existsDefined { case fa: ast.FieldAccess => fa }))
-
+    evalTriggers(σ, silverTriggers map (_.exps), Nil, pve, c)((tTriggersSets, c1) => {
       /* [2015-12-15 Malte]
        *   Evaluating triggers that did not occur in the body (and whose corresponding term has
        *   therefore not already been recorded in the context) might introduce new path conditions,
@@ -803,29 +797,8 @@ trait DefaultEvaluator[ST <: Store[ST],
        *         Using such effectively "undefined" symbols in triggers will most likely result in
        *         incompletenesses because the corresponding quantifiers will not be triggered.
        */
-      val allPathConditions = bodyPathConditions // ++ (decider.π -- πPre)
 
-      /* [2015-12-15 Malte]
-       *   The expanded trigger sets are not enough, the unexpanded triggers are needed as well.
-       *   This is, because the "unexpanded" field value function will be used in the actual
-       *   quantification (term), and it must therefore be possible to trigger the auxiliary
-       *   quantification by mentioning the "unexpanded" field value function.
-       *   Regression test quantifiedpermissions/misc/triggers_field_deref.sil, method test07a,
-       *   illustrates this issue.
-       */
-
-      val allTriggersSets =
-        if (hasFieldAccesses) {
-          val expandedTriggersSets = QuantifiedChunkSupporter.expandFvfLookupsInTriggers(tTriggersSets, allPathConditions)
-          /* [2016-03-31 Malte]
-           *   In some cases triggers are not expanded, and concatenating tTriggersSets and
-           *   expandedTriggersSets will therefore result in duplicated triggers.
-           */
-          (tTriggersSets ++ expandedTriggersSets).distinct
-        } else
-          tTriggersSets
-
-      Q(allTriggersSets map Trigger, c1)})
+      Q(tTriggersSets map Trigger, c1)})
   }
 
   /** Evaluates the given list of trigger sets `eTriggerSets` (expressions) and passes the result
