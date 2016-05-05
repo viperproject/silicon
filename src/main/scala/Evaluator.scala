@@ -460,40 +460,12 @@ trait DefaultEvaluator[ST <: Store[ST],
 
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
-
-        val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
-        val γVars = Γ(vars zip tVars)
-        val σQuant = σ \+ γVars
-
-        val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
-                        recordPossibleTriggers = true,
-                        possibleTriggers = Map.empty)
-
-        decider.locally[(Quantification, Iterable[Term], Quantification, C)](QB => {
-          val preMark = decider.setPathConditionMark()
-          eval(σQuant, body, pve, c0)((tBody, c1) => {
-            val πDelta = decider.pcs.after(preMark).assumptions
-            evalTriggers(σQuant, eTriggers, πDelta, pve, c1)((triggers, c2) => {
-              val sourceLine = utils.ast.sourceLine(sourceQuant)
-              val tQuant = Quantification(qantOp, tVars, tBody, triggers, s"prog.l$sourceLine")
-              val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
-              val tAuxQuant = Quantification(qantOp, tVars, And(tAuxNested), triggers, s"prog.l$sourceLine-aux")
-              val c3 = c2.copy(quantifiedVariables = c2.quantifiedVariables.drop(tVars.length),
-                               recordPossibleTriggers = c.recordPossibleTriggers,
-                               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c2.possibleTriggers else Map()))
-              QB(tQuant, tAuxTopLevel, tAuxQuant, c3)})})
-        }){case (tQuant, tAuxTopLevel, tAuxQuant, c1) =>
-//          val (_fvfDefs, _tOthers) =
-//            tAuxTopLevel.partition(_.isInstanceOf[SummarisingFvfDefinition])
-//                        .asInstanceOf[(Iterable[SummarisingFvfDefinition], Iterable[Term])]
-          decider.prover.logComment("Top-level auxiliary terms")
-          assume(tAuxTopLevel)
-//          assume(_tOthers)
-//          assume(_fvfDefs.flatMap(_.quantifiedValueDefinitions))
+        val name = s"prog.l${utils.ast.sourceLine(sourceQuant)}"
+        evalQuantified(σ, qantOp, vars, Nil, Seq(body), eTriggers, name, pve, c){case (tVars, _, Seq(tBody), tTriggers, tAuxQuant, c1) =>
           decider.prover.logComment("Nested auxiliary terms")
           assume(tAuxQuant)
-          Q(tQuant, c1)
-        }
+          val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+          Q(tQuant, c1)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val pvePre = PreconditionInAppFalse(fapp)
@@ -668,6 +640,39 @@ trait DefaultEvaluator[ST <: Store[ST],
     }
 
     resultTerm
+  }
+
+  def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
+                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
+                    : VerificationResult = {
+
+    val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
+    val γVars = Γ(vars zip tVars)
+    val σQuant = σ \+ γVars
+
+    val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
+                    recordPossibleTriggers = true,
+                    possibleTriggers = Map.empty)
+
+    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Iterable[Term], Quantification, C)](QB => {
+      val preMark = decider.setPathConditionMark()
+      evals(σQuant, es1, _ => pve, c0)((ts1, c1) => {
+        val bc = And(ts1)
+        decider.setCurrentBranchCondition(bc)
+        evals(σQuant, es2, _ => pve, c1)((ts2, c2) => {
+          val πDelta = decider.pcs.after(preMark).assumptions - bc
+          evalTriggers(σQuant, triggers, πDelta, pve, c2)((tTriggers, c3) => {
+            val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
+            val tAuxQuant = Quantification(quant, tVars, And(tAuxNested), tTriggers, s"$name-aux")
+            val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
+                             recordPossibleTriggers = c.recordPossibleTriggers,
+                             possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
+            QB(ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c4)})})})
+    }){case (ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c1) =>
+      decider.prover.logComment("Top-level auxiliary terms")
+      assume(tAuxTopLevel)
+      Q(tVars, ts1, ts2, tTriggers, tAuxQuant, c1)
+    }
   }
 
   def evalImplies(σ: S, tLhs: Term, eRhs: ast.Exp, pve: PartialVerificationError, c: C)

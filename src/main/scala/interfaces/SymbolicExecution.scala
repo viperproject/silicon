@@ -9,8 +9,8 @@ package viper.silicon.interfaces
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.state.Context
-import viper.silicon.interfaces.state.{Store, Heap, State, Chunk}
-import viper.silicon.state.terms.{Sort, Term}
+import viper.silicon.interfaces.state.{Store, Heap, State}
+import viper.silicon.state.terms._
 
 /*
  * Symbolic execution primitives
@@ -35,6 +35,10 @@ trait Evaluator[ST <: Store[ST],
                           c: C)
                         (Q: (String, Seq[Term], C) => VerificationResult)
                          : VerificationResult
+
+  def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
+                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
+                    : VerificationResult
 }
 
 trait Producer[ST <: Store[ST],
