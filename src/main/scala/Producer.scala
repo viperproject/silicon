@@ -204,7 +204,12 @@ trait DefaultProducer[ST <: Store[ST],
           decider.prover.logComment("Top-level auxiliary terms")
           assume(tAuxTopLevel)
 
-          /* [2015-11-13 Malte]
+          /* [2016-05-05 Malte]
+           * The issue described (and solved) in the previous comment is no longer a problem
+           * because FVF definitional axioms are no longer nested under other quantifiers.
+           * The comment is kept for documentary purposes.
+           *
+           * [2015-11-13 Malte]
            * Using the trigger of the inv-of-receiver definitional axiom of the new inverse
            * function as the trigger of the auxiliary quantifier seems like a good choice
            * because whenever we need to learn something about the new inverse function,
@@ -236,19 +241,8 @@ trait DefaultProducer[ST <: Store[ST],
            * trigger. Searching the body is only necessary because, at the current point, we
            * no longer know the relation between fvf1 and fvf0 (it could be preserved, though).
            */
-          val triggerForAuxQuant = invFct.invOfFct.triggers match {
-            case Seq(trigger @ Trigger(Seq(lk: Lookup))) => /* TODO: Make more specific */
-              var optSourceLkR: Option[Lookup] = None
-              val lkR = lk/*.copy(at = lk.at)*/ /* Previously (794844ede494) was "at = `?r`" */
-              tAuxQuantNoTriggers.visit { case BuiltinEquals(`lkR`, sourceLkR: Lookup) => optSourceLkR = Some(sourceLkR) }
-              /* Trigger {lookup_g(fvf1, x), lookup_g(fvf0, x)} */
-              Seq(optSourceLkR.fold(trigger)(sourceLkR => Trigger(sourceLkR.copy(at = lk.at) :: Nil)))
-            case other =>
-              /* Trigger {lookup_g(fvf1, x)} */
-              other}
           decider.prover.logComment("Nested auxiliary terms")
-          assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
-                                          triggers = triggerForAuxQuant))
+          assume(tAuxQuantNoTriggers)
           decider.prover.logComment("Definitional axioms for inverse functions")
           assume(invFct.definitionalAxioms)
           val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
