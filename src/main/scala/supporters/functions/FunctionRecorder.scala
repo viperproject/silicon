@@ -103,50 +103,6 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     copy(locToSnaps = lts, fappToSnaps = fts, freshFvfs = fvfs, qpTerms = qpts)
   }
 
-//  /** Tries to merge two snapshots. For two snapshots to be mergable, they have
-//    * to be structurally equivalent, exception if one sub-snapshot is `Unit`,
-//    * in which case the corresponding sub-snapshot of the other snapshot can be
-//    * any snapshot. In this case, the resulting snapshot will contain the
-//    * non-`Unit` sub-snapshot.
-//    *
-//    * For example,
-//    *   `Combine(Second(First(s)), Unit)` and
-//    *   `Combine(Second(First(s)), Second(s))`
-//    * can be merged, yielding
-//    *   `Combine(Second(First(s)), Second(s))`
-//    * and
-//    *   `Combine(Second(First(s)), Unit)` and
-//    *   `Combine(Second(Unit), Second(s))`
-//    * can as well (but should never occur in practice), yielding
-//    *   `Combine(Second(First(s)), Second(s))`
-//    * but
-//    *   `Combine(Second(First(s)), Second(s))` and
-//    *   `Combine(First(First(s)), Second(s))`
-//    * cannot.
-//    *
-//    * @param t1 First snapshot to merge.
-//    * @param t2 Second snapshot to merge.
-//    * @return If `t1` and `t2` can be merged, then `Some(t3)`, where `t3` is
-//    *         the resulting snapshot. `None` otherwise.
-//    */
-//  private def mergeSnapshots(t1: Term, t2: Term): Option[Term] = {
-//    assert(t1.sort == sorts.Snap && t2.sort == sorts.Snap,
-//      s"Expected both terms to be of sort Snap, but found ${t1.sort}, ${t2.sort}")
-//
-//    def merge(t1: Term, t2: Term): Option[Term] = (t1, t2) match {
-//      case (`t1`, `t1`) => Some(t1)
-//      case (Unit, _) => Some(t2)
-//      case (_, Unit) => Some(t1)
-//      case (First(t11), First(t21)) => merge(t11, t21).map(First)
-//      case (Second(t11), Second(t21)) => merge(t11, t21).map(Second)
-//      case (Combine(t11, t12), Combine(t21, t22)) =>
-//        merge(t11, t21).fold(None: Option[Term])(t13 => merge(t12, t22).map(t23 => Combine(t13, t23)))
-//      case _ => None
-//    }
-//
-//    merge(t1, t2)
-//  }
-
   override lazy val toString = {
     val ltsStrs = locToSnaps map {case (k, v) => s"$k  |==>  $v"}
     val ftsStrs = fappToSnap map {case (k, v) => s"$k  |==>  $v"}
