@@ -9,7 +9,7 @@ package viper.silicon.supporters.functions
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silicon.{Map, Set}
-import viper.silicon.state.SymbolConvert
+import viper.silicon.state.{SimpleIdentifier, SuffixedIdentifier, Identifier, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
 
@@ -83,13 +83,38 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
                                   : Term =
 
     e match {
+      case _: ast.AccessPredicate if ignoreAccessPredicates => True()
+      case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()
+
       case _: ast.Result => data.formalResult
 
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
           case Some(t) => t
-          case None => super.translate(toSort, qpFields)(v)
+          case None => Var(Identifier(v.name), toSort(v.typ, Map()))
         }
+
+      case eQuant: ast.QuantifiedExp =>
+        /* Local variables that are not parameters of the function itself, i.e. quantified
+         * and let-bound variables, are translated as-is, e.g. 'x' will be translated to 'x',
+         * not to some 'x@i'. If a local variable occurs in a term that was recorded during
+         * the well-definedness checking & verification of a function, e.g. a mapping such as
+         * 'e.f |-> lookup(...)' from field access to snapshot, the recorded term potentially
+         * contains occurrences of such local variables. However, recorded terms contain
+         * occurrences where the local variables *are* suffixed, i.e. of the form 'x@i'.
+         * Hence, the body of a quantifier is processed after being translated, and each
+         * occurrence of 'x@i' is replaced by 'x', for all variables 'x@i' where the prefix
+         * 'x' is bound by the surrounding quantifier.
+         */
+        val tQuant = super.translate(toSort, qpFields)(eQuant).asInstanceOf[Quantification]
+        val names = tQuant.vars.toSet[Var].map(_.id.name)
+
+        tQuant.transform { case v: Var =>
+          v.id match {
+            case sid: SuffixedIdentifier if names.contains(sid.prefix) => Var(SimpleIdentifier(sid.prefix), v.sort)
+            case _ => v
+          }
+        }()
 
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ, Map()), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
@@ -109,8 +134,6 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         else
           fapp.copy(applicable = FunctionSupporter.limitedVersion(fun))
 
-      case _: ast.AccessPredicate if ignoreAccessPredicates => True()
-      case q: ast.Forall if !q.isPure && ignoreAccessPredicates => True()
       case _ => super.translate(toSort, qpFields)(e)
     }
 

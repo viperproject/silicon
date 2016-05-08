@@ -156,87 +156,29 @@ trait DefaultEvaluator[ST <: Store[ST],
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
           c.fvfCache.get((fa.field, quantifiedChunks)) match {
             case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
-//              decider.assert(σ, PermLess(NoPerm(), quantifiedChunkSupporter.permission(quantifiedChunks, tRcvr, fa.field))) {
               decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
-                  /* TODO: Re-use code between this and the 'case None' further down */
                   val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-                  val qvars = c1.quantifiedVariables//.filter(qv => tRcvr.existsDefined{case `qv` => true})
-                  val bcs = List.empty[Term]//decider.pcs.branchConditions
-                  val lk = c1.functionRecorder.data match {
-                    case Some(data) =>
-                      val v2qv = toMap(σ.γ.values collect {
-                        case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
-                          v -> Var(SimpleIdentifier(k.name), v.sort)})
-                      fvfLookup.replace(v2qv)
-                    case None =>
-                      fvfLookup}
-                  val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
+                  val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                   val c2 = c1.copy(functionRecorder = fr1)
                   Q(fvfLookup, c2)}
 
             case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
-                //            val fvfDomain = fvfDef.domainDefinitions
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-                //            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
-//                assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
                 assume(fvfDef)
-                val qvars = c1.quantifiedVariables//.filter(qv => tRcvr.existsDefined{case `qv` => true})
-//            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
-//                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
-            val bcs = List.empty[Term]//decider.pcs.branchConditions
-            /* TODO: Implement less hacky.
-             *       When a function's precondition is translated (when its definitional axiom
-             *       is generated), local variables that are not parameters of the function
-             *       itself will be translated as-is, i.e. 'x' will be translated to 'x', not to
-             *       some 'x@1'. This (currently) only affects quantified variables: at this
-             *       point, where the snapshot mapping 'e.f |-> lookup(..., e.f)' is recorded
-             *       by the function recorder, a quantified variable 'y' is bound to some 'y@2',
-             *       which might occur in 'e.f', and therefore, in 'lookup(..., e.f)'.
-             *       To prevent that 'y@2' ends up in the function definition axiom, all such
-             *       occurrences 'z@i' are replaced by just 'z'.
-             *
-             *       Similarly, HeapAccessReplacingExpressionTranslator translates 'result',
-             *       as used in function postconditions, to an application of the limited
-             *       function symbol. However, if 'result' occurs in the receiver expression
-             *       of a QP field access, e.g. in 'loc(a, result).val', then the function
-             *       recorder records 'loc(a, result@99).val'.
-             */
-            val lk = c1.functionRecorder.data match {
-              case Some(data) =>
-                val v2qv = toMap(σ.γ.values collect {
-                  case (k, v: Var) if qvars.contains(v) && !data.formalArgs.contains(k) =>
-                    v -> Var(SimpleIdentifier(k.name), v.sort)})
-                fvfLookup.replace(v2qv)
-              case None =>
-                fvfLookup}
-            val fr1 = c1.functionRecorder.recordSnapshot(fa, bcs, lk)
-                                         .recordQPTerms(qvars, bcs, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
-            val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
-            val c2 = c1.copy(functionRecorder = fr2,
-                             fvfCache = if (config.disableValueMapCaching()) c1.fvfCache else c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
-            Q(fvfLookup, c2)})}})
-
-//        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-//          quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
-////            val fvfDomain = fvfDef.domainDefinitions
-//            val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-////            val fvfLookup = Apply(fvfDef.fvf, Seq(tRcvr))
-//            assume(/*fvfDomain ++ */fvfDef.valueDefinitions)
-//            val qvars = c1.quantifiedVariables.filter(qv => tRcvr.existsDefined{case `qv` => true})
-//            val fr1 = c1.functionRecorder.recordSnapshot(fa, c1.branchConditions, fvfLookup)
-//                                         .recordQPTerms(qvars, c1.branchConditions, /*fvfDomain ++ */fvfDef.valueDefinitions)
-//            val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
-//            val c2 = c1.copy(functionRecorder = fr2)
-//            Q(fvfLookup, c2)})})
+                val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
+                                             .recordQPTerms(c1.quantifiedVariables, decider.pcs.branchConditions, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
+                val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
+                val c2 = c1.copy(functionRecorder = fr2,
+                                 fvfCache = if (config.disableValueMapCaching()) c1.fvfCache else c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
+                Q(fvfLookup, c2)})}})
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(σ, fa, pve, c)((name, args, c1) =>
           chunkSupporter.withChunk(σ, σ.h, name, args, None, fa, pve, c1)((ch, c2) => {
-//            val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, c2.branchConditions, ch.snap))
             val c3 = c2.copy(functionRecorder = c2.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, ch.snap))
             Q(ch.snap, c3)}))
 
