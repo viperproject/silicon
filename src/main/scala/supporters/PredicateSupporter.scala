@@ -129,14 +129,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             : VerificationResult = {
 
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-
-      /* [2014-12-13 Malte] Changing the store doesn't interact well with the
-       * snapshot recorder, see the comment in PredicateSupporter.unfold.
-       * However, since folding cannot (yet) be used inside functions, we can
-       * still overwrite the binding of local variables in the store.
-       * An alternative would be to introduce fresh local variables, and to
-       * inject them into the predicate body. See commented code below.
-       */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
@@ -157,19 +149,26 @@ trait PredicateSupporterProvider[ST <: Store[ST],
               (Q: (S, C) => VerificationResult)
               : VerificationResult = {
 
-      /* [2014-12-10 Malte] Changing the store (insγ) doesn't play nicely with the
+      /* [2016-05-09 Malte] The comment below appears to no longer be valid (in
+       * Silicon revision aa8932f340ca). It is not unlikely that the originally
+       * observed issue was actually caused by a different problem, because the
+       * predicate body (with the formal predicate argument bound to some term)
+       * does not occur in any heap-dependent function, and thus does not need to
+       * be translated.
+       *
+       * [2014-12-10 Malte] Changing the store (insγ) doesn't play nicely with the
        * snapshot recorder because it might result in the same local variable
        * being bound to different terms, e.g., in the case of fun3 at the end of
        * functions/unfolding.sil, where the formal predicate argument x is bound
        * to y and y.n.
        */
 
-//      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
-        val body = pa.predicateBody(c.program).get /* Only non-abstract predicates can be unfolded */
-        produce(σ \ h1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
+        produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
           decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-          Q(σ2 /*\ σ.γ*/, c2)})})
+          Q(σ2 \ σ.γ, c2)})})
     }
 
     /* Lifetime */

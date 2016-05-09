@@ -83,13 +83,11 @@ trait DefaultEvaluator[ST <: Store[ST],
         log.debug(stateFormatter.format(σ, decider.π))
         if (c.reserveHeaps.nonEmpty)
           log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
-        if (c.evalHeap.nonEmpty)
-          log.debug("hE = " + c.evalHeap.map(stateFormatter.format).mkString("", ",\n     ", ""))
         c.lhsHeap.foreach(h => log.debug("hLHS = " + stateFormatter.format(h)))
         decider.prover.logComment(s"[eval] $e")
     }
 
-    eval2(σ \ c.evalHeap.getOrElse(σ.h), e, pve, c.copy(recordEffects = false))((t, c1) => {
+    eval2(σ, e, pve, c.copy(recordEffects = false))((t, c1) => {
       val c2 =
         if (c1.recordPossibleTriggers)
           e match {

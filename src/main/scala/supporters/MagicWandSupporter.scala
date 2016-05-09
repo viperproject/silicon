@@ -602,17 +602,13 @@ trait MagicWandSupporter[ST <: Store[ST],
           if (decider.check(σC, IsNonNegative(tPerm), config.checkTimeout()))
             evals(σC, eArgs, _ => pve, c1)((tArgs, c2) =>
               consume(σEmp \ σ.h, FullPerm(), acc, pve, c2)((σ1, _, c3) => { /* exhale_ext, h1 = σUsed' */
-              val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false, evalHeap = Some(c3.reserveHeaps.head))
-                consume(σ \ σ1.h, FullPerm(), acc, pve, c3a)((σ2, snap, c3b) => { /* σUsed'.unfold */
-                val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-                produce(σ \ σ2.h \ insγ, s => snap.convert(s), tPerm, body, pve, c3b.copy(evalHeap = None))((σ3, c4) => { /* σ2.h = σUsed'' */ /* TODO: Substitute args in body */
-//                  val topReserveHeap = c3.reserveHeaps.head + σ3.h
+                val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
+                predicateSupporter.unfold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c3a, pa)((σ3, c4) => { /* σ2.h = σUsed'' */
                   val topReserveHeap = heapCompressor.merge(σ3, c3.reserveHeaps.head, σ3.h, c)
                   val c4a = c4.decCycleCounter(predicate)
                               .copy(reserveHeaps = topReserveHeap +: c3.reserveHeaps.tail,
                                     exhaleExt = c3.exhaleExt)
-                  QI(σEmp, σEmp.h, c4a)})})}))
+                  QI(σEmp, σEmp.h, c4a)})}))
           else
             Failure(pve dueTo NegativePermission(ePerm)))
       } else {
@@ -675,8 +671,7 @@ trait MagicWandSupporter[ST <: Store[ST],
         predicateSupporter.fold(σ \ σ1.h, predicate, tArgs, tPerm, pve, c2)((σ2, c3) => { /* σ2.h = σUsed'' */
           val topReserveHeap = c1.reserveHeaps.head + σ2.h
           val c4 = c3.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.tail,
-                           exhaleExt = c1.exhaleExt,
-                           evalHeap = None)
+                           exhaleExt = c1.exhaleExt)
           Q(σEmp \ σ.γ, σEmp.h, c4)})})
     }
 
