@@ -375,7 +375,6 @@ trait DefaultExecutor[ST <: Store[ST],
         val pve = PackageFailed(pckg)
         val c0 = c.copy(reserveHeaps = H() :: σ.h :: Nil,
                         recordEffects = true,
-                        producedChunks = Nil,
                         consumedChunks = Nil :: Nil,
                         letBoundVars = Nil)
         magicWandSupporter.packageWand(σ, wand, pve, c0)((chWand, c1) => {
@@ -385,7 +384,6 @@ trait DefaultExecutor[ST <: Store[ST],
                            reserveHeaps = Nil,
                            lhsHeap = None,
                            recordEffects = false,
-                           producedChunks = Nil,
                            consumedChunks = Stack(),
                            letBoundVars = Nil)
           Q(σ \ (h1 + chWand), c2)})

@@ -36,7 +36,6 @@ case class DefaultContext[H <: Heap[H]]
                           triggerAction: AnyRef = null,
 
                           recordEffects: Boolean = false,
-                          producedChunks: Seq[(Stack[Term], BasicChunk)] = Nil,
                           consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
@@ -81,7 +80,7 @@ case class DefaultContext[H <: Heap[H]]
                         possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
                         reserveHeaps1, exhaleExt1, lhsHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
-                        recordEffects1, producedChunks1, consumedChunks1, letBoundVars1,
+                        recordEffects1, consumedChunks1, letBoundVars1,
                         fvfCache1, fvfAsSnap1) =>
 
       other match {
@@ -90,7 +89,7 @@ case class DefaultContext[H <: Heap[H]]
                             `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                            `recordEffects1`, `producedChunks1`, `consumedChunks1`, `letBoundVars1`,
+                            `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
                             fvfCache2, fvfAsSnap2) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)

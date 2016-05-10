@@ -285,7 +285,6 @@ trait MagicWandSupporter[ST <: Store[ST],
       }
 
       say(s"wand = $wand")
-      say(s"c.producedChunks = ${c.producedChunks}")
       say("c.reserveHeaps:")
       c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
 
@@ -313,7 +312,6 @@ trait MagicWandSupporter[ST <: Store[ST],
                            exhaleExt = true,
                            lhsHeap = Some(σLhs.h),
                            recordEffects = true,
-                           producedChunks = Nil,
                            consumedChunks = Stack.fill(stackSize - 1)(Nil))
           /* c2.reserveHeaps is [hUsed, hOps, hLHS, ...], where hUsed and hOps are initially
            * empty, and where the dots represent the heaps belonging to surrounding package/packaging
@@ -330,7 +328,6 @@ trait MagicWandSupporter[ST <: Store[ST],
           say(s"next: consume RHS ${wand.right}")
           consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, c3) => {
             val c4 = c3.copy(recordEffects = false,
-                             producedChunks = Nil,
                              consumedChunks = Stack(),
                              letBoundVars = Nil)
             say(s"done: consumed RHS ${wand.right}")
@@ -345,23 +342,7 @@ trait MagicWandSupporter[ST <: Store[ST],
                  */
 
               lnsay(s"-- reached local end of packageWand $myId --")
-              say(s"c3.producedChunks = ${c3.producedChunks}", 2)
 
-              val producedChunks: MMap[Stack[Term], MList[BasicChunk]] = MMap()
-
-              c3.producedChunks.foreach{ case (guards, chunk) =>
-                producedChunks.getOrElseUpdate(guards, MList()) += chunk}
-
-              say(s"producedChunks = $producedChunks", 2)
-
-              producedChunks.foreach{ case (guards, chunks) =>
-                allProducedChunks.get(guards) match {
-                  case Some(chunks1) => assert(chunks1 == chunks)
-                  case None => allProducedChunks(guards) = chunks
-                }
-              }
-
-              say(s"allProducedChunks = $allProducedChunks", 2)
               lnsay(s"c3.consumedChunks:", 2)
               c3.consumedChunks.foreach(x => say(x.toString(), 3))
 
@@ -509,7 +490,6 @@ trait MagicWandSupporter[ST <: Store[ST],
           /* TODO: Merge contexts */
           val c1 = contexts.head.copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
                                       recordEffects = c.recordEffects,
-                                      producedChunks = c.producedChunks,
                                       consumedChunks = consumedChunks/*,
                                       branchConditions = c.branchConditions*/)
           Q(magicWandChunk, c1)

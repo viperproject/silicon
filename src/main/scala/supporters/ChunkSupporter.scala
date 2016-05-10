@@ -150,10 +150,8 @@ trait ChunkSupporterProvider[ST <: Store[ST],
     def produce(σ: S, h: H, ch: BasicChunk, c: C): (H, C) = {
       val (h1, matchedChunk) = heapCompressor.merge(σ, h, ch, c)
       val c1 = c//recordSnapshot(c, matchedChunk, ch)
-//      val c2 = recordProducedChunk(c1, ch, c.branchConditions)
-      val c2 = recordProducedChunk(c1, ch, decider.pcs.branchConditions)
 
-      (h1, c2)
+      (h1, c1)
     }
 
     /*
@@ -238,16 +236,5 @@ trait ChunkSupporterProvider[ST <: Store[ST],
 
       chunk
     }
-
-    /*
-     * Miscellaneous
-     */
-
-    private def recordProducedChunk(c: C, producedChunk: BasicChunk, guards: Stack[Term]): C =
-      c.recordEffects match {
-        case true => c.copy(producedChunks = c.producedChunks :+ (guards -> producedChunk))
-        case false => c
-      }
-
   }
 }
