@@ -9,7 +9,7 @@ package viper.silicon
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.state.{StateFactory, Store, Heap, State, StateFormatter, Chunk}
+import viper.silicon.interfaces.state.{StateFactory, Store, Heap, State, StateFormatter}
 import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper

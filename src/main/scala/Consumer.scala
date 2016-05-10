@@ -15,12 +15,11 @@ import viper.silicon.interfaces.{Consumer, Evaluator, VerificationResult, Failur
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.{QuantifiedChunk, SymbolConvert, DefaultContext, MagicWandChunk}
+import viper.silicon.state.{SymbolConvert, DefaultContext, MagicWandChunk}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
-import viper.silicon.utils.NoOpStatefulComponent
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     extends Consumer[ST, H, S, DefaultContext[H]]
@@ -177,7 +176,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) => {
-            val condPerms = quantifiedChunkSupporter.singletonConditionalPermissions(tRcvr, tPerm)
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
