@@ -675,6 +675,48 @@ trait MagicWandSupporter[ST <: Store[ST],
           Q(σEmp \ σ.γ, σEmp.h, c4)})})
     }
 
+    /* Function "transfer" from wands paper.
+     * Permissions are transferred from the stack of heaps to σUsed, which is
+     * h in the current context.
+     */
+    def transfer(σ: S,
+                 h: H,
+                 name: String,
+                 args: Seq[Term],
+                 perms: Term,
+                 locacc: ast.LocationAccess,
+                 pve: PartialVerificationError,
+                 c: C)
+                (Q: (H, Option[BasicChunk], C) => VerificationResult)
+                : VerificationResult = {
+
+      magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, name, args, perms, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
+        val c2 = c1.copy(reserveHeaps = hs)
+        val c3 =
+          if (c2.recordEffects) {
+            assert(chs.length == c2.consumedChunks.length)
+            val bcs = decider.pcs.branchConditions
+            val consumedChunks3 =
+              chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], BasicChunk)]]()) {
+                case (accConsumedChunks, (optCh, consumed)) =>
+                  optCh match {
+                    case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
+                    case None => consumed :: accConsumedChunks
+                  }
+              }.reverse
+
+            c2.copy(consumedChunks = consumedChunks3)
+          } else
+            c2
+
+        val usedChunks = chs.flatten
+        /* Returning any of the usedChunks should be fine w.r.t to the snapshot
+         * of the chunk, since consumeFromMultipleHeaps should have equated the
+         * snapshots of all usedChunks.
+         */
+        Q(h + H(usedChunks), usedChunks.headOption, c3)})
+    }
+
     def getEvalHeap(σ: S, h: H, c: C): H = {
       if (c.exhaleExt) c.reserveHeaps.headOption.fold(h)(h + _)
       else σ.h

@@ -104,7 +104,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
 //      }
 
       heuristicsSupporter.tryOperation[H, Term](description)(σ, h, c)((σ1, h1, c1, QS) => {
-        consume(σ, h1, name, args, perms, locacc, pve, c1)((h2, optCh, c2, results) =>
+        consume(σ, h1, name, args, perms, locacc, pve, c1)((h2, optCh, c2) =>
           optCh match {
             case Some(ch) =>
               QS(h2, ch.snap.convert(sorts.Snap), c2)
@@ -125,59 +125,26 @@ trait ChunkSupporterProvider[ST <: Store[ST],
                         locacc: ast.LocationAccess,
                         pve: PartialVerificationError,
                         c: C)
-                       (Q: (H, Option[BasicChunk], C, PermissionsConsumptionResult) => VerificationResult)
+                       (Q: (H, Option[BasicChunk], C) => VerificationResult)
                        : VerificationResult = {
 
-      /* TODO: Integrate into regular, (non-)exact consumption that follows afterwards */
-      if (c.exhaleExt)
-      /* Function "transfer" from wands paper.
-       * Permissions are transferred from the stack of heaps to σUsed, which is
-       * h in the current context.
-       */
-        return magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps, name, args, perms, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
-          val c2 = c1.copy(reserveHeaps = hs)
-          val pcr = PermissionsConsumptionResult(false) // TODO: PermissionsConsumptionResult is bogus!
-
-          val c3 =
-            if (c2.recordEffects) {
-              assert(chs.length == c2.consumedChunks.length)
-              val bcs = decider.pcs.branchConditions
-              val consumedChunks3 =
-                chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], BasicChunk)]]()) {
-                  case (accConsumedChunks, (optCh, consumed)) =>
-                    optCh match {
-//                      case Some(ch) => ((c2.branchConditions -> ch) +: consumed) :: accConsumedChunks
-                      case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
-                      case None => consumed :: accConsumedChunks
-                    }
-                }.reverse
-
-              c2.copy(consumedChunks = consumedChunks3)
-            } else
-              c2
-          //        val c3 = chs.last match {
-          //          case Some(ch) if c2.recordEffects =>
-          //            c2.copy(consumedChunks = c2.consumedChunks :+ (guards -> ch))
-          //          case _ => c2
-          //        }
-
-          val usedChunks = chs.flatten
-          /* Returning any of the usedChunks should be fine w.r.t to the snapshot
-           * of the chunk, since consumeFromMultipleHeaps should have equated the
-           * snapshots of all usedChunks.
-           */
-          Q(h + H(usedChunks), usedChunks.headOption, c3, pcr)})
-
-      if (terms.utils.consumeExactRead(perms, c.constrainableARPs)) {
-        withChunk(σ, h, name, args, Some(perms), locacc, pve, c)((ch, c1) => {
-          if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, perms)), config.checkTimeout())) {
-            Q(h - ch, Some(ch), c1, PermissionsConsumptionResult(true))}
-          else
-            Q(h - ch + (ch - perms), Some(ch), c1, PermissionsConsumptionResult(false))})
+      if (c.exhaleExt) {
+        /* TODO: Integrate magic wand's transferring consumption into the regular,
+         * (non-)exact consumption (the code following this if-branch)
+         */
+        magicWandSupporter.transfer(σ, h, name, args, perms, locacc, pve, c)(Q)
       } else {
-        withChunk(σ, h, name, args, None, locacc, pve, c)((ch, c1) => {
-          decider.assume(PermLess(perms, ch.perm))
-          Q(h - ch + (ch - perms), Some(ch), c1, PermissionsConsumptionResult(false))})
+        if (terms.utils.consumeExactRead(perms, c.constrainableARPs)) {
+          withChunk(σ, h, name, args, Some(perms), locacc, pve, c)((ch, c1) => {
+            if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, perms)), config.checkTimeout())) {
+              Q(h - ch, Some(ch), c1)}
+            else
+              Q(h - ch + (ch - perms), Some(ch), c1)})
+        } else {
+          withChunk(σ, h, name, args, None, locacc, pve, c)((ch, c1) => {
+            decider.assume(PermLess(perms, ch.perm))
+            Q(h - ch + (ch - perms), Some(ch), c1)})
+        }
       }
     }
 
