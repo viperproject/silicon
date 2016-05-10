@@ -106,24 +106,6 @@ trait DefaultEvaluator[ST <: Store[ST],
                      (Q: (Term, C) => VerificationResult)
                      : VerificationResult = {
 
-    /* Since commit 0cf1f26, evaluating unfoldings is a local operation, and it
-     * might be tempting to think that we don't need to locally evaluate
-     * Implies and Ite anymore. However, that is not true, because not all of
-     * them occur in the context of an unfolding. They can also occur in a
-     * pre/postcondition such as 'requires b1 ==> b2', in which case Silicon
-     * still shouldn't branch.
-     */
-
-    /* TODO: LocalEvaluationResults collect contexts as well.
-     *       However, only one context can be passed on to Q, and currently
-     *       the one from the first LocalEvaluationResult is taken.
-     *       This shouldn't be much of a problem, except maybe for debugging,
-     *       as long as the context doesn't keep track of any crucial
-     *       information. This may not always be the case, however. E.g., the
-     *       Wands-Silicon prototype (for the rejected FM'14 paper) uses the
-     *       context to record the reserve heap.
-     */
-
     val resultTerm = e match {
       case _: ast.TrueLit => Q(True(), c)
       case _: ast.FalseLit => Q(False(), c)
