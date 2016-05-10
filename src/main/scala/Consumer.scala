@@ -116,14 +116,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             Q(h2, Combine(s1, s2), c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
         eval(σC, e0, pve, c)((t0, c1) =>
           branch(σC, t0, c1,
             (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
             (c2: C) => Q(h, Unit, c2)))
 
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
         eval(σC, e0, pve, c)((t0, c1) =>
           branch(σC, t0, c1,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
@@ -187,7 +187,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             }}))
 
       case let: ast.Let if !let.isPure =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
         handle[ast.Exp](σC, let, pve, c)((γ1, body, c1) => {
           val c2 =
             if (c1.recordEffects)
@@ -197,7 +197,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           consume(σ \+ γ1, h, p, body, pve, c2)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
         evalLocationAccess(σC, locacc, pve, c)((name, args, c1) =>
           eval(σC, perm, pve, c1)((tPerm, c2) =>
             decider.assert(σC, perms.IsNonNegative(tPerm)){
@@ -213,11 +213,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
       case _ if φ.typ == ast.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, chWand: MagicWandChunk, wand: ast.MagicWand, ve: VerificationError, c: C) = {
           heuristicsSupporter.tryOperation[H, Term](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
-            val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
+            val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
             val hs =
               if (c.exhaleExt) c.reserveHeaps
               else Stack(h)
 
+            /* TODO: Consuming a wand chunk, respectively, transferring it if c.exhaleExt
+             *       is true, should be implemented on top of MagicWandSupporter.transfer,
+             *       or even on ChunkSupporter.consume.
+             */
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
               magicWandSupporter.getMatchingChunk(σC, h1, chWand, c1) match {
                 case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
@@ -228,7 +232,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 if (c.exhaleExt) {
                   /* transfer: move ch into h = σUsed*/
                   assert(hs1.size == c.reserveHeaps.size)
-                  QS(h + ch, decider.fresh(sorts.Snap), c1.copy(reserveHeaps = hs1))
+                  val topReserveHeap = hs1.head + ch
+                  QS(h /*+ ch*/, decider.fresh(sorts.Snap), c1.copy(reserveHeaps = topReserveHeap +: hs1.tail))
                 } else {
                   assert(hs1.size == 1)
                   assert(c.reserveHeaps == c1.reserveHeaps)
@@ -252,14 +257,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         }
 
       case pckg @ ast.PackagingGhostOp(eWand, eIn) =>
-//        val pve = PackagingFailed(pckg)
+        assert(c.exhaleExt)
+        assert(c.reserveHeaps.head.values.isEmpty)
         magicWandSupporter.packageWand(σ, eWand, pve, c)((chWand, c1) => {
-          val h2 = h + chWand /* h2 = σUsed'' */
-          val topReserveHeap = c1.reserveHeaps.head + h2
-          val c2 = c1.copy(exhaleExt = c.exhaleExt,
-                           reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
-                           lhsHeap = None,
-                           consumedChunks = Nil +: c1.consumedChunks.drop(2))
+          val hOps = c1.reserveHeaps.head + chWand
+          val c2 = c1.copy(exhaleExt = true,
+                           reserveHeaps = H() +: hOps +: c1.reserveHeaps.tail,
+                           lhsHeap = None)
+          assert(c2.reserveHeaps.length == c.reserveHeaps.length)
+          assert(c2.consumedChunks.length == c.consumedChunks.length)
+          assert(c2.consumedChunks.length == c2.reserveHeaps.length - 1)
           val σEmp = Σ(σ.γ, Ø, σ.g)
           consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, c3) =>
             Q(h3, decider.fresh(sorts.Snap), c3))})
@@ -302,7 +309,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case _ =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, h, c)
+        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
         val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
         evalAndAssert(σC, h, φ, pve, c0)((h1, t, c1) => {
           val c2 = c1.copy(reserveHeaps = c.reserveHeaps, exhaleExt = c.exhaleExt)

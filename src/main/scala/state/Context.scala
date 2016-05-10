@@ -18,7 +18,6 @@ case class DefaultContext[H <: Heap[H]]
                           qpFields: Set[ast.Field],
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
-//                          branchConditions: Stack[Term] = Stack(),
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
@@ -30,7 +29,7 @@ case class DefaultContext[H <: Heap[H]]
 
                           reserveHeaps: Stack[H] = Nil,
                           exhaleExt: Boolean = false,
-                          lhsHeap: Option[H] = None, /* Used to interpret e in ApplyOld(e) */
+                          lhsHeap: Option[H] = None, /* Used to interpret e in lhs(e) */
 
                           applyHeuristics: Boolean = false,
                           heuristicsDepth: Int = 0,
@@ -77,7 +76,7 @@ case class DefaultContext[H <: Heap[H]]
    */
 
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
-    case DefaultContext(program1, qpFields1, recordVisited1, visited1, /*branchConditions1,*/ constrainableARPs1,
+    case DefaultContext(program1, qpFields1, recordVisited1, visited1, constrainableARPs1,
                         quantifiedVariables1, retrying1, functionRecorder1, recordPossibleTriggers1,
                         possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
                         reserveHeaps1, exhaleExt1, lhsHeap1,
@@ -86,7 +85,7 @@ case class DefaultContext[H <: Heap[H]]
                         fvfCache1, fvfAsSnap1) =>
 
       other match {
-        case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`, /*`branchConditions1`,*/
+        case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`,
                             `constrainableARPs1`, `quantifiedVariables1`, retrying2, functionRecorder2,
                             `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,

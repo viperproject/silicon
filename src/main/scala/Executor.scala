@@ -376,11 +376,11 @@ trait DefaultExecutor[ST <: Store[ST],
         val c0 = c.copy(reserveHeaps = H() :: σ.h :: Nil,
                         recordEffects = true,
                         producedChunks = Nil,
-                        consumedChunks = Nil :: Nil :: Nil,
+                        consumedChunks = Nil :: Nil,
                         letBoundVars = Nil)
         magicWandSupporter.packageWand(σ, wand, pve, c0)((chWand, c1) => {
-          assert(c1.reserveHeaps.length == 3, s"Expected exactly 3 reserve heaps in the context, but found ${c1.reserveHeaps.length}")
-          val h1 = c1.reserveHeaps(2)
+          assert(c1.reserveHeaps.length == 1) /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+          val h1 = c1.reserveHeaps.head
           val c2 = c1.copy(exhaleExt = false,
                            reserveHeaps = Nil,
                            lhsHeap = None,

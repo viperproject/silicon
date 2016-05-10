@@ -80,8 +80,6 @@ trait ChunkSupporterProvider[ST <: Store[ST],
   protected val stateFactory: StateFactory[ST, H, S]
   protected val config: Config
 
-  import stateFactory._
-
   object chunkSupporter extends ChunkSupporter[ST, H, S, C] {
     private case class PermissionsConsumptionResult(consumedCompletely: Boolean)
 
@@ -132,7 +130,8 @@ trait ChunkSupporterProvider[ST <: Store[ST],
         /* TODO: Integrate magic wand's transferring consumption into the regular,
          * (non-)exact consumption (the code following this if-branch)
          */
-        magicWandSupporter.transfer(σ, h, name, args, perms, locacc, pve, c)(Q)
+        magicWandSupporter.transfer(σ, name, args, perms, locacc, pve, c)((optCh, c1) =>
+          Q(h, optCh, c1))
       } else {
         if (terms.utils.consumeExactRead(perms, c.constrainableARPs)) {
           withChunk(σ, h, name, args, Some(perms), locacc, pve, c)((ch, c1) => {
