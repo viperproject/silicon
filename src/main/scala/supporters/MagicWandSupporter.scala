@@ -288,9 +288,12 @@ trait MagicWandSupporter[ST <: Store[ST],
       say("c.reserveHeaps:")
       c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
 
-      val stackSize = 3 + c.reserveHeaps.tail.size /* IMPORTANT: Must match size of reserveHeaps at [CTX] below */
-      val allProducedChunks: MMap[Stack[Term], MList[BasicChunk]] = MMap()
+      val stackSize = 3 + c.reserveHeaps.tail.size
+        /* IMPORTANT: Size matches structure of reserveHeaps at [Context RHS] below */
       var allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize - 1)(MMap())
+        /* Record consumptions (transfers) from all heaps except the top-most (which is hUsed,
+         * from which we never transfer from, only to)
+         */
       var contexts: Seq[C] = Nil
       var magicWandChunk: MagicWandChunk = null
 
@@ -308,7 +311,7 @@ trait MagicWandSupporter[ST <: Store[ST],
            *   [hEmp, hOps, ..., hOuterLHS, hOuter]
            * if we are executing a package ghost operation (i.e. if we are coming from the consumer).
            */
-          val c2 = c1.copy(reserveHeaps = H() +: H() +: σLhs.h +: c.reserveHeaps.tail, /* [CTX] */
+          val c2 = c1.copy(reserveHeaps = H() +: H() +: σLhs.h +: c.reserveHeaps.tail, /* [Context RHS] */
                            exhaleExt = true,
                            lhsHeap = Some(σLhs.h),
                            recordEffects = true,
@@ -388,7 +391,6 @@ trait MagicWandSupporter[ST <: Store[ST],
       lnsay(s"[end packageWand $myId]")
 
       say(s"produced magic wand chunk $magicWandChunk")
-      say(s"allProducedChunks = $allProducedChunks")
       say(s"allConsumedChunks:")
       allConsumedChunks.foreach(x => say(x.toString(), 2))
       say(s"recorded ${contexts.length} contexts")
@@ -428,11 +430,12 @@ trait MagicWandSupporter[ST <: Store[ST],
           joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
           /* Drop the top-most two heaps from the stack, which record the chunks consumed from
-           * hUsed and hOps. Chunks consumed from these heaps are irrelevant to the outside
-           * package/packaging scope because chunks consumed from these heaps have either been newly
-           * produced during the execution of ghost statements (such as a predicate obtained by folding
-           * it), or they have been transferred into these heaps, in which case they've already been
-           * recorded as being consumed from another heap (lower in the stack).
+           * hOps and hLHS. Chunks consumed from these heaps are irrelevant to the outside
+           * package/packaging scope because chunks consumed from
+           *   - hOps have either been newly produced during the execution of ghost statements (such as a
+           *     predicate obtained by folding it), or they have been transferred into hOps, in which case
+           *     they've already been recorded as being consumed from another heap (lower in the stack).
+           *   - hLHS is discarded after the packaging is done
            */
           allConsumedChunks = allConsumedChunks.drop(2) /* TODO: Don't record irrelevant chunks in the first place */
           assert(allConsumedChunks.length == joinedReserveHeaps.length)
@@ -446,24 +449,11 @@ trait MagicWandSupporter[ST <: Store[ST],
                 val pLoss = Ite(And(guards), ch.perm, NoPerm())
                 var matched = false
 
-                ch match {
-                  case fc: FieldChunk =>
-                    hR.transform {
-                      case ch1: BasicChunk if ch1.args == fc.args && ch1.name == fc.name =>
-                        matched = true
-                        fc.copy(perm = PermMinus(ch1.perm, pLoss))
-                      case ch1 => ch1
-                    }
-
-                  case pc: PredicateChunk =>
-                    hR.transform {
-                      case ch1: BasicChunk if ch1.args == pc.args && ch1.name == pc.name =>
-                        matched = true
-                        pc.copy(perm = PermMinus(ch1.perm, pLoss))
-                      case ch1 => ch1
-                    }
-
-//                  case qc: QuantifiedChunk => sys.error(s"Unexpectedly found a quantified chunk: $QuantifiedChunk")
+                hR.transform {
+                  case ch1: BasicChunk if ch1.args == ch.args && ch1.name == ch.name =>
+                    matched = true
+                    ch.duplicate(perm = PermMinus(ch1.perm, pLoss))
+                  case ch1 => ch1
                 }
 
                 if (!matched) {
