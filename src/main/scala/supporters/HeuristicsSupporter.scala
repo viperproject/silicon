@@ -338,12 +338,13 @@ trait HeuristicsSupporter[ST <: Store[ST],
         heuristicsLogger.debug(s"  reaction: packaging $wand")
         /* TODO: The next block is an exact copy of the corresponding case in the DefaultConsumer. Reuse code! */
         magicWandSupporter.packageWand(σ \ h, wand, pve, c)((chWand, c1) => {
-          val h2 = h + chWand /* h2 = σUsed'' */
-          val topReserveHeap = c1.reserveHeaps.head + h2
-          val c2 = c1.copy(reserveHeaps = topReserveHeap +: c1.reserveHeaps.drop(2),
-                           lhsHeap = None,
-                           exhaleExt = c.exhaleExt,
-                           consumedChunks = Nil +: c1.consumedChunks.drop(2))
+          val hOps = c1.reserveHeaps.head + chWand
+          val c2 = c1.copy(exhaleExt = true,
+                           reserveHeaps = H() +: hOps +: c1.reserveHeaps.tail,
+                           lhsHeap = None)
+          assert(c2.reserveHeaps.length == c.reserveHeaps.length)
+          assert(c2.consumedChunks.length == c.consumedChunks.length)
+          assert(c2.consumedChunks.length == c2.reserveHeaps.length - 1)
           val σEmp = Σ(σ.γ, H(), σ.g)
           Q(σEmp, σEmp.h, c2)})
       } else {

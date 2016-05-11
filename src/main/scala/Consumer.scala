@@ -259,6 +259,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
       case pckg @ ast.PackagingGhostOp(eWand, eIn) =>
         assert(c.exhaleExt)
         assert(c.reserveHeaps.head.values.isEmpty)
+        /** TODO: [[viper.silicon.supporters.HeuristicsSupporter.heuristicsSupporter.packageWand]]
+          *       Is essentially a copy of the code here. Re-use code to avoid running out of sync!
+          */
         magicWandSupporter.packageWand(σ, eWand, pve, c)((chWand, c1) => {
           val hOps = c1.reserveHeaps.head + chWand
           val c2 = c1.copy(exhaleExt = true,
