@@ -1,0 +1,321 @@
+# HG changeset patch
+# Parent  0bde5d88b4b98c40911004a9e69dfbae8a6e4c27
+Changed how execution paths through a package/packaging operation are joined:
+instead of recording which chunks have been consumed on which path, and replaying
+the consumption after all paths have been explored, the final heaps stacks are
+recorded at the end of each path, and joined afterwards.
+This approach is less complicated, but appears to be slightly slower. In
+particular, one of the heuristics-examples is *much* slower (20s instead of 4s).
+
+diff -r 0bde5d88b4b9 src/main/scala/Consumer.scala
+--- a/src/main/scala/Consumer.scala	Wed May 11 13:31:33 2016 +0200
++++ b/src/main/scala/Consumer.scala	Wed May 11 17:00:16 2016 +0200
+@@ -268,8 +268,6 @@
+                            reserveHeaps = H() +: hOps +: c1.reserveHeaps.tail,
+                            lhsHeap = None)
+           assert(c2.reserveHeaps.length == c.reserveHeaps.length)
+-          assert(c2.consumedChunks.length == c.consumedChunks.length)
+-          assert(c2.consumedChunks.length == c2.reserveHeaps.length - 1)
+           val σEmp = Σ(σ.γ, Ø, σ.g)
+           consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, c3) =>
+             Q(h3, decider.fresh(sorts.Snap), c3))})
+diff -r 0bde5d88b4b9 src/main/scala/Executor.scala
+--- a/src/main/scala/Executor.scala	Wed May 11 13:31:33 2016 +0200
++++ b/src/main/scala/Executor.scala	Wed May 11 17:00:16 2016 +0200
+@@ -375,7 +375,6 @@
+         val pve = PackageFailed(pckg)
+         val c0 = c.copy(reserveHeaps = H() :: σ.h :: Nil,
+                         recordEffects = true,
+-                        consumedChunks = Nil :: Nil,
+                         letBoundVars = Nil)
+         magicWandSupporter.packageWand(σ, wand, pve, c0)((chWand, c1) => {
+           assert(c1.reserveHeaps.length == 1) /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+@@ -384,7 +383,6 @@
+                            reserveHeaps = Nil,
+                            lhsHeap = None,
+                            recordEffects = false,
+-                           consumedChunks = Stack(),
+                            letBoundVars = Nil)
+           Q(σ \ (h1 + chWand), c2)})
+ 
+diff -r 0bde5d88b4b9 src/main/scala/state/Context.scala
+--- a/src/main/scala/state/Context.scala	Wed May 11 13:31:33 2016 +0200
++++ b/src/main/scala/state/Context.scala	Wed May 11 17:00:16 2016 +0200
+@@ -36,7 +36,6 @@
+                           triggerAction: AnyRef = null,
+ 
+                           recordEffects: Boolean = false,
+-                          consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
+                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
+ 
+                           fvfCache: Map[(ast.Field, Seq[QuantifiedChunk]), SummarisingFvfDefinition] = Map.empty,
+@@ -80,7 +79,7 @@
+                         possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
+                         reserveHeaps1, exhaleExt1, lhsHeap1,
+                         applyHeuristics1, heuristicsDepth1, triggerAction1,
+-                        recordEffects1, consumedChunks1, letBoundVars1,
++                        recordEffects1, letBoundVars1,
+                         fvfCache1, fvfAsSnap1) =>
+ 
+       other match {
+@@ -89,7 +88,7 @@
+                             `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
+                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
+                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
+-                            `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
++                            `recordEffects1`, `letBoundVars1`,
+                             fvfCache2, fvfAsSnap2) =>
+ 
+ //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
+diff -r 0bde5d88b4b9 src/main/scala/supporters/HeuristicsSupporter.scala
+--- a/src/main/scala/supporters/HeuristicsSupporter.scala	Wed May 11 13:31:33 2016 +0200
++++ b/src/main/scala/supporters/HeuristicsSupporter.scala	Wed May 11 17:00:16 2016 +0200
+@@ -343,8 +343,6 @@
+                            reserveHeaps = H() +: hOps +: c1.reserveHeaps.tail,
+                            lhsHeap = None)
+           assert(c2.reserveHeaps.length == c.reserveHeaps.length)
+-          assert(c2.consumedChunks.length == c.consumedChunks.length)
+-          assert(c2.consumedChunks.length == c2.reserveHeaps.length - 1)
+           val σEmp = Σ(σ.γ, H(), σ.g)
+           Q(σEmp, σEmp.h, c2)})
+       } else {
+diff -r 0bde5d88b4b9 src/main/scala/supporters/MagicWandSupporter.scala
+--- a/src/main/scala/supporters/MagicWandSupporter.scala	Wed May 11 13:31:33 2016 +0200
++++ b/src/main/scala/supporters/MagicWandSupporter.scala	Wed May 11 17:00:16 2016 +0200
+@@ -7,6 +7,7 @@
+ package viper.silicon.supporters
+ 
+ import scala.util.control.Breaks._
++import scala.collection.mutable
+ import org.slf4s.{LoggerFactory, Logging}
+ import viper.silver.ast
+ import viper.silver.verifier.PartialVerificationError
+@@ -285,22 +286,18 @@
+       }
+ 
+       say(s"wand = $wand")
+-      say("c.reserveHeaps:")
++      say("reserveHeaps:")
+       c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
+ 
+       val stackSize = 3 + c.reserveHeaps.tail.size
+         /* IMPORTANT: Size matches structure of reserveHeaps at [Context RHS] below */
+-      var allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize - 1)(MMap())
+-        /* Record consumptions (transfers) from all heaps except the top-most (which is hUsed,
+-         * from which we never transfer from, only to)
+-         */
+       var contexts: Seq[C] = Nil
+       var magicWandChunk: MagicWandChunk = null
+-
++      var pcsFromHeapIndepExprs = Vector[PathConditionStack]()
+       val σEmp = Σ(σ.γ, Ø, σ.g)
+       val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
+ 
+-      var pcsFromHeapIndepExprs = Vector[PathConditionStack]()
++      var endStates = Map[Stack[Term], Stack[H]]()
+ 
+       val r = locally {
+         produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
+@@ -314,8 +311,7 @@
+           val c2 = c1.copy(reserveHeaps = H() +: H() +: σLhs.h +: c.reserveHeaps.tail, /* [Context RHS] */
+                            exhaleExt = true,
+                            lhsHeap = Some(σLhs.h),
+-                           recordEffects = true,
+-                           consumedChunks = Stack.fill(stackSize - 1)(Nil))
++                           recordEffects = true)
+           /* c2.reserveHeaps is [hUsed, hOps, hLHS, ...], where hUsed and hOps are initially
+            * empty, and where the dots represent the heaps belonging to surrounding package/packaging
+            * operations. hOps will be populated while processing the RHS of the wand to package.
+@@ -329,9 +325,10 @@
+           assert(stackSize == c2.reserveHeaps.length)
+           say(s"done: produced LHS ${wand.left}")
+           say(s"next: consume RHS ${wand.right}")
++          say(s"reserveHeaps:")
++          c2.reserveHeaps.foreach(x => say(x.toString, 2))
+           consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, c3) => {
+             val c4 = c3.copy(recordEffects = false,
+-                             consumedChunks = Stack(),
+                              letBoundVars = Nil)
+             say(s"done: consumed RHS ${wand.right}")
+             say(s"next: create wand chunk")
+@@ -346,53 +343,18 @@
+ 
+               lnsay(s"-- reached local end of packageWand $myId --")
+ 
+-              lnsay(s"c3.consumedChunks:", 2)
+-              c3.consumedChunks.foreach(x => say(x.toString(), 3))
+-
+-              assert(c3.consumedChunks.length <= allConsumedChunks.length)
+-                /* c3.consumedChunks can have fewer layers due to infeasible execution paths,
+-                 * as illustrated by test case wands/regression/folding_inc1.sil.
+-                 * Hence the at-most comparison.
+-                 */
+-
+-              val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
+-                c3.consumedChunks.map(pairs => {
+-                  val cchs: MMap[Stack[Term], MList[BasicChunk]] = MMap()
+-
+-                  pairs.foreach {
+-                    case (guards, chunk) => cchs.getOrElseUpdate(guards, MList()) += chunk
+-                  }
+-
+-                  cchs
+-                })
+-
+-              say(s"consumedChunks:", 2)
+-              consumedChunks.foreach(x => say(x.toString(), 3))
+-
+-              assert(consumedChunks.length <= allConsumedChunks.length)
+-                /* At-most comparison due to infeasible execution paths */
+-
+-              consumedChunks.zip(allConsumedChunks).foreach { case (cchs, allcchs) =>
+-                cchs.foreach { case (guards, chunks) =>
+-                  allcchs.get(guards) match {
+-                    case Some(chunks1) => assert(chunks1 == chunks)
+-                    case None => allcchs(guards) = chunks
+-                  }
+-                }
+-              }
+-
+-              say(s"allConsumedChunks:", 2)
+-              allConsumedChunks.foreach(x => say(x.toString(), 3))
++              lnsay(s"c3.reserveHeaps:", 2)
++              c3.reserveHeaps.foreach(x => say(x.toString, 3))
+ 
+               contexts :+= c5
++              endStates = endStates + (decider.pcs.branchConditions -> c3.reserveHeaps.drop(3))
++
+               Success()})})})}
+ 
+       cnt -= 1
+       lnsay(s"[end packageWand $myId]")
+ 
+       say(s"produced magic wand chunk $magicWandChunk")
+-      say(s"allConsumedChunks:")
+-      allConsumedChunks.foreach(x => say(x.toString(), 2))
+       say(s"recorded ${contexts.length} contexts")
+       contexts.foreach(c => c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2)))
+ 
+@@ -423,65 +385,35 @@
+           pcsFromHeapIndepExprs.foreach(pcs => decider.assume(pcs.asConditionals))
+ 
+           assert(contexts.map(_.reserveHeaps).map(_.length).toSet.size == 1)
+-          val joinedReserveHeaps: Stack[MList[Chunk]] = c.reserveHeaps.tail.map(h => MList() ++ h.values) /* [Remainder reserveHeaps] (match code above) */
+-          assert(joinedReserveHeaps.length == allConsumedChunks.length - 2)
+ 
+-          lnsay("Computing joined reserve heaps. Initial stack:")
+-          joinedReserveHeaps.foreach(x => say(x.toString(), 2))
++          val joinedReserveHeaps: mutable.ArrayStack[H] = mutable.ArrayStack.fill(c.reserveHeaps.length - 1)(H()) /* [Remainder reserveHeaps] (match code above) */
++          assert(joinedReserveHeaps.length == stackSize - 3) /* Discard top three heaps hUsed, hOps and hLHS */
+ 
+-          /* Drop the top-most two heaps from the stack, which record the chunks consumed from
+-           * hOps and hLHS. Chunks consumed from these heaps are irrelevant to the outside
+-           * package/packaging scope because chunks consumed from
+-           *   - hOps have either been newly produced during the execution of ghost statements (such as a
+-           *     predicate obtained by folding it), or they have been transferred into hOps, in which case
+-           *     they've already been recorded as being consumed from another heap (lower in the stack).
+-           *   - hLHS is discarded after the packaging is done
+-           */
+-          allConsumedChunks = allConsumedChunks.drop(2) /* TODO: Don't record irrelevant chunks in the first place */
+-          assert(allConsumedChunks.length == joinedReserveHeaps.length)
++          for ((bcs, reserveHeaps) <- endStates) {
++            val rhIt = reserveHeaps.iterator
++            val jrhIdxIt = joinedReserveHeaps.indices.iterator
+ 
+-          lnsay("Matching joined reserve heaps (as shown) with consumed chunks minus top two layers:")
+-          allConsumedChunks.foreach(x => say(x.toString(), 2))
++            while (rhIt.hasNext) {
++              val jrhIdx: Int = jrhIdxIt.next()
++              var rh: H = rhIt.next()
+ 
+-          joinedReserveHeaps.zip(allConsumedChunks).foreach { case (hR, allcchs) =>
+-            allcchs.foreach { case (guards, chunks) =>
+-              chunks.foreach(ch => {
+-                val pLoss = Ite(And(guards), ch.perm, NoPerm())
+-                var matched = false
++              rh = H(rh.values map {
++                case bc: BasicChunk => bc.duplicate(perm = Ite(And(bcs), bc.perm, NoPerm()))
++                case mwc: MagicWandChunk => mwc /* TODO: This is UNSOUND! mwc should be conditional on bcs as well, but a magic wand chunk currently has no permissions attribute */
++                case other => sys.error(s"Found unexpected chunk $other")
++              })
+ 
+-                hR.transform {
+-                  case ch1: BasicChunk if ch1.args == ch.args && ch1.name == ch.name =>
+-                    matched = true
+-                    ch.duplicate(perm = PermMinus(ch1.perm, pLoss))
+-                  case ch1 => ch1
+-                }
++              joinedReserveHeaps(jrhIdx) = heapCompressor.merge(σ, joinedReserveHeaps(jrhIdx), rh, c)
++            }
+ 
+-                if (!matched) {
+-                  lnsay(s"Couldn't find a match for $ch!")
+-                  say(s"hR = $hR", 2)
+-                  say(s"guards = $guards", 2)
+-                  say(s"chunks = $chunks", 2)
+-                  assert(matched)
+-                }
+-              })
+-          }}
+-
+-          lnsay("Finished joined reserve heaps. Final stack:")
+-          joinedReserveHeaps.foreach(x => say(x.toString(), 2))
+-
+-          assert(allConsumedChunks.length == c.consumedChunks.length)
+-          val consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] =
+-            allConsumedChunks.zip(c.consumedChunks).map { case (allcchs, cchs) =>
+-              cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
+-
+-          lnsay(s"Exiting packageWand $myId. Final consumedChunks:")
+-          consumedChunks.foreach(x => say(x.toString(), 2))
++            assert(rhIt.isEmpty && jrhIdxIt.isEmpty)
++          }
+ 
+           /* TODO: Merge contexts */
+-          val c1 = contexts.head.copy(reserveHeaps = joinedReserveHeaps.map(H(_)),
+-                                      recordEffects = c.recordEffects,
+-                                      consumedChunks = consumedChunks/*,
++          val c1 = contexts.head.copy(reserveHeaps = joinedReserveHeaps,
++                                      recordEffects = c.recordEffects /*,
+                                       branchConditions = c.branchConditions*/)
++
+           Q(magicWandChunk, c1)
+         }
+       }
+@@ -622,34 +554,15 @@
+                 (Q: (Option[BasicChunk], C) => VerificationResult)
+                 : VerificationResult = {
+ 
+-      assert(c.consumedChunks.length == c.reserveHeaps.tail.length)
+-
+       magicWandSupporter.consumeFromMultipleHeaps(σ, c.reserveHeaps.tail, name, args, perms, locacc, pve, c)((hs, chs, c1/*, pcr*/) => {
+         val c2 = c1.copy(reserveHeaps = c.reserveHeaps.head +: hs)
+-        val c3 =
+-          if (c2.recordEffects) {
+-            assert(chs.length == c2.consumedChunks.length)
+-            val bcs = decider.pcs.branchConditions
+-            val consumedChunks3 =
+-              chs.zip(c2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], BasicChunk)]]()) {
+-                case (accConsumedChunks, (optCh, consumed)) =>
+-                  optCh match {
+-                    case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks
+-                    case None => consumed :: accConsumedChunks
+-                  }
+-              }.reverse
+-
+-            c2.copy(consumedChunks = consumedChunks3)
+-          } else
+-            c2
+-
+         val usedChunks = chs.flatten
+-        val hUsed = heapCompressor.merge(σ, c3.reserveHeaps.head, H(usedChunks), c3)
++        val hUsed = heapCompressor.merge(σ, c2.reserveHeaps.head, H(usedChunks), c2)
+         /* Returning any of the usedChunks should be fine w.r.t to the snapshot
+          * of the chunk, since consumeFromMultipleHeaps should have equated the
+          * snapshots of all usedChunks.
+          */
+-        Q(usedChunks.headOption, c3.copy(reserveHeaps = hUsed +: c3.reserveHeaps.tail))})
++        Q(usedChunks.headOption, c2.copy(reserveHeaps = hUsed +: c2.reserveHeaps.tail))})
+     }
+ 
+     def getEvalHeap(σ: S, c: C): H = {
