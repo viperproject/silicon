@@ -57,7 +57,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.data = data
     this.failed = false
 
-    posts map translate(toSort)
+    (posts.map(p => translate(toSort)(p.whenInhaling)))
   }
 
   def translatePrecondition(program: ast.Program,
@@ -70,7 +70,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.ignoreAccessPredicates = true
     this.failed = false
 
-    pres map translate(toSort)
+    (pres.map(p => translate(toSort)(p.whenExhaling)))
   }
 
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
