@@ -534,11 +534,10 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
         val c0 = c.incCycleCounter(predicate)
-        val σC = σ \ getEvalHeap(σ, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-        eval(σC, ePerm, pve, c0)((tPerm, c1) =>
-          if (decider.check(σC, IsNonNegative(tPerm), config.checkTimeout()))
-            evals(σC, eArgs, _ => pve, c1)((tArgs, c2) => {
+        eval(σ, ePerm, pve, c0)((tPerm, c1) =>
+          if (decider.check(σ, IsNonNegative(tPerm), config.checkTimeout()))
+            evals(σ, eArgs, _ => pve, c1)((tArgs, c2) => {
               consume(σEmp, FullPerm(), acc, pve, c2)((_, _, c3) => {/* exhale_ext, c3.reserveHeaps = [σUsed', σOps', ...] */
                 val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
                 predicateSupporter.unfold(σ \ c3.reserveHeaps.head, predicate, tArgs, tPerm, pve, c3a, pa)((σ3, c4) => { /* σ3.h = σUsed'' */
@@ -563,10 +562,9 @@ trait MagicWandSupporter[ST <: Store[ST],
 
       if (c.cycles(predicate) < config.recursivePredicateUnfoldings()) {
         val c0 = c.incCycleCounter(predicate)
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c0)
         val σEmp = Σ(σ.γ, Ø, σ.g)
-        evals(σC, eArgs, _ => pve, c0)((tArgs, c1) =>
-          eval(σC, ePerm, pve, c1)((tPerm, c2) =>
+        evals(σ, eArgs, _ => pve, c0)((tArgs, c1) =>
+          eval(σ, ePerm, pve, c1)((tPerm, c2) =>
             decider.assert(σ, IsNonNegative(tPerm)) {
               case true =>
                 foldingPredicate(σ, predicate, tArgs, tPerm, pve, c2, Some(pa))((σ1, h1, c3) =>

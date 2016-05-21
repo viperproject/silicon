@@ -116,16 +116,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             Q(h2, Combine(s1, s2), c2)}))
 
       case ast.Implies(e0, a0) if !φ.isPure =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
-        eval(σC, e0, pve, c)((t0, c1) =>
-          branch(σC, t0, c1,
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c1,
             (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
             (c2: C) => Q(h, Unit, c2)))
 
       case ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
-        eval(σC, e0, pve, c)((t0, c1) =>
-          branch(σC, t0, c1,
+        eval(σ, e0, pve, c)((t0, c1) =>
+          branch(σ, t0, c1,
             (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
             (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
 
@@ -187,8 +185,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             }}))
 
       case let: ast.Let if !let.isPure =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
-        handle[ast.Exp](σC, let, pve, c)((γ1, body, c1) => {
+        handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) => {
           val c2 =
             if (c1.recordEffects)
               c1.copy(letBoundVars = c1.letBoundVars ++ γ1.values)
@@ -197,12 +194,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           consume(σ \+ γ1, h, p, body, pve, c2)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
-        evalLocationAccess(σC, locacc, pve, c)((name, args, c1) =>
-          eval(σC, perm, pve, c1)((tPerm, c2) =>
-            decider.assert(σC, perms.IsNonNegative(tPerm)){
+        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) =>
+          eval(σ, perm, pve, c1)((tPerm, c2) =>
+            decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
-                chunkSupporter.consume(σC, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
+                chunkSupporter.consume(σ, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}))
 
@@ -213,7 +209,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
       case _ if φ.typ == ast.Wand && magicWandSupporter.isDirectWand(φ) =>
         def QL(σ: S, h: H, chWand: MagicWandChunk, wand: ast.MagicWand, ve: VerificationError, c: C) = {
           heuristicsSupporter.tryOperation[H, Term](s"consume wand $wand")(σ, h, c)((σ, h, c, QS) => {
-            val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
             val hs =
               if (c.exhaleExt) c.reserveHeaps
               else Stack(h)
@@ -223,7 +218,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
              *       or even on ChunkSupporter.consume.
              */
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
-              magicWandSupporter.getMatchingChunk(σC, h1, chWand, c1) match {
+              magicWandSupporter.getMatchingChunk(σ, h1, chWand, c1) match {
                 case someChunk @ Some(ch) => (someChunk, h1 - ch, c1)
                 case _ => (None, h1, c1)
               }
@@ -312,11 +307,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case _ =>
-        val σC = σ \ magicWandSupporter.getEvalHeap(σ, c)
-        val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
-        evalAndAssert(σC, h, φ, pve, c0)((h1, t, c1) => {
-          val c2 = c1.copy(reserveHeaps = c.reserveHeaps, exhaleExt = c.exhaleExt)
-          Q(h1, t, c2)
+        evalAndAssert(σ, h, φ, pve, c)((h1, t, c1) => {
+          Q(h1, t, c1)
         })
     }
 
@@ -330,19 +322,27 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                            (Q: (H, Term, C) => VerificationResult)
                            : VerificationResult = {
 
-    val c0 = c.copy(partiallyConsumedHeap = Some(h))
+    /* Switch to the eval heap (σUsed) of magic wand's exhale-ext, if necessary.
+     * This is done here already (the evaluator would do it as well) to ensure that the eval
+     * heap is compressed by tryOrFail if the assertion fails.
+     */
+    val σ1 = σ \ magicWandSupporter.getEvalHeap(σ, c)
+    val c1 = c.copy(reserveHeaps = Nil, exhaleExt = false, partiallyConsumedHeap = Some(h))
 
-    decider.tryOrFail[S](σ, c0)((σ1, c1, QS, QF) => {
-      eval(σ1, e, pve, c1)((t, c2) =>
-        decider.assert(σ1, t) {
+    decider.tryOrFail[S](σ1, c1)((σ2, c2, QS, QF) => {
+      eval(σ2, e, pve, c2)((t, c3) =>
+        decider.assert(σ2, t) {
           case true =>
             assume(t)
-            QS(σ1, c2)
+            QS(σ2, c3)
           case false =>
             QF(Failure(pve dueTo AssertionFalse(e)))
         })
-    })((σ1, c1) => {
-      Q(h, Unit, c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap))
+    })((_, c2) => {
+      val c3 = c2.copy(reserveHeaps = c.reserveHeaps,
+                       exhaleExt = c.exhaleExt,
+                       partiallyConsumedHeap = c.partiallyConsumedHeap)
+      Q(h, Unit, c3)
     })
   }
 }
