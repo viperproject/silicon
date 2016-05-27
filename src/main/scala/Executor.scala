@@ -225,33 +225,25 @@ trait DefaultExecutor[ST <: Store[ST],
 
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          eval(σ, rhs, pve, c1)((tRhs, c2) =>
-            decider.assert(σ, tRcvr !== Null()){
-              case false =>
-                Failure(pve dueTo ReceiverNull(fa))
-              case true =>
-                val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
-                val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
-                  case Some((h1, _, _, c3)) =>
-                    val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
-                    optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
-                    val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
-                    Q(σ \ h1 \+ ch, c3)
-                  case None =>
-                    Failure(pve dueTo InsufficientPermission(fa))}}))
+          eval(σ, rhs, pve, c1)((tRhs, c2) => {
+            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
+              case Some((h1, _, _, c3)) =>
+                val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
+                optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
+                Q(σ \ h1 \+ ch, c3)
+              case None =>
+                Failure(pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          decider.assert(σ, tRcvr !== Null()){
-            case true =>
-              eval(σ, rhs, pve, c1)((tRhs, c2) =>
-                chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) => {
-                  val t = ssaifyRhs(tRhs, field.name, field.typ)
-                  Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)}))
-            case false =>
-              Failure(pve dueTo ReceiverNull(fa))})
+          eval(σ, rhs, pve, c1)((tRhs, c2) =>
+            chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) => {
+              val t = ssaifyRhs(tRhs, field.name, field.typ)
+              Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)})))
 
       case ast.NewStmt(v, fields) =>
         val tRcvr = fresh(v)

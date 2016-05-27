@@ -9,7 +9,7 @@ package viper.silicon
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.state.{StateFactory, Store, Heap, State, StateFormatter}
+import viper.silicon.interfaces.state.{Store, Heap, State, StateFormatter}
 import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper
@@ -34,9 +34,6 @@ trait DefaultProducer[ST <: Store[ST],
 
   protected val decider: Decider[ST, H, S, C]
   import decider.{fresh, assume}
-
-  protected val stateFactory: StateFactory[ST, H, S]
-  import stateFactory._
 
   protected val symbolConverter: SymbolConvert
   import symbolConverter.toSort
@@ -154,14 +151,14 @@ trait DefaultProducer[ST <: Store[ST],
             (h1, c1)
           }
 
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) => {
-          assume(tRcvr !== Null())
+        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
             assume(PermAtMost(NoPerm(), pGain))
+            assume(Implies(PermLess(NoPerm(), pGain), tRcvr !== Null()))
             val s = sf(toSort(field.typ))
             val pNettoGain = PermTimes(pGain, p)
             val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
-            Q(h1, c3)})})
+            Q(h1, c3)}))
 
       case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
@@ -228,7 +225,7 @@ trait DefaultProducer[ST <: Store[ST],
             decider.prover.logComment("Nested auxiliary terms")
             assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
                                             triggers = invFct.invOfFct.triggers))
-            val gainNonNeg = Forall(invFct.invOfFct.vars, PermAtMost(NoPerm(), tGain), invFct.invOfFct.triggers, s"$qid-perm")
+            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
             assume(gainNonNeg)
             decider.prover.logComment("Definitional axioms for inverse functions")
             assume(invFct.definitionalAxioms)

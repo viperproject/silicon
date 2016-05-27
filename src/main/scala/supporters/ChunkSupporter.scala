@@ -109,8 +109,9 @@ trait ChunkSupporterProvider[ST <: Store[ST],
             case None =>
               /* Not having consumed anything could mean that we are in an infeasible
                * branch, or that the permission amount to consume was zero.
+               * Returning a fresh snapshot in these cases should not lose any information.
                */
-            QS(h2, Unit, c2)
+            QS(h2, decider.fresh(sorts.Snap), c2)
           })
       })(Q)
     }
@@ -126,25 +127,37 @@ trait ChunkSupporterProvider[ST <: Store[ST],
                        (Q: (H, Option[BasicChunk], C) => VerificationResult)
                        : VerificationResult = {
 
-      if (c.exhaleExt) {
-        /* TODO: Integrate magic wand's transferring consumption into the regular,
-         * (non-)exact consumption (the code following this if-branch)
-         */
-        magicWandSupporter.transfer(σ, name, args, perms, locacc, pve, c)((optCh, c1) =>
-          Q(h, optCh, c1))
-      } else {
-        if (terms.utils.consumeExactRead(perms, c.constrainableARPs)) {
-          withChunk(σ, h, name, args, Some(perms), locacc, pve, c)((ch, c1) => {
-            if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, perms)), config.checkTimeout())) {
-              Q(h - ch, Some(ch), c1)}
-            else
-              Q(h - ch + (ch - perms), Some(ch), c1)})
+      /* [2016-05-27 Malte] Performing this check slows down the verification quite
+       * a bit (from 4 minutes down to 5 minutes, for the whole test suite). Only
+       * checking the property on-failure (within decider.withChunk) is likely to
+       * perform better.
+       */
+//      if (decider.check(σ, perms === NoPerm(), config.checkTimeout())) {
+//        /* Don't try looking for a chunk (which might fail) if zero permissions are
+//         * to be consumed.
+//         */
+//        Q(h, None, c)
+//      } else {
+        if (c.exhaleExt) {
+          /* TODO: Integrate magic wand's transferring consumption into the regular,
+           * (non-)exact consumption (the code following this if-branch)
+           */
+          magicWandSupporter.transfer(σ, name, args, perms, locacc, pve, c)((optCh, c1) =>
+            Q(h, optCh, c1))
         } else {
-          withChunk(σ, h, name, args, None, locacc, pve, c)((ch, c1) => {
-            decider.assume(PermLess(perms, ch.perm))
-            Q(h - ch + (ch - perms), Some(ch), c1)})
+          if (terms.utils.consumeExactRead(perms, c.constrainableARPs)) {
+            withChunk(σ, h, name, args, Some(perms), locacc, pve, c)((ch, c1) => {
+              if (decider.check(σ, IsNoAccess(PermMinus(ch.perm, perms)), config.checkTimeout())) {
+                Q(h - ch, Some(ch), c1)}
+              else
+                Q(h - ch + (ch - perms), Some(ch), c1)})
+          } else {
+            withChunk(σ, h, name, args, None, locacc, pve, c)((ch, c1) => {
+              decider.assume(PermLess(perms, ch.perm))
+              Q(h - ch + (ch - perms), Some(ch), c1)})
+          }
         }
-      }
+//      }
     }
 
     def produce(σ: S, h: H, ch: BasicChunk, c: C): (H, C) = {

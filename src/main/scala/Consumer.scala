@@ -35,7 +35,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   protected implicit val manifestH: Manifest[H]
 
   protected val decider: Decider[ST, H, S, C]
-  protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
@@ -131,43 +130,39 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, loss), Nil, qid, pve, c){
           case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tLoss), _, tAuxQuantNoTriggers, c1) =>
-            decider.assert(σ, Forall(tQVar, Implies(tCond, tRcvr !== Null()), Nil)) {
+            decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
-                decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
+                val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+                val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                val invFct =
+                  quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c1.quantifiedVariables)
+                decider.prover.logComment("Nested auxiliary terms")
+                assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
+                /* TODO: Can we omit/simplify the injectivity check in certain situations? */
+                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
+                decider.prover.logComment("Check receiver injectivity")
+                decider.assert(σ, receiverInjective) {
                   case true =>
-                    val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-                    val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                    val invFct =
-                      quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c1.quantifiedVariables)
-                    decider.prover.logComment("Nested auxiliary terms")
-                    assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
-                    /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-                    val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
-                    decider.prover.logComment("Check receiver injectivity")
-                    decider.assert(σ, receiverInjective) {
-                      case true =>
-                        decider.prover.logComment("Definitional axioms for inverse functions")
-                        assume(invFct.definitionalAxioms)
-                        val inverseReceiver = invFct(`?r`) // e⁻¹(r)
-                        quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
-                          case Some((h1, ch, fvfDef, c2)) =>
-                            val fvfDomain = if (c2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
-                            decider.prover.logComment("Definitional axioms for field value function")
-                            assume(fvfDomain ++ fvfDef.valueDefinitions)
-                            val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
-                                                                        decider.pcs.branchConditions,
-                                                                        invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
-                            val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
-                            val c3 = c2.copy(functionRecorder = fr2)
-                            Q(h1, ch.fvf.convert(sorts.Snap), c3)
-                          case None =>
-                            Failure(pve dueTo InsufficientPermission(fa))}
-                      case false =>
-                        Failure(pve dueTo ReceiverNotInjective(fa))}
+                    decider.prover.logComment("Definitional axioms for inverse functions")
+                    assume(invFct.definitionalAxioms)
+                    val inverseReceiver = invFct(`?r`) // e⁻¹(r)
+                    quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
+                      case Some((h1, ch, fvfDef, c2)) =>
+                        val fvfDomain = if (c2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
+                        decider.prover.logComment("Definitional axioms for field value function")
+                        assume(fvfDomain ++ fvfDef.valueDefinitions)
+                        val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
+                                                                    decider.pcs.branchConditions,
+                                                                    invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
+                        val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
+                        val c3 = c2.copy(functionRecorder = fr2)
+                        Q(h1, ch.fvf.convert(sorts.Snap), c3)
+                      case None =>
+                        Failure(pve dueTo InsufficientPermission(fa))}
                   case false =>
-                    Failure(pve dueTo NegativePermission(loss))}
+                    Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
-                Failure(pve dueTo ReceiverNull(fa))}}
+                Failure(pve dueTo NegativePermission(loss))}}
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
@@ -194,8 +189,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           consume(σ \+ γ1, h, p, body, pve, c2)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
-        evalLocationAccess(σ, locacc, pve, c)((name, args, c1) =>
-          eval(σ, perm, pve, c1)((tPerm, c2) =>
+        eval(σ, perm, pve, c)((tPerm, c1) =>
+          evalLocationAccess(σ, locacc, pve, c1)((name, args, c2) =>
             decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
                 chunkSupporter.consume(σ, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)

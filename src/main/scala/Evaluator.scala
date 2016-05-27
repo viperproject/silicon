@@ -657,11 +657,7 @@ trait DefaultEvaluator[ST <: Store[ST],
     locacc match {
       case ast.FieldAccess(eRcvr, field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          decider.assert(σ, tRcvr !== Null()){
-            case true =>
-              Q(field.name, tRcvr :: Nil, c1)
-            case false =>
-              Failure(pve dueTo ReceiverNull(locacc))})
+          Q(field.name, tRcvr :: Nil, c1))
       case ast.PredicateAccess(eArgs, predicateName) =>
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           Q(predicateName, tArgs, c1))

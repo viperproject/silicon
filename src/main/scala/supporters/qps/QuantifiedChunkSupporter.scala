@@ -739,7 +739,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       val q1 =
         Forall(
           qvar,
-          Implies(cond, rcvr !== Null()),
+          Implies(And(cond, PermLess(NoPerm(), perms)), rcvr !== Null()),
           Nil,
           s"qp.null${qidCounter.next()}")
       val axRaw = if (config.disableISCTriggers()) q1 else q1.autoTrigger
