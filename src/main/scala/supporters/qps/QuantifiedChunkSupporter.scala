@@ -248,63 +248,58 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                  (Q: SummarisingFvfDefinition => VerificationResult)
                  : VerificationResult = {
 
-      assert(σ, receiver !== Null()) {
+      assert(σ, PermLess(NoPerm(), permission(h, receiver, field))) {
         case false =>
-          Failure(pve dueTo ReceiverNull(locacc))
+          Failure(pve dueTo InsufficientPermission(locacc))
 
         case true =>
-          assert(σ, PermLess(NoPerm(), permission(h, receiver, field))) {
-            case false =>
-              Failure(pve dueTo InsufficientPermission(locacc))
+          val (quantifiedChunks, _) = splitHeap(h, field.name)
+          val fvfDef = summarizeChunks(quantifiedChunks, field, qvars, condition, receiver, false)
 
-            case true =>
-              val (quantifiedChunks, _) = splitHeap(h, field.name)
-              val fvfDef = summarizeChunks(quantifiedChunks, field, qvars, condition, receiver, false)
+          /* Optimisisations */
 
-              /* Optimisisations */
+//            val cacheLog = bookkeeper.logfiles("withValueCache")
+//            cacheLog.println(s"receiver = $receiver")
+//            cacheLog.println(s"lookupRcvr = $lookupRcvr")
+//            cacheLog.println(s"consideredCunks = $consideredCunks")
+//            cacheLog.println(s"fvf = $fvf")
+//            cacheLog.println(s"fvfDefs.length = ${fvfDefs.length}")
+//            cacheLog.println(s"fvfDefs = $fvfDefs")
 
-  //            val cacheLog = bookkeeper.logfiles("withValueCache")
-  //            cacheLog.println(s"receiver = $receiver")
-  //            cacheLog.println(s"lookupRcvr = $lookupRcvr")
-  //            cacheLog.println(s"consideredCunks = $consideredCunks")
-  //            cacheLog.println(s"fvf = $fvf")
-  //            cacheLog.println(s"fvfDefs.length = ${fvfDefs.length}")
-  //            cacheLog.println(s"fvfDefs = $fvfDefs")
+          val fvfDefToReturn =
+            /* TODO: Reusing the fvf found in a single entry is only sound if
+             * the current g(x) (should be known at call-site of withValue)
+             * and the g(x) from the entry are the same. Detecting this
+             * syntactically is not always possible since i1 <= inv1(r) < j1
+             * might be logically equivalent to i2 <= inv2(r) < j2, but
+             * syntactically it obviously isn't. Creating a single
+             * inv-function per range and receiver might help, though.
+             */
+            /*if (fvfDef.entries.length == 1) {
+              val fvfDefEntry = fvfDef.entries.head
+              val _fvf = fvfDefEntry.partialDomain.fvf
+              val _lookupRcvr = lookupRcvr.copy(fvf = fvfDefEntry.partialDomain.fvf)
+//                val _fvfDef = FvfDef(field, _fvf, false, fvfDefEntry.copy(True(), Nil) :: Nil)
+              val _fvfDef = FvfDef(field, _fvf, false, Nil)
 
-              val fvfDefToReturn =
-                /* TODO: Reusing the fvf found in a single entry is only sound if
-                 * the current g(x) (should be known at call-site of withValue)
-                 * and the g(x) from the entry are the same. Detecting this
-                 * syntactically is not always possible since i1 <= inv1(r) < j1
-                 * might be logically equivalent to i2 <= inv2(r) < j2, but
-                 * syntactically it obviously isn't. Creating a single
-                 * inv-function per range and receiver might help, though.
-                 */
-                /*if (fvfDef.entries.length == 1) {
-                  val fvfDefEntry = fvfDef.entries.head
-                  val _fvf = fvfDefEntry.partialDomain.fvf
-                  val _lookupRcvr = lookupRcvr.copy(fvf = fvfDefEntry.partialDomain.fvf)
-  //                val _fvfDef = FvfDef(field, _fvf, false, fvfDefEntry.copy(True(), Nil) :: Nil)
-                  val _fvfDef = FvfDef(field, _fvf, false, Nil)
+              (_lookupRcvr, _fvfDef)
+            } else */{
+//                if (config.disableQPCaching())
+              fvfDef.asInstanceOf[SummarisingFvfDefinition]
+//                else {
+//                  /* TODO: Caching needs to take the branch conditions into account! */
+//                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
+//                  withValueCache.getOrElseUpdate((receiver, toSet(quantifiedChunks)), fvfDef)
+//                }
+            }
 
-                  (_lookupRcvr, _fvfDef)
-                } else */{
-  //                if (config.disableQPCaching())
-                  fvfDef.asInstanceOf[SummarisingFvfDefinition]
-  //                else {
-  //                  /* TODO: Caching needs to take the branch conditions into account! */
-  //                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
-  //                  withValueCache.getOrElseUpdate((receiver, toSet(quantifiedChunks)), fvfDef)
-  //                }
-                }
+//            cacheLog.println(s"lookupRcvrToReturn = $lookupRcvrToReturn")
+//            cacheLog.println(s"fvfDefToReturn = $fvfDefToReturn")
+//            cacheLog.println()
 
-  //            cacheLog.println(s"lookupRcvrToReturn = $lookupRcvrToReturn")
-  //            cacheLog.println(s"fvfDefToReturn = $fvfDefToReturn")
-  //            cacheLog.println()
+          /* We're done */
 
-              /* We're done */
-
-              Q(fvfDefToReturn)}}
+          Q(fvfDefToReturn)}
     }
 
     private def summarizeChunks(chunks: Seq[QuantifiedChunk],
