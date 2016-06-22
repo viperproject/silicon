@@ -26,7 +26,7 @@ class SiliconTests extends SilSuite {
     fe
   }
 
-  override def shouldLeadToTestCancel(ann: LocatedAnnotation) = {
+  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
     ann match {
       case UnexpectedOutput(_, _, _, _, _, _) => true
       case MissingOutput(_, _, _, _, _, issue) =>
