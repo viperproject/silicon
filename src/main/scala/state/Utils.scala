@@ -40,7 +40,7 @@ package object utils {
       case bc: BasicChunk =>
         bc.args foreach collect
         collect(bc.snap)
-      case qch: QuantifiedChunk =>
+      case qch: QuantifiedFieldChunk =>
         /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
          * hence, they can only be used under quantifiers that bind `?r`.
          * An exception are quantified chunks that (definitely) provide permissions to

@@ -39,7 +39,7 @@ case class DefaultContext[H <: Heap[H]]
                           consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
-                          fvfCache: Map[(ast.Field, Seq[QuantifiedChunk]), SummarisingFvfDefinition] = Map.empty,
+                          fvfCache: Map[(ast.Field, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
                           fvfAsSnap: Boolean = false)
     extends Context[DefaultContext[H]] {
 

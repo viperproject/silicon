@@ -49,7 +49,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                      field: String,
                                      fvf: Term,
                                      perms: Term)
-                                    : QuantifiedChunk
+                                    : QuantifiedFieldChunk
 
   def createQuantifiedChunk(qvar: Var,
                             receiver: Term,
@@ -58,10 +58,10 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                             perms: Term,
                             condition: Term,
                             additionalArgs: Seq[Var])
-                           : (QuantifiedChunk, InverseFunction)
+                           : (QuantifiedFieldChunk, InverseFunction)
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
-  def permission(chs: Seq[QuantifiedChunk], receiver: Term, field: ast.Field): Term
+  def permission(chs: Seq[QuantifiedFieldChunk], receiver: Term, field: ast.Field): Term
 
   def withValue(σ: S,
                 h: H,
@@ -80,9 +80,9 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                           field: ast.Field,
                           receiver: Term, // e
                           perms: Term, // p
-                          chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
+                          chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
                           c: C)
-                         (Q: Option[(H, QuantifiedChunk, FvfDefinition, C)] => VerificationResult)
+                         (Q: Option[(H, QuantifiedFieldChunk, FvfDefinition, C)] => VerificationResult)
                          : VerificationResult
 
   def splitLocations(σ: S,
@@ -93,17 +93,17 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                      condition: Term, // c(x)
                      receiver: Term, // e(x)
                      perms: Term, // p(x)
-                     chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
+                     chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
                      c: C)
-                    (Q: Option[(H, QuantifiedChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
+                    (Q: Option[(H, QuantifiedFieldChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
                     : VerificationResult
 
-  def splitHeap(h: H, field: String): (Seq[QuantifiedChunk], Seq[Chunk])
+  def splitHeap(h: H, field: String): (Seq[QuantifiedFieldChunk], Seq[Chunk])
 
   def injectFVF(freshFvf: Var): Unit
 
   def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term]
-  def hintBasedChunkOrderHeuristic(hints: Seq[Term]): Seq[QuantifiedChunk] => Seq[QuantifiedChunk]
+  def hintBasedChunkOrderHeuristic(hints: Seq[Term]): Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk]
 }
 
 trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
@@ -136,12 +136,12 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                        field: String,
                                        fvf: Term,
                                        perms: Term)
-                                      : QuantifiedChunk = {
+                                      : QuantifiedFieldChunk = {
 
       val condPerms = singletonConditionalPermissions(rcvr, perms)
       val hints = extractHints(None, None, rcvr)
 
-      QuantifiedChunk(field, fvf, condPerms, None, Some(condPerms), Some(rcvr), hints)
+      QuantifiedFieldChunk(field, fvf, condPerms, None, Some(condPerms), Some(rcvr), hints)
     }
 
     def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
@@ -170,7 +170,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                               perms: Term,
                               condition: Term,
                               additionalArgs: Seq[Var])
-                             : (QuantifiedChunk, InverseFunction) = {
+                             : (QuantifiedFieldChunk, InverseFunction) = {
 
       Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
         s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
@@ -178,7 +178,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
       val arbitraryInverseRcvr = inverseFunction(`?r`)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
-      val ch = QuantifiedChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
+      val ch = QuantifiedFieldChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
 
       (ch, inverseFunction)
     }
@@ -197,12 +197,12 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
     /* State queries */
 
-    def splitHeap(h: H, field: String): (Seq[QuantifiedChunk], Seq[Chunk]) = {
-      var quantifiedChunks = Seq[QuantifiedChunk]()
+    def splitHeap(h: H, field: String): (Seq[QuantifiedFieldChunk], Seq[Chunk]) = {
+      var quantifiedChunks = Seq[QuantifiedFieldChunk]()
       var otherChunks = Seq[Chunk]()
 
       h.values foreach {
-        case ch: QuantifiedChunk if ch.name == field =>
+        case ch: QuantifiedFieldChunk if ch.name == field =>
           quantifiedChunks +:= ch
         case ch: BasicChunk if ch.name == field =>
           sys.error(s"I did not expect non-quantified chunks on the heap for field $field, but found $ch")
@@ -218,23 +218,23 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       */
     def permission(h: H, receiver: Term, field: ast.Field): Term = {
       val perms = h.values.toSeq.collect {
-        case permChunk: QuantifiedChunk if permChunk.name == field.name =>
+        case permChunk: QuantifiedFieldChunk if permChunk.name == field.name =>
           permChunk.perm.replace(`?r`, receiver)
       }
 
       BigPermSum(perms, Predef.identity)
     }
 
-    def permission(chs: Seq[QuantifiedChunk], receiver: Term, field: ast.Field): Term = {
+    def permission(chs: Seq[QuantifiedFieldChunk], receiver: Term, field: ast.Field): Term = {
       val perms = chs map {
-        case permChunk: QuantifiedChunk if permChunk.name == field.name =>
+        case permChunk: QuantifiedFieldChunk if permChunk.name == field.name =>
           permChunk.perm.replace(`?r`, receiver)
       }
 
       BigPermSum(perms, Predef.identity)
     }
 
-  //  private val withValueCache = MMap[(Term, Set[QuantifiedChunk]), MultiLocationFvf]()
+  //  private val withValueCache = MMap[(Term, Set[QuantifiedFieldChunk]), MultiLocationFvf]()
 
     def withValue(σ: S,
                   h: H,
@@ -302,7 +302,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           Q(fvfDefToReturn)}
     }
 
-    private def summarizeChunks(chunks: Seq[QuantifiedChunk],
+    private def summarizeChunks(chunks: Seq[QuantifiedFieldChunk],
                                 field: ast.Field,
                                 qvars: Seq[Var],
                                 condition: Term,
@@ -372,9 +372,9 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                             field: ast.Field,
                             receiver: Term, // e
                             perms: Term, // p
-                            chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
+                            chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
                             c: C)
-                           (Q: Option[(H, QuantifiedChunk, FvfDefinition, C)] => VerificationResult)
+                           (Q: Option[(H, QuantifiedFieldChunk, FvfDefinition, C)] => VerificationResult)
                            : VerificationResult = {
 
       val (h1, ch, fvfDef, success) =
@@ -394,9 +394,9 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                        condition: Term, // c(x)
                        receiver: Term, // e(x)
                        perms: Term, // p(x)
-                       chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
+                       chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
                        c: C)
-                      (Q: Option[(H, QuantifiedChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
+                      (Q: Option[(H, QuantifiedFieldChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
                       : VerificationResult = {
 
       val (h1, ch, fvfDef, success) =
@@ -416,9 +416,9 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                       condition: Term, // c(x)
                       receiver: Term, // e(x)
                       perms: Term, // p(x)
-                      chunkOrderHeuristic: Seq[QuantifiedChunk] => Seq[QuantifiedChunk],
+                      chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
                       c: C)
-                     : (H, QuantifiedChunk, FvfDefinition, Boolean) = {
+                     : (H, QuantifiedFieldChunk, FvfDefinition, Boolean) = {
 
       val (quantifiedChunks, otherChunks) = splitHeap(h, field.name)
       val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
@@ -500,7 +500,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       decider.prover.logComment("Done splitting")
 
       val hResidue = H(residue ++ otherChunks)
-      val chunkSplitOf = QuantifiedChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)
+      val chunkSplitOf = QuantifiedFieldChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)
 
       (hResidue, chunkSplitOf, fvfDef, success)
     }
@@ -508,7 +508,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     private def createPermissionConstraintAndDepletedCheck(qvar: Option[Var], // x
                                                            conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
                                                            constrainPermissions: Boolean,
-                                                           ithChunk: QuantifiedChunk,
+                                                           ithChunk: QuantifiedFieldChunk,
                                                            ithPTaken: Term)
                                                           : (Term, Term) = {
 
@@ -796,9 +796,9 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     }
 
     def hintBasedChunkOrderHeuristic(hints: Seq[Term])
-                                    : Seq[QuantifiedChunk] => Seq[QuantifiedChunk] =
+                                    : Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk] =
 
-      (chunks: Seq[QuantifiedChunk]) => {
+      (chunks: Seq[QuantifiedFieldChunk]) => {
         val (matchingChunks, otherChunks) = chunks.partition(_.hints == hints)
 
         matchingChunks ++ otherChunks

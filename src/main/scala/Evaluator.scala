@@ -338,7 +338,7 @@ trait DefaultEvaluator[ST <: Store[ST],
             }
           val perm =
             if (usesQPChunks) {
-              val chs = h.values.collect { case ch: QuantifiedChunk if ch.name == name => ch }
+              val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
               chs.foldLeft(NoPerm(): Term)((q, ch) =>
                 PermPlus(q, ch.perm.replace(`?r`, args.head))) /* TODO: Support predicates under QPs */
             } else {
