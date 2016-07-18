@@ -64,25 +64,6 @@ case class PredicateChunk(override val name: String,
   override def toString = s"$name($snap; ${args.mkString(",")}) # $perm"
 }
 
-case class QuantifiedPredicateChunk(name: String,
-                                    args: Seq[Term],
-                                    snap: Term,
-                                    perm: Term,
-                                    inv: Option[InverseFunction],
-                                    initialCond: Option[Term],
-                                    hints: Seq[Term] = Nil)
-  extends PermissionChunk {
-
-  assert(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
-  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
-
-  def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))
-  def -(perm: Term) = copy(perm = PermMinus(this.perm, perm))
-  def \(perm: Term) = copy(perm = perm)
-
-  override def toString = s"${terms.Forall}  :: $name($snap; ${args.mkString(",")}) -> $perm"
-}
-
 case class QuantifiedFieldChunk(name: String,
                                 fvf: Term,
                                 perm: Term,
@@ -104,6 +85,25 @@ case class QuantifiedFieldChunk(name: String,
   def \(perm: Term) = copy(perm = perm)
 
   override def toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$name -> $fvf # $perm"
+}
+
+case class QuantifiedPredicateChunk(name: String,
+                                    args: Seq[Term],
+                                    snap: Term,
+                                    perm: Term,
+                                    inv: Option[InverseFunction],
+                                    initialCond: Option[Term],
+                                    hints: Seq[Term] = Nil)
+  extends PermissionChunk {
+
+  assert(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+
+  def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))
+  def -(perm: Term) = copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = copy(perm = perm)
+
+  override def toString = s"${terms.Forall}  :: $name($snap; ${args.mkString(",")}) -> $perm"
 }
 
 case class MagicWandChunk(ghostFreeWand: ast.MagicWand,

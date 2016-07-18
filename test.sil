@@ -1,0 +1,9 @@
+field f:Int;
+field g:Int;
+
+predicate p(i:Int)
+{i > 0}
+
+method m(xs:Seq[Ref])
+requires forall i:Int :: true ==> acc(p(i))
+{}

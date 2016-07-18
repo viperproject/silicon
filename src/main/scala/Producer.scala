@@ -72,7 +72,6 @@ trait DefaultProducer[ST <: Store[ST],
      * combine-terms, which can affect the snapshot structure of predicates and
      * functions.
      */
-
     if (φs.isEmpty)
       Q(σ, c)
     else {
@@ -182,7 +181,7 @@ trait DefaultProducer[ST <: Store[ST],
             val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
             val additionalInvFctArgs = c1.quantifiedVariables
             val (ch, invFct) =
-              quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(tGain, p), tCond,
+              quantifiedChunkSupporter.createQuantifiedFieldChunk(tQVar, tRcvr, field, snap, PermTimes(tGain, p), tCond,
                                                              additionalInvFctArgs)
 
             /* [2016-05-05 Malte]
@@ -238,7 +237,33 @@ trait DefaultProducer[ST <: Store[ST],
   //          val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms))
             val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
             Q(σ.h + ch1, c2)}
+      case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, gain, forall, predAcc) =>
+        //TODO: QPP
+        //create new quantified predicate chunk
+        val qid = s"prog.l${utils.ast.sourceLine(forall)}"
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
+          case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
+            val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
+            val snaps = args.map(arg => sf(sorts.FieldValueFunction(toSort(arg.typ))))
 
+            val additionalInvFctArgs = c1.quantifiedVariables
+            val (ch, invFct) =
+              quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, tRcvr, field, snap, PermTimes(tGain, p), tCond,
+                additionalInvFctArgs)
+/*
+            decider.prover.logComment("Nested auxiliary terms")
+            assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
+              triggers = invFct.invOfFct.triggers))
+            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
+            assume(gainNonNeg)
+            decider.prover.logComment("Definitional axioms for inverse functions")
+            assume(invFct.definitionalAxioms)
+            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+            val ch1 = ch.copy(hints = hints)
+
+            val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
+            Q(σ.h + ch1, c2)}*/
+            Q(σ.h, c)}
       case _: ast.InhaleExhaleExp =>
         Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
