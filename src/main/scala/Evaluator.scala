@@ -334,13 +334,23 @@ trait DefaultEvaluator[ST <: Store[ST],
           val usesQPChunks =
             loc match {
               case field: ast.Field => c.qpFields.contains(field)
-              case pred: ast.Predicate => false /* TODO: Support predicates under QPs */
+              case pred: ast.Predicate => c.qpPredicates.contains(pred)
             }
-          val perm =
+          val perm:Term =
             if (usesQPChunks) {
-              val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
-              chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                PermPlus(q, ch.perm.replace(`?r`, args.head))) /* TODO: Support predicates under QPs */
+              loc match {
+                case field: ast.Field => {
+                  val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
+                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                }
+                case pred: ast.Predicate => {
+                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
+                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                    PermPlus(q, ch.perm.replace(`?r`, args.head))) /* TODO: Support predicates under QPs */
+                }
+              }
+
             } else {
               val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
               chs.foldLeft(NoPerm(): Term)((q, ch) => {

@@ -122,10 +122,12 @@ class DefaultVerifier(val config: Config)
 
   private def createInitialContext(member: ast.Member, program: ast.Program): C = {
     val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
+    val quantifiedPredicates = toSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
 
     DefaultContext[H](program = program,
                       qpFields = quantifiedFields,
+                      qpPredicates = quantifiedPredicates,
                       applyHeuristics = applyHeuristics)
   }
 
