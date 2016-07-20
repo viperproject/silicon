@@ -60,14 +60,14 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                  additionalArgs: Seq[Var])
                            : (QuantifiedFieldChunk, InverseFunction)
 
-  def createQuantifiedPredicateChunk(qvar: Var,
+  /*def createQuantifiedPredicateChunk(qvar: Var,
                                  receiver: Term,
                                  field: ast.Field,
                                  fvf: Term,
                                  perms: Term,
                                  condition: Term,
                                  additionalArgs: Seq[Var])
-  : (QuantifiedPredicateChunk, InverseFunction)
+  : (QuantifiedPredicateChunk, InverseFunction)*/
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
   def permission(chs: Seq[QuantifiedFieldChunk], receiver: Term, field: ast.Field): Term
@@ -172,26 +172,6 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       *           2. the definitional axioms of the inverse function created for the
       *              chunk, see [[getFreshInverseFunction]].
       */
-    def createQuantifiedPredicateChunk(qvar: Var,
-                                   receiver: Term,
-                                   field: ast.Field,
-                                   fvf: Term,
-                                   perms: Term,
-                                   condition: Term,
-                                   additionalArgs: Seq[Var])
-                             : (QuantifiedFieldChunk, InverseFunction) = {
-
-      Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
-        s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
-
-      val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
-      val arbitraryInverseRcvr = inverseFunction(`?r`)
-      val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
-      val ch = QuantifiedFieldChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
-
-      (ch, inverseFunction)
-    }
-
     def createQuantifiedFieldChunk(qvar: Var,
                                    receiver: Term,
                                    field: ast.Field,
@@ -211,6 +191,28 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
       (ch, inverseFunction)
     }
+
+    /*  def createQuantifiedPredicateChunk(qvar: Var,
+                                     pred:String,
+                                     args: Seq[]
+                                     receiver: Term,
+                                 field: ast.Field,
+                                 fvf: Term,
+                                 perms: Term,
+                                 condition: Term,
+                                 additionalArgs: Seq[Var])
+                           : (QuantifiedFieldChunk, InverseFunction) = {
+
+    Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
+      s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
+
+    val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
+    val arbitraryInverseRcvr = inverseFunction(`?r`)
+    val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
+    val ch = QuantifiedFieldChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
+
+    (ch, inverseFunction)
+  } */
 
 
     def conditionalPermissions(qvar: Var, // x
