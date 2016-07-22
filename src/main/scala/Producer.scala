@@ -161,13 +161,26 @@ trait DefaultProducer[ST <: Store[ST],
 
       case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), gain) =>
         val predicate = c.program.findPredicate(predicateName)
+        def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
+          if (c.qpPredicates.contains(predicate)) {
+            //TODO: finish quantified implementation
+            //createPredicateSnapshotFunction??
+            //assume fvfDef analogue
+            //val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(...)
+            //(h + ch, c)
+            (h, c)
+          } else {
+            val ch = PredicateChunk(predicate.name, args, s.convert(sorts.Snap), p)
+            val (h1, c1) = chunkSupporter.produce(σ, σ.h, ch, c)
+            (h1, c1)
+          }
+
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
             assume(PermAtMost(NoPerm(), pGain))
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
             val pNettoGain = PermTimes(pGain, p)
-            val ch = PredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
-            val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
+            val (h1, c3) = addNewChunk(σ.h, tArgs, s, pNettoGain, c2)
             Q(h1, c3)}))
 
       case wand: ast.MagicWand =>
@@ -176,7 +189,7 @@ trait DefaultProducer[ST <: Store[ST],
 
       case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, gain, forall, _) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, gain), Nil, qid, pve, c){
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, gain), Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tGain), _, tAuxQuantNoTriggers, c1) =>
             val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
             val additionalInvFctArgs = c1.quantifiedVariables
