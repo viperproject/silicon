@@ -13,7 +13,7 @@ import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.terms.perms._
-import viper.silicon.state.{QuantifiedFieldChunk, FieldChunk, BasicChunk}
+import viper.silicon.state.{BasicChunk, FieldChunk, QuantifiedFieldChunk, QuantifiedPredicateChunk}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
@@ -142,6 +142,8 @@ trait HeapCompressorProvider[ST <: Store[ST],
               }
 
             case ch2: QuantifiedFieldChunk =>
+              (ch2 +: accMergedChunks, accMatches, accSnapEqs)
+            case ch2: QuantifiedPredicateChunk =>
               (ch2 +: accMergedChunks, accMatches, accSnapEqs)
           }
         }

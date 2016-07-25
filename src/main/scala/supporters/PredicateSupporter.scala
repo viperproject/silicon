@@ -165,10 +165,17 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-      chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
-        produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
-          decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-          Q(σ2 \ σ.γ, c2)})})
+      if (c.qpPredicates.contains(predicate)) {
+        //TODO: possible entry point to adapt...?
+        println("qp")
+        Q(σ, c)
+      } else {
+        chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
+          produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
+            decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+            Q(σ2 \ σ.γ, c2)})})
+      }
+
     }
 
     /* Lifetime */
