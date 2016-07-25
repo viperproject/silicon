@@ -26,6 +26,11 @@ case class InverseFunction(func: Function, function: Term => Term, invOfFct: Qua
   def apply(t: Term) = function(t)
 }
 
+case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term, invOfFct: Quantification, fctOfInv: Quantification) {
+  val definitionalAxioms = invOfFct :: fctOfInv :: Nil
+  def apply(t: Seq[Term]) = function(t)
+}
+
 trait QuantifiedChunkSupporter[ST <: Store[ST],
                                H <: Heap[H],
                                S <: State[ST, H, S],
@@ -60,14 +65,14 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                  additionalArgs: Seq[Var])
                            : (QuantifiedFieldChunk, InverseFunction)
 
-  /*def createQuantifiedPredicateChunk(qvar: Var,
-                                 receiver: Term,
-                                 field: ast.Field,
-                                 fvf: Term,
-                                 perms: Term,
-                                 condition: Term,
-                                 additionalArgs: Seq[Var])
-  : (QuantifiedPredicateChunk, InverseFunction)*/
+  def createQuantifiedPredicateChunk(qvar: Var,
+                                     pred:ast.Predicate,
+                                     args: Seq[Term],
+                                     psf: Term,
+                                     perms: Term,
+                                     condition: Term,
+                                     additionalArgs: Seq[Var])
+  : (QuantifiedPredicateChunk, PredicateInverseFunction)
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
   def permission(chs: Seq[QuantifiedFieldChunk], receiver: Term, field: ast.Field): Term
@@ -192,27 +197,25 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       (ch, inverseFunction)
     }
 
-    /*  def createQuantifiedPredicateChunk(qvar: Var,
-                                     pred:String,
-                                     args: Seq[]
-                                     receiver: Term,
-                                 field: ast.Field,
-                                 fvf: Term,
-                                 perms: Term,
-                                 condition: Term,
-                                 additionalArgs: Seq[Var])
-                           : (QuantifiedFieldChunk, InverseFunction) = {
+    def createQuantifiedPredicateChunk(qvar: Var,
+                                       pred:ast.Predicate,
+                                       args: Seq[Term],
+                                       psf: Term,
+                                       perms: Term,
+                                       condition: Term,
+                                       additionalArgs: Seq[Var])
+    : (QuantifiedPredicateChunk, PredicateInverseFunction) = {
 
-    Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
-      s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
+      Predef.assert(psf.sort.isInstanceOf[sorts.PredicateSnapFunction],
+        s"Quantified chunk values must be of sort FieldValueFunction, but found value $psf of sort ${psf.sort}")
 
-    val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
-    val arbitraryInverseRcvr = inverseFunction(`?r`)
-    val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
-    val ch = QuantifiedFieldChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
+      val (inverseFunction, arguments)= getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
+      val arbitraryInverseArguments = inverseFunction(arguments)
+      val condPerms = conditionalPermissions(qvar, arbitraryInverseArguments, condition, perms)
+      val ch = QuantifiedPredicateChunk(pred.name, args, psf, condPerms, Some(inverseFunction), None)
 
-    (ch, inverseFunction)
-  } */
+      (ch, inverseFunction)
+    }
 
 
     def conditionalPermissions(qvar: Var, // x
@@ -825,6 +828,58 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                                 axiomRewriter)
 
       InverseFunction(func, inverseFunc, finalAxInvOfFct, finalAxFctOfInv)
+    }
+
+    /** Creates a fresh inverse function `inv` and returns the function as well as the
+      * definitional axioms.
+      *
+      * @param qvar A variable (most likely bound by a forall) that occurs in `of`
+      *             and that is the result of the inverse function applied to `of`,
+      *             i.e. `inv(of) = qvar` (if `condition` holds).
+      * @param fct A term containing the variable `qvar` that can be understood as
+      *           the application of an invertible function to `qvar`.
+      * @param condition A condition (containing `qvar`) that must hold in order for
+      *                  `inv` to invert `of` to `qvar`.
+      * @param additionalArgs Additional arguments on which `inv` depends.
+      * @return A tuple of
+      *           1. the inverse function as a function of a single arguments (the
+      *              `additionalArgs` have been fixed already)
+      *           2. the definitional axioms of the inverse function.
+      */
+    def getFreshInverseFunction(qvar: Var,
+                                predicate:ast.Predicate,
+                                fct: Seq[Term],
+                                condition: Term,
+                                additionalArgs: Seq[Var])
+    : (PredicateInverseFunction, Seq[Var]) = {
+
+      val formalArgs:Seq[Var] = predicate.formalArgs map (arg => fresh(arg.name, toSort(arg.typ)))
+
+      val func = decider.fresh("inv", ((additionalArgs ++ fct)map (_.sort)), qvar.sort)
+      val inverseFunc = (t: Seq[Term]) => App(func, additionalArgs ++ t)
+      val invOFct: Term = inverseFunc(fct)
+      val fctOfInv: Seq[Term] = fct map(_.replace(qvar, inverseFunc(formalArgs)))
+      val condInv = condition.replace(qvar, inverseFunc(formalArgs))
+
+      val finalAxInvOfFct =
+        TriggerGenerator.assembleQuantification(Forall,
+          qvar :: Nil,
+          Implies(condition, invOFct === qvar),
+          if (config.disableISCTriggers()) Nil: Seq[Term] else /*fct :: */And(condition, invOFct) :: Nil,
+          s"qp.${func.id}-exp",
+          axiomRewriter)
+
+      val inverseConjunction = (fctOfInv zip formalArgs).map(args => args._1 === args._2).reduceLeft((a, b) => And(a, b))
+
+      val finalAxFctOfInv =
+        TriggerGenerator.assembleQuantification(Forall,
+          formalArgs,
+          Implies(condInv, inverseConjunction),
+          if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inverseFunc(formalArgs)) :: Nil,
+          s"qp.${func.id}-imp",
+          axiomRewriter)
+
+      (PredicateInverseFunction(func, inverseFunc, finalAxInvOfFct, finalAxFctOfInv), formalArgs)
     }
 
     def hintBasedChunkOrderHeuristic(hints: Seq[Term])

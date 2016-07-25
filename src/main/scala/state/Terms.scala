@@ -56,6 +56,10 @@ object sorts {
     override val toString = id.toString
   }
 
+  case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
+    val id = Identifier("PSF[%s]".format(codomainSort))
+    override val toString = id.toString
+  }
 
 }
 

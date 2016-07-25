@@ -11,6 +11,7 @@ import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
 import viper.silicon.state.terms.{Lookup, PermMinus, PermPlus, Term, sorts}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.qps.InverseFunction
+import viper.silicon.supporters.qps.PredicateInverseFunction
 
 sealed abstract class BasicChunk(val name: String,
                                  val args: Seq[Term],
@@ -91,7 +92,7 @@ case class QuantifiedPredicateChunk(name: String,
                                     args: Seq[Term],
                                     snap: Term,
                                     perm: Term,
-                                    inv: Option[InverseFunction],
+                                    inv: Option[PredicateInverseFunction],
                                     initialCond: Option[Term],
                                     hints: Seq[Term] = Nil)
   extends PermissionChunk {
