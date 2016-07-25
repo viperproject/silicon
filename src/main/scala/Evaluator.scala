@@ -581,15 +581,15 @@ trait DefaultEvaluator[ST <: Store[ST],
 
   def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
                     (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
-                    : VerificationResult = {
+  : VerificationResult = {
 
     val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
     val γVars = Γ(vars zip tVars)
     val σQuant = σ \+ γVars
 
     val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
-                    recordPossibleTriggers = true,
-                    possibleTriggers = Map.empty)
+      recordPossibleTriggers = true,
+      possibleTriggers = Map.empty)
 
     decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Iterable[Term], Quantification, C)](QB => {
       val preMark = decider.setPathConditionMark()
@@ -602,8 +602,8 @@ trait DefaultEvaluator[ST <: Store[ST],
             val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
             val tAuxQuant = Quantification(quant, tVars, And(tAuxNested), tTriggers, s"$name-aux")
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
-                             recordPossibleTriggers = c.recordPossibleTriggers,
-                             possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
+              recordPossibleTriggers = c.recordPossibleTriggers,
+              possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
             QB(ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c4)})})})
     }){case (ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c1) =>
       decider.prover.logComment("Top-level auxiliary terms")
@@ -611,6 +611,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       Q(tVars, ts1, ts2, tTriggers, tAuxQuant, c1)
     }
   }
+
 
   def evalImplies(σ: S, tLhs: Term, eRhs: ast.Exp, pve: PartialVerificationError, c: C)
                  (Q: (Term, C) => VerificationResult)

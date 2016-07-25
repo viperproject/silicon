@@ -97,7 +97,7 @@ case class QuantifiedPredicateChunk(name: String,
                                     hints: Seq[Term] = Nil)
   extends PermissionChunk {
 
-  assert(snap.sort == sorts.Snap, s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+  assert(snap.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"A quantified predicate chunk's snapshot ($snap) is expected to be of sort PredicateSnapFunction, but found ${snap.sort}")
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
   def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))

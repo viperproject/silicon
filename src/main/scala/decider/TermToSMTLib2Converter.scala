@@ -51,6 +51,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
       ""
 
     case sorts.FieldValueFunction(codomainSort) => "$FVF<" <> render(codomainSort) <> ">"
+    case sorts.PredicateSnapFunction(codomainSort) => "$PSF<" <> render(codomainSort) <> ">"
   }
 
   def convert(d: Decl): String = {

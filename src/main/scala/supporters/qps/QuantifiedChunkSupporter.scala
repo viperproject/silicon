@@ -117,6 +117,8 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
   def injectFVF(freshFvf: Var): Unit
 
   def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term]
+  def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term]
+
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]): Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk]
 }
 
@@ -205,10 +207,8 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                        condition: Term,
                                        additionalArgs: Seq[Var])
     : (QuantifiedPredicateChunk, PredicateInverseFunction) = {
-
       Predef.assert(psf.sort.isInstanceOf[sorts.PredicateSnapFunction],
         s"Quantified chunk values must be of sort FieldValueFunction, but found value $psf of sort ${psf.sort}")
-
       val (inverseFunction, arguments)= getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
       val arbitraryInverseArguments = inverseFunction(arguments)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseArguments, condition, perms)
@@ -895,6 +895,13 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       None.orElse(rcvr.find{case SeqAt(seq, _) => seq})
           .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
           .toSeq
+    }
+
+    def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term] = {
+      //TODO
+      None.orElse(args.apply(0).find{case SeqAt(seq, _) => seq})
+        .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
+        .toSeq
     }
 
     /* FVF-after and FVF-top */

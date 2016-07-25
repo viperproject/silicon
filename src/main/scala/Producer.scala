@@ -253,17 +253,19 @@ trait DefaultProducer[ST <: Store[ST],
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, gain, forall, predAcc) =>
         //TODO: QPP
         //create new quantified predicate chunk
+        val predicate = c.program.findPredicate(predname)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
-            /*val snap = sf(sorts.PredicateSnapFunction(toSort(arg.typ))
 
-            val additionalInvFctArgs = c1.quantifiedVariables
+            val snap = sf(sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap)))
+
+            val additionalInvFctArgs = c1.quantifiedVariables //TODO: what is that good for?
             val (ch, invFct) =
-              quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, predname, tArgs, snap, PermTimes(tGain, p), tCond,
-                additionalInvFctArgs)*/
-/*
+              quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,
+                additionalInvFctArgs)
+
             decider.prover.logComment("Nested auxiliary terms")
             assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
               triggers = invFct.invOfFct.triggers))
@@ -271,25 +273,11 @@ trait DefaultProducer[ST <: Store[ST],
             assume(gainNonNeg)
             decider.prover.logComment("Definitional axioms for inverse functions")
             assume(invFct.definitionalAxioms)
-            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
             val ch1 = ch.copy(hints = hints)
 
             val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
-            Q(σ.h + ch1, c2)}*/
-            Q(σ.h, c)}
-
-
-        /*
-        Predicates in general:
-                val predicate = c.program.findPredicate(predicateName)
-                evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
-                eval(σ, gain, pve, c1)((pGain, c2) => {
-                assume(PermAtMost(NoPerm(), pGain))
-                val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
-                val pNettoGain = PermTimes(pGain, p)
-                val ch = PredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
-                val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
-         */
+            Q(σ.h + ch1, c2)}
       case _: ast.InhaleExhaleExp =>
         Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
