@@ -114,7 +114,7 @@ object SiliconBuild extends Build {
   def internalDep = if (isBuildServer) Nil else Seq(dependencies.silSrc % "compile->compile;test->test")
 
   def externalDep = (
-       Seq(dependencies.jgrapht, dependencies.commonsIO, dependencies.scallop, dependencies.kiama)
+       Seq(dependencies.jgrapht, dependencies.commonsIO, dependencies.scallop)
     ++ dependencies.logging
     ++ (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil))
 
@@ -127,7 +127,6 @@ object SiliconBuild extends Build {
 
     lazy val scallop = "org.rogach" %% "scallop" % "0.9.5"
     lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.0"
-    lazy val kiama = "com.googlecode.kiama" % "kiama_2.11" % "1.8.0"
 
     lazy val commonsIO = "commons-io" % "commons-io" % "2.4"
 
