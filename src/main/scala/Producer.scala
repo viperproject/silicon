@@ -258,9 +258,7 @@ trait DefaultProducer[ST <: Store[ST],
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
-
             val snap = sf(sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap)))
-
             val additionalInvFctArgs = c1.quantifiedVariables //TODO: what is that good for?
             val (ch, invFct) =
               quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,

@@ -42,10 +42,20 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                               additionalArgs: Seq[Var])
                              : InverseFunction
 
+
+  def getFreshInverseFunction(qvar: Var,
+                              predicate:ast.Predicate,
+                              fct: Seq[Term],
+                              condition: Term,
+                              additionalArgs: Seq[Var])
+  : (PredicateInverseFunction
+
+
   def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term)
                               : (Term, Option[SingletonChunkFvfDefinition])
 
-  def injectivityAxiom(qvar: Var, condition: Term, receiver: Term): Quantification
+  def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]): Quantification
+
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term): Quantification
 
   def singletonConditionalPermissions(rcvr: Term, perms: Term): Term
@@ -744,21 +754,36 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       axioms
     }
 
-    def injectivityAxiom(qvar: Var, condition: Term, receiver: Term) = {
-      val vx = Var(Identifier("x"), qvar.sort)
-      val vy = Var(Identifier("y"), qvar.sort)
+    def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
+      //TODO: are those unique? run test
+      var qvars1 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_1"), qvar.sort))
+      var qvars2 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_1"), qvar.sort))
 
-      val receiversEqual = receiver.replace(qvar, vx) === receiver.replace(qvar, vy)
+      def replaceAll(qvars: Seq[Var], newVars:Seq[Var], term:Term): Term = {
+        var newTerm = term;
+        for (i <- qvars.indices) {
+          newTerm = newTerm.replace(qvars.apply(i), newVars.apply(i))
+        }
+        newTerm
+      }
+
+      var cond1 = replaceAll(qvars, qvars1, condition)
+      var cond2 = replaceAll(qvars, qvars2, condition)
+      var args1 = args.map(arg => replaceAll(qvars, qvars1, arg))
+      var args2 = args.map(arg => replaceAll(qvars, qvars2, arg))
+
+      val argsEqual = (args1 zip args2).map(argsRenamed =>  argsRenamed._1 === argsRenamed._2).reduce((a1, a2) => And(a1, a2))
+      val varsEqual = (qvars1 zip qvars2).map(vars => vars._1 === vars._2).reduce((v1, v2) => And(v1, v2) )
 
       val implies =
         Implies(
-          And(condition.replace(qvar, vx),
-            condition.replace(qvar, vy),
-            receiversEqual),
-          vx === vy)
+          And(cond1,
+            cond2,
+            argsEqual),
+          varsEqual)
 
       Forall(
-        vx :: vy :: Nil,
+        qvars1 ++ qvars2,
         implies,
         Nil,
         /* receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil */
@@ -898,7 +923,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     }
 
     def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term] = {
-      //TODO
+      //TODO inlcude arguments for hint extraction
       None.orElse(args.apply(0).find{case SeqAt(seq, _) => seq})
         .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
         .toSeq
