@@ -31,6 +31,7 @@ case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term,
   def apply(t: Seq[Term]) = function(t)
 }
 
+
 trait QuantifiedChunkSupporter[ST <: Store[ST],
                                H <: Heap[H],
                                S <: State[ST, H, S],
@@ -42,13 +43,12 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                               additionalArgs: Seq[Var])
                              : InverseFunction
 
-
   def getFreshInverseFunction(qvar: Var,
                               predicate:ast.Predicate,
                               fct: Seq[Term],
                               condition: Term,
                               additionalArgs: Seq[Var])
-  : (PredicateInverseFunction
+  : (PredicateInverseFunction, Seq[Var])
 
 
   def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term)
@@ -85,6 +85,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
   : (QuantifiedPredicateChunk, PredicateInverseFunction)
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
+
   def permission(chs: Seq[QuantifiedFieldChunk], receiver: Term, field: ast.Field): Term
 
   def withValue(σ: S,

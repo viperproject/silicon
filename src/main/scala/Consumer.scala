@@ -139,7 +139,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 decider.prover.logComment("Nested auxiliary terms")
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
+                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, Seq(tRcvr))
                 decider.prover.logComment("Check receiver injectivity")
                 decider.assert(σ, receiverInjective) {
                   case true =>
@@ -168,19 +168,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
+           /*
             val (tArgs, Seq(tLoss)) = tArgsGain.splitAt(args.size)
             val predicate =
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
-                val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond),tArgs)
+                val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                //getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
+               getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
                 val invFct = quantifiedChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
                 decider.prover.logComment("Nested auxiliary terms")
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
-                //TODO: continiue here
-                val isInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
-                /*
+
+                val isInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)*/
+              /*
                 decider.prover.logComment("Check receiver injectivity")
                 decider.assert(σ, receiverInjective) {
                   case true =>
@@ -203,8 +204,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                   case false =>
                     Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
-                Failure(pve dueTo NegativePermission(loss))}}*/
-
+                Failure(pve dueTo NegativePermission(loss))}}
+              */
+              Failure(pve dueTo NegativePermission(loss))}
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
 
