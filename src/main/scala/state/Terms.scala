@@ -1573,6 +1573,13 @@ case class Lookup(field: String, fvf: Term, at: Term) extends Term {
 
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 }
+/*
+case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], sorts: Seq[Sort]) extends Term {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+  //TODO: args type prerequisites: utils.assertSort(args, "receiver", sorts.Ref)
+  (args zip sorts).foreach((arg:Term, sort:Sort) => utils.assertSort(arg, "predicate argument", sort))
+  val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
+}*/
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])

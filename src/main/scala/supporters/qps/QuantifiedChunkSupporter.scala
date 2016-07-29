@@ -112,7 +112,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
 
   def splitLocations(σ: S,
                      h: H,
-                     field: ast.Field,
+                     predicate: ast.Predicate,
                      qvar: Some[Var], // x
                      inverseReceiver: Term, // e⁻¹(r)
                      condition: Term, // c(x)
@@ -252,6 +252,22 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           quantifiedChunks +:= ch
         case ch: BasicChunk if ch.name == field =>
           sys.error(s"I did not expect non-quantified chunks on the heap for field $field, but found $ch")
+        case ch =>
+          otherChunks +:= ch
+      }
+
+      (quantifiedChunks, otherChunks)
+    }
+
+    def splitHeap(h: H, predicate: String): (Seq[QuantifiedPredicateChunk], Seq[Chunk]) = {
+      var quantifiedChunks = Seq[QuantifiedPredicateChunk]()
+      var otherChunks = Seq[Chunk]()
+
+      h.values foreach {
+        case ch: QuantifiedPredicateChunk if ch.name == predicate =>
+          quantifiedChunks +:= ch
+        case ch: BasicChunk if ch.name == predicate =>
+          sys.error(s"I did not expect non-quantified chunks on the heap for field $predicate, but found $ch")
         case ch =>
           otherChunks +:= ch
       }
@@ -454,6 +470,28 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         Q(None)
     }
 
+    def splitLocations(σ: S,
+                       h: H,
+                       predicate: ast.Predicate,
+                       qvar: Some[Var], // x
+                       inverseArgs: Seq[Term], // e1⁻¹(arg1, ..., argn), ..., en⁻¹(arg1, ..., argn)
+                       condition: Term, // c(x)
+                       args: Term, // e1(x), ..., en(x)
+                       perms: Term, // p(x)
+                       chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
+                       c: C)
+                      (Q: Option[(H, QuantifiedPredicateChunk, QuantifiedChunkPsfDefinition, C)] => VerificationResult)
+    : VerificationResult = {
+
+      val (h1, ch, fvfDef, success) =
+        split(σ, h, predicate, qvar, inverseArgs, condition, args, perms, chunkOrderHeuristic, c)
+
+      if (success) {
+        Q(Some(h1, ch, fvfDef.asInstanceOf[QuantifiedChunkFvfDefinition], c))
+      } else
+        Q(None)
+    }
+
     private def split(σ: S,
                       h: H,
                       field: ast.Field,
@@ -515,6 +553,103 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           val (permissionConstraint, depletedCheck) =
             createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
                                                        ithPTaken)
+
+          if (constrainPermissions) {
+            decider.prover.logComment(s"Constrain original permissions $perms")
+            assume(permissionConstraint)
+
+            residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
+          } else {
+            decider.prover.logComment(s"Chunk depleted?")
+            val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
+
+            if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
+          }
+
+          /* The success-check inside this loop is done with a (short) timeout.
+           * Outside of the loop, the last success-check (potentially) needs to be
+           * re-done, but without a timeout. In order to make this possible,
+           * the assertion to check is recorded by tookEnough.
+           */
+          tookEnough = Forall(`?r`, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
+
+          decider.prover.logComment(s"Enough permissions taken?")
+          success = check(σ, tookEnough, config.splitTimeout())
+        }
+      }
+
+      decider.prover.logComment("Final check that enough permissions have been taken")
+      success = success || check(σ, tookEnough, 0) /* This check is a must-check, i.e. an assert */
+
+      decider.prover.logComment("Done splitting")
+
+      val hResidue = H(residue ++ otherChunks)
+      val chunkSplitOf = QuantifiedFieldChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)
+
+      (hResidue, chunkSplitOf, fvfDef, success)
+    }
+
+    private def splitPredicateChunk(σ: S,
+                      h: H,
+                      pred: ast.Predicate,
+                      qvar: Option[Var], // x
+                      inverseArguments: Term, // e⁻¹(r)
+                      condition: Term, // c(x)
+                      receiver: Term, // e(x)
+                      perms: Term, // p(x)
+                      chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
+                      c: C)
+    : (H, QuantifiedFieldChunk, FvfDefinition, Boolean) = {
+
+      val (quantifiedChunks, otherChunks) = splitHeap(h, pred.name)
+      val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
+      val pInit = qvar.fold(perms)(x => perms.replace(x, inverseArguments)) // p(e⁻¹(r))
+      //val conditionOfInv = qvar.fold(condition)(x => condition.replace(x, inverseReceiver)) // c(e⁻¹(r))
+      //val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(r)) ? p_init(r) : 0
+
+      var residue: List[Chunk] = Nil
+      var pNeeded = pInit
+      var success = false
+
+      /* Using inverseReceiver instead of receiver yields axioms
+       * about the summarising fvf where the inverse function occurring in
+       * inverseReceiver is part of the axiom trigger. This makes several
+       * examples fail, including issue_0122.sil, because assertions in the program
+       * that talk about concrete receivers will not use the inverse function, and
+       * thus will not trigger the axioms that define the values of the fvf.
+       */
+      val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, Ite(condition, perms, NoPerm()), receiver, true)
+
+      decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
+
+      val precomputedData = candidates map { ch =>
+        val pTaken = Ite(conditionOfInv, PermMin(ch.perm, pNeeded), NoPerm())
+        val macroName = Identifier("pTaken" + permsTakenCounter.next())
+        val macroDecl = MacroDecl(macroName, `?r` :: Nil, pTaken)
+
+        decider.prover.declare(macroDecl)
+
+        val permsTakenFunc = Macro(macroName, Seq(`?r`.sort), sorts.Perm)
+        val permsTakenFApp = (t: Term) => App(permsTakenFunc, t :: Nil)
+
+        pNeeded = PermMinus(pNeeded, permsTakenFApp(`?r`))
+
+        (ch, permsTakenFApp(`?r`), pNeeded)
+      }
+
+      decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
+
+      var tookEnough = Forall(`?r`, Implies(conditionOfInv, pNeeded === NoPerm()), Nil: Seq[Trigger])
+
+      precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
+        if (success)
+          residue ::= ithChunk
+        else {
+          val constrainPermissions = !consumeExactRead(perms, c.constrainableARPs)
+
+          val (permissionConstraint, depletedCheck) =
+            createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
+              ithPTaken)
 
           if (constrainPermissions) {
             decider.prover.logComment(s"Constrain original permissions $perms")
@@ -757,8 +892,8 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
     def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
       //TODO: are those unique? run test
-      var qvars1 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_1"), qvar.sort))
-      var qvars2 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_2"), qvar.sort))
+      var qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
+      var qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
 
       def replaceAll(qvars: Seq[Var], newVars:Seq[Var], term:Term): Term = {
         var newTerm = term;
