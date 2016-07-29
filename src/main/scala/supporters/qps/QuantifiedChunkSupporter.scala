@@ -112,6 +112,19 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
 
   def splitLocations(σ: S,
                      h: H,
+                     field: ast.Field,
+                     qvar: Some[Var], // x
+                     inverseReceiver: Term, // e⁻¹(r)
+                     condition: Term, // c(x)
+                     receiver: Term, // e(x)
+                     perms: Term, // p(x)
+                     chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
+                     c: C)
+                     (Q: Option[(H, QuantifiedFieldChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
+                     : VerificationResult
+
+  def splitPredicateLocations(σ: S,
+                     h: H,
                      predicate: ast.Predicate,
                      qvar: Some[Var], // x
                      inverseReceiver: Term, // e⁻¹(r)
@@ -259,7 +272,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       (quantifiedChunks, otherChunks)
     }
 
-    def splitHeap(h: H, predicate: String): (Seq[QuantifiedPredicateChunk], Seq[Chunk]) = {
+    def splitPredicateHeap(h: H, predicate: String): (Seq[QuantifiedPredicateChunk], Seq[Chunk]) = {
       var quantifiedChunks = Seq[QuantifiedPredicateChunk]()
       var otherChunks = Seq[Chunk]()
 
@@ -388,6 +401,29 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       }
     }
 
+    private def summarizePredicateChunks( chunks: Seq[QuantifiedPredicateChunk],
+                                          predicate: ast.Predicate,
+                                          qvars: Seq[Var],
+                                          condition: Term,
+                                          args: Seq[Term],
+                                          isChunkPsf: Boolean)
+    : FvfDefinition = {
+      Predef.assert(chunks.forall(_.name == predicate.name),
+        s"Expected all chunks to be about precicate $predicate, but got ${chunks.mkString(", ")}")
+
+      val fvf = freshFVF(field, isChunkFvf)
+
+      if (isChunkFvf) {
+        if (qvars.isEmpty) {
+          SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
+        } else
+          QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(axiomRewriter, config)
+      } else {
+        //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
+        SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)(config)
+      }
+    }
+
     /* Manipulating quantified chunks */
 
     /** Replaces all non-quantified chunks for `field` in `h` with a corresponding
@@ -470,7 +506,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         Q(None)
     }
 
-    def splitLocations(σ: S,
+    def splitPredicateLocations(σ: S,
                        h: H,
                        predicate: ast.Predicate,
                        qvar: Some[Var], // x
@@ -483,11 +519,11 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                       (Q: Option[(H, QuantifiedPredicateChunk, QuantifiedChunkPsfDefinition, C)] => VerificationResult)
     : VerificationResult = {
 
-      val (h1, ch, fvfDef, success) =
-        split(σ, h, predicate, qvar, inverseArgs, condition, args, perms, chunkOrderHeuristic, c)
+      val (h1, ch, psfDef, success) =
+        splitPredicate(σ, h, predicate, qvar, inverseArgs, condition, args, perms, chunkOrderHeuristic, c)
 
       if (success) {
-        Q(Some(h1, ch, fvfDef.asInstanceOf[QuantifiedChunkFvfDefinition], c))
+        Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkFvfDefinition], c))
       } else
         Q(None)
     }
@@ -589,23 +625,25 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       (hResidue, chunkSplitOf, fvfDef, success)
     }
 
-    private def splitPredicateChunk(σ: S,
+    private def splitPredicate (σ: S,
                       h: H,
-                      pred: ast.Predicate,
+                      predicate: ast.Predicate,
                       qvar: Option[Var], // x
-                      inverseArguments: Term, // e⁻¹(r)
+                      inverseNeutralArguments: Term, // e⁻¹(arg1, ..., argn)
                       condition: Term, // c(x)
-                      receiver: Term, // e(x)
+                      args: Seq[Term], // e(x)
                       perms: Term, // p(x)
                       chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                       c: C)
     : (H, QuantifiedFieldChunk, FvfDefinition, Boolean) = {
 
-      val (quantifiedChunks, otherChunks) = splitHeap(h, pred.name)
+      val (quantifiedChunks, otherChunks) = splitPredicateHeap(h, pred.name)
       val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
-      val pInit = qvar.fold(perms)(x => perms.replace(x, inverseArguments)) // p(e⁻¹(r))
-      //val conditionOfInv = qvar.fold(condition)(x => condition.replace(x, inverseReceiver)) // c(e⁻¹(r))
-      //val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(r)) ? p_init(r) : 0
+
+
+      val pInit = qvar.fold(perms)(x => perms.replace(x, inverseNeutralArguments)) // p(e⁻¹(arg1, ..., argn))
+      val conditionOfInv = qvar.fold(condition)(x => condition.replace(x, inverseNeutralArguments)) // c(e⁻¹(arg1, ..., argn))
+      val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(arg1, ..., argn)) ? p_init(arg1, ..., argn) : 0
 
       var residue: List[Chunk] = Nil
       var pNeeded = pInit
@@ -618,7 +656,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
        * that talk about concrete receivers will not use the inverse function, and
        * thus will not trigger the axioms that define the values of the fvf.
        */
-      val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, Ite(condition, perms, NoPerm()), receiver, true)
+      val psfDef = summarizeChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, true)
 
       decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
 
@@ -812,6 +850,37 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       freshFVFInAction = false
 
       freshFvf
+    }
+
+    /* ATTENTION: Never create an FVF without calling this method! */
+    private def freshPSF(predicate: ast.Predicate, isChunkPsf: Boolean) = {
+      freshPSFInAction = true
+
+      bookkeeper.logfiles("psfs").println(s"isChunkPsf = $isChunkPsf")
+
+      val freshFvf =
+        if (isChunkPsf) {
+          //TODO
+          val psfSort = sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program))))
+          val freshPsf = fresh("psf#part", psfSort)
+
+          val psfTOP = Var(FvfTop(predicate.name), psfSort)
+          val fvf = lastPSF.getOrElse(predicate, psfTOP)
+          val after = FvfAfterRelation(predicate.name, freshPsf, psf)
+          assume(after)
+          lastPSF += (predicate -> freshPsf)
+
+          freshPsf
+        } else {
+          val psfSort = sorts.FieldValueFunction(toSort(field.typ))
+          val freshPsf = fresh("psf#tot", psfSort)
+
+          freshPsf
+        }
+
+      freshPSFInAction = false
+
+      freshPsf
     }
 
     def injectFVF(freshFvf: Var): Unit = {
@@ -1059,7 +1128,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     }
 
     def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term] = {
-      //TODO inlcude arguments for hint extraction
+      //TODO nadmuell:inlcude arguments for hint extraction
       None.orElse(args.apply(0).find{case SeqAt(seq, _) => seq})
         .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
         .toSeq
@@ -1070,7 +1139,9 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     private var quantifiedFields: Set[ast.Field] = Set.empty
     private var lastFVF: Map[ast.Field, Term] = Map.empty
     private var freshFVFInAction = false
-
+    private var quantifiedPredicates: Set[ast.Predicate] = Set.empty
+    private var lastPSF: Map[ast.Predicate, Term] = Map.empty
+    private var freshPSFInAction = false
   //  def initLastFVF(quantifiedFields: Set[ast.Field]) {
   //    this.quantifiedFields = quantifiedFields
   //
@@ -1092,6 +1163,10 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       quantifiedFields = quantifiedFields.empty
       lastFVF = lastFVF.empty
       freshFVFInAction = false
+
+      quantifiedPredicates = quantifiedPredicates.empty
+      lastPSF = lastPSF.empty
+      freshPSFInAction = false
 
   //    val logs = List(bookkeeper.logfiles("withValueCache"),
   //                    bookkeeper.logfiles("domainDefinitionAxiom"))
