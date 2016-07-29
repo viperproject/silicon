@@ -411,9 +411,9 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       Predef.assert(chunks.forall(_.name == predicate.name),
         s"Expected all chunks to be about precicate $predicate, but got ${chunks.mkString(", ")}")
 
-      val fvf = freshFVF(field, isChunkFvf)
+      val psf = freshPSF(predicate, isChunkPsf)
 
-      if (isChunkFvf) {
+      if (isChunkPsf) {
         if (qvars.isEmpty) {
           SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
         } else
@@ -637,7 +637,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                       c: C)
     : (H, QuantifiedFieldChunk, FvfDefinition, Boolean) = {
 
-      val (quantifiedChunks, otherChunks) = splitPredicateHeap(h, pred.name)
+      val (quantifiedChunks, otherChunks) = splitPredicateHeap(h, predicate.name)
       val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
 
 
@@ -656,7 +656,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
        * that talk about concrete receivers will not use the inverse function, and
        * thus will not trigger the axioms that define the values of the fvf.
        */
-      val psfDef = summarizeChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, true)
+      val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, true)
 
       decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
 
@@ -858,28 +858,27 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
       bookkeeper.logfiles("psfs").println(s"isChunkPsf = $isChunkPsf")
 
-      val freshFvf =
+      val freshPsf =
         if (isChunkPsf) {
           //TODO
-          val psfSort = sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program))))
+          val psfSort = sorts.PredicateSnapFunction(sorts.Snap)
           val freshPsf = fresh("psf#part", psfSort)
 
-          val psfTOP = Var(FvfTop(predicate.name), psfSort)
-          val fvf = lastPSF.getOrElse(predicate, psfTOP)
+          val psfTOP = Var(PsfTop(predicate.name), psfSort)
+          val psf = lastPSF.getOrElse(predicate, psfTOP)
           val after = FvfAfterRelation(predicate.name, freshPsf, psf)
           assume(after)
           lastPSF += (predicate -> freshPsf)
 
           freshPsf
         } else {
-          val psfSort = sorts.FieldValueFunction(toSort(field.typ))
+          val psfSort = sorts.PredicateSnapFunction(sorts.Snap)
           val freshPsf = fresh("psf#tot", psfSort)
 
           freshPsf
         }
 
       freshPSFInAction = false
-
       freshPsf
     }
 

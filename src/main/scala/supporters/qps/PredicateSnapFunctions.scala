@@ -24,7 +24,7 @@ trait PsfDefinition {
 }
 
 private[qps] object PsfDefinition {
-/*
+
   @inline
   private[qps] def pointwiseSnapDefinition(predicate: ast.Predicate,
                                            psf: Term,
@@ -32,18 +32,17 @@ private[qps] object PsfDefinition {
                                            sourceChunk: QuantifiedPredicateChunk,
                                            predInPsfDomain: Boolean)
                                            : Term = {
-
       Implies(
         And(
-          PermLess(NoPerm(), sourceChunk.perm(`?r`, rcvr)),
-          if (rcvrInFvfDomain)
-            SetIn(rcvr, Domain(field.name, fvf))
+          PermLess(NoPerm(), sourceChunk.perm.replace(`?r`, rcvr)),
+          if (predInPsfDomain)
+            SetIn(rcvr, Domain(predicate.name, psf))
           else
             True()),
-        Lookup(predicate.name, fvf, rcvr) === Lookup(field.name, sourceChunk.fvf, rcvr))
-  }*/
+        Lookup(predicate.name, psf, rcvr) === Lookup(predicate.name, sourceChunk.psf, rcvr))
+  }
 }
-/*
+
 case class SingletonChunkFvfDefinition(predicate: ast.Predicate,
                                        psf: Term,
                                        args: Seq[Term],
@@ -185,4 +184,4 @@ case class SummarisingFvfDefinition(field: ast.Field,
 
     Let(`?r`, rcvr, sum)
   }
-}*/
+}

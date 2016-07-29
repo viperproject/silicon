@@ -1592,8 +1592,16 @@ case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends Boole
   utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
 }
 
+case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
+  utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
+}
+
 object FvfTop extends (String => Identifier) {
   def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
+}
+
+object PsfTop extends (String => Identifier) {
+  def apply(predicateName: String): Identifier = Identifier(s"$$psfTOP_$predicateName")
 }
 
 /* Sort wrappers */
