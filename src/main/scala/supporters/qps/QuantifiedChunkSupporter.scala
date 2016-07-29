@@ -758,7 +758,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
       //TODO: are those unique? run test
       var qvars1 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_1"), qvar.sort))
-      var qvars2 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_1"), qvar.sort))
+      var qvars2 = qvars.map(qvar => Var(Identifier(qvar.id.name ++ "_2"), qvar.sort))
 
       def replaceAll(qvars: Seq[Var], newVars:Seq[Var], term:Term): Term = {
         var newTerm = term;
