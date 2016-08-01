@@ -75,7 +75,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                  additionalArgs: Seq[Var])
                            : (QuantifiedFieldChunk, InverseFunction)
 
-  def createQuantifiedPredicateChunk(qvar: Var,
+ def createQuantifiedPredicateChunk(qvar: Var,
                                      pred:ast.Predicate,
                                      args: Seq[Term],
                                      psf: Term,
@@ -123,7 +123,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                      (Q: Option[(H, QuantifiedFieldChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
                      : VerificationResult
 
-  def splitPredicateLocations(σ: S,
+ /* def splitPredicateLocations(σ: S,
                      h: H,
                      predicate: ast.Predicate,
                      qvar: Some[Var], // x
@@ -134,7 +134,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                      chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
                      c: C)
                     (Q: Option[(H, QuantifiedFieldChunk, QuantifiedChunkFvfDefinition, C)] => VerificationResult)
-                    : VerificationResult
+                    : VerificationResult*/
 
   def splitHeap(h: H, field: String): (Seq[QuantifiedFieldChunk], Seq[Chunk])
 
@@ -401,7 +401,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       }
     }
 
-    private def summarizePredicateChunks( chunks: Seq[QuantifiedPredicateChunk],
+   /*nadmuell private def summarizePredicateChunks( chunks: Seq[QuantifiedPredicateChunk],
                                           predicate: ast.Predicate,
                                           qvars: Seq[Var],
                                           condition: Term,
@@ -422,7 +422,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
         SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)(config)
       }
-    }
+    }*/
 
     /* Manipulating quantified chunks */
 
@@ -506,7 +506,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         Q(None)
     }
 
-    def splitPredicateLocations(σ: S,
+    /*def splitPredicateLocations(σ: S,
                        h: H,
                        predicate: ast.Predicate,
                        qvar: Some[Var], // x
@@ -526,7 +526,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkFvfDefinition], c))
       } else
         Q(None)
-    }
+    }*/
 
     private def split(σ: S,
                       h: H,
@@ -625,7 +625,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       (hResidue, chunkSplitOf, fvfDef, success)
     }
 
-    private def splitPredicate (σ: S,
+/*    private def splitPredicate (σ: S,
                       h: H,
                       predicate: ast.Predicate,
                       qvar: Option[Var], // x
@@ -722,7 +722,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       val chunkSplitOf = QuantifiedFieldChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)
 
       (hResidue, chunkSplitOf, fvfDef, success)
-    }
+    }*/
 
     private def createPermissionConstraintAndDepletedCheck(qvar: Option[Var], // x
                                                            conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
