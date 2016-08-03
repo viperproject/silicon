@@ -922,6 +922,18 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))))
       }
 
+    /*TODO: nadmuell def createSingletonPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], snap: Snap)
+    : (Term, Option[SingletonChunkFvfDefinition]) =
+
+      value.sort match {
+        case _: sorts.FieldValueFunction =>
+          /* The value is already a field value function, in which case we don't create a fresh one. */
+          (value, None)
+        case _ =>
+          val psf = freshPSF(predicate, true)
+          (fvf, Some(SingletonChunkPsfDefinition(predicate, psf, args, Left(value))))
+      }*/
+
     def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
       val axioms = cond match {
         case SetIn(`qvar`, set) if rcvr == qvar =>

@@ -133,6 +133,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+        //TODO nadmuell: check whether quantified
         val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
         val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
         val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
@@ -166,7 +167,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       if (c.qpPredicates.contains(predicate)) {
-        //TODO: possible entry point to adapt...?
+        //TODO namduell: possible entry point to adapt...?
         println("qp")
         Q(σ, c)
       } else {

@@ -164,6 +164,15 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
             //TODO: finish quantified implementation
+            //val (psf, optPsfDef) = quantifiedChunkSupporter.create
+            /*
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
+            optFvfDef.foreach(fvfDef => assume(fvfDef.valueDefinitions))
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
+            (h + ch, c)
+             */
+
+
             //createPredicateSnapshotFunction??
             //assume fvfDef analogue
             //val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(...)
