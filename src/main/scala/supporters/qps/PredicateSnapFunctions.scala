@@ -11,11 +11,15 @@ import viper.silicon.Config
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.utils.BigPermSum
-import viper.silicon.state.QuantifiedPredicateChunk
+import viper.silicon.state.{Identifier, QuantifiedPredicateChunk}
 
-
-//import decider.{assert, fresh, check, assume}
-
+import viper.silicon.state._
+import viper.silicon.state.SymbolConvert
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.implicits._
+import viper.silver.ast
+import viper.silicon.state.terms.{Sort, sorts}
+/*
 trait PsfDefinition {
   def predicate: ast.Predicate
   def psf: Term
@@ -23,48 +27,57 @@ trait PsfDefinition {
   def domainDefinitions: Seq[Term]
 }
 
-/*private[qps] object PsfDefinition {
+
+private[qps] object PsfDefinition {
+
 
   @inline
   private[qps] def pointwiseSnapDefinition(predicate: ast.Predicate,
                                            psf: Term,
                                            args: Seq[Term],
+                                           formalArgs: Seq[Var],
                                            sourceChunk: QuantifiedPredicateChunk,
                                            predInPsfDomain: Boolean)
                                            : Term = {
       Implies(
         And(
-          PermLess(NoPerm(), sourceChunk.perm.replace(`?r`, rcvr)),
+          PermLess(NoPerm(), sourceChunk.perm.replace(formalArgs, args)),
           if (predInPsfDomain)
-            SetIn(rcvr, Domain(predicate.name, psf))
+            SetIn(args, PredicateDomain(predicate.name, psf))
           else
             True()),
-        Lookup(predicate.name, psf, rcvr) === Lookup(predicate.name, sourceChunk.psf, rcvr))
+            PredicateLookup(predicate.name, psf, formalArgs, args) === PredicateLookup(predicate.name, sourceChunk.psf,formalArgs, args))
   }
-}*/
+}
 
-/*case class SingletonChunkFvfDefinition(predicate: ast.Predicate,
+
+
+case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
                                        psf: Term,
                                        args: Seq[Term],
                                        valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]])
     extends PsfDefinition {
+  protected val symbolConverter: SymbolConvert
+  import symbolConverter.toSort
 
+  var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
   val valueDefinitions = valueChoice match {
     case Left(value) =>
-      Seq(Lookup(predicate.name, psf, args) === value)
+      Seq(PredicateLookup(predicate.name, psf,formalArgs, args) === value)
     case Right(sourceChunks) =>
       sourceChunks map (sourceChunk =>
-        PsfDefinition.pointwiseValueDefinition(field, fvf, rcvr, sourceChunk, false))
+        PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, formalArgs, sourceChunk, false))
   }
 
-  val domainDefinitions = Seq(BuiltinEquals(Domain(field.name, fvf), SingletonSet(rcvr)))
+  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(args)))
 }
 
-case class QuantifiedChunkFvfDefinition(field: ast.Field,
-                                        fvf: Term,
+case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
+                                        psf: Term,
                                         qvars: Seq[Var],
                                         condition: Term,
-                                        rcvr: Term,
+                                        args: Seq[Term],
+                                        formalArgs: Seq[Var],
                                         sourceChunks: Seq[QuantifiedPredicateChunk] /*,
                                         freshFvf: Boolean*/)
                                        (axiomRewriter: AxiomRewriter, config: Config)
@@ -85,33 +98,33 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
        * potentialPerms etc.
        */
 
-      val sets: Term => Seq[Term] = term => term +: sourceChunk.inv.map(_(`?r`)).toSeq
+      val sets: Term => Seq[Term] = term => term +: sourceChunk.inv.map(_(formalArgs)).toSeq
 
-      var newFvfLookupTriggers = sets(Lookup(field.name, fvf, `?r`))
-      var sourceFvfLookupTriggers = sets(Lookup(field.name, sourceChunk.fvf, `?r`))
+      var newPsfLookupTriggers = sets(PredicateLookup(predicate.name, psf, formalArgs, formalArgs))
+      var sourcePsfLookupTriggers = sets(PredicateLookup(predicate.name, sourceChunk.psf, formalArgs, formalArgs))
 
-      val valueDefinition = FvfDefinition.pointwiseValueDefinition(field, fvf, `?r`, sourceChunk, true)
+      val snapDefinition = PsfDefinition.pointwiseSnapDefinition(predicate, psf, formalArgs, formalArgs, sourceChunk, true)
 
       /* Filter out triggers that don't actually occur in the body. The
        * latter can happen because the body (or any of its constituents) has
        * been simplified during its construction.
        */
-      newFvfLookupTriggers = newFvfLookupTriggers.filter(t => valueDefinition.existsDefined{case `t` =>})
-      sourceFvfLookupTriggers = sourceFvfLookupTriggers.filter(t => valueDefinition.existsDefined{case `t` =>})
+      newPsfLookupTriggers = newPsfLookupTriggers.filter(t => snapDefinition.existsDefined{case `t` =>})
+      sourcePsfLookupTriggers = sourcePsfLookupTriggers.filter(t => snapDefinition.existsDefined{case `t` =>})
 
-      val occurringQvars = qvars.filter (v => valueDefinition.existsDefined{case `v` =>})
+      val occurringQvars = qvars.filter (v => snapDefinition.existsDefined{case `v` =>})
       assert(occurringQvars.isEmpty, s"Expected occurringQvars to be empty, but found $occurringQvars")
 
       Forall(
-        `?r`,
-        valueDefinition,
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newFvfLookupTriggers) :: Trigger(sourceFvfLookupTriggers) :: Nil,
-        s"qp.$fvf-lookup-${axiomCounter.next()}")
+        formalArgs,
+        snapDefinition,
+        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newPsfLookupTriggers) :: Trigger(sourcePsfLookupTriggers) :: Nil,
+        s"qp.$psf-lookup-${axiomCounter.next()}")
     }
   }
 
   val domainDefinitions: Seq[Term] = {
-    val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
+    val argsInDomain = SetIn(args, PredicateDomain(predicate.name, psf))
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
 
@@ -119,12 +132,12 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
       if (config.disableISCTriggers())
         (Nil, Nil)
       else
-        TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
+        TriggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
                         .getOrElse((Nil, Nil))
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
-    val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$fvf-dom")
+    val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")
     val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
 
     Seq(finalForall)
@@ -148,40 +161,41 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
   }
 }
 
-case class SummarisingFvfDefinition(field: ast.Field,
-                                    fvf: Term,
-                                    rcvr: Term,
-                                    sourceChunks: Seq[QuantifiedFieldChunk])
+case class SummarisingPsfDefinition(predicate: ast.Predicate,
+                                    psf: Term,
+                                    args: Seq[Term],
+                                    formalArgs:Seq[Var],
+                                    sourceChunks: Seq[QuantifiedPredicateChunk])
                                    (config: Config)
-    extends FvfDefinition with Definition {
+    extends PsfDefinition with Definition {
 
   private val triples =
     sourceChunks.map(ch =>
-      (ch.perm, Lookup(field.name, fvf, `?r`), Lookup(field.name, ch.fvf, `?r`)))
+      (ch.perm, PredicateLookup(predicate.name, psf, formalArgs, args), PredicateLookup(predicate.name, ch.psf, formalArgs, args)))
 
   private val valDefs =
     triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
 
-  val valueDefinitions: Seq[Term] = Seq(valueDefinitions(rcvr))
+  val valueDefinitions: Seq[Term] = Seq(valueDefinitions(args))
 
   val domainDefinitions = Seq(True())
 
-  val declaration: Decl = ConstDecl(fvf.asInstanceOf[Var])
+  val declaration: Decl = ConstDecl(psf.asInstanceOf[Var])
   val definition: Seq[Term] = valueDefinitions ++ domainDefinitions
 
-  def valueDefinitions(rcvr: Term) = Let(`?r`, rcvr, And(valDefs))
+  def valueDefinitions(args: Seq[Term]) = Let(formalArgs, args, And(valDefs))
 
   val quantifiedValueDefinitions =
     triples map { case (p, lk1, lk2) =>
       Forall(
-        `?r`,
+        formalArgs,
         Implies(PermLess(NoPerm(), p), lk1 === lk2),
         if (config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
     }
 
-  def totalPermissions(rcvr: Term) = {
+  def totalPermissions(args: Seq[Term], formalArgs: Seq[Var]) = {
     val sum = BigPermSum(sourceChunks map (ch => ch.perm), Predef.identity)
 
-    Let(`?r`, rcvr, sum)
+    Let(formalArgs, args, sum)
   }
 }*/

@@ -347,7 +347,8 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case pred: ast.Predicate => {
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    PermPlus(q, ch.perm.replace(`?r`, args.head))) /* TODO: Support predicates under QPs */
+                    /* TODO nadmuell: Replace stand ins with arguments */
+                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
                 }
               }
 

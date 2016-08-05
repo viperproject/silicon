@@ -74,15 +74,15 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                  condition: Term,
                                  additionalArgs: Seq[Var])
                            : (QuantifiedFieldChunk, InverseFunction)
-
- def createQuantifiedPredicateChunk(qvar: Var,
+/*TODO: nadmuell
+  def createQuantifiedPredicateChunk(qvar: Var,
                                      pred:ast.Predicate,
                                      args: Seq[Term],
                                      psf: Term,
                                      perms: Term,
                                      condition: Term,
                                      additionalArgs: Seq[Var])
-  : (QuantifiedPredicateChunk, PredicateInverseFunction)
+  : (QuantifiedPredicateChunk, PredicateInverseFunction)*/
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
 
@@ -223,6 +223,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       (ch, inverseFunction)
     }
 
+    /* TODO nadmuell
     def createQuantifiedPredicateChunk(qvar: Var,
                                        pred:ast.Predicate,
                                        args: Seq[Term],
@@ -239,7 +240,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       val ch = QuantifiedPredicateChunk(pred.name, args, psf, condPerms, Some(inverseFunction), None)
 
       (ch, inverseFunction)
-    }
+    }*/
 
 
     def conditionalPermissions(qvar: Var, // x
