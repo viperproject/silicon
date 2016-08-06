@@ -1573,13 +1573,6 @@ case class Lookup(field: String, fvf: Term, at: Term) extends Term {
 
   val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
 }
-/*
-case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], sorts: Seq[Sort]) extends Term {
-  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
-  //TODO: args type prerequisites: utils.assertSort(args, "receiver", sorts.Ref)
-  (args zip sorts).foreach((arg:Term, sort:Sort) => utils.assertSort(arg, "predicate argument", sort))
-  val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
-}*/
 
 case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
   utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
@@ -1592,12 +1585,28 @@ case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends Boole
   utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
 }
 
-case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
-  utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
-}
-
 object FvfTop extends (String => Identifier) {
   def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
+}
+/* Quantified predicates */
+case class PredicateLookup(predname: String, psf: Term, formalVars: Seq[Var], args: Seq[Term]) extends Term {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+  for (i <- args.indices) {
+    utils.assertSort(args.apply(i), "predicate argument i", formalVars.apply(i).sort)
+  }
+
+  val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
+}
+
+case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with PossibleTrigger*/ {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+
+  val elementsSort = sorts.Snap
+  val sort = sorts.Set(elementsSort)
+}
+
+case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
+  utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
 }
 
 object PsfTop extends (String => Identifier) {

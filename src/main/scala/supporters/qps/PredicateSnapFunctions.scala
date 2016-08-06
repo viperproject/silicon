@@ -12,14 +12,16 @@ import viper.silicon.utils.Counter
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.{Identifier, QuantifiedPredicateChunk}
-
+import viper.silicon.supporters.qps
 import viper.silicon.state._
 import viper.silicon.state.SymbolConvert
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
+import viper.silicon.supporters.qps.PredicateInverseFunction
+import viper.silicon.state.terms.predef._
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
-/*
+
 trait PsfDefinition {
   def predicate: ast.Predicate
   def psf: Term
@@ -145,12 +147,17 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 
   def domainDefinitions(inverseFunction: PredicateInverseFunction): Seq[Term] = {
     qvars match {
-      case Seq(v) if v != `?r` =>
-        val repl = (t: Term) => t.replace(rcvr, `?r`).replace(v, inverseFunction(`?r`))
-
+      case Seq(v) =>
+        val repl = (t: Term) => {
+            var newTerm:Term = t;
+            for (i <- formalArgs.indices) {
+              newTerm.replace(args.apply(i), formalArgs.apply(i)).replace(v, inverseFunction(formalArgs))
+            }
+            newTerm
+        }
         domainDefinitions match {
           case Seq(Forall(Seq(`v`), body, triggers, name)) =>
-            Seq(Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.func.id}"))
+            Seq(Forall(formalArgs, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$psf-dom-${inverseFunction.func.id}"))
           case others =>
             others map repl
         }
@@ -198,4 +205,4 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
 
     Let(formalArgs, args, sum)
   }
-}*/
+}
