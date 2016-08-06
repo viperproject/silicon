@@ -6,7 +6,6 @@
 
 package viper.silicon.decider
 
-import org.kiama.util.Counter
 import viper.silicon._
 import viper.silicon.state.terms.{And, Implies, True, Term}
 import viper.silicon.state.utils.partitionAuxiliaryTerms
@@ -233,7 +232,7 @@ private[decider] class DefaultPathConditionStack extends PathConditionStack with
 }
 
 private[decider] class DefaultPathConditions extends Mutable {
-  private val _counter = new Counter()
+  private var _counter = 0
   private val _stack: DefaultPathConditionStack = new DefaultPathConditionStack()
 
   def stack = _stack
@@ -248,8 +247,13 @@ private[decider] class DefaultPathConditions extends Mutable {
   def pushScope() { _stack.pushScope() }
   def popScope() { _stack.popScope() }
 
+  def next() : Int = {
+    _counter += 1
+    return _counter - 1
+  }
+
   def mark(): Mark = {
-    val mark = _counter.next()
+    val mark = next()
     _stack.setMark(mark)
 
     mark

@@ -6,7 +6,6 @@
 
 package viper.silicon.decider
 
-import org.kiama.output.PrettyPrinter
 import scala.collection.mutable
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
@@ -14,9 +13,10 @@ import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
 import viper.silicon.supporters.qps.SummarisingFvfDefinition
+import viper.silver.ast.pretty.FastPrettyPrinterBase
 
 class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
-    extends PrettyPrinter
+    extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
 
