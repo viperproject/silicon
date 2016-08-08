@@ -29,7 +29,7 @@ trait PsfDefinition {
   def domainDefinitions: Seq[Term]
 }
 
-
+/*
 private[qps] object PsfDefinition {
 
 
@@ -206,3 +206,4 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
     Let(formalArgs, args, sum)
   }
 }
+*/

@@ -345,10 +345,10 @@ trait DefaultEvaluator[ST <: Store[ST],
                     PermPlus(q, ch.perm.replace(`?r`, args.head)))
                 }
                 case pred: ast.Predicate => {
+                  var formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    /* TODO nadmuell: Replace stand ins with arguments */
-                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                    PermPlus(q, ch.perm.replace(formalArgs, args)))
                 }
               }
 

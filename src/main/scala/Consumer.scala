@@ -163,21 +163,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
                 Failure(pve dueTo NegativePermission(loss))}}
-      /*case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
+      case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
         val predicate = c.program.findPredicate(predname)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
 
             val (tArgs, Seq(tLoss)) = tArgsGain.splitAt(args.size)
-            val predicate =
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
+
                 val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val (invFct, neutralArgs) = quantifiedChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
+                println(invFct)
+                println(invFct.definitionalAxioms)
                 decider.prover.logComment("Nested auxiliary terms")
-
+                /*TODO: nadmuell
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
                 val isInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
                 decider.prover.logComment("Check receiver injectivity")
@@ -199,10 +201,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                           Q(h1, ch.fvf.convert(sorts.Snap), c3)
                       case None =>
                         Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
-                  case false =>
-                    Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))}
+                  case false =>*/
+                    Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))
               case false =>
-                Failure(pve dueTo NegativePermission(loss))}}*/
+                Failure(pve dueTo NegativePermission(loss))}}
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
