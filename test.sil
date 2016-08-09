@@ -1,9 +1,9 @@
-field f:Int;
-field g:Int;
+field f:Int
 
-predicate p(i:Int)
-{i > 0}
+predicate pred(r:Ref) {
+    acc(r.f)
+}
 
-method m(xs:Seq[Ref])
-requires forall i:Int :: true ==> acc(p(i))
+method m1(r:Ref, xs:Seq[Ref])
+requires forall x:Ref :: x in xs ==> acc(pred(x))
 {}
