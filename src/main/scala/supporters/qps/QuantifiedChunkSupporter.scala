@@ -74,7 +74,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                  condition: Term,
                                  additionalArgs: Seq[Var])
                            : (QuantifiedFieldChunk, InverseFunction)
-/*TODO: nadmuell
+
   def createQuantifiedPredicateChunk(qvar: Var,
                                      pred:ast.Predicate,
                                      args: Seq[Term],
@@ -82,7 +82,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                      perms: Term,
                                      condition: Term,
                                      additionalArgs: Seq[Var])
-  : (QuantifiedPredicateChunk, PredicateInverseFunction)*/
+  : (QuantifiedPredicateChunk, PredicateInverseFunction)
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
 
@@ -223,7 +223,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       (ch, inverseFunction)
     }
 
-    /* TODO nadmuell
+
     def createQuantifiedPredicateChunk(qvar: Var,
                                        pred:ast.Predicate,
                                        args: Seq[Term],
@@ -235,12 +235,15 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       Predef.assert(psf.sort.isInstanceOf[sorts.PredicateSnapFunction],
         s"Quantified chunk values must be of sort FieldValueFunction, but found value $psf of sort ${psf.sort}")
       val (inverseFunction, arguments)= getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
+      println(inverseFunction.definitionalAxioms)
+      println(arguments)
       val arbitraryInverseArguments = inverseFunction(arguments)
+      println(arbitraryInverseArguments)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseArguments, condition, perms)
-      val ch = QuantifiedPredicateChunk(pred.name, args, psf, condPerms, Some(inverseFunction), None)
+      val ch = QuantifiedPredicateChunk(pred.name, arguments, psf, condPerms, Some(inverseFunction),None, None)
 
       (ch, inverseFunction)
-    }*/
+    }
 
 
     def conditionalPermissions(qvar: Var, // x

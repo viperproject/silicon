@@ -163,7 +163,7 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
-            //TODO: finish quantified implementation
+            //TODO nadmuell: finish quantified implementation
             //val (psf, optPsfDef) = quantifiedChunkSupporter.create
             /*
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
@@ -263,15 +263,19 @@ trait DefaultProducer[ST <: Store[ST],
         //create new quantified predicate chunk
         val predicate = c.program.findPredicate(predname)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        /*evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
+            println(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
+            println(sf)
             val snap = sf(sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap)))
+            println(snap)
             val additionalInvFctArgs = c1.quantifiedVariables //TODO: what is that good for?
+
             val (ch, invFct) =
               quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,
                 additionalInvFctArgs)
-
+/*
             decider.prover.logComment("Nested auxiliary terms")
             assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
               triggers = invFct.invOfFct.triggers))
@@ -284,7 +288,7 @@ trait DefaultProducer[ST <: Store[ST],
 
             val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
             Q(σ.h + ch1, c2)}*/
-            Q(σ.h, c)
+            Q(σ.h, c)}
       case _: ast.InhaleExhaleExp =>
         Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 
