@@ -62,6 +62,7 @@ class DefaultVerifier(val config: Config)
   val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
   val domainsEmitter = new DefaultDomainsEmitter(decider.prover, domainTranslator, symbolConverter)
   val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, config)
+  val predicateSnapFunctionsEmitter = new DefaultPredicateSnapFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, config)
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
@@ -160,6 +161,7 @@ class DefaultVerifier(val config: Config)
     multisetsEmitter.declareSorts()
     domainsEmitter.declareSorts()
     fieldValueFunctionsEmitter.declareSorts()
+    predicateSnapFunctionsEmitter.declareSorts()
     functionsSupporter.declareSorts()
     predicateSupporter.declareSorts()
     methodSupporter.declareSorts()

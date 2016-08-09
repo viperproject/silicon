@@ -15,7 +15,7 @@ import viper.silicon.state.terms.{SortDecl, Function, Sort}
 import viper.silicon.state.{terms, SymbolConvert}
 
 trait PredicateSnapFunctionsEmitter extends PreambleEmitter
-/*
+
 class DefaultFieldValueFunctionsEmitter(prover: => Prover,
                                         symbolConverter: SymbolConvert,
                                         preambleFileEmitter: PreambleFileEmitter[String, String],
@@ -81,4 +81,3 @@ class DefaultFieldValueFunctionsEmitter(prover: => Prover,
   def stop() {}
   def start() {}
 }
-*/
