@@ -139,6 +139,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
   def splitHeap(h: H, field: String): (Seq[QuantifiedFieldChunk], Seq[Chunk])
 
   def injectFVF(freshFvf: Var): Unit
+  def injectPSF(freshFvf: Var): Unit
 
   def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term]
   def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term]
@@ -864,7 +865,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
       val freshPsf =
         if (isChunkPsf) {
-          //TODO
+          //TODO nadmuell
           val psfSort = sorts.PredicateSnapFunction(sorts.Snap)
           val freshPsf = fresh("psf#part", psfSort)
 
@@ -908,6 +909,28 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         }
       }
     }
+
+    def injectPSF(freshPsf: Var): Unit = {
+      Predef.assert(freshPsf.sort.isInstanceOf[sorts.PredicateSnapFunction],
+        s"Expected newPsf to be of sort PredicateSnapFunction, but found $freshPsf of sort ${freshPsf.sort}")
+
+      if (freshPSFInAction) return
+      val newPsfSort = freshPsf.sort.asInstanceOf[sorts.PredicateSnapFunction]
+
+      quantifiedPredicates.foreach{predicate =>
+        //val codomainSort = toSort(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
+        //if (codomainSort == newPsfSort.codomainSort) {
+          val psfSortForTOP = sorts.PredicateSnapFunction(newPsfSort.codomainSort)
+          val psfTOP = Var(PsfTop(predicate.name), psfSortForTOP)
+          val psf = lastPSF.getOrElse(predicate, psfTOP)
+          val after = PsfAfterRelation(predicate.name, freshPsf, psf)
+
+          assume(after)
+          lastPSF += predicate -> freshPsf
+        //}
+      }
+    }
+
 
     /* TODO: Rename such that it becomes obvious that the methods constructs a
      *       *SingletonChunk*FvfDefinition
@@ -975,7 +998,6 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     }
 
     def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
-      //TODO: are those unique? run test
       var qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
       var qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
 

@@ -340,6 +340,7 @@ trait DeciderProvider[ST <: Store[ST],
 
       resultSort match {
         case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(fun.asInstanceOf[Var])
+        case _: sorts.PredicateSnapFunction => quantifiedChunkSupporter.injectPSF(fun.asInstanceOf[Var])
         case _ => /* Nothing special to do */
       }
 
