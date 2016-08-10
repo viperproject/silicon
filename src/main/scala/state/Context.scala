@@ -10,13 +10,15 @@ import viper.silver.ast
 import viper.silicon.supporters.qps.{SummarisingFvfDefinition}
 import viper.silicon.{Map, Set, Stack}
 import viper.silicon.interfaces.state.{Mergeable, Context, Heap}
-import viper.silicon.state.terms.{Var, Term}
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.sorts._
 import viper.silicon.supporters.functions.{NoopFunctionRecorder, FunctionRecorder}
 
 case class DefaultContext[H <: Heap[H]]
                          (program: ast.Program,
                           qpFields: Set[ast.Field],
                           qpPredicates: Set[ast.Predicate],
+                          PredicateSnapMap: Map[String, Sort] = Map(),
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
                           constrainableARPs: Set[Term] = Set(),
