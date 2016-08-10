@@ -68,6 +68,7 @@ class DefaultVerifier(val config: Config)
     bookkeeper,
     preambleEmitter, sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
     fieldValueFunctionsEmitter,
+    predicateSnapFunctionsEmitter,
     decider, identifierFactory,
     functionsSupporter, predicateSupporter, methodSupporter,
     quantifiedChunkSupporter)
@@ -150,6 +151,7 @@ class DefaultVerifier(val config: Config)
     multisetsEmitter.analyze(program)
     domainsEmitter.analyze(program)
     fieldValueFunctionsEmitter.analyze(program)
+    predicateSnapFunctionsEmitter.analyze(program)
     functionsSupporter.analyze(program)
     predicateSupporter.analyze(program)
     methodSupporter.analyze(program)
@@ -176,6 +178,7 @@ class DefaultVerifier(val config: Config)
     domainsEmitter.declareSymbols()
     domainsEmitter.emitUniquenessAssumptions()
     fieldValueFunctionsEmitter.declareSymbols()
+    predicateSnapFunctionsEmitter.declareSymbols()
     functionsSupporter.declareSymbols()
     predicateSupporter.declareSymbols()
     methodSupporter.declareSymbols()
@@ -194,6 +197,7 @@ class DefaultVerifier(val config: Config)
     emitSortWrappers(multisetsEmitter.sorts)
     emitSortWrappers(domainsEmitter.sorts)
     emitSortWrappers(fieldValueFunctionsEmitter.sorts)
+    emitSortWrappers(predicateSnapFunctionsEmitter.sorts)
     emitSortWrappers(functionsSupporter.sorts)
     emitSortWrappers(predicateSupporter.sorts)
     emitSortWrappers(methodSupporter.sorts)
@@ -203,6 +207,7 @@ class DefaultVerifier(val config: Config)
      * been emitted.
      */
     fieldValueFunctionsEmitter.emitAxioms()
+    predicateSnapFunctionsEmitter.emitAxioms()
 
     decider.prover.logComment("Preamble end")
     decider.prover.logComment("-" * 60)

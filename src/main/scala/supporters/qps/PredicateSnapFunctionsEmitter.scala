@@ -4,19 +4,21 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package supporters.qps
+package  viper.silicon.supporters.qps
 
 import viper.silver.ast
+import viper.silicon._
 import viper.silicon.{Config, Map, toSet, Set}
 import viper.silicon.decider.PreambleFileEmitter
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
 import viper.silicon.state.terms.{SortDecl, Function, Sort}
 import viper.silicon.state.{terms, SymbolConvert}
+import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 
 trait PredicateSnapFunctionsEmitter extends PreambleEmitter
 
-class DefaultFieldValueFunctionsEmitter(prover: => Prover,
+class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
                                         symbolConverter: SymbolConvert,
                                         preambleFileEmitter: PreambleFileEmitter[String, String],
                                         config: Config)
@@ -30,15 +32,16 @@ class DefaultFieldValueFunctionsEmitter(prover: => Prover,
    * Set[FVF] is not a subtype of Set[Sort], although FVF is one of Sort.
    */
 
+
   def analyze(program: ast.Program) {
     program visit {
       case ast.utility.QuantifiedPermissions.QPPForall(_, _, _, _, _, _, predAccpred) =>
         collectedPredicates += program.findPredicate(predAccpred.loc.predicateName)
     }
-
+/*
     collectedSorts = (
-        collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction(predicate.typ)
-      )
+        collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction(predicate.typ))
+      )*/
   }
 
   def declareSorts() {
@@ -49,7 +52,7 @@ class DefaultFieldValueFunctionsEmitter(prover: => Prover,
     collectedPredicates foreach { predicate =>
       val sort = symbolConverter.toSort(predicate.typ)
       val id = predicate.name
-      val substitutions = Map("$FLD$" -> id, "$S$" -> prover.termConverter.convert(sort))
+      val substitutions = Map("$PSF$" -> id, "$S$" -> prover.termConverter.convert(sort))
 
       val fvfDeclarations = "/field_value_functions_declarations.smt2"
       prover.logComment(s"$fvfDeclarations [$id: $sort]")
@@ -61,6 +64,8 @@ class DefaultFieldValueFunctionsEmitter(prover: => Prover,
     /* Axioms that have to be emitted for each field that is dereferenced from
      * a quantified receiver
      */
+
+    /*
     collectedPredicates foreach { predicate =>
       val sort = symbolConverter.toSort(predicate.typ)
       val id = predicate.name
@@ -69,7 +74,7 @@ class DefaultFieldValueFunctionsEmitter(prover: => Prover,
 
       prover.logComment(s"$psfAxioms [$id: $sort]")
       preambleFileEmitter.emitParametricAssertions(psfAxioms, psfSubstitutions)
-    }
+    }*/
   }
 
   /* Lifetime */
