@@ -7,25 +7,30 @@
 package  viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon._
-import viper.silicon.{Config, Map, toSet, Set}
+import viper.silver.ast.{Predicate, Program, PredicateAccess}
+import viper.silicon.{Config, Map, Set, toSet}
 import viper.silicon.decider.PreambleFileEmitter
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
-import viper.silicon.state.terms.{SortDecl, Function, Sort}
-import viper.silicon.state.{terms, SymbolConvert}
-import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import viper.silicon.state.terms.{sorts, _}
+import viper.silicon.state.terms.sorts._
+import viper.silicon.state.{SymbolConvert, terms}
+import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 
 trait PredicateSnapFunctionsEmitter extends PreambleEmitter
 
 class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
                                         symbolConverter: SymbolConvert,
                                         preambleFileEmitter: PreambleFileEmitter[String, String],
-                                        config: Config)
+                                        config: Config
+                                          )
     extends PredicateSnapFunctionsEmitter {
 
-  private var collectedPredicates = Set[ast.Predicate]()
+
+  import symbolConverter.toSort
+  private var collectedPredicates = Set[PredicateAccess]()
   private var collectedSorts = Set[terms.sorts.PredicateSnapFunction]()
+  private var snapMap:Map[PredicateAccess, terms.Sort] = Map()
 
   def sorts: Set[Sort] = toSet(collectedSorts)
   /* Scala's immutable sets are invariant in their element type, hence
@@ -36,12 +41,17 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
   def analyze(program: ast.Program) {
     program visit {
       case ast.utility.QuantifiedPermissions.QPPForall(_, _, _, _, _, _, predAccpred) =>
-        collectedPredicates += program.findPredicate(predAccpred.loc.predicateName)
+        collectedPredicates += predAccpred.loc
+        //update map to snaps
+        snapMap += (predAccpred.loc -> getOptimalSnapshotSort(predAccpred.loc, program, scala.Seq())._1)
     }
-/*
+
+
     collectedSorts = (
-        collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction(predicate.typ))
-      )*/
+        collectedPredicates.map(predAcc => PredicateSnapFunction(getOptimalSnapshotSort(predAcc, program, scala.Seq())._1))
+        )
+
+
   }
 
   def declareSorts() {
@@ -49,14 +59,14 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
   }
 
   def declareSymbols() {
-    collectedPredicates foreach { predicate =>
-      val sort = symbolConverter.toSort(predicate.typ)
-      val id = predicate.name
+    collectedPredicates foreach { predAcc =>
+      val sort = snapMap(predAcc)
+      val id = predAcc.predicateName
       val substitutions = Map("$PSF$" -> id, "$S$" -> prover.termConverter.convert(sort))
 
-      val fvfDeclarations = "/field_value_functions_declarations.smt2"
-      prover.logComment(s"$fvfDeclarations [$id: $sort]")
-      preambleFileEmitter.emitParametricAssertions(fvfDeclarations, substitutions)
+      val psfDeclarations = "/predicate_snap_functions_declarations.smt2"
+      prover.logComment(s"$psfDeclarations [$id: $sort]")
+      preambleFileEmitter.emitParametricAssertions(psfDeclarations, substitutions)
     }
   }
 
@@ -65,16 +75,16 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
      * a quantified receiver
      */
 
-    /*
-    collectedPredicates foreach { predicate =>
-      val sort = symbolConverter.toSort(predicate.typ)
-      val id = predicate.name
+
+    collectedPredicates foreach { predAcc =>
+      val sort = snapMap(predAcc)
+      val id = predAcc.predicateName
       val psfSubstitutions = Map("$PRD$" -> id, "$S$" -> prover.termConverter.convert(sort))
       val psfAxioms = if (config.disableISCTriggers()) "/predicate_snap_functions_axioms_no_triggers.smt2" else "/predicate_snap_functions_axioms.smt2"
 
       prover.logComment(s"$psfAxioms [$id: $sort]")
       preambleFileEmitter.emitParametricAssertions(psfAxioms, psfSubstitutions)
-    }*/
+    }
   }
 
   /* Lifetime */
@@ -85,4 +95,69 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
 
   def stop() {}
   def start() {}
+
+
+  private def getOptimalSnapshotSort(φ: ast.Exp, program: ast.Program, visited: scala.Seq[String] = Nil)
+  : (Sort, Boolean) =
+
+    φ match {
+      case _ if φ.isPure =>
+        (terms.sorts.Snap, true)
+
+      case ast.AccessPredicate(locacc, _) => locacc match {
+        case fa: ast.FieldAccess =>
+          (toSort(fa.field.typ), false)
+
+        case pa: ast.PredicateAccess =>
+          if (!visited.contains(pa.predicateName)) {
+            program.findPredicate(pa.predicateName).body match {
+              case None => (terms.sorts.Snap, false)
+              case Some(body) => getOptimalSnapshotSort(body, program, pa.predicateName +: visited)
+            }
+          } else
+          /* We detected a cycle in the predicate definition and thus stop
+           * inspecting the predicate bodies.
+           */
+            (terms.sorts.Snap, false)
+      }
+
+      case ast.Implies(e0, φ1) =>
+        /* φ1 must be impure, otherwise the first case would have applied. */
+        getOptimalSnapshotSort(φ1, program, visited)
+
+      case ast.And(φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+        getOptimalSnapshotSortFromPair(φ1, φ2, () => (terms.sorts.Snap, false), program, visited)
+
+      case ast.CondExp(_, φ1, φ2) =>
+        /* At least one of φ1, φ2 must be impure, otherwise ... */
+
+        def findCommonSort() = {
+          val (s1, isPure1) = getOptimalSnapshotSort(φ1, program, visited)
+          val (s2, isPure2) = getOptimalSnapshotSort(φ2, program, visited)
+          val s = if (s1 == s2) s1 else terms.sorts.Snap
+          val isPure = isPure1 && isPure2
+          assert(!isPure)
+          (s, isPure)
+        }
+
+        getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
+
+      case ast.utility.QuantifiedPermissions.QPForall(_, _, _, field, _, _, _) =>
+        (terms.sorts.FieldValueFunction(toSort(field.typ)), false)
+
+      case _ =>
+        (terms.sorts.Snap, false)
+    }
+
+  private def getOptimalSnapshotSortFromPair(φ1: ast.Exp,
+                                             φ2: ast.Exp,
+                                             fIfBothPure: () => (Sort, Boolean),
+                                             program: ast.Program,
+                                             visited: scala.Seq[String])
+  : (Sort, Boolean) = {
+
+    if (φ1.isPure && φ2.isPure) fIfBothPure()
+    else (terms.sorts.Snap, false)
+  }
 }
