@@ -27,10 +27,9 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
     extends PredicateSnapFunctionsEmitter {
 
 
-  import symbolConverter.toSort
-  private var collectedPredicates = Set[PredicateAccess]()
+  private var collectedPredicates = Set[Predicate]()
   private var collectedSorts = Set[terms.sorts.PredicateSnapFunction]()
-  private var snapMap:Map[PredicateAccess, terms.Sort] = Map()
+  private var snapMap:Map[Predicate, terms.Sort] = Map()
 
   def sorts: Set[Sort] = toSet(collectedSorts)
   /* Scala's immutable sets are invariant in their element type, hence
@@ -41,15 +40,16 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
   def analyze(program: ast.Program) {
     program visit {
       case ast.utility.QuantifiedPermissions.QPPForall(_, _, _, _, _, _, predAccpred) =>
-        collectedPredicates += predAccpred.loc
-        //update map to snaps
-        snapMap += (predAccpred.loc -> getOptimalSnapshotSort(predAccpred.loc, program, scala.Seq())._1)
+        val predicate = program.findPredicate(predAccpred.loc.predicateName)
+        val sort = (predicate -> predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))
+        collectedPredicates += predicate
+        snapMap += sort
     }
 
 
-    collectedSorts = (
-        collectedPredicates.map(predAcc => PredicateSnapFunction(getOptimalSnapshotSort(predAcc, program, scala.Seq())._1))
-        )
+      collectedSorts = (
+        collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction((predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))))
+      )
 
 
   }
@@ -59,10 +59,10 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
   }
 
   def declareSymbols() {
-    collectedPredicates foreach { predAcc =>
-      val sort = snapMap(predAcc)
-      val id = predAcc.predicateName
-      val substitutions = Map("$PSF$" -> id, "$S$" -> prover.termConverter.convert(sort))
+    collectedPredicates foreach { predicate =>
+      val sort = snapMap(predicate)
+      val id = predicate.name
+      val substitutions = Map("$PRD$" -> id, "$S$" -> prover.termConverter.convert(sort))
 
       val psfDeclarations = "/predicate_snap_functions_declarations.smt2"
       prover.logComment(s"$psfDeclarations [$id: $sort]")
@@ -76,9 +76,9 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
      */
 
 
-    collectedPredicates foreach { predAcc =>
-      val sort = snapMap(predAcc)
-      val id = predAcc.predicateName
+    collectedPredicates foreach { predicate =>
+      val sort = snapMap(predicate)
+      val id = predicate.name
       val psfSubstitutions = Map("$PRD$" -> id, "$S$" -> prover.termConverter.convert(sort))
       val psfAxioms = if (config.disableISCTriggers()) "/predicate_snap_functions_axioms_no_triggers.smt2" else "/predicate_snap_functions_axioms.smt2"
 
@@ -106,7 +106,7 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
 
       case ast.AccessPredicate(locacc, _) => locacc match {
         case fa: ast.FieldAccess =>
-          (toSort(fa.field.typ), false)
+          (symbolConverter.toSort(fa.field.typ), false)
 
         case pa: ast.PredicateAccess =>
           if (!visited.contains(pa.predicateName)) {
@@ -144,7 +144,7 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
         getOptimalSnapshotSortFromPair(φ1, φ2, findCommonSort, program, visited)
 
       case ast.utility.QuantifiedPermissions.QPForall(_, _, _, field, _, _, _) =>
-        (terms.sorts.FieldValueFunction(toSort(field.typ)), false)
+        (terms.sorts.FieldValueFunction(symbolConverter.toSort(field.typ)), false)
 
       case _ =>
         (terms.sorts.Snap, false)

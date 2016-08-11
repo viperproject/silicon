@@ -164,13 +164,11 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
             //TODO nadmuell: finish quantified implementation
-            //val (psf, optPsfDef) = quantifiedChunkSupporter.create
-            /*
-            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-            optFvfDef.foreach(fvfDef => assume(fvfDef.valueDefinitions))
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
+
+            val (psf, optPsfDef) = quantifiedChunkSupporter.createPredicateSnapFunction(predicate, args, s)
+            optPsfDef.foreach(psfDef => assume(psfDef.valueDefinitions))
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedPredicateChunk(rcvr, field.name, fvf, p)
             (h + ch, c)
-             */
 
 
             //createPredicateSnapshotFunction??
@@ -266,19 +264,17 @@ trait DefaultProducer[ST <: Store[ST],
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
-            println(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
-            println(sf)
             val snap = sf(sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap)))
-            println(snap)
             val additionalInvFctArgs = c1.quantifiedVariables //TODO: what is that good for?
 
             val (ch, invFct) =
               quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,
                 additionalInvFctArgs)
-/*
+
             decider.prover.logComment("Nested auxiliary terms")
             assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
               triggers = invFct.invOfFct.triggers))
+
             val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
             assume(gainNonNeg)
             decider.prover.logComment("Definitional axioms for inverse functions")
@@ -286,9 +282,9 @@ trait DefaultProducer[ST <: Store[ST],
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
             val ch1 = ch.copy(hints = hints)
 
-            val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
-            Q(σ.h + ch1, c2)}*/
-            Q(σ.h, c)}
+            val c2:C = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
+            Q(σ.h + ch1, c2)}
+            //Q(σ.h, c)}
       case _: ast.InhaleExhaleExp =>
         Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 

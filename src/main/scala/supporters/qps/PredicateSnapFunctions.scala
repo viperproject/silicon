@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package supporters.qps
+package viper.silicon.supporters.qps
 
 import viper.silver.ast
 import viper.silicon.Config
@@ -29,7 +29,7 @@ trait PsfDefinition {
   def domainDefinitions: Seq[Term]
 }
 
-/*
+
 private[qps] object PsfDefinition {
 
 
@@ -81,7 +81,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
                                         args: Seq[Term],
                                         formalArgs: Seq[Var],
                                         sourceChunks: Seq[QuantifiedPredicateChunk] /*,
-                                        freshFvf: Boolean*/)
+                                        freshPsf: Boolean*/)
                                        (axiomRewriter: AxiomRewriter, config: Config)
     extends PsfDefinition {
 
@@ -206,4 +206,3 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
     Let(formalArgs, args, sum)
   }
 }
-*/

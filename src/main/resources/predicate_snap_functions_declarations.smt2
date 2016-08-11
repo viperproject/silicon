@@ -6,7 +6,7 @@
 ;   - $PRD$ is a Silver predicate name
 ;   - $S$ is the sort corresponding to the type of the predicate
 
-(declare-fun $PSF.domain_$PRD$ ($PSF<$S$>) $Set<$Ref>)
+(declare-fun $PSF.pred_domain_$PRD$ ($PSF<$S$>) $Set<$Ref>)
 (declare-fun $PSF.lookup_$PRD$ ($PSF<$S$> $Ref) $S$)
 (declare-fun $PSF.after_$PRD$ ($PSF<$S$> $PSF<$S$>) Bool)
 (declare-const $psfTOP_$PRD$ $PSF<$S$>)

@@ -54,6 +54,9 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
   def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term)
                               : (Term, Option[SingletonChunkFvfDefinition])
 
+  def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], value: Term)
+  : (Term, Option[SingletonChunkPsfDefinition])
+
   def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]): Quantification
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term): Quantification
@@ -65,6 +68,13 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                      fvf: Term,
                                      perms: Term)
                                     : QuantifiedFieldChunk
+
+  def createSingletonQuantifiedChunk(args: Seq[Term],
+                                     formalArgs: Seq[Var],
+                                     predname: String,
+                                     psf: Term,
+                                     perms: Term)
+                                    : QuantifiedPredicateChunk
 
   def createQuantifiedFieldChunk(qvar: Var,
                                  receiver: Term,
@@ -174,10 +184,10 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     /* Chunk creation */
 
     def createSingletonQuantifiedChunk(rcvr: Term,
-                                       field: String,
-                                       fvf: Term,
-                                       perms: Term)
-                                      : QuantifiedFieldChunk = {
+      field: String,
+      fvf: Term,
+      perms: Term)
+      : QuantifiedFieldChunk = {
 
       val condPerms = singletonConditionalPermissions(rcvr, perms)
       val hints = extractHints(None, None, rcvr)
@@ -187,6 +197,27 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
     def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
       Ite(`?r` === rcvr, perms, NoPerm())
+    }
+
+    def createSingletonQuantifiedChunk(args: Seq[Term],
+                                       formalVars: Seq[Var],
+                                       predname: String,
+                                       psf: Term,
+                                       perms: Term)
+    : QuantifiedPredicateChunk = {
+
+      val condPerms = singletonConditionalPermissions(args,formalVars, perms)
+      val hints = extractHints(None, None, args)
+
+      QuantifiedPredicateChunk(predname, formalVars, psf, condPerms, None, Some(condPerms), Some(args), hints)
+    }
+
+    def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
+      Ite(`?r` === rcvr, perms, NoPerm())
+    }
+
+    def singletonConditionalPermissions(args: Seq[Term], formalVars:Seq[Var], perms: Term): Term = {
+      Ite((formalVars zip args).reduce((formalVar:Var, arg:Term) => formalVar === arg), perms, NoPerm())
     }
 
     /** Creates a quantified chunk corresponding to the assertion
@@ -236,8 +267,6 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       Predef.assert(psf.sort.isInstanceOf[sorts.PredicateSnapFunction],
         s"Quantified chunk values must be of sort FieldValueFunction, but found value $psf of sort ${psf.sort}")
       val (inverseFunction, arguments)= getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
-      println(inverseFunction.definitionalAxioms)
-      println(arguments)
       val arbitraryInverseArguments = inverseFunction(arguments)
       println(arbitraryInverseArguments)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseArguments, condition, perms)
@@ -949,8 +978,8 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))))
       }
 
-    /*TODO: nadmuell def createSingletonPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], snap: Snap)
-    : (Term, Option[SingletonChunkFvfDefinition]) =
+    def createSingletonPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], snap: Term)
+    : (Term, Option[SingletonChunkPsfDefinition]) =
 
       value.sort match {
         case _: sorts.FieldValueFunction =>
@@ -959,7 +988,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         case _ =>
           val psf = freshPSF(predicate, true)
           (fvf, Some(SingletonChunkPsfDefinition(predicate, psf, args, Left(value))))
-      }*/
+      }
 
     def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
       val axioms = cond match {
@@ -1119,8 +1148,14 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                 condition: Term,
                                 additionalArgs: Seq[Var])
     : (PredicateInverseFunction, Seq[Var]) = {
-
+      //TODO nadmuell: fresh is defining arguemtn with type...
       val formalArgs:Seq[Var] = predicate.formalArgs map (arg => fresh(arg.name, toSort(arg.typ)))
+      //check sort
+      for (i <- fct.indices) {
+        val term = fct.apply(i)
+        val argSort = formalArgs.apply(i).sort
+        Predef.assert(term.sort == argSort, s"Expected predicate argument $i of typ $argSort term, but found $term of sort ${term.sort}")
+      }
 
       val func = decider.fresh("inv", ((additionalArgs ++ fct)map (_.sort)), qvar.sort)
       val inverseFunc = (t: Seq[Term]) => App(func, additionalArgs ++ t)
@@ -1132,7 +1167,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         TriggerGenerator.assembleQuantification(Forall,
           qvar :: Nil,
           Implies(condition, invOFct === qvar),
-          if (config.disableISCTriggers()) Nil: Seq[Term] else /*fct :: */And(condition, invOFct) :: Nil,
+          if (config.disableISCTriggers()) Nil: Seq[Term] else /*fct ::*/ And(condition, invOFct) :: Nil,
           s"qp.${func.id}-exp",
           axiomRewriter)
 
