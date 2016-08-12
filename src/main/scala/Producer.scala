@@ -16,7 +16,7 @@ import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.supporters._
-import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 
 trait DefaultProducer[ST <: Store[ST],
@@ -39,6 +39,7 @@ trait DefaultProducer[ST <: Store[ST],
   import symbolConverter.toSort
 
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
+  protected val quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -164,18 +165,10 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
             //TODO nadmuell: finish quantified implementation
-
-            val (psf, optPsfDef) = quantifiedChunkSupporter.createPredicateSnapFunction(predicate, args, s)
-            optPsfDef.foreach(psfDef => assume(psfDef.valueDefinitions))
-            val ch = quantifiedChunkSupporter.createSingletonQuantifiedPredicateChunk(rcvr, field.name, fvf, p)
-            (h + ch, c)
-
-
-            //createPredicateSnapshotFunction??
-            //assume fvfDef analogue
-            //val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(...)
-            //(h + ch, c)
-            (h, c)
+            /*val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, s)
+            optPsfDef.foreach(psfDef => assume(psfDef.snapDefinitions))
+            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, predicate.name, psf, p)*/
+            (h /*+ ch*/, c)
           } else {
             val ch = PredicateChunk(predicate.name, args, s.convert(sorts.Snap), p)
             val (h1, c1) = chunkSupporter.produce(σ, σ.h, ch, c)
@@ -265,10 +258,10 @@ trait DefaultProducer[ST <: Store[ST],
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
             val snap = sf(sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap)))
-            val additionalInvFctArgs = c1.quantifiedVariables //TODO: what is that good for?
+            val additionalInvFctArgs = c1.quantifiedVariables
 
             val (ch, invFct) =
-              quantifiedChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,
+              quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,
                 additionalInvFctArgs)
 
             decider.prover.logComment("Nested auxiliary terms")
@@ -279,12 +272,11 @@ trait DefaultProducer[ST <: Store[ST],
             assume(gainNonNeg)
             decider.prover.logComment("Definitional axioms for inverse functions")
             assume(invFct.definitionalAxioms)
-            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
+            val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
             val ch1 = ch.copy(hints = hints)
 
             val c2:C = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
             Q(σ.h + ch1, c2)}
-            //Q(σ.h, c)}
       case _: ast.InhaleExhaleExp =>
         Failure(utils.consistency.createUnexpectedInhaleExhaleExpressionError(φ))
 

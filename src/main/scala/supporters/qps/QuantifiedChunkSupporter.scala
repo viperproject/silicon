@@ -42,6 +42,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
   def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term)
                               : (Term, Option[SingletonChunkFvfDefinition])
 
+  def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]):Term
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term): Quantification
 
@@ -147,11 +148,6 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
       QuantifiedFieldChunk(field, fvf, condPerms, None, Some(condPerms), Some(rcvr), hints)
     }
-
-    def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
-      Ite(`?r` === rcvr, perms, NoPerm())
-    }
-
 
     def singletonConditionalPermissions(rcvr: Term, perms: Term): Term = {
       Ite(`?r` === rcvr, perms, NoPerm())

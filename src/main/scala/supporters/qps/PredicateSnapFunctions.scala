@@ -17,15 +17,15 @@ import viper.silicon.state._
 import viper.silicon.state.SymbolConvert
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
-import viper.silicon.supporters.qps.PredicateInverseFunction
 import viper.silicon.state.terms.predef._
+import viper.silicon.state.terms.sorts.Snap
 import viper.silver.ast
 import viper.silicon.state.terms.{Sort, sorts}
 
 trait PsfDefinition {
   def predicate: ast.Predicate
   def psf: Term
-  def valueDefinitions: Seq[Term]
+  def snapDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
 }
 
@@ -45,7 +45,7 @@ private[qps] object PsfDefinition {
         And(
           PermLess(NoPerm(), sourceChunk.perm.replace(formalArgs, args)),
           if (predInPsfDomain)
-            SetIn(args, PredicateDomain(predicate.name, psf))
+            SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), Domain(predicate.name, psf))
           else
             True()),
             PredicateLookup(predicate.name, psf, formalArgs, args) === PredicateLookup(predicate.name, sourceChunk.psf,formalArgs, args))
@@ -57,13 +57,14 @@ private[qps] object PsfDefinition {
 case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
                                        psf: Term,
                                        args: Seq[Term],
-                                       valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]])
-    extends PsfDefinition {
-  protected val symbolConverter: SymbolConvert
-  import symbolConverter.toSort
+                                       valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]],
+                                       symbolConvert:SymbolConvert)
+  extends PsfDefinition {
+
+  import symbolConvert.toSort
 
   var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
-  val valueDefinitions = valueChoice match {
+  val snapDefinitions = valueChoice match {
     case Left(value) =>
       Seq(PredicateLookup(predicate.name, psf,formalArgs, args) === value)
     case Right(sourceChunks) =>
@@ -71,7 +72,8 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
         PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, formalArgs, sourceChunk, false))
   }
 
-  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(args)))
+  val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(argsSnap)))
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
@@ -88,7 +90,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
   assert(qvars.nonEmpty,   "A MultiLocationFieldValueFunctionDefinition must be used "
                          + "with at least one quantified variable")
 
-  val valueDefinitions = {
+  val snapDefinitions = {
     val axiomCounter = new Counter()
 
     sourceChunks.map{sourceChunk =>
@@ -126,7 +128,8 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
   }
 
   val domainDefinitions: Seq[Term] = {
-    val argsInDomain = SetIn(args, PredicateDomain(predicate.name, psf))
+    val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+    val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
 
@@ -183,16 +186,16 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
   private val valDefs =
     triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
 
-  val valueDefinitions: Seq[Term] = Seq(valueDefinitions(args))
+  val snapDefinitions: Seq[Term] = Seq(snapDefinitions(args))
 
   val domainDefinitions = Seq(True())
 
   val declaration: Decl = ConstDecl(psf.asInstanceOf[Var])
-  val definition: Seq[Term] = valueDefinitions ++ domainDefinitions
+  val definition: Seq[Term] = snapDefinitions ++ domainDefinitions
 
-  def valueDefinitions(args: Seq[Term]) = Let(formalArgs, args, And(valDefs))
+  def snapDefinitions(args: Seq[Term]) = Let(formalArgs, args, And(valDefs))
 
-  val quantifiedValueDefinitions =
+  val quantifiedSnapDefinitions =
     triples map { case (p, lk1, lk2) =>
       Forall(
         formalArgs,

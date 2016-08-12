@@ -19,7 +19,7 @@ import viper.silicon.state.{SymbolConvert, DefaultContext, MagicWandChunk}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
-import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     extends Consumer[ST, H, S, DefaultContext[H]]
@@ -37,6 +37,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   protected val decider: Decider[ST, H, S, C]
   protected val symbolConverter: SymbolConvert
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
+  protected val quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -173,13 +174,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
 
-                val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
-                val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                val (invFct, neutralArgs) = quantifiedChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
-                println(invFct)
-                println(invFct.definitionalAxioms)
+                val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
+                val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                val (invFct, neutralArgs) = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
                 decider.prover.logComment("Nested auxiliary terms")
-                /*TODO: nadmuell
+                /*
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
                 val isInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
                 decider.prover.logComment("Check receiver injectivity")

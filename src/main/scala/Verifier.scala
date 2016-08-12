@@ -44,6 +44,7 @@ class DefaultVerifier(val config: Config)
        with HeuristicsSupporter[ST, H, S]
        with HeapCompressorProvider[ST, H, S, C]
        with QuantifiedChunkSupporterProvider[ST, H, S]
+       with QuantifiedPredicateChunkSupporterProvider[ST, H, S]
        with MethodSupporterProvider[ST, H, S]
        with Logging {
 
@@ -71,7 +72,7 @@ class DefaultVerifier(val config: Config)
     predicateSnapFunctionsEmitter,
     decider, identifierFactory,
     functionsSupporter, predicateSupporter, methodSupporter,
-    quantifiedChunkSupporter)
+    quantifiedChunkSupporter, quantifiedPredicateChunkSupporter )
 
   /* Lifetime */
 
