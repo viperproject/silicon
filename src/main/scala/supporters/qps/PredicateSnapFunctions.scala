@@ -57,13 +57,9 @@ private[qps] object PsfDefinition {
 case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
                                        psf: Term,
                                        args: Seq[Term],
-                                       valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]],
-                                       symbolConvert:SymbolConvert)
+                                       formalArgs : Seq[Var],
+                                       valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]])
   extends PsfDefinition {
-
-  import symbolConvert.toSort
-
-  var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
   val snapDefinitions = valueChoice match {
     case Left(value) =>
       Seq(PredicateLookup(predicate.name, psf,formalArgs, args) === value)

@@ -43,12 +43,12 @@ trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
 
 
 
-  /*def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], value: Term)
-  : (Term, Option[SingletonChunkPsfDefinition])*/
+  def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term)
+  : (Term, Option[SingletonChunkPsfDefinition])
 
- /* def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]): Quantification*/
+  def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]): Quantification
 
- /* def singletonConditionalPermissions(args: Seq[Term], perms: Term): Term*/
+  def singletonConditionalPermissions(args: Seq[Term], formalVars:Seq[Var], perms: Term): Term
 
   /*def createSingletonQuantifiedPredicateChunk(args: Seq[Term],
                                               formalArgs: Seq[Var],
@@ -157,8 +157,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
     }
 
     def singletonConditionalPermissions(args: Seq[Term], formalVars:Seq[Var], perms: Term): Term = {
-      //TODO: correct
-      var cond = True() //(formalVars zip args).reduce((formalVar:Var, arg:Term) => formalVar === arg)
+      var cond = (formalVars zip args).map({case (formalVar, arg) => formalVar === arg}).reduce((cond1:Term, cond2:Term) => And(cond1, cond2))
       Ite(cond, perms, NoPerm())
     }
 
@@ -671,23 +670,18 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
     }
 
 
-    /* TODO: Rename such that it becomes obvious that the methods constructs a
-     *       *SingletonChunk*FvfDefinition
-     */
-    /*
-    def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], value: Term)
-                                : (Term, Option[SingletonChunkFvfDefinition]) =
+    def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term)
+                                : (Term, Option[SingletonChunkPsfDefinition]) =
 
-      value.sort match {
+      snap.sort match {
         case _: sorts.PredicateSnapFunction =>
           /* The value is already a field value function, in which case we don't create a fresh one. */
-          (value, None)
+          (snap, None)
 
         case _ =>
           val psf = freshPSF(predicate, true)
-
-          (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, Left(value))))
-      }*/
+          (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))) )
+      }
 /*
     def createSingletonPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], snap: Term)
     : (Term, Option[SingletonChunkPsfDefinition]) =
