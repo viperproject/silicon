@@ -14,7 +14,7 @@
     (implies
       (and
         ($Set.equal ($PSF.pred_domain_$PRD$ vs) ($PSF.pred_domain_$PRD$ ws))
-        (forall ((x $Ref)) (!
+        (forall ((x $Snap)) (!
           (implies
             ($Set.in x ($PSF.pred_domain_$PRD$ vs))
             (= ($PSF.lookup_$PRD$ vs x) ($PSF.lookup_$PRD$ ws x)))

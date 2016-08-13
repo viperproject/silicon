@@ -30,6 +30,7 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
   private var collectedPredicates = Set[Predicate]()
   private var collectedSorts = Set[terms.sorts.PredicateSnapFunction]()
   private var snapMap:Map[Predicate, terms.Sort] = Map()
+  private var argTypeMap: Map[Predicate, terms.Sort] = Map()
 
   def sorts: Set[Sort] = toSet(collectedSorts)
   /* Scala's immutable sets are invariant in their element type, hence
@@ -42,30 +43,43 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
       case ast.utility.QuantifiedPermissions.QPPForall(_, _, _, _, _, _, predAccpred) =>
         val predicate = program.findPredicate(predAccpred.loc.predicateName)
         val sort = (predicate -> predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))
+        //val argSnap:Term = predAccpred.loc.args.reduce((arg1:Term, arg2:Term) => terms.Combine(arg1, arg2))
         collectedPredicates += predicate
         snapMap += sort
+        //argTypeMap += (predicate -> argSnap.sort)
     }
 
 
       collectedSorts = (
         collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction((predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))))
+          + terms.sorts.PredicateSnapFunction(terms.sorts.Snap)
       )
 
 
   }
 
   def declareSorts() {
+    prover.declare(SortDecl(terms.sorts.Set(terms.sorts.Snap)))
     collectedSorts foreach (s => prover.declare(SortDecl(s)))
-  }
+}
 
   def declareSymbols() {
+    //declare Set properties
+    val setDecl = "/dafny_axioms/sets_declarations_dafny.smt2"
+    val setSort = terms.sorts.Snap
+    val substitutions = Map("$S$" -> prover.termConverter.convert(setSort))
+    prover.logComment(s"$setDecl [$setSort")
+    preambleFileEmitter.emitParametricAssertions(setDecl, substitutions)
+
+
     collectedPredicates foreach { predicate =>
       val sort = snapMap(predicate)
+      val sort2 = prover.termConverter.convert(terms.sorts.Snap)
       val id = predicate.name
       val substitutions = Map("$PRD$" -> id, "$S$" -> prover.termConverter.convert(sort))
 
       val psfDeclarations = "/predicate_snap_functions_declarations.smt2"
-      prover.logComment(s"$psfDeclarations [$id: $sort]")
+      prover.logComment(s"$psfDeclarations [$id: $sort: $sort2]")
       preambleFileEmitter.emitParametricAssertions(psfDeclarations, substitutions)
     }
   }
@@ -91,6 +105,7 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
 
   def reset() {
     collectedPredicates = collectedPredicates.empty
+    snapMap = snapMap.empty
   }
 
   def stop() {}

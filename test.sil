@@ -1,10 +1,30 @@
 field f:Int
 
 predicate pred(r:Ref) {
-    acc(r.f)
+    acc(r.f) && r.f == 0
 }
 
-method m1(r:Ref, xs:Seq[Ref])
-//requires forall x:Ref :: x in xs ==> acc(x.f)
-requires forall x:Ref :: x in xs ==> acc(pred(x))
-{}
+/*
+method test01(x: Ref)
+  requires acc(pred(x))
+  ensures acc(pred(x))
+{
+  unfold pred(x)
+  x.f := 3
+  fold pred(x)
+}*/
+
+method test02(r: Ref, xs: Seq[Ref])
+  requires forall x:Ref :: x in xs ==> acc(pred(x))
+  //ensures forall x:Ref :: x in xs ==> acc(pred(x))
+{
+  //unfold pred(x)
+  //x.f := 3
+  //fold pred(x)
+}
+
+/*
+method test03(r: Ref, xs: Seq[Ref])
+  requires forall x:Ref :: x in xs ==> acc(x.f)
+  ensures forall x:Ref :: x in xs ==> acc(x.f)
+{}*/
