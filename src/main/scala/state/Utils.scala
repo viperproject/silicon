@@ -132,6 +132,10 @@ package object utils {
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
     case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
+    case PredicateDomain(_, psf) => psf :: Nil
+    case PredicateLookup(_, psf, args, formalVars) => psf :: args :: formalVars :: Nil
+    case PsfAfterRelation(_, psf2, psf1) => psf2 :: psf1 :: Nil
+    case SummarisingPsfDefinition(_, psf, args, formmalVars, _) => Seq(psvf, args, formalVars)
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */

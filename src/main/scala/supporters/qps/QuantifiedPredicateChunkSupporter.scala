@@ -188,7 +188,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                                        additionalArgs: Seq[Var])
     : (QuantifiedPredicateChunk, PredicateInverseFunction) = {
       Predef.assert(psf.sort.isInstanceOf[sorts.PredicateSnapFunction],
-        s"Quantified chunk values must be of sort FieldValueFunction, but found value $psf of sort ${psf.sort}")
+        s"Quantified chunk values must be of sort PredicateSnapFunction, but found value $psf of sort ${psf.sort}")
       val (inverseFunction, arguments)= getFreshInverseFunction(qvar, pred, args, condition, additionalArgs)
       val arbitraryInverseArguments = inverseFunction(arguments)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseArguments, condition, perms)
@@ -596,7 +596,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
           val psfTOP = Var(PsfTop(predicate.name), psfSort)
           val psf = lastPSF.getOrElse(predicate, psfTOP)
-          val after = FvfAfterRelation(predicate.name, freshPsf, psf)
+          val after = PsfAfterRelation(predicate.name, freshPsf, psf)
           assume(after)
           lastPSF += (predicate -> freshPsf)
 

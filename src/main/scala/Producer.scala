@@ -9,11 +9,11 @@ package viper.silicon
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.state.{Store, Heap, State, StateFormatter}
-import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
+import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
+import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert}
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
@@ -164,11 +164,12 @@ trait DefaultProducer[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
-            //TODO nadmuell: finish quantified implementation
-            /*val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, s)
+            var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
+
+            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, s)
             optPsfDef.foreach(psfDef => assume(psfDef.snapDefinitions))
-            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, predicate.name, psf, p)*/
-            (h /*+ ch*/, c)
+            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
+            (h + ch, c)
           } else {
             val ch = PredicateChunk(predicate.name, args, s.convert(sorts.Snap), p)
             val (h1, c1) = chunkSupporter.produce(σ, σ.h, ch, c)

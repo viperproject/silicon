@@ -16,6 +16,7 @@ method test01(x: Ref)
 
 method test02(r: Ref, xs: Seq[Ref])
   requires forall x:Ref :: x in xs ==> acc(pred(x))
+  requires acc(pred(r))
   //ensures forall x:Ref :: x in xs ==> acc(pred(x))
 {
   //unfold pred(x)
