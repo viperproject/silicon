@@ -9,7 +9,7 @@ package viper.silicon.state
 import scala.collection.mutable
 import viper.silicon.interfaces.state.{Heap, Store, State}
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.SummarisingFvfDefinition
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -133,9 +133,9 @@ package object utils {
     case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
     case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
     case PredicateDomain(_, psf) => psf :: Nil
-    case PredicateLookup(_, psf, args, formalVars) => psf :: args :: formalVars :: Nil
+    case PredicateLookup(_, psf, args, formalVars) => Seq(psf) ++ args ++ formalVars
     case PsfAfterRelation(_, psf2, psf1) => psf2 :: psf1 :: Nil
-    case SummarisingPsfDefinition(_, psf, args, formmalVars, _) => Seq(psvf, args, formalVars)
+    case SummarisingPsfDefinition(_, psf, args, formalVars, _) => Seq(psf) ++ args ++ formalVars
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */

@@ -1589,7 +1589,7 @@ object FvfTop extends (String => Identifier) {
   def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
 }
 /* Quantified predicates */
-case class PredicateLookup(predname: String, psf: Term, formalVars: Seq[Var], args: Seq[Term]) extends Term {
+case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], formalVars: Seq[Var]) extends Term {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
   for (i <- args.indices) {
     utils.assertSort(args.apply(i), "predicate argument i", formalVars.apply(i).sort)

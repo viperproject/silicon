@@ -4,17 +4,30 @@ predicate pred(r:Ref) {
     acc(r.f) && r.f == 0
 }
 
-/*
+predicate pred2(r:Ref, i:Int) {
+    acc(r.f) && r.f == i
+}
+
 method test01(x: Ref)
   requires acc(pred(x))
   ensures acc(pred(x))
 {
   unfold pred(x)
-  x.f := 3
+  x.f := 0
   fold pred(x)
+}
+/*
+method test02(r: Ref, xs: Seq[Ref])
+  requires forall x:Ref :: x in xs ==> acc(pred2(x, 0))
+  requires acc(pred2(r, 1))
+  //ensures forall x:Ref :: x in xs ==> acc(pred(x))
+{
+  //unfold pred(x)
+  //x.f := 3
+  //fold pred(x)
 }*/
 
-method test02(r: Ref, xs: Seq[Ref])
+method test03(r: Ref, xs: Seq[Ref])
   requires forall x:Ref :: x in xs ==> acc(pred(x))
   requires acc(pred(r))
   //ensures forall x:Ref :: x in xs ==> acc(pred(x))
@@ -24,8 +37,10 @@ method test02(r: Ref, xs: Seq[Ref])
   //fold pred(x)
 }
 
-/*
-method test03(r: Ref, xs: Seq[Ref])
+
+
+method test04(r: Ref, xs: Seq[Ref])
   requires forall x:Ref :: x in xs ==> acc(x.f)
-  ensures forall x:Ref :: x in xs ==> acc(x.f)
-{}*/
+  requires acc(r.f)
+  //ensures forall x:Ref :: x in xs ==> acc(x.f)
+{}

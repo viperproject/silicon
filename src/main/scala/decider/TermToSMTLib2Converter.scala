@@ -12,7 +12,7 @@ import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.SummarisingFvfDefinition
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition }
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 
 class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
@@ -91,7 +91,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     super.pretty(render(t))
   }
 
-  protected def render(term: Term): Doc =  term match {
+  protected def render(term: Term): Doc = term match {
     case lit: Literal => render(lit)
 
     case Ite(t0, t1, t2) =>
@@ -232,6 +232,18 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case FvfAfterRelation(field, fvf2, fvf1) => parens("$FVF.after_" <> field <+> render(fvf2) <+> render(fvf1))
 
+    case PredicateDomain(id, psf) => parens("$PSF.domain_" <> id <+> render(psf))
+
+    case PredicateLookup(id, psf, args, formalVars) =>
+      var snap:Term = if (args.size > 1) {
+         args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+      } else {
+        args.apply(0).convert(sorts.Snap)
+      }
+
+      parens("$PSF.lookup_" <> id <+> render(psf) <+> render(snap))
+
+    case PsfAfterRelation(id, psf2, psf1) => parens("$PSF.after_" <> id <+> render(psf2) <+> render(psf1))
     /* Other terms */
 
     case First(t) => parens("$Snap.first" <+> render(t))
@@ -255,6 +267,8 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case fvf: SummarisingFvfDefinition =>
       render(And(fvf.quantifiedValueDefinitions))
+    case psf: SummarisingPsfDefinition =>
+      render(And(psf.quantifiedSnapDefinitions))
   }
 
   @inline

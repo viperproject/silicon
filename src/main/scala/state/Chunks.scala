@@ -101,7 +101,7 @@ case class QuantifiedPredicateChunk(name: String,
   assert(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  def valueAt(args: Seq[Term]) = PredicateLookup(name, psf, formalVars, args)
+  def valueAt(args: Seq[Term]) = PredicateLookup(name, psf, args, formalVars)
 
   def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))
   def -(perm: Term) = copy(perm = PermMinus(this.perm, perm))

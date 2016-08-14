@@ -48,7 +48,7 @@ private[qps] object PsfDefinition {
             SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), Domain(predicate.name, psf))
           else
             True()),
-            PredicateLookup(predicate.name, psf, formalArgs, args) === PredicateLookup(predicate.name, sourceChunk.psf,formalArgs, args))
+            PredicateLookup(predicate.name, psf, args, formalArgs) === PredicateLookup(predicate.name, sourceChunk.psf, args, formalArgs))
   }
 }
 
@@ -62,7 +62,8 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
   extends PsfDefinition {
   val snapDefinitions = valueChoice match {
     case Left(value) =>
-      Seq(PredicateLookup(predicate.name, psf,formalArgs, args) === value)
+      println(args)
+      Seq(PredicateLookup(predicate.name, psf, args, formalArgs) === value)
     case Right(sourceChunks) =>
       sourceChunks map (sourceChunk =>
         PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, formalArgs, sourceChunk, false))
@@ -177,7 +178,7 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
 
   private val triples =
     sourceChunks.map(ch =>
-      (ch.perm, PredicateLookup(predicate.name, psf, formalArgs, args), PredicateLookup(predicate.name, ch.psf, formalArgs, args)))
+      (ch.perm, PredicateLookup(predicate.name, psf, args,  formalArgs), PredicateLookup(predicate.name, ch.psf, args, formalArgs)))
 
   private val valDefs =
     triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
