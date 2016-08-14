@@ -235,10 +235,10 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case PredicateDomain(id, psf) => parens("$PSF.domain_" <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args, formalVars) =>
-      var snap:Term = if (args.size > 1) {
-         args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-      } else {
+      var snap:Term = if (args.size == 1) {
         args.apply(0).convert(sorts.Snap)
+      } else {
+        args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
       }
 
       parens("$PSF.lookup_" <> id <+> render(psf) <+> render(snap))
