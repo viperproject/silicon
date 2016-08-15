@@ -1,5 +1,7 @@
 field f:Int
 
+
+
 predicate pred(r:Ref) {
     acc(r.f) && r.f == 0
 }
@@ -7,6 +9,8 @@ predicate pred(r:Ref) {
 predicate pred2(r:Ref, i:Int) {
     acc(r.f) && r.f == i
 }
+
+predicate empty() { true }
 
 /*
 method single_predicate(x: Ref)
@@ -32,8 +36,9 @@ method quantified_singleArg(r: Ref, xs: Seq[Ref])
 
 method quantified_multipleArgs(r: Ref, xs: Seq[Ref])
   requires forall x:Ref :: x in xs ==> acc(pred(x))
-  requires acc(pred(r))
-  ensures acc(pred(r))
+  //requires r in xs
+  requires acc(pred(fun(r)))
+  ensures acc(pred(fun(r)))
   //ensures forall x:Ref :: x in xs ==> acc(pred(x))
 {
   //unfold pred(x)
@@ -41,10 +46,11 @@ method quantified_multipleArgs(r: Ref, xs: Seq[Ref])
   //fold pred(x)
 }
 
-
+function fun(r:Ref):Ref
+/*
 method quantified_field(r: Ref, xs: Seq[Ref])
   requires forall x:Ref :: x in xs ==> acc(x.f)
-  requires acc(r.f)
-  ensures acc(r.f)
+  requires acc(fun(r).f)
+  ensures acc(fun(r).f)
   //ensures forall x:Ref :: x in xs ==> acc(x.f)
-{}
+{}*/

@@ -379,7 +379,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                       c: C)
     : (H, QuantifiedPredicateChunk, PsfDefinition, Boolean) = {
 
-
       val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
       val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
 
@@ -414,8 +413,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         val permsTakenFunc = Macro(macroName, formalSorts, sorts.Perm)
         val permsTakenFApp = (t: Seq[Term]) => App(permsTakenFunc, t)
 
-        pNeeded = PermMinus(pNeeded, permsTakenFApp(args))
-
+        pNeeded = PermMinus(pNeeded, permsTakenFApp(args)) //TODO: args or formalArgs?
         (ch, permsTakenFApp(formalVars), pNeeded)
       }
 
@@ -430,7 +428,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           val constrainPermissions = !consumeExactRead(perms, c.constrainableARPs)
 
           val (permissionConstraint, depletedCheck) =
-            createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
+            createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk, formalVars,
               ithPTaken)
 
           if (constrainPermissions) {
@@ -441,7 +439,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           } else {
             decider.prover.logComment(s"Chunk depleted?")
             val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
-
             if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
           }
 
@@ -472,6 +469,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                                                          conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
                                                          constrainPermissions: Boolean,
                                                          ithChunk: QuantifiedPredicateChunk,
+                                                         formalVars: Seq[Var],
                                                          ithPTaken: Term)
                                                          : (Term, Term) = {
 
@@ -481,6 +479,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         if (constrainPermissions)
           result match {
             case None =>
+
               val q1 = Forall(ithChunk.formalVars,
                          Implies(
                            ithChunk.perm !== NoPerm(),
@@ -494,18 +493,18 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                 perms !== NoPerm(),
                 PermLess(conditionalizedPermsOfInv.replace(ithChunk.formalVars.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), args), perms))
           }
-        else
+        else {
           True()
+        }
 
       val depletedCheck = result match {
         case None =>
           Forall(ithChunk.formalVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil: Seq[Trigger])
         case Some((perms, arg:Term)) =>
-          PermMinus(perms, ithPTaken.replace(ithChunk.formalVars, Seq(arg))) === NoPerm()
+          PermMinus(perms, ithPTaken.replace(formalVars, Seq(arg))) === NoPerm()
         case Some((perms, args:Seq[Term])) =>
-          PermMinus(perms, ithPTaken.replace(ithChunk.formalVars, args)) === NoPerm()
+          PermMinus(perms, ithPTaken.replace(formalVars, args)) === NoPerm()
       }
-
       (permissionConstraint, depletedCheck)
     }
 
