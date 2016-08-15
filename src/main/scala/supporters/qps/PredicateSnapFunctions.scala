@@ -62,11 +62,10 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
   extends PsfDefinition {
   val snapDefinitions = valueChoice match {
     case Left(value) =>
-      println(args)
       Seq(PredicateLookup(predicate.name, psf, args, formalArgs) === value)
     case Right(sourceChunks) =>
-      sourceChunks map (sourceChunk =>
-        PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, formalArgs, sourceChunk, false))
+      var psfDef = sourceChunks map (sourceChunk => PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, sourceChunk.formalVars, sourceChunk, false))
+      psfDef
   }
 
   val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
@@ -128,6 +127,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
     val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
 
+
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
@@ -138,6 +138,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
                         .getOrElse((Nil, Nil))
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+
 
     val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")
     val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)

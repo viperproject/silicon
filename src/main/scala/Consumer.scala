@@ -217,22 +217,25 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 Q(h1, ch.valueAt(tRcvr), c3)
               case None => Failure(pve dueTo InsufficientPermission(fa))
             }}))
-      case ast.AccessPredicate(pa @ ast.PredicateAccess(args, predname), perm)
+      case ast.AccessPredicate(pa @ ast.PredicateAccess(eArgs, predname), perm)
         if c.qpPredicates.contains(c.program.findPredicate(predname)) =>
         //TODO nadmuell: implement consuming single prediate under quantifier
-        /*
-        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
+        val predicate = c.program.findPredicate(predname)
+        val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, toSort(arg.typ)))
+
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) => {
-            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
-            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
-              case Some((h1, ch, fvfDef, c3)) =>
-                val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
-                assume(fvfDomain ++ fvfDef.valueDefinitions)
-                Q(h1, ch.valueAt(tRcvr), c3)
-              case None => Failure(pve dueTo InsufficientPermission(fa))
-            }}))*/
+            val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
+            val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            quantifiedPredicateChunkSupporter.splitSingleLocation(σ, h, predicate, tArgs, formalVars, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
+              case Some((h1, ch, psfDef, c3)) =>
+                val psfDomain = if (c3.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
+                assume(psfDomain ++ psfDef.snapDefinitions)
+                Q(h1, ch.valueAt(tArgs), c3)
+              case None => Failure(pve dueTo InsufficientPermission(pa))
+            }}))
             Failure(pve dueTo InsufficientPermission(pa))
+
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) => {
           val c2 =

@@ -83,33 +83,17 @@ trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
                (Q: SummarisingPsfDefinition => VerificationResult)
                : VerificationResult
 
- /*def splitSingleLocation(σ: S,
+  def splitSingleLocation(σ: S,
                           h: H,
                           predicate: ast.Predicate,
                           args: Seq[Term], // e
+                          formalVars: Seq[Var],
                           perms: Term, // p
                           chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                           c: C)
                          (Q: Option[(H, QuantifiedPredicateChunk, PsfDefinition, C)] => VerificationResult)
-                         : VerificationResult
-*/
+  : VerificationResult
 
-
-/* def splitPredicateLocations(σ: S,
-                     h: H,
-                     predicate: ast.Predicate,
-                     qvar: Some[Var], // x
-                     inverseArgs: Seq[Term], // e⁻¹(r)
-                     condition: Term, // c(x)
-                     args: Seq[Term], // e(x)
-                     formalVars: Seq[Var],
-                     perms: Term, // p(x)
-                     chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
-                     c: C)
-                    (Q: Option[(H, QuantifiedPredicateChunk, QuantifiedChunkPsfDefinition, C)] => VerificationResult)
-                    : VerificationResult*/
-
- /* def splitHeap(h: H, predicate: String): (Seq[QuantifiedPredicateChunk], Seq[Chunk])*/
 
 
   def injectPSF(freshFvf: Var): Unit
@@ -340,68 +324,68 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       }
     }
 
- /*  def splitSingleLocation(σ: S,
+   def splitSingleLocation(σ: S,
                             h: H,
                             predicate: ast.Predicate,
                             args: Seq[Term], // e
+                            formalVars: Seq[Var],
                             perms: Term, // p
                             chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                             c: C)
                            (Q: Option[(H, QuantifiedPredicateChunk, PsfDefinition, C)] => VerificationResult)
                            : VerificationResult = {
-
+     val cond = (formalVars zip args).map(x => x._1 ===  x._2).reduce((t1, t2) =>  And(t1, t2))
       val (h1, ch, psfDef, success) =
-        splitPredicate(σ, h, predicate, None, `?r`, `?r` === args, args, perms, chunkOrderHeuristic, c)
+        splitPredicate(σ, h, predicate, None, formalVars, args, cond, perms, chunkOrderHeuristic, c)
 
       if (success) {
         Q(Some(h1, ch, psfDef, c))
       } else
         Q(None)
-   }*/
+   }
 
-
-
- /* def splitLocations(σ: S,
+  def splitLocations(σ: S,
                        h: H,
                        predicate: ast.Predicate,
                        qvar: Some[Var], // x
-                       inverseArgs: Seq[Term], // e1⁻¹(arg1, ..., argn), ..., en⁻¹(arg1, ..., argn)
+                       formalVars: Seq[Var], // e1⁻¹(arg1, ..., argn), ..., en⁻¹(arg1, ..., argn)
+                       args: Seq[Term], // e1(x), ..., en(x)
                        condition: Term, // c(x)
-                       args: Term, // e1(x), ..., en(x)
                        perms: Term, // p(x)
-                       chunkOrderHeuristic: Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk],
+                       chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                        c: C)
                       (Q: Option[(H, QuantifiedPredicateChunk, QuantifiedChunkPsfDefinition, C)] => VerificationResult)
     : VerificationResult = {
 
       val (h1, ch, psfDef, success) =
-        splitPredicate(σ, h, predicate, qvar, inverseArgs, condition, args, perms, chunkOrderHeuristic, c)
+        splitPredicate(σ, h, predicate, qvar, formalVars, args, condition, perms, chunkOrderHeuristic, c)
 
       if (success) {
-        Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkFvfDefinition], c))
+        Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkPsfDefinition], c))
       } else
         Q(None)
-    }*/
+    }
 
 
-  /* private def splitPredicate (σ: S,
+   private def splitPredicate (σ: S,
                       h: H,
                       predicate: ast.Predicate,
-                      qvar: Option[Var], // x
-                      inverseNeutralArguments: Term, // e⁻¹(arg1, ..., argn)
+                      qvar: Option[Var],
+                      formalVars: Seq[Var], // predicate formal arguments fArg1, ..., fArgn
+                      args: Seq[Term], // e1(x), ..., en(x)
                       condition: Term, // c(x)
-                      args: Seq[Term], // e(x)
                       perms: Term, // p(x)
                       chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                       c: C)
-    : (H, QuantifiedFieldChunk, FvfDefinition, Boolean) = {
+    : (H, QuantifiedPredicateChunk, PsfDefinition, Boolean) = {
+
 
       val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
       val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
 
 
-      val pInit = qvar.fold(perms)(x => perms.replace(x, inverseNeutralArguments)) // p(e⁻¹(arg1, ..., argn))
-      val conditionOfInv = qvar.fold(condition)(x => condition.replace(x, inverseNeutralArguments)) // c(e⁻¹(arg1, ..., argn))
+      val pInit = qvar.fold(perms)(x => perms.replace(args, formalVars)) // p(e⁻¹(arg1, ..., argn))
+      val conditionOfInv = qvar.fold(condition)(x => condition.replace(args, formalVars)) // c(e⁻¹(arg1, ..., argn))
       val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(arg1, ..., argn)) ? p_init(arg1, ..., argn) : 0
 
       var residue: List[Chunk] = Nil
@@ -415,28 +399,29 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
        * that talk about concrete receivers will not use the inverse function, and
        * thus will not trigger the axioms that define the values of the fvf.
        */
-      val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, true)
+      val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true)
 
-      decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
+      decider.prover.logComment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
 
       val precomputedData = candidates map { ch =>
-        val pTaken = Ite(conditionOfInv, PermMin(ch.perm, pNeeded), NoPerm())
-        val macroName = Identifier("pTaken" + permsTakenCounter.next())
-        val macroDecl = MacroDecl(macroName, `?r` :: Nil, pTaken)
+        val pTaken = Ite(conditionOfInv, PermMin(ch.perm.replace(ch.formalVars, formalVars), pNeeded), NoPerm())
+        val macroName = Identifier("predPTaken" + permsTakenCounter.next())
+        val macroDecl = MacroDecl(macroName, formalVars, pTaken)
 
         decider.prover.declare(macroDecl)
 
-        val permsTakenFunc = Macro(macroName, Seq(`?r`.sort), sorts.Perm)
-        val permsTakenFApp = (t: Term) => App(permsTakenFunc, t :: Nil)
+        val formalSorts = formalVars.map(x => x.sort)
+        val permsTakenFunc = Macro(macroName, formalSorts, sorts.Perm)
+        val permsTakenFApp = (t: Seq[Term]) => App(permsTakenFunc, t)
 
-        pNeeded = PermMinus(pNeeded, permsTakenFApp(`?r`))
+        pNeeded = PermMinus(pNeeded, permsTakenFApp(args))
 
-        (ch, permsTakenFApp(`?r`), pNeeded)
+        (ch, permsTakenFApp(formalVars), pNeeded)
       }
 
       decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
 
-      var tookEnough = Forall(`?r`, Implies(conditionOfInv, pNeeded === NoPerm()), Nil: Seq[Trigger])
+      var tookEnough = Forall(formalVars, Implies(conditionOfInv, pNeeded === NoPerm()), Nil: Seq[Trigger])
 
       precomputedData foreach { case (ithChunk, ithPTaken, ithPNeeded) =>
         if (success)
@@ -465,7 +450,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
            * re-done, but without a timeout. In order to make this possible,
            * the assertion to check is recorded by tookEnough.
            */
-          tookEnough = Forall(`?r`, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
+          tookEnough = Forall(formalVars, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
 
           decider.prover.logComment(s"Enough permissions taken?")
           success = check(σ, tookEnough, config.splitTimeout())
@@ -478,17 +463,17 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       decider.prover.logComment("Done splitting")
 
       val hResidue = H(residue ++ otherChunks)
-      val chunkSplitOf = QuantifiedFieldChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)
+      val chunkSplitOf = QuantifiedPredicateChunk(predicate.name, formalVars, psfDef.psf, conditionalizedPermsOfInv, None, None, None, Nil)
 
-      (hResidue, chunkSplitOf, fvfDef, success)
-    }*/
+      (hResidue, chunkSplitOf, psfDef, success)
+    }
 
-  /*private def createPermissionConstraintAndDepletedCheck(qvar: Option[Var], // x
-                                                           conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
-                                                           constrainPermissions: Boolean,
-                                                           ithChunk: QuantifiedPredicateChunk,
-                                                           ithPTaken: Term)
-                                                          : (Term, Term) = {
+    private def createPermissionConstraintAndDepletedCheck(qvar: Option[Var], // x
+                                                         conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
+                                                         constrainPermissions: Boolean,
+                                                         ithChunk: QuantifiedPredicateChunk,
+                                                         ithPTaken: Term)
+                                                         : (Term, Term) = {
 
       val result = eliminateImplicitQVarIfPossible(ithChunk.perm, qvar)
 
@@ -504,10 +489,10 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
               if (config.disableISCTriggers()) q1 else q1.autoTrigger
 
-            case Some((perms, args)) =>
+            case Some((perms, args:Seq[Term])) =>
               Implies(
                 perms !== NoPerm(),
-                PermLess(conditionalizedPermsOfInv.replace(ithChunk.formalVars, args), perms))
+                PermLess(conditionalizedPermsOfInv.replace(ithChunk.formalVars.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), args), perms))
           }
         else
           True()
@@ -515,12 +500,14 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       val depletedCheck = result match {
         case None =>
           Forall(ithChunk.formalVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil: Seq[Trigger])
-        case Some((perms, singleRcvr)) =>
+        case Some((perms, arg:Term)) =>
+          PermMinus(perms, ithPTaken.replace(ithChunk.formalVars, Seq(arg))) === NoPerm()
+        case Some((perms, args:Seq[Term])) =>
           PermMinus(perms, ithPTaken.replace(ithChunk.formalVars, args)) === NoPerm()
       }
 
       (permissionConstraint, depletedCheck)
-    }*/
+    }
 
     @inline
     private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var]): Option[(Term, Term)] = {

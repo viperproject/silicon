@@ -42,7 +42,11 @@ case class DefaultContext[H <: Heap[H]]
 
                           fvfCache: Map[(ast.Field, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
                           fvfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
-                          fvfAsSnap: Boolean = false)
+                          fvfAsSnap: Boolean = false,
+
+                          psfCache: Map[(ast.Field, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
+                          psfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
+                          psfAsSnap: Boolean = false)
 
     extends Context[DefaultContext[H]] {
 
@@ -84,7 +88,8 @@ case class DefaultContext[H <: Heap[H]]
                         reserveHeaps1, exhaleExt1, lhsHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
                         recordEffects1, consumedChunks1, letBoundVars1,
-                        fvfCache1, fvfPredicateCache1, fvfAsSnap1) =>
+                        fvfCache1, fvfPredicateCache1, fvfAsSnap1,
+                        psfCache1, psfPredicateCache1, psfAsSnap1) =>
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, `qpPredicates1`, recordVisited2, `visited1`,
@@ -93,7 +98,8 @@ case class DefaultContext[H <: Heap[H]]
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                             `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
-                            fvfCache2, fvfPredicateCache2, fvfAsSnap2) =>
+                            fvfCache2, fvfPredicateCache2, fvfAsSnap2,
+                            psfCache2, psfPredicateCache2, psfAsSnap2) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -131,13 +137,34 @@ case class DefaultContext[H <: Heap[H]]
                 fvfPredicateCache1
             }
 
+          val psfCache3 =
+            viper.silicon.utils.conflictFreeUnion(psfCache1, psfCache2) match {
+              case Right(m3) => m3
+              case _ =>
+                //TODO: Comparing size is not sufficient - we should compare cache entries for
+                assert(psfCache1.size == psfCache2.size)
+                psfCache1
+            }
+
+          val psfPredicateCache3 =
+            viper.silicon.utils.conflictFreeUnion(psfPredicateCache1, psfPredicateCache2) match {
+              case Right(m3) => m3
+              case _ =>
+                //TODO: Comparing size is not sufficient - we should compare cache entries for
+                assert(psfPredicateCache1.size == psfPredicateCache2.size)
+                psfPredicateCache1
+            }
+
           copy(recordVisited = recordVisited1 || recordVisited2,
                retrying = retrying1 || retrying2,
                functionRecorder = functionRecorder3,
                possibleTriggers = possibleTriggers3,
                fvfCache = fvfCache3,
-                fvfPredicateCache = fvfPredicateCache3,
-               fvfAsSnap = fvfAsSnap1 || fvfAsSnap2)
+               fvfPredicateCache = fvfPredicateCache3,
+               fvfAsSnap = fvfAsSnap1 || fvfAsSnap2,
+               psfPredicateCache = psfPredicateCache3,
+               psfAsSnap = psfAsSnap1 || psfAsSnap2
+          )
 
         case _ =>
 //          println("\n[Context.merge]")
