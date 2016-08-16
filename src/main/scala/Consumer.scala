@@ -56,8 +56,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
              (Q: (S, Term, C) => VerificationResult)
              : VerificationResult =
 
-    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, c1) =>
-      Q(σ \ h1, t, c1))
+    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, c1) => {
+      val c2 = c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)
+      Q(σ \ h1, t, c2)})
 
   def consumes(σ: S,
                p: Term,
@@ -67,7 +68,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               (Q: (S, Term, C) => VerificationResult)
               : VerificationResult =
 
-    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)(Q)
+    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((σ1, s1, c1) => {
+      val c2 = c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)
+      Q(σ1, s1, c2)})
 
   private def consumes(σ: S,
                        h: H,
@@ -92,13 +95,20 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           Q(σ \ h1, s1, c1))
       else
         consume(σ, h, p, φ, pvef(φ), c)((h1, s1, c1) =>
-          consumes(σ, h1, p, φs.tail, pvef, c1)((h2, s2, c2) => {
-            Q(h2, Combine(s1, s2), c2)}))
+          consumes(σ, h1, p, φs.tail, pvef, c1)((σ2, s2, c2) => {
+            Q(σ2, Combine(s1, s2), c2)}))
     }
 
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, C) => VerificationResult)
                        : VerificationResult = {
+
+    /* ATTENTION: Expressions such as `perm(...)` must be evaluated in-place,
+     * i.e. in the partially consumed heap which is denoted by `h` here. The
+     * evaluator evaluates such expressions in the heap
+     * `context.partiallyConsumedHeap`. Hence, this field must be updated every
+     * time permissions have been consumed.
+     */
 
     if (!φ.isInstanceOf[ast.And]) {
       log.debug(s"\nCONSUME ${utils.ast.sourceLineColumn(φ)}: $φ")
@@ -155,7 +165,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                                                                     decider.pcs.branchConditions,
                                                                     invFct.definitionalAxioms ++ fvfDomain ++ fvfDef.valueDefinitions)
                         val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(field, fvfDef.fvf) else fr1
-                        val c3 = c2.copy(functionRecorder = fr2)
+                        val c3 = c2.copy(functionRecorder = fr2,
+                                         partiallyConsumedHeap = Some(h1))
                         Q(h1, ch.fvf.convert(sorts.Snap), c3)
                       case None =>
                         Failure(pve dueTo InsufficientPermission(fa))}
@@ -175,7 +186,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               case Some((h1, ch, fvfDef, c3)) =>
                 val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
                 assume(fvfDomain ++ fvfDef.valueDefinitions)
-                Q(h1, ch.valueAt(tRcvr), c3)
+                val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
+                Q(h1, ch.valueAt(tRcvr), c4)
               case None => Failure(pve dueTo InsufficientPermission(fa))
             }}))
 
@@ -193,7 +205,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           evalLocationAccess(σ, locacc, pve, c1)((name, args, c2) =>
             decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
-                chunkSupporter.consume(σ, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))(Q)
+                chunkSupporter.consume(σ, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))((h1, s1, c3) => {
+                  val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
+                  Q(h1, s1, c4)})
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}))
 
@@ -211,6 +225,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             /* TODO: Consuming a wand chunk, respectively, transferring it if c.exhaleExt
              *       is true, should be implemented on top of MagicWandSupporter.transfer,
              *       or even on ChunkSupporter.consume.
+             * TODO: Does context.partiallyConsumedHeap need to be updated after consuming chunks?
              */
             magicWandSupporter.doWithMultipleHeaps(hs, c)((h1, c1) =>
               magicWandSupporter.getMatchingChunk(σ, h1, chWand, c1) match {
@@ -302,27 +317,27 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case _ =>
-        evalAndAssert(σ, h, φ, pve, c)((h1, t, c1) => {
-          Q(h1, t, c1)
+        evalAndAssert(σ, φ, pve, c)((t, c1) => {
+          Q(h, t, c1)
         })
     }
 
     consumed
   }
 
-  /* The expression is evaluated in the initial heap (σ.h), partially consumed heap (h)
-   * is made available to the evaluation via the context (C.partiallyConsumedHeap).
-   */
-  private def evalAndAssert(σ: S, h: H, e: ast.Exp, pve: PartialVerificationError, c: C)
-                           (Q: (H, Term, C) => VerificationResult)
+  private def evalAndAssert(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
+                           (Q: (Term, C) => VerificationResult)
                            : VerificationResult = {
 
-    /* Switch to the eval heap (σUsed) of magic wand's exhale-ext, if necessary.
+    /* It is expected that the partially consumed heap (h in the above implementation of
+     * `consume`) has already been assigned to `c.partiallyConsumedHeap`.
+     *
+     * Switch to the eval heap (σUsed) of magic wand's exhale-ext, if necessary.
      * This is done here already (the evaluator would do it as well) to ensure that the eval
      * heap is compressed by tryOrFail if the assertion fails.
      */
     val σ1 = σ \ magicWandSupporter.getEvalHeap(σ, c)
-    val c1 = c.copy(reserveHeaps = Nil, exhaleExt = false, partiallyConsumedHeap = Some(h))
+    val c1 = c.copy(reserveHeaps = Nil, exhaleExt = false)
 
     decider.tryOrFail[S](σ1, c1)((σ2, c2, QS, QF) => {
       eval(σ2, e, pve, c2)((t, c3) =>
@@ -335,9 +350,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         })
     })((_, c2) => {
       val c3 = c2.copy(reserveHeaps = c.reserveHeaps,
-                       exhaleExt = c.exhaleExt,
-                       partiallyConsumedHeap = c.partiallyConsumedHeap)
-      Q(h, Unit, c3)
+                       exhaleExt = c.exhaleExt)
+      Q(Unit, c3)
     })
   }
 }
