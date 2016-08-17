@@ -12,12 +12,14 @@ import viper.silver.ast.Program
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.{Set, Map, toMap}
+import viper.silicon.{Map, Set, toMap}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.supporters.qps.QuantifiedPredicateChunkSupporterProvider
+import viper.silver.verifier.reasons.InsufficientPermission
 
 class PredicateData(predicate: ast.Predicate)
                    (private val symbolConvert: SymbolConvert) {
@@ -64,6 +66,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[ST, H, S, DefaultContext[H]]
             with ChunkSupporterProvider[ST, H, S]
+            with QuantifiedPredicateChunkSupporterProvider[ST, H, S]
             with MagicWandSupporter[ST, H, S] =>
 
   private type C = DefaultContext[H]
@@ -169,6 +172,23 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       if (c.qpPredicates.contains(predicate)) {
         //TODO namduell: possible entry point to adapt...?
         println("qp")
+        val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, symbolConverter.toSort(arg.typ)))
+        val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
+        val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+        quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
+          case Some((h1, ch, psfDef, c2)) =>
+            println("some")
+            val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
+            decider.assume(psfDomain ++ psfDef.snapDefinitions)
+
+            val snap = ch.valueAt(tArgs)
+            println(snap)
+            produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c2)((σ2, c3) => {
+              decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+              Q(σ2 \ σ.γ, c3)})
+
+          case None => println("none"); Failure(pve dueTo InsufficientPermission(pa))
+        }
         Q(σ, c)
       } else {
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {

@@ -606,6 +606,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       val newPsfSort = freshPsf.sort.asInstanceOf[sorts.PredicateSnapFunction]
 
       quantifiedPredicates.foreach{predicate =>
+        //TODO nadmuell: adapt check?
         //val codomainSort = toSort(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
         //if (codomainSort == newPsfSort.codomainSort) {
           val psfSortForTOP = sorts.PredicateSnapFunction(newPsfSort.codomainSort)

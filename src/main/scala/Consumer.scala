@@ -234,7 +234,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 Q(h1, ch.valueAt(tArgs), c3)
               case None => Failure(pve dueTo InsufficientPermission(pa))
             }}))
-            Failure(pve dueTo InsufficientPermission(pa))
 
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) => {
