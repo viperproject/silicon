@@ -143,8 +143,11 @@ trait DefaultEvaluator[ST <: Store[ST],
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
-          c.fvfCache.get((fa.field, quantifiedChunks)) match {
+          c.fvfCache.get((fa.field, quantifiedChunks)) match { /* TOOD: Drop field from cache map, quantifiedChunks should suffice */
             case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
+              /* The next assertion must be made if the FVF definition is taken from the cache;
+               * in the other case it is part of quantifiedChunkSupporter.withValue.
+               */
               decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
