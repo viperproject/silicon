@@ -171,25 +171,21 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       if (c.qpPredicates.contains(predicate)) {
         //TODO namduell: possible entry point to adapt...?
-        println("qp")
         val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, symbolConverter.toSort(arg.typ)))
         val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
         val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
         quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
           case Some((h1, ch, psfDef, c2)) =>
-            println("some")
             val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
             decider.assume(psfDomain ++ psfDef.snapDefinitions)
 
             val snap = ch.valueAt(tArgs)
-            println(snap)
             produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c2)((σ2, c3) => {
               decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
               Q(σ2 \ σ.γ, c3)})
 
-          case None => println("none"); Failure(pve dueTo InsufficientPermission(pa))
+          case None => Failure(pve dueTo InsufficientPermission(pa))
         }
-        Q(σ, c)
       } else {
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
           produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {

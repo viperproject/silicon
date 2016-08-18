@@ -160,7 +160,6 @@ trait DeciderProvider[ST <: Store[ST],
     /* Assuming facts */
 
     def assume(t: Term) {
-      println(t)
       assume(Set(t))
     }
 
