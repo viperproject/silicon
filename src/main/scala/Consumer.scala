@@ -229,7 +229,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             quantifiedPredicateChunkSupporter.splitSingleLocation(σ, h, predicate, tArgs, formalVars, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
               case Some((h1, ch, psfDef, c3)) =>
-                val psfDomain = if (c3.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
+                val psfDomain = if (c3.psfAsSnap) psfDef.domainDefinitions else Seq.empty
                 assume(psfDomain ++ psfDef.snapDefinitions)
                 Q(h1, ch.valueAt(tArgs), c3)
               case None => Failure(pve dueTo InsufficientPermission(pa))

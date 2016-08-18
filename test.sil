@@ -1,9 +1,8 @@
 field f:Int
-
-
+field g:Int
 
 predicate pred(r:Ref) {
-    acc(r.f) && r.f == 0
+    acc(r.f)
 }
 
 predicate pred2(r:Ref, i:Int) {
@@ -13,44 +12,23 @@ predicate pred2(r:Ref, i:Int) {
 predicate empty() { true }
 
 /*
-method single_predicate(x: Ref)
+method p_test(x: Ref)
   requires acc(pred(x))
-  ensures acc(pred(x))
+  //ensures acc(pred(x))
 {
   unfold pred(x)
   x.f := 0
+  //fold pred(x)
+}*/
+
+method qp_test(x: Ref, xs: Seq[Ref])
+  requires x in xs
+  requires forall r:Ref :: r in xs ==> acc(pred(r))
+  //ensures acc(pred(x))
+{
+  unfold pred(x)
+  x.f := 1
   fold pred(x)
-}*/
-
-/*
-method quantified_singleArg(r: Ref, xs: Seq[Ref])
-  requires forall x:Ref :: x in xs ==> acc(pred2(x, 0))
-  requires acc(pred2(r, 1))
-  //ensures forall x:Ref :: x in xs ==> acc(pred(x))
-{
-  //unfold pred(x)
-  //x.f := 3
-  //fold pred(x)
-}*/
-
-
-method quantified_multipleArgs(r: Ref, xs: Seq[Ref])
-  requires forall x:Ref :: x in xs ==> acc(pred(x))
-  //requires r in xs
-  requires acc(pred(fun(r)))
-  ensures acc(pred(fun(r)))
-  //ensures forall x:Ref :: x in xs ==> acc(pred(x))
-{
-  //unfold pred(x)
-  //x.f := 3
-  //fold pred(x)
+  unfold pred(x)
+  //assert (x.f == 1)
 }
-
-function fun(r:Ref):Ref
-/*
-method quantified_field(r: Ref, xs: Seq[Ref])
-  requires forall x:Ref :: x in xs ==> acc(x.f)
-  requires acc(fun(r).f)
-  ensures acc(fun(r).f)
-  //ensures forall x:Ref :: x in xs ==> acc(x.f)
-{}*/

@@ -133,14 +133,24 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-        //TODO nadmuell: check whether quantified
-        val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
-        val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
-        val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
-        Q(σ \ h1, c3)})
+          if (c.qpPredicates.contains(predicate)) {
+            var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
+
+            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snap)
+            optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
+            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
+            Q(σ1/* \+ ch*/, c1)
+          } else {
+            val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
+            val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
+            val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
+            Q(σ \ h1, c3)
+          }
+      })
     }
 
     def unfold(σ: S,
