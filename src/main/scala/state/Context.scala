@@ -44,7 +44,7 @@ case class DefaultContext[H <: Heap[H]]
                           fvfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
                           fvfAsSnap: Boolean = false,
 
-                          psfCache: Map[(ast.Field, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
+                          psfCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
                           psfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
                           psfAsSnap: Boolean = false,
                           predicateSnapMap:Map[ast.Predicate, terms.Sort] = Map.empty)

@@ -8,7 +8,7 @@ package viper.silicon.supporters
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.ast.Program
+import viper.silver.ast.{Program, PredicateAccessPredicate, PredicateAccess}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces.state.factoryUtils.Ø
@@ -18,16 +18,19 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.QuantifiedPredicateChunkSupporterProvider
+import viper.silicon.supporters.qps.{QuantifiedPredicateChunkSupporterProvider, SummarisingPsfDefinition}
 import viper.silver.verifier.reasons.InsufficientPermission
 
 class PredicateData(predicate: ast.Predicate)
-                   (private val symbolConvert: SymbolConvert) {
+                (private val symbolConvert: SymbolConvert) {
 
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
   val triggerFunction =
     Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+
+  /*val quantifiedTriggerFunction =
+    Fun(Identifier(s"${predicate.name}%trigger"), sorts.PredicateSnapFunction +: argumentSorts, sorts.Bool)*/
 }
 
 trait PredicateSupporter[ST <: Store[ST],
@@ -180,22 +183,30 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       if (c.qpPredicates.contains(predicate)) {
-        //TODO namduell: possible entry point to adapt...?
-        val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, symbolConverter.toSort(arg.typ)))
+       val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, symbolConverter.toSort(arg.typ)))
+        /*val(quantifiedChunks, _) = quantifiedPredicateChunkSupporter.splitHeap(σ.h, predicate.name)
+        c.psfCache.get((predicate, quantifiedChunks)) match {
+          case Some(psfDef: SummarisingPsfDefinition) if !config.disableValueMapCaching() =>
+                val psfLookup = PredicateLookup(predicate.name, psfDef.psf, tArgs, formalVars)
+                val fr1 = c.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, psfLookup)
+                val c2 = c.copy(functionRecorder = fr1)
+                println(psfLookup)
+                println(c2) }*/
         val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
         val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
         quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
           case Some((h1, ch, psfDef, c2)) =>
             val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
             decider.assume(psfDomain ++ psfDef.snapDefinitions)
-
             val snap = ch.valueAt(tArgs)
+            println(snap)
             produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c2)((σ2, c3) => {
               decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
               Q(σ2 \ σ.γ, c3)})
 
           case None => Failure(pve dueTo InsufficientPermission(pa))
         }
+
       } else {
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
           produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
