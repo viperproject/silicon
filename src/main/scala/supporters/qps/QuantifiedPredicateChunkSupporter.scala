@@ -20,6 +20,7 @@ import viper.silicon.state.terms.utils.{BigPermSum, consumeExactRead}
 import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.utils.Counter
+import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
 
 
 case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term, invOfFct: Quantification, fctOfInv: Quantification) {
@@ -43,7 +44,7 @@ trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
 
 
 
-  def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term)
+  def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term, c:C)
   : (Term, Option[SingletonChunkPsfDefinition])
 
   def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]): Quantification
@@ -250,7 +251,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
         case true =>
           val (quantifiedChunks, _) = splitHeap(h, predicate.name)
-          val psfDef = summarizePredicateChunks(quantifiedChunks, predicate, qvars, condition, args, formalVars, false)
+          val psfDef = summarizePredicateChunks(quantifiedChunks, predicate, qvars, condition, args, formalVars, false, c)
 
           val psfDefToReturn =   psfDef.asInstanceOf[SummarisingPsfDefinition]
 
@@ -263,12 +264,13 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                                           condition: Term,
                                           args: Seq[Term],
                                           formalVars: Seq[Var],
-                                          isChunkPsf: Boolean)
+                                          isChunkPsf: Boolean,
+                                          c:C)
     : PsfDefinition = {
       Predef.assert(chunks.forall(_.name == predicate.name),
         s"Expected all chunks to be about precicate $predicate, but got ${chunks.mkString(", ")}")
 
-      val psf = freshPSF(predicate, isChunkPsf)
+      val psf = freshPSF(predicate, c, isChunkPsf)
 
       if (isChunkPsf) {
         if (qvars.isEmpty) {
@@ -298,13 +300,13 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       *         chunks. `ts` is the set of assumptions axiomatising the fresh
       *         field value function `fvf`.
       */
-    def quantifyChunksForPredicate(h: H, predicate: ast.Predicate): (H, Seq[SingletonChunkPsfDefinition]) = {
+    def quantifyChunksForPredicate(h: H, predicate: ast.Predicate, c:C): (H, Seq[SingletonChunkPsfDefinition]) = {
       var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
 
       val (chunks, psfDefOpts) =
         h.values.map {
           case ch: PredicateChunk if ch.name == predicate.name =>
-            val (psf, optPsfDef) = createPredicateSnapFunction(predicate, ch.args, formalArgs, ch.snap)
+            val (psf, optPsfDef) = createPredicateSnapFunction(predicate, ch.args, formalArgs, ch.snap, c)
             val qch = createSingletonQuantifiedPredicateChunk(ch.args, formalArgs, predicate.name, psf, ch.perm)
 
             (qch, optPsfDef)
@@ -316,9 +318,9 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       (H(chunks), psfDefOpts.flatten.toSeq)
     }
 
-    def quantifyHeapForPredicates(h: H, predicates: Seq[ast.Predicate]): (H, Seq[SingletonChunkPsfDefinition]) = {
+    def quantifyHeapForPredicates(h: H, predicates: Seq[ast.Predicate], c:C): (H, Seq[SingletonChunkPsfDefinition]) = {
       predicates.foldLeft((h, Seq[SingletonChunkPsfDefinition]())){case ((hAcc, psfDefsAcc), predicate) =>
-        val (h1, psfDef1) = quantifyChunksForPredicate(hAcc, predicate)
+        val (h1, psfDef1) = quantifyChunksForPredicate(hAcc, predicate, c)
 
         (h1, psfDefsAcc ++ psfDef1)
       }
@@ -398,7 +400,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
        * that talk about concrete receivers will not use the inverse function, and
        * thus will not trigger the axioms that define the values of the fvf.
        */
-      val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true)
+      val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
 
       decider.prover.logComment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
 
@@ -569,15 +571,14 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
 
     /* ATTENTION: Never create an PSF without calling this method! */
-    private def freshPSF(predicate: ast.Predicate, isChunkPsf: Boolean) = {
+    private def freshPSF(predicate: ast.Predicate, c:C, isChunkPsf: Boolean) = {
       freshPSFInAction = true
 
       bookkeeper.logfiles("psfs").println(s"isChunkPsf = $isChunkPsf")
 
       val freshPsf =
         if (isChunkPsf) {
-
-          val psfSort = sorts.PredicateSnapFunction(sorts.Snap)
+          val psfSort = sorts.PredicateSnapFunction(c.predicateSnapMap(predicate))
           val freshPsf = fresh("psf#part", psfSort)
 
           val psfTOP = Var(PsfTop(predicate.name), psfSort)
@@ -621,7 +622,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
     }
 
 
-    def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term)
+    def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term, c:C)
                                 : (Term, Option[SingletonChunkPsfDefinition]) =
 
       snap.sort match {
@@ -630,11 +631,11 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           (snap, None)
 
         case _ =>
-          val psf = freshPSF(predicate, true)
+          val psf = freshPSF(predicate, c:C, true)
           (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))) )
       }
 
-    def createSingletonPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term)
+    def createSingletonPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term, c:C)
     : (Term, Option[SingletonChunkPsfDefinition]) =
 
       snap.sort match {
@@ -642,7 +643,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           /* The value is already a field value function, in which case we don't create a fresh one. */
           (snap, None)
         case _ =>
-          val psf = freshPSF(predicate, true)
+          val psf = freshPSF(predicate, c, true)
           (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))))
       }
 

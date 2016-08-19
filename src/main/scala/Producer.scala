@@ -161,13 +161,13 @@ trait DefaultProducer[ST <: Store[ST],
             Q(h1, c3)}))
 
       case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), gain) =>
-        val predicate = c.program.findPredicate(predicateName)
+        val predicate:ast.Predicate = c.program.findPredicate(predicateName)
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
             decider.prover.logComment("define formalVArgs")
             var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
             decider.prover.logComment("createPredicateSnapFunction")
-            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, s)
+            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, s, c)
             decider.prover.logComment("assume snapDefinitions")
             optPsfDef.foreach(psfDef => assume(psfDef.snapDefinitions))
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
@@ -181,7 +181,7 @@ trait DefaultProducer[ST <: Store[ST],
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, gain, pve, c1)((pGain, c2) => {
             assume(PermAtMost(NoPerm(), pGain))
-            val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
+            var s:Term = sf(c1.predicateSnapMap(predicate))
             val pNettoGain = PermTimes(pGain, p)
             val (h1, c3) = addNewChunk(σ.h, tArgs, s, pNettoGain, c2)
             Q(h1, c3)}))
@@ -260,7 +260,7 @@ trait DefaultProducer[ST <: Store[ST],
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
-            val snap = sf(sorts.PredicateSnapFunction(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap)))
+            val snap = sf(sorts.PredicateSnapFunction(c.predicateSnapMap(predicate)))
             val additionalInvFctArgs = c1.quantifiedVariables
 
             val (ch, invFct) =

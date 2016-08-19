@@ -63,7 +63,9 @@ class DefaultVerifier(val config: Config)
   val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
   val domainsEmitter = new DefaultDomainsEmitter(decider.prover, domainTranslator, symbolConverter)
   val fieldValueFunctionsEmitter = new DefaultFieldValueFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, config)
-  val predicateSnapFunctionsEmitter = new DefaultPredicateSnapFunctionsEmitter(decider.prover, symbolConverter, preambleEmitter, config)
+  val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
+  val predicateSnapFunctionsEmitter = new DefaultPredicateSnapFunctionsEmitter(decider.prover, symbolConverter, predSnapGenerator, preambleEmitter, config)
+
 
   private val statefulSubcomponents = List[StatefulComponent](
     bookkeeper,
@@ -94,6 +96,8 @@ class DefaultVerifier(val config: Config)
   /* Program verification */
 
   def verify(program: ast.Program): List[VerificationResult] = {
+    predSnapGenerator.setup(program)
+
     emitPreamble(program)
 
 //    ev.predicateSupporter.handlePredicates(program)
@@ -131,7 +135,8 @@ class DefaultVerifier(val config: Config)
     DefaultContext[H](program = program,
                       qpFields = quantifiedFields,
                       qpPredicates = quantifiedPredicates,
-                      applyHeuristics = applyHeuristics)
+                      applyHeuristics = applyHeuristics,
+                      predicateSnapMap = predSnapGenerator.snapMap)
   }
 
   private def excludeMethod(method: ast.Method) = (
