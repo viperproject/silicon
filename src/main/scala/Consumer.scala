@@ -177,17 +177,17 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val (invFct, neutralArgs) = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
+                val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, toSort(arg.typ)))
                 decider.prover.logComment("Nested auxiliary terms")
-                /*
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
-                val isInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
+                val isInjective = quantifiedPredicateChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
                 decider.prover.logComment("Check receiver injectivity")
                 decider.assert(σ, isInjective) {
                   case true =>
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
                     val inversePredicate = invFct(neutralArgs) // e⁻¹(arg1, ..., argn)
-                    quantifiedChunkSupporter.splitLocations(σ, h, Some(tQVar), tCond, predicate, tArgs, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, Some(tQVar), tCond, predicate, tArgs, formalVars, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
                       case Some((h1, ch, fvfDef, c2)) =>
                         val fvfDomain = if (c2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
@@ -200,7 +200,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                           Q(h1, ch.fvf.convert(sorts.Snap), c3)
                       case None =>
                         Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
-                  case false =>*/
+                  case false =>
                     Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))
               case false =>
                 Failure(pve dueTo NegativePermission(loss))}}
