@@ -84,6 +84,19 @@ trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
                (Q: SummarisingPsfDefinition => VerificationResult)
                : VerificationResult
 
+  def splitLocations(σ: S,
+                     h: H,
+                     predicate: ast.Predicate,
+                     qvar: Some[Var], // x
+                     formalVars: Seq[Var], // e1⁻¹(arg1, ..., argn), ..., en⁻¹(arg1, ..., argn)
+                     args: Seq[Term], // e1(x), ..., en(x)
+                     condition: Term, // c(x)
+                     perms: Term, // p(x)
+                     chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
+                     c: C)
+                    (Q: Option[(H, QuantifiedPredicateChunk, QuantifiedChunkPsfDefinition, C)] => VerificationResult)
+  : VerificationResult
+
   def splitSingleLocation(σ: S,
                           h: H,
                           predicate: ast.Predicate,
