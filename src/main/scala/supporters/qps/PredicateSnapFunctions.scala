@@ -45,7 +45,7 @@ private[qps] object PsfDefinition {
         And(
           PermLess(NoPerm(), sourceChunk.perm.replace(formalArgs, args)),
           if (predInPsfDomain)
-            SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), Domain(predicate.name, psf))
+            SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), PredicateDomain(predicate.name, psf,args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)).sort ))
           else
             True()),
             PredicateLookup(predicate.name, psf, args, formalArgs) === PredicateLookup(predicate.name, sourceChunk.psf, args, formalArgs))
@@ -69,7 +69,7 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
   }
 
   val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(argsSnap)))
+  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf, argsSnap.sort), SingletonSet(argsSnap)))
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
@@ -125,7 +125,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 
   val domainDefinitions: Seq[Term] = {
     val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-    val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
+    val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf, argsSnap.sort))
 
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)

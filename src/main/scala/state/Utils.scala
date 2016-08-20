@@ -132,7 +132,7 @@ package object utils {
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
     case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
-    case PredicateDomain(_, psf) => psf :: Nil
+    case PredicateDomain(_, psf, _) => psf :: Nil
     case PredicateLookup(_, psf, args, formalVars) => Seq(psf) ++ args ++ formalVars
     case PsfAfterRelation(_, psf2, psf1) => psf2 :: psf1 :: Nil
     case SummarisingPsfDefinition(_, psf, args, formalVars, _) => Seq(psf) ++ args ++ formalVars
@@ -218,6 +218,9 @@ package object utils {
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
       case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
+      case PredicateDomain(p, psf, sort) => PredicateDomain(p, go(psf), sort)
+      case PredicateLookup(p, psf, args, formalVars) => PredicateLookup(p, go(psf), args map go,formalVars map go)
+      case PsfAfterRelation(p, psf2, psf1) => PsfAfterRelation(p, go(psf2), go(psf1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

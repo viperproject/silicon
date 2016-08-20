@@ -21,14 +21,37 @@ method p_test(x: Ref)
   //fold pred(x)
 }*/
 
+/*
 method qp_test(x: Ref, xs: Seq[Ref])
   requires x in xs
   requires forall r:Ref :: r in xs ==> acc(pred(r))
-  //ensures acc(pred(x))
+  ensures forall r:Ref :: r == x ==> acc(pred(r))
 {
-  unfold pred(x)
-  x.f := 1
-  fold pred(x)
-  unfold pred(x)
+  //unfold pred(x)
+  //x.f := 1
+  //fold pred(x)
+  //unfold pred(x)
   //assert (x.f == 1)
-}
+}*/
+/*
+method qp_exhaleTest(x:Ref, y:Ref)
+requires acc(pred(x))
+requires acc(pred(y))
+ensures forall r:Ref :: r == x ==> acc(pred(r))
+
+method qp_exhaleTest2(x:Ref, y:Ref)
+requires acc(pred(x))
+requires acc(pred(y))
+ensures forall r:Ref :: (r == x) || (r==y) ==> acc(pred(r))
+
+method qp_exhaleTest3(x:Ref, y:Ref)
+requires acc(pred(x))
+requires acc(pred(y))
+ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))
+
+method qp_exhaleTest4(x:Ref, y:Ref)
+requires acc(pred(x))
+ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))*/
+
+method qp_exhaleTest5(x:Ref, y:Ref)
+ensures forall r:Ref :: r == x ==> acc(pred(r))
