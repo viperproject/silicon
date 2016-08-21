@@ -165,6 +165,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               case false =>
                 Failure(pve dueTo NegativePermission(loss))}}
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
+        println("exhaling Quantifier: ")
+        println(predAccPred)
         val predicate = c.program.findPredicate(predname)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , Nil, qid, pve, c) {
@@ -189,6 +191,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     val inversePredicate = invFct(neutralArgs) // e⁻¹(arg1, ..., argn)
                     quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar),formalVars,  tArgs, tCond, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
+                        println(h1)
+                        println(ch)
+                        println(psfDef)
+                        println(c2)
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
                        assume(psfDomain ++ psfDef.snapDefinitions)
@@ -199,11 +205,13 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                         val c3 = c2.copy(functionRecorder = fr2)
                           Q(h1, ch.psf.convert(sorts.Snap), c3)
                       case None =>
+                        println("splitLocations returned nothing")
                         Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
                   case false =>
+                    println("not injective");
                     Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))}
               case false =>
-                Failure(pve dueTo NegativePermission(loss))}}
+                println("PermNonNegative"); Failure(pve dueTo NegativePermission(loss))}}
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>

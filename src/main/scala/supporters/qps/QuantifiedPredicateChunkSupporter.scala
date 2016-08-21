@@ -376,8 +376,10 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         splitPredicate(σ, h, predicate, qvar, formalVars, args, condition, perms, chunkOrderHeuristic, c)
 
       if (success) {
+        println("success")
         Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkPsfDefinition], c))
       } else
+        println("no success")
         Q(None)
     }
 
@@ -394,9 +396,21 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                       c: C)
     : (H, QuantifiedPredicateChunk, PsfDefinition, Boolean) = {
 
-      val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
-      val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
+     println("-------splitPredicate--------")
+     println(predicate)
+     println(qvar)
+     println(formalVars)
+     println(args)
+     println(condition)
+     println(perms)
+     println(chunkOrderHeuristic)
+     println("---------------")
 
+      val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
+     println(quantifiedChunks)
+      val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
+     println("candidates")
+     println(candidates)
 
       val pInit = qvar.fold(perms)(x => perms.replace(args, formalVars)) // p(e⁻¹(arg1, ..., argn))
       val conditionOfInv = qvar.fold(condition)(x => condition.replace(args, formalVars)) // c(e⁻¹(arg1, ..., argn))
@@ -414,7 +428,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
        * thus will not trigger the axioms that define the values of the fvf.
        */
       val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
-
+      println(psfDef)
       decider.prover.logComment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
 
       val precomputedData = candidates map { ch =>
@@ -428,7 +442,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         val permsTakenFunc = Macro(macroName, formalSorts, sorts.Perm)
         val permsTakenFApp = (t: Seq[Term]) => App(permsTakenFunc, t)
 
-        pNeeded = PermMinus(pNeeded, permsTakenFApp(args)) //TODO: args or formalArgs?
+        pNeeded = PermMinus(pNeeded, permsTakenFApp(formalVars)) //TODO: args or formalArgs?
         (ch, permsTakenFApp(formalVars), pNeeded)
       }
 
@@ -659,7 +673,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           val psf = freshPSF(predicate, c, true)
           (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))))
       }
-
+/*
     def domainDefinitionAxioms(predicate: ast.Predicate, qvar: Var, cond: Term, args: Seq[Term], psf: Term, inv: PredicateInverseFunction) = {
       val snap = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
       val axioms = cond match {
@@ -675,7 +689,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           /* TODO: Why does this axiom not use `?r` and inv? */
           Forall(qvar,
             Iff(
-              SetIn(snap, Domain(predicate.name, psf)),
+              SetIn(snap, PredicateDomain(predicate.name, psf)),
               cond),
   //          Trigger(Lookup(field.name, fvf, receiver)))
             if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(SetIn(snap, Domain(predicate.name, psf))) :: Nil,
@@ -695,7 +709,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       //    log.println(s"axiom = $axiom")
 
       axioms
-    }
+    }*/
 
     def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
       var qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))

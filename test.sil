@@ -12,28 +12,11 @@ predicate pred2(r:Ref, i:Int) {
 predicate empty() { true }
 
 /*
-method p_test(x: Ref)
-  requires acc(pred(x))
-  //ensures acc(pred(x))
-{
-  unfold pred(x)
-  x.f := 0
-  //fold pred(x)
-}*/
+method qp_exhaleTest6(x: Ref, xs: Seq[Ref])
+requires x in xs
+requires forall r:Ref :: r in xs ==> acc(pred(r))
+ensures forall r:Ref :: r == x ==> acc(pred(r))
 
-/*
-method qp_test(x: Ref, xs: Seq[Ref])
-  requires x in xs
-  requires forall r:Ref :: r in xs ==> acc(pred(r))
-  ensures forall r:Ref :: r == x ==> acc(pred(r))
-{
-  //unfold pred(x)
-  //x.f := 1
-  //fold pred(x)
-  //unfold pred(x)
-  //assert (x.f == 1)
-}*/
-/*
 method qp_exhaleTest(x:Ref, y:Ref)
 requires acc(pred(x))
 requires acc(pred(y))
@@ -51,7 +34,24 @@ ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))
 
 method qp_exhaleTest4(x:Ref, y:Ref)
 requires acc(pred(x))
-ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))*/
+ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))
 
 method qp_exhaleTest5(x:Ref, y:Ref)
+requires forall r:Ref :: r == x ==> acc(pred(r))
 ensures forall r:Ref :: r == x ==> acc(pred(r))
+{}
+
+method qp_fancyExample(x:Ref, y:Ref)
+requires forall r:Ref :: r == x ==> acc(pred2(r, 1))
+//ensures acc(pred2(x, 2)) //not working after folding
+{
+    unfold acc(pred2(x, 1))
+    assert(x.f == 1)
+    x.f := 2
+    fold acc(pred2(x, 2))
+}*/
+
+method qp_fancyExample(x:Ref, y:Ref)
+requires forall r:Ref :: r == x ==> acc(pred(r))
+ensures acc(pred(x)) //not working after folding
+{}
