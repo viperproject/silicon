@@ -39,7 +39,7 @@ object SiliconBuild extends Build {
               name := "Silicon",
               mainClass in assembly := Some("viper.silicon.Silicon"),
               jarName in assembly := "silicon.jar",
-              // test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
+              test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
               fork := true,
                 /* Fork Silicon when run and tested. Avoids problems with file
                  * handlers on Windows 7 that remain open until Sbt is closed,

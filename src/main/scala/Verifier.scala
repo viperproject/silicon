@@ -175,6 +175,15 @@ trait AbstractVerifier[ST <: Store[ST],
     /** Write DOT-Representation of the logger. **/
     SymbExLogger.writeDotFile()
 
+    //write the other possible Representations as well
+    //SymbExLogger.writeSimpleTreeFile()
+    //SymbExLogger.writeTypeTreeFile()
+    //if(config.ideMode()) {
+    //  logger.debug("SymbExLoggerHierarchyStart\n")
+    //  logger.debug(SymbExLogger.toIdeHierarchy())
+    //  logger.debug("SymbExLoggerHierarchyEnd\n")
+    //  SymbExLogger.writeIdeHierarchyFile()
+    //}
     res
   }
 

@@ -101,7 +101,8 @@ object SymbExLogger {
   /**
    * Passes config from Silicon to SymbExLogger.
    * Config is assigned only once, further calls are ignored.
-   * @param c Config of Silicon.
+    *
+    * @param c Config of Silicon.
    */
   def setConfig(c: Config): Unit = {
     if(config == null)
@@ -121,6 +122,11 @@ object SymbExLogger {
     simpleTreeRenderer.render(memberList)
   }
 
+  def toIdeHierarchy(): String = {
+    val renderer = new IdeHierarchyRenderer()
+    renderer.render(memberList)
+  }
+
   /**
    * Simple string representation of the logs, but contains only the types of the records
    * and not their values. Original purpose was usage for unit testing.
@@ -134,10 +140,10 @@ object SymbExLogger {
    * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
    */
   def writeDotFile(): Unit = {
-    if(FLAG_WRITE_FILES) {
+    if(FLAG_WRITE_FILES || config.ideMode()) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
-      val pw = new java.io.PrintWriter(new File("utils/symbolicRecording/dot_input.dot"))
+      val pw = new java.io.PrintWriter(new File(getOutputFolder() + "dot_input.dot"))
       try pw.write(str) finally pw.close()
     }
   }
@@ -147,11 +153,43 @@ object SymbExLogger {
    * and functions in a HTML-file.
    */
   def writeJSFile(): Unit = {
-    if(FLAG_WRITE_FILES) {
+    if(FLAG_WRITE_FILES || config.ideMode()) {
       val jsRenderer = new JSTreeRenderer()
-      val pw = new java.io.PrintWriter(new File("utils/symbolicRecording/sedebuggertree/executionTreeData.js"))
+      val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(jsRenderer.render(memberList)) finally pw.close()
     }
+  }
+
+  def writeSimpleTreeFile(): Unit = {
+    if(FLAG_WRITE_FILES) {
+      val renderer = new SimpleTreeRenderer()
+      val pw = new java.io.PrintWriter(new File(".vscode/simpleTree.txt"))
+      try pw.write(renderer.render(memberList)) finally pw.close()
+    }
+  }
+
+  def writeIdeHierarchyFile(): Unit = {
+    if(config.ideMode()) {
+      val renderer = new IdeHierarchyRenderer()
+      val pw = new java.io.PrintWriter(new File(getOutputFolder() + "ideHierarchy.txt"))
+      try pw.write(renderer.render(memberList)) finally pw.close()
+    }
+  }
+
+  def writeTypeTreeFile(): Unit = {
+    if(FLAG_WRITE_FILES) {
+      val renderer = new TypeTreeRenderer()
+      val pw = new java.io.PrintWriter(new File(getOutputFolder() + "typeTree.txt"))
+      try pw.write(renderer.render(memberList)) finally pw.close()
+    }
+  }
+  
+  def getOutputFolder():String = {
+    if(config.ideMode()){
+        ".vscode/"
+      }else{
+        "utils/symbolicRecording/"
+      }
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
@@ -201,7 +239,8 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
    * Inserts a record. For usage of custom records, take a look at the guidelines in SymbExLogger.scala.
    * For every insert, there MUST be a call of collapse at the appropriate place in the code. The order
    * of insert/collapse-calls defines the record-hierarchy.
-   * @param s Record for symbolic execution primitive.
+    *
+    * @param s Record for symbolic execution primitive.
    * @return Identifier of the inserted record, must be given as argument to the
    *         respective call of collapse.
    */
@@ -221,7 +260,8 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
   /**
    * 'Finishes' the recording at the current node and goes one level higher in the record tree.
    * There should be only one call of collapse per insert.
-   * @param v The node that will be 'collapsed'. Is only used for filtering-purposes, can be null.
+    *
+    * @param v The node that will be 'collapsed'. Is only used for filtering-purposes, can be null.
    * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
    *          value).
    */
@@ -249,7 +289,8 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
    * is logged correctly, which is sometimes not the case in branching when collapses from the continuation
    * in the If-branch remove the branching-record itself from the stack. Currently only used for impure
    * Branching (CondExp/Implies in Producer/Consumer).
-   * @param s Record that should record the else-branch.
+    *
+    * @param s Record that should record the else-branch.
    */
   def prepareOtherBranch(s: SymbolicRecord): Unit = {
     stack = s::stack
@@ -317,8 +358,8 @@ class DotTreeRenderer extends Renderer[String] {
     val main = s.main
     var output = ""
 
-    output = output + "    "+main.dotNode()+" [label="+main.dotLabel()+"];\n"
-    output = output + subsToDot(main)
+    output += "    "+main.dotNode()+" [label="+main.dotLabel()+"];\n"
+    output += subsToDot(main)
     output
   }
 
@@ -338,8 +379,8 @@ class DotTreeRenderer extends Renderer[String] {
     s match {
       case ite: IfThenElseRecord => {
         val ite_parent = previousNode
-        output = output + "    " + ite.thnCond.dotNode() + " [label=" + ite.thnCond.dotLabel() + "];\n"
-        output = output + "    " + previousNode + " -> " + ite.thnCond.dotNode() + ";\n"
+        output += "    " + ite.thnCond.dotNode() + " [label=" + ite.thnCond.dotLabel() + "];\n"
+        output += "    " + previousNode + " -> " + ite.thnCond.dotNode() + ";\n"
 
         // Activate either this or the next line (uncomment). If you use the first, the
         // representation will not show the evaluation of the if-condition, knowing that
@@ -348,85 +389,85 @@ class DotTreeRenderer extends Renderer[String] {
         // 'subsToDot(ite.thnCond).
 
         // previousNode = ite.thnCond.dotNode()
-        output = output + subsToDot(ite.thnCond)
+        output += subsToDot(ite.thnCond)
 
         for (rec <- ite.thnSubs) {
-          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output = output + subsToDot(rec)
+          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output += subsToDot(rec)
         }
         previousNode = ite_parent
-        output = output + "    " + ite.elsCond.dotNode() + " [label=" + ite.elsCond.dotLabel() + "];\n"
-        output = output + "    " + previousNode + " -> " + ite.elsCond.dotNode() + ";\n"
+        output += "    " + ite.elsCond.dotNode() + " [label=" + ite.elsCond.dotLabel() + "];\n"
+        output += "    " + previousNode + " -> " + ite.elsCond.dotNode() + ";\n"
 
         // Same as above.
         // previousNode = ite.elsCond.dotNode()
-        output = output + subsToDot(ite.elsCond)
+        output += subsToDot(ite.elsCond)
 
         for (rec <- ite.elsSubs) {
-          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output = output + subsToDot(rec)
+          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output += subsToDot(rec)
         }
       }
       case ce: CondExpRecord => {
 
-        output = output + "    " + ce.cond.dotNode() + " [label="+ce.cond.dotLabel()+"];\n"
-        output = output + "    " + previousNode + " -> " + ce.cond.dotNode() + ";\n"
+        output += "    " + ce.cond.dotNode() + " [label="+ce.cond.dotLabel()+"];\n"
+        output += "    " + previousNode + " -> " + ce.cond.dotNode() + ";\n"
         previousNode = ce.cond.dotNode()
 
-        output = output + "    " + ce.thnExp.dotNode() + " [label="+ce.thnExp.dotLabel()+"];\n"
-        output = output + "    " + previousNode + " -> " + ce.thnExp.dotNode() + ";\n"
-        output = output + subsToDot(ce.thnExp)
+        output += "    " + ce.thnExp.dotNode() + " [label="+ce.thnExp.dotLabel()+"];\n"
+        output += "    " + previousNode + " -> " + ce.thnExp.dotNode() + ";\n"
+        output += subsToDot(ce.thnExp)
         val thnExp_end = previousNode
 
         previousNode = ce.cond.dotNode()
-        output = output + "    " + ce.elsExp.dotNode() + " [label="+ce.elsExp.dotLabel()+"];\n"
-        output = output + "    " + previousNode + " -> " + ce.elsExp.dotNode() + ";\n"
-        output = output + subsToDot(ce.elsExp)
+        output += "    " + ce.elsExp.dotNode() + " [label="+ce.elsExp.dotLabel()+"];\n"
+        output += "    " + previousNode + " -> " + ce.elsExp.dotNode() + ";\n"
+        output += subsToDot(ce.elsExp)
         val elsExp_end = previousNode
 
         val join_node = unique_node_number().toString()
-        output = output + "    " + join_node + " [label=\"Join\"];\n"
-        output = output + "    " + thnExp_end + " -> " + join_node + ";\n"
-        output = output + "    " + elsExp_end + " -> " + join_node + ";\n"
+        output += "    " + join_node + " [label=\"Join\"];\n"
+        output += "    " + thnExp_end + " -> " + join_node + ";\n"
+        output += "    " + elsExp_end + " -> " + join_node + ";\n"
         previousNode = join_node
       }
       case imp: GlobalBranchRecord => {
         val imp_parent = previousNode
         for (rec <- imp.thnSubs) {
-          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output = output + subsToDot(rec)
+          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output += subsToDot(rec)
         }
         previousNode = imp_parent
         for (rec <- imp.elsSubs) {
-          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output = output + subsToDot(rec)
+          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output += subsToDot(rec)
         }
       }
 
       case mc: MethodCallRecord => {
         val mc_parent = previousNode
-        output = output + "    " + mc.dotNode() + " [label="+mc.dotLabel()+"];\n"
+        output += "    " + mc.dotNode() + " [label="+mc.dotLabel()+"];\n"
         previousNode = mc.dotNode()
 
         for(p <- mc.parameters){
-          output = output + "    " + p.dotNode() + " [label=\"parameter: "+p.toSimpleString()+"\"];\n"
-          output = output + "    " + previousNode + " -> " + p.dotNode() + ";\n"
-          output = output + subsToDot(p)
+          output += "    " + p.dotNode() + " [label=\"parameter: "+p.toSimpleString()+"\"];\n"
+          output += "    " + previousNode + " -> " + p.dotNode() + ";\n"
+          output += subsToDot(p)
         }
         previousNode = mc.dotNode()
 
-        output = output + "    " + mc.precondition.dotNode() + " [label=\"precondition: "+mc.precondition.toSimpleString()+"\"];\n"
-        output = output + "    " + previousNode + " -> " + mc.precondition.dotNode() + ";\n"
-        output = output + subsToDot(mc.precondition)
+        output += "    " + mc.precondition.dotNode() + " [label=\"precondition: "+mc.precondition.toSimpleString()+"\"];\n"
+        output += "    " + previousNode + " -> " + mc.precondition.dotNode() + ";\n"
+        output += subsToDot(mc.precondition)
         previousNode = mc.dotNode()
 
-        output = output + "    " + mc.postcondition.dotNode() + " [label=\"postcondition: "+mc.postcondition.toSimpleString()+"\"];\n"
-        output = output + "    " + previousNode + " -> " + mc.postcondition.dotNode() + ";\n"
-        output = output + subsToDot(mc.postcondition)
+        output += "    " + mc.postcondition.dotNode() + " [label=\"postcondition: "+mc.postcondition.toSimpleString()+"\"];\n"
+        output += "    " + previousNode + " -> " + mc.postcondition.dotNode() + ";\n"
+        output += subsToDot(mc.postcondition)
         previousNode = mc.dotNode()
 
 
@@ -435,9 +476,9 @@ class DotTreeRenderer extends Renderer[String] {
         if(s.subs.isEmpty)
           return ""
         for(rec <- s.subs) {
-          output = output + "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
-          output = output + "    " + previousNode + " -> " + rec.dotNode() + ";\n"
-          output = output + subsToDot(rec)
+          output += "    " + rec.dotNode() + " [label=" + rec.dotLabel() + "];\n"
+          output += "    " + previousNode + " -> " + rec.dotNode() + ";\n"
+          output += subsToDot(rec)
         }
       }
     }
@@ -455,113 +496,113 @@ class JSTreeRenderer extends Renderer[String] {
 
   def render(memberList: List[SymbLog]): String = {
     var str = "var executionTreeData = [\n"
-    for(m <- memberList) {
-      str = str + renderMember(m) + ", \n"
-    }
-    str = str + "]\n"
+    str += memberList.map(s => renderMember(s)).fold(""){(a,b) => if(a == "")b else a+", \n"+b}+ "]\n"
     return str
   }
 
   def renderMember(member: SymbLog): String = {
     val main = member.main
     var output = ""
-    output = output + recordToJS(main) + "\n"
+    output += recordToJS(main) + "\n"
     return output
   }
 
   private def recordToJS(s: SymbolicRecord): String = {
     var output = ""
+
+    val name = "\"name\"";
+    val open = "\"open\"";
+    val prestate = "\"prestate\"";
+    val children = "\"children\"";
+    val store = "\"store\"";
+    val heap = "\"heap\"";
+    val pcs = "\"pcs\"";
+
     s match {
       case ite: IfThenElseRecord => {
-        output = output + "{ name: \'IfThenElse\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
-        output = output + "{ name: \'if " +ite.thnCond.toSimpleString()+ "\', open: true, prestate: "
-        output = output + "{store: \"" + printState(ite.thnCond) + "\", heap: \"\", pcs: \"\"}"
-        output = output + ",\n children: [\n"
-        for (sub <- ite.thnSubs) {
-          output = output + recordToJS(sub) + ", \n"
-        }
-        output = output + "]},\n"
-        output = output + "{ name: \'else " +ite.elsCond.toSimpleString()+ "\', open: true, prestate: "
-        output = output + "{store: \"" + printState(ite.elsCond) + "\", heap: \"\", pcs: \"\"}"
-        output = output + ",\n children: [\n"
-        for (sub <- ite.elsSubs) {
-          output = output + recordToJS(sub) + ", \n"}
-        output = output + "]}\n"
-        output = output + "]}"
+        output += "{"+name+": \"IfThenElse\","+open+": true, "+prestate+": "
+        output += "{"+store+": \"\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
+        output += "{"+name+": \"if " +ite.thnCond.toSimpleString()+ "\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(ite.thnCond) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += ",\n"+children+": [\n"
+        output += combine(ite.thnSubs)
+        output += "]},\n"
+        output += "{"+name+": \"else " +ite.elsCond.toSimpleString()+ "\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(ite.elsCond) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += ",\n"+children+": [\n"
+        output += combine(ite.elsSubs)
+        output += "]}\n"
+        output += "]}"
       }
       case ce: CondExpRecord => {
-        output = output + "{ name: \'"+ce.toString()+"\', open: true, prestate: "
-        output = output + "{store: \"" + printState(ce) + "\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
-        output = output + recordToJS(ce.thnExp) + ", \n"
-        output = output + recordToJS(ce.elsExp) + "]}"
+        output += "{"+name+": \""+ce.toString()+"\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(ce) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
+        output += recordToJS(ce.thnExp) + ", \n"
+        output += recordToJS(ce.elsExp) + "]}"
       }
       case gb: GlobalBranchRecord => {
-        output = output + "{ name: \'"+gb.toString()+"\', open: true, prestate: "
-        output = output + "{store: \"" + printState(gb) + "\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
-        output = output + "{ name: \'Branch 1: " + "\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
-        output = output + ",\n children: [\n"
-        for (sub <- gb.thnSubs) {
-          output = output + recordToJS(sub) + ", \n"
-        }
-        output = output + "]},\n"
-        output = output + "{ name: \'Branch 2: " + "\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
-        output = output + ",\n children: [\n"
-        for (sub <- gb.elsSubs) {
-          output = output + recordToJS(sub) + ", \n"}
-        output = output + "]}\n"
-        output = output + "]}"
+        output += "{"+name+": \""+gb.toString()+"\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(gb) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
+        output += "{"+name+": \"Branch 1: " + "\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"\","+heap+": \"\","+pcs+": \"\"}"
+        output += ",\n"+children+": [\n"
+        output += combine(gb.thnSubs)
+        output += "]},\n"
+        output += "{"+name+": \"Branch 2: " + "\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"\","+heap+": \"\","+pcs+": \"\"}"
+        output += ",\n"+children+": [\n"
+        output += combine(gb.elsSubs)
+        output += "]}\n"
+        output += "]}"
       }
       case mc: MethodCallRecord => {
-        output = output + "{ name: \'"+mc.toString()+"\', open: true, prestate: "
-        output = output + "{store: \"" + printState(mc) + "\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
+        output += "{"+name+": \""+mc.toString()+"\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(mc) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
 
-        output = output + "{ name: \'parameters\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
-        for(p <- mc.parameters){
-          output = output + recordToJS(p) + ", \n"
-        }
-        output = output + "]},"
+        output += "{"+name+": \"parameters\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
+        output += combine(mc.parameters)
+        output += "]},"
 
-        output = output + "{ name: \'precondition\', open: true, prestate: "
-        output = output + "{store: \"" + printState(mc.precondition) + "\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
-        output = output + recordToJS(mc.precondition)
-        output = output + "]},"
+        output += "{"+name+": \"precondition\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(mc.precondition) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
+        output += recordToJS(mc.precondition)
+        output += "]},"
 
-        output = output + "{ name: \'postcondition\', open: true, prestate: "
-        output = output + "{store: \"" + printState(mc.postcondition) + "\", heap: \"\", pcs: \"\"}"
-        output = output + "\n, children: [\n"
-        output = output + recordToJS(mc.postcondition)
-        output = output + "]}"
+        output += "{"+name+": \"postcondition\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(mc.postcondition) + "\","+heap+": \"\","+pcs+": \"\"}"
+        output += "\n,"+children+": [\n"
+        output += recordToJS(mc.postcondition)
+        output += "]}"
 
-        output = output + "]}"
+        output += "]}"
       }
       case cr: CommentRecord => {
-        output = output + "{ name: \'"+cr.toString+"\', open: true, prestate: "
-        output = output + "{store: \"\", heap: \"\", pcs: \"\"}}"
+        output += "{"+name+": \""+cr.toString+"\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"\","+heap+": \"\","+pcs+": \"\"}}"
       }
       case _ => {
-        output = output + "{ name: \'" + s.toString() + "\', open: true, prestate: "
-        output = output + "{store: \"" + printState(s) + "\", heap: \"\", pcs: \"\"}"
+        output += "{"+name+": \"" + s.toString() + "\","+open+": true,"+prestate+": "
+        output += "{"+store+": \"" + printState(s) + "\","+heap+": \"\","+pcs+": \"\"}"
         if (!s.subs.isEmpty) {
-          output = output + ",\n children: [\n"
-          for (sub <- s.subs) {
-            output = output + recordToJS(sub) + ", \n"
-          }
-          output = output + "]"
+          output += ",\n"+children+": [\n"
+          output += combine(s.subs)
+          output += "]"
         }
-        output = output + "}"
+        output += "}"
       }
     }
     return output
+  }
+
+  def combine(list:List[SymbolicRecord]):String = {
+    list.map(s => recordToJS(s)).fold(""){(a,b) => if(a == "")b else a+", \n"+b} + "\n"
   }
 
   def printState(s: SymbolicRecord): String = {
@@ -642,6 +683,76 @@ class SimpleTreeRenderer extends Renderer[String] {
         str = str + s.toString() + "\n"
         for (sub <- s.subs) {
           str = str + indent + toSimpleTree(sub, n + 1)
+        }
+      }
+    }
+    return str
+  }
+}
+
+class IdeHierarchyRenderer extends Renderer[String] {
+  def render(memberList: List[SymbLog]): String = {
+    var res = ""
+    for (m <- memberList){
+      res = res + renderMember(m) + "\n"
+    }
+    res
+  }
+
+  def renderMember(member: SymbLog): String = {
+    toIdeHierarchy(member.main, 1)
+  }
+
+  def toIdeHierarchy(s: SymbolicRecord, n: Int): String = {
+    var indentWithoutNumber = ""
+    for(i <- 1 to n) {
+      indentWithoutNumber = indentWithoutNumber + "  "
+    }
+    var indent = n+indentWithoutNumber;
+
+    var str = ""
+    s match {
+      case ite: IfThenElseRecord => {
+        str = str + "if: " + ite.thnCond.toSimpleString()+"\n"
+        str = str + indent + toIdeHierarchy(ite.thnCond, n+1)
+        for(sub <- ite.thnSubs){
+          str = str + indent + toIdeHierarchy(sub, n+1)
+        }
+        str = str + n+indentWithoutNumber.substring(2) + "else: " + ite.elsCond.toSimpleString()+"\n"
+        str = str + indent + toIdeHierarchy(ite.elsCond, n+1)
+        for(sub <- ite.elsSubs){
+          str = str + indent + toIdeHierarchy(sub, n+1)
+        }
+      }
+      case ce: CondExpRecord => {
+        str = str + ce.toString()+"\n"
+        str = str + indent + toIdeHierarchy(ce.thnExp, n+1)
+        str = str + indent + toIdeHierarchy(ce.elsExp, n+1)
+        return str
+      }
+      case gb: GlobalBranchRecord => {
+        str = str + "branch1:\n"
+        for(sub <- gb.thnSubs){
+          str = str + indent + toIdeHierarchy(sub, n+1)
+        }
+
+        str = str + n+indentWithoutNumber.substring(2) + "branch2:\n"
+        for(sub <- gb.elsSubs){
+          str = str + indent + toIdeHierarchy(sub, n+1)
+        }
+      }
+      case mc: MethodCallRecord => {
+        str = str + mc.toString()+"\n"
+        str = str + indent + "pre: " + toIdeHierarchy(mc.precondition, n+1)
+        str = str + indent + "post: " + toIdeHierarchy(mc.postcondition, n+1)
+        for(p <- mc.parameters) {
+          str = str + indent + "param: " + toIdeHierarchy(p, n+1)
+        }
+      }
+      case _ => {
+        str = str + s.toString() + "\n"
+        for (sub <- s.subs) {
+          str = str + indent + toIdeHierarchy(sub, n + 1)
         }
       }
     }
@@ -737,7 +848,7 @@ sealed trait SymbolicRecord {
   def toSimpleString(): String = {
     if(value != null)  value.toString()
     else "null"
-  }
+}
 
   def dotNode(): String = {
     this.hashCode().toString()
@@ -795,6 +906,13 @@ class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends Se
   val state = s
   val context = c
   def toTypeString(): String = { "execute" }
+
+  override def toSimpleString():String = {
+    if(value != null) {
+      value.pos.toString() + " " + value.toString()
+    }
+    else "null"
+  }
 }
 
 class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
@@ -802,6 +920,12 @@ class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends Se
   val state = s
   val context = c
   def toTypeString(): String = { "evaluate" }
+  override def toSimpleString():String = {
+    if(value != null) {
+      value.pos.toString() + " " + value.toString()
+    }
+    else "null"
+  }
 }
 
 class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
@@ -809,6 +933,12 @@ class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends Seq
   val state = s
   val context = c
   def toTypeString(): String = { "produce" }
+  override def toSimpleString():String = {
+    if(value != null) {
+      value.pos.toString() + " " + value.toString()
+    }
+    else "null"
+  }
 }
 
 class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
@@ -817,6 +947,12 @@ class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
   val state = s
   val context = c
   def toTypeString(): String = { "consume" }
+  override def toSimpleString():String = {
+    if(value != null) {
+      value.pos.toString() + " " + value.toString()
+    }
+    else "null"
+  }
 }
 
 class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
