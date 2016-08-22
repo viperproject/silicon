@@ -188,13 +188,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                   case true =>
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
-                    val inversePredicate = invFct(neutralArgs) // e⁻¹(arg1, ..., argn)
-                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar),formalVars,  tArgs, tCond, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
-                      case Some((h1, ch, psfDef, c2)) =>
-                        println(h1)
-                        println(ch)
-                        println(psfDef)
-                        println(c2)
+                    val inversePredicate = invFct(formalVars) // e⁻¹(arg1, ..., argn)
+                  val rPerm = PermTimes(tLoss, p).replace(tQVar, inversePredicate) // p(e⁻¹(arg1, ..., argn))
+                  val rCondition = tCond.replace(tQVar, inversePredicate) // c(e⁻¹(arg1, ..., argn))
+                  val rArgs = tArgs.map(arg => arg.replace(tQVar, inversePredicate))
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), formalVars,  rArgs, rCondition, rPerm, chunkOrderHeuristics, c1) {                  case Some((h1, ch, psfDef, c2)) =>
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
                        assume(psfDomain ++ psfDef.snapDefinitions)
