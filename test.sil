@@ -51,7 +51,16 @@ requires forall r:Ref :: r == x ==> acc(pred2(r, 1))
     fold acc(pred2(x, 2))
 }*/
 
-method qp_fancyExample(x:Ref, y:Ref)
-requires forall r:Ref :: r == x ==> acc(pred(r))
-ensures acc(pred(x)) //not working after folding
+
+method qp_exhaleTest2(x:Ref, y:Ref)
+requires acc(pred(x))
+requires acc(pred(y))
+ensures forall r:Ref :: (r == x) || (r==y) ==> acc(pred(r))
 {}
+
+/*
+method qp_exhaleTest2(x:Ref, y:Ref)
+requires acc(x.f)
+requires acc(y.f)
+ensures forall r:Ref :: (r == x) || (r==y) ==> acc(r.f)
+{}*/

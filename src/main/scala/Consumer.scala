@@ -171,11 +171,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
-
+            println("evaluated Quantified")
             val (tArgs, Seq(tLoss)) = tArgsGain.splitAt(args.size)
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
-
                 val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val (invFct, neutralArgs) = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
@@ -187,25 +186,28 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 decider.assert(σ, isInjective) {
                   case true =>
                     decider.prover.logComment("Definitional axioms for inverse functions")
+                    println("injective receiver")
                     assume(invFct.definitionalAxioms)
-                    val inversePredicate = invFct(neutralArgs) // e⁻¹(arg1, ..., argn)
-                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar),formalVars,  tArgs, tCond, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
+                    val inversePredicate = invFct(formalVars) // e⁻¹(arg1, ..., argn)
+                    val rPerm = PermTimes(tLoss, p).replace(tQVar, inversePredicate) // p(e⁻¹(arg1, ..., argn))
+                    val rCondition = tCond.replace(tQVar, inversePredicate) // c(e⁻¹(arg1, ..., argn))
+                    val rArgs = tArgs.map(arg => arg.replace(tQVar, inversePredicate))
+
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), formalVars,  rArgs, rCondition, rPerm, chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
-                        println(h1)
-                        println(ch)
-                        println(psfDef)
-                        println(c2)
+                        println("split Succeeded")
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
-                        decider.prover.logComment("Definitional axioms for field value function")
+                        decider.prover.logComment("Definitional axioms for predicate snap function")
                        assume(psfDomain ++ psfDef.snapDefinitions)
                         val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
                           decider.pcs.branchConditions,
                           invFct.definitionalAxioms ++ psfDomain ++ psfDef.snapDefinitions)
                         val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordPsf(predicate, psfDef.psf) else fr1
                         val c3 = c2.copy(functionRecorder = fr2)
+                        println(ch.psf.convert(sorts.Snap))
                           Q(h1, ch.psf.convert(sorts.Snap), c3)
-                      case None =>
-                        println("splitLocations returned nothing")
+                      case _ =>
+                        println("split unsuccesfull")
                         Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
                   case false =>
                     println("not injective");
