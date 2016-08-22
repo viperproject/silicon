@@ -43,12 +43,12 @@ private[qps] object PsfDefinition {
                                            : Term = {
       Implies(
         And(
-          PermLess(NoPerm(), sourceChunk.perm.replace(sourceChunk.formalVars, args)),
+          PermLess(NoPerm(), sourceChunk.perm.replace(formalArgs, args)),
           if (predInPsfDomain)
-            /*TODO nadmuell: fix SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)) , PredicateDomain(predicate.name, psf,args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)).sort))*/ True()
+            SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), PredicateDomain(predicate.name, psf,args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)).sort ))
           else
             True()),
-            PredicateLookup(predicate.name, psf, args, sourceChunk.formalVars) === PredicateLookup(predicate.name, sourceChunk.psf, args, sourceChunk.formalVars))
+            PredicateLookup(predicate.name, psf, args, formalArgs) === PredicateLookup(predicate.name, sourceChunk.psf, args, formalArgs))
   }
 }
 
@@ -104,6 +104,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
       var sourcePsfLookupTriggers = sets(PredicateLookup(predicate.name, sourceChunk.psf, formalArgs, formalArgs))
 
       val snapDefinition = PsfDefinition.pointwiseSnapDefinition(predicate, psf, formalArgs, formalArgs, sourceChunk, true)
+
       /* Filter out triggers that don't actually occur in the body. The
        * latter can happen because the body (or any of its constituents) has
        * been simplified during its construction.
@@ -113,9 +114,6 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 
       val occurringQvars = qvars.filter (v => snapDefinition.existsDefined{case `v` =>})
       assert(occurringQvars.isEmpty, s"Expected occurringQvars to be empty, but found $occurringQvars")
-
-
-
 
       Forall(
         formalArgs,
