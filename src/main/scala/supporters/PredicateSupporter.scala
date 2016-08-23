@@ -142,11 +142,10 @@ trait PredicateSupporterProvider[ST <: Store[ST],
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
           if (c.qpPredicates.contains(predicate)) {
             var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
-
             val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snap, c)
             optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
-            Q(σ1/* \+ ch*/, c1)
+            Q(σ1 \+ ch, c1)
           } else {
             val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
             val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
@@ -184,14 +183,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       if (c.qpPredicates.contains(predicate)) {
        val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, symbolConverter.toSort(arg.typ)))
-        /*val(quantifiedChunks, _) = quantifiedPredicateChunkSupporter.splitHeap(σ.h, predicate.name)
-        c.psfCache.get((predicate, quantifiedChunks)) match {
-          case Some(psfDef: SummarisingPsfDefinition) if !config.disableValueMapCaching() =>
-                val psfLookup = PredicateLookup(predicate.name, psfDef.psf, tArgs, formalVars)
-                val fr1 = c.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, psfLookup)
-                val c2 = c.copy(functionRecorder = fr1)
-                println(psfLookup)
-                println(c2) }*/
         val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
         val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
         quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
@@ -199,7 +190,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
             decider.assume(psfDomain ++ psfDef.snapDefinitions)
             val snap = ch.valueAt(tArgs)
-            println(snap)
             produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c2)((σ2, c3) => {
               decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
               Q(σ2 \ σ.γ, c3)})

@@ -24,11 +24,17 @@ class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
   def setup(program:Program): Unit = {
     snapMap.empty
     program visit {
+      case ast.PredicateAccess(args, predname) =>
+        val predicate = program.findPredicate(predname)
+        val sort = (predicate -> predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))
+        snapMap += sort
+      }
+        /*
       case ast.utility.QuantifiedPermissions.QPPForall(_, _, _, _, _, _, predAccpred) =>
         val predicate = program.findPredicate(predAccpred.loc.predicateName)
         val sort = (predicate -> predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))
         snapMap += sort
-    }
+    }*/
   }
 
   def getSnap(predicate:Predicate): (terms.Sort, Boolean) =

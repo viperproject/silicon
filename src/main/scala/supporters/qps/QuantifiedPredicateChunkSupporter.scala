@@ -376,10 +376,8 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         splitPredicate(σ, h, predicate, qvar, formalVars, args, condition, perms, chunkOrderHeuristic, c)
 
       if (success) {
-        println("success")
         Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkPsfDefinition], c))
       } else
-        println("no success")
         Q(None)
     }
 
@@ -395,7 +393,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                       chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                       c: C)
     : (H, QuantifiedPredicateChunk, PsfDefinition, Boolean) = {
-
+/*
      println("-------splitPredicate--------")
      println(predicate)
      println(qvar)
@@ -405,12 +403,12 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
      println(perms)
      println(chunkOrderHeuristic)
      println("---------------")
-
+*/
       val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
-     println(quantifiedChunks)
+  //   println(quantifiedChunks)
       val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
-     println("candidates")
-     println(candidates)
+    // println("candidates")
+     //println(candidates)
 
       val pInit = qvar.fold(perms)(x => perms.replace(args, formalVars)) // p(e⁻¹(arg1, ..., argn))
       val conditionOfInv = qvar.fold(condition)(x => condition.replace(args, formalVars)) // c(e⁻¹(arg1, ..., argn))
@@ -428,7 +426,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
        * thus will not trigger the axioms that define the values of the fvf.
        */
       val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
-      println(psfDef)
+      //println(psfDef)
       decider.prover.logComment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
 
       val precomputedData = candidates map { ch =>
