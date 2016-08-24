@@ -1599,9 +1599,9 @@ case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], formalV
   val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
 }
 
-case class PredicateDomain(predname: String, psf: Term, codomainSort:Sort) extends SetTerm /*with PossibleTrigger*/ {
+case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with PossibleTrigger*/ {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
-  val elementsSort = codomainSort
+  val elementsSort = sorts.Snap
   val sort = sorts.Set(elementsSort)
 }
 

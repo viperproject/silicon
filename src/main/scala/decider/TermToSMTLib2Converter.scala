@@ -232,7 +232,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case FvfAfterRelation(field, fvf2, fvf1) => parens("$FVF.after_" <> field <+> render(fvf2) <+> render(fvf1))
 
-    case PredicateDomain(id, psf, sort) => parens("$PSF.domain_" <> id <+> render(psf))
+    case PredicateDomain(id, psf) => parens("$PSF.domain_" <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args, formalVars) =>
       var snap:Term = if (args.size == 1) {

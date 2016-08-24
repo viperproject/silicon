@@ -287,10 +287,13 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
       if (isChunkPsf) {
         if (qvars.isEmpty) {
+          println("SingletonChunk")
           SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
         } else
+          println("QuantifiedChunk")
           QuantifiedChunkPsfDefinition(predicate, psf, qvars, condition, args, formalVars, chunks /*, true*/)(axiomRewriter, config)
       } else {
+        println("Summarizing")
         //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
         SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks.toSeq)(config)
       }

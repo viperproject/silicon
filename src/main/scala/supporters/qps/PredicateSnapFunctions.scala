@@ -41,14 +41,22 @@ private[qps] object PsfDefinition {
                                            sourceChunk: QuantifiedPredicateChunk,
                                            predInPsfDomain: Boolean)
                                            : Term = {
-      Implies(
+
+    val argsSnap: Term = if (args.size == 1) {
+      args.apply(0).convert(sorts.Snap)
+    } else {
+      args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+    }
+    Predef.assert(argsSnap.sort == sorts.Snap)
+    val qf =  Implies(
         And(
-          PermLess(NoPerm(), sourceChunk.perm.replace(formalArgs, args)),
+          PermLess(NoPerm(), sourceChunk.perm.replace(sourceChunk.formalVars, args)),
           if (predInPsfDomain)
-            SetIn(args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), PredicateDomain(predicate.name, psf,args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)).sort ))
+            SetIn(argsSnap, PredicateDomain(predicate.name, psf))
           else
             True()),
             PredicateLookup(predicate.name, psf, args, formalArgs) === PredicateLookup(predicate.name, sourceChunk.psf, args, formalArgs))
+    qf
   }
 }
 
@@ -68,8 +76,12 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
       psfDef
   }
 
-  val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf, argsSnap.sort), SingletonSet(argsSnap)))
+  val argsSnap: Term = if (args.size == 1) {
+    args.apply(0).convert(sorts.Snap)
+  } else {
+    args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+  }
+  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(argsSnap)))
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
@@ -83,7 +95,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
                                        (axiomRewriter: AxiomRewriter, config: Config)
     extends PsfDefinition {
 
-  assert(qvars.nonEmpty,   "A MultiLocationFieldValueFunctionDefinition must be used "
+  assert(qvars.nonEmpty,   "A MultiLocationPredicateSnapFunctionDefinition must be used "
                          + "with at least one quantified variable")
 
   val snapDefinitions = {
@@ -103,6 +115,8 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
       var newPsfLookupTriggers = sets(PredicateLookup(predicate.name, psf, formalArgs, formalArgs))
       var sourcePsfLookupTriggers = sets(PredicateLookup(predicate.name, sourceChunk.psf, formalArgs, formalArgs))
 
+
+      println(formalArgs)
       val snapDefinition = PsfDefinition.pointwiseSnapDefinition(predicate, psf, formalArgs, formalArgs, sourceChunk, true)
 
       /* Filter out triggers that don't actually occur in the body. The
@@ -115,6 +129,9 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
       val occurringQvars = qvars.filter (v => snapDefinition.existsDefined{case `v` =>})
       assert(occurringQvars.isEmpty, s"Expected occurringQvars to be empty, but found $occurringQvars")
 
+      println("snapDefinition")
+      println(snapDefinition)
+
       Forall(
         formalArgs,
         snapDefinition,
@@ -124,8 +141,12 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
   }
 
   val domainDefinitions: Seq[Term] = {
-    val argsSnap:Term = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-    val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf, argsSnap.sort))
+    val argsSnap: Term = if (args.size == 1) {
+      args.apply(0).convert(sorts.Snap)
+    } else {
+      args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+    }
+    val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
 
 
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
