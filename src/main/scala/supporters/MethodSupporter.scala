@@ -15,7 +15,8 @@ import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Sort
-import viper.silicon.state.{DefaultContext, terms}
+import viper.silicon.state.{DefaultContext, ListBackedHeap, terms}
+import viper.silicon.SymbExLogger
 
 trait MethodSupporter[ST <: Store[ST],
                       H <: Heap[H],
@@ -61,6 +62,8 @@ trait MethodSupporterProvider[ST <: Store[ST],
     def verify(method: ast.Method, c: C): Seq[VerificationResult] = {
         log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
         decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
+
+        SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
         val ins = method.formalArgs.map(_.localVar)
         val outs = method.formalReturns.map(_.localVar)

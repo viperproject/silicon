@@ -17,7 +17,7 @@ import viper.silicon.state.terms.{AxiomRewriter, sorts, Sort}
 import viper.silicon.supporters._
 import viper.silicon.supporters.functions.FunctionSupporterProvider
 import viper.silicon.supporters.qps._
-import viper.silicon.reporting.{DefaultStateFormatter, Bookkeeper}
+import viper.silicon.reporting.{Bookkeeper,DefaultStateFormatter}
 import viper.silicon.utils.NoOpStatefulComponent
 
 object DefaultVerifier {
