@@ -198,21 +198,21 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
                     val inversePredicate = invFct(formalVars) // e⁻¹(arg1, ..., argn)
-                    val rPerm = PermTimes(tLoss, p).replace(tQVar, inversePredicate)
-                    val rCond = tCond.replace(tQVar, inversePredicate)
-                    val rArgs = tArgs.map(arg => arg.replace(tQVar, inversePredicate))
-                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), inversePredicate, formalVars,  rArgs, rCond, rPerm, chunkOrderHeuristics, c1) {
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar),formalVars,  tArgs, tCond, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
+                        println(h1)
+                        println(ch)
+                        println(psfDef)
+                        println(c2)
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
                        assume(psfDomain ++ psfDef.snapDefinitions)
-                       /* val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
+                        val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
                           decider.pcs.branchConditions,
                           invFct.definitionalAxioms ++ psfDomain ++ psfDef.snapDefinitions)
                         val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordPsf(predicate, psfDef.psf) else fr1
                         val c3 = c2.copy(functionRecorder = fr2)
-                          Q(h1, ch.psf.convert(sorts.Snap), c3)*/
-                        Q(h1, ch.psf.convert(sorts.Snap), c2)
+                          Q(h1, ch.psf.convert(sorts.Snap), c3)
                       case None =>
                         println("splitLocations returned nothing")
                         Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
