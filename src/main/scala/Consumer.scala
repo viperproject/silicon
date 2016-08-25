@@ -165,8 +165,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               case false =>
                 Failure(pve dueTo NegativePermission(loss))}}
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
-        println("exhaling Quantifier: ")
-        println(predAccPred)
         val predicate = c.program.findPredicate(predname)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , Nil, qid, pve, c) {
@@ -194,15 +192,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     val rArgs = tArgs.map(arg => arg.replace(tQVar, inversePredicate))
                     quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), formalVars,  rArgs, rCond, rPerm, chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
-                        println("values for splitLocations")
-                        println(h1)
-                        println(ch)
-                        println(psfDef)
-                        println(c2)
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
-                        println(psfDomain)
-                        println(psfDef.snapDefinitions)
                        assume(psfDomain ++ psfDef.snapDefinitions)
                        /* val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
                           decider.pcs.branchConditions,

@@ -72,8 +72,7 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
     case Left(value) =>
       Seq(PredicateLookup(predicate.name, psf, args, formalArgs) === value)
     case Right(sourceChunks) =>
-      var psfDef = sourceChunks map (sourceChunk => PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, sourceChunk.formalVars, sourceChunk, false))
-      psfDef
+      sourceChunks map (sourceChunk => PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, sourceChunk.formalVars, sourceChunk, false))
   }
 
   val argsSnap: Term = if (args.size == 1) {
@@ -115,8 +114,6 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
       var newPsfLookupTriggers = sets(PredicateLookup(predicate.name, psf, formalArgs, formalArgs))
       var sourcePsfLookupTriggers = sets(PredicateLookup(predicate.name, sourceChunk.psf, formalArgs, formalArgs))
 
-
-      println(formalArgs)
       val snapDefinition = PsfDefinition.pointwiseSnapDefinition(predicate, psf, formalArgs, formalArgs, sourceChunk, true)
 
       /* Filter out triggers that don't actually occur in the body. The
@@ -128,9 +125,6 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 
       val occurringQvars = qvars.filter (v => snapDefinition.existsDefined{case `v` =>})
       assert(occurringQvars.isEmpty, s"Expected occurringQvars to be empty, but found $occurringQvars")
-
-      println("snapDefinition")
-      println(snapDefinition)
 
       Forall(
         formalArgs,

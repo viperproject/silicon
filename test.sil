@@ -1,57 +1,72 @@
 field f:Int
 field g:Int
 
-predicate pred(r:Ref) {
+
+predicate p1()
+{
+	true
+}
+
+predicate p2(r:Ref)
+{
     acc(r.f)
 }
 
-predicate pred2(r:Ref, i:Int) {
+predicate p3(r:Ref)
+{
+	acc(r.f) && r.f == 0
+}
+
+predicate p4(r:Ref, i:Int)
+{
+    acc(r.f)
+}
+
+predicate p5(r:Ref, i:Int)
+{
     acc(r.f) && r.f == i
 }
 
-predicate empty() { true }
 
-/*
-method qp_exhaleTest6(x: Ref, xs: Seq[Ref])
+method m_0(x: Ref, xs: Seq[Ref])
+requires forall r:Ref :: r in xs ==> acc(p2(r))
 requires x in xs
-requires forall r:Ref :: r in xs ==> acc(pred(r))
-ensures forall r:Ref :: r == x ==> acc(pred(r))
-
-method qp_exhaleTest(x:Ref, y:Ref)
-requires acc(pred(x))
-requires acc(pred(y))
-ensures forall r:Ref :: r == x ==> acc(pred(r))
-
-method qp_exhaleTest2(x:Ref, y:Ref)
-requires acc(pred(x))
-requires acc(pred(y))
-ensures forall r:Ref :: (r == x) || (r==y) ==> acc(pred(r))
-
-method qp_exhaleTest3(x:Ref, y:Ref)
-requires acc(pred(x))
-requires acc(pred(y))
-ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))
-
-method qp_exhaleTest4(x:Ref, y:Ref)
-requires acc(pred(x))
-ensures forall r:Ref :: r in Set(x,y) ==> acc(pred(r))
-
-method qp_exhaleTest5(x:Ref, y:Ref)
-requires forall r:Ref :: r == x ==> acc(pred(r))
-ensures forall r:Ref :: r == x ==> acc(pred(r))
+ensures acc(p2(x))
 {}
 
-method qp_fancyExample(x:Ref, y:Ref)
-requires forall r:Ref :: r == x ==> acc(pred2(r, 1))
-//ensures acc(pred2(x, 2)) //not working after folding
-{
-    unfold acc(pred2(x, 1))
-    assert(x.f == 1)
-    x.f := 2
-    fold acc(pred2(x, 2))
-}*/
+method m1(x:Ref, y:Ref, z:Ref)
+requires acc(p2(x))
+requires acc(p2(y))
+requires acc(p2(z))
+ensures forall r:Ref :: r in Set(x, y, z) ==> acc(p2(r))
+{}
 
-method qp_fancyExample(x:Ref, y:Ref)
-requires forall r:Ref :: r == x ==> acc(pred(r))
-ensures acc(pred(x)) //not working after folding
+method m2(x:Ref, y:Ref, z:Ref)
+requires acc(p2(x))
+requires acc(p2(y))
+requires acc(p2(z))
+ensures acc(p2(z))
+ensures forall r:Ref :: r in Set(x, y) ==> acc(p2(r))
+{}
+
+method m3(x:Ref, y:Ref, z:Ref)
+requires acc(p2(x))
+requires acc(p2(y))
+requires acc(p2(z))
+ensures forall r:Ref :: r in Set(x, y) ==> acc(p2(r))
+ensures acc(p2(z))
+{}
+
+
+method m4(x:Ref, y:Ref, z:Ref)
+requires acc(p2(x))
+requires acc(p2(y))
+ensures forall r:Ref :: r in Set(x, y, z) ==> acc(p2(r))
+{}
+
+
+method m5(x:Ref, y:Ref, z:Ref)
+requires acc(p2(y))
+requires acc(p2(z))
+ensures forall r:Ref :: r in Set(x, y, z) ==> acc(p2(r))
 {}

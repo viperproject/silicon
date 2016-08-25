@@ -9,18 +9,20 @@ package viper.silicon.supporters.qps
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{ReceiverNull, InsufficientPermission}
+import viper.silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.{Set, Map, Config, TriggerSets}
+import viper.silicon.{Config, Map, Set, TriggerSets}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.{BigPermSum, consumeExactRead}
-import viper.silicon.state.terms._
+import viper.silicon.state.terms.{perms, _}
 import viper.silicon.state._
 import viper.silicon.utils.Counter
 import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
+import viper.silicon.supporters.qps.PsfDefinition
+import viper.silicon.supporters.qps.SingletonChunkPsfDefinition
 
 
 case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term, invOfFct: Quantification, fctOfInv: Quantification) {
@@ -287,13 +289,31 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
       if (isChunkPsf) {
         if (qvars.isEmpty) {
-          println("SingletonChunk")
           SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
         } else
-          println("QuantifiedChunk")
           QuantifiedChunkPsfDefinition(predicate, psf, qvars, condition, args, formalVars, chunks /*, true*/)(axiomRewriter, config)
       } else {
-        println("Summarizing")
+        //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
+        SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks.toSeq)(config)
+      }
+    }
+
+    private def singletonPredicateSummarizeChunks( chunks: Seq[QuantifiedPredicateChunk],
+                                          predicate: ast.Predicate,
+                                          condition: Term,
+                                          args: Seq[Term],
+                                          formalVars: Seq[Var],
+                                          isChunkPsf: Boolean,
+                                          c:C)
+    : PsfDefinition = {
+      Predef.assert(chunks.forall(_.name == predicate.name),
+        s"Expected all chunks to be about precicate $predicate, but got ${chunks.mkString(", ")}")
+
+      val psf = freshPSF(predicate, c, isChunkPsf)
+
+      if (isChunkPsf) {
+          SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
+      } else {
         //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
         SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks.toSeq)(config)
       }
@@ -355,7 +375,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
      val cond = (formalVars zip args).map(x => x._1 ===  x._2).reduce((t1, t2) =>  And(t1, t2))
       val (h1, ch, psfDef, success) =
         splitPredicate(σ, h, predicate, None, formalVars, args, cond, perms, chunkOrderHeuristic, c)
-
       if (success) {
         Q(Some(h1, ch, psfDef, c))
       } else
@@ -377,7 +396,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
       val (h1, ch, psfDef, success) =
         splitPredicate(σ, h, predicate, qvar, formalVars, args, condition, perms, chunkOrderHeuristic, c)
-
       if (success) {
         Q(Some(h1, ch, psfDef.asInstanceOf[QuantifiedChunkPsfDefinition], c))
       } else
@@ -396,7 +414,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                       chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                       c: C)
     : (H, QuantifiedPredicateChunk, PsfDefinition, Boolean) = {
-/*
+     /*
      println("-------splitPredicate--------")
      println(predicate)
      println(qvar)
@@ -407,29 +425,34 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
      println(chunkOrderHeuristic)
      println("---------------")
 */
-      val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
-  //   println(quantifiedChunks)
-      val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
-    // println("candidates")
+     val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
+     //   println(quantifiedChunks)
+     val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
+     // println("candidates")
      //println(candidates)
 
-      val pInit = qvar.fold(perms)(x => perms.replace(args, formalVars)) // p(e⁻¹(arg1, ..., argn))
-      val conditionOfInv = qvar.fold(condition)(x => condition.replace(args, formalVars)) // c(e⁻¹(arg1, ..., argn))
-      val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(arg1, ..., argn)) ? p_init(arg1, ..., argn) : 0
+     val pInit = qvar.fold(perms)(x => perms.replace(args, formalVars)) // p(e⁻¹(arg1, ..., argn))
+     val conditionOfInv = qvar.fold(condition)(x => condition.replace(args, formalVars)) // c(e⁻¹(arg1, ..., argn))
+     val conditionalizedPermsOfInv = Ite(conditionOfInv, pInit, NoPerm()) // c(e⁻¹(arg1, ..., argn)) ? p_init(arg1, ..., argn) : 0
 
-      var residue: List[Chunk] = Nil
-      var pNeeded = pInit
-      var success = false
+     var residue: List[Chunk] = Nil
+     var pNeeded = pInit
+     var success = false
 
-      /* Using inverseReceiver instead of receiver yields axioms
+     /* Using inverseReceiver instead of receiver yields axioms
        * about the summarising fvf where the inverse function occurring in
        * inverseReceiver is part of the axiom trigger. This makes several
        * examples fail, including issue_0122.sil, because assertions in the program
        * that talk about concrete receivers will not use the inverse function, and
        * thus will not trigger the axioms that define the values of the fvf.
        */
-      val psfDef = summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
-      //println(psfDef)
+
+      val psfDef = if (qvar.toSeq.isEmpty) {
+        singletonPredicateSummarizeChunks(candidates, predicate, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
+      } else {
+        summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
+      }
+
       decider.prover.logComment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
 
       val precomputedData = candidates map { ch =>
@@ -540,7 +563,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
     @inline
     private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var]): Option[(Term, Term)] = {
-      /* TODO: This code could be improved significantly if we
+      /* TODO: nadmuell
        *         - distinguished between quantified chunks for single and multiple locations
        *         - separated the initial permission amount from the subtracted amount(s) in each chunk
        */
