@@ -98,15 +98,20 @@ class FunctionData(val programFunction: ast.Function,
 
   private[this] def setQpTerms(mergedFunctionRecorder: FunctionRecorder): Unit = {
     /* TODO: Reconsider which qp-terms are actually needed.
-       *       Have a look at unionfind.sil - it is the only example where additionalQVars is
-       *       not empty. The corresponding fvf is most likely not relevant for the function
-       *       axiom.
-       */
+     *       Have a look at unionfind.sil - it is the only example where additionalQVars is
+     *       not empty. The corresponding fvf is most likely not relevant for the function
+     *       axiom.
+     *
+     * TODO: Reconsider if/when qp-related definitions (such as those of inverse functions or fvfs)
+     *       that are declared when evaluating expressions under quantifiers need to depend
+     *       on the quantified variables, i.e. take them as additional arguments.
+     *       See also examples/qps_function.sil from my thesis.
+     */
     qpTerms = mergedFunctionRecorder.qpTerms.map { case (qvars, guards, ts) =>
-      val body = Implies(And(guards), And(ts))
+      val body = Implies(True()/*And(guards)*/, And(ts))
       val additionalQVars = qvars filterNot arguments.contains
 
-      if (additionalQVars.isEmpty)
+      if (true/*additionalQVars.isEmpty*/)
         body
       else {
         val q1 = Forall(additionalQVars, body, Seq[Trigger]())
