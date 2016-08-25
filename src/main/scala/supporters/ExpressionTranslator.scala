@@ -4,13 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import state.SymbolConvert
-import state.terms._
+import viper.silver.ast
+import viper.silicon.{Map, Set, toMap}
+import viper.silicon.state.{Identifier, SymbolConvert}
+import viper.silicon.state.terms._
+import viper.silicon.supporters.functions.FunctionSupporter
 
 trait ExpressionTranslator {
   val symbolConverter: SymbolConvert
@@ -23,24 +23,26 @@ trait ExpressionTranslator {
    *
    * TODO: Can't we do without toSort? Or at least with a less type-specific one?
    */
-  protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort)
+  protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
+                          qpFields: Set[ast.Field])
                          (exp: ast.Exp)
                          : Term = {
 
-    val f = translate(toSort) _
+    val f = translate(toSort, qpFields) _
 
-    def translateAnySetUnExp(exp: silver.ast.AnySetUnExp,
+    def translateAnySetUnExp(exp: ast.AnySetUnExp,
                              setTerm: Term => Term,
-                             multisetTerm: Term => Term) =
+                             multisetTerm: Term => Term,
+                             anysetTypedExp: ast.Exp = exp) =
 
-      exp.typ match {
+      anysetTypedExp.typ match {
         case _: ast.SetType => setTerm(f(exp.exp))
         case _: ast.MultisetType => multisetTerm(f(exp.exp))
         case _ => sys.error("Expected a (multi)set-typed expression but found %s (%s) of sort %s"
                             .format(exp, exp.getClass.getName, exp.typ))
       }
 
-    def translateAnySetBinExp(exp: silver.ast.AnySetBinExp,
+    def translateAnySetBinExp(exp: ast.AnySetBinExp,
                               setTerm: (Term, Term) => Term,
                               multisetTerm: (Term, Term) => Term,
                               anysetTypedExp: ast.Exp = exp) =
@@ -54,16 +56,44 @@ trait ExpressionTranslator {
 
 
     exp match {
-      case q @ ast.QuantifiedExp(qvars, _) =>
-        val (autoTriggerQuant, quantifier, triggers) = q match {
-          case fa: ast.Forall => (fa.autoTrigger, Forall, fa.autoTrigger.triggers)
-          case ex: ast.Exists => (ex, Exists, Seq())
+      case sourceQuant: ast.QuantifiedExp =>
+        /* IMPORTANT: Keep in sync with [[DefaultEvaluator.eval]]
+         *
+         * TODO: Avoid this code duplication.
+         *
+         * TODO: In the long run, it might be better to not
+         *         1. record data while verifying a function
+         *         2. and to then translate the function using the recorded data
+         *       but to instead create the function definition axioms from the
+         *       terms that the evaluation of the function body (and the
+         *       postcondition) yielded.
+         */
+
+        val (eQuant, qantOp, eTriggers) = sourceQuant match {
+          case forall: ast.Forall =>
+            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall, qpFields)
+            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+          case exists: ast.Exists =>
+            (exists, Exists, Seq())
+          case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
         }
 
-        Quantification(quantifier,
-                       qvars map (v => Var(v.name, toSort(v.typ, Map()))),
-                       f(autoTriggerQuant.exp),
-                       triggers map (tr => Trigger(tr.exps map f)))
+        val body = eQuant.exp
+        val vars = eQuant.variables map (_.localVar)
+
+        /** IMPORTANT: Keep in sync with [[viper.silicon.DefaultEvaluator.evalTrigger]] */
+        val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
+          f(trigger) match {
+            case app @ App(fun: HeapDepFun, _) =>
+              app.copy(applicable = FunctionSupporter.limitedVersion(fun))
+            case other => other
+          }
+        )))
+
+        Quantification(qantOp,
+                       vars map (v => Var(Identifier(v.name), toSort(v.typ, Map()))),
+                       f(body),
+                       translatedTriggers)
 
       case _: ast.TrueLit => True()
       case _: ast.FalseLit => False()
@@ -91,15 +121,15 @@ trait ExpressionTranslator {
 
       case _: ast.NullLit => Null()
 
-      case v: ast.AbstractLocalVar => Var(v.name, toSort(v.typ, Map()))
+      case v: ast.AbstractLocalVar => Var(Identifier(v.name), toSort(v.typ, Map()))
 
       case ast.DomainFuncApp(funcName, args, typeVarMap) =>
         val tArgs = args map f
         val inSorts = tArgs map (_.sort)
         val outSort = toSort(exp.typ, toMap(typeVarMap))
         val id = symbolConverter.toSortSpecificId(funcName, inSorts :+ outSort)
-        val df = Function(id, inSorts, outSort)
-        DomainFApp(df, tArgs)
+        val df = Fun(id, inSorts, outSort)
+        App(df, tArgs)
 
       /* Permissions */
 
@@ -107,6 +137,7 @@ trait ExpressionTranslator {
       case _: ast.NoPerm => NoPerm()
       case ast.FractionalPerm(e0, e1) => FractionPerm(f(e0), f(e1))
 
+      case ast.PermMinus(e0) => PermMinus(NoPerm(), f(e0))
       case ast.PermAdd(e0, e1) => PermPlus(f(e0), f(e1))
       case ast.PermSub(e0, e1) => PermMinus(f(e0), f(e1))
       case ast.PermMul(e0, e1) => PermTimes(f(e0), f(e1))
@@ -119,49 +150,68 @@ trait ExpressionTranslator {
 
       /* Sequences */
 
-      case silver.ast.SeqAppend(e0, e1) => SeqAppend(f(e0), f(e1))
-      case silver.ast.SeqContains(e0, e1) => SeqIn(f(e1), f(e0))
-      case silver.ast.SeqDrop(e0, e1) => SeqDrop(f(e0), f(e1))
-      case silver.ast.SeqIndex(e0, e1) => SeqAt(f(e0), f(e1))
-      case silver.ast.SeqLength(e) => SeqLength(f(e))
-      case silver.ast.SeqTake(e0, e1) => SeqTake(f(e0), f(e1))
-      case silver.ast.EmptySeq(typ) => SeqNil(toSort(typ, Map()))
-      case silver.ast.RangeSeq(e0, e1) => SeqRanged(f(e0), f(e1))
-      case silver.ast.SeqUpdate(e0, e1, e2) => SeqUpdate(f(e0), f(e1), f(e2))
+      case ast.SeqAppend(e0, e1) => SeqAppend(f(e0), f(e1))
+      case ast.SeqContains(e0, e1) => SeqIn(f(e1), f(e0))
+      case ast.SeqDrop(e0, e1) => SeqDrop(f(e0), f(e1))
+      case ast.SeqIndex(e0, e1) => SeqAt(f(e0), f(e1))
+      case ast.SeqLength(e) => SeqLength(f(e))
+      case ast.SeqTake(e0, e1) => SeqTake(f(e0), f(e1))
+      case ast.EmptySeq(typ) => SeqNil(toSort(typ, Map()))
+      case ast.RangeSeq(e0, e1) => SeqRanged(f(e0), f(e1))
+      case ast.SeqUpdate(e0, e1, e2) => SeqUpdate(f(e0), f(e1), f(e2))
 
-      case silver.ast.ExplicitSeq(es) =>
+      case ast.ExplicitSeq(es) =>
         es.tail.foldLeft[SeqTerm](SeqSingleton(f(es.head)))((tSeq, e) =>
-          SeqAppend(SeqSingleton(f(e)), tSeq))
+          SeqAppend(tSeq, SeqSingleton(f(e))))
 
       /* Sets and multisets */
 
-      case silver.ast.EmptySet(typ) => EmptySet(toSort(typ, Map()))
-      case silver.ast.EmptyMultiset(typ) => EmptyMultiset(toSort(typ, Map()))
+      case ast.EmptySet(typ) => EmptySet(toSort(typ, Map()))
+      case ast.EmptyMultiset(typ) => EmptyMultiset(toSort(typ, Map()))
 
-      case silver.ast.ExplicitSet(es) =>
+      case ast.ExplicitSet(es) =>
         es.tail.foldLeft[SetTerm](SingletonSet(f(es.head)))((tSet, e) =>
           SetAdd(tSet, f(e)))
 
-      case silver.ast.ExplicitMultiset(es) =>
+      case ast.ExplicitMultiset(es) =>
         es.tail.foldLeft[MultisetTerm](SingletonMultiset(f(es.head)))((tMultiset, e) =>
           MultisetAdd(tMultiset, f(e)))
 
-      case as: silver.ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
-      case as: silver.ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
-      case as: silver.ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
-      case as: silver.ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
-      case as: silver.ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
-      case as: silver.ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality)
+      case as: ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
+      case as: ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
+      case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
+      case as: ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
+      case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
+      case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
 
       /* Other expressions */
 
-      case silver.ast.Let(lvd, e, body) => Let(f(lvd.localVar).asInstanceOf[Var], f(e), f(body))
+      case ast.Let(lvd, e, body) => Let(f(lvd.localVar).asInstanceOf[Var], f(e), f(body))
 
       /* Unsupported (because unexpected) expressions */
 
-      case   _: ast.LocationAccess | _: ast.AccessPredicate | _: ast.Old | _: ast.FractionalPerm
-             | _: ast.Result | _: ast.Unfolding | _: ast.InhaleExhaleExp | _: ast.PredicateAccess
-             | _: ast.FuncApp | _: ast.CurrentPerm | _: ast.EpsilonPerm  | _: ast.WildcardPerm | _: ast.EpsilonPerm =>
+      case     _: ast.LocationAccess
+             | _: ast.AccessPredicate
+             | _: ast.Old
+             | _: ast.LabelledOld
+             | _: ast.FractionalPerm
+             | _: ast.Result
+             | _: ast.Unfolding
+             | _: ast.InhaleExhaleExp
+             | _: ast.PredicateAccess
+             | _: ast.FuncApp
+             | _: ast.CurrentPerm
+             | _: ast.EpsilonPerm
+             | _: ast.WildcardPerm
+             | _: ast.EpsilonPerm
+             | _: ast.ForPerm
+             | _: ast.ApplyOld
+             | _: ast.MagicWand
+             | _: ast.FoldingGhostOp
+             | _: ast.UnfoldingGhostOp
+             | _: ast.ApplyingGhostOp
+             | _: ast.PackagingGhostOp
+             =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")
     }

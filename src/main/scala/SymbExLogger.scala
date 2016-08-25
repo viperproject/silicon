@@ -1,11 +1,22 @@
-package viper
-package silicon
+/* TODO: add a type argument H to the SymbExLogger. 
+ * Importing the type variable H as it is done currently 
+ * results in having to cast the argument c at each creation
+ * of a Record type, e.g. ConsumeRecord
+ */
+
+package viper.silicon
 
 import java.io.File
-import java.nio.file.{Path, Paths, Files}
-import state.{MapBackedStore, ListBackedHeap, DefaultState, DefaultContext}
-import viper.silver.ast.NoPosition
+import java.nio.file.{Files, Path, Paths}
+
+import state.{DefaultContext, DefaultState, ListBackedHeap, MapBackedStore}
+import viper.silicon.interfaces.state.Heap
+import viper.silver.ast
+import viper.silicon.state.terms._
+import viper.silicon.DefaultVerifier.H
 import viper.silver.verifier.AbstractError
+import viper.silicon.reporting.DefaultStateFormatter
+import viper.silicon.decider.PathConditionStack
 
 /*
  *  For instructions on how to use/visualise recording, have a look at
@@ -83,8 +94,8 @@ object SymbExLogger {
     *               state).
     * @param c      Current context.
     */
-  def insertMember(member: silver.ast.Member, s: AnyRef, c: DefaultContext): Unit = {
-    memberList = memberList ++ List(new SymbLog(member, s, c))
+  def insertMember(member: ast.Member, s: AnyRef, pcs: PathConditionStack, c: DefaultContext[H]): Unit = {
+    memberList = memberList ++ List(new SymbLog(member, s, pcs, c))
   }
 
   /** Use this method to access the current log, e.g., to access the log of the method
@@ -191,11 +202,11 @@ object SymbExLogger {
   * Concept: One object of SymbLog per Method/Predicate/Function. SymbLog
   * is used in the SymbExLogger-object.
   */
-class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
+class SymbLog(v: ast.Member, s: AnyRef, pcs: PathConditionStack, c: DefaultContext[H]) {
   var main = v match {
-    case m: silver.ast.Method => new MethodRecord(m, s, c)
-    case p: silver.ast.Predicate => new PredicateRecord(p, s, c)
-    case f: silver.ast.Function => new FunctionRecord(f, s, c)
+    case m: ast.Method => new MethodRecord(m, s, pcs, c)
+    case p: ast.Predicate => new PredicateRecord(p, s, pcs, c)
+    case f: ast.Function => new FunctionRecord(f, s, pcs, c)
   }
 
   private var stack = List[SymbolicRecord](main)
@@ -236,7 +247,7 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
     *          value).
     */
-  def collapse(v: silver.ast.Node, n: Int): Unit = {
+  def collapse(v: ast.Node, n: Int): Unit = {
     if (n != -1 && sepSet.contains(n)) {
       sepSet = sepSet - n
       if (isUsed(v))
@@ -269,17 +280,17 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
 
   private def isRecordedDifferently(s: SymbolicRecord): Boolean = {
     s.value match {
-      case v: silver.ast.MethodCall =>
+      case v: ast.MethodCall =>
         s match {
           case _: MethodCallRecord => false
           case _ => true
         }
-      case v: silver.ast.CondExp =>
+      case v: ast.CondExp =>
         s match {
           case _: EvaluateRecord | _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
         }
-      case v: silver.ast.Implies =>
+      case v: ast.Implies =>
         s match {
           case _: ConsumeRecord | _: ProduceRecord => true
           case _ => false
@@ -289,11 +300,11 @@ class SymbLog(v: silver.ast.Member, s: AnyRef, c: DefaultContext) {
     }
   }
 
-  private def isUsed(node: silver.ast.Node): Boolean = {
+  private def isUsed(node: ast.Node): Boolean = {
     node match {
-      case stmt: silver.ast.Stmt => {
+      case stmt: ast.Stmt => {
         stmt match {
-          case _: silver.ast.Seqn =>
+          case _: ast.Seqn =>
             false
           case _ =>
             true
@@ -583,7 +594,7 @@ class JSTreeRenderer extends Renderer[String] {
     var res = ""
     if (s.state != null) {
       var σ = s.state.asInstanceOf[DefaultState[MapBackedStore, ListBackedHeap]]
-      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ))
+      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs.assumptions))
     }
     res
   }
@@ -731,9 +742,10 @@ class TypeTreeRenderer extends Renderer[String] {
 //=========== Records =========
 
 sealed trait SymbolicRecord {
-  val value: silver.ast.Node
+  val value: ast.Node
   val state: AnyRef
-  val context: DefaultContext
+  val pcs: PathConditionStack
+  val context: DefaultContext[H]
   var subs = List[SymbolicRecord]()
 
   def toTypeString(): String
@@ -771,9 +783,10 @@ trait MultiChildUnorderedRecord extends MultiChildRecord
 
 trait SequentialRecord extends SymbolicRecord
 
-class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends MemberRecord {
+class MethodRecord(v: ast.Method, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -791,9 +804,10 @@ class MethodRecord(v: silver.ast.Method, s: AnyRef, c: DefaultContext) extends M
   }
 }
 
-class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) extends MemberRecord {
+class PredicateRecord(v: ast.Predicate, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -811,9 +825,10 @@ class PredicateRecord(v: silver.ast.Predicate, s: AnyRef, c: DefaultContext) ext
   }
 }
 
-class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) extends MemberRecord {
+class FunctionRecord(v: ast.Function, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -831,9 +846,10 @@ class FunctionRecord(v: silver.ast.Function, s: AnyRef, c: DefaultContext) exten
   }
 }
 
-class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends SequentialRecord {
+class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -841,14 +857,15 @@ class ExecuteRecord(v: silver.ast.Stmt, s: AnyRef, c: DefaultContext) extends Se
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "execute") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
 
-class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
+class EvaluateRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -856,14 +873,15 @@ class EvaluateRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends Se
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "evaluate") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
 
-class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends SequentialRecord {
+class ProduceRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -871,15 +889,16 @@ class ProduceRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext) extends Seq
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "produce") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
 
-class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
+class ConsumeRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H])
   extends SequentialRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -887,26 +906,27 @@ class ConsumeRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
   }
 
   override def toJson(): String = {
-    if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("value", value.toString())
+    if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
   }
 }
 
-class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
+class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H])
   extends MultiChildUnorderedRecord {
   val value = v
   //meaningless since there is no directly usable if-then-else structure in the AST
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
     "IfThenElse"
   }
 
-  var thnCond: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-  var elsCond: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var thnCond: SymbolicRecord = new CommentRecord("Unreachable", null, null, null)
+  var elsCond: SymbolicRecord = new CommentRecord("Unreachable", null, null, null)
+  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null, null))
+  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null, null))
 
   override def toString(): String = {
     "if " + thnCond.toSimpleString()
@@ -946,10 +966,11 @@ class IfThenElseRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext)
   }
 }
 
-class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String)
+class CondExpRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H], env: String)
   extends MultiChildOrderedRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
   val environment = env
 
@@ -957,10 +978,10 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
     "CondExp"
   }
 
-  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
+  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null, null)
   // thn/els Exp is Unreachable by default. If this is not the case, it will be overwritten
-  var thnExp: SymbolicRecord = new CommentRecord("Unreachable", null, null)
-  var elsExp: SymbolicRecord = new CommentRecord("Unreachable", null, null)
+  var thnExp: SymbolicRecord = new CommentRecord("Unreachable", null, null, null)
+  var elsExp: SymbolicRecord = new CommentRecord("Unreachable", null, null, null)
 
   override def toString(): String = {
     if (value != null)
@@ -1000,10 +1021,11 @@ class CondExpRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String
   }
 }
 
-class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: String)
+class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H], env: String)
   extends MultiChildUnorderedRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
   val environment = env
 
@@ -1011,9 +1033,9 @@ class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: S
     "GlobalBranch"
   }
 
-  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null)
-  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
-  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null))
+  var cond: SymbolicRecord = new CommentRecord("<missing condition>", null, null, null)
+  var thnSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null, null))
+  var elsSubs = List[SymbolicRecord](new CommentRecord("Unreachable", null, null, null))
 
   override def toSimpleString(): String = {
     if (value != null)
@@ -1050,9 +1072,10 @@ class GlobalBranchRecord(v: silver.ast.Exp, s: AnyRef, c: DefaultContext, env: S
   }
 }
 
-class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends SequentialRecord {
+class CommentRecord(str: String, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
   val value = null
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -1080,10 +1103,11 @@ class CommentRecord(str: String, s: AnyRef, c: DefaultContext) extends Sequentia
   }
 }
 
-class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
+class MethodCallRecord(v: ast.MethodCall, s: AnyRef, p: PathConditionStack, c: DefaultContext[H])
   extends MultiChildOrderedRecord {
   val value = v
   val state = s
+  val pcs = p
   val context = c
 
   def toTypeString(): String = {
@@ -1091,8 +1115,8 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
   }
 
   var parameters = List[SymbolicRecord]()
-  var precondition: SymbolicRecord = new ConsumeRecord(null, null, null)
-  var postcondition: SymbolicRecord = new ProduceRecord(null, null, null)
+  var precondition: SymbolicRecord = new ConsumeRecord(null, null, null, null)
+  var postcondition: SymbolicRecord = new ProduceRecord(null, null, null, null)
 
   override def toString(): String = {
     if (value != null)
@@ -1155,7 +1179,7 @@ class MethodCallRecord(v: silver.ast.MethodCall, s: AnyRef, c: DefaultContext)
   * For already existing examples, have a look at CondExpRecord (local Branching) or IfThenElseRecord
   * (recording of If-Then-Else-structures).
   * Assume that you want to have a custom record for  (non-short-circuiting) evaluations of
-  * silver.ast.And, since you want to differ between the evaluation of the lefthandside
+  * ast.And, since you want to differ between the evaluation of the lefthandside
   * and the righthandside (not possible with default recording).
   * Your custom record could look similar to this:
   *
@@ -1272,7 +1296,7 @@ class SymbExLogUnitTest(f: Path) {
 }
 
 case class SymbExLogUnitTestError(msg: String) extends AbstractError {
-  def pos = silver.ast.NoPosition
+  def pos = ast.NoPosition
 
   def fullId = "symbexlogunittest.error"
 

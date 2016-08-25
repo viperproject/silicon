@@ -4,15 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces
+package viper.silicon.interfaces
 
-import silver.ast
-import silver.verifier.PartialVerificationError
-import interfaces.state.Context
-import state.{ChunkIdentifier, Store, Heap, State, Chunk}
-import silicon.state.terms.{Sort, Term}
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silicon.interfaces.state.Context
+import viper.silicon.interfaces.state.{Store, Heap, State}
+import viper.silicon.state.terms._
 
 /*
  * Symbolic execution primitives
@@ -23,7 +21,7 @@ trait Evaluator[ST <: Store[ST],
                 S <: State[ST, H, S],
                 C <: Context[C]] {
 
-  def evals(σ: S, es: Seq[ast.Exp], pve: PartialVerificationError, c: C)
+  def evals(σ: S, es: Seq[ast.Exp], pvef: ast.Exp => PartialVerificationError, c: C)
            (Q: (List[Term], C) => VerificationResult)
            : VerificationResult
 
@@ -31,13 +29,16 @@ trait Evaluator[ST <: Store[ST],
           (Q: (Term, C) => VerificationResult)
           : VerificationResult
 
-  def withChunkIdentifier(σ: S,
-                          locacc: ast.LocationAccess,
-                          assertRcvrNonNull: Boolean,
-                          pve: PartialVerificationError,
-                          c: C)
-                         (Q: (ChunkIdentifier, C) => VerificationResult)
-                         : VerificationResult
+  def evalLocationAccess(σ: S,
+                         locacc: ast.LocationAccess,
+                         pve: PartialVerificationError,
+                         c: C)
+                        (Q: (String, Seq[Term], C) => VerificationResult)
+                        : VerificationResult
+
+  def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
+                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
+                    : VerificationResult
 }
 
 trait Producer[ST <: Store[ST],
@@ -64,14 +65,13 @@ trait Producer[ST <: Store[ST],
               : VerificationResult
 }
 
-trait Consumer[CH <: Chunk,
-               ST <: Store[ST],
+trait Consumer[ST <: Store[ST],
                H <: Heap[H],
                S <: State[ST, H, S],
                C <: Context[C]] {
 
   def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
-             (Q: (S, Term, List[CH], C) => VerificationResult)
+             (Q: (S, Term, C) => VerificationResult)
              : VerificationResult
 
   def consumes(σ: S,
@@ -79,7 +79,7 @@ trait Consumer[CH <: Chunk,
                φ: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
-              (Q: (S, Term, List[CH], C) => VerificationResult)
+              (Q: (S, Term, C) => VerificationResult)
               : VerificationResult
 }
 

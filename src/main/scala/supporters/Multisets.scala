@@ -4,21 +4,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import interfaces.PreambleEmitter
-import interfaces.decider.Prover
-import decider.PreambleFileEmitter
-import state.{SymbolConvert, terms}
+import viper.silver.ast
+import viper.silicon.{toSet, Set}
+import viper.silicon.interfaces.PreambleEmitter
+import viper.silicon.interfaces.decider.Prover
+import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.state.{SymbolConvert, terms}
 
 trait MultisetsEmitter extends PreambleEmitter
 
 /* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
 
-class DefaultMultisetsEmitter(prover: Prover,
+class DefaultMultisetsEmitter(prover: => Prover,
                               symbolConverter: SymbolConvert,
                               preambleFileEmitter: PreambleFileEmitter[String, String])
     extends MultisetsEmitter {
@@ -26,14 +25,6 @@ class DefaultMultisetsEmitter(prover: Prover,
   private var collectedSorts = Set[terms.sorts.Multiset]()
 
   def sorts = toSet(collectedSorts)
-
-  /**
-   * The symbols are take from a file and it is currently not possible to retrieve a list of
-   * symbols that have been declared.
-   *
-   * @return None
-   */
-  def symbols = None
 
   /* Lifetime */
 
@@ -49,12 +40,12 @@ class DefaultMultisetsEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var multisetTypes = Set[ast.MultisetType]()
 
-    program visit { case t: silver.ast.Typed =>
+    program visit { case t: ast.Typed =>
       /* Process the type itself and its type constituents, but ignore types
        * that use type parameters. The assumption is that the latter are
        * handled by the domain emitter.
        */
-      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
+      t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
         case s: ast.MultisetType =>
           multisetTypes += s
 //        case s: ast.SeqType =>

@@ -4,12 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces
+package viper.silicon.interfaces
 
-import silver.verifier.VerificationError
-import state.{Store, Heap, State}
+import viper.silver.verifier.VerificationError
+import viper.silicon.interfaces.state.{Store, Heap, State}
+import viper.silicon.state.terms.Term
 
 /*
  * Results
@@ -42,13 +41,13 @@ sealed abstract class VerificationResult {
     }
 }
 
-abstract class FatalResult extends VerificationResult {
+sealed abstract class FatalResult extends VerificationResult {
   val isFatal = true
 
   def &&(other: => VerificationResult) = this
 }
 
-abstract class NonFatalResult extends VerificationResult {
+sealed abstract class NonFatalResult extends VerificationResult {
   val isFatal = false
 
   /* Attention: Parameter 'other' of '&&' is a function! That is, the following
@@ -72,11 +71,18 @@ case class Unreachable() extends NonFatalResult {
   override val toString = "Unreachable"
 }
 
-case class Failure[ST <: Store[ST],
+case class Failure/*[ST <: Store[ST],
                    H <: Heap[H],
-                   S <: State[ST, H, S]]
+                   S <: State[ST, H, S]]*/
                   (message: VerificationError)
     extends FatalResult {
+
+  /* TODO: Mutable state in a case class? DOOOOOOOOOOOOOON'T! */
+  var load: Option[Seq[Term]] = None
+  def withLoad(load: Seq[Term]) = {
+    this.load = Some(load)
+    this
+  }
 
   override lazy val toString = message.readableMessage
 }

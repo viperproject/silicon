@@ -4,38 +4,33 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import interfaces.PreambleEmitter
-import interfaces.decider.Prover
-import state.{SymbolConvert, terms}
-import state.terms.Term
-import implicits._
+import viper.silver.ast
+import viper.silicon.{MultiMap, MMultiMap, Map, MSet, MMap, Set}
+import viper.silicon.interfaces.PreambleEmitter
+import viper.silicon.interfaces.decider.Prover
+import viper.silicon.state.{SymbolConvert, terms}
+import viper.silicon.state.terms.Term
+import viper.silicon.implicits._
 
 trait DomainsEmitter extends PreambleEmitter {
   def emitUniquenessAssumptions()
 }
 
-class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: Prover, symbolConverter: SymbolConvert)
+class DefaultDomainsEmitter(prover: => Prover,
+                            domainTranslator: DomainsTranslator[Term],
+                            symbolConverter: SymbolConvert)
     extends DomainsEmitter {
 
   /* TODO: Group emitted declarations and axioms by source domain. */
 
   private var collectedSorts = Set[terms.Sort]()
-  private var collectedSymbols = Set[terms.Function]()
+  private var collectedSymbols = Set[terms.DomainFun]()
   private var collectedAxioms = Set[terms.Term]()
-
-  private var uniqueSymbols = Set[terms.Term]()
-    /* The type is Set[terms.Term] and not Set[terms.Function], because immutable sets - unlike immutable
-     * lists - are invariant in their element type. See http://stackoverflow.com/questions/676615/ for explanations.
-     * Since terms.Distinct takes a Set[terms.Term], a Set[terms.Function] cannot be passed.
-     */
+  private var uniqueSymbols = MultiMap.empty[terms.Sort, terms.Symbol]
 
   def sorts = collectedSorts
-  def symbols = Some(collectedSymbols)
 
   /* Lifetime */
 
@@ -43,7 +38,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
     collectedSorts = collectedSorts.empty
     collectedSymbols = collectedSymbols.empty
     collectedAxioms = collectedAxioms.empty
-    uniqueSymbols = uniqueSymbols.empty
+    uniqueSymbols = MultiMap.empty
   }
 
   def start() {}
@@ -99,7 +94,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
         val inSorts = fi.member.formalArgs map (a => symbolConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
         val outSort = symbolConverter.toSort(fi.member.typ.substitute(fi.typeVarsMap))
         val id = symbolConverter.toSortSpecificId(fi.member.name, inSorts :+ outSort)
-        val fct = terms.Function(id, inSorts, outSort)
+        val fct = terms.DomainFun(id, inSorts, outSort)
 
         collectedSymbols += fct
 
@@ -107,7 +102,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
           assert(fi.member.formalArgs.isEmpty,
             s"Expected unique domain functions to not take arguments, but found ${fi.member}")
 
-          uniqueSymbols += fct
+          uniqueSymbols = uniqueSymbols.addBinding(fct.resultSort, fct)
         }
       })
     }
@@ -136,7 +131,7 @@ class DefaultDomainsEmitter(domainTranslator: DomainsTranslator[Term], prover: P
   }
 
   def emitUniquenessAssumptions() {
-    prover.assume(terms.Distinct(uniqueSymbols))
+    uniqueSymbols.map.values foreach (symbols => prover.assume(terms.Distinct(symbols)))
   }
 
   private def domainMembers(domain: ast.Domain): Map[ast.DomainMember, ast.Domain] = {
@@ -375,7 +370,7 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
       symbolConverter.toSort(concreteType)
     }
 
-    translate(toSort)(ax.exp) match {
+    translate(toSort, Set.empty)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 

@@ -4,12 +4,208 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state.terms
+package viper.silicon.state.terms
 
-import scala.reflect._
-import silver.ast.utility.{GenericTriggerGenerator, Visitor}
+import scala.reflect.ClassTag
+import viper.silver.ast.utility.Visitor
+import viper.silicon.{Map, Set, toMap}
+import viper.silicon.state
+import viper.silicon.state.{MagicWandChunk, Identifier}
+
+sealed trait Node
+
+sealed trait Symbol extends Node {
+  def id: Identifier
+}
+
+/*
+ * Sorts
+ */
+
+sealed trait Sort extends Symbol
+
+object sorts {
+  object Snap extends Sort { val id = Identifier("Snap"); override val toString = id.toString }
+  object Int  extends Sort { val id = Identifier("Int");  override val toString = id.toString }
+  object Bool extends Sort { val id = Identifier("Bool"); override val toString = id.toString }
+  object Ref  extends Sort { val id = Identifier("Ref");  override val toString = id.toString }
+  object Perm extends Sort { val id = Identifier("Perm"); override val toString = id.toString }
+  object Unit extends Sort { val id = Identifier("()");   override val toString = id.toString }
+
+  case class Seq(elementsSort: Sort) extends Sort {
+    val id = Identifier("Seq[%s]".format(elementsSort))
+    override val toString = id.toString
+  }
+
+  case class Set(elementsSort: Sort) extends Sort {
+    val id = Identifier("Set[%s]".format(elementsSort))
+    override val toString = id.toString
+  }
+
+  case class Multiset(elementsSort: Sort) extends Sort {
+    val id = Identifier("Multiset[%s]".format(elementsSort))
+    override val toString = id.toString
+  }
+
+  case class UserSort(id: Identifier) extends Sort {
+    override val toString = id.toString
+  }
+
+  case class FieldValueFunction(codomainSort: Sort) extends Sort {
+    val id = Identifier("FVF[%s]".format(codomainSort))
+    override val toString = id.toString
+  }
+}
+
+/*
+ * Declarations
+ */
+
+sealed trait Decl extends Node
+
+case class SortDecl(sort: Sort) extends Decl
+case class FunctionDecl(func: Function) extends Decl
+case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
+case class MacroDecl(id: Identifier, args: Seq[Var], body: Term) extends Decl
+
+object ConstDecl extends (Var => Decl) {
+  def apply(v: Var) = FunctionDecl(v)
+}
+
+/*
+ * Definitions
+ * TODO: Should only be a temporary solution. Consider introducing a propery
+ *       environment that keeps track of symbols currently in scope, and of
+ *       their definitions. Such a change might also affect declarations.
+ */
+
+trait Definition extends Term {
+  val sort = sorts.Bool /* FIXME */
+
+  def declaration: Decl
+  def definition: Seq[Term]
+}
+
+/*
+ * Applicables and Applications
+ */
+
+sealed trait Applicable extends Symbol {
+  def argSorts: Seq[Sort]
+  def resultSort: Sort
+}
+
+sealed trait Application[A <: Applicable] extends Term {
+  def applicable: A
+  def args: Seq[Term]
+}
+
+sealed trait Function extends Applicable
+
+object Function {
+  def unapply(fun: Function): Option[(Identifier, Seq[Sort], Sort)] =
+    Some((fun.id, fun.argSorts, fun.resultSort))
+}
+
+/* RFC: [18-12-2015 Malte] An alternative to using different sub-classes of Function (e.g.
+ *      Fun, HeapDepFun, ...) would be to use a single Fun class that as an additional property
+ *      (i.e. field) that indicates the kind of
+ */
+
+trait GenericFunction[F <: Function] extends Function with StructuralEquality {
+  val equalityDefiningMembers = id +: argSorts :+ resultSort
+
+  def copy(id: Identifier = id, argSorts: Seq[Sort] = argSorts, resultSort: Sort = resultSort): F
+
+  override val toString =
+    if (argSorts.isEmpty) s"$id: $resultSort"
+    else s"$id: ${argSorts.mkString(" x ")} -> $resultSort"
+}
+
+trait GenericFunctionCompanion[F <: Function] {
+  def apply(id: Identifier, argSorts: Seq[Sort], resultSort: Sort): F
+
+  def apply(id: Identifier, argSort: Sort, resultSort: Sort): F =
+    apply(id, Seq(argSort), resultSort)
+
+  def unapply(fun: F): Option[(Identifier, Seq[Sort], Sort)] =
+    Some((fun.id, fun.argSorts, fun.resultSort))
+}
+
+class Fun(val id: Identifier, val argSorts: Seq[Sort], val resultSort: Sort)
+    extends GenericFunction[Fun] {
+
+  def copy(id: Identifier = id, argSorts: Seq[Sort] = argSorts, resultSort: Sort = resultSort) =
+    Fun(id, argSorts, resultSort)
+}
+
+object Fun extends ((Identifier, Seq[Sort], Sort) => Fun) with GenericFunctionCompanion[Fun] {
+  def apply(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) = new Fun(id, argSorts, resultSort)
+}
+
+/* TODO: [18-12-2015 Malte] Since heap-dependent functions are represented by a separate class,
+ *       it might make sense to add methods isLimited/isStateless and transformers
+ *       toLimited/toStateless, and to remove the corresponding methods from the FunctionSupporter
+ *       object.
+ */
+class HeapDepFun(val id: Identifier, val argSorts: Seq[Sort], val resultSort: Sort)
+    extends GenericFunction[HeapDepFun] {
+
+  def copy(id: Identifier = id, argSorts: Seq[Sort] = argSorts, resultSort: Sort = resultSort) =
+    HeapDepFun(id, argSorts, resultSort)
+}
+
+object HeapDepFun extends ((Identifier, Seq[Sort], Sort) => HeapDepFun) with GenericFunctionCompanion[HeapDepFun] {
+  def apply(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) = new HeapDepFun(id, argSorts, resultSort)
+}
+
+class DomainFun(val id: Identifier, val argSorts: Seq[Sort], val resultSort: Sort)
+    extends GenericFunction[DomainFun] {
+
+  def copy(id: Identifier = id, argSorts: Seq[Sort] = argSorts, resultSort: Sort = resultSort) =
+    DomainFun(id, argSorts, resultSort)
+}
+
+object DomainFun extends ((Identifier, Seq[Sort], Sort) => DomainFun) with GenericFunctionCompanion[DomainFun] {
+  def apply(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) = new DomainFun(id, argSorts, resultSort)
+}
+
+case class Macro(id: Identifier, argSorts: Seq[Sort], resultSort: Sort) extends Applicable
+
+case class Var(id: Identifier, sort: Sort) extends Function with Application[Var] {
+  val applicable: Var = this
+  val args: Seq[Term] = Seq.empty
+  val argSorts: Seq[Sort] = Seq(sorts.Unit)
+  val resultSort: Sort = sort
+
+  override val toString = id.toString
+}
+
+class App(val applicable: Applicable, val args: Seq[Term])
+    extends Application[Applicable]
+       with StructuralEquality {
+       /*with PossibleTrigger*/
+
+  utils.assertExpectedSorts(applicable, args)
+
+  val sort: Sort = applicable.resultSort
+  val equalityDefiningMembers = applicable +: args
+  def copy(applicable: Applicable = applicable, args: Seq[Term] = args) = App(applicable, args)
+
+  override val toString =
+    if (args.isEmpty) applicable.id.toString
+    else s"${applicable.id}${args.mkString("(", ", ", ")")}"
+}
+
+object App extends ((Applicable, Seq[Term]) => App) {
+  def apply(applicable: Applicable, args: Seq[Term]) = new App(applicable, args)
+  def apply(applicable: Applicable, arg: Term) = new App(applicable, Seq(arg))
+  def unapply(app: App) = Some((app.applicable, app.args))
+}
+
+/*
+ * Terms
+ */
 
 /* Why not have a Term[S <: Sort]?
  * Then we cannot have optimising extractor objects anymore, because these
@@ -25,90 +221,7 @@ import silver.ast.utility.{GenericTriggerGenerator, Visitor}
  * optimisations, as done in the work on the type safe builder pattern.
  */
 
-/*
- * Sorts
- */
-
-sealed trait Sort extends Symbol
-
-object sorts {
-  import scala.collection.{Seq => SISeq}
-
-  object Snap extends Sort { val id = "Snap"; override val toString = id }
-  object Int extends Sort { val id = "Int"; override val toString = id }
-  object Bool extends Sort { val id = "Bool"; override val toString = id }
-  object Ref extends Sort { val id = "Ref"; override val toString = id }
-  object Perm extends Sort { val id = "Perm"; override val toString = id }
-  object Unit extends Sort { val id = "()"; override val toString = id }
-
-  case class Seq(elementsSort: Sort) extends Sort {
-    val id = "Seq[%s]".format(elementsSort)
-    override val toString = id
-  }
-
-  case class Set(elementsSort: Sort) extends Sort {
-    val id = "Set[%s]".format(elementsSort)
-    override val toString = id
-  }
-
-  case class Multiset(elementsSort: Sort) extends Sort {
-    val id = "Multiset[%s]".format(elementsSort)
-    override val toString = id
-  }
-
-  class Arrow private (val from: SISeq[Sort], val to: Sort) extends Sort
-      with StructuralEquality {
-
-    val equalityDefiningMembers = from :: to :: Nil
-    val id = s"${from mkString " x "} -> $to"
-    override val toString = id
-  }
-
-  object Arrow extends ((SISeq[Sort], Sort) => Sort) {
-    def apply(from: SISeq[Sort], to: Sort) = {
-      val actualFrom = from match {
-        case SISeq() => SISeq(sorts.Unit)
-        case SISeq(sorts.Unit) => from
-        case other =>
-          Predef.assert(!other.contains(sorts.Unit), "")
-          other
-      }
-
-      new Arrow(actualFrom, to)
-    }
-
-    def apply(from: Sort, to: Sort) = new Arrow(List(from), to)
-
-    def unapply(arrow: Arrow) = Some((arrow.from, arrow.to))
-  }
-
-  case class UserSort(id: String) extends Sort {
-    override val toString = id
-  }
-}
-
-/*
- * Declarations
- */
-
-sealed trait Decl
-
-case class VarDecl(v: Var) extends Decl
-case class SortDecl(sort: Sort) extends Decl
-case class FunctionDecl(func: Function) extends Decl
-case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
-
-/*
- * Basic terms
- */
-
-/* TODO: Should extend viper.silver.ast.Node in order to share all the
- *       visitor-related methods.
- *       To do this, Node has to be made parametric in the type of concrete
- *       Nodes that the visitors operate on. Also, the 'subnodes/subterms'
- *       function must be customizable.
- */
-sealed trait Term /*extends Traversable[Term]*/ {
+sealed trait Term extends Node {
   def sort: Sort
 
   def ===(t: Term): Term = Equals(this, t)
@@ -121,6 +234,10 @@ sealed trait Term /*extends Traversable[Term]*/ {
   /** @see [[Visitor.visit()]] */
   def visit(f: PartialFunction[Term, Any]) =
     Visitor.visit(this, state.utils.subterms)(f)
+
+  /** @see [[Visitor.visitOpt()]] */
+  def visitOpt(f: Term => Boolean) =
+    Visitor.visitOpt(this, state.utils.subterms)(f)
 
   /** @see [[Visitor.reduceTree()]] */
   def reduceTree[R](f: (Term, Seq[R]) => R) = Visitor.reduceTree(this, state.utils.subterms)(f)
@@ -148,12 +265,15 @@ sealed trait Term /*extends Traversable[Term]*/ {
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
-  : this.type =
+               : this.type =
 
     state.utils.transform[this.type](this, pre)(recursive, post)
 
   def replace(original: Term, replacement: Term): Term =
-    this.transform{case `original` => replacement}()
+    if (original == replacement)
+      this
+    else
+      this.transform{case `original` => replacement}()
 
   def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term = {
     this.transform{case t: T if replacements.contains(t) => replacements(t)}()
@@ -212,7 +332,7 @@ trait StructuralEqualityBinaryOp[E] extends BinaryOp[E] {
 trait StructuralEquality { self: AnyRef =>
   val equalityDefiningMembers: Seq[Any]
 
-  override val hashCode = silver.utility.Common.generateHashCode(equalityDefiningMembers)
+  override val hashCode = viper.silver.utility.Common.generateHashCode(equalityDefiningMembers)
 
   override def equals(other: Any) = (
     this.eq(other.asInstanceOf[AnyRef])
@@ -221,48 +341,6 @@ trait StructuralEquality { self: AnyRef =>
         equalityDefiningMembers == se.equalityDefiningMembers
       case _ => false
     }))
-}
-
-/* Symbols */
-
-sealed trait Symbol {
-  def id: String
-}
-
-case class Var(id: String, sort: Sort) extends Symbol with Term {
-  override val toString = id
-}
-
-/* TODO: id should be a Symbol, not a String. In general, no terms should talk a
- *       String where an id or some other kind of symbol is expected.
- *       The TermTo<SomeOutputLanguage>Converter should then take care of
- *       sanitising all symbols.
- *
- * TODO: As a related issue, it should also be the Converters that decide how to
- *       distinguish limited functions from unlimited ones. The Function term
- *       could take a flag instead that indicates if this is the (un)limited
- *       version.
- */
-class Function(val id: String, val sort: sorts.Arrow)
-    extends Symbol
-       with Term
-       with StructuralEquality {
-
-  lazy val limitedVersion = Function(id + "$", sort)
-  val equalityDefiningMembers = id :: sort :: Nil
-  override val toString = s"$id: $sort"
-}
-
-object Function {
-  def apply(id: String, sort: sorts.Arrow) = new Function(id, sort)
-
-  def apply(id: String, argSorts: Seq[Sort], toSort: Sort) = {
-    val symbolSort = sorts.Arrow(argSorts, toSort)
-
-    new Function(id, symbolSort)
-  }
-
-  def unapply(f: Function) = Some((f.id, f.sort))
 }
 
 /* Literals */
@@ -330,22 +408,6 @@ case object Forall extends Quantifier {
   def apply(qvars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) =
     Quantification(Forall, qvars, tBody, triggers, name)
 
-  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    apply(qvar, tBody, computeTriggersFrom, "")(dummy)
-
-  def apply(qvar: Var, tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit): Quantification =
-    this(qvar :: Nil, tBody, computeTriggersFrom, name)
-
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term])(implicit dummy: DummyImplicit): Quantification =
-    apply(qvars, tBody, computeTriggersFrom, "")(dummy)
-
-  def apply(qvars: Seq[Var], tBody: Term, computeTriggersFrom: Seq[Term], name: String)(implicit dummy: DummyImplicit) = {
-    val (triggers, extraVars) =
-      TriggerGenerator.generateFirstTriggers(qvars, computeTriggersFrom).getOrElse((Nil, Nil))
-
-      Quantification(Forall, qvars ++ extraVars, tBody, triggers, name)
-    }
-
   def unapply(q: Quantification) = q match {
     case Quantification(Forall, qvars, tBody, triggers, name) => Some((qvars, tBody, triggers, name))
     case _ => None
@@ -367,17 +429,6 @@ object Exists extends Quantifier {
   override val toString = "QE"
 }
 
-class Trigger private[terms] (val p: Seq[Term]) extends StructuralEqualityUnaryOp[Seq[Term]] {
-  override val toString = s"{${p.mkString(",")}}"
-}
-
-object Trigger extends (Seq[Term] => Trigger) {
-  def apply(t: Term) = new Trigger(t :: Nil)
-  def apply(ts: Seq[Term]) = new Trigger(ts)
-
-  def unapply(trigger: Trigger) = Some(trigger.p)
-}
-
 class Quantification private[terms] (val q: Quantifier,
                                      val vars: Seq[Var],
                                      val body: Term,
@@ -391,8 +442,9 @@ class Quantification private[terms] (val q: Quantifier,
       /* Triggers were given explicitly */
       this
     } else {
-      TriggerGenerator.generateTriggers(vars, body) match {
-        case Some((generatedTriggers, extraVariables)) =>
+      TriggerGenerator.generateTriggerSetGroup(vars, body) match {
+        case Some((generatedTriggerSets, extraVariables)) =>
+          val generatedTriggers = generatedTriggerSets.map(set => Trigger(set.exps))
           Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
         case _ =>
           this
@@ -426,7 +478,8 @@ object Quantification extends ((Quantifier, Seq[Var], Term, Seq[Trigger], String
     apply(q, vars, tBody, triggers, "")
 
   def apply(q: Quantifier, vars: Seq[Var], tBody: Term, triggers: Seq[Trigger], name: String) = {
-    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
+//    assert(vars.distinct.length == vars.length, s"Found duplicate vars: $vars")
+//    assert(triggers.distinct.length == triggers.length, s"Found duplicate triggers: $triggers")
 
     /* TODO: If we optimise away a quantifier, we cannot, for example, access
      *       autoTrigger on the returned object.
@@ -448,8 +501,7 @@ sealed abstract class ArithmeticTerm extends Term {
 }
 
 class Plus(val p0: Term, val p1: Term) extends ArithmeticTerm
-    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term] {
 
   override val op = "+"
 }
@@ -468,8 +520,7 @@ object Plus extends ((Term, Term) => Term) {
 }
 
 class Minus(val p0: Term, val p1: Term) extends ArithmeticTerm
-    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term] {
 
   override val op = "-"
 }
@@ -488,8 +539,7 @@ object Minus extends ((Term, Term) => Term) {
 }
 
 class Times(val p0: Term, val p1: Term) extends ArithmeticTerm
-    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with BinaryOp[Term] with StructuralEqualityBinaryOp[Term] {
 
   override val op = "*"
 }
@@ -510,13 +560,13 @@ object Times extends ((Term, Term) => Term) {
 }
 
 case class Div(p0: Term, p1: Term) extends ArithmeticTerm
-    with BinaryOp[Term] with ForbiddenInTrigger {
+    with BinaryOp[Term] {
 
   override val op = "/"
 }
 
 case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
-    with BinaryOp[Term] with ForbiddenInTrigger {
+    with BinaryOp[Term] {
 
   override val op = "%"
 }
@@ -526,7 +576,7 @@ case class Mod(p0: Term, p1: Term) extends ArithmeticTerm
 sealed trait BooleanTerm extends Term { override val sort = sorts.Bool }
 
 class Not(val p: Term) extends BooleanTerm
-    with StructuralEqualityUnaryOp[Term] with ForbiddenInTrigger {
+    with StructuralEqualityUnaryOp[Term] {
 
   override val op = "!"
 
@@ -548,7 +598,7 @@ object Not extends (Term => Term) {
 }
 
 class Or(val ts: Seq[Term]) extends BooleanTerm
-    with StructuralEquality with ForbiddenInTrigger {
+    with StructuralEquality {
 
   assert(ts.nonEmpty, "Expected at least one term, but found none")
 
@@ -592,7 +642,7 @@ object Or extends (Iterable[Term] => Term) {
 }
 
 class And(val ts: Seq[Term]) extends BooleanTerm
-    with StructuralEquality with ForbiddenInTrigger {
+    with StructuralEquality {
 
   assert(ts.nonEmpty, "Expected at least one term, but found none")
 
@@ -622,8 +672,7 @@ object And extends (Iterable[Term] => Term) {
 }
 
 class Implies(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val op = "==>"
 }
@@ -646,8 +695,7 @@ object Implied extends ((Term, Term) => Term) {
 }
 
 class Iff(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val op = "<==>"
 }
@@ -664,9 +712,7 @@ object Iff extends ((Term, Term) => Term) {
 }
 
 class Ite(val t0: Term, val t1: Term, val t2: Term)
-    extends Term
-       with ForbiddenInTrigger
-       with StructuralEquality {
+    extends Term with StructuralEquality {
 
   assert(t0.sort == sorts.Bool && t1.sort == t2.sort, /* @elidable */
       "Ite term Ite(%s, %s, %s) is not well-sorted: %s, %s, %s"
@@ -731,8 +777,7 @@ object Equals extends ((Term, Term) => BooleanTerm) {
 
 /* Represents built-in equality, e.g., '=' in SMT-LIB */
 class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 }
 
 object BuiltinEquals {
@@ -753,12 +798,6 @@ object BuiltinEquals {
 /* Custom equality that (potentially) needs to be axiomatised. */
 class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
     with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
-
-  def getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = Equals(args(0), args(1)).asInstanceOf[CustomEquals]
-    /* The cast will raise an exception if the equality has been optimised away */
-}
 
 object CustomEquals {
   def apply(t1: Term, t2: Term) = new CustomEquals(t1, t2)
@@ -766,8 +805,7 @@ object CustomEquals {
 }
 
 class Less(val p0: Term, val p1: Term) extends ComparisonTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   assert(p0.sort == p1.sort,
     "Expected both operands to be of the same sort, but found %s (%s) and %s (%s)."
@@ -787,8 +825,7 @@ object Less extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Term)
 }
 
 class AtMost(val p0: Term, val p1: Term) extends ComparisonTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val op = "<="
 }
@@ -804,8 +841,7 @@ object AtMost extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Ter
 }
 
 class Greater(val p0: Term, val p1: Term) extends ComparisonTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val op = ">"
 }
@@ -821,8 +857,7 @@ object Greater extends /* OptimisingBinaryArithmeticOperation with */ ((Term, Te
 }
 
 class AtLeast(val p0: Term, val p1: Term) extends ComparisonTerm
-    with StructuralEqualityBinaryOp[Term]
-    with ForbiddenInTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val op = ">="
 }
@@ -888,9 +923,7 @@ case class IsReadPermVar(v: Var, ub: Term) extends BooleanTerm {
 
 class PermTimes(val p0: Term, val p1: Term)
     extends Permissions
-       with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger {
+       with StructuralEqualityBinaryOp[Term] {
 
   override val op = "*"
 }
@@ -910,8 +943,7 @@ object PermTimes extends ((Term, Term) => Term) {
 class IntPermTimes(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger {
+       with StructuralEqualityBinaryOp[Term] {
 
   override val op = "*"
 }
@@ -931,9 +963,8 @@ object IntPermTimes extends ((Term, Term) => Term) {
 
 case class PermIntDiv(p0: Term, p1: Term)
     extends Permissions
-       with BinaryOp[Term]
+       with BinaryOp[Term] {
 //    with commonnodes.StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger {
 
   utils.assertSort(p1, "Second term", sorts.Int)
 
@@ -943,8 +974,7 @@ case class PermIntDiv(p0: Term, p1: Term)
 class PermPlus(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger {
+       with StructuralEqualityBinaryOp[Term] {
 
   override val op = "+"
 }
@@ -966,8 +996,7 @@ object PermPlus extends ((Term, Term) => Term) {
 class PermMinus(val p0: Term, val p1: Term)
     extends Permissions
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger {
+       with StructuralEqualityBinaryOp[Term] {
 
   override val op = "-"
 
@@ -993,8 +1022,7 @@ object PermMinus extends ((Term, Term) => Term) {
 class PermLess(val p0: Term, val p1: Term)
     extends BooleanTerm
        with BinaryOp[Term]
-       with StructuralEqualityBinaryOp[Term]
-       with ForbiddenInTrigger {
+       with StructuralEqualityBinaryOp[Term] {
 
   override val toString = "(%s) < (%s)".format(p0, p1)
 
@@ -1009,7 +1037,7 @@ object PermLess extends ((Term, Term) => Term) {
       case (FullPerm(), _: WildcardPerm) => False()
 
       case (`t0`, Ite(tCond, tIf, tElse)) =>
-        /* The pattern p0 < b ? p1 < p2 arises very often in the context of quantified permissions.
+        /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
          * Pushing the comparisons into the ite allows further simplifications.
          */
         Ite(tCond, PermLess(t0, tIf), PermLess(t0, tElse))
@@ -1021,45 +1049,30 @@ object PermLess extends ((Term, Term) => Term) {
   def unapply(pl: PermLess) = Some((pl.p0, pl.p1))
 }
 
+class PermAtMost(val p0: Term, val p1: Term) extends ComparisonTerm
+    with StructuralEqualityBinaryOp[Term] {
+
+  override val op = "<="
+}
+
+object PermAtMost extends ((Term, Term) => Term) {
+  def apply(e0: Term, e1: Term) = (e0, e1) match {
+    case (NoPerm(), FullPerm()) => True()
+    case (NoPerm(), fp: FractionPerm) if fp.isDefinitelyPositive => True()
+    case (t0, t1) if t0 == t1 => True()
+    case _ => new PermAtMost(e0, e1)
+  }
+
+  def unapply(e: PermAtMost) = Some((e.p0, e.p1))
+}
+
 case class PermMin(p0: Term, p1: Term) extends Permissions
-    with BinaryOp[Term]
-    with PossibleBinaryOpTrigger[Term] {
+    with BinaryOp[Term] {
 
   utils.assertSort(p0, "Permission 1st", sorts.Perm)
   utils.assertSort(p1, "Permission 2nd", sorts.Perm)
 
   override val toString = s"min ($p0, $p1)"
-
-  def withArgs(args: Seq[Term]) = PermMin(args(0), args(1))
-}
-
-/* Functions */
-
-case class Apply(func: Term, args: Seq[Term]) extends Term with PossibleTrigger {
-  val funcSort = func.sort match {
-    case a: sorts.Arrow => a
-    case other => sys.error(s"Cannot apply $func of sort $other to $args")
-  }
-
-  val sort = funcSort.to
-
-  override val toString = s"$func(${args.mkString(",")})"
-
-  lazy val getArgs = func +: args
-  def withArgs(args: Seq[Term]) = Apply(args.head, args.tail)
-}
-
-case class FApp(function: Function, snapshot: Term, tArgs: Seq[Term]) extends Term with PossibleTrigger {
-  utils.assertSort(snapshot, "snapshot", sorts.Snap)
-
-  val sort = function.sort.to
-
-  lazy val limitedVersion = FApp(function.limitedVersion, snapshot, tArgs)
-
-  override val toString = s"${function.id}(${tArgs.mkString(",")};$snapshot)"
-
-  lazy val getArgs = snapshot +: tArgs
-  def withArgs(args: Seq[Term]) = FApp(function, args.head, args.tail)
 }
 
 /* Sequences */
@@ -1069,7 +1082,7 @@ sealed trait SeqTerm extends Term {
   val sort: sorts.Seq
 }
 
-case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ with PossibleTrigger  {
+case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] */ {
   utils.assertSort(p0, "first operand", sorts.Int)
   utils.assertSort(p1, "second operand", sorts.Int)
 
@@ -1077,9 +1090,6 @@ case class SeqRanged(p0: Term, p1: Term) extends SeqTerm /* with BinaryOp[Term] 
   val sort = sorts.Seq(elementsSort)
 
   override val toString = "[%s..%s]".format(p0, p1)
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqRanged(args(0), args(1))
 }
 
 case class SeqNil(elementsSort: Sort) extends SeqTerm with Literal {
@@ -1087,32 +1097,25 @@ case class SeqNil(elementsSort: Sort) extends SeqTerm with Literal {
   override val toString = "Nil"
 }
 
-case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ with PossibleTrigger {
+case class SeqSingleton(p: Term) extends SeqTerm /* with UnaryOp[Term] */ {
   val elementsSort = p.sort
   val sort = sorts.Seq(elementsSort)
 
   override val toString = "[" + p + "]"
-
-  lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SeqSingleton(args(0))
 }
 
 class SeqAppend(val p0: Term, val p1: Term) extends SeqTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
   override val op = "++"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqAppend(args(0), args(1))
 }
 
 object SeqAppend extends ((Term, Term) => SeqTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSeqSorts(t0, t1)
+    utils.assertSameSorts[sorts.Seq](t0, t1)
     new SeqAppend(t0, t1)
   }
 
@@ -1120,16 +1123,12 @@ object SeqAppend extends ((Term, Term) => SeqTerm) {
 }
 
 class SeqDrop(val p0: Term, val p1: Term) extends SeqTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
   override val toString = p0 + "[" + p1 + ":]"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqDrop(args(0), args(1))
 }
 
 object SeqDrop extends ((Term, Term) => SeqTerm) {
@@ -1143,16 +1142,12 @@ object SeqDrop extends ((Term, Term) => SeqTerm) {
 }
 
 class SeqTake(val p0: Term, val p1: Term) extends SeqTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
   val sort = sorts.Seq(elementsSort)
 
   override val toString = p0 + "[:" + p1 + "]"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqTake(args(0), args(1))
 }
 
 object SeqTake extends ((Term, Term) => SeqTerm) {
@@ -1166,14 +1161,10 @@ object SeqTake extends ((Term, Term) => SeqTerm) {
 }
 
 class SeqLength(val p: Term) extends Term
-    with StructuralEqualityUnaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityUnaryOp[Term] {
 
   val sort = sorts.Int
   override val toString = "|" + p + "|"
-
-  lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SeqLength(args(0))
 }
 
 object SeqLength {
@@ -1186,15 +1177,11 @@ object SeqLength {
 }
 
 class SeqAt(val p0: Term, val p1: Term) extends Term
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val sort = p0.sort.asInstanceOf[sorts.Seq].elementsSort
 
   override val toString = p0 + "[" + p1 + "]"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqAt(args(0), args(1))
 }
 
 object SeqAt extends ((Term, Term) => Term) {
@@ -1208,13 +1195,9 @@ object SeqAt extends ((Term, Term) => Term) {
 }
 
 class SeqIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val toString = "%s in %s".format(p1, p0)
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SeqIn(args(0), args(1))
 }
 
 object SeqIn extends ((Term, Term) => BooleanTerm) {
@@ -1229,16 +1212,12 @@ object SeqIn extends ((Term, Term) => BooleanTerm) {
 
 class SeqUpdate(val t0: Term, val t1: Term, val t2: Term)
     extends SeqTerm
-       with StructuralEquality
-       with PossibleTrigger {
+       with StructuralEquality {
 
   val sort = t0.sort.asInstanceOf[sorts.Seq]
   val elementsSort = sort.elementsSort
   val equalityDefiningMembers = t0 :: t1 :: t2 :: Nil
   override val toString = s"$t0[$t1] := $t2"
-
-  lazy val getArgs = t0 :: t1 :: t2 :: Nil
-  def withArgs(args: Seq[Term]) = SeqUpdate(args(0), args(1), args(2))
 }
 
 object SeqUpdate extends ((Term, Term, Term) => SeqTerm) {
@@ -1261,8 +1240,7 @@ sealed trait SetTerm extends Term {
 }
 
 sealed trait BinarySetOp extends SetTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleBinaryOpTrigger[Term] {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
   val sort = sorts.Set(elementsSort)
@@ -1273,27 +1251,20 @@ case class EmptySet(elementsSort: Sort) extends SetTerm with Literal {
   override val toString = "Ø"
 }
 
-case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ with PossibleTrigger {
+case class SingletonSet(p: Term) extends SetTerm /* with UnaryOp[Term] */ {
   val elementsSort = p.sort
   val sort = sorts.Set(elementsSort)
 
   override val toString = "{" + p + "}"
-
-  lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SingletonSet(args(0))
 }
 
 class SetAdd(val p0: Term, val p1: Term) extends SetTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Set].elementsSort
   val sort = sorts.Set(elementsSort)
 
   override val op = "+"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SetAdd(args(0), args(1))
 }
 
 object SetAdd extends ((Term, Term) => SetTerm) {
@@ -1309,13 +1280,11 @@ object SetAdd extends ((Term, Term) => SetTerm) {
 
 class SetUnion(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "∪"
-
-  def withArgs(args: Seq[Term]) = SetUnion(args(0), args(1))
 }
 
 object SetUnion extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetUnion(t0, t1)
   }
 
@@ -1324,13 +1293,11 @@ object SetUnion extends ((Term, Term) => SetTerm) {
 
 class SetIntersection(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "∩"
-
-  def withArgs(args: Seq[Term]) = SetIntersection(args(0), args(1))
 }
 
 object SetIntersection extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetIntersection(t0, t1)
   }
 
@@ -1339,13 +1306,11 @@ object SetIntersection extends ((Term, Term) => SetTerm) {
 
 class SetSubset(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "⊂"
-
-  def withArgs(args: Seq[Term]) = SetSubset(args(0), args(1))
 }
 
 object SetSubset extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetSubset(t0, t1)
   }
 
@@ -1354,13 +1319,11 @@ object SetSubset extends ((Term, Term) => SetTerm) {
 
 class SetDisjoint(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "disj"
-
-  def withArgs(args: Seq[Term]) = SetDisjoint(args(0), args(1))
 }
 
 object SetDisjoint extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDisjoint(t0, t1)
   }
 
@@ -1369,13 +1332,11 @@ object SetDisjoint extends ((Term, Term) => SetTerm) {
 
 class SetDifference(val p0: Term, val p1: Term) extends BinarySetOp {
   override val op = "\\"
-
-  def withArgs(args: Seq[Term]) = SetDifference(args(0), args(1))
 }
 
 object SetDifference extends ((Term, Term) => SetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameSetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Set](t0, t1)
     new SetDifference(t0, t1)
   }
 
@@ -1383,13 +1344,9 @@ object SetDifference extends ((Term, Term) => SetTerm) {
 }
 
 class SetIn(val p0: Term, val p1: Term) extends BooleanTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   override val op = "in"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = SetIn(args(0), args(1))
 }
 
 object SetIn extends ((Term, Term) => BooleanTerm) {
@@ -1404,14 +1361,10 @@ object SetIn extends ((Term, Term) => BooleanTerm) {
 }
 
 class SetCardinality(val p: Term) extends Term
-    with StructuralEqualityUnaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityUnaryOp[Term] {
 
   val sort = sorts.Int
   override val toString = "|" + p + "|"
-
-  lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SetCardinality(args(0))
 }
 
 object SetCardinality extends (Term => SetCardinality) {
@@ -1431,8 +1384,7 @@ sealed trait MultisetTerm extends Term {
 }
 
 sealed trait BinaryMultisetOp extends MultisetTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleBinaryOpTrigger[Term] {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
   val sort = sorts.Multiset(elementsSort)
@@ -1443,27 +1395,20 @@ case class EmptyMultiset(elementsSort: Sort) extends MultisetTerm with Literal {
   override val toString = "Ø"
 }
 
-case class SingletonMultiset(p: Term) extends MultisetTerm /* with UnaryOp[Term] */ with PossibleTrigger {
+case class SingletonMultiset(p: Term) extends MultisetTerm /* with UnaryOp[Term] */ {
   val elementsSort = p.sort
   val sort = sorts.Multiset(elementsSort)
 
   override val toString = "{" + p + "}"
-
-  lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = SingletonMultiset(args(0))
 }
 
 class MultisetAdd(val p0: Term, val p1: Term) extends MultisetTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val elementsSort = p0.sort.asInstanceOf[sorts.Multiset].elementsSort
   val sort = sorts.Multiset(elementsSort)
 
   override val op = "+"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = MultisetAdd(args(0), args(1))
 }
 
 object MultisetAdd extends ((Term, Term) => MultisetTerm) {
@@ -1479,13 +1424,11 @@ object MultisetAdd extends ((Term, Term) => MultisetTerm) {
 
 class MultisetUnion(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "∪"
-
-  def withArgs(args: Seq[Term]) = MultisetUnion(args(0), args(1))
 }
 
 object MultisetUnion extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetUnion(t0, t1)
   }
 
@@ -1494,13 +1437,11 @@ object MultisetUnion extends ((Term, Term) => MultisetTerm) {
 
 class MultisetIntersection(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "∩"
-
-  def withArgs(args: Seq[Term]) = MultisetIntersection(args(0), args(1))
 }
 
 object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetIntersection(t0, t1)
   }
 
@@ -1509,13 +1450,11 @@ object MultisetIntersection extends ((Term, Term) => MultisetTerm) {
 
 class MultisetSubset(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "⊂"
-
-  def withArgs(args: Seq[Term]) = MultisetSubset(args(0), args(1))
 }
 
 object MultisetSubset extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetSubset(t0, t1)
   }
 
@@ -1524,13 +1463,11 @@ object MultisetSubset extends ((Term, Term) => MultisetTerm) {
 
 class MultisetDifference(val p0: Term, val p1: Term) extends BinaryMultisetOp {
   override val op = "\\"
-
-  def withArgs(args: Seq[Term]) = MultisetDifference(args(0), args(1))
 }
 
 object MultisetDifference extends ((Term, Term) => MultisetTerm) {
   def apply(t0: Term, t1: Term) = {
-    utils.assertSameMultisetSorts(t0, t1)
+    utils.assertSameSorts[sorts.Multiset](t0, t1)
     new MultisetDifference(t0, t1)
   }
 
@@ -1538,14 +1475,10 @@ object MultisetDifference extends ((Term, Term) => MultisetTerm) {
 }
 
 class MultisetCardinality(val p: Term) extends Term
-    with StructuralEqualityUnaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityUnaryOp[Term] {
 
   val sort = sorts.Int
   override val toString = "|" + p + "|"
-
-  lazy val getArgs = p :: Nil
-  def withArgs(args: Seq[Term]) = MultisetCardinality(args(0))
 }
 
 object MultisetCardinality extends (Term => MultisetCardinality) {
@@ -1558,14 +1491,10 @@ object MultisetCardinality extends (Term => MultisetCardinality) {
 }
 
 class MultisetCount(val p0: Term, val p1: Term) extends Term
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   val sort = sorts.Int
   override val toString = s"$p0($p1)"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = MultisetCount(args(0), args(1))
 }
 
 object MultisetCount extends {
@@ -1579,31 +1508,17 @@ object MultisetCount extends {
   def unapply(mc: MultisetCount) = Some((mc.p0, mc.p1))
 }
 
-/* Domains */
-
-case class DomainFApp(function: Function, tArgs: Seq[Term]) extends Term with PossibleTrigger {
-  val sort = function.sort.to
-  override val toString = function.id + tArgs.mkString("(", ", ", ")")
-
-  lazy val getArgs = tArgs
-  def withArgs(args: Seq[Term]) = DomainFApp(function, args)
-}
-
 /* Snapshots */
 
 sealed trait SnapshotTerm extends Term { val sort = sorts.Snap }
 
 class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
-    with StructuralEqualityBinaryOp[Term]
-    with PossibleTrigger {
+    with StructuralEqualityBinaryOp[Term] {
 
   utils.assertSort(p0, "first operand", sorts.Snap)
   utils.assertSort(p1, "second operand", sorts.Snap)
 
   override val toString = s"($p0, $p1)"
-
-  lazy val getArgs = p0 :: p1 :: Nil
-  def withArgs(args: Seq[Term]) = Combine(args(0), args(1))
 }
 
 object Combine {
@@ -1612,18 +1527,60 @@ object Combine {
   def unapply(c: Combine) = Some((c.p0, c.p1))
 }
 
-case class First(t: Term) extends SnapshotTerm with PossibleTrigger {
-  utils.assertSort(t, "term", sorts.Snap)
+class First(val p: Term) extends SnapshotTerm
+    with StructuralEqualityUnaryOp[Term]
+    /*with PossibleTrigger*/ {
 
-  lazy val getArgs = t :: Nil
-  def withArgs(args: Seq[Term]) = First(args(0))
+  utils.assertSort(p, "term", sorts.Snap)
 }
 
-case class Second(t: Term) extends SnapshotTerm with PossibleTrigger {
-  utils.assertSort(t, "term", sorts.Snap)
+object First extends (Term => Term) {
+  def apply(t: Term) = t match {
+    case Combine(t1, _) => t1
+    case _ => new First(t)
+  }
 
-  lazy val getArgs = t :: Nil
-  def withArgs(args: Seq[Term]) = Second(args(0))
+  def unapply(f: First) = Some(f.p)
+}
+
+class Second(val p: Term) extends SnapshotTerm
+    with StructuralEqualityUnaryOp[Term]
+    /*with PossibleTrigger*/ {
+
+  utils.assertSort(p, "term", sorts.Snap)
+}
+
+object Second extends (Term => Term) {
+  def apply(t: Term) = t match {
+    case Combine(_, t2) => t2
+    case _ => new Second(t)
+  }
+
+  def unapply(s: Second) = Some(s.p)
+}
+
+/* Quantified permissions */
+
+case class Lookup(field: String, fvf: Term, at: Term) extends Term {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+  utils.assertSort(at, "receiver", sorts.Ref)
+
+  val sort = fvf.sort.asInstanceOf[sorts.FieldValueFunction].codomainSort
+}
+
+case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigger*/ {
+  utils.assertSort(fvf, "field value function", "FieldValueFunction", _.isInstanceOf[sorts.FieldValueFunction])
+
+  val elementsSort = sorts.Ref
+  val sort = sorts.Set(elementsSort)
+}
+
+case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends BooleanTerm {
+  utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
+}
+
+object FvfTop extends (String => Identifier) {
+  def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
 }
 
 /* Sort wrappers */
@@ -1657,28 +1614,16 @@ object SortWrapper {
   def unapply(sw: SortWrapper) = Some((sw.t, sw.to))
 }
 
-/* Trigger-related terms */
+/* Magic wands */
 
-sealed trait PossibleTrigger extends Term with GenericTriggerGenerator.PossibleTrigger[Term, PossibleTrigger] {
-  val asManifestation = this
-  /* Returning this assumes that the possible trigger is always the trigger
-   * term itself. This is not the case, for example, on Silver's side, where
-   * an old-expression itself is not the trigger, but where the expression
-   * nested in 'old' is the trigger.
-   */
-}
-
-sealed trait PossibleBinaryOpTrigger[T <: Term] extends PossibleTrigger { self: BinaryOp[T] =>
-  lazy val getArgs = p0 :: p1 :: Nil
-}
-
-sealed trait ForbiddenInTrigger extends Term with GenericTriggerGenerator.ForbiddenInTrigger[Sort] {
-  lazy val typ = sort
+case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
+  override val sort = sorts.Unit /* TODO: Does this make sense? */
+  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
 }
 
 /* Other terms */
 
-class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality with ForbiddenInTrigger {
+class Distinct(val ts: Set[Symbol]) extends BooleanTerm with StructuralEquality {
   assert(ts.nonEmpty, "Distinct requires at least one term")
 
   val equalityDefiningMembers = ts :: Nil
@@ -1686,14 +1631,14 @@ class Distinct(val ts: Set[Term]) extends BooleanTerm with StructuralEquality wi
 }
 
 object Distinct {
-  def apply(ts: Set[Term]): Term =
+  def apply(ts: Set[Symbol]): Term =
     if (ts.nonEmpty) new Distinct(ts)
     else True()
 
   def unapply(d: Distinct) = Some(d.ts)
 }
 
-class Let(val bindings: Map[Var, Term], val body: Term) extends Term with StructuralEquality with ForbiddenInTrigger {
+class Let(val bindings: Map[Var, Term], val body: Term) extends Term with StructuralEquality {
   assert(bindings.nonEmpty, "Let needs to bind at least one variable")
 
   val sort = body.sort
@@ -1717,7 +1662,8 @@ object Let extends ((Map[Var, Term], Term) => Term) {
 /* Predefined terms */
 
 object predef {
-  val `?s` = Var("s@$", sorts.Snap) // with SnapshotTerm
+  val `?s` = Var(Identifier("s@$"), sorts.Snap) // with SnapshotTerm
+  val `?r` = Var(Identifier("r"), sorts.Ref)
 
   val Zero = IntLiteral(0)
   val One = IntLiteral(1)
@@ -1739,8 +1685,6 @@ object perms {
     case _ => PermLess(NoPerm(), p)
   }
 
-  def IsAsPermissive(p1: Term, p2: Term) = Or(p1 === p2, PermLess(p2, p1))
-
   def IsNoAccess(p: Term) = p match {
     case _: NoPerm => True()
     case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False()
@@ -1753,7 +1697,20 @@ object perms {
 
 object utils {
   def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
-    silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
+    viper.silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
+
+  def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
+    case _: WildcardPerm => false
+    case v: Var => !constrainableARPs.contains(v)
+    case PermPlus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case PermMinus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case PermTimes(t0, t1) => consumeExactRead(t0, constrainableARPs) && consumeExactRead(t1, constrainableARPs)
+    case IntPermTimes(_, t1) => consumeExactRead(t1, constrainableARPs)
+    case PermIntDiv(t0, _) => consumeExactRead(t0, constrainableARPs)
+    case PermMin(t0 ,t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case Ite(_, t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
+    case _ => true
+  }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def assertSort(t: Term, desc: String, s: Sort) {
@@ -1774,37 +1731,37 @@ object utils {
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameSeqSorts(t0: Term, t1: Term) {
+  def assertSameSorts[S <: Sort with Product : ClassTag](t0: Term, t1: Term) {
+    val clazz = implicitly[ClassTag[S]].runtimeClass
+
     assert(
       (t0.sort, t1.sort) match {
-        case (sorts.Seq(a), sorts.Seq(b)) if a == b => true
+        case (s0: S, s1: S) if s0.productIterator.sameElements(s1.productIterator) => true
         case _ => false
       },
-      "Expected both operands to be of sort Seq(X), but found %s (%s) and %s (%s)"
-        .format(t0, t0.sort, t1, t1.sort))
+      s"Expected both operands to be of sort ${clazz.getSimpleName}(S1,S2,...), but found %s (%s) and %s (%s)"
+          .format(t0, t0.sort, t1, t1.sort))
   }
 
   @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameSetSorts(t0: Term, t1: Term) {
-    assert(
-      (t0.sort, t1.sort) match {
-        case (sorts.Set(a), sorts.Set(b)) if a == b => true
-        case _ => false
-      },
-      "Expected both operands to be of sort Set(X), but found %s (%s) and %s (%s)"
-        .format(t0, t0.sort, t1, t1.sort))
+  def assertExpectedSorts(applicable: Applicable, args: Seq[Term]) {
+    assert(applicable.argSorts.length == args.length,
+           s"Expected ${applicable.argSorts.length} arguments for ${applicable.id}, but got ${args.length}")
+
+    for (i <- args.indices;
+         s = applicable.argSorts(i);
+         t = args(i)) {
+
+      assert(s == t.sort,
+             s"Expected $i-th argument of ${applicable.id} to be of sort $s, but got $t of sort ${t.sort}")
+    }
   }
 
-  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
-  def assertSameMultisetSorts(t0: Term, t1: Term) {
-    assert(
-      (t0.sort, t1.sort) match {
-        case (sorts.Multiset(a), sorts.Multiset(b)) if a == b => true
-        case _ => false
-      },
-      "Expected both operands to be of sort Multiset(X), but found %s (%s) and %s (%s)"
-        .format(t0, t0.sort, t1, t1.sort))
-  }
+    /* Taken from http://stackoverflow.com/a/8569263.
+   * Computes the cartesian product of `xs`.
+   */
+  def cartesianProduct[A](xs: Traversable[Traversable[A]]): Seq[Seq[A]] =
+    xs.foldLeft(Seq(Seq.empty[A])){(x, y) => for (a <- x.view; b <- y) yield a :+ b}
 }
 
 object implicits {

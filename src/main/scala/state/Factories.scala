@@ -4,14 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import silver.ast
-import interfaces.state.{Chunk, StoreFactory, HeapFactory, PathConditionsFactory, StateFactory}
-import interfaces.state.factoryUtils.Ø
-import state.terms.Term
+import viper.silver.ast
+import viper.silicon.{Map, toMap, Set}
+import viper.silicon.interfaces.state.{Chunk, StoreFactory, HeapFactory, StateFactory}
+import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.state.terms.Term
 
 trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
   def Γ() = new MapBackedStore()
@@ -26,25 +25,11 @@ trait DefaultHeapFactory extends HeapFactory[ListBackedHeap] {
   def H(chunks: Iterable[Chunk]) = new ListBackedHeap(chunks)
 }
 
-class DefaultStateFactory
-    (private val π: () => Set[Term])
+class DefaultStateFactory()
     extends StateFactory[MapBackedStore, ListBackedHeap, DefaultState[MapBackedStore, ListBackedHeap]]
     with DefaultStoreFactory
     with DefaultHeapFactory {
 
   def Σ() = Σ(Ø, Ø, Ø)
-  def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g, π)
-}
-
-class DefaultPathConditionsFactory
-    extends PathConditionsFactory[MutableSetBackedPathConditions] {
-
-  def Π() = new MutableSetBackedPathConditions()
-  def Π(term: Term) = new MutableSetBackedPathConditions().push(term)
-
-  def Π(terms: Set[Term]) = {
-    val π = new MutableSetBackedPathConditions()
-    terms foreach π.push
-    π
-  }
+  def Σ(γ: MapBackedStore, h: ListBackedHeap, g: ListBackedHeap) = DefaultState(γ, h, g)
 }

@@ -4,11 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.decider
+package viper.silicon.interfaces.decider
 
-import state.terms.{Term, Sort, Decl}
+import viper.silicon.state.terms.{Term, Sort, Decl}
 
 trait TermConverter[T, S, D] {
   def convert(term: Term): T

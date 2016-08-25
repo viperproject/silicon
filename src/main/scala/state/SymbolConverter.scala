@@ -4,27 +4,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import silver.ast
-import terms.{Sort, sorts}
+import viper.silver.ast
+import viper.silicon.state.terms.{Sort, sorts}
 
 /* TODO: Move to interfaces package */
 trait SymbolConvert {
   def toSort(typ: ast.Type): Sort
 
-  def toSortSpecificId(id: String, sorts: Seq[Sort]): String
+  def toSortSpecificId(name: String, sorts: Seq[Sort]): Identifier
 
-  def toFunction(function: ast.DomainFunc): terms.Function
-  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.Function
+  def toFunction(function: ast.DomainFunc): terms.DomainFun
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun
 
-  def toFunction(function: ast.Function): terms.Function
+  def toFunction(function: ast.Function): terms.HeapDepFun
 }
 
 class DefaultSymbolConvert extends SymbolConvert {
-  def toSort(typ: ast.Type) = typ match {
+  def toSort(typ: ast.Type): Sort = typ match {
     case ast.Bool => sorts.Bool
     case ast.Int => sorts.Int
     case ast.Perm => sorts.Perm
@@ -36,36 +34,39 @@ class DefaultSymbolConvert extends SymbolConvert {
 
     case dt: ast.DomainType =>
       assert(dt.isConcrete, "Expected only concrete domain types, but found " + dt)
-      sorts.UserSort(dt.toString())
+      sorts.UserSort(Identifier(dt.toString()))
 
-    case silver.ast.Pred | _: silver.ast.TypeVar =>
+    case   ast.InternalType
+         | _: ast.TypeVar
+         | ast.Wand
+         =>
       sys.error("Found unexpected type %s (%s)".format(typ, typ.getClass.getSimpleName))
   }
 
-  def toSortSpecificId(id: String, sorts: Seq[Sort]) =
-    id + sorts.mkString("[",",","]")
+  def toSortSpecificId(name: String, sorts: Seq[Sort]) =
+    Identifier(name + sorts.mkString("[",",","]"))
 
-  def toFunction(function: ast.DomainFunc) = {
+  def toFunction(function: ast.DomainFunc): terms.DomainFun = {
     val inSorts = function.formalArgs map (_.typ) map toSort
     val outSort = toSort(function.typ)
 
     toFunction(function, inSorts :+ outSort)
   }
 
-  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]) = {
+  def toFunction(function: ast.DomainFunc, sorts: Seq[Sort]): terms.DomainFun = {
     assert(sorts.nonEmpty, "Expected at least one sort, but found none")
 
     val inSorts = sorts.init
     val outSort = sorts.last
     val id = toSortSpecificId(function.name, sorts)
 
-    terms.Function(id, inSorts, outSort)
+    terms.DomainFun(id, inSorts, outSort)
   }
 
-  def toFunction(function: ast.Function) = {
+  def toFunction(function: ast.Function): terms.HeapDepFun = {
     val inSorts = terms.sorts.Snap +: (function.formalArgs map (_.typ) map toSort)
     val outSort = toSort(function.typ)
 
-    terms.Function(function.name, inSorts, outSort)
+    terms.HeapDepFun(Identifier(function.name), inSorts, outSort)
   }
 }

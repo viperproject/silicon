@@ -15,8 +15,8 @@ object SiliconBuild extends Build {
     ++ brandSettings
     ++ Seq(
           organization := "viper",
-          version := "0.1-SNAPSHOT",
-          scalaVersion := "2.10.4",
+          version := "1.1-SNAPSHOT",
+          scalaVersion := "2.11.7",
           scalacOptions in Compile ++= Seq(
             "-deprecation",
             "-unchecked",
@@ -75,19 +75,19 @@ object SiliconBuild extends Build {
               BrandKeys.data <+= sbtVersion(Val("sbtVersion", _)),
               BrandKeys.data <+= name(Val("sbtProjectName", _)),
               BrandKeys.data <+= version(Val("sbtProjectVersion", _)),
-              BrandKeys.data <+= HgIdKeys.projectId { idOrException =>
-                val hgid =
+              BrandKeys.data <++= HgIdKeys.projectId(idOrException => {
+                val id =
                   idOrException.fold(Predef.identity,
-                  _ => de.oakgrove.SbtHgId.Id("<unknown", "<unknown", "<unknown", "<unknown"))
-                BrandObject("hgid",
-                            """val version = "%s"
-                               val id = "%s"
-                               val branch = "%s"
-                               val tags = "%s"
-                            """.format(hgid.version, hgid.id, hgid.branch, hgid.tags))
-              },
+                                     _ => de.oakgrove.SbtHgId.Id("<unknown>", "<unknown>", "<unknown>", "<unknown>"))
+
+                Seq(Val("hgid_version", id.version),
+                    Val("hgid_id", id.id),
+                    Val("hgid_branch", id.branch),
+                    Val("hgid_tags", id.tags))
+              }),
               sourceGenerators in Compile <+= BrandKeys.generateDataFile)
-              /* ,addCommandAlias("tn", "test-only -- -n ") // requires sbt 0.13.x */)
+              //,addCommandAlias("tn", "test-only -- -n ") // requires sbt 0.13.x
+              )
     ).dependsOn(common)
 
     for (dep <- internalDep) {
@@ -123,10 +123,10 @@ object SiliconBuild extends Build {
 
   object dependencies {
     lazy val logging = Seq(
-      "com.weiglewilczek.slf4s" % "slf4s_2.9.1" % "1.0.7",
-      "org.slf4j" % "slf4j-log4j12" % "1.6.4")
+      "org.slf4s" %% "slf4s-api" % "1.7.12",
+      "org.slf4j" % "slf4j-log4j12" % "1.7.12")
 
-    lazy val scallop = "org.rogach" %% "scallop" % "0.9.4"
+    lazy val scallop = "org.rogach" %% "scallop" % "0.9.5"
     lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.0"
 
     lazy val commonsIO = "commons-io" % "commons-io" % "2.4"

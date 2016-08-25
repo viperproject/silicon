@@ -4,14 +4,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
-import silver.verifier.VerificationError
-import silver.verifier.errors.Internal
-import silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
-import state.DefaultContext
-import state.terms._
+import viper.silver
+import viper.silver.components.StatefulComponent
+import viper.silver.verifier.VerificationError
+import viper.silver.verifier.errors.Internal
+import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
 
 package object utils {
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -30,22 +29,21 @@ package object utils {
     }
   }
 
-  def consumeExactRead(fp: Term, c: DefaultContext): Boolean = fp match {
-    case _: WildcardPerm => false
-    case v: Var => !c.constrainableARPs.contains(v)
-    case PermPlus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermMinus(t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case PermTimes(t0, t1) => consumeExactRead(t0, c) && consumeExactRead(t1, c)
-    case IntPermTimes(_, t1) => consumeExactRead(t1, c)
-    case PermIntDiv(t0, _) => consumeExactRead(t0, c)
-    case PermMin(t0 ,t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case Ite(_, t0, t1) => consumeExactRead(t0, c) || consumeExactRead(t1, c)
-    case _ => true
+  def append[K1,       E1,       C1 <: Iterable[E1],
+             K2 <: K1, E2 <: E1, C2 <: C1]
+            (m1: Map[K1, C1],
+             m2: Map[K2, C2],
+             app: (C1, C2) => C1) = {
+
+    m2.foldLeft(m1) { case (m1Acc, (k2, c2)) =>
+      val c3 = m1Acc.get(k2).fold(c2: C1)(c1 => app(c1, c2))
+      m1Acc + (k2 -> c3)
+    }
   }
 
   /* NOT thread-safe */
   class Counter {
-    private var value = 0
+    private var value = -1
 
     def next() = {
       value = value + 1
@@ -53,8 +51,17 @@ package object utils {
     }
 
     def reset() {
-      value = 0
+      value = -1
     }
+  }
+
+  /* A base implementation of start/reset/stop is required by the
+   * DefaultElementVerifier, Scala will (rightfully) complain otherwise.
+   */
+  class NoOpStatefulComponent extends StatefulComponent {
+    @inline def start() {}
+    @inline def reset() {}
+    @inline def stop() {}
   }
 
   /* http://www.tikalk.com/java/blog/avoiding-nothing */
@@ -70,6 +77,10 @@ package object utils {
   }
 
   object ast {
+    /** Use with care! In particular, be sure you know the effect of `BigAnd` on
+      * snapshot recording before you e.g. `consume(..., BigAnd(some_preconditions), ...)`.
+      * Consider using `consumes(..., some_preconditions, ...)` instead.
+      */
     def BigAnd(it: Iterable[silver.ast.Exp],
                f: silver.ast.Exp => silver.ast.Exp = e => e,
                emptyPos: silver.ast.Position = silver.ast.NoPosition) =
@@ -88,42 +99,67 @@ package object utils {
             silver.ast.LtCmp(x, b)(e.pos)
           )(e.pos)
       })(recursive = _ => true)
+
+    def autoTrigger(forall: silver.ast.Forall, qpFields: Set[silver.ast.Field]): silver.ast.Forall = {
+      /* Allow qp-fields in triggers */
+//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger {
+//        case fa: silver.ast.FieldAccess => qpFields contains fa.field
+//      }
+
+      val defaultTriggerForall = forall.autoTrigger
+
+      val autoTriggeredForall =
+        if (defaultTriggerForall.triggers.nonEmpty)
+          /* Standard trigger generation code succeeded */
+          defaultTriggerForall
+        else {
+          /* Standard trigger generation code failed.
+           * Let's try generating (certain) invalid triggers, which will then be rewritten
+           */
+          silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger {
+            case _: silver.ast.Add | _: silver.ast.Sub => false
+          }
+
+          val optTriggerSet = silver.ast.utility.Expressions.generateTriggerSet(forall)
+
+          silver.ast.utility.Triggers.TriggerGeneration.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+
+          val advancedTriggerForall =
+            optTriggerSet match {
+              case Some((variables, triggerSets)) =>
+                /* Invalid triggers could be generated, now try to rewrite them */
+                val intermediateForall = silver.ast.Forall(variables, Nil, forall.exp)(forall.pos, forall.info)
+                silver.ast.utility.Triggers.AxiomRewriter.rewrite(intermediateForall, triggerSets).getOrElse(forall)
+              case None =>
+                /* Invalid triggers could not be generated -> give up */
+                forall
+            }
+
+          advancedTriggerForall
+        }
+
+//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger(PartialFunction.empty)
+
+      autoTriggeredForall
+    }
+
+    def sourceLine(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
+      case pos: silver.ast.HasLineColumn => pos.line.toString
+      case _ => node.pos.toString
+    }
+
+    def sourceLineColumn(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
+      case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
+      case _ => node.pos.toString
+    }
   }
 
   object consistency {
     type PositionedNode = silver.ast.Node with silver.ast.Positioned
 
     def check(program: silver.ast.Program) = (
-      program.functions.flatMap(checkFunctionPostconditionNotRecursive)
-        ++ checkPermissions(program))
-
-    /* Unsupported expressions, features or cases */
-
-    def createIllegalQuantifiedLocationExpressionError(offendingNode: PositionedNode) = {
-      val message = (
-        "Silicon requires foralls with access predicates in their body to have "
-          + "a special shape. Try 'forall x: Ref :: x in aSet ==> acc(x.f, perms)' "
-          + "or 'forall i: Int :: i in [0..|aSeq|) ==> acc(aSeq[i].f, perms)'.")
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
-    }
-
-    def createUnsupportedRecursiveFunctionPostconditionError(fapp: silver.ast.FuncApp) = {
-      val message = (
-        "Silicon cannot handle function postconditions that mention the function itself. "
-          + "Try to replace the function application by 'result'.")
-
-      Internal(fapp, FeatureUnsupported(fapp, message))
-    }
-
-    def checkFunctionPostconditionNotRecursive(function: silver.ast.Function): Seq[VerificationError] =
-    /* TODO: Most likely doesn't detect mutual recursion. */
-      function.posts.flatMap(_.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        case fapp @ silver.ast.FuncApp(functionName, _) if function.name == functionName =>
-          createUnsupportedRecursiveFunctionPostconditionError(fapp) +: errors.flatten
-
-        case _ => errors.flatten
-      }))
+         checkPermissions(program)
+      ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program)))
 
     def createUnsupportedPermissionExpressionError(offendingNode: PositionedNode) = {
       val message = s"Silicon doesn't support the permission expression $offendingNode."
@@ -136,6 +172,38 @@ package object utils {
         case eps: silver.ast.EpsilonPerm => createUnsupportedPermissionExpressionError(eps) +: errors.flatten
         case _ => errors.flatten
       })
+
+    def createUnsupportedFieldAccessInTrigger(offendingNode: silver.ast.FieldAccess) = {
+      val message = (   "Silicon only supports field accesses as triggers if (1) permissions to the "
+                     +  "field come from quantified permissions, and if (2) the field access also "
+                     + s"occurs in the body of the quantification. $offendingNode is not such a "
+                     +  "field access.")
+
+      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
+    }
+
+    def checkFieldAccessesInTriggers(root: silver.ast.Member, program: silver.ast.Program)
+                                    : Seq[VerificationError] = {
+
+      val quantifiedFields = silver.ast.utility.QuantifiedPermissions.quantifiedFields(root, program)
+
+      root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
+        case forall: silver.ast.Forall =>
+          forall.triggers.flatMap {
+            case ts => ts.exps.collect {
+              case fa: silver.ast.FieldAccess
+                  if !quantifiedFields.contains(fa.field) || !forall.exp.contains(fa)
+
+                => fa
+            }
+          } match {
+            case Seq() => errors.flatten
+            case fas => (fas map createUnsupportedFieldAccessInTrigger) ++ errors.flatten
+          }
+
+        case _ => errors.flatten
+      })
+    }
 
     /* Unexpected nodes */
 

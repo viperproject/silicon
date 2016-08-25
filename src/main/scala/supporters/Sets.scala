@@ -4,22 +4,21 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import interfaces.PreambleEmitter
-import interfaces.decider.Prover
-import decider.PreambleFileEmitter
-import state.SymbolConvert
-import state.terms
+import viper.silver.ast
+import viper.silicon.{Set, toSet}
+import viper.silicon.interfaces.PreambleEmitter
+import viper.silicon.interfaces.decider.Prover
+import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.state.SymbolConvert
+import viper.silicon.state.terms
 
 trait SetsEmitter extends PreambleEmitter
 
 /* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
 
-class DefaultSetsEmitter(prover: Prover,
+class DefaultSetsEmitter(prover: => Prover,
                          symbolConverter: SymbolConvert,
                          preambleFileEmitter: PreambleFileEmitter[String, String])
     extends SetsEmitter {
@@ -27,14 +26,6 @@ class DefaultSetsEmitter(prover: Prover,
   private var collectedSorts = Set[terms.sorts.Set]()
 
   def sorts = toSet(collectedSorts)
-
-  /**
-   * The symbols are take from a file and it is currently not possible to retrieve a list of
-   * symbols that have been declared.
-   *
-   * @return None
-   */
-  def symbols = None
 
   /* Lifetime */
 
@@ -49,24 +40,32 @@ class DefaultSetsEmitter(prover: Prover,
 
   def analyze(program: ast.Program) {
     var setTypes = Set[ast.SetType]()
+    var foundQuantifiedPermissions = false
 
-    program visit { case t: silver.ast.Typed =>
-      /* Process the type itself and its type constituents, but ignore types
-       * that use type parameters. The assumption is that the latter are
-       * handled by the domain emitter.
-       */
-      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
-        case s: ast.SetType =>
-          setTypes += s
-        case s: ast.MultisetType =>
-          /* Multisets depend on sets */
-          setTypes += ast.SetType(s.elementType)
-//        case s: ast.SeqType =>
-//          /* Sequences depend on multisets, which in turn depend on sets */
-//          setTypes += ast.SetType(s.elementType)
-        case _ =>
-        /* Ignore other types */
-      }
+    program visit {
+      case q: ast.QuantifiedExp if !foundQuantifiedPermissions && !q.isPure =>
+        /* Axioms generated for quantified permissions depend on sets */
+        foundQuantifiedPermissions = true
+        program.fields foreach {f => setTypes += ast.SetType(f.typ)}
+        setTypes += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */
+
+      case t: ast.Typed =>
+        /* Process the type itself and its type constituents, but ignore types
+         * that use type parameters. The assumption is that the latter are
+         * handled by the domain emitter.
+         */
+        t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
+          case s: ast.SetType =>
+            setTypes += s
+          case s: ast.MultisetType =>
+            /* Multisets depend on sets */
+            setTypes += ast.SetType(s.elementType)
+//          case s: ast.SeqType =>
+//            /* Sequences depend on multisets, which in turn depend on sets */
+//            setTypes += ast.SetType(s.elementType)
+          case _ =>
+          /* Ignore other types */
+        }
     }
 
     collectedSorts = setTypes map (st => symbolConverter.toSort(st).asInstanceOf[terms.sorts.Set])

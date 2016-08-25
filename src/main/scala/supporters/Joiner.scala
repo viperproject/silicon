@@ -4,43 +4,43 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import interfaces.{Success, VerificationResult}
-import interfaces.decider.Decider
-import interfaces.state.{State, PathConditions, Heap, Store, Context}
-import state.DefaultContext
-import state.terms.{Apply, sorts, True, Implies, And, Term, Sort}
+import viper.silicon.decider.PathConditionStack
+import viper.silicon.interfaces.{Success, VerificationResult}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state.{State, Heap, Store, Context}
+import viper.silicon.state.DefaultContext
+
+case class JoinDataEntry[C <: Context[C], D]
+                        (data: D,
+                         pathConditionStack: PathConditionStack,
+                         c: C)
 
 trait Joiner[C <: Context[C]] {
-  def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
-          (block: ((Term, C) => VerificationResult) => VerificationResult)
-          (Q: (Term, C) => VerificationResult)
-          : VerificationResult
+  def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
+                 (merge: (Seq[JoinDataEntry[C, D]]) => JD)
+                 (Q: (JD, C) => VerificationResult)
+                 : VerificationResult
 }
 
 trait DefaultJoiner[ST <: Store[ST],
                     H <: Heap[H],
-                    PC <: PathConditions[PC],
                     S <: State[ST, H, S]]
-    extends Joiner[DefaultContext]
-{ this: DefaultBrancher[ST, H, PC, S] =>
+    extends Joiner[DefaultContext[H]]
+{ this: DefaultBrancher[ST, H, S] =>
 
-  private[this] type C = DefaultContext
+  private[this] type C = DefaultContext[H]
 
-  val decider: Decider[ST, H, PC, S, C]
+  val decider: Decider[ST, H, S, C]
 
-  def join(joinSort: Sort, joinFunctionName: String, joinFunctionArgs: Seq[Term], c: C)
-          (block: ((Term, C) => VerificationResult) => VerificationResult)
-          (Q: (Term, C) => VerificationResult)
-          : VerificationResult = {
+  def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
+                 (merge: (Seq[JoinDataEntry[C, D]]) => JD)
+                 (Q: (JD, C) => VerificationResult)
+                 : VerificationResult = {
 
-    val πPre: Set[Term] = decider.π
-    var localResults: List[LocalEvaluationResult] = Nil
+    var entries: Seq[JoinDataEntry[C, D]] = Vector.empty
 
-    //    decider.pushScope()
     /* Note: Executing the block in its own scope may result in incompletenesses:
      *   1. Let A be an assumption, e.g., a combine-term, that is added during
      *      the execution of block, but before the block's execution branches
@@ -50,84 +50,41 @@ trait DefaultJoiner[ST <: Store[ST],
      *      the branching took place.
      */
 
-    val r =
-      block((tR, cR) => {
-        localResults ::= LocalEvaluationResult(cR.branchConditions.filterNot(c.branchConditions.contains),
-                                               tR,
-                                               decider.π -- πPre,
-                                               cR.copy(branchConditions = c.branchConditions))
-            /* TODO: Storing a copy of cR with modified branchConditions is only necessary
-             *       because DefaultContext.merge (correctly) insists on equal branchConditions,
-             *       which cannot be circumvented/special-cased when merging contexts here (more
-             *       precisely, a bit further down via combine(localResults, ...)).
-             *       See DefaultBrancher.branchAndJoin for a similar comment.
-             */
+    decider.locally {
+      val preMark = decider.setPathConditionMark()
+
+      block((data, c1) => {
+        entries :+= JoinDataEntry(data, decider.pcs.after(preMark), c1)
         Success()
       })
+    } && {
+      if (entries.isEmpty) {
+        /* Note: No block data was collected, which we interpret as all branches through
+         * the block being infeasible. In turn, we assume that the overall verification path
+         * is infeasible. Instead of calling Q, we therefore terminate this path.
+         */
+        Success()
+      } else {
+        /* Note: Modifying the branchConditions before merging contexts is only necessary
+         * because DefaultContext.merge (correctly) insists on equal branchConditions,
+         * which cannot be circumvented/special-cased when merging contexts here.
+         */
 
-    //    decider.popScope()
+        val cInit = entries.head.c
 
-    r && {
-      //        var tJoined: Term = null
-      //        var cJoined: C = null
+        val cJoined =
+          entries.foldLeft(cInit)((cAcc, localData) => {
+            val pcs = localData.pathConditionStack.asConditionals
+            decider.prover.logComment("Joined path conditions")
+            decider.assume(pcs)
 
-      localResults match {
-        case List() =>
-          /* Should imply that Silicon is exploring an infeasible proof branch */
-          Success()
+            cAcc.merge(localData.c)
+          })
 
-        case List(localResult) =>
-          //            assert(localResult.πGuards.isEmpty,
-          //                   s"Joining single branch, expected no guard, but found ${localResult.πGuards}")
+        val joinedData = merge(entries)
 
-          decider.assume(localResult.auxiliaryTerms)
-
-          val tJoined = localResult.actualResult
-          val cJoined = localResult.context.copy(branchConditions = c.branchConditions)
-          Q(tJoined, cJoined)
-
-        case _ =>
-          val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
-          val actualResultFuncSort = sorts.Arrow(quantifiedVarsSorts, joinSort)
-          val summarySymbol = decider.fresh(joinFunctionName, actualResultFuncSort)
-          val tActualVar = Apply(summarySymbol, joinFunctionArgs)
-          val (tActualResult: Term, tAuxResult: Set[Term], cOpt) = combine(localResults, tActualVar === _)
-          val c1 = cOpt.getOrElse(c)
-
-          decider.assume(tAuxResult + tActualResult)
-
-          val tJoined = tActualVar
-          val cJoined = c1.copy(branchConditions = c.branchConditions)
-
-          Q(tJoined, cJoined)
+        Q(joinedData, cJoined)
       }
     }
-  }
-
-  private case class LocalEvaluationResult(πGuards: Stack[Term],
-                                           actualResult: Term,
-                                           auxiliaryTerms: Set[Term],
-                                           context: C)
-
-  private def combine(localResults: Seq[LocalEvaluationResult],
-                      actualResultTransformer: Term => Term = Predef.identity)
-                     : (Term, Set[Term], Option[C]) = {
-
-    val (t1: Term, tAux: Set[Term], optC) =
-      localResults.map { lr =>
-        val newGuards = lr.πGuards filterNot decider.π.contains
-        val guard: Term = And(newGuards)
-        val tAct: Term = Implies(guard, actualResultTransformer(lr.actualResult))
-        val tAux: Term = Implies(guard, And(lr.auxiliaryTerms))
-
-        (tAct, tAux, lr.context)
-      }.foldLeft((True(): Term, Set[Term](), None: Option[C])) {
-        case ((tActAcc, tAuxAcc, optCAcc), (tAct, _tAux, _c)) =>
-          val cAcc = optCAcc.fold(_c)(cAcc => cAcc.merge(_c))
-
-          (And(tActAcc, tAct), tAuxAcc + _tAux, Some(cAcc))
-      }
-
-    (t1, tAux, optC)
   }
 }

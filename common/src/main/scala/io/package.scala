@@ -50,7 +50,7 @@ package object io {
                          newExtension: Option[String] = None)
                         : JFile = {
 
-    targetDirectory.map(d => assert(d.isDirectory, s"Expected a directory, but found $d"))
+    targetDirectory.foreach(d => assert(d.isDirectory, s"Expected a directory, but found $d"))
 
     val fileStr = file.toString
     val directory = targetDirectory.getOrElse(FilenameUtils.getFullPath(fileStr)).toString

@@ -82,7 +82,7 @@ def computeDeltaStats(ids: SortedSet[String],
 
           Seq(delta, entry)
       }
-    }.toSeq
+    }
   }
 }
 

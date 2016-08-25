@@ -4,77 +4,100 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import interfaces.state.{Chunk, PermissionChunk, FieldChunk, PredicateChunk, ChunkIdentifier}
-import terms.{PermMinus, PermPlus, Term, sorts}
+import viper.silver.ast
+import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
+import viper.silicon.state.terms.{Lookup, PermMinus, PermPlus, Term, sorts}
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters.qps.InverseFunction
 
-sealed trait DirectChunk extends PermissionChunk[DirectChunk]
+sealed abstract class BasicChunk(val name: String,
+                                 val args: Seq[Term],
+                                 val snap: Term,
+                                 val perm: Term)
+    extends PermissionChunk {
 
-case class FieldChunkIdentifier(rcvr: Term, name: String) extends ChunkIdentifier {
-  val args = rcvr :: Nil
-
-  override def toString = s"$rcvr.$name"
-}
-
-case class DirectFieldChunk(rcvr: Term, name: String, value: Term, perm: Term)
-    extends FieldChunk with DirectChunk {
+  type Self <: BasicChunk
 
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  val args = rcvr :: Nil
-  val id = FieldChunkIdentifier(rcvr, name)
+  def duplicate(name: String = name, snap: Term = snap, args: Seq[Term] = args, perm: Term = perm): Self
 
-  def +(perm: Term): DirectFieldChunk = this.copy(perm = PermPlus(this.perm, perm))
-  def -(perm: Term): DirectFieldChunk = this.copy(perm = PermMinus(this.perm, perm))
-  def \(perm: Term) = this.copy(perm = perm)
-
-  override def toString = "%s.%s -> %s # %s".format(rcvr, name, value, perm)
+  def +(perm: Term): Self = duplicate(perm = PermPlus(this.perm, perm))
+  def -(perm: Term): Self = duplicate(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = duplicate(perm = perm)
 }
 
-case class PredicateChunkIdentifier(name: String, args: List[Term]) extends ChunkIdentifier {
-  override def toString = "%s(%s)".format(name, args.mkString(","))
+case class FieldChunk(rcvr: Term,
+                      override val name: String,
+                      override val snap: Term,
+                      override val perm: Term)
+    extends BasicChunk(name, Seq(rcvr), snap, perm) {
+
+  type Self = FieldChunk
+
+  assert(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
+
+  @inline
+  final def duplicate(name: String = name, snap: Term = snap, args: Seq[Term] = Seq(rcvr), perm: Term = perm) =
+    copy(rcvr, name, snap, perm)
+
+  override def toString = s"$rcvr.$name -> $snap # $perm"
 }
 
-case class DirectPredicateChunk(name: String,
-                                args: List[Term],
-                                snap: Term,
-                                perm: Term,
-                                nested: List[NestedChunk] = Nil)
-    extends PredicateChunk with DirectChunk {
+case class PredicateChunk(override val name: String,
+                          override val args: Seq[Term],
+                          override val snap: Term,
+                          override val perm: Term)
+    extends BasicChunk(name, args, snap, perm) {
 
-  assert(snap.sort == sorts.Snap, s"Snapshot $snap must be of sort Snap, but found ${snap.sort}")
+  type Self = PredicateChunk
+
+  assert(snap.sort == sorts.Snap,
+         s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+
+  @inline
+  final def duplicate(name: String = name, snap: Term = snap, args: Seq[Term] = args, perm: Term = perm) =
+    copy(name, args, snap, perm)
+
+  override def toString = s"$name($snap; ${args.mkString(",")}) # $perm"
+}
+
+case class QuantifiedChunk(name: String,
+                           fvf: Term,
+                           perm: Term,
+                           inv: Option[InverseFunction],
+                           initialCond: Option[Term],
+                           singletonRcvr: Option[Term],
+                           hints: Seq[Term] = Nil)
+    extends PermissionChunk {
+
+  assert(fvf.sort.isInstanceOf[terms.sorts.FieldValueFunction],
+         s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
+
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
 
-  val id = PredicateChunkIdentifier(name, args)
+  def valueAt(rcvr: Term) = Lookup(name, fvf, rcvr)
 
-  def +(perm: Term): DirectPredicateChunk = this.copy(perm = PermPlus(this.perm, perm))
-  def -(perm: Term): DirectPredicateChunk = this.copy(perm = PermMinus(this.perm, perm))
-  def \(perm: Term) = this.copy(perm = perm)
+  def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))
+  def -(perm: Term) = copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = copy(perm = perm)
 
-  override def toString = "%s(%s;%s) # %s".format(name, args.mkString(","), snap, perm)
+  override def toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$name -> $fvf # $perm"
 }
 
+case class MagicWandChunk(ghostFreeWand: ast.MagicWand,
+                          bindings: Map[ast.AbstractLocalVar, Term],
+                          evaluatedTerms: Seq[Term])
+    extends Chunk {
 
-sealed trait NestedChunk extends Chunk
+  override lazy val toString = {
+    val pos = ghostFreeWand.pos match {
+      case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
+      case other => other.toString
+    }
 
-case class NestedFieldChunk(rcvr: Term, name: String, value: Term) extends FieldChunk with NestedChunk {
-  val args = rcvr :: Nil
-  val id = FieldChunkIdentifier(rcvr, name)
-
-  def this(fc: DirectFieldChunk) = this(fc.rcvr, fc.name, fc.value)
-
-  override def toString = "%s.%s -> %s".format(rcvr, name, value)
-}
-
-case class NestedPredicateChunk(name: String, args: List[Term], snap: Term, nested: List[NestedChunk] = Nil)
-    extends PredicateChunk with NestedChunk {
-
-  val id = PredicateChunkIdentifier(name, args)
-
-  def this(pc: DirectPredicateChunk) = this(pc.name, pc.args, pc.snap, pc.nested)
-
-  override def toString = "%s(%s;%s)".format(name, args.mkString(","), snap)
+    s"wand@$pos[${evaluatedTerms.mkString(",")}]"
+  }
 }

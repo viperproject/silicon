@@ -4,36 +4,40 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package decider
+package viper.silicon.decider
 
 import java.io.{PrintWriter, BufferedWriter, InputStreamReader, BufferedReader, OutputStreamWriter}
 import java.nio.file.{Path, Paths}
-import com.weiglewilczek.slf4s.Logging
+import org.slf4s.Logging
 import org.apache.commons.io.FileUtils
-import interfaces.decider.{Prover, Sat, Unsat, Unknown}
-import state.terms._
-import reporting.{Bookkeeper, Z3InteractionFailed}
-import silicon.utils.Counter
+import viper.silicon.{Config, Map, toMap}
+import viper.silicon.common.config.Version
+import viper.silicon.interfaces.decider.{Prover, Sat, Unsat, Unknown}
+import viper.silicon.reporting.{Bookkeeper, Z3InteractionFailed}
+import viper.silicon.state.IdentifierFactory
+import viper.silicon.state.terms._
 
 /* TODO: Pass a logger, don't open an own file to log to. */
-class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with Logging {
-  val termConverter = new TermToSMTLib2Converter(bookkeeper)
-  import termConverter._
+class Z3ProverStdIO(config: Config,
+                    bookkeeper: Bookkeeper,
+                    identifierFactory: IdentifierFactory)
+    extends Prover
+       with Logging {
 
   private var pushPopScopeDepth = 0
-  private var isLoggingCommentsEnabled: Boolean = true
+  private var lastTimeout: Int = -1
+//  private var isLoggingCommentsEnabled: Boolean = true
   private var logFile: PrintWriter = _
   private var z3: Process = _
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
   private var logPath: Path = _
-  private var counter: Counter = _
-  private var lastTimeout: Int = 0
 
-  def z3Version() = {
+  /* private */ val termConverter = new TermToSMTLib2Converter(bookkeeper)
+  import termConverter._
+
+  def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
     var line = ""
 
@@ -43,16 +47,18 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     logComment(line)
 
     line match {
-      case versionPattern(v) => v
+      case versionPattern(v) => Version(v)
       case _ => throw new Z3InteractionFailed(s"Unexpected output of Z3 while getting version: $line")
     }
   }
 
   def start() {
-    counter = new Counter()
+    pushPopScopeDepth = 0
+    lastTimeout = -1
     logPath = config.z3LogFile
-    logFile = silver.utility.Common.PrintWriter(logPath.toFile)
+    logFile = viper.silver.utility.Common.PrintWriter(logPath.toFile)
     z3Path = Paths.get(config.z3Exe)
+    termConverter.start()
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
@@ -64,14 +70,14 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   }
 
   private def createZ3Instance() = {
-    logger.info(s"Starting Z3 at $z3Path")
+    log.info(s"Starting Z3 at $z3Path")
 
     val userProvidedZ3Args: Array[String] = config.z3Args.get match {
       case None =>
         Array()
 
       case Some(args) =>
-        logger.info(s"Additional command-line arguments are $args")
+        log.info(s"Additional command-line arguments are $args")
         args.split(' ').map(_.trim)
     }
 
@@ -91,9 +97,6 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
   def reset() {
     stop()
-    counter.reset()
-    pushPopScopeDepth = 0
-    lastTimeout = 0
     start()
   }
 
@@ -108,6 +111,8 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
 
       z3.destroy()
 //      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
+
+      termConverter.stop()
 
       val currentLogPath = config.z3LogFile
       if (logPath != currentLogPath) {
@@ -137,7 +142,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def write(content: String) {
+  def emit(content: String) {
     writeLine(content)
     readSuccess()
   }
@@ -150,7 +155,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
      * quantification occurs in positive or negative position.
      */
     term.deepCollect{case q: Quantification => q}.foreach(q => {
-      val problems = state.utils.detectQuantificationProblems(q)
+      val problems = viper.silicon.state.utils.detectQuantificationProblems(q)
 
       if (problems.nonEmpty) {
         quantificationLogger.println(s"\n\n${q.toString(true)}")
@@ -169,9 +174,9 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Int = 0) = assert(convert(goal), timeout)
+  def assert(goal: Term, timeout: Option[Int] = None) = assert(convert(goal), timeout)
 
-  def assert(goal: String, timeout: Int) = {
+  def assert(goal: String, timeout: Option[Int]) = {
     bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
@@ -181,7 +186,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
     }
 
-    logComment(s"${common.format.formatMillisReadably(duration)}")
+    logComment(s"${viper.silicon.common.format.formatMillisReadably(duration)}")
     logComment("(get-info :all-statistics)")
 
     result
@@ -204,7 +209,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
   }
 
   private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
-    val guard = fresh("grd", sorts.Bool)
+    val guard = fresh("grd", Nil, sorts.Bool)
 
     writeLine(s"(assert (implies $guard (not $goal)))")
     readSuccess()
@@ -217,7 +222,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     (result, endTime - startTime)
   }
 
-  def check(timeout: Int = 0) = {
+  def check(timeout: Option[Int] = None) = {
     setTimeout(timeout)
 
     writeLine("(check-sat)")
@@ -229,16 +234,18 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     }
   }
 
-  private def setTimeout(timeout: Int) {
+  private def setTimeout(timeout: Option[Int]) {
+    val effectiveTimeout = timeout.getOrElse(config.z3Timeout)
+
     /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
      * worsen performance, if only a bit. For the current test suite of
      * 199 Silver files, the total verification time increased from 60s
      * to 70s if 'set-option' is emitted every time.
      */
-    if (lastTimeout != timeout) {
-      lastTimeout = timeout
+    if (lastTimeout != effectiveTimeout) {
+      lastTimeout = effectiveTimeout
 
-      writeLine(s"(set-option :timeout $timeout)")
+      writeLine(s"(set-option :timeout $effectiveTimeout)")
       readSuccess()
     }
   }
@@ -271,42 +278,27 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     toMap(stats)
   }
 
-  def enableLoggingComments(enabled: Boolean) = isLoggingCommentsEnabled = enabled
+  def logComment(str: String) = {
+    val sanitisedStr =
+      str.replaceAll("\r", "")
+         .replaceAll("\n", "\n; ")
 
-  def logComment(str: String) =
-    if (isLoggingCommentsEnabled) {
-      val sanitisedStr =
-        str.replaceAll("\r", "")
-           .replaceAll("\n", "\n; ")
-
-      log("; " + sanitisedStr)
-    }
-
-  private def freshId(prefix: String) = prefix + "@" + counter.next()
-
-  /* TODO: Could we decouple fresh from Var, e.g. return the used freshId, without
-   *       losing conciseness at call-site?
-   *       It is also slightly fishy that fresh returns a Var although it
-   *       declared a new Function.
-   */
-  def fresh(idPrefix: String, sort: Sort) = {
-    val id = freshId(idPrefix)
-
-    val decl = sort match {
-      case arrow: sorts.Arrow => FunctionDecl(Function(id, arrow))
-      case _ => VarDecl(Var(id, sort))
-    }
-
-    write(convert(decl))
-
-    Var(id, sort)
+    logToFile("; " + sanitisedStr)
   }
 
-  def sanitizeSymbol(symbol: String) = termConverter.sanitizeSymbol(symbol)
+  def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort) = {
+    val id = identifierFactory.fresh(name)
+    val fun = Fun(id, argSorts, resultSort)
+    val decl = FunctionDecl(fun)
+
+    emit(convert(decl))
+
+    fun
+  }
 
   def declare(decl: Decl) {
     val str = convert(decl)
-    write(str)
+    emit(str)
   }
 
   def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }
@@ -344,7 +336,7 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
       if (result.toLowerCase != "success") logComment(result)
 
       val warning = result.startsWith("WARNING")
-      if (warning) logger.info(s"Z3: $result")
+      if (warning) log.info(s"Z3: $result")
 
       repeat = warning
     }
@@ -352,12 +344,12 @@ class Z3ProverStdIO(config: Config, bookkeeper: Bookkeeper) extends Prover with 
     result
   }
 
-  private def log(str: String) {
+  private def logToFile(str: String) {
     logFile.println(str)
   }
 
   private def writeLine(out: String) = {
-    log(out)
+    logToFile(out)
     output.println(out)
   }
 }

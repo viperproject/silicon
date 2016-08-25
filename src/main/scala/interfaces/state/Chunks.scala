@@ -4,34 +4,21 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package interfaces.state
+package viper.silicon.interfaces.state
 
-import state.terms.Term
+import viper.silicon.state.terms.Term
 
-trait ChunkIdentifier {
-  def name: String
-  def args: Seq[Term]
-}
+trait Chunk
 
-trait Chunk {
-  def name: String
-  def args: Seq[Term]
-  def id: ChunkIdentifier
-}
-
-trait PermissionChunk[CH <: PermissionChunk[CH]] extends Chunk {
+trait GenericPermissionChunk[CH <: GenericPermissionChunk[CH]] extends Chunk {
   val perm: Term
   def +(perm: Term): CH
   def -(perm: Term): CH
   def \(perm: Term): CH
 }
 
-trait FieldChunk extends Chunk {
-  val value: Term
-}
-
-trait PredicateChunk extends Chunk {
-  val snap: Term
-}
+/* [2015-08-29 Malte] This trait is only defined because I couldn't get
+ * the code (in particular, all consume and withChunk methods) to compile
+ * with type parameters such as CH <: PermissionChunk[CH].
+ */
+trait PermissionChunk extends GenericPermissionChunk[PermissionChunk]

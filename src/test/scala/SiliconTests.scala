@@ -4,20 +4,19 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package tests
+package viper.silicon.tests
 
 import java.nio.file.Path
-import silver.testing.SilSuite
+import viper.silver.testing.{MissingOutput, UnexpectedOutput, LocatedAnnotation, SilSuite}
+import viper.silver.verifier.{Verifier,AbstractError,Success => SilSuccess, Failure => SilFailure,
+VerificationResult => SilVerificationResult}
+import viper.silicon.{Silicon, SiliconFrontend}
+import viper.silicon.SymbExLogger
 import viper.silver.frontend.TranslatorState
-import viper.silver.verifier.{Success => SilSuccess, Failure => SilFailure,
-    VerificationResult => SilVerificationResult}
-import viper.silver.verifier._
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
-  private val silTestDirectories = List("all")
+  private val silTestDirectories = List("all", "quantifiedpermissions", "wands")
 
   override def testDirectories = siliconTestDirectories ++ silTestDirectories
 
@@ -36,6 +35,15 @@ class SiliconTests extends SilSuite {
     fe.init(verifier)
     fe.reset(files.head)
     fe
+  }
+
+  override def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
+    ann match {
+      case UnexpectedOutput(_, _, _, _, _, _) => true
+      case MissingOutput(_, _, _, _, _, issue) =>
+        issue != 34
+      case _ => false
+    }
   }
 
   lazy val verifiers = List(createSiliconInstance())

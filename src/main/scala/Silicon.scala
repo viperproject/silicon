@@ -4,51 +4,58 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
+package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
-import java.nio.file.{Path, Paths}
 import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
 import scala.language.postfixOps
-import scala.util.Properties.envOrNone
-import com.weiglewilczek.slf4s.Logging
-import org.rogach.scallop.{Subcommand, ScallopOption, ValueConverter, singleArgConverter}
-import silver.ast
-import silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
+import scala.reflect.runtime.universe
+import scala.util.Try
+import org.slf4s.Logging
+import viper.silver.ast
+import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
     Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError,
-    AbortedExceptionally => SilExceptionThrown, AbstractError}
-import silver.frontend.{TranslatorState, SilFrontend, SilFrontendConfig}
-import interfaces.{Failure => SiliconFailure}
-import state.terms.FullPerm
-import state.{MapBackedStore, DefaultHeapCompressor, ListBackedHeap, MutableSetBackedPathConditions,
-    DefaultState, DefaultStateFactory, DefaultPathConditionsFactory, DefaultSymbolConvert, DefaultContext}
-import decider.{SMTLib2PreambleEmitter, DefaultDecider}
-import reporting.{VerificationException, Bookkeeper}
-import supporters.{DefaultSetsEmitter, DefaultDomainsEmitter, DefaultDomainsTranslator, DefaultMultisetsEmitter,
-    DefaultSequencesEmitter}
+    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
+import viper.silver.frontend.SilFrontend
+import viper.silicon.common.config.Version
+import viper.silicon.interfaces.Failure
+import viper.silicon.reporting.VerificationException
 
-/* TODO: The way in which class Silicon initialises and starts various components needs refactoring.
- *       For example, the way in which DependencyNotFoundErrors are handled.
- */
+object Silicon {
+  private val brandingDataObjectName = "viper.silicon.brandingData"
+  private val mirror = universe.runtimeMirror(getClass.getClassLoader)
+  private val optModuleSymbol = Try(mirror.staticModule(brandingDataObjectName)).toOption
+  private val optModuleMirror = optModuleSymbol.map(ms => mirror.reflectModule(ms))
+  private val optInstanceMirror = optModuleMirror.map(mm => mirror.reflect(mm.instance))
 
-/* TODO: Can the internal error reporting (Failure, Success) be simplified? Keep in mind that Silicon should
- *       continue if a pure assertion didn't hold.
- */
+  private def bd(name: String): Option[String] = {
+    optModuleSymbol.map(ms => {
+      val field = ms.typeSignature.decl(universe.TermName(name)).asTerm
+      val fieldMirror = optInstanceMirror.get.reflectField(field)
 
-trait SiliconConstants {
-  val name = brandingData.sbtProjectName
-  val version = s"${brandingData.sbtProjectVersion} (${brandingData.hgid.version})"
-  val buildVersion = s"${brandingData.sbtProjectVersion} ${brandingData.hgid.version} ${brandingData.hgid.branch} ${brandingData.buildDate}"
-  val copyright = "(c) Copyright ETH Zurich 2012 - 2015"
+      fieldMirror.get.toString
+    })
+  }
+
+  private val sbtProjectName = bd("sbtProjectName").getOrElse("Silicon")
+  private val sbtProjectVersion = bd("sbtProjectVersion").getOrElse("0.0")
+  private val buildDate = bd("buildDate").getOrElse("<unknown>")
+
+  private object hgid {
+    val version = bd("hgid_version").getOrElse("<unknown>")
+    val branch = bd("hgid_branch").getOrElse("<unknown>")
+  }
+
+  val name = sbtProjectName
+  val version = s"$sbtProjectVersion (${hgid.version})"
+  val buildVersion = s"$sbtProjectVersion ${hgid.version} ${hgid.branch} $buildDate"
+  val copyright = "(c) Copyright ETH Zurich 2012 - 2016"
   val z3ExeEnvironmentVariable = "Z3_EXE"
-  val expectedZ3Version = "4.3.2"
-  val dependencies = Seq(SilDefaultDependency("Z3", expectedZ3Version, "http://z3.codeplex.com/"))
-}
+  val z3MinVersion = Version("4.3.2")
+  val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
+  val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
-object Silicon extends SiliconConstants {
   val hideInternalOptions = true
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
@@ -57,13 +64,13 @@ object Silicon extends SiliconConstants {
         if (k.head.isUpper) {
           Seq(s"-$k=$v")
         } else {
-        val kStr = s"--$k"
-        val vStr = v.toString
+          val kStr = s"--$k"
+          val vStr = v.toString
 
-        vStr.toLowerCase match {
-          case "true" | "false" => Seq(kStr)
-          case _ => Seq(kStr, vStr)
-        }
+          vStr.toLowerCase match {
+            case "true" | "false" => Seq(kStr)
+            case _ => Seq(kStr, vStr)
+          }
         }
     }.toSeq
 
@@ -88,16 +95,15 @@ object Silicon extends SiliconConstants {
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
-         with SiliconConstants
          with Logging {
 
-  private type ST = MapBackedStore
-  private type H = ListBackedHeap
-  private type PC = MutableSetBackedPathConditions
-  private type S = DefaultState[ST, H]
-  private type C = DefaultContext
-  private type V = DefaultVerifier[ST, H, PC, S]
-  private type Failure = SiliconFailure[ST, H, S]
+  private type V = DefaultVerifier
+
+  val name: String = Silicon.name
+  val version = Silicon.version
+  val buildVersion = Silicon.buildVersion
+  val copyright = Silicon.copyright
+  val dependencies = Silicon.dependencies
 
   private var _config: Config = _
   final def config = _config
@@ -148,8 +154,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
          */
 
     setLogLevelsFromConfig()
-    verifier = createVerifier()
 
+    verifier = new DefaultVerifier(config)
     verifier.start()
   }
 
@@ -169,41 +175,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         _config.printHelp()
         throw ex
     }
-  }
-
-  /** Creates and sets up an instance of a [[viper.silicon.AbstractVerifier]], which can be used
-    * to verify elements of a SIL AST such as procedures or functions.
-    *
-    * @return A fully set up verifier, ready to be used.
-    */
-  private def createVerifier(): V = {
-    val bookkeeper = new Bookkeeper(config)
-    val decider = new DefaultDecider[ST, H, PC, S]()
-
-    val stateFormatter = new DefaultStateFormatter[ST, H, S](config)
-    val pathConditionFactory = new DefaultPathConditionsFactory()
-    val symbolConverter = new DefaultSymbolConvert()
-    val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
-    val stateFactory = new DefaultStateFactory(decider.π _)
-
-    val dlb = FullPerm()
-
-    val heapCompressor= new DefaultHeapCompressor[ST, H, PC, S, C](decider, dlb, bookkeeper, stateFormatter, stateFactory)
-
-    decider.init(pathConditionFactory, heapCompressor, config, bookkeeper)
-           .map(err => throw new VerificationException(err)) /* TODO: Hack! See comment above. */
-
-    decider.start()
-
-    val preambleEmitter = new SMTLib2PreambleEmitter(decider.prover.asInstanceOf[silicon.decider.Z3ProverStdIO])
-    val sequencesEmitter = new DefaultSequencesEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val setsEmitter = new DefaultSetsEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val multisetsEmitter = new DefaultMultisetsEmitter(decider.prover, symbolConverter, preambleEmitter)
-    val domainsEmitter = new DefaultDomainsEmitter(domainTranslator, decider.prover, symbolConverter)
-
-    new DefaultVerifier[ST, H, PC, S](config, decider, stateFactory, symbolConverter, preambleEmitter,
-      sequencesEmitter, setsEmitter, multisetsEmitter, domainsEmitter,
-      stateFormatter, heapCompressor, bookkeeper)
   }
 
   private def reset() {
@@ -232,7 +203,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Running
 
-    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     config.inputFile = program.pos match {
       case sp: ast.AbstractSourcePosition => Some(sp.file)
@@ -278,16 +249,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             if (ee.getCause != null) ee.getCause
             else ee
 
-          config.logLevel().toUpperCase match {
-            case "DEBUG" | "TRACE" | "ALL" => throw ex
-            case _ =>
-          }
-
-          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+          handleThrowable(ex)
+//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
         case ex: Exception =>
-          logger.debug(ex.toString + "\n" + ex.getStackTraceString)
-          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+          handleThrowable(ex)
+//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -299,13 +266,21 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     }
   }
 
-  private def runVerifier(program: ast.Program): List[Failure] = {
-    /* TODO:
-     *  - Since there doesn't seem to be a need for Success to carry a message,
-     *    the hierarchy should be changed s.t. it doesn't has that field any
-     *    more.
-     */
+  private def handleThrowable(ex: Throwable) {
+//    config.logLevel().toUpperCase match {
+//      case "DEBUG" | "TRACE" | "ALL" => throw ex
+//      case _ =>
+//    }
 
+    throw ex
+
+//    val sw = new StringWriter()
+//    val pw = new PrintWriter(sw)
+//    ex.printStackTrace(pw)
+//    log.debug(ex.toString + "\n" + sw)
+  }
+
+  private def runVerifier(program: ast.Program): List[Failure] = {
     verifier.bookkeeper.branches = 1
     verifier.bookkeeper.startTime = System.currentTimeMillis()
 
@@ -313,25 +288,29 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
 
-    var failures =
+    val failures =
       results.flatMap(r => r :: r.allPrevious)
              .collect{ case f: Failure => f }
-
-    /* Removes results that have the same textual representation of their
-     * error message.
-     *
-     * TODO: This is not only ugly, and also should not be necessary. It seems
-     *       that malformed predicates are currently reported multiple times,
-     *       once for each fold/unfold and once when they are checked for
-     *       well-formedness.
-     */
-    failures = failures.reverse
-           .foldLeft((Set[String](), List[Failure]())){
-              case ((ss, rs), f: Failure) =>
-                if (ss.contains(f.message.readableMessage)) (ss, rs)
-                else (ss + f.message.readableMessage, f :: rs)
-              case ((ss, rs), r) => (ss, r :: rs)}
-           ._2
+             /* Removes results that have the same textual representation of their
+              * error message.
+              *
+              * TODO: This is not only ugly, and also should not be necessary. It seems
+              *       that malformed predicates are currently reported multiple times,
+              *       once for each fold/unfold and once when they are checked for
+              *       well-formedness.
+              */
+             .reverse
+             .foldLeft((Set[String](), List[Failure]())){
+                case ((ss, rs), f: Failure) =>
+                  if (ss.contains(f.message.readableMessage)) (ss, rs)
+                  else (ss + f.message.readableMessage, f :: rs)
+                case ((ss, rs), r) => (ss, r :: rs)}
+             ._2
+             /* Order failures according to source position */
+             .sortBy(_.message.pos match {
+                case pos: ast.HasLineColumn => (pos.line, pos.column)
+                case _ => (-1, -1)
+             })
 
     if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()
@@ -343,21 +322,21 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case None =>
 
         case Some((Config.Sink.Stdio, "")) =>
-          logger.info("")
-          logger.info(verifier.bookkeeper.toString)
-          logger.info("")
+          log.info("")
+          log.info(verifier.bookkeeper.toString)
+          log.info("")
 
         case Some((Config.Sink.File, path)) =>
-          silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
+          viper.silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
 
         case _ => /* Should never be reached if the arguments to showStatistics have been validated */
       }
     }
 
-    failures foreach (f => logFailure(f, s => logger.info(s)))
+    failures foreach (f => logFailure(f, s => log.info(s)))
 
-    logger.info("\nVerification finished in %s with %s error(s)".format(
-        silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
+    log.info("\nVerification finished in %s with %s error(s)".format(
+        viper.silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
         failures.length))
 
     failures
@@ -382,287 +361,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
       log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
     }
-  }
-}
-
-
-/** TODO: Move configuration-related code into a dedicated file. */
-
-class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
-  import Config._
-
-  /* Argument converter */
-
-  private val statisticsSinkConverter = new ValueConverter[(Sink, String)] {
-    val stdioRegex = """(?i)(stdio)""".r
-    val fileRegex = """(?i)(file)=(.*)""".r
-
-    def parse(s: List[(String, List[String])]) = s match {
-      case (_, stdioRegex(_) :: Nil) :: Nil => Right(Some(Sink.Stdio, ""))
-
-      case (_, fileRegex(_, fileName) :: Nil) :: Nil =>
-        Right(Some(Sink.File, fileName))
-
-      case Nil => Right(None)
-      case _ => Left(s"Unexpected arguments")
-    }
-
-    val tag = scala.reflect.runtime.universe.typeTag[(Sink, String)]
-    val argType = org.rogach.scallop.ArgType.LIST
-  }
-
-  private val forwardArgumentsConverter = new ValueConverter[String] {
-    def parse(s: List[(String, List[String])]) = s match {
-      case (_, str :: Nil) :: Nil if str.head == '"' && str.last == '"' => Right(Some(str.substring(1, str.length - 1)))
-      case Nil => Right(None)
-      case _ => Left(s"Unexpected arguments")
-    }
-
-    val tag = scala.reflect.runtime.universe.typeTag[String]
-    val argType = org.rogach.scallop.ArgType.LIST
-  }
-
-  private val assertionModeConverter = new ValueConverter[AssertionMode] {
-    val pushPopRegex = """(?i)(pp)""".r
-    val softConstraintsRegex = """(?i)(sc)""".r
-
-    def parse(s: List[(String, List[String])]) = s match {
-      case (_, pushPopRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.PushPop))
-      case (_, softConstraintsRegex(_) :: Nil) :: Nil => Right(Some(AssertionMode.SoftConstraints))
-      case Nil => Right(None)
-      case _ => Left(s"Unexpected arguments")
-    }
-
-    val tag = scala.reflect.runtime.universe.typeTag[AssertionMode]
-    val argType = org.rogach.scallop.ArgType.LIST
-  }
-
-  /* Command-line options */
-
-  val defaultRawStatisticsFile = "statistics.json"
-
-  private val rawShowStatistics = opt[(Sink, String)]("showStatistics",
-    descr = (  "Show some statistics about the verification. Options are "
-             + "'stdio' and 'file=<path\\to\\statistics.json>'"),
-    default = None,
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )(statisticsSinkConverter)
-
-  private lazy val defaultStatisticsFile = Paths.get(tempDirectory(), defaultRawStatisticsFile)
-
-  def showStatistics: ScallopOption[(Sink, String)] = rawShowStatistics map {
-    case (Sink.File, fileName) =>
-      val newFilename =
-        fileName.toLowerCase match {
-          case "$infile" =>
-            inputFile.map(f =>
-              common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("json")).toPath
-            ).getOrElse(defaultStatisticsFile)
-             .toString
-          case _ => fileName
-        }
-
-      (Sink.File, newFilename)
-    case other => other
-  }
-
-  val disableSubsumption = opt[Boolean]("disableSubsumption",
-    descr = "Don't add assumptions gained by verifying an assert statement",
-    default  = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val includeMembers = opt[String]("includeMembers",
-    descr = "Include members in verification (default: '*'). Wildcard characters are '?' and '*'. ",
-    default = Some(".*"),
-    noshort = true,
-    hidden = false
-  )(singleArgConverter[String](s => silicon.common.config.wildcardToRegex(s)))
-
-  val excludeMembers = opt[String]("excludeMembers",
-    descr = "Exclude members from verification (default: ''). Is applied after the include pattern.",
-    default = Some(""),
-    noshort = true,
-    hidden = false
-  )
-
-  val recursivePredicateUnfoldings = opt[Int]("recursivePredicateUnfoldings",
-    descr = (  "Evaluate n unfolding expressions in the body of predicates that (transitively) unfold "
-             + "other instances of themselves (default: 1)"),
-    default = Some(1),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-//  val disableFunctionApplicationCaching = opt[Boolean]("disableFunctionApplicationCaching",
-//    descr = (  "Disable caching of evaluated function bodies and/or postconditions. "
-//             + "Caching results in incompletenesses, but is usually faster."),
-//    default = Some(false),
-//    noshort = true,
-//    hidden = Silicon.hideInternalOptions
-//  )
-//
-//  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
-//    descr = (  "Disable caching of snapshot symbols. "
-//             + "Caching reduces the number of symbols the prover has to work with."),
-//    default = Some(false),
-//    noshort = true,
-//    hidden = Silicon.hideInternalOptions
-//  )
-
-  val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
-    descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
-             + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val logLevel = opt[String]("logLevel",
-    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
-    default = Some("OFF"),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )(singleArgConverter(level => level.toUpperCase))
-
-  val logger = props[String]('L',
-    descr = "Set level of certain internal loggers",
-    keyName = "logger",
-    valueName = "level",
-    hidden = Silicon.hideInternalOptions)
-
-  val timeout = opt[Int]("timeout",
-    descr = ( "Time out after approx. n seconds. The timeout is for the whole verification, "
-            + "not per method or proof obligation (default: 0, i.e., no timeout)."),
-    default = Some(0),
-    noshort = true,
-    hidden = false
-  )
-
-  val checkTimeout = opt[Int]("checkTimeout",
-    descr = "Timeout (in ms) per check, usually used to branch over expressions (default: 250).",
-    default = Some(250),
-    noshort = true,
-    hidden = false
-  )
-
-  val tempDirectory = opt[String]("tempDirectory",
-    descr = "Path to which all temporary data will be written (default: ./tmp)",
-    default = Some("./tmp"),
-    noshort = true,
-    hidden = false
-  )
-
-  private val rawZ3Exe = opt[String]("z3Exe",
-    descr = (  "Z3 executable. The environment variable %s can also "
-             + "be used to specify the path of the executable.").format(Silicon.z3ExeEnvironmentVariable),
-    default = None,
-    noshort = true,
-    hidden = false
-  )
-
-  lazy val z3Exe: String = {
-    val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
-
-    rawZ3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
-                .getOrElse("z3" + (if (isWindows) ".exe" else "")))
-  }
-
-  val defaultRawZ3LogFile = "logfile.smt2"
-
-  private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
-    descr = s"Log file containing the interaction with Z3 (default: <tempDirectory>/$defaultRawZ3LogFile)",
-    default = Some(DefaultValue(defaultRawZ3LogFile)),
-    noshort = true,
-    hidden = false
-  )(singleArgConverter[ConfigValue[String]](s => UserValue(s)))
-
-  var inputFile: Option[Path] = None
-
-  private lazy val defaultZ3LogFile = Paths.get(tempDirectory(), defaultRawZ3LogFile)
-
-  def z3LogFile: Path = rawZ3LogFile() match {
-    case UserValue(logfile) =>
-      logfile.toLowerCase match {
-        case "$infile" =>
-          inputFile.map(f =>
-            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("smt2")).toPath
-          ).getOrElse(defaultZ3LogFile)
-        case _ =>
-          Paths.get(logfile)
-      }
-
-    case DefaultValue(logfile) =>
-      defaultZ3LogFile
-  }
-
-  val z3Args = opt[String]("z3Args",
-    descr = (  "Command-line arguments which should be forwarded to Z3. "
-             + "The expected format is \"<opt> <opt> ... <opt>\", including the quotation marks."),
-    default = None,
-    noshort = true,
-    hidden = false
-  )(forwardArgumentsConverter)
-
-  val z3ConfigArgs = opt[String]("z3ConfigArgs",
-    descr = (  "Configuration options which should be forwarded to Z3. "
-             + "The expected format is \"<key>=<val> <key>=<val> ... <key>=<val>\", "
-             + "including the quotation marks. "
-             + "The configuration options given here will override those from Silicon's Z3 preamble."),
-    default = None,
-    noshort = true,
-    hidden = false
-  )(forwardArgumentsConverter)
-
-  val handlePureConjunctsIndividually = opt[Boolean]("handlePureConjunctsIndividually",
-    descr = (  "Handle pure conjunction individually."
-             + "Increases precision of error reporting, but may slow down verification."),
-    default = Some(false),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )
-
-  val assertionMode = opt[AssertionMode]("assertionMode",
-    descr = (  "Determines how assertion checks are encoded in SMTLIB. Options are "
-             + "'pp' (push-pop) and 'cs' (soft constraints) (default: cs)."),
-    default = Some(AssertionMode.PushPop),
-    noshort = true,
-    hidden = Silicon.hideInternalOptions
-  )(assertionModeConverter)
-
-  /* Option validation */
-
-  validateOpt(timeout) {
-    case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
-    case _ => Right(Unit)
-  }
-}
-
-object Config {
-  sealed abstract class ConfigValue[T] {
-    def value: T
-
-    def orElse(f: T => T) = this match {
-      case UserValue(v) => v
-      case DefaultValue(v) => f(v)
-    }
-  }
-
-  case class DefaultValue[T](value: T) extends ConfigValue[T]
-  case class UserValue[T](value: T) extends ConfigValue[T]
-
-  sealed trait Sink
-  object Sink {
-    case object Stdio extends Sink
-    case object File extends Sink
-  }
-
-  sealed trait AssertionMode
-  object AssertionMode {
-    case object PushPop extends AssertionMode
-    case object SoftConstraints extends AssertionMode
   }
 }
 
@@ -695,7 +393,10 @@ object SiliconRunner extends SiliconFrontend {
       siliconInstance.stop()
     }
 
-    sys.exit()
+    sys.exit(result match {
+      case SilSuccess => 0
+      case SilFailure(_) => 1
+    })
       /* TODO: This currently seems necessary to make sure that Z3 is terminated
        *       if Silicon is supposed to terminate prematurely because of a
        *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()

@@ -4,13 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package decider
+package viper.silicon.decider
 
 import java.io.FileNotFoundException
 import scala.io.Source
-import silver.components.StatefulComponent
+import viper.silver.components.StatefulComponent
+import viper.silicon.interfaces.decider.Prover
 
 trait PreambleFileEmitter[I, O] extends StatefulComponent {
   def readPreamble(resource: I): Iterable[O]
@@ -22,10 +21,7 @@ trait PreambleFileEmitter[I, O] extends StatefulComponent {
   def emitPreamble(preamble: Iterable[O])
 }
 
-/* TODO: Decouple from prover. Ideally, only the decider should have a reference to the prover.
- *       Could closures be passed in that forward the work to the prover?
- */
-class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[String, String] {
+class SMTLib2PreambleEmitter(prover: => Prover) extends PreambleFileEmitter[String, String] {
 
   /* Lifetime  */
 
@@ -52,10 +48,10 @@ class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[
     var assertions = List[String]()
 
     /* Multi-line assertions are concatenated into a single string and
-      * send to the prover, because prover.write(str) expects Z3 to reply
-      * to 'str' with success/error. But Z3 will only reply anything if 'str'
-      * is a complete assertion.
-      */
+     * send to the prover, because prover.emit(str) expects Z3 to reply
+     * to 'str' with success/error. But Z3 will only reply anything if 'str'
+     * is a complete assertion.
+     */
     while (lines.nonEmpty) {
       val part = (
         lines.head
@@ -82,6 +78,6 @@ class SMTLib2PreambleEmitter(prover: Z3ProverStdIO) extends PreambleFileEmitter[
   }
 
   def emitPreamble(lines: Iterable[String]) {
-    lines foreach prover.write
+    lines foreach prover.emit
   }
 }

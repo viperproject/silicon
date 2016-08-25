@@ -4,18 +4,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.components.StatefulComponent
-import interfaces.{Success, Unreachable, VerificationResult}
-import interfaces.decider.Decider
-import interfaces.state.{PathConditions, Context, State, Heap, Store}
-import reporting.Bookkeeper
-import state.terms.{Ite, True, Not, And, Term}
-import state.DefaultContext
-import utils.Counter
+import viper.silver.components.StatefulComponent
+import viper.silicon.Config
+import viper.silicon.interfaces.{Unreachable, VerificationResult}
+import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.state._
+import viper.silicon.reporting.Bookkeeper
+import viper.silicon.state.terms.{Not, And, Term}
+import viper.silicon.state.DefaultContext
+import viper.silicon.utils.Counter
 
 trait Brancher[ST <: Store[ST],
                H <: Heap[H],
@@ -36,14 +35,6 @@ trait Brancher[ST <: Store[ST],
              fTrue: C => VerificationResult,
              fFalse: C => VerificationResult)
             : VerificationResult
-
-  def branchAndJoin(σ: S,
-                    guard: Term,
-                    c: C,
-                    fTrue: (C, (Term, C) => VerificationResult) => VerificationResult,
-                    fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
-                   (Q: (Option[Term], Option[Term], C) => VerificationResult)
-                   : VerificationResult
 }
 
 /*
@@ -52,20 +43,20 @@ trait Brancher[ST <: Store[ST],
 
 trait DefaultBrancher[ST <: Store[ST],
                       H <: Heap[H],
-                      PC <: PathConditions[PC],
                       S <: State[ST, H, S]]
-    extends Brancher[ST, H, S, DefaultContext]
+    extends Brancher[ST, H, S, DefaultContext[H]]
        with StatefulComponent {
 
-  private[this] type C = DefaultContext
+  private[this] type C = DefaultContext[H]
 
   private var branchCounter: Counter = _
 
-  val decider: Decider[ST, H, PC, S, C]
-  import decider.assume
+  protected val decider: Decider[ST, H, S, C]
+  protected val config: Config
+  protected val bookkeeper: Bookkeeper
+  protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  val config: Config
-  val bookkeeper: Bookkeeper
+  import decider.assume
 
   def branch(σ: S,
              t: Term,
@@ -97,14 +88,33 @@ trait DefaultBrancher[ST <: Store[ST],
 
     val cnt = branchCounter.next()
 
+    /* See comment in DefaultDecider.tryOrFail */
+    var originalChunks: Option[Iterable[Chunk]] = None
+    def compressHeapIfRetrying(c: C, σ: S) {
+      if (c.retrying) {
+        originalChunks = Some(σ.h.values)
+        heapCompressor.compress(σ, σ.h, c)
+      }
+    }
+    def restoreHeapIfPreviouslyCompressed(σ: S) {
+      originalChunks match {
+        case Some(chunks) => σ.h.replace(chunks)
+        case None => /* Nothing to do here */
+      }
+    }
+
     ((if (exploreTrueBranch) {
-      val cTrue = c.copy(branchConditions = guardsTrue +: c.branchConditions)
+      val cTrue = c//.copy(branchConditions = guardsTrue +: c.branchConditions)
 
       val result =
-        decider.inScope {
+        decider.locally {
           decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
-          assume(guardsTrue)
-          fTrue(cTrue)
+//          assume(guardsTrue)
+          decider.setCurrentBranchCondition(guardsTrue)
+          compressHeapIfRetrying(cTrue, σ)
+          val r = fTrue(cTrue)
+          restoreHeapIfPreviouslyCompressed(σ)
+          r
         }
 
       result
@@ -114,13 +124,17 @@ trait DefaultBrancher[ST <: Store[ST],
     })
       &&
     (if (exploreFalseBranch) {
-      val cFalse = c.copy(branchConditions = guardsFalse +: c.branchConditions)
+      val cFalse = c//.copy(branchConditions = guardsFalse +: c.branchConditions)
 
       val result =
-        decider.inScope {
+        decider.locally {
           decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
-          assume(guardsFalse)
-          fFalse(cFalse)
+//          assume(guardsFalse)
+          decider.setCurrentBranchCondition(guardsFalse)
+          compressHeapIfRetrying(cFalse, σ)
+          val r = fFalse(cFalse)
+          restoreHeapIfPreviouslyCompressed(σ)
+          r
         }
 
       result
@@ -128,68 +142,6 @@ trait DefaultBrancher[ST <: Store[ST],
       decider.prover.logComment(s"[dead else-branch $cnt] $guardsFalse")
       Unreachable()
     }))
-  }
-
-  def branchAndJoin(σ: S,
-                    guard: Term,
-                    c: C,
-                    fTrue: (C, (Term, C) => VerificationResult) => VerificationResult,
-                    fFalse: (C, (Term, C) => VerificationResult) => VerificationResult)
-                   (Q: (Option[Term], Option[Term], C) => VerificationResult)
-                   : VerificationResult = {
-
-    val πPre: Set[Term] = decider.π
-    var πThen: Option[Set[Term]] = None
-    var tThen: Option[Term] = None
-    var cThen: Option[C] = None
-    var πElse: Option[Set[Term]] = None
-    var tElse: Option[Term] = None
-    var cElse: Option[C] = None
-
-    val r =
-      branch(σ, guard, c,
-        (c1: C) =>
-          fTrue(c1,
-                (t, c2) => {
-                  assert(πThen.isEmpty, s"Unexpected branching occurred")
-                  πThen = Some(decider.π -- (πPre + guard))
-                  tThen = Some(t)
-                  cThen = Some(c2)
-                  Success()}),
-        (c1: C) =>
-          fFalse(c1,
-                (t, c2) => {
-                  assert(πElse.isEmpty, s"Unexpected branching occurred")
-                  πElse = Some(decider.π -- (πPre + guard))
-                  tElse = Some(t)
-                  cElse = Some(c2)
-                  Success()}))
-
-    r && {
-      val tAuxIte = /* Ite with auxiliary terms */
-        Ite(guard,
-            πThen.fold(True(): Term)(ts => And(ts)),
-            πElse.fold(True(): Term)(ts => And(ts)))
-
-      assume(tAuxIte)
-
-      val cJoined = (cThen, cElse) match {
-        case (Some(_cThen), Some(_cElse)) =>
-          val cThen0 = _cThen.copy(branchConditions = c.branchConditions)
-          val cElse0 = _cElse.copy(branchConditions = c.branchConditions)
-          /* TODO: Modifying the branchConditions before merging contexts is only necessary
-           *       because DefaultContext.merge (correctly) insists on equal branchConditions,
-           *       which cannot be circumvented/special-cased when merging contexts here.
-           *       See DefaultJoiner.join for a similar comment.
-           */
-          cThen0.merge(cElse0)
-        case (None, Some(_cElse)) => _cElse
-        case (Some(_cThen), None) => _cThen
-        case (None, None) => c
-      }
-
-      Q(tThen, tElse, cJoined.copy(branchConditions = c.branchConditions))
-    }
   }
 
   /* Lifecycle */

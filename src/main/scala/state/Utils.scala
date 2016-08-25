@@ -4,117 +4,71 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package state
+package viper.silicon.state
 
-import interfaces.state.{PredicateChunk, FieldChunk, Heap, Store, State}
-import terms._
+import scala.collection.mutable
+import viper.silicon.interfaces.state.{Heap, Store, State}
+import viper.silicon.state.terms._
+import viper.silicon.supporters.qps.SummarisingFvfDefinition
 
 package object utils {
-  def getDirectlyReachableReferencesState[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-                                         (σ: S)
-                                         : Set[Term] = {
-
-    /* TODO: We should also consider sets/sequences of references. E.g., if x := new(),
-     *       then we should also establish that !(x in xs).
-     */
-
-    val ts = (
-      /* Refs pointed to by local variables */
-         σ.γ.values.map(_._2).filter(_.sort == terms.sorts.Ref)
-      /* Receivers of fields and ref-typed arguments of predicates */
-      ++ σ.h.values.collect {
-          case fc: FieldChunk => fc.args
-          case pc: PredicateChunk => pc.args.filter(_.sort == terms.sorts.Ref)
-         }.flatten
-      /* Refs pointed to by fields */
-      ++ σ.h.values.collect { case fc: FieldChunk if fc.value.sort == terms.sorts.Ref => fc.value })
-
-    toSet(ts)
-  }
-
-  /** Auxiliary terms are internal terms in the sense that they arise from the
-    * encoding of certain Silver constructs, and that they are not already
-    * "visible" in the program itself. Such terms usually define/axiomatise
-    * internal symbols such as snapshots, join-functions or field value
-    * functions. If such an internal symbol is created during a local
-    * evaluation, it is likely that the symbol is used even after the join
-    * point of the local evaluation. Hence, assumptions about that symbol
-    * have to be preserved as well.
-    *
-    * Some auxiliary terms, e.g., join-functions, will mention some of the
-    * quantifiedVariables, in which case they need to be placed under a
-    * quantifier.
-    *
-    * The current implementation of Silicon, however, makes it difficult to
-    * discriminate between such auxiliary terms, and terms that come from the
-    * program and that mention the "skolemised instance" of one of the
-    * quantifiedVariables. An example of the latter kind would be the term
-    * "0 < i < 10", which is added to the path conditions when locally
-    * evaluating an expression such as "forall i :: 0 < i < 10 ==> f(i)". It
-    * would obviously be unsound to place "0 < i < 10" under a quantifier
-    * binding "i".
-    *
-    * The problem with the current implementation is that both kind of terms are
-    * just added to the path conditions, which makes it hard to precisely
-    * differentiate between them.
-    *
-    * @param terms Terms/path conditions from which to extract auxiliary terms
-    * @param quantifier The quantifier under which the currently ongoing
-    *                   symbolic execution takes place
-    * @param quantifiedVariables Variables that are bound by the quantifier
-    * @return Extracted auxiliary terms
+  /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
+    * unsatisfiable constraint `ref != ref`.
     */
-  def extractAuxiliaryTerms(terms: Set[Term], quantifier: Quantifier, quantifiedVariables: Seq[Var]): Set[Term] = {
-//    return Set(Quantification(quantifier, quantifiedVariables, And(terms), Nil).autoTrigger)
+  def computeReferenceDisjointnesses[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
+                                    (σ: S, ref: Term)
+                                    : Seq[Term] = {
 
-    var auxiliaryTerms = Set[Term]()
+    val refs = mutable.HashSet[Term]()
+    val refSets = mutable.HashSet[Term]()
+    val refSeqs = mutable.HashSet[Term]()
 
-    def qvars(t: Term) = t.deepCollect { case v: Var if quantifiedVariables.contains(v) => v }
-
-    terms foreach {
-      case q: Quantification =>
-        /* Quantified expressions are assumed to always be relevant. We need
-         * to ensure that all quantifiedVariables are covered, though.
-         */
-
-        val occurringQuantifiedVariables = qvars(q.body)
-        val varsToBind = occurringQuantifiedVariables.filterNot(q.vars.contains).distinct
-
-        if (varsToBind.isEmpty)
-          auxiliaryTerms += q
-        else
-          /* Note: We can either place q under another quantifier binding varsToBind,
-           * or add the missing variables to q. Not sure which strategy is better, in
-           * particular w.r.t. to triggers.
-           */
-          auxiliaryTerms += Quantification(quantifier, varsToBind, q, Nil).autoTrigger
-
-      case t =>
-        val occurringQuantifiedVariables = qvars(t).distinct
-
-        if (occurringQuantifiedVariables.isEmpty)
-          auxiliaryTerms += t
-        else {
-          /* At least one of the quantifiedVariables occurs in t, and t therefore
-           * has to be placed under a quantifier. However, since not all terms
-           * can soundly be placed under a quantifier, we have to select only
-           * those that can (and are meant to be).
-           */
-
-          t match {
-            case _ if t.existsDefined { case _: Apply =>} =>
-              /* Apply-terms should only occur in auxiliary terms */
-              auxiliaryTerms += Quantification(quantifier, occurringQuantifiedVariables, t, Nil).autoTrigger
-
-            case _ => /* Ignore this term */
-          }
-        }
+    def collect(t: Term) {
+      t.sort match {
+        case sorts.Ref => if (t != ref) refs += t
+        case sorts.Set(sorts.Ref) => refSets += t
+        case sorts.Seq(sorts.Ref) => refSeqs += t
+        case _ =>
+      }
     }
 
-    auxiliaryTerms
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
+    σ.γ.values.values foreach collect
+
+    /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
+    σ.h.values.foreach {
+      case bc: BasicChunk =>
+        bc.args foreach collect
+        collect(bc.snap)
+      case qch: QuantifiedChunk =>
+        /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
+         * hence, they can only be used under quantifiers that bind `?r`.
+         * An exception are quantified chunks that (definitely) provide permissions to
+         * a single location (i.e. for a single receiver) only.
+         */
+        qch.singletonRcvr.foreach(rcvr => {
+          collect(rcvr)
+          collect(qch.valueAt(rcvr))
+        })
+      case _ =>
+    }
+
+    val disjointnessAssumptions = mutable.ListBuffer[Term]()
+
+    refs foreach (r => disjointnessAssumptions += (ref !== r))
+    refSets foreach (rs => disjointnessAssumptions += Not(SetIn(ref, rs)))
+    refSeqs foreach (rs => disjointnessAssumptions += Not(SeqIn(rs, ref)))
+
+    disjointnessAssumptions.result()
   }
+
+  def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
+    ts.partition {
+      case   _: FvfAfterRelation
+           | _: Definition
+           => true
+      case _ => false
+    }
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
     var problems: List[String] = Nil
@@ -139,11 +93,11 @@ package object utils {
 
         /* 3. Check that all triggers are valid */
         quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
-          if (!term.isInstanceOf[PossibleTrigger])
+          if (!TriggerGenerator.isPossibleTrigger(term))
             problems ::= s"Trigger $term is not a possible trigger"
 
-          term.deepCollect{case s: ForbiddenInTrigger => s}.foreach(term =>
-            problems ::= s"Term $term may not occur in triggers")
+          term.deepCollect{case t if TriggerGenerator.isForbiddenInTrigger(t) => t}
+              .foreach(term => problems ::= s"Term $term may not occur in triggers")
         })
     }
 
@@ -151,7 +105,7 @@ package object utils {
   }
 
   def subterms(t: Term): Seq[Term] = t match {
-    case _: Symbol | _: Literal => Nil
+    case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
     case op: UnaryOp[Term@unchecked] => List(op.p)
     case ite: Ite => List(ite.t0, ite.t1, ite.t2)
@@ -162,22 +116,22 @@ package object utils {
     case fp: FractionPerm => List(fp.n, fp.d)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
-    case app: Apply => List(app.func) ++ app.args
-    case fapp: FApp => List(fapp.function, fapp.snapshot) ++ fapp.tArgs
+    case app: Application[_] => app.args
     case sr: SeqRanged => List(sr.p0, sr.p1)
     case ss: SeqSingleton => List(ss.p)
     case su: SeqUpdate => List(su.t0, su.t1, su.t2)
     case ss: SingletonSet => List(ss.p)
     case ss: SingletonMultiset => List(ss.p)
-    case dfa: DomainFApp => List(dfa.function) ++ dfa.tArgs
-    case fst: First => List(fst.t)
-    case snd: Second => List(snd.t)
     case sw: SortWrapper => List(sw.t)
-    case d: Distinct => d.ts.toList
+    case d: Distinct => Seq.empty // d.ts.toList
     case q: Quantification => q.vars ++ List(q.body) ++ q.triggers.flatMap(_.p)
     case l: Let =>
       val (vs, ts) = l.bindings.toSeq.unzip
       vs ++ ts :+ l.body
+    case Domain(_, fvf) => fvf :: Nil
+    case Lookup(_, fvf, at) => fvf :: at :: Nil
+    case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
+    case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -192,7 +146,7 @@ package object utils {
     def goTriggers(trigger: Trigger) = Trigger(trigger.p map go)
 
     def recurse(term: Term): Term = term match {
-      case _: Var | _: Function | _: Literal => term
+      case _: Var | _: Function | _: Literal | _: MagicWandChunkTerm | _: Distinct => term
       case q: Quantification => Quantification(q.q, q.vars map go, go(q.body), q.triggers map goTriggers)
       case Plus(t0, t1) => Plus(go(t0), go(t1))
       case Minus(t0, t1) => Minus(go(t0), go(t1))
@@ -222,9 +176,9 @@ package object utils {
       case PermPlus(p0, p1) => PermPlus(go(p0), go(p1))
       case PermMinus(p0, p1) => PermMinus(go(p0), go(p1))
       case PermLess(p0, p1) => PermLess(go(p0), go(p1))
+      case PermAtMost(p0, p1) => PermAtMost(go(p0), go(p1))
       case PermMin(p0, p1) => PermMin(go(p0), go(p1))
-      case Apply(f, ts) =>  Apply(go(f), ts map go)
-      case FApp(f, s, ts) => FApp(f, go(s), ts map go)
+      case App(f, ts) => App(f, ts map go)
       case SeqRanged(t0, t1) => SeqRanged(go(t0), go(t1))
       case SeqSingleton(t) => SeqSingleton(go(t))
       case SeqAppend(t0, t1) => SeqAppend(go(t0), go(t1))
@@ -251,13 +205,15 @@ package object utils {
       case MultisetCardinality(t) => MultisetCardinality(go(t))
       case MultisetCount(t0, t1) => MultisetCount(go(t0), go(t1))
       case MultisetAdd(t1, t2) => MultisetAdd(go(t1), go(t2))
-      case DomainFApp(f, ts) => DomainFApp(f, ts map go)
       case Combine(t0, t1) => Combine(go(t0), go(t1))
       case First(t) => First(go(t))
       case Second(t) => Second(go(t))
       case SortWrapper(t, s) => SortWrapper(go(t), s)
-      case Distinct(ts) => Distinct(ts map go)
+//      case Distinct(ts) => Distinct(ts map go)
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
+      case Domain(f, fvf) => Domain(f, go(fvf))
+      case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
+      case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

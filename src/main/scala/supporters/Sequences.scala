@@ -4,20 +4,19 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper
-package silicon
-package supporters
+package viper.silicon.supporters
 
-import silver.ast
-import interfaces.PreambleEmitter
-import interfaces.decider.Prover
-import decider.PreambleFileEmitter
-import state.SymbolConvert
-import state.terms
+import viper.silver.ast
+import viper.silicon.{Set, toSet}
+import viper.silicon.interfaces.PreambleEmitter
+import viper.silicon.interfaces.decider.Prover
+import viper.silicon.decider.PreambleFileEmitter
+import viper.silicon.state.SymbolConvert
+import viper.silicon.state.terms
 
 trait SequencesEmitter extends PreambleEmitter
 
-class DefaultSequencesEmitter(prover: Prover,
+class DefaultSequencesEmitter(prover: => Prover,
                              symbolConverter: SymbolConvert,
                              preambleFileEmitter: PreambleFileEmitter[String, String])
     extends SequencesEmitter {
@@ -25,14 +24,6 @@ class DefaultSequencesEmitter(prover: Prover,
   private var collectedSorts = Set[terms.sorts.Seq]()
 
   def sorts = toSet(collectedSorts)
-
-  /**
-   * The symbols are take from a file and it is currently not possible to retrieve a list of
-   * symbols that have been declared.
-   *
-   * @return None
-   */
-  def symbols = None
 
   /* Lifetime */
 
@@ -48,12 +39,12 @@ class DefaultSequencesEmitter(prover: Prover,
   def analyze(program: ast.Program) {
     var sequenceTypes = Set[ast.SeqType]()
 
-    program visit { case t: silver.ast.Typed =>
+    program visit { case t: ast.Typed =>
       /* Process the type itself and its type constituents, but ignore types
        * that use type parameters. The assumption is that the latter are
        * handled by the domain emitter.
        */
-      t.typ :: silver.ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
+      t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
         case s: ast.SeqType =>
           sequenceTypes += s
 //        case s: ast.MultisetType =>
