@@ -51,4 +51,35 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         case _ => false
       }.mkString("(", ", ", ")")
   }
+  
+  //Methods for SymbexLogger
+  def toJson(σ: S):String = {
+    val γStr = toJson(σ.γ)
+    val hStr = toJson(σ.h)
+    val gStr = toJson(σ.g)
+    val πStr = toJson(σ.π)
+    s"""{"store":$γStr,"heap":$hStr,"oldHeap":$gStr,"pcs":$πStr}""".stripMargin
+  }
+
+  private def toJson(γ: ST): String = {
+    val values = γ.values
+    if (values.isEmpty) "[]" else values.mkString("[\"", "\",\"", "\"]")
+  }
+
+  private def toJson(h: H): String = {
+    val values = h.values
+    if (values.isEmpty) "[]" else values.mkString("[\"", "\",\"", "\"]")
+  }
+
+  private def toJson(π: Set[Term]): String = {
+    /* Attention: Hides non-null and combine terms. */
+    if (π.isEmpty) "[]"
+    else
+      "pcs" + π.filterNot {
+        case c: BuiltinEquals if    c.p0.isInstanceOf[Combine]
+          || c.p1.isInstanceOf[Combine] => true
+        case Not(BuiltinEquals(_, Null())) => true
+        case _ => false
+      }.mkString("[\"", "\",\"", "\"]")
+  }
 }
