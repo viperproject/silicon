@@ -190,7 +190,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     val rPerm = PermTimes(tLoss, p).replace(tQVar, inversePredicate)
                     val rCond = tCond.replace(tQVar, inversePredicate)
                     val rArgs = tArgs.map(arg => arg.replace(tQVar, inversePredicate))
-                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), formalVars,  rArgs, rCond, rPerm, chunkOrderHeuristics, c1) {
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), inversePredicate, formalVars,  rArgs, rCond, rPerm, chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
