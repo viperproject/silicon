@@ -1,72 +1,43 @@
-field f:Int
-field g:Int
+field val: Int
 
+domain IArray {
+  function loc(a: IArray, i: Int): Ref
+  function loc_limited(a: IArray, i: Int): Ref
+  function len(a: IArray): Int
+  function first(r: Ref): IArray
+  function second(r: Ref): Int
 
-predicate p1()
-{
-	true
+  axiom limited {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      loc(a,i) == loc_limited(a,i)
+  }
+
+  axiom all_diff {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: IArray :: len(a) >= 0
+  }
 }
 
-predicate p2(r:Ref)
+predicate p(a: IArray, i:Int)
 {
-    acc(r.f)
+	acc(loc(a, i).val)
 }
 
-predicate p3(r:Ref)
-{
-	acc(r.f) && r.f == 0
-}
-
-predicate p4(r:Ref, i:Int)
-{
-    acc(r.f)
-}
-
-predicate p5(r:Ref, i:Int)
-{
-    acc(r.f) && r.f == i
-}
-
-
-method m_0(x: Ref, xs: Seq[Ref])
-requires forall r:Ref :: r in xs ==> acc(p2(r))
-requires x in xs
-ensures acc(p2(x))
+method test01(a: IArray, n: Int, i1: Int, i2:Int)
+  requires n > 3
+  requires forall i: Int :: i > 0 && i < n ==> acc(p(a, i+1))
+  ensures  forall i: Int :: i > 0 && i < n  ==> acc(p(a,i+1))
+  //ensures  forall i: Int :: i >= 2 && i < n ==> acc(p(a,i+1))
 {}
 
-method m1(x:Ref, y:Ref, z:Ref)
-requires acc(p2(x))
-requires acc(p2(y))
-requires acc(p2(z))
-ensures forall r:Ref :: r in Set(x, y, z) ==> acc(p2(r))
-{}
-
-method m2(x:Ref, y:Ref, z:Ref)
-requires acc(p2(x))
-requires acc(p2(y))
-requires acc(p2(z))
-ensures acc(p2(z))
-ensures forall r:Ref :: r in Set(x, y) ==> acc(p2(r))
-{}
-
-method m3(x:Ref, y:Ref, z:Ref)
-requires acc(p2(x))
-requires acc(p2(y))
-requires acc(p2(z))
-ensures forall r:Ref :: r in Set(x, y) ==> acc(p2(r))
-ensures acc(p2(z))
-{}
-
-
-method m4(x:Ref, y:Ref, z:Ref)
-requires acc(p2(x))
-requires acc(p2(y))
-ensures forall r:Ref :: r in Set(x, y, z) ==> acc(p2(r))
-{}
-
-
-method m5(x:Ref, y:Ref, z:Ref)
-requires acc(p2(y))
-requires acc(p2(z))
-ensures forall r:Ref :: r in Set(x, y, z) ==> acc(p2(r))
-{}
+/*
+method test02(a: IArray, n: Int, i1: Int, i2:Int)
+  requires n > 3
+  requires forall i: Int :: i > 0 && i < n ==> acc(loc(a, i+1).val)
+  ensures  forall i: Int :: i > 0 && i < n  ==> acc(loc(a, i+1).val)
+ //ensures  forall i: Int :: i >= 2 && i < n ==> acc(loc(a, i+1).val)
+{}*/

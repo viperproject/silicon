@@ -417,17 +417,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                       chunkOrderHeuristic: Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk],
                       c: C)
     : (H, QuantifiedPredicateChunk, PsfDefinition, Boolean) = {
-     /*
-     println("-------splitPredicate--------")
-     println(predicate)
-     println(qvar)
-     println(formalVars)
-     println(args)
-     println(condition)
-     println(perms)
-     println(chunkOrderHeuristic)
-     println("---------------")
-*/
+
      val (quantifiedChunks, otherChunks) = splitHeap(h, predicate.name)
      val candidates = if (config.disableChunkOrderHeuristics()) quantifiedChunks else chunkOrderHeuristic(quantifiedChunks)
 
@@ -483,6 +473,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           val (permissionConstraint, depletedCheck) =
             createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk, formalVars,
               ithPTaken)
+          println(depletedCheck)
 
           if (constrainPermissions) {
             decider.prover.logComment(s"Constrain original permissions $perms")
@@ -527,8 +518,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                                                          : (Term, Term) = {
 
       val result = eliminateImplicitQVarIfPossible(ithChunk.perm, qvar)
-      println("createPermissionConstraintAndDepletedCheck")
-      println(formalVars)
       val permissionConstraint =
         if (constrainPermissions)
           result match {
@@ -553,17 +542,10 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
       val depletedCheck = result match {
         case None =>
-          println("--depletedCheck--none")
-          println(ithChunk.formalVars)
-          println(ithPTaken)
           Forall(ithChunk.formalVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil: Seq[Trigger])
         case Some((perms, arg:Term)) =>
-          println("--depletedCheck--someArg")
-          println(perms)
-          println(ithPTaken.replace(ithChunk.formalVars, Seq(arg)))
           PermMinus(perms, ithPTaken.replace(formalVars, Seq(arg))) === NoPerm()
         case Some((perms, args:Seq[Term])) =>
-          println("--depletedCheck--someArgs")
           PermMinus(perms, ithPTaken.replace(formalVars, args)) === NoPerm()
       }
       (permissionConstraint, depletedCheck)

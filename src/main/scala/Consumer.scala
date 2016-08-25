@@ -198,12 +198,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
                     val inversePredicate = invFct(formalVars) // e⁻¹(arg1, ..., argn)
-                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar),formalVars,  tArgs, tCond, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), inversePredicate, formalVars,  tArgs, tCond, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
-                        println(h1)
-                        println(ch)
-                        println(psfDef)
-                        println(c2)
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
                        assume(psfDomain ++ psfDef.snapDefinitions)
@@ -211,16 +207,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                           decider.pcs.branchConditions,
                           invFct.definitionalAxioms ++ psfDomain ++ psfDef.snapDefinitions)
                         val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordPsf(predicate, psfDef.psf) else fr1
-                        val c3 = c2.copy(functionRecorder = fr2)
+                        val c3 = c2.copy(functionRecorder = fr2, partiallyConsumedHeap = Some(h1))
                           Q(h1, ch.psf.convert(sorts.Snap), c3)
                       case None =>
-                        println("splitLocations returned nothing")
                         Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
                   case false =>
-                    println("not injective");
                     Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))}
               case false =>
-                println("PermNonNegative"); Failure(pve dueTo NegativePermission(loss))}}
+                Failure(pve dueTo NegativePermission(loss))}}
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
@@ -249,7 +243,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               case Some((h1, ch, psfDef, c3)) =>
                 val psfDomain = if (c3.psfAsSnap) psfDef.domainDefinitions else Seq.empty
                 assume(psfDomain ++ psfDef.snapDefinitions)
-                Q(h1, ch.valueAt(tArgs), c3)
+                val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
+                Q(h1, ch.valueAt(tArgs), c4)
               case None => Failure(pve dueTo InsufficientPermission(pa))
             }}))
 
