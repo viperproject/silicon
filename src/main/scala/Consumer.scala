@@ -8,14 +8,14 @@ package viper.silicon
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.verifier.{PartialVerificationError, VerificationError}
+import viper.silver.verifier.{VerificationError, PartialVerificationError}
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces.state._
-import viper.silicon.interfaces.{Consumer, Evaluator, Failure, VerificationResult}
+import viper.silicon.interfaces.{Consumer, Evaluator, VerificationResult, Failure}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state._
+import viper.silicon.state.{SymbolConvert, DefaultContext, MagicWandChunk}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._

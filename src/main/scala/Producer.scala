@@ -9,11 +9,11 @@ package viper.silicon
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
-import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
+import viper.silicon.interfaces.state.{Store, Heap, State, StateFormatter}
+import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state._
+import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter

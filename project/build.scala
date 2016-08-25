@@ -86,8 +86,7 @@ object SiliconBuild extends Build {
                     Val("hgid_tags", id.tags))
               }),
               sourceGenerators in Compile <+= BrandKeys.generateDataFile)
-              //,addCommandAlias("tn", "test-only -- -n ") // requires sbt 0.13.x
-              )
+              /* ,addCommandAlias("tn", "test-only -- -n ") // requires sbt 0.13.x */)
     ).dependsOn(common)
 
     for (dep <- internalDep) {
