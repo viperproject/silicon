@@ -13,10 +13,10 @@ import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state.{Heap, State, StateFactory, StateFormatter, Store}
+import viper.silicon.interfaces.state.{Store, Heap, State, StateFactory, StateFormatter}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.state.terms._
-import viper.silicon.state.{DefaultContext, FieldChunk, ListBackedHeap, SymbolConvert}
+import viper.silicon.state.{FieldChunk, SymbolConvert, DefaultContext, ListBackedHeap}
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
