@@ -30,7 +30,6 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
 
   private var collectedPredicates = Set[Predicate]()
   private var collectedSorts = Set[terms.sorts.PredicateSnapFunction]()
-  private var argTypeMap: Map[Predicate, terms.Sort] = Map()
 
   def sorts: Set[Sort] = toSet(collectedSorts)
   /* Scala's immutable sets are invariant in their element type, hence

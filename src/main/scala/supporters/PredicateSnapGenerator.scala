@@ -7,11 +7,10 @@
 package  viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silver.ast.{Predicate, Program, PredicateAccess}
+import viper.silver.ast.{Predicate, PredicateAccess, Program}
 import viper.silicon.Map
-import viper.silicon.state.terms.sorts
-import viper.silicon.state.terms.Sort
-import viper.silicon.state.{SymbolConvert, terms}
+import viper.silicon.state.terms.{Sort, Var, sorts}
+import viper.silicon.state.{Identifier, SymbolConvert, terms}
 import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 
 
@@ -20,6 +19,7 @@ import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, Verific
 class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
 
   var snapMap:Map[Predicate, terms.Sort] = Map()
+  var formalVarMap:Map[Predicate, Seq[terms.Var]] = Map()
 
   def setup(program:Program): Unit = {
     snapMap.empty
@@ -27,14 +27,10 @@ class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
       case ast.PredicateAccess(args, predname) =>
         val predicate = program.findPredicate(predname)
         val sort = (predicate -> predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))
+        var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
+        formalVarMap += predicate -> formalArgs
         snapMap += sort
       }
-        /*
-      case ast.utility.QuantifiedPermissions.QPPForall(_, _, _, _, _, _, predAccpred) =>
-        val predicate = program.findPredicate(predAccpred.loc.predicateName)
-        val sort = (predicate -> predicate.body.map(getOptimalSnapshotSort(_, program)._1).getOrElse(terms.sorts.Snap))
-        snapMap += sort
-    }*/
   }
 
   def getSnap(predicate:Predicate): (terms.Sort, Boolean) =
@@ -43,6 +39,15 @@ class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
       (snapMap(predicate), true)
     } else {
       (sorts.Snap, false)
+    }
+  }
+
+  def getArgs(predicate:Predicate): (Seq[terms.Var], Boolean) =
+  {
+    if (formalVarMap.contains(predicate)) {
+      (formalVarMap(predicate), true)
+    } else {
+      (Seq(), false)
     }
   }
 

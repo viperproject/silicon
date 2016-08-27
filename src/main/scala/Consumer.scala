@@ -177,6 +177,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 Failure(pve dueTo NegativePermission(loss))}}
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
         val predicate = c.program.findPredicate(predname)
+        var formalVars = c.predicateFormalVarMap(predicate)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , Nil, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
@@ -184,11 +185,9 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             val (tArgs, Seq(tLoss)) = tArgsGain.splitAt(args.size)
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
-
                 val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                val (invFct, neutralArgs) = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, tArgs, tCond, c1.quantifiedVariables)
-                val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, toSort(arg.typ)))
+                val invFct = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, formalVars, tArgs, tCond, c1.quantifiedVariables)
                 decider.prover.logComment("Nested auxiliary terms")
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
                 val isInjective = quantifiedPredicateChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
@@ -233,7 +232,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         if c.qpPredicates.contains(c.program.findPredicate(predname)) =>
         //TODO nadmuell: implement consuming single prediate under quantifier
         val predicate = c.program.findPredicate(predname)
-        val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, toSort(arg.typ)))
+        val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
 
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) => {

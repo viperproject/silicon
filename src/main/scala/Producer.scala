@@ -165,7 +165,7 @@ trait DefaultProducer[ST <: Store[ST],
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
             decider.prover.logComment("define formalVArgs")
-            var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
+            var formalArgs:Seq[Var] = c.predicateFormalVarMap(predicate)
             decider.prover.logComment("createPredicateSnapFunction")
             val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, s, c)
             decider.prover.logComment("assume snapDefinitions")
@@ -264,7 +264,7 @@ trait DefaultProducer[ST <: Store[ST],
             val additionalInvFctArgs = c1.quantifiedVariables
 
             val (ch, invFct) =
-              quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, tArgs, snap, PermTimes(tGain, p), tCond,
+              quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, c.predicateFormalVarMap(predicate), tArgs, snap, PermTimes(tGain, p), tCond,
                 additionalInvFctArgs)
 
             decider.prover.logComment("Nested auxiliary terms")

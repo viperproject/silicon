@@ -47,7 +47,8 @@ case class DefaultContext[H <: Heap[H]]
                           psfCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
                           psfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
                           psfAsSnap: Boolean = false,
-                          predicateSnapMap:Map[ast.Predicate, terms.Sort] = Map.empty)
+                          predicateSnapMap:Map[ast.Predicate, terms.Sort] = Map.empty,
+                          predicateFormalVarMap:Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
 
     extends Context[DefaultContext[H]] {
 
@@ -90,7 +91,7 @@ case class DefaultContext[H <: Heap[H]]
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
                         recordEffects1, consumedChunks1, letBoundVars1,
                         fvfCache1, fvfPredicateCache1, fvfAsSnap1,
-                        psfCache1, psfPredicateCache1, psfAsSnap1, predicateSnapMap1) =>
+                        psfCache1, psfPredicateCache1, psfAsSnap1, predicateSnapMap1, predicateFormalVarMap1) =>
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, `qpPredicates1`, recordVisited2, `visited1`,
@@ -100,7 +101,7 @@ case class DefaultContext[H <: Heap[H]]
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                             `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
                             fvfCache2, fvfPredicateCache2, fvfAsSnap2,
-                            psfCache2, psfPredicateCache2, psfAsSnap2, predicateSnapMap2) =>
+                            psfCache2, psfPredicateCache2, psfAsSnap2, predicateSnapMap2, predicateFormalVarMap2) =>
 
 //          val possibleTriggers3 = DefaultContext.conflictFreeUnionOrAbort(possibleTriggers1, possibleTriggers2)
           val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -162,6 +163,12 @@ case class DefaultContext[H <: Heap[H]]
             predicateSnapMap2
           }
 
+          val predicateFormalVarMap3 : Map[ast.Predicate, Seq[terms.Var]] = if (predicateFormalVarMap1.size > predicateFormalVarMap2.size) {
+            predicateFormalVarMap1
+          } else {
+            predicateFormalVarMap2
+          }
+
           copy(recordVisited = recordVisited1 || recordVisited2,
                retrying = retrying1 || retrying2,
                functionRecorder = functionRecorder3,
@@ -171,7 +178,8 @@ case class DefaultContext[H <: Heap[H]]
                fvfAsSnap = fvfAsSnap1 || fvfAsSnap2,
                psfPredicateCache = psfPredicateCache3,
                psfAsSnap = psfAsSnap1 || psfAsSnap2,
-               predicateSnapMap = predicateSnapMap3)
+               predicateSnapMap = predicateSnapMap3,
+               predicateFormalVarMap = predicateFormalVarMap3)
 
 
 

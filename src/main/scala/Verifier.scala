@@ -136,7 +136,8 @@ class DefaultVerifier(val config: Config)
                       qpFields = quantifiedFields,
                       qpPredicates = quantifiedPredicates,
                       applyHeuristics = applyHeuristics,
-                      predicateSnapMap = predSnapGenerator.snapMap)
+                      predicateSnapMap = predSnapGenerator.snapMap,
+                      predicateFormalVarMap = predSnapGenerator.formalVarMap)
   }
 
   private def excludeMethod(method: ast.Method) = (
