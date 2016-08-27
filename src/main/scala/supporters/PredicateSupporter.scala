@@ -18,6 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
+
 import viper.silicon.supporters.qps.{QuantifiedPredicateChunkSupporterProvider, SummarisingPsfDefinition}
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -139,10 +140,11 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
-        decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+        decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
           if (c.qpPredicates.contains(predicate)) {
+            val snapConvert = snap.convert(c1.predicateSnapMap(predicate))
             var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
-            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snap, c)
+            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snapConvert, c)
             optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
             Q(σ1 \+ ch, c1)
@@ -191,7 +193,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             decider.assume(psfDomain ++ psfDef.snapDefinitions)
             val snap = ch.valueAt(tArgs)
             produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c2)((σ2, c3) => {
-              decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+              decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
               Q(σ2 \ σ.γ, c3)})
 
           case None => Failure(pve dueTo InsufficientPermission(pa))
@@ -200,6 +202,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       } else {
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
           produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
+            println(snap.sort)
             decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
             Q(σ2 \ σ.γ, c2)})})
       }
