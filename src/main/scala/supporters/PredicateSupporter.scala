@@ -203,7 +203,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       } else {
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
           produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
-            println(snap.sort)
             decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
             Q(σ2 \ σ.γ, c2)})})
       }
