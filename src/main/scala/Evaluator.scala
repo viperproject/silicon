@@ -472,7 +472,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: tArgs))
+                      decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c5)((σ2, c6) => {
