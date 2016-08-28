@@ -147,7 +147,8 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snapConvert, c)
             optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
-            Q(σ \+ ch, c1)
+            val σ2 = σ1 \ σ.γ \+ ch
+            Q(σ2 , c1)
           } else {
             val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
             val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
