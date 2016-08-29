@@ -16,7 +16,6 @@ import viper.silicon.state.terms._
 import viper.silicon.DefaultVerifier.H
 import viper.silver.verifier.AbstractError
 import viper.silicon.reporting.DefaultStateFormatter
-import viper.silicon.decider.PathConditionStack
 
 /*
  *  For instructions on how to use/visualise recording, have a look at
@@ -94,7 +93,7 @@ object SymbExLogger {
     *               state).
     * @param c      Current context.
     */
-  def insertMember(member: ast.Member, s: AnyRef, pcs: PathConditionStack, c: DefaultContext[H]): Unit = {
+  def insertMember(member: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]): Unit = {
     memberList = memberList ++ List(new SymbLog(member, s, pcs, c))
   }
 
@@ -202,7 +201,7 @@ object SymbExLogger {
   * Concept: One object of SymbLog per Method/Predicate/Function. SymbLog
   * is used in the SymbExLogger-object.
   */
-class SymbLog(v: ast.Member, s: AnyRef, pcs: PathConditionStack, c: DefaultContext[H]) {
+class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
   var main = v match {
     case m: ast.Method => new MethodRecord(m, s, pcs, c)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs, c)
@@ -594,7 +593,7 @@ class JSTreeRenderer extends Renderer[String] {
     var res = ""
     if (s.state != null) {
       var σ = s.state.asInstanceOf[DefaultState[MapBackedStore, ListBackedHeap]]
-      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs.assumptions))
+      res = ",\"prestate\":" + JsonHelper.escape(stateFormatter.toJson(σ, s.pcs))
     }
     res
   }
@@ -744,7 +743,11 @@ class TypeTreeRenderer extends Renderer[String] {
 sealed trait SymbolicRecord {
   val value: ast.Node
   val state: AnyRef
-  val pcs: PathConditionStack
+  // TODO: It would be nicer to use the PathConditionStack instead of the
+  // Decider's internal representation for the pcs.
+  // However, the recording happens to early such that the wrong
+  // PathConditionStack Object is stored when using the PathConditionStack
+  val pcs: Set[Term]
   val context: DefaultContext[H]
   var subs = List[SymbolicRecord]()
 
@@ -783,7 +786,7 @@ trait MultiChildUnorderedRecord extends MultiChildRecord
 
 trait SequentialRecord extends SymbolicRecord
 
-class MethodRecord(v: ast.Method, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends MemberRecord {
+class MethodRecord(v: ast.Method, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
   val pcs = p
@@ -804,7 +807,7 @@ class MethodRecord(v: ast.Method, s: AnyRef, p: PathConditionStack, c: DefaultCo
   }
 }
 
-class PredicateRecord(v: ast.Predicate, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends MemberRecord {
+class PredicateRecord(v: ast.Predicate, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
   val pcs = p
@@ -825,7 +828,7 @@ class PredicateRecord(v: ast.Predicate, s: AnyRef, p: PathConditionStack, c: Def
   }
 }
 
-class FunctionRecord(v: ast.Function, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends MemberRecord {
+class FunctionRecord(v: ast.Function, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
   val pcs = p
@@ -846,7 +849,7 @@ class FunctionRecord(v: ast.Function, s: AnyRef, p: PathConditionStack, c: Defau
   }
 }
 
-class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
+class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
   val pcs = p
@@ -862,7 +865,7 @@ class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: PathConditionStack, c: DefaultCon
   }
 }
 
-class EvaluateRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
+class EvaluateRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
   val pcs = p
@@ -878,7 +881,7 @@ class EvaluateRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultCon
   }
 }
 
-class ProduceRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
+class ProduceRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
   val pcs = p
@@ -894,7 +897,7 @@ class ProduceRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultCont
   }
 }
 
-class ConsumeRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H])
+class ConsumeRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H])
   extends SequentialRecord {
   val value = v
   val state = s
@@ -911,7 +914,7 @@ class ConsumeRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultCont
   }
 }
 
-class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H])
+class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H])
   extends MultiChildUnorderedRecord {
   val value = v
   //meaningless since there is no directly usable if-then-else structure in the AST
@@ -966,7 +969,7 @@ class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultC
   }
 }
 
-class CondExpRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H], env: String)
+class CondExpRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H], env: String)
   extends MultiChildOrderedRecord {
   val value = v
   val state = s
@@ -1021,7 +1024,7 @@ class CondExpRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultCont
   }
 }
 
-class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: DefaultContext[H], env: String)
+class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H], env: String)
   extends MultiChildUnorderedRecord {
   val value = v
   val state = s
@@ -1072,7 +1075,7 @@ class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: PathConditionStack, c: Defaul
   }
 }
 
-class CommentRecord(str: String, s: AnyRef, p: PathConditionStack, c: DefaultContext[H]) extends SequentialRecord {
+class CommentRecord(str: String, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = null
   val state = s
   val pcs = p
@@ -1103,7 +1106,7 @@ class CommentRecord(str: String, s: AnyRef, p: PathConditionStack, c: DefaultCon
   }
 }
 
-class MethodCallRecord(v: ast.MethodCall, s: AnyRef, p: PathConditionStack, c: DefaultContext[H])
+class MethodCallRecord(v: ast.MethodCall, s: AnyRef, p: Set[Term], c: DefaultContext[H])
   extends MultiChildOrderedRecord {
   val value = v
   val state = s

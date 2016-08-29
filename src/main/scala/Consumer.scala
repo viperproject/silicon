@@ -106,7 +106,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                        (Q: (H, Term, C) => VerificationResult)
                        : VerificationResult = {
     //TODO: To remove this cast: Add a type argument to the ConsumeRecord. Globally the types match, but locally the type system does not know.
-    val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(φ, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
     consume2(σ, h, p, φ, pve, c)((h1, t1, c1) => {
       SymbExLogger.currentLog().collapse(φ, SEP_identifier)
       Q(h1, t1, c1)})
@@ -139,7 +139,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             Q(h2, Combine(s1, s2), c2)}))
             
       case imp @ ast.Implies(e0, a0) if !φ.isPure =>
-        val impLog = new GlobalBranchRecord(imp, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
+        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
         SymbExLogger.currentLog().initializeBranching()
 
@@ -159,7 +159,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           branch_res})
           
       case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        val gbLog = new GlobalBranchRecord(ite, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
+        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
         SymbExLogger.currentLog().initializeBranching()
         eval(σ, e0, pve, c)((t0, c1) => {

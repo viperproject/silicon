@@ -102,7 +102,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case cblock @ ast.ConditionalBlock(stmt, e, thn, els) =>
         exec(σ, stmt, c)((σ1, c1) => {
 
-          val iteLog = new IfThenElseRecord(e, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+          val iteLog = new IfThenElseRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
           val thn_edge = cblock.succs(0)
           val els_edge = cblock.succs(1)
@@ -220,7 +220,7 @@ trait DefaultExecutor[ST <: Store[ST],
   def exec(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
     exec2(σ, stmt, c)((σ1, c1) => {
       SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
       Q(σ1, c1)})
@@ -376,7 +376,7 @@ trait DefaultExecutor[ST <: Store[ST],
            *       only while checking well-formedness).
            */
 
-        val mcLog = new MethodCallRecord(call, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+        val mcLog = new MethodCallRecord(call, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
 
         evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {

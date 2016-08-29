@@ -71,7 +71,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
-    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
     eval3(σ, e, pve, c)((e1, c1) => {
       SymbExLogger.currentLog().collapse(e, sepIdentifier)
       Q(e1, c1)})

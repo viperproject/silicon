@@ -109,7 +109,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
 	  
-	  SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+	  SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))

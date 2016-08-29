@@ -103,7 +103,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
-      SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+      SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val ins = predicate.formalArgs.map(_.localVar)
 

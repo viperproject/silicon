@@ -103,7 +103,7 @@ trait DefaultProducer[ST <: Store[ST],
                        c: C)
                       (Q: (H, C) => VerificationResult)
                       : VerificationResult = {
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
     produce3(σ, sf, p, φ, pve, c)((σ1, c1) => {
       SymbExLogger.currentLog().collapse(φ, sepIdentifier)
       Q(σ1, c1)})
@@ -131,7 +131,7 @@ trait DefaultProducer[ST <: Store[ST],
             Q(h2, c2))})
 
       case imp @ ast.Implies(e0, a0) if !φ.isPure =>
-        val impLog = new GlobalBranchRecord(imp, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
+        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
         SymbExLogger.currentLog().initializeBranching()
 
@@ -156,7 +156,7 @@ trait DefaultProducer[ST <: Store[ST],
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        val gbLog = new GlobalBranchRecord(ite, σ, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
+        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
         SymbExLogger.currentLog().initializeBranching()
         eval(σ, e0, pve, c)((t0, c1) => {

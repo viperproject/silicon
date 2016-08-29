@@ -63,7 +63,7 @@ trait MethodSupporterProvider[ST <: Store[ST],
         log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
         decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-        SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+        SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
         val ins = method.formalArgs.map(_.localVar)
         val outs = method.formalReturns.map(_.localVar)

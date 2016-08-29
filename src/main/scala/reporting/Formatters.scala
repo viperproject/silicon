@@ -11,8 +11,8 @@ import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
 import viper.silicon.state.terms._
 
 class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-                           (val config: Config)
-    extends StateFormatter[ST, H, S, String] {
+(val config: Config)
+  extends StateFormatter[ST, H, S, String] {
 
   def format(σ: S, π: Set[Term]): String = {
     val γStr = format(σ.γ)
@@ -26,7 +26,7 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         ""
 
     s"""state(
-       |  $γStr,
+        |  $γStr,
        |  $hStr,
        |  $gStr,
        |  $πStr)""".stripMargin
@@ -49,15 +49,15 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     if (π.isEmpty) "{}"
     else
       "pcs" + π.filterNot {
-        case c: BuiltinEquals if    c.p0.isInstanceOf[Combine]
-                || c.p1.isInstanceOf[Combine] => true
+        case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
+          || c.p1.isInstanceOf[Combine] => true
         case Not(BuiltinEquals(_, Null())) => true
         case _ => false
       }.mkString("(", ", ", ")")
   }
 
   //Methods for SymbexLogger
-  def toJson(σ: S, π: Set[Term]):String = {
+  def toJson(σ: S, π: Set[Term]): String = {
     val γStr = toJson(σ.γ)
     val hStr = toJson(σ.h)
     val gStr = toJson(σ.g)
@@ -79,11 +79,11 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     /* Attention: Hides non-null and combine terms. */
     if (π.isEmpty) "[]"
     else
-      "pcs" + π.filterNot {
-        case c: BuiltinEquals if    c.p0.isInstanceOf[Combine]
+      π.filterNot {
+        case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
           || c.p1.isInstanceOf[Combine] => true
         case Not(BuiltinEquals(_, Null())) => true
         case _ => false
-      }.mkString("[\"", "\",\"", "\"]")
+  }.mkString("[\"", "\",\"", "\"]")
   }
 }
