@@ -189,9 +189,13 @@ object SymbExLogger {
     */
   def reset(): Unit = {
     memberList = List[SymbLog]()
-    filePath = null
     unitTestEngine = null
+    filePath = null
     config = null
+  }
+
+  def resetMemberList(): Unit = {
+    memberList = List[SymbLog]()
   }
 }
 

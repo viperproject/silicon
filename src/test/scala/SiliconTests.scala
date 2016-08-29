@@ -30,7 +30,6 @@ class SiliconTests extends SilSuite {
     SymbExLogger.reset()
     SymbExLogger.filePath = files.head
     SymbExLogger.initUnitTestEngine()
-    
     val fe = new SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)

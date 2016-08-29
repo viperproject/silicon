@@ -92,7 +92,7 @@ class DefaultVerifier(val config: Config)
 
   def verify(program: ast.Program): List[VerificationResult] = {
     emitPreamble(program)
-    SymbExLogger.reset()
+    SymbExLogger.resetMemberList()
     SymbExLogger.setConfig(config)
 
 //    ev.predicateSupporter.handlePredicates(program)
