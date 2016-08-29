@@ -137,7 +137,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
@@ -185,7 +184,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       if (c.qpPredicates.contains(predicate)) {
-       val formalVars:Seq[Var] = predicate.formalArgs map (arg => decider.fresh(arg.name, symbolConverter.toSort(arg.typ)))
+       val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
         val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
         val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
         quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
