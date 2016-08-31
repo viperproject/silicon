@@ -370,26 +370,19 @@ trait DefaultExecutor[ST <: Store[ST],
       case call @ ast.MethodCall(methodName, eArgs, lhs) =>
         val meth = c.program.findMethod(methodName)
         val pvefCall = (_: ast.Exp) =>  CallFailed(call)
-        val pve = PreconditionInCallFalse(call)
-          /* TODO: Used to be MethodCallFailed. Is also passed on to producing the postcondition, during which
-           *       it is passed on to calls to eval, but it could also be thrown by produce itself (probably
-           *       only while checking well-formedness).
-           */
-
+        val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
         val mcLog = new MethodCallRecord(call, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
         val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
-
         evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {
           mcLog.finish_parameters()
+          val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          val pre = utils.ast.BigAnd(meth.pres)
-          consume(σ \ insγ, FullPerm(), pre, pve, c1)((σ1, _, c3) => {
+          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, c3) => {
             mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            val post = utils.ast.BigAnd(meth.posts)
-            produce(σ2, fresh, FullPerm(), post, pve, c3)((σ3, c4) => {
+            produces(σ2, fresh, FullPerm(), meth.posts, pvefCall, c3)((σ3, c4) => {
               mcLog.finish_postcondition()
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
