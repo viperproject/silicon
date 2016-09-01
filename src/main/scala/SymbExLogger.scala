@@ -16,6 +16,8 @@ import viper.silicon.state.terms._
 import viper.silicon.DefaultVerifier.H
 import viper.silver.verifier.AbstractError
 import viper.silicon.reporting.DefaultStateFormatter
+import scala.annotation.elidable
+import scala.annotation.elidable._
 
 /*
  *  For instructions on how to use/visualise recording, have a look at
@@ -82,6 +84,8 @@ object SymbExLogger {
   /** Flag; if disabled, no output files for visualisations are created. **/
   val FLAG_WRITE_FILES = false
 
+  var enabled = false
+
   /** Config of Silicon. Used by StateFormatters. **/
   private var config: Config = null
 
@@ -93,7 +97,8 @@ object SymbExLogger {
     *               state).
     * @param c      Current context.
     */
-  def insertMember(member: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]): Unit = {
+  @elidable(INFO)
+  def insertMember(member: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
     memberList = memberList ++ List(new SymbLog(member, s, pcs, c))
   }
 
@@ -103,7 +108,9 @@ object SymbExLogger {
     * @return Returns the current method, predicate or function that is being logged.
     */
   def currentLog(): SymbLog = {
-    memberList.last
+    if (enabled)
+      memberList.last
+    else NoopSymbLog
   }
 
   /**
@@ -112,9 +119,16 @@ object SymbExLogger {
     *
     * @param c Config of Silicon.
     */
-  def setConfig(c: Config): Unit = {
-    if (config == null)
+  def setConfig(c: Config) {
+    if (config == null) {
       config = c
+      setEnabled(config.ideMode())
+    }
+  }
+
+  @elidable(INFO)
+  private def setEnabled(b: Boolean) {
+    enabled = b
   }
 
   /** Gives back config from Silicon **/
@@ -126,8 +140,10 @@ object SymbExLogger {
     * Simple string representation of the logs.
     */
   def toSimpleTreeString: String = {
-    val simpleTreeRenderer = new SimpleTreeRenderer()
-    simpleTreeRenderer.render(memberList)
+    if (enabled) {
+      val simpleTreeRenderer = new SimpleTreeRenderer()
+      simpleTreeRenderer.render(memberList)
+    } else ""
   }
 
   /**
@@ -135,16 +151,18 @@ object SymbExLogger {
     * and not their values. Original purpose was usage for unit testing.
     */
   def toTypeTreeString(): String = {
-    val typeTreeRenderer = new TypeTreeRenderer()
-    typeTreeRenderer.render(memberList)
+    if (enabled) {
+      val typeTreeRenderer = new TypeTreeRenderer()
+      typeTreeRenderer.render(memberList)
+    } else ""
   }
 
   /**
     * Writes a .DOT-file with a representation of all logged methods, predicates, functions.
     * DOT-file can be interpreted with GraphViz (http://www.graphviz.org/)
     */
-  def writeDotFile(): Unit = {
-    if (FLAG_WRITE_FILES || config.ideMode()) {
+  def writeDotFile() {
+    if (enabled && (FLAG_WRITE_FILES || config.ideMode())) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "dot_input.dot"))
@@ -156,15 +174,15 @@ object SymbExLogger {
     * Writes a .JS-file that can be used for representation of the logged methods, predicates
     * and functions in a HTML-file.
     */
-  def writeJSFile(): Unit = {
-    if (FLAG_WRITE_FILES || config.ideMode()) {
+  def writeJSFile() {
+    if (enabled && (FLAG_WRITE_FILES || config.ideMode())) {
       val jsRenderer = new JSTreeRenderer()
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(jsRenderer.render(memberList)) finally pw.close()
     }
   }
 
-  def getOutputFolder(): String = {
+  protected def getOutputFolder(): String = {
     if (config.ideMode()) {
       ".vscode/"
     } else {
@@ -174,11 +192,13 @@ object SymbExLogger {
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
   var filePath: Path = null
+
   /** Unit Testing **/
   var unitTestEngine: SymbExLogUnitTest = null
 
   /** Initialize Unit Testing. Should be done AFTER the file to be tested is known. **/
-  def initUnitTestEngine(): Unit = {
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def initUnitTestEngine() {
     if (filePath != null)
       unitTestEngine = new SymbExLogUnitTest(filePath)
   }
@@ -187,14 +207,16 @@ object SymbExLogger {
     * Resets the SymbExLogger-object, to make it ready for a new file.
     * Only needed when several files are verified together (e.g., sbt test).
     */
-  def reset(): Unit = {
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def reset() {
     memberList = List[SymbLog]()
     unitTestEngine = null
     filePath = null
     config = null
   }
 
-  def resetMemberList(): Unit = {
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def resetMemberList() {
     memberList = List[SymbLog]()
   }
 }
@@ -210,6 +232,7 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
     case m: ast.Method => new MethodRecord(m, s, pcs, c)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs, c)
     case f: ast.Function => new FunctionRecord(f, s, pcs, c)
+    case default => null
   }
 
   private var stack = List[SymbolicRecord](main)
@@ -250,7 +273,8 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
     * @param n The identifier of the node (can NOT be null). The identifier is created by insert (return
     *          value).
     */
-  def collapse(v: ast.Node, n: Int): Unit = {
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def collapse(v: ast.Node, n: Int) {
     if (n != -1 && sepSet.contains(n)) {
       sepSet = sepSet - n
       if (isUsed(v))
@@ -265,7 +289,8 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
     * a branch due to continuation. Currently, this is only used for impure Branching (CondExp/Implies
     * in Producer/Consumer).
     */
-  def initializeBranching(): Unit = {
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def initializeBranching() {
     sepSet = Set[Int]()
   }
 
@@ -277,7 +302,8 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
     *
     * @param s Record that should record the else-branch.
     */
-  def prepareOtherBranch(s: SymbolicRecord): Unit = {
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
+  def prepareOtherBranch(s: SymbolicRecord) {
     stack = s :: stack
   }
 
@@ -316,6 +342,10 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
       case _ => true
     }
   }
+}
+
+object NoopSymbLog extends SymbLog(null, null, null, null) {
+  override def insert(s: SymbolicRecord): Int = 0
 }
 
 //===== Renderer Classes =====
@@ -948,24 +978,28 @@ class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]
     else ""
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_thnCond(): Unit = {
     if (!subs.isEmpty)
       thnCond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_elsCond(): Unit = {
     if (!subs.isEmpty)
       elsCond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_thnSubs(): Unit = {
     if (!subs.isEmpty)
       thnSubs = subs
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_elsSubs(): Unit = {
     if (!subs.isEmpty)
       elsSubs = subs
@@ -1009,18 +1043,21 @@ class CondExpRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H], e
     else ""
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_cond(): Unit = {
     if (!subs.isEmpty)
       cond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_thnExp(): Unit = {
     if (!subs.isEmpty)
       thnExp = subs(0)
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_elsExp(): Unit = {
     if (!subs.isEmpty)
       elsExp = subs(0)
@@ -1060,18 +1097,21 @@ class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[
     environment + " " + toSimpleString()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_cond(): Unit = {
     if (!subs.isEmpty)
       cond = subs(0)
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_thnSubs(): Unit = {
     if (!subs.isEmpty)
       thnSubs = subs
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_elsSubs(): Unit = {
     if (!subs.isEmpty)
       elsSubs = subs
@@ -1142,17 +1182,20 @@ class MethodCallRecord(v: ast.MethodCall, s: AnyRef, p: Set[Term], c: DefaultCon
     else ""
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_parameters(): Unit = {
     parameters = subs // No check for emptyness. empty subs = no parameters, which is perfectly fine.
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_precondition(): Unit = {
     if (!subs.isEmpty)
       precondition = subs(0)
     subs = List[SymbolicRecord]()
   }
 
+  @scala.annotation.elidable(level = scala.annotation.elidable.ASSERTION)
   def finish_postcondition(): Unit = {
     if (!subs.isEmpty)
       postcondition = subs(0)
