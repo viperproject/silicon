@@ -116,10 +116,10 @@ class DefaultVerifier(val config: Config)
 
       methodSupporter.verify(method, c)
     })
-    
-    /** Write JavaScript-Representation of the logger. **/
+
+    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeJSFile()
-    /** Write DOT-Representation of the logger. **/
+    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeDotFile()
 
     (   functionVerificationResults
