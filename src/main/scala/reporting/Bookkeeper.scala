@@ -35,22 +35,24 @@ class Bookkeeper(config: Config) extends StatefulComponent {
 
   /* TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided */
   var logfiles: scala.collection.immutable.Map[String, MultiRunLogger] =
-    scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
-      val writer = viper.silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
-      val logger = new MultiRunLogger(writer, () => config.inputFile.map(_.toString))
+  scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
+    val writer = viper.silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
+    val logger = new MultiRunLogger(writer, () => config.inputFile.map(_.toString))
 
-      logfiles += (name -> logger)
+    logfiles += (name -> logger)
 
-      logger
-    })
+    logger
+  })
 
-  def start() { /* Nothing to do here */ }
+  def start() {
+    /* Nothing to do here */
+  }
 
   def reset() {
     branches = 0
     heapMergeIterations = 0
     objectDistinctnessComputations = 0
-    functionApplications= 0
+    functionApplications = 0
     functionBodyEvaluations = 0
     assumptionCounter = 0
     assertionCounter = 0
@@ -71,6 +73,26 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   def stop() {
     logfiles.values foreach (_.close())
     logfiles = logfiles.empty
+  }
+
+  def methodVerified(name: String): Unit = {
+    println(s"""{"type":"MethodVerified","name":"$name"}\r\n""")
+  }
+
+  def predicateVerified(name: String): Unit = {
+    println(
+      s"""{"type":"PredicateVerified","name":"$name"}\r\n""")
+  }
+
+  def functionVerified(name: String): Unit = {
+    println(s"""{"type":"FunctionVerified","name":"$name"}\r\n""")
+  }
+
+  def reportInitialProgress(program: viper.silver.ast.Program) {
+    if (config.ideMode()) {
+      val progress = s"""{"type":"VerificationStart","nofPredicates":${program.predicates.length},"nofMethods":${program.methods.length},"nofFunctions":${program.functions.length}}"""
+      println(progress + "\r\n")
+    }
   }
 
   def formattedStartTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(startTime)
@@ -94,7 +116,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       freshSymbols,
       appliedHeuristicReactions)
 
-    args = args ++ proverStatistics.flatMap{case (k,v) => List(k, v)}
+    args = args ++ proverStatistics.flatMap { case (k, v) => List(k, v) }
 
     output.format(args: _*)
   }
@@ -104,19 +126,19 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       List.fill(proverStatistics.size)("|Z3 %s: %s").mkString("\n")
 
     ("""
-      |Silicon errors: %d
-      |Silicon start time: %s
-      |Silicon time: %d
-      |Silicon branches: %d
-      |Silicon heap merger iterations: %d
-      |Silicon object distinctness computations: %d
-      |Silicon function applications: %d
-      |Silicon function body evaluations: %d
-      |Silicon prover assumptions: %d
-      |Silicon prover assertions: %d
-      |Silicon fresh prover symbols: %d
-      |Silicon applied heuristic reactions: %d
-    """ + placeholderLines).trim.stripMargin
+       |Silicon errors: %d
+       |Silicon start time: %s
+       |Silicon time: %d
+       |Silicon branches: %d
+       |Silicon heap merger iterations: %d
+       |Silicon object distinctness computations: %d
+       |Silicon function applications: %d
+       |Silicon function body evaluations: %d
+       |Silicon prover assumptions: %d
+       |Silicon prover assertions: %d
+       |Silicon fresh prover symbols: %d
+       |Silicon applied heuristic reactions: %d
+     """ + placeholderLines).trim.stripMargin
   }
 
   private def createJsonOutput: String = {
@@ -124,19 +146,19 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       List.fill(proverStatistics.size)("|  \"z3_%s\": %s").mkString(",\n")
 
     ("""
-      |{
-      |  "silicon_errors": %d,
-      |  "silicon_start_time": "%s",
-      |  "silicon_time": %d,
-      |  "silicon_branches": %d,
-      |  "silicon_heapMergeIterations": %d,
-      |  "silicon_objectDistinctnessComputations": %d,
-      |  "silicon_functionApplications": %d,
-      |  "silicon_functionBodyEvaluations": %d,
-      |  "silicon_assumptionCounter": %d,
-      |  "silicon_assertionCounter": %d,
-      |  "silicon_freshSymbols": %d,
-      |  "silicon_appliedHeuristicReactions": %d""" + (if (proverStatistics.isEmpty) "\n" else ",\n")
-    + placeholderLines + "\n}").trim.stripMargin
+       |{
+       |  "silicon_errors": %d,
+       |  "silicon_start_time": "%s",
+       |  "silicon_time": %d,
+       |  "silicon_branches": %d,
+       |  "silicon_heapMergeIterations": %d,
+       |  "silicon_objectDistinctnessComputations": %d,
+       |  "silicon_functionApplications": %d,
+       |  "silicon_functionBodyEvaluations": %d,
+       |  "silicon_assumptionCounter": %d,
+       |  "silicon_assertionCounter": %d,
+       |  "silicon_freshSymbols": %d,
+       |  "silicon_appliedHeuristicReactions": %d""" + (if (proverStatistics.isEmpty) "\n" else ",\n")
+      + placeholderLines + "\n}").trim.stripMargin
   }
 }

@@ -21,12 +21,12 @@ import viper.silicon.state.terms._
 class Z3ProverStdIO(config: Config,
                     bookkeeper: Bookkeeper,
                     identifierFactory: IdentifierFactory)
-    extends Prover
-       with Logging {
+  extends Prover
+    with Logging {
 
   private var pushPopScopeDepth = 0
   private var lastTimeout: Int = -1
-//  private var isLoggingCommentsEnabled: Boolean = true
+  //  private var isLoggingCommentsEnabled: Boolean = true
   private var logFile: PrintWriter = _
   private var z3: Process = _
   private var input: BufferedReader = _
@@ -35,6 +35,7 @@ class Z3ProverStdIO(config: Config,
   private var logPath: Path = _
 
   /* private */ val termConverter = new TermToSMTLib2Converter(bookkeeper)
+
   import termConverter._
 
   def z3Version(): Version = {
@@ -81,7 +82,7 @@ class Z3ProverStdIO(config: Config,
         args.split(' ').map(_.trim)
     }
 
-    val builder = new ProcessBuilder(z3Path.toFile.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args :_*)
+    val builder = new ProcessBuilder(z3Path.toFile.getPath +: "-smt2" +: "-in" +: userProvidedZ3Args: _*)
     builder.redirectErrorStream(true)
 
     val process = builder.start()
@@ -110,7 +111,7 @@ class Z3ProverStdIO(config: Config,
       output.close()
 
       z3.destroy()
-//      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
+      //      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
 
       termConverter.stop()
 
@@ -154,7 +155,7 @@ class Z3ProverStdIO(config: Config,
      * Note that the current checks don't take in account whether or not a
      * quantification occurs in positive or negative position.
      */
-    term.deepCollect{case q: Quantification => q}.foreach(q => {
+    term.deepCollect { case q: Quantification => q }.foreach(q => {
       val problems = viper.silicon.state.utils.detectQuantificationProblems(q)
 
       if (problems.nonEmpty) {
@@ -203,9 +204,26 @@ class Z3ProverStdIO(config: Config,
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
 
+    if (!result) {
+      getModel()
+    }
+
     pop()
 
     (result, endTime - startTime)
+  }
+
+
+  private def getModel(): Unit = {
+    if (config.ideMode()) {
+        try {
+        writeLine("(get-model)")
+        val model = readModel().trim()
+        println(model + "\r\n")
+      } catch {
+        case e: Exception => println("Error getting model: " + e);
+      }
+    }
   }
 
   private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
@@ -219,6 +237,10 @@ class Z3ProverStdIO(config: Config,
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
 
+    if (!result) {
+      getModel()
+    }
+
     (result, endTime - startTime)
   }
 
@@ -228,7 +250,9 @@ class Z3ProverStdIO(config: Config,
     writeLine("(check-sat)")
 
     readLine() match {
-      case "sat" => Sat
+      case "sat" =>
+        getModel()
+        Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
     }
@@ -250,7 +274,7 @@ class Z3ProverStdIO(config: Config,
     }
   }
 
-  def statistics(): Map[String, String]= {
+  def statistics(): Map[String, String] = {
     var repeat = true
     var line = ""
     var stats = scala.collection.immutable.SortedMap[String, String]()
@@ -281,7 +305,7 @@ class Z3ProverStdIO(config: Config,
   def logComment(str: String) = {
     val sanitisedStr =
       str.replaceAll("\r", "")
-         .replaceAll("\n", "\n; ")
+        .replaceAll("\n", "\n; ")
 
     logToFile("; " + sanitisedStr)
   }
@@ -301,8 +325,13 @@ class Z3ProverStdIO(config: Config,
     emit(str)
   }
 
-  def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }
-  def resetAssumptionCounter() { bookkeeper.assumptionCounter = 0 }
+  def resetAssertionCounter() {
+    bookkeeper.assertionCounter = 0
+  }
+
+  def resetAssumptionCounter() {
+    bookkeeper.assumptionCounter = 0
+  }
 
   def resetCounters() {
     resetAssertionCounter()
@@ -325,6 +354,27 @@ class Z3ProverStdIO(config: Config,
 
     case result =>
       throw new Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
+  }
+
+  private def readModel(): String = {
+    try {
+      var endFound = false
+      var result = ""
+      var firstTime = true
+      while (!endFound) {
+        val nextLine = input.readLine()
+        if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
+          endFound = true
+        }
+        result = result + " " + nextLine
+        firstTime = false
+      }
+      result
+    } catch {
+      case e: Exception =>
+        println("Error reading model: " + e)
+        ""
+    }
   }
 
   private def readLine(): String = {
