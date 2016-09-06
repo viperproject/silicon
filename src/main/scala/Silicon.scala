@@ -15,8 +15,8 @@ import scala.util.Try
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
-Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
+    Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
+    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
 import viper.silver.frontend.SilFrontend
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
@@ -53,8 +53,7 @@ object Silicon {
   val copyright = "(c) Copyright ETH Zurich 2012 - 2016"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.3.2")
-  val z3MaxVersion: Option[Version] = Some(Version("4.4.0"))
-  /* X.Y.Z if that is the last *supported* version */
+  val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
   val hideInternalOptions = true
@@ -95,8 +94,8 @@ object Silicon {
 }
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
-  extends SilVerifier
-    with Logging {
+      extends SilVerifier
+         with Logging {
 
   private type V = DefaultVerifier
 
@@ -107,21 +106,15 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   val dependencies = Silicon.dependencies
 
   private var _config: Config = _
-
   final def config = _config
 
   private sealed trait LifetimeState
 
   private object LifetimeState {
-
     object Instantiated extends LifetimeState
-
     object Configured extends LifetimeState
-
     object Started extends LifetimeState
-
     object Running extends LifetimeState
-
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
@@ -136,9 +129,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     _config = new Config(args)
   }
 
-  def debugInfo(debugInfo: Seq[(String, Any)]) {
-    this.debugInfo = debugInfo
-  }
+  def debugInfo(debugInfo: Seq[(String, Any)]) { this.debugInfo = debugInfo }
 
   /** Start Silicon.
     * Can throw a org.rogach.scallop.exceptions.ScallopResult if command-line
@@ -146,21 +137,21 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     */
   def start() {
     assert(lifetimeState == LifetimeState.Configured,
-      "Silicon must be configured before it can be initialized, and it can only be initialized once")
+           "Silicon must be configured before it can be initialized, and it can only be initialized once")
 
     lifetimeState = LifetimeState.Started
 
     if (!_config.initialized) initializeLazyScallopConfig()
-    /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
-     *       that initialises the verifier's configuration. However, this
-     *       requires the verifier to inherit from SilFrontend, which is
-     *       not really meaningful.
-     *       The configuration logic should thus be refactored such that
-     *       a Verifier can be used without extending SilFrontend, while
-     *       still ensuring that, e.g., a config is not initialised twice,
-     *       and that a reasonable default handling of --version, --help
-     *       or --dependencies is can be shared.
-     */
+        /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
+         *       that initialises the verifier's configuration. However, this
+         *       requires the verifier to inherit from SilFrontend, which is
+         *       not really meaningful.
+         *       The configuration logic should thus be refactored such that
+         *       a Verifier can be used without extending SilFrontend, while
+         *       still ensuring that, e.g., a config is not initialised twice,
+         *       and that a reasonable default handling of --version, --help
+         *       or --dependencies is can be shared.
+         */
 
     setLogLevelsFromConfig()
 
@@ -188,7 +179,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
   private def reset() {
     assert(lifetimeState == LifetimeState.Started || lifetimeState == LifetimeState.Running,
-      "Silicon must be started before it can be reset")
+           "Silicon must be started before it can be reset")
 
     verifier.reset()
   }
@@ -262,11 +253,11 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             else ee
 
           handleThrowable(ex)
-        //          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
         case ex: Exception =>
           handleThrowable(ex)
-        //          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -279,17 +270,17 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def handleThrowable(ex: Throwable) {
-    //    config.logLevel().toUpperCase match {
-    //      case "DEBUG" | "TRACE" | "ALL" => throw ex
-    //      case _ =>
-    //    }
+//    config.logLevel().toUpperCase match {
+//      case "DEBUG" | "TRACE" | "ALL" => throw ex
+//      case _ =>
+//    }
 
     throw ex
 
-    //    val sw = new StringWriter()
-    //    val pw = new PrintWriter(sw)
-    //    ex.printStackTrace(pw)
-    //    log.debug(ex.toString + "\n" + sw)
+//    val sw = new StringWriter()
+//    val pw = new PrintWriter(sw)
+//    ex.printStackTrace(pw)
+//    log.debug(ex.toString + "\n" + sw)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
@@ -302,28 +293,27 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     val failures =
       results.flatMap(r => r :: r.allPrevious)
-        .collect { case f: Failure => f }
-        /* Removes results that have the same textual representation of their
-         * error message.
-         *
-         * TODO: This is not only ugly, and also should not be necessary. It seems
-         *       that malformed predicates are currently reported multiple times,
-         *       once for each fold/unfold and once when they are checked for
-         *       well-formedness.
-         */
-        .reverse
-        .foldLeft((Set[String](), List[Failure]())) {
-          case ((ss, rs), f: Failure) =>
-            if (ss.contains(f.message.readableMessage)) (ss, rs)
-            else (ss + f.message.readableMessage, f :: rs)
-          case ((ss, rs), r) => (ss, r :: rs)
-        }
-        ._2
-        /* Order failures according to source position */
-        .sortBy(_.message.pos match {
-        case pos: ast.HasLineColumn => (pos.line, pos.column)
-        case _ => (-1, -1)
-      })
+             .collect{ case f: Failure => f }
+             /* Removes results that have the same textual representation of their
+              * error message.
+              *
+              * TODO: This is not only ugly, and also should not be necessary. It seems
+              *       that malformed predicates are currently reported multiple times,
+              *       once for each fold/unfold and once when they are checked for
+              *       well-formedness.
+              */
+             .reverse
+             .foldLeft((Set[String](), List[Failure]())){
+                case ((ss, rs), f: Failure) =>
+                  if (ss.contains(f.message.readableMessage)) (ss, rs)
+                  else (ss + f.message.readableMessage, f :: rs)
+                case ((ss, rs), r) => (ss, r :: rs)}
+             ._2
+             /* Order failures according to source position */
+             .sortBy(_.message.pos match {
+                case pos: ast.HasLineColumn => (pos.line, pos.column)
+                case _ => (-1, -1)
+             })
 
     if (config.showStatistics.isDefined) {
       val proverStats = verifier.decider.statistics()
@@ -349,8 +339,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     failures foreach (f => logFailure(f, s => log.info(s)))
 
     log.info("\nVerification finished in %s with %s error(s)".format(
-      viper.silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
-      failures.length))
+        viper.silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
+        failures.length))
 
     failures
   }
@@ -398,10 +388,10 @@ object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
     try {
       execute(args)
-      /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
+        /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
     } catch {
       case ex: org.rogach.scallop.exceptions.ScallopResult =>
-      /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
+        /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
     } finally {
       siliconInstance.stop()
     }
@@ -410,14 +400,14 @@ object SiliconRunner extends SiliconFrontend {
       case SilSuccess => 0
       case SilFailure(_) => 1
     })
-    /* TODO: This currently seems necessary to make sure that Z3 is terminated
-     *       if Silicon is supposed to terminate prematurely because of a
-     *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
-     *       at the point where the TimeoutException is caught, but that doesn't
-     *       seem to work. A few forum posts mentioned that Process.destroy
-     *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
-     *       the process to kill has no input/output data left in the
-     *       corresponding streams.
-     */
+      /* TODO: This currently seems necessary to make sure that Z3 is terminated
+       *       if Silicon is supposed to terminate prematurely because of a
+       *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
+       *       at the point where the TimeoutException is caught, but that doesn't
+       *       seem to work. A few forum posts mentioned that Process.destroy
+       *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
+       *       the process to kill has no input/output data left in the
+       *       corresponding streams.
+       */
   }
 }

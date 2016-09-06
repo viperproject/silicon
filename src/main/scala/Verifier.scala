@@ -28,24 +28,24 @@ object DefaultVerifier {
 }
 
 class DefaultVerifier(val config: Config)
-  extends NoOpStatefulComponent
-    with DeciderProvider[ST, H, S]
-    with DefaultEvaluator[ST, H, S]
-    with DefaultProducer[ST, H, S]
-    with DefaultConsumer[ST, H, S]
-    with DefaultExecutor[ST, H, S]
-    with FunctionSupporterProvider[ST, H, S]
-    with ChunkSupporterProvider[ST, H, S]
-    with PredicateSupporterProvider[ST, H, S]
-    with DefaultBrancher[ST, H, S]
-    with DefaultJoiner[ST, H, S]
-    with DefaultLetHandler[ST, H, S, C]
-    with MagicWandSupporter[ST, H, S]
-    with HeuristicsSupporter[ST, H, S]
-    with HeapCompressorProvider[ST, H, S, C]
-    with QuantifiedChunkSupporterProvider[ST, H, S]
-    with MethodSupporterProvider[ST, H, S]
-    with Logging {
+    extends NoOpStatefulComponent
+       with DeciderProvider[ST, H, S]
+       with DefaultEvaluator[ST, H, S]
+       with DefaultProducer[ST, H, S]
+       with DefaultConsumer[ST, H, S]
+       with DefaultExecutor[ST, H, S]
+       with FunctionSupporterProvider[ST, H, S]
+       with ChunkSupporterProvider[ST, H, S]
+       with PredicateSupporterProvider[ST, H, S]
+       with DefaultBrancher[ST, H, S]
+       with DefaultJoiner[ST, H, S]
+       with DefaultLetHandler[ST, H, S, C]
+       with MagicWandSupporter[ST, H, S]
+       with HeuristicsSupporter[ST, H, S]
+       with HeapCompressorProvider[ST, H, S, C]
+       with QuantifiedChunkSupporterProvider[ST, H, S]
+       with MethodSupporterProvider[ST, H, S]
+       with Logging {
 
   protected implicit val manifestH: Manifest[H] = manifest[H]
 
@@ -95,7 +95,7 @@ class DefaultVerifier(val config: Config)
     SymbExLogger.resetMemberList()
     SymbExLogger.setConfig(config)
 
-    //    ev.predicateSupporter.handlePredicates(program)
+//    ev.predicateSupporter.handlePredicates(program)
 
     /* FIXME: A workaround for Silver issue #94.
      * toList must be before flatMap. Otherwise Set will be used internally and some
@@ -115,25 +115,24 @@ class DefaultVerifier(val config: Config)
 
     val methodVerificationResults =
       methodSupporter.units.toList
-        .filterNot(excludeMethod)
-        .flatMap(method => {
-          val c = createInitialContext(method, program)
-          //      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
+                           .filterNot(excludeMethod)
+                           .flatMap(method => {
+      val c = createInitialContext(method, program)
+//      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
 
           val res = methodSupporter.verify(method, c)
           bookkeeper.methodVerified(method.name)
           res
-        })
+    })
 
     /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeJSFile()
-
     /** Write DOT-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeDotFile()
 
-    (functionVerificationResults
-      ++ predicateVerificationResults
-      ++ methodVerificationResults)
+    (   functionVerificationResults
+     ++ predicateVerificationResults
+     ++ methodVerificationResults)
   }
 
   private def createInitialContext(member: ast.Member, program: ast.Program): C = {
@@ -141,13 +140,13 @@ class DefaultVerifier(val config: Config)
     val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
 
     DefaultContext[H](program = program,
-      qpFields = quantifiedFields,
-      applyHeuristics = applyHeuristics)
+                      qpFields = quantifiedFields,
+                      applyHeuristics = applyHeuristics)
   }
 
   private def excludeMethod(method: ast.Method) = (
-    !method.name.matches(config.includeMethods())
-      || method.name.matches(config.excludeMethods()))
+       !method.name.matches(config.includeMethods())
+    || method.name.matches(config.excludeMethods()))
 
   /* Prover preamble */
 
@@ -232,7 +231,7 @@ class DefaultVerifier(val config: Config)
         decider.prover.declare(fromSnapWrapper)
 
         preambleEmitter.emitParametricAssertions("/sortwrappers.smt2",
-          Map("$S$" -> decider.prover.termConverter.convert(sort)))
+                                                 Map("$S$" -> decider.prover.termConverter.convert(sort)))
       })
     }
   }
