@@ -74,16 +74,21 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   }
 
   def methodVerified(name: String): Unit = {
-    println(s"""{"type":"MethodVerified","name":"$name"}\r\n""")
+    if(config.ideMode()) {
+      println(s"""{"type":"MethodVerified","name":"$name"}\r\n""")
+    }
   }
 
   def predicateVerified(name: String): Unit = {
-    println(
-      s"""{"type":"PredicateVerified","name":"$name"}\r\n""")
+    if(config.ideMode()) {
+      println(s"""{"type":"PredicateVerified","name":"$name"}\r\n""")
+    }
   }
 
   def functionVerified(name: String): Unit = {
-    println(s"""{"type":"FunctionVerified","name":"$name"}\r\n""")
+    if(config.ideMode()) {
+      println(s"""{"type":"FunctionVerified","name":"$name"}\r\n""")
+    }
   }
 
   def reportInitialProgress(program: viper.silver.ast.Program) {
