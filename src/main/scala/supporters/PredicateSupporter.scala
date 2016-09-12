@@ -129,7 +129,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             : VerificationResult = {
 
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val c0 = c.copy(fvfAsSnap = true)
       consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
