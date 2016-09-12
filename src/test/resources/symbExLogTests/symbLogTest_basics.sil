@@ -1,0 +1,20 @@
+method m1()
+{
+  var i: Int
+  var j: Int
+  var b: Bool
+  i := 1
+  i := 1 + 2
+  i := 1 + 2 + 3
+  j := (i * 2) + 1
+
+  b := (1 == 1)
+  b := (i != j)
+  b := false && true
+}
+
+method m2(i: Int)
+  requires i == 1
+{
+  assert(i+1 == 2)
+}

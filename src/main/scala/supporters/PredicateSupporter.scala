@@ -18,6 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.SymbExLogger
 
 class PredicateData(predicate: ast.Predicate)
                    (private val symbolConvert: SymbolConvert) {
@@ -101,6 +102,8 @@ trait PredicateSupporterProvider[ST <: Store[ST],
     def verify(predicate: ast.Predicate, c: DefaultContext[H]): Seq[VerificationResult] = {
       log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
+
+      SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val ins = predicate.formalArgs.map(_.localVar)
 

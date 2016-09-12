@@ -40,7 +40,9 @@ object SiliconBuild extends Build {
               mainClass in assembly := Some("viper.silicon.Silicon"),
               jarName in assembly := "silicon.jar",
               test in assembly := {}, /* Skip tests before assembling fat jar. Assembling stops if tests fails. */
-              fork := true,
+              /* remove elidable method calls such as in SymbExLogger during compiling */
+			  scalacOptions ++= Seq("-Xelide-below", "1000"),
+			  fork := true,
                 /* Fork Silicon when run and tested. Avoids problems with file
                  * handlers on Windows 7 that remain open until Sbt is closed,
                  * which makes it very annoying to work on test files.

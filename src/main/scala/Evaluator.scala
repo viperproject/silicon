@@ -60,7 +60,6 @@ trait DefaultEvaluator[ST <: Store[ST],
   private def evals2(σ: S, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
-
     if (es.isEmpty)
       Q(ts.reverse, c)
     else
@@ -68,9 +67,20 @@ trait DefaultEvaluator[ST <: Store[ST],
         evals2(σ, es.tail, t :: ts, pvef, c1)(Q))
   }
 
+  /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
+    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    eval3(σ, e, pve, c)((e1, c1) => {
+      SymbExLogger.currentLog().collapse(e, sepIdentifier)
+      Q(e1, c1)})
+  }
+
+  def eval3(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
+          (Q: (Term, C) => VerificationResult)
+          : VerificationResult = {
+
 
     /* For debugging only */
     e match {

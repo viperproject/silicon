@@ -15,7 +15,7 @@ import viper.silicon.interfaces.{Consumer, Evaluator, VerificationResult, Failur
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.{SymbolConvert, DefaultContext, MagicWandChunk}
+import viper.silicon.state.{SymbolConvert, DefaultContext, MagicWandChunk, ListBackedHeap}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
@@ -99,9 +99,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             Q(σ2, Combine(s1, s2), c2)}))
     }
 
+
+
+  /** Wrapper Method for consume, for logging. See Executor.scala for explanation of analogue. **/
   protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, C) => VerificationResult)
                        : VerificationResult = {
+    //TODO: To remove this cast: Add a type argument to the ConsumeRecord. Globally the types match, but locally the type system does not know.
+    val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    consume2(σ, h, p, φ, pve, c)((h1, t1, c1) => {
+      SymbExLogger.currentLog().collapse(φ, SEP_identifier)
+      Q(h1, t1, c1)})
+  }
+
+  protected def consume2(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+                       (Q: (H, Term, C) => VerificationResult)
+                       : VerificationResult = {
+
 
     /* ATTENTION: Expressions such as `perm(...)` must be evaluated in-place,
      * i.e. in the partially consumed heap which is denoted by `h` here. The
@@ -123,18 +137,45 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         consume(σ, h, p, a1, pve, c)((h1, s1, c1) =>
           consume(σ, h1, p, a2, pve, c1)((h2, s2, c2) => {
             Q(h2, Combine(s1, s2), c2)}))
+            
+      case imp @ ast.Implies(e0, a0) if !φ.isPure =>
+        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        SymbExLogger.currentLog().initializeBranching()
 
-      case ast.Implies(e0, a0) if !φ.isPure =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => consume(σ, h, p, a0, pve, c2)(Q),
-            (c2: C) => Q(h, Unit, c2)))
-
-      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => consume(σ, h, p, a1, pve, c2)(Q),
-            (c2: C) => consume(σ, h, p, a2, pve, c2)(Q)))
+        eval(σ, e0, pve, c)((t0, c1) => {
+          impLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => consume(σ, h, p, a0, pve, c2)((h_a1, s_a1, c_a1) => {
+              val res1 = Q(h_a1, s_a1, c_a1)
+              impLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              res1}),
+            (c2: C) => {
+              val res2 = Q(h, Unit, c2)
+              impLog.finish_elsSubs()
+              res2})
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
+          
+      case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
+        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
+        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
+        SymbExLogger.currentLog().initializeBranching()
+        eval(σ, e0, pve, c)((t0, c1) => {
+          gbLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => consume(σ, h, p, a1, pve, c2)((h_a1, s_a1, c_a1) => {
+              val res1 = Q(h_a1, s_a1, c_a1)
+              gbLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+              res1}),
+            (c2: C) => consume(σ, h, p, a2, pve, c2)((h_a2, s_a2, c_a2) => {
+              val res2 = Q(h_a2, s_a2, c_a2)
+              gbLog.finish_elsSubs()
+              res2}))
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
 
       case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, loss, forall, fa) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"

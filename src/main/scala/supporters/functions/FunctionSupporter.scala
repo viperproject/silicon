@@ -16,10 +16,11 @@ import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{IdentifierFactory, DefaultContext, SymbolConvert}
+import viper.silicon.state.{IdentifierFactory,ListBackedHeap, DefaultContext, SymbolConvert}
 import viper.silicon.state.terms
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
+import viper.silicon.SymbExLogger
 
 trait FunctionSupporter[H <: Heap[H]] extends VerificationUnit[H, ast.Function]
 
@@ -107,6 +108,8 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
       log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
+	  
+	  SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))

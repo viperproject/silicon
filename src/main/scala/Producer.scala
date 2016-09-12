@@ -13,7 +13,7 @@ import viper.silicon.interfaces.state.{Store, Heap, State, StateFormatter}
 import viper.silicon.interfaces.{Failure, Producer, Consumer, Evaluator, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert}
+import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert, ListBackedHeap}
 import viper.silicon.state.terms._
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
@@ -94,7 +94,22 @@ trait DefaultProducer[ST <: Store[ST],
     }
   }
 
+  /** Wrapper Method for produce, for logging. See Executor.scala for explanation of analogue. **/
   private def produce2(σ: S,
+                       sf: Sort => Term,
+                       p: Term,
+                       φ: ast.Exp,
+                       pve: PartialVerificationError,
+                       c: C)
+                      (Q: (H, C) => VerificationResult)
+                      : VerificationResult = {
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    produce3(σ, sf, p, φ, pve, c)((σ1, c1) => {
+      SymbExLogger.currentLog().collapse(φ, sepIdentifier)
+      Q(σ1, c1)})
+  }
+
+  private def produce3(σ: S,
                        sf: Sort => Term,
                        p: Term,
                        φ: ast.Exp,
@@ -115,23 +130,49 @@ trait DefaultProducer[ST <: Store[ST],
           produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
             Q(h2, c2))})
 
-      case ast.Implies(e0, a0) if !φ.isPure =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
+      case imp @ ast.Implies(e0, a0) if !φ.isPure =>
+        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        SymbExLogger.currentLog().initializeBranching()
+
+        eval(σ, e0, pve, c)((t0, c1) => {
+          impLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => produce2(σ, sf, p, a0, pve, c2)((h_a1, c_a1) => {
+              val res1 = Q(h_a1, c_a1)
+              impLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              res1}),
             (c2: C) => {
               assume(sf(sorts.Snap) === Unit)
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
-              Q(σ.h, c2)}))
+              val res2 = Q(σ.h, c2)
+              impLog.finish_elsSubs()
+              res2})
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
 
-      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
-            (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
+      case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
+        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
+        SymbExLogger.currentLog().initializeBranching()
+        eval(σ, e0, pve, c)((t0, c1) => {
+          gbLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => produce2(σ, sf, p, a1, pve, c2)((h_a1, c_a1) => {
+              val res1 = Q(h_a1, c_a1)
+              gbLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+              res1}),
+            (c2: C) => produce2(σ, sf, p, a2, pve, c2)((h_a2, c_a2) => {
+              val res2 = Q(h_a2, c_a2)
+              gbLog.finish_elsSubs()
+              res2}))
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
 
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>

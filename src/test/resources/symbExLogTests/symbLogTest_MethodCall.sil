@@ -1,0 +1,26 @@
+method twice(i: Int) returns (r: Int)
+requires i >= 0
+ensures r == 2*i
+{
+  r := 2 * i
+}
+
+method m1(arg: Int)
+{
+  var a: Int
+  a := 1
+  a := twice(1+1)
+  a := 2
+}
+
+method m2(b: Bool)
+{
+  var a: Int
+  if(b) {
+    a := twice(2)
+  }
+  else {
+    a := twice(3)
+  }
+  a := twice(4)
+}
