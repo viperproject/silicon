@@ -77,13 +77,12 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
   private def toJson(π: Set[Term]): String = {
     /* Attention: Hides non-null and combine terms. */
-    if (π.isEmpty) "[]"
-    else
-      π.filterNot {
-        case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
-          || c.p1.isInstanceOf[Combine] => true
-        case Not(BuiltinEquals(_, Null())) => true
-        case _ => false
-  }.mkString("[\"", "\",\"", "\"]")
+    val filteredPcs = π.filterNot {
+      case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
+        || c.p1.isInstanceOf[Combine] => true
+      case Not(BuiltinEquals(_, Null())) => true
+      case _ => false
+    }
+    if (filteredPcs.isEmpty) "[]" else filteredPcs.mkString("[\"", "\",\"", "\"]")
   }
 }

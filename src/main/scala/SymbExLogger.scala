@@ -258,7 +258,6 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
 
     current().subs = current().subs ++ List(s)
     stack = s :: stack
-
     sepCounter = sepCounter + 1
     sepSet = sepSet + sepCounter
     sepCounter
@@ -606,7 +605,11 @@ class JSTreeRenderer extends Renderer[String] {
         output += "{" + JsonHelper.pair(kind, "comment") + "," + cr.toJson() + "," + open + "}"
       }
       case _ => {
-        output += "{" + s.toJson() + "," + open + printState(s)
+        var innerValue = s.toJson()
+        if(innerValue != ""){
+          innerValue += ","
+        }
+        output += "{" + innerValue + open + printState(s)
         if (!s.subs.isEmpty) {
           output += ",\n" + children + ": [\n"
           output += combine(s.subs)
@@ -944,6 +947,23 @@ class ConsumeRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H])
   override def toJson(): String = {
     if (value != null) JsonHelper.pair("type", "consume") + "," + JsonHelper.pair("pos", utils.ast.sourceLineColumn(value)) + "," + JsonHelper.pair("value", value.toString())
     else ""
+  }
+}
+
+class WellformednessCheckRecord(v: Seq[ast.Exp], s: AnyRef, p: Set[Term], c: DefaultContext[H])
+  extends MultiChildUnorderedRecord {
+  val value = null
+  val conditions = v
+  val state = s
+  val pcs = p
+  val context = c
+
+  def toTypeString(): String = {
+    "WellformednessCheck"
+  }
+
+  override def toJson(): String = {
+    JsonHelper.pair("kind", "WellformednessCheck")
   }
 }
 

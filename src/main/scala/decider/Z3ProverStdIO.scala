@@ -215,13 +215,9 @@ class Z3ProverStdIO(config: Config,
 
   private def getModel(): Unit = {
     if (config.ideMode()) {
-        try {
         writeLine("(get-model)")
         val model = readModel().trim()
         println(model + "\r\n")
-      } catch {
-        case e: Exception => println("Error getting model: " + e);
-      }
     }
   }
 
@@ -249,9 +245,7 @@ class Z3ProverStdIO(config: Config,
     writeLine("(check-sat)")
 
     readLine() match {
-      case "sat" =>
-        getModel()
-        Sat
+      case "sat" => Sat
       case "unsat" => Unsat
       case "unknown" => Unknown
     }

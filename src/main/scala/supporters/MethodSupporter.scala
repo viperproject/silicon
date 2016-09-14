@@ -91,8 +91,13 @@ trait MethodSupporterProvider[ST <: Store[ST],
                   /*locally {
                     magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}*/
               /*&&*/ locally {
-                    produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) =>
-                      Success())}
+                   val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+                   val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+                    produces(σ2, fresh, terms.FullPerm(), posts, ContractNotWellformed, c2)((_, c3) => {
+                      SymbExLogger.currentLog().collapse(null, sepIdentifier)
+                      Success()
+                    })
+                 }
               && locally {
                     exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
                       consumes(σ2, terms.FullPerm(), posts, postViolated, c3)((σ3, _, c4) =>
