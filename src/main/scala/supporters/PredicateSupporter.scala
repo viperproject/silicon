@@ -119,7 +119,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
                 locally {
                   magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
             &&  locally {
-                  produce(σ, decider.fresh, terms.FullPerm(), body, err, c)((_, c1) =>
+                  produce(σ, decider.fresh, body, err, c)((_, c1) =>
                     Success())})
       }
 
@@ -136,7 +136,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val c0 = c.copy(fvfAsSnap = true)
                 .scalePermissionFactor(tPerm)
-      consume(σ \ insγ, FullPerm(), body, pve, c0)((σ1, snap, c1) => {
+      consume(σ \ insγ, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
         val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
         val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap,
@@ -173,7 +173,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val c0 = c.scalePermissionFactor(tPerm)
       chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, c0.permissionScalingFactor, pve, c0, pa)((h1, snap, c1) => {
-        produce(σ \ h1 \ insγ, s => snap.convert(s), FullPerm(), body, pve, c1)((σ2, c2) => {
+        produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c1)((σ2, c2) => {
           decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
           val c3 = c2.copy(permissionScalingFactor = c.permissionScalingFactor)
           Q(σ2 \ σ.γ, c3)})})

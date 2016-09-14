@@ -428,7 +428,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           join[Term, Term](c2, QB => {
             val c3 = c2.copy(recordVisited = true,
                              fvfAsSnap = true)
-            consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, c4) => {
+            consumes(σ, pre, _ => pvePre, c3)((_, s, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
@@ -463,7 +463,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, c4) => {
+                    consume(σ, acc, pve, c3)((σ1, snap, c4) => {
 //                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
                       val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, snap))
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
@@ -475,7 +475,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
                       val c5a = c5.scalePermissionFactor(tPerm)
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c5a)((σ2, c6) => {
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), body, pve, c5a)((σ2, c6) => {
                         val c7 = c6.copy(recordVisited = c2.recordVisited,
                                          permissionScalingFactor = c5.permissionScalingFactor)
                                    .decCycleCounter(predicate)
