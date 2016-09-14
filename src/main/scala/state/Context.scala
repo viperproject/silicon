@@ -26,6 +26,7 @@ case class DefaultContext[H <: Heap[H]]
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
                           oldHeaps: Map[String, H] = Map.empty[String, H], /* TODO: Integrate regular old */
                           partiallyConsumedHeap: Option[H] = None,
+                          permissionScalingFactor: Term = terms.FullPerm(),
 
                           reserveHeaps: Stack[H] = Nil,
                           exhaleExt: Boolean = false,
@@ -67,6 +68,9 @@ case class DefaultContext[H <: Heap[H]]
     copy(constrainableARPs = newConstrainableARPs)
   }
 
+  def scalePermissionFactor(p: Term) =
+    copy(permissionScalingFactor = terms.PermTimes(p, permissionScalingFactor))
+
   /* TODO: Instead of aborting right after detecting a mismatch, all mismatches
    *       should be detected first (and accumulated), and only afterwards an
    *       exception should be thrown. This would improve debugging because the
@@ -77,7 +81,7 @@ case class DefaultContext[H <: Heap[H]]
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, qpFields1, recordVisited1, visited1, constrainableARPs1,
                         quantifiedVariables1, retrying1, functionRecorder1, recordPossibleTriggers1,
-                        possibleTriggers1, oldHeaps1, partiallyConsumedHeap1,
+                        possibleTriggers1, oldHeaps1, partiallyConsumedHeap1, permissionScalingFactor1,
                         reserveHeaps1, exhaleExt1, lhsHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
                         recordEffects1, consumedChunks1, letBoundVars1,
@@ -86,7 +90,7 @@ case class DefaultContext[H <: Heap[H]]
       other match {
         case DefaultContext(`program1`, `qpFields1`, recordVisited2, `visited1`,
                             `constrainableARPs1`, `quantifiedVariables1`, retrying2, functionRecorder2,
-                            `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`,
+                            `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`, `permissionScalingFactor1`,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                             `recordEffects1`, `consumedChunks1`, `letBoundVars1`,

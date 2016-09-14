@@ -178,7 +178,7 @@ trait DefaultProducer[ST <: Store[ST],
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
           produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
 
-      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (c.qpFields.contains(field)) {
@@ -193,22 +193,22 @@ trait DefaultProducer[ST <: Store[ST],
           }
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          eval(σ, gain, pve, c1)((pGain, c2) => {
-            assume(PermAtMost(NoPerm(), pGain))
-            assume(Implies(PermLess(NoPerm(), pGain), tRcvr !== Null()))
+          eval(σ, perm, pve, c1)((tPerm, c2) => {
+            assume(PermAtMost(NoPerm(), tPerm))
+            assume(Implies(PermLess(NoPerm(), tPerm), tRcvr !== Null()))
             val s = sf(toSort(field.typ))
-            val pNettoGain = PermTimes(pGain, p)
-            val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
+            val gain = PermTimes(tPerm, c2.permissionScalingFactor)
+            val (h1, c3) = addNewChunk(σ.h, tRcvr, s, gain, c2)
             Q(h1, c3)}))
 
-      case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), gain) =>
+      case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = c.program.findPredicate(predicateName)
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
-          eval(σ, gain, pve, c1)((pGain, c2) => {
-            assume(PermAtMost(NoPerm(), pGain))
+          eval(σ, perm, pve, c1)((tPerm, c2) => {
+            assume(PermAtMost(NoPerm(), tPerm))
             val s = sf(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
-            val pNettoGain = PermTimes(pGain, p)
-            val ch = PredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), pNettoGain)
+            val gain = PermTimes(tPerm, c2.permissionScalingFactor)
+            val ch = PredicateChunk(predicate.name, tArgs, s.convert(sorts.Snap), gain)
             val (h1, c3) = chunkSupporter.produce(σ, σ.h, ch, c2)
             Q(h1, c3)}))
 
@@ -216,14 +216,15 @@ trait DefaultProducer[ST <: Store[ST],
         magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
           Q(σ.h + chWand, c))
 
-      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, gain, forall, _) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, gain), Nil, qid, pve, c){
-          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tGain), _, tAuxQuantNoTriggers, c1) =>
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), Nil, qid, pve, c){
+          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, tAuxQuantNoTriggers, c1) =>
             val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
             val additionalInvFctArgs = c1.quantifiedVariables
+            val gain = PermTimes(tPerm, c1.permissionScalingFactor)
             val (ch, invFct) =
-              quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, PermTimes(tGain, p), tCond,
+              quantifiedChunkSupporter.createQuantifiedChunk(tQVar, tRcvr, field, snap, gain, tCond,
                                                              additionalInvFctArgs)
 
             /* [2016-05-05 Malte]
@@ -266,13 +267,13 @@ trait DefaultProducer[ST <: Store[ST],
             decider.prover.logComment("Nested auxiliary terms")
             assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
                                             triggers = invFct.invOfFct.triggers))
-            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
+            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tPerm), invFct.invOfFct.triggers, s"$qid-perm")
             assume(gainNonNeg)
             decider.prover.logComment("Definitional axioms for inverse functions")
             assume(invFct.definitionalAxioms)
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val ch1 = ch.copy(hints = hints)
-            val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(tGain, p))
+            val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, tPerm)
             decider.prover.logComment("Receivers are non-null")
             assume(Set(tNonNullQuant))
   //          decider.prover.logComment("Definitional axioms for field value functions")

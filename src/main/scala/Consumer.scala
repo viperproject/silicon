@@ -137,7 +137,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         consume(σ, h, p, a1, pve, c)((h1, s1, c1) =>
           consume(σ, h1, p, a2, pve, c1)((h2, s2, c2) => {
             Q(h2, Combine(s1, s2), c2)}))
-            
+
       case imp @ ast.Implies(e0, a0) if !φ.isPure =>
         val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
@@ -157,7 +157,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               res2})
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
-          
+
       case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
         val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
@@ -177,11 +177,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
-      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, loss, forall, fa) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, fa) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, loss), Nil, qid, pve, c){
-          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tLoss), _, tAuxQuantNoTriggers, c1) =>
-            decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), Nil, qid, pve, c){
+          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, tAuxQuantNoTriggers, c1) =>
+            decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
@@ -197,7 +197,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
                     val inverseReceiver = invFct(`?r`) // e⁻¹(r)
-                    quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
+                    val loss = PermTimes(tPerm, c1.permissionScalingFactor)
+                    quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, loss, chunkOrderHeuristics, c1) {
                       case Some((h1, ch, fvfDef, c2)) =>
                         val fvfDomain = if (c2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
@@ -214,7 +215,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                   case false =>
                     Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
-                Failure(pve dueTo NegativePermission(loss))}}
+                Failure(pve dueTo NegativePermission(perm))}}
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
@@ -223,7 +224,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           eval(σ, perm, pve, c1)((tPerm, c2) => {
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
+            val loss = PermTimes(tPerm, c2.permissionScalingFactor)
+            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, loss, chunkOrderHeuristics, c2) {
               case Some((h1, ch, fvfDef, c3)) =>
                 val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
                 assume(fvfDomain ++ fvfDef.valueDefinitions)
@@ -246,7 +248,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           evalLocationAccess(σ, locacc, pve, c1)((name, args, c2) =>
             decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
-                chunkSupporter.consume(σ, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))((h1, s1, c3) => {
+                val loss = PermTimes(tPerm, c2.permissionScalingFactor)
+                chunkSupporter.consume(σ, h, name, args, loss, pve, c2, locacc, Some(φ))((h1, s1, c3) => {
                   val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
                   Q(h1, s1, c4)})
               case false =>
