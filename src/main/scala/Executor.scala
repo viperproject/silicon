@@ -405,12 +405,12 @@ trait DefaultExecutor[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
-            eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)){
-                case true =>
-                  predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
-                case false =>
-                  Failure(pve dueTo NegativePermission(ePerm))}))
+          eval(σ, ePerm, pve, c1)((tPerm, c2) =>
+            decider.assert(σ, IsNonNegative(tPerm)){
+              case true =>
+                predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
+              case false =>
+                Failure(pve dueTo NegativePermission(ePerm))}))
 
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
