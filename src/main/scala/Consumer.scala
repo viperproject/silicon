@@ -52,29 +52,27 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
    * the amount of permissions that come with these chunks is NOT the amount
    * that has been consumed, but the amount that was found in the heap.
    */
-  def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+  def consume(σ: S, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, C) => VerificationResult)
              : VerificationResult =
 
-    consume(σ, σ.h, p, φ.whenExhaling, pve, c)((h1, t, c1) => {
+    consume(σ, σ.h, φ.whenExhaling, pve, c)((h1, t, c1) => {
       val c2 = c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)
       Q(σ \ h1, t, c2)})
 
   def consumes(σ: S,
-               p: Term,
                φs: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
               (Q: (S, Term, C) => VerificationResult)
               : VerificationResult =
 
-    consumes(σ, σ.h, p, φs map (_.whenExhaling), pvef, c)((σ1, s1, c1) => {
+    consumes(σ, σ.h, φs map (_.whenExhaling), pvef, c)((σ1, s1, c1) => {
       val c2 = c1.copy(partiallyConsumedHeap = c.partiallyConsumedHeap)
       Q(σ1, s1, c2)})
 
   private def consumes(σ: S,
                        h: H,
-                       p: Term,
                        φs: Seq[ast.Exp],
                        pvef: ast.Exp => PartialVerificationError,
                        c: C)
@@ -91,28 +89,28 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
       val φ = φs.head
 
       if (φs.tail.isEmpty)
-        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, c1) =>
+        consume(σ, h, φ, pvef(φ), c)((h1, s1, c1) =>
           Q(σ \ h1, s1, c1))
       else
-        consume(σ, h, p, φ, pvef(φ), c)((h1, s1, c1) =>
-          consumes(σ, h1, p, φs.tail, pvef, c1)((σ2, s2, c2) => {
+        consume(σ, h, φ, pvef(φ), c)((h1, s1, c1) =>
+          consumes(σ, h1, φs.tail, pvef, c1)((σ2, s2, c2) => {
             Q(σ2, Combine(s1, s2), c2)}))
     }
 
 
 
   /** Wrapper Method for consume, for logging. See Executor.scala for explanation of analogue. **/
-  protected def consume(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+  protected def consume(σ: S, h: H, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, C) => VerificationResult)
                        : VerificationResult = {
     //TODO: To remove this cast: Add a type argument to the ConsumeRecord. Globally the types match, but locally the type system does not know.
     val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
-    consume2(σ, h, p, φ, pve, c)((h1, t1, c1) => {
+    consume2(σ, h, φ, pve, c)((h1, t1, c1) => {
       SymbExLogger.currentLog().collapse(φ, SEP_identifier)
       Q(h1, t1, c1)})
   }
 
-  protected def consume2(σ: S, h: H, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+  protected def consume2(σ: S, h: H, φ: ast.Exp, pve: PartialVerificationError, c: C)
                        (Q: (H, Term, C) => VerificationResult)
                        : VerificationResult = {
 
@@ -134,10 +132,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
     val consumed = φ match {
       case ast.And(a1, a2) if !φ.isPure || config.handlePureConjunctsIndividually() =>
-        consume(σ, h, p, a1, pve, c)((h1, s1, c1) =>
-          consume(σ, h1, p, a2, pve, c1)((h2, s2, c2) => {
+        consume(σ, h, a1, pve, c)((h1, s1, c1) =>
+          consume(σ, h1, a2, pve, c1)((h2, s2, c2) => {
             Q(h2, Combine(s1, s2), c2)}))
-            
+
       case imp @ ast.Implies(e0, a0) if !φ.isPure =>
         val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
@@ -146,7 +144,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         eval(σ, e0, pve, c)((t0, c1) => {
           impLog.finish_cond()
           val branch_res = branch(σ, t0, c1,
-            (c2: C) => consume(σ, h, p, a0, pve, c2)((h_a1, s_a1, c_a1) => {
+            (c2: C) => consume(σ, h, a0, pve, c2)((h_a1, s_a1, c_a1) => {
               val res1 = Q(h_a1, s_a1, c_a1)
               impLog.finish_thnSubs()
               SymbExLogger.currentLog().prepareOtherBranch(impLog)
@@ -157,7 +155,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               res2})
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
-          
+
       case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
         val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
@@ -165,23 +163,23 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         eval(σ, e0, pve, c)((t0, c1) => {
           gbLog.finish_cond()
           val branch_res = branch(σ, t0, c1,
-            (c2: C) => consume(σ, h, p, a1, pve, c2)((h_a1, s_a1, c_a1) => {
+            (c2: C) => consume(σ, h, a1, pve, c2)((h_a1, s_a1, c_a1) => {
               val res1 = Q(h_a1, s_a1, c_a1)
               gbLog.finish_thnSubs()
               SymbExLogger.currentLog().prepareOtherBranch(gbLog)
               res1}),
-            (c2: C) => consume(σ, h, p, a2, pve, c2)((h_a2, s_a2, c_a2) => {
+            (c2: C) => consume(σ, h, a2, pve, c2)((h_a2, s_a2, c_a2) => {
               val res2 = Q(h_a2, s_a2, c_a2)
               gbLog.finish_elsSubs()
               res2}))
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
-      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, loss, forall, fa) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, fa) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, loss), Nil, qid, pve, c){
-          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tLoss), _, tAuxQuantNoTriggers, c1) =>
-            decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), Nil, qid, pve, c){
+          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, tAuxQuantNoTriggers, c1) =>
+            decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
@@ -197,7 +195,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
                     val inverseReceiver = invFct(`?r`) // e⁻¹(r)
-                    quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, PermTimes(tLoss, p), chunkOrderHeuristics, c1) {
+                    val loss = PermTimes(tPerm, c1.permissionScalingFactor)
+                    quantifiedChunkSupporter.splitLocations(σ, h, field, Some(tQVar), inverseReceiver, tCond, tRcvr, loss, chunkOrderHeuristics, c1) {
                       case Some((h1, ch, fvfDef, c2)) =>
                         val fvfDomain = if (c2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
                         decider.prover.logComment("Definitional axioms for field value function")
@@ -214,7 +213,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                   case false =>
                     Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
-                Failure(pve dueTo NegativePermission(loss))}}
+                Failure(pve dueTo NegativePermission(perm))}}
 
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
@@ -223,7 +222,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           eval(σ, perm, pve, c1)((tPerm, c2) => {
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, PermTimes(tPerm, p), chunkOrderHeuristics, c2) {
+            val loss = PermTimes(tPerm, c2.permissionScalingFactor)
+            quantifiedChunkSupporter.splitSingleLocation(σ, h, field, tRcvr, loss, chunkOrderHeuristics, c2) {
               case Some((h1, ch, fvfDef, c3)) =>
                 val fvfDomain = if (c3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
                 assume(fvfDomain ++ fvfDef.valueDefinitions)
@@ -239,14 +239,15 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
               c1.copy(letBoundVars = c1.letBoundVars ++ γ1.values)
             else
               c1
-          consume(σ \+ γ1, h, p, body, pve, c2)(Q)})
+          consume(σ \+ γ1, h, body, pve, c2)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
         eval(σ, perm, pve, c)((tPerm, c1) =>
           evalLocationAccess(σ, locacc, pve, c1)((name, args, c2) =>
             decider.assert(σ, perms.IsNonNegative(tPerm)){
               case true =>
-                chunkSupporter.consume(σ, h, name, args, PermTimes(p, tPerm), pve, c2, locacc, Some(φ))((h1, s1, c3) => {
+                val loss = PermTimes(tPerm, c2.permissionScalingFactor)
+                chunkSupporter.consume(σ, h, name, args, loss, pve, c2, locacc, Some(φ))((h1, s1, c3) => {
                   val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
                   Q(h1, s1, c4)})
               case false =>
@@ -317,7 +318,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           assert(c2.consumedChunks.length == c.consumedChunks.length)
           assert(c2.consumedChunks.length == c2.reserveHeaps.length - 1)
           val σEmp = Σ(σ.γ, Ø, σ.g)
-          consume(σEmp, σEmp.h, FullPerm(), eIn, pve, c2)((h3, _, c3) =>
+          consume(σEmp, σEmp.h, eIn, pve, c2)((h3, _, c3) =>
             Q(h3, decider.fresh(sorts.Snap), c3))})
 
       case ast.ApplyingGhostOp(eWandOrVar, eIn) =>
@@ -338,7 +339,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
         heuristicsSupporter.tryOperation[S, H](s"applying $eWand")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.applyingWand(σ, γ1, eWand, eLHSAndWand, pve, c)(QS)){case (σ1, h1, c1) =>
-            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
+            consume(σ1, h1, eIn, pve, c1)((h4, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case ast.FoldingGhostOp(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -346,7 +347,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
         heuristicsSupporter.tryOperation[S, H](s"folding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.foldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
-            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
+            consume(σ1, h1, eIn, pve, c1)((h4, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case ast.UnfoldingGhostOp(acc @ ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm),
@@ -354,7 +355,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
         heuristicsSupporter.tryOperation[S, H](s"unfolding $acc")(σ, h, c)((σ, h, c, QS) =>
           magicWandSupporter.unfoldingPredicate(σ, acc, pve, c)(QS)){case (σ1, h1, c1) =>
-            consume(σ1, h1, FullPerm(), eIn, pve, c1)((h4, _, c4) =>
+            consume(σ1, h1, eIn, pve, c1)((h4, _, c4) =>
               Q(h4, decider.fresh(sorts.Snap), c4))}
 
       case _ =>

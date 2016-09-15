@@ -77,11 +77,11 @@ trait MagicWandSupporter[ST <: Store[ST],
 
           result =
             locally {
-              produce(σ1, fresh, terms.FullPerm(), left, err, c)((σ2, c2) => {
+              produce(σ1, fresh, left, err, c)((σ2, c2) => {
                 σInner = σ2
                 Success()})
             } && locally {
-              produce(σ1, fresh, terms.FullPerm(), right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
+              produce(σ1, fresh, right, err, c.copy(lhsHeap = Some(σInner.h)))((_, c4) =>
                 Success())}
 
           result match {
@@ -303,7 +303,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       var pcsFromHeapIndepExprs = Vector[PathConditionStack]()
 
       val r = locally {
-        produce(σEmp, fresh, FullPerm(), wand.left, pve, c0)((σLhs, c1) => {
+        produce(σEmp, fresh, wand.left, pve, c0)((σLhs, c1) => {
           assert(c.reserveHeaps.head.values.isEmpty)
           /* Expected shape of c.reserveHeaps is either
            *   [hEmp, hOuter]
@@ -329,7 +329,7 @@ trait MagicWandSupporter[ST <: Store[ST],
           assert(stackSize == c2.reserveHeaps.length)
           say(s"done: produced LHS ${wand.left}")
           say(s"next: consume RHS ${wand.right}")
-          consume(σEmp, FullPerm(), wand.right, pve, c2)((σ1, _, c3) => {
+          consume(σEmp, wand.right, pve, c2)((σ1, _, c3) => {
             val c4 = c3.copy(recordEffects = false,
                              consumedChunks = Stack(),
                              letBoundVars = Nil)
@@ -509,11 +509,11 @@ trait MagicWandSupporter[ST <: Store[ST],
          * heuristics are available to both consumes.
          */
 
-      consume(σEmp, FullPerm(), lhsAndWand, pve, c0)((_, _, c1) => { /* exhale_ext, c1.reserveHeaps = [σUsed', σOps', ...] */
+      consume(σEmp, lhsAndWand, pve, c0)((_, _, c1) => { /* exhale_ext, c1.reserveHeaps = [σUsed', σOps', ...] */
         val c1a = c1.copy(reserveHeaps = Nil, exhaleExt = false)
-        consume(σ0 \ c1.reserveHeaps.head, FullPerm(), lhsAndWand, pve, c1a)((σ2, _, c2) => { /* begin σUsed'.apply */
+        consume(σ0 \ c1.reserveHeaps.head, lhsAndWand, pve, c1a)((σ2, _, c2) => { /* begin σUsed'.apply */
           val c2a = c2.copy(lhsHeap = Some(c1.reserveHeaps.head))
-          produce(σ0 \ σ2.h, decider.fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => { /* end σUsed'.apply, σ3.h = σUsed'' */
+          produce(σ0 \ σ2.h, decider.fresh, wand.right, pve, c2a)((σ3, c3) => { /* end σUsed'.apply, σ3.h = σUsed'' */
             val hOpsJoinUsed = heapCompressor.merge(σ, c.reserveHeaps(1), σ3.h, c3)
             val c3a = c3.copy(reserveHeaps = H() +: hOpsJoinUsed +: c1.reserveHeaps.drop(2),
                               exhaleExt = true,
@@ -538,7 +538,7 @@ trait MagicWandSupporter[ST <: Store[ST],
         eval(σ, ePerm, pve, c0)((tPerm, c1) =>
           if (decider.check(σ, IsNonNegative(tPerm), config.checkTimeout()))
             evals(σ, eArgs, _ => pve, c1)((tArgs, c2) => {
-              consume(σEmp, FullPerm(), acc, pve, c2)((_, _, c3) => {/* exhale_ext, c3.reserveHeaps = [σUsed', σOps', ...] */
+              consume(σEmp, acc, pve, c2)((_, _, c3) => {/* exhale_ext, c3.reserveHeaps = [σUsed', σOps', ...] */
                 val c3a = c3.copy(reserveHeaps = Nil, exhaleExt = false)
                 predicateSupporter.unfold(σ \ c3.reserveHeaps.head, predicate, tArgs, tPerm, pve, c3a, pa)((σ3, c4) => { /* σ3.h = σUsed'' */
                   val hOpsJoinUsed = heapCompressor.merge(σ, c.reserveHeaps(1), σ3.h, c3)
@@ -601,7 +601,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be folded */
       val σEmp = Σ(σ.γ + insγ, Ø, σ.g)
-      consume(σEmp, tPerm, body, pve, c)((_, _, c1) => { /* exhale_ext, c1.reserveHeaps = [σUsed', σOps', ...] */
+      consume(σEmp, body, pve, c)((_, _, c1) => { /* exhale_ext, c1.reserveHeaps = [σUsed', σOps', ...] */
         val c2 = c1.copy(reserveHeaps = Nil, exhaleExt = false)
         predicateSupporter.fold(σ \ c1.reserveHeaps.head, predicate, tArgs, tPerm, pve, c2)((σ2, c3) => { /* σ2.h = σUsed'' */
           val hOpsJoinUsed = heapCompressor.merge(σ, c.reserveHeaps(1), σ2.h, c3)

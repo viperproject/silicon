@@ -108,7 +108,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
       log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
-	  
+
 	  SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val data = functionData(function)
@@ -171,9 +171,9 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
       val result = decider.locally {
         val preMark = decider.setPathConditionMark()
-        produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
+        produces(σ, sort => `?s`.convert(sort), pres, ContractNotWellformed, c)((σ1, c1) => {
           phase1Data :+= Phase1Data(σ1, decider.pcs.after(preMark).assumptions, c1)
-            produces(σ1, sort => `?s`.convert(sort), FullPerm(), posts, ContractNotWellformed, c1)((_, c2) => {
+            produces(σ1, sort => `?s`.convert(sort), posts, ContractNotWellformed, c1)((_, c2) => {
             recorders :+= c2.functionRecorder
             Success()})})}
 
@@ -203,7 +203,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
             decider.assume(p1d.πPre)
             eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
               decider.assume(data.formalResult === tBody)
-              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, c2) => {
+              consumes( p1d.σPre, posts, postconditionViolated, c1)((_, _, c2) => {
                 recorders :+= c2.functionRecorder
                 Success()})})}}
 
