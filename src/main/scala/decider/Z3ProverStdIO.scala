@@ -204,9 +204,22 @@ class Z3ProverStdIO(config: Config,
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
 
+    if (!result) {
+      getModel()
+    }
+
     pop()
 
     (result, endTime - startTime)
+  }
+
+
+  private def getModel(): Unit = {
+    if (config.ideMode()) {
+        writeLine("(get-model)")
+        val model = readModel().trim()
+        println(model + "\r\n")
+    }
   }
 
   private def assertUsingSoftConstraints(goal: String): (Boolean, Long) = {
@@ -219,6 +232,10 @@ class Z3ProverStdIO(config: Config,
     writeLine(s"(check-sat $guard)")
     val result = readUnsat()
     val endTime = System.currentTimeMillis()
+
+    if (!result) {
+      getModel()
+    }
 
     (result, endTime - startTime)
   }
@@ -326,6 +343,27 @@ class Z3ProverStdIO(config: Config,
 
     case result =>
       throw new Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
+  }
+
+  private def readModel(): String = {
+    try {
+      var endFound = false
+      var result = ""
+      var firstTime = true
+      while (!endFound) {
+        val nextLine = input.readLine()
+        if (nextLine.trim().endsWith("\"") || (firstTime && !nextLine.startsWith("\""))) {
+          endFound = true
+        }
+        result = result + " " + nextLine
+        firstTime = false
+      }
+      result
+    } catch {
+      case e: Exception =>
+        println("Error reading model: " + e)
+        ""
+    }
   }
 
   private def readLine(): String = {

@@ -50,7 +50,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
     branches = 0
     heapMergeIterations = 0
     objectDistinctnessComputations = 0
-    functionApplications= 0
+    functionApplications = 0
     functionBodyEvaluations = 0
     assumptionCounter = 0
     assertionCounter = 0
@@ -71,6 +71,31 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   def stop() {
     logfiles.values foreach (_.close())
     logfiles = logfiles.empty
+  }
+
+  def methodVerified(name: String): Unit = {
+    if(config.ideMode()) {
+      println(s"""{"type":"MethodVerified","name":"$name"}\r\n""")
+    }
+  }
+
+  def predicateVerified(name: String): Unit = {
+    if(config.ideMode()) {
+      println(s"""{"type":"PredicateVerified","name":"$name"}\r\n""")
+    }
+  }
+
+  def functionVerified(name: String): Unit = {
+    if(config.ideMode()) {
+      println(s"""{"type":"FunctionVerified","name":"$name"}\r\n""")
+    }
+  }
+
+  def reportInitialProgress(program: viper.silver.ast.Program) {
+    if (config.ideMode()) {
+      val progress = s"""{"type":"VerificationStart","nofPredicates":${program.predicates.length},"nofMethods":${program.methods.length},"nofFunctions":${program.functions.length}}"""
+      println(progress + "\r\n")
+    }
   }
 
   def formattedStartTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(startTime)
@@ -94,7 +119,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
       freshSymbols,
       appliedHeuristicReactions)
 
-    args = args ++ proverStatistics.flatMap{case (k,v) => List(k, v)}
+    args = args ++ proverStatistics.flatMap { case (k, v) => List(k, v) }
 
     output.format(args: _*)
   }
