@@ -62,21 +62,6 @@ package object utils {
     disjointnessAssumptions.result()
   }
 
-  /* TODO: If not used, the following examples fail - find out and document why
-   *         - quantifiedpermissions/issues/issue_0060.sil
-   *         - quantifiedpermissions/issues/issue_0102.sil
-   *         - quantifiedpermissions/issues/unofficial_0004.sil
-   *         - quantifiedpermissions/third_party/stefan_recent/testHistogram.sil
-   *         - quantifiedpermissions/third_party/fmse-2015-04-16.sil
-   */
-  def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
-    ts.partition {
-      case   _: FvfAfterRelation
-           | _: Definition
-           => true
-      case _ => false
-    }
-
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
