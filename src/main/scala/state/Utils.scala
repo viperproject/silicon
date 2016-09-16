@@ -62,6 +62,13 @@ package object utils {
     disjointnessAssumptions.result()
   }
 
+  /* TODO: If not used, the following examples fail - find out and document why
+   *         - quantifiedpermissions/issues/issue_0060.sil
+   *         - quantifiedpermissions/issues/issue_0102.sil
+   *         - quantifiedpermissions/issues/unofficial_0004.sil
+   *         - quantifiedpermissions/third_party/stefan_recent/testHistogram.sil
+   *         - quantifiedpermissions/third_party/fmse-2015-04-16.sil
+   */
   def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
     ts.partition {
       case   _: FvfAfterRelation
@@ -69,40 +76,6 @@ package object utils {
            => true
       case _ => false
     }
-
-  def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
-    var problems: List[String] = Nil
-
-    quantification.q match {
-      case Exists =>
-        /* No checks yet */
-      case Forall =>
-        /* 1. Check that triggers are present */
-        if (quantification.triggers.isEmpty)
-          problems ::= s"No triggers given"
-
-        /* 2. Check that each trigger set mentions all quantified variables */
-        quantification.triggers.foreach(trigger => {
-          val vars =
-            trigger.p.foldLeft(Set[Var]()){case (varsAcc, term) =>
-              varsAcc ++ term.deepCollect{case v: Var => v}}
-
-          if (!quantification.vars.forall(vars.contains))
-            problems ::= s"Trigger set $trigger does not contain all quantified variables"
-        })
-
-        /* 3. Check that all triggers are valid */
-        quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
-          if (!TriggerGenerator.isPossibleTrigger(term))
-            problems ::= s"Trigger $term is not a possible trigger"
-
-          term.deepCollect{case t if TriggerGenerator.isForbiddenInTrigger(t) => t}
-              .foreach(term => problems ::= s"Term $term may not occur in triggers")
-        })
-    }
-
-    problems.reverse
-  }
 
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil

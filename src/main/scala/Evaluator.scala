@@ -604,8 +604,10 @@ trait DefaultEvaluator[ST <: Store[ST],
         evals(σQuant, es2, _ => pve, c1)((ts2, c2) => {
           val πDelta = decider.pcs.after(preMark).assumptions - bc
           evalTriggers(σQuant, triggers, πDelta, pve, c2)((tTriggers, c3) => {
+            val (tHeapIndepTriggers, extraQVars) =
+              QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, () => fresh("s", sorts.Snap))
             val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
-            val tAuxQuant = Quantification(quant, tVars, And(tAuxNested), tTriggers, s"$name-aux")
+            val tAuxQuant = Quantification(quant, tVars ++ extraQVars, And(tAuxNested), tHeapIndepTriggers, s"$name-aux")
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
                              recordPossibleTriggers = c.recordPossibleTriggers,
                              possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
@@ -876,6 +878,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //      case Seq(entry) if entry.newBranchConditions.isEmpty =>
       case Seq(entry) if entry.pathConditionStack.branchConditions.isEmpty =>
         entry.data
+      /* TODO: Create an ite-term (instead of defining a join function) if only two paths are to be joined */
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
         val joinSymbol = decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
