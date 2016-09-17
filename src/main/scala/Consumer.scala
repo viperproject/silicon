@@ -177,8 +177,8 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
 
       case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, fa) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), Nil, qid, pve, c){
-          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, tAuxQuantNoTriggers, c1) =>
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), None, qid, pve, c){
+          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, Left(tAuxQuantNoTriggers), c1) =>
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)

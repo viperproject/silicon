@@ -407,11 +407,12 @@ trait DefaultEvaluator[ST <: Store[ST],
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
         val name = s"prog.l${utils.ast.sourceLine(sourceQuant)}"
-        evalQuantified(σ, qantOp, vars, Nil, Seq(body), eTriggers, name, pve, c){case (tVars, _, Seq(tBody), tTriggers, tAuxQuant, c1) =>
-          decider.prover.logComment("Nested auxiliary terms")
-          assume(tAuxQuant)
-          val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
-          Q(tQuant, c1)}
+        evalQuantified(σ, qantOp, vars, Nil, Seq(body), Some(eTriggers), name, pve, c){
+          case (tVars, _, Seq(tBody), tTriggers, Right(tAuxQuants), c1) =>
+            decider.prover.logComment("Nested auxiliary terms")
+            assume(tAuxQuants)
+            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+            Q(tQuant, c1)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val pvePre = PreconditionInAppFalse(fapp)
@@ -590,8 +591,16 @@ trait DefaultEvaluator[ST <: Store[ST],
     resultTerm
   }
 
-  def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
-                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
+  def evalQuantified(σ: S,
+                     quant: Quantifier,
+                     vars: Seq[ast.LocalVar],
+                     es1: Seq[ast.Exp], /* Are evaluated and added as path conditions before ...*/
+                     es2: Seq[ast.Exp], /* ... these terms are evaluated */
+                     optTriggers: Option[Seq[ast.Trigger]],
+                     name: String,
+                     pve: PartialVerificationError,
+                     c: C)
+                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C) => VerificationResult)
                     : VerificationResult = {
 
     val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
@@ -602,23 +611,29 @@ trait DefaultEvaluator[ST <: Store[ST],
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty)
 
-    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Quantification, C)](QB => {
+    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C)](QB => {
       val preMark = decider.setPathConditionMark()
       evals(σQuant, es1, _ => pve, c0)((ts1, c1) => {
         val bc = And(ts1)
         decider.setCurrentBranchCondition(bc)
         evals(σQuant, es2, _ => pve, c1)((ts2, c2) => {
           val πDelta = decider.pcs.after(preMark).assumptions - bc
-          evalTriggers(σQuant, triggers, πDelta, pve, c2)((tTriggers, c3) => {
-            val (tHeapIndepTriggers, extraQVars) =
-              QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, () => fresh("s", sorts.Snap))
-            val tAuxQuant = Quantification(quant, tVars ++ extraQVars, And(πDelta), tHeapIndepTriggers, s"$name-aux")
+          evalTriggers(σQuant, optTriggers.getOrElse(Nil), πDelta, pve, c2)((tTriggers, c3) => {
+            def auxQuantGen(trigger: Trigger, extraVars: Iterable[Var]) =
+              Quantification(quant, tVars ++ extraVars, And(πDelta), Seq(trigger), s"$name-aux")
+            val auxQuant =
+              if (optTriggers.isEmpty)
+                Left(auxQuantGen(Trigger(Nil), Nil))
+              else {
+                val triggersAndVars =
+                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, () => fresh("s", sorts.Snap))
+                Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
                              recordPossibleTriggers = c.recordPossibleTriggers,
                              possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
-            QB(ts1, ts2, tTriggers, tAuxQuant, c4)})})})
-    }){case (ts1, ts2, tTriggers, tAuxQuant, c1) =>
-      Q(tVars, ts1, ts2, tTriggers, tAuxQuant, c1)
+            QB(ts1, ts2, tTriggers, auxQuant, c4)})})})
+    }){case (ts1, ts2, tTriggers, auxQuant, c1) =>
+      Q(tVars, ts1, ts2, tTriggers, auxQuant, c1)
     }
   }
 

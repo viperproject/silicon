@@ -12,22 +12,30 @@ import viper.silicon.state.terms._
 trait QuantifierSupporter
 
 object QuantifierSupporter {
-  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: () => Var): (Seq[Trigger], Iterable[Var]) = {
+  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: () => Var)
+                                 : Seq[(Trigger, Iterable[Var])] = {
+
     /* TODO: fresh() does not need to declare the new symbols (on the solver level)
      *       because they'll be bound by the quantifier.
      */
-    val subst = collection.mutable.Map[Term, Var]()
+    var subst = collection.mutable.Map[Term, Var]()
 
-    val heapIndependentTriggers =
-      triggers map (trigger =>
-        Trigger(
-          trigger.p map (_.transform {
-            case app @ App(_: HeapDepFun, args) if args.head != Unit =>
-              val s = subst.getOrElseUpdate(args.head, fresh())
-              app.copy(args = s +: args.tail)
-          }())))
+    val triggersAndVars =
+      triggers map (trigger => {
+        val heapIndepTrigger =
+          Trigger(
+            trigger.p map (_.transform {
+              case app @ App(_: HeapDepFun, args) if args.head != Unit =>
+                val s = subst.getOrElseUpdate(args.head, fresh())
+                app.copy(args = s +: args.tail)
+            }(recursive = _ => true)))
+        val snaps = subst.values /* A (lazy) iterable*/
+        subst = subst.empty      /* subst.clear() would also clear the lazy iterable snaps */
 
-    (heapIndependentTriggers, subst.values)
+        (heapIndepTrigger, snaps)
+      })
+
+    triggersAndVars
   }
 
   def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
