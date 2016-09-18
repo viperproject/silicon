@@ -214,7 +214,7 @@ class Z3ProverStdIO(config: Config,
 
 
   private def getModel(): Unit = {
-    if (config.ideMode()) {
+    if (config.ideModeAdvanced()) {
         writeLine("(get-model)")
         val model = readModel().trim()
         println(model + "\r\n")
