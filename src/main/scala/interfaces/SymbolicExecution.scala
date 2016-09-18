@@ -36,8 +36,16 @@ trait Evaluator[ST <: Store[ST],
                         (Q: (String, Seq[Term], C) => VerificationResult)
                         : VerificationResult
 
-  def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
-                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
+  def evalQuantified(σ: S,
+                     quant: Quantifier,
+                     vars: Seq[ast.LocalVar],
+                     es1: Seq[ast.Exp],
+                     es2: Seq[ast.Exp],
+                     optTriggers: Option[Seq[ast.Trigger]],
+                     name: String,
+                     pve: PartialVerificationError,
+                     c: C)
+                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C) => VerificationResult)
                     : VerificationResult
 }
 
