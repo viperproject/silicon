@@ -203,6 +203,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Running
 
+    //bookkeeping for Viper IVE
+    verifier.bookkeeper.reportInitialProgress(program)
+
     log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     config.inputFile = program.pos match {
@@ -231,7 +234,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
           if (config.timeout.get.getOrElse(0) == 0)
             future.get()
           else
-           future.get(config.timeout(), TimeUnit.SECONDS)
+            future.get(config.timeout(), TimeUnit.SECONDS)
 
         result = Some(convertFailures(failures))
       } catch {

@@ -16,7 +16,7 @@ import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.{Store, Heap, State, StateFactory, StateFormatter}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.state.terms._
-import viper.silicon.state.{FieldChunk, SymbolConvert, DefaultContext}
+import viper.silicon.state.{FieldChunk, SymbolConvert, DefaultContext, ListBackedHeap}
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
@@ -98,6 +98,40 @@ trait DefaultExecutor[ST <: Store[ST],
           : VerificationResult = {
 
     block match {
+
+      case cblock @ ast.ConditionalBlock(stmt, e, thn, els) =>
+        exec(σ, stmt, c)((σ1, c1) => {
+
+          val iteLog = new IfThenElseRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+
+          val thn_edge = cblock.succs.head
+          val els_edge = cblock.succs(1)
+
+          val sepIdentifier = SymbExLogger.currentLog().insert(iteLog)
+
+          val iteResult = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
+            iteLog.finish_thnCond()
+            val thn_branch_res = branch(σ1, tCond, c2,
+              (c3: C) => exec(σ1, thn_edge.dest, c2)((σ_thn, c_thn) => {
+                iteLog.finish_thnSubs()
+                Q(σ_thn, c_thn)
+              }),
+              (c3: C) => Success())
+            thn_branch_res
+          }) && eval(σ1, els_edge.cond, IfFailed(els_edge.cond), c1)((tCond, c2) => {
+            iteLog.finish_elsCond()
+            val els_branch_res = branch(σ1, tCond, c2,
+              (c3: C) => exec(σ1, els_edge.dest, c3)((σ_els, c_els) => {
+                iteLog.finish_elsSubs()
+                Q(σ_els, c_els)
+              }),
+              (c3: C) => Success())
+            els_branch_res
+          })
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          iteResult
+        })
+
       case block @ ast.StatementBlock(stmt, _) =>
         exec(σ, stmt, c)((σ1, c1) =>
           leave(σ1, block, c1)(Q))
@@ -127,8 +161,8 @@ trait DefaultExecutor[ST <: Store[ST],
         (locally {
             val mark = decider.setPathConditionMark()
             decider.prover.logComment("Loop: Check specs well-definedness")
-            produces(σBody, fresh,  FullPerm(), lb.invs, ContractNotWellformed, c)((σ1, c1) =>
-              produce(σ1, fresh,  FullPerm(), lb.cond, WhileFailed(loopStmt), c1)((σ2, c2) => {
+            produces(σBody, fresh, lb.invs, ContractNotWellformed, c)((σ1, c1) =>
+              produce(σ1, fresh, lb.cond, WhileFailed(loopStmt), c1)((σ2, c2) => {
                 /* Detect potential contradictions between path conditions from the loop guard and
                  * from the invariant (e.g. due to conditionals)
                  */
@@ -138,7 +172,7 @@ trait DefaultExecutor[ST <: Store[ST],
         && locally {
             val mark = decider.setPathConditionMark()
             decider.prover.logComment("Loop: Establish loop invariant")
-            consumes(σ,  FullPerm(), lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
+            consumes(σ, lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
               phase2data = phase2data :+ (σ1, decider.pcs.after(mark), c1)
               Success()})}
         && {
@@ -149,7 +183,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 intermediateResult && locally {
                   assume(pcs1.assumptions)
                   exec(σ1, lb.body, c1)((σ2, c2) =>
-                    consumes(σ2, FullPerm(), lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
+                    consumes(σ2, lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
                       Success()))}}}
         && {
             decider.prover.logComment("Loop: Continue after loop")
@@ -158,7 +192,7 @@ trait DefaultExecutor[ST <: Store[ST],
               case (intermediateResult, (σ1, pcs1, c1)) =>
                 intermediateResult && locally {
                   assume(pcs1.assumptions)
-                  produces(σ1 \ γBody, fresh,  FullPerm(), lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ2, c2) =>
+                  produces(σ1 \ γBody, fresh,  lb.invs :+ notGuard, _ => WhileFailed(loopStmt), c1)((σ2, c2) =>
                     /* Detect potential contradictions (as before) */
                     if (decider.checkSmoke())
                       Success() /* TODO: Mark branch as dead? */
@@ -184,6 +218,15 @@ trait DefaultExecutor[ST <: Store[ST],
       Q(σ, c)
 
   def exec(σ: S, stmt: ast.Stmt, c: C)
+          (Q: (S, C) => VerificationResult)
+          : VerificationResult = {
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    exec2(σ, stmt, c)((σ1, c1) => {
+      SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
+      Q(σ1, c1)})
+  }
+
+  def exec2(σ: S, stmt: ast.Stmt, c: C)
           (Q: (S, C) => VerificationResult)
           : VerificationResult = {
 
@@ -286,13 +329,13 @@ trait DefaultExecutor[ST <: Store[ST],
           /* We're done */
           Success()
         case _ =>
-          produce(σ, fresh, FullPerm(), a, InhaleFailed(inhale), c)((σ1, c1) =>
+          produce(σ, fresh, a, InhaleFailed(inhale), c)((σ1, c1) =>
             Q(σ1, c1))
       }
 
       case exhale @ ast.Exhale(a) =>
         val pve = ExhaleFailed(exhale)
-        consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
+        consume(σ, a, pve, c)((σ1, _, c1) =>
           Q(σ1, c1))
 
       case assert @ ast.Assert(a) =>
@@ -316,11 +359,11 @@ trait DefaultExecutor[ST <: Store[ST],
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
+                consume(σ, a, pve, c)((σ1, _, c1) =>
                   Success())
               r && Q(σ, c)
             } else
-              consume(σ, FullPerm(), a, pve, c)((σ1, _, c1) =>
+              consume(σ, a, pve, c)((σ1, _, c1) =>
                 Q(σ, c1))
         }
 
@@ -328,17 +371,23 @@ trait DefaultExecutor[ST <: Store[ST],
         val meth = c.program.findMethod(methodName)
         val pvefCall = (_: ast.Exp) =>  CallFailed(call)
         val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
+        val mcLog = new MethodCallRecord(call, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+        val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
         evals(σ, eArgs, pvefCall, c)((tArgs, c1) => {
+          mcLog.finish_parameters()
           val c2 = c1.copy(recordVisited = true)
           val insγ = Γ(meth.formalArgs.map(_.localVar).zip(tArgs))
-          consumes(σ \ insγ, FullPerm(), meth.pres, pvefPre, c2)((σ1, _, c3) => {
+          consumes(σ \ insγ, meth.pres, pvefPre, c2)((σ1, _, c3) => {
+            mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val outsγ = Γ(outs.map(v => (v, fresh(v))).toMap)
             val σ2 = σ1 \+ outsγ \ (g = σ.h)
-            produces(σ2, fresh, FullPerm(), meth.posts, pvefCall, c3)((σ3, c4) => {
+            produces(σ2, fresh, meth.posts, pvefCall, c3)((σ3, c4) => {
+              mcLog.finish_postcondition()
               val lhsγ = Γ(lhs.zip(outs)
                               .map(p => (p._1, σ3.γ(p._2))).toMap)
               val c5 = c4.copy(recordVisited = c1.recordVisited)
+              SymbExLogger.currentLog().collapse(null, sepIdentifier)
               Q(σ3 \ (g = σ.g, γ = σ.γ + lhsγ), c5)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
@@ -356,12 +405,12 @@ trait DefaultExecutor[ST <: Store[ST],
         val predicate = c.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
-            eval(σ, ePerm, pve, c1)((tPerm, c2) =>
-              decider.assert(σ, IsNonNegative(tPerm)){
-                case true =>
-                  predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
-                case false =>
-                  Failure(pve dueTo NegativePermission(ePerm))}))
+          eval(σ, ePerm, pve, c1)((tPerm, c2) =>
+            decider.assert(σ, IsNonNegative(tPerm)){
+              case true =>
+                predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
+              case false =>
+                Failure(pve dueTo NegativePermission(ePerm))}))
 
       case pckg @ ast.Package(wand) =>
         val pve = PackageFailed(pckg)
@@ -391,16 +440,16 @@ trait DefaultExecutor[ST <: Store[ST],
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          consume(σ1 \ γ, FullPerm(), wand.left, pve, c1)((σ2, _, c2) => {
+          consume(σ1 \ γ, wand.left, pve, c1)((σ2, _, c2) => {
             val c2a = c2.copy(lhsHeap = Some(σ1.h))
-            produce(σ2, fresh, FullPerm(), wand.right, pve, c2a)((σ3, c3) => {
+            produce(σ2, fresh, wand.right, pve, c2a)((σ3, c3) => {
               val c4 = c3.copy(lhsHeap = None)
               heapCompressor.compress(σ3, σ3.h, c4)
               Q(σ3 \ σ1.γ, c4)})})}
 
         e match {
           case wand: ast.MagicWand =>
-            consume(σ, FullPerm(), wand, pve, c)((σ1, _, c1) => {
+            consume(σ, wand, pve, c)((σ1, _, c1) => {
               QL(σ1, σ1.γ, wand, c1)})
 
           case v: ast.AbstractLocalVar =>

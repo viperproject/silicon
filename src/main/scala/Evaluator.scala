@@ -429,7 +429,7 @@ trait DefaultEvaluator[ST <: Store[ST],
           join[Term, Term](c2, QB => {
             val c3 = c2.copy(recordVisited = true,
                              fvfAsSnap = true)
-            consumes(σ, FullPerm(), pre, _ => pvePre, c3)((_, s, c4) => {
+            consumes(σ, pre, _ => pvePre, c3)((_, s, c4) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
               val c5 = c4.copy(recordVisited = c2.recordVisited,
@@ -464,7 +464,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(σ, FullPerm(), acc, pve, c3)((σ1, snap, c4) => {
+                    consume(σ, acc, pve, c3)((σ1, snap, c4) => {
 //                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
                       val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, snap))
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
@@ -475,7 +475,8 @@ trait DefaultEvaluator[ST <: Store[ST],
                       decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), tPerm, body, pve, c5)((σ2, c6) => {
+                      val c5a = c5.scalePermissionFactor(tPerm)
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), body, pve, c5a)((σ2, c6) => {
                         val c7 = c6.copy(recordVisited = c2.recordVisited)
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
@@ -595,7 +596,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       recordPossibleTriggers = true,
       possibleTriggers = Map.empty)
 
-    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Iterable[Term], Quantification, C)](QB => {
+    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Quantification, C)](QB => {
       val preMark = decider.setPathConditionMark()
       evals(σQuant, es1, _ => pve, c0)((ts1, c1) => {
         val bc = And(ts1)
@@ -603,15 +604,14 @@ trait DefaultEvaluator[ST <: Store[ST],
         evals(σQuant, es2, _ => pve, c1)((ts2, c2) => {
           val πDelta = decider.pcs.after(preMark).assumptions - bc
           evalTriggers(σQuant, triggers, πDelta, pve, c2)((tTriggers, c3) => {
-            val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
-            val tAuxQuant = Quantification(quant, tVars, And(tAuxNested), tTriggers, s"$name-aux")
+            val (tHeapIndepTriggers, extraQVars) =
+              QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, () => fresh("s", sorts.Snap))
+            val tAuxQuant = Quantification(quant, tVars ++ extraQVars, And(πDelta), tHeapIndepTriggers, s"$name-aux")
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
               recordPossibleTriggers = c.recordPossibleTriggers,
               possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
-            QB(ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c4)})})})
-    }){case (ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c1) =>
-      decider.prover.logComment("Top-level auxiliary terms")
-      assume(tAuxTopLevel)
+            QB(ts1, ts2, tTriggers, tAuxQuant, c4)})})})
+    }){case (ts1, ts2, tTriggers, tAuxQuant, c1) =>
       Q(tVars, ts1, ts2, tTriggers, tAuxQuant, c1)
     }
   }

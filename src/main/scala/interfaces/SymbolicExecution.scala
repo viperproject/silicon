@@ -48,7 +48,6 @@ trait Producer[ST <: Store[ST],
 
   def produce(σ: S,
               sf: Sort => Term,
-              p: Term,
               φ: ast.Exp,
               pve: PartialVerificationError,
               c: C)
@@ -57,7 +56,6 @@ trait Producer[ST <: Store[ST],
 
   def produces(σ: S,
                sf: Sort => Term,
-               p: Term,
                φs: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
@@ -70,12 +68,11 @@ trait Consumer[ST <: Store[ST],
                S <: State[ST, H, S],
                C <: Context[C]] {
 
-  def consume(σ: S, p: Term, φ: ast.Exp, pve: PartialVerificationError, c: C)
+  def consume(σ: S, φ: ast.Exp, pve: PartialVerificationError, c: C)
              (Q: (S, Term, C) => VerificationResult)
              : VerificationResult
 
   def consumes(σ: S,
-               p: Term,
                φ: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)

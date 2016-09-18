@@ -13,9 +13,6 @@ import viper.silicon.state.terms.{Sort, Var, sorts}
 import viper.silicon.state.{Identifier, SymbolConvert, terms}
 import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 
-
-
-
 class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
 
   var snapMap:Map[Predicate, terms.Sort] = Map()
@@ -30,7 +27,7 @@ class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
         var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
         formalVarMap += predicate -> formalArgs
         snapMap += sort
-      }
+    }
   }
 
   def getSnap(predicate:Predicate): (terms.Sort, Boolean) =

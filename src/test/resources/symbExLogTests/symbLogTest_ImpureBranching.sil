@@ -1,0 +1,67 @@
+field f: Int
+field g: Int
+
+predicate P(b: Bool, x: Ref) {
+	b ? acc(x.f) : acc(x.g)
+}
+
+method test1(b: Bool, x: Ref)
+	ensures acc(P(b, x))
+{
+	inhale b ? acc(x.f) : acc(x.g)
+
+	fold P(b, x)
+}
+
+method test2(b: Bool, x: Ref)
+    ensures acc(P(b, x))
+{
+    var a: Int
+    inhale (b ==> acc(x.f)) && (!b ==> acc(x.g))
+    a := 1
+    fold P(b, x)
+}
+
+method test3(b: Bool, x: Ref)
+{
+    var a: Int
+    inhale (b ==> acc(x.f))
+    a := 1
+}
+
+method test4(b: Bool, x:Ref)
+    requires (b ==> acc(x.f))
+{
+  var a: Int
+  a := 1
+}
+
+method test5(b1: Bool, b2: Bool, x: Ref)
+{
+  var a: Int
+  inhale (b1 ==> acc(x.f))
+  inhale (b2 ==> acc(x.f))
+  a := 1
+}
+
+method test6(b1: Bool, b2: Bool, x: Ref)
+{
+  var a: Int
+  inhale (b1 ? acc(x.f) : acc(x.g))
+  inhale (b2 ? acc(x.f) : acc(x.g))
+  a := 1
+}
+
+method test7(b: Bool, x: Ref)
+{
+  var a: Int
+  inhale (b ? acc(x.f) : acc(x.g))
+  a := 1
+}
+
+method test8(b: Bool, x: Ref)
+{
+  var a: Int
+  inhale (true && true && true && (b ? acc(x.f) : acc(x.g)))
+  a := 1
+}

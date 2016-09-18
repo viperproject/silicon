@@ -18,6 +18,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
+import viper.silicon.SymbExLogger
 
 import viper.silicon.supporters.qps.{QuantifiedPredicateChunkSupporterProvider, SummarisingPsfDefinition}
 import viper.silver.verifier.reasons.InsufficientPermission
@@ -78,6 +79,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
   protected val decider: Decider[ST, H, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
+  protected val identifierFactory: IdentifierFactory
 
   import decider.{fresh, locally}
   import stateFactory._
@@ -109,6 +111,8 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
+      SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+
       val ins = predicate.formalArgs.map(_.localVar)
 
       val γ = Γ(ins.map(v => (v, fresh(v))))
@@ -122,7 +126,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
                 locally {
                   magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
             &&  locally {
-                  produce(σ, decider.fresh, terms.FullPerm(), body, err, c)((_, c1) =>
+                  produce(σ, decider.fresh, body, err, c)((_, c1) =>
                     Success())})
       }
 
@@ -136,9 +140,10 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             : VerificationResult = {
 
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
-      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-      val c0 = c.copy(fvfAsSnap = true)
-      consume(σ \ insγ, tPerm, body, pve, c0)((σ1, snap, c1) => {
+      val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val c0 = c.copy(fvfAsSnap = true).scalePermissionFactor(tPerm)
+      //TODO: Perm scaling?
+      consume(σ \ insγ, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
           if (c.qpPredicates.contains(predicate)) {
             val snapConvert = snap.convert(c1.predicateSnapMap(predicate))
@@ -150,7 +155,8 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             Q(σ2 , c1)
           } else {
             val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
-            val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap)
+            val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap,
+              permissionScalingFactor = c.permissionScalingFactor)
             val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
             Q(σ \ h1, c3)
           }
@@ -181,9 +187,11 @@ trait PredicateSupporterProvider[ST <: Store[ST],
        * to y and y.n.
        */
 
-      val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
+      val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
+      val c0 = c.scalePermissionFactor(tPerm)
       if (c.qpPredicates.contains(predicate)) {
+        //TODO: Perm scaling? see else branch
        val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
         val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
         val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
@@ -192,7 +200,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
             decider.assume(psfDomain ++ psfDef.snapDefinitions)
             val snap = ch.valueAt(tArgs)
-            produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c2)((σ2, c3) => {
+            produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c2)((σ2, c3) => {
               decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
               Q(σ2 \ σ.γ, c3)})
 
@@ -200,13 +208,31 @@ trait PredicateSupporterProvider[ST <: Store[ST],
         }
 
       } else {
+        /*
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
           produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
             decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-            Q(σ2 \ σ.γ, c2)})})
+            Q(σ2 \ σ.γ, c2)})})*/
+        chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, c0.permissionScalingFactor, pve, c0, pa)((h1, snap, c1) => {
+          produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c1)((σ2, c2) => {
+            decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+            val c3 = c2.copy(permissionScalingFactor = c.permissionScalingFactor)
+            Q(σ2 \ σ.γ, c3)})})
       }
-
     }
+
+/* NOTE: Possible alternative to storing the permission scaling factor in the context
+ *       or passing it to produce/consume as an explicit argument.
+ *       Carbon uses Permissions.multiplyExpByPerm as well (but does not extend the
+ *       store).
+ */
+//    private def scale(γ: ST, body: ast.Exp, perm: Term) = {
+//      /* TODO: Ensure that variable name does not clash with any Silver identifier already in use */
+//      val scaleFactorVar = ast.LocalVar(identifierFactory.fresh("p'unf").name)(ast.Perm)
+//      val scaledBody = ast.utility.Permissions.multiplyExpByPerm(body, scaleFactorVar)
+//
+//      (γ + (scaleFactorVar -> perm), scaledBody)
+//    }
 
     /* Lifetime */
 

@@ -99,6 +99,8 @@ class DefaultVerifier(val config: Config)
     predSnapGenerator.setup(program)
 
     emitPreamble(program)
+    SymbExLogger.resetMemberList()
+    SymbExLogger.setConfig(config)
 
 //    ev.predicateSupporter.handlePredicates(program)
 
@@ -106,11 +108,17 @@ class DefaultVerifier(val config: Config)
      * toList must be before flatMap. Otherwise Set will be used internally and some
      * error messages will be lost.
      */
-    val functionVerificationResults = functionsSupporter.units.toList flatMap (function =>
-      functionsSupporter.verify(function, createInitialContext(function, program)))
+    val functionVerificationResults = functionsSupporter.units.toList flatMap (function => {
+      val res = functionsSupporter.verify(function, createInitialContext(function, program))
+      bookkeeper.functionVerified(function.name)
+      res
+    })
 
-    val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate =>
-      predicateSupporter.verify(predicate, createInitialContext(predicate, program)))
+    val predicateVerificationResults = predicateSupporter.units.toList flatMap (predicate =>{
+      val res = predicateSupporter.verify(predicate, createInitialContext(predicate, program))
+      bookkeeper.predicateVerified(predicate.name)
+      res
+    })
 
     val methodVerificationResults =
       methodSupporter.units.toList
@@ -119,8 +127,15 @@ class DefaultVerifier(val config: Config)
       val c = createInitialContext(method, program)
 //      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
 
-      methodSupporter.verify(method, c)
+          val res = methodSupporter.verify(method, c)
+          bookkeeper.methodVerified(method.name)
+          res
     })
+
+    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
+    SymbExLogger.writeJSFile()
+    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
+    SymbExLogger.writeDotFile()
 
     (   functionVerificationResults
      ++ predicateVerificationResults
@@ -242,7 +257,7 @@ class DefaultVerifier(val config: Config)
     preambleEmitter.emitPreamble("/z3config.smt2")
 
     val smt2ConfigOptions =
-      config.z3ConfigArgs().map{case (k, v) => s"(set-option :$k $v)"}
+      config.z3ConfigArgs().map { case (k, v) => s"(set-option :$k $v)" }
 
     if (smt2ConfigOptions.nonEmpty) {
       log.info(s"Additional Z3 configuration options are '${config.z3ConfigArgs()}'")

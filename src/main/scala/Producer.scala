@@ -13,7 +13,7 @@ import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
 import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state._
+import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert, ListBackedHeap}
 import viper.silicon.state.terms._
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
@@ -46,19 +46,17 @@ trait DefaultProducer[ST <: Store[ST],
 
   def produce(σ: S,
               sf: Sort => Term,
-              p: Term,
               φ: ast.Exp,
               pve: PartialVerificationError,
               c: C)
              (Q: (S, C) => VerificationResult)
              : VerificationResult =
 
-    produce2(σ, sf, p, φ.whenInhaling, pve, c)((h, c1) =>
+    produce2(σ, sf, φ.whenInhaling, pve, c)((h, c1) =>
       Q(σ \ h, c1))
 
   def produces(σ: S,
                sf: Sort => Term,
-               p: Term,
                φs: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                c: C)
@@ -79,7 +77,7 @@ trait DefaultProducer[ST <: Store[ST],
       val φ = φs.head.whenInhaling
 
       if (φs.tail.isEmpty)
-        produce(σ, sf, p, φ, pvef(φ), c)(Q)
+        produce(σ, sf, φ, pvef(φ), c)(Q)
       else {
         val (sf0, sf1) = createSnapshotPair(sf, φ, utils.ast.BigAnd(φs.tail), c)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
@@ -88,15 +86,28 @@ trait DefaultProducer[ST <: Store[ST],
            *       over and over again.
            */
 
-        produce(σ, sf0, p, φ, pvef(φ), c)((σ1, c1) => {
-          produces(σ1, sf1, p, φs.tail, pvef, c1)(Q)})
+        produce(σ, sf0, φ, pvef(φ), c)((σ1, c1) => {
+          produces(σ1, sf1, φs.tail, pvef, c1)(Q)})
       }
     }
   }
 
+  /** Wrapper Method for produce, for logging. See Executor.scala for explanation of analogue. **/
   private def produce2(σ: S,
                        sf: Sort => Term,
-                       p: Term,
+                       φ: ast.Exp,
+                       pve: PartialVerificationError,
+                       c: C)
+                      (Q: (H, C) => VerificationResult)
+                      : VerificationResult = {
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    produce3(σ, sf, φ, pve, c)((σ1, c1) => {
+      SymbExLogger.currentLog().collapse(φ, sepIdentifier)
+      Q(σ1, c1)})
+  }
+
+  private def produce3(σ: S,
+                       sf: Sort => Term,
                        φ: ast.Exp,
                        pve: PartialVerificationError,
                        c: C)
@@ -111,33 +122,59 @@ trait DefaultProducer[ST <: Store[ST],
     val produced = φ match {
       case ast.And(a0, a1) if !φ.isPure || config.handlePureConjunctsIndividually() =>
         val (sf0, sf1) = createSnapshotPair(sf, a0, a1, c)
-        produce2(σ, sf0, p, a0, pve, c)((h1, c1) => {
-          produce2(σ \ h1, sf1, p, a1, pve, c1)((h2, c2) =>
+        produce2(σ, sf0, a0, pve, c)((h1, c1) => {
+          produce2(σ \ h1, sf1, a1, pve, c1)((h2, c2) =>
             Q(h2, c2))})
 
-      case ast.Implies(e0, a0) if !φ.isPure =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => produce2(σ, sf, p, a0, pve, c2)(Q),
+      case imp @ ast.Implies(e0, a0) if !φ.isPure =>
+        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        SymbExLogger.currentLog().initializeBranching()
+
+        eval(σ, e0, pve, c)((t0, c1) => {
+          impLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => produce2(σ, sf, a0, pve, c2)((h_a1, c_a1) => {
+              val res1 = Q(h_a1, c_a1)
+              impLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              res1}),
             (c2: C) => {
               assume(sf(sorts.Snap) === Unit)
                 /* TODO: Avoid creating a fresh var (by invoking) `sf` that is not used
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
-              Q(σ.h, c2)}))
+              val res2 = Q(σ.h, c2)
+              impLog.finish_elsSubs()
+              res2})
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
 
-      case ast.CondExp(e0, a1, a2) if !φ.isPure =>
-        eval(σ, e0, pve, c)((t0, c1) =>
-          branch(σ, t0, c1,
-            (c2: C) => produce2(σ, sf, p, a1, pve, c2)(Q),
-            (c2: C) => produce2(σ, sf, p, a2, pve, c2)(Q)))
+      case ite @ ast.CondExp(e0, a1, a2) if !φ.isPure =>
+        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
+        SymbExLogger.currentLog().initializeBranching()
+        eval(σ, e0, pve, c)((t0, c1) => {
+          gbLog.finish_cond()
+          val branch_res = branch(σ, t0, c1,
+            (c2: C) => produce2(σ, sf, a1, pve, c2)((h_a1, c_a1) => {
+              val res1 = Q(h_a1, c_a1)
+              gbLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+              res1}),
+            (c2: C) => produce2(σ, sf, a2, pve, c2)((h_a2, c_a2) => {
+              val res2 = Q(h_a2, c_a2)
+              gbLog.finish_elsSubs()
+              res2}))
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          branch_res})
 
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
-          produce2(σ \+ γ1, sf, p, body, pve, c1)(Q))
+          produce2(σ \+ γ1, sf, body, pve, c1)(Q))
 
-      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), gain) =>
+      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (c.qpFields.contains(field)) {
@@ -152,16 +189,15 @@ trait DefaultProducer[ST <: Store[ST],
           }
 
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-          eval(σ, gain, pve, c1)((pGain, c2) => {
-            assume(PermAtMost(NoPerm(), pGain))
-            assume(Implies(PermLess(NoPerm(), pGain), tRcvr !== Null()))
+          eval(σ, perm, pve, c1)((tPerm, c2) => {
+            assume(PermAtMost(NoPerm(), tPerm))
+            assume(Implies(PermLess(NoPerm(), tPerm), tRcvr !== Null()))
             val s = sf(toSort(field.typ))
-            val pNettoGain = PermTimes(pGain, p)
-            val (h1, c3) = addNewChunk(σ.h, tRcvr, s, pNettoGain, c2)
+            val gain = PermTimes(tPerm, c2.permissionScalingFactor)
+            val (h1, c3) = addNewChunk(σ.h, tRcvr, s, gain, c2)
             Q(h1, c3)}))
-
-      case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), gain) =>
-        val predicate:ast.Predicate = c.program.findPredicate(predicateName)
+      case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), perm) =>
+        val predicate = c.program.findPredicate(predicateName)
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
             decider.prover.logComment("define formalVArgs")
@@ -177,28 +213,26 @@ trait DefaultProducer[ST <: Store[ST],
             val (h1, c1) = chunkSupporter.produce(σ, σ.h, ch, c)
             (h1, c1)
           }
-
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
-          eval(σ, gain, pve, c1)((pGain, c2) => {
-            assume(PermAtMost(NoPerm(), pGain))
+          eval(σ, perm, pve, c1)((tPerm, c2) => {
+            assume(PermAtMost(NoPerm(), tPerm))
             var s:Term = sf(c1.predicateSnapMap(predicate))
-            val pNettoGain = PermTimes(pGain, p)
-            val (h1, c3) = addNewChunk(σ.h, tArgs, s, pNettoGain, c2)
+            val gain = PermTimes(tPerm, c2.permissionScalingFactor)
+            val (h1, c3) = addNewChunk(σ.h, tArgs, s, gain, c2)
             Q(h1, c3)}))
 
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
           Q(σ.h + chWand, c))
 
-      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, gain, forall, _) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, gain), Nil, qid, pve, c) {
-          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tGain), _, tAuxQuantNoTriggers, c1) =>
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), Nil, qid, pve, c){
+          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, tAuxQuantNoTriggers, c1) =>
             val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
             val additionalInvFctArgs = c1.quantifiedVariables
-            val (ch, invFct) =
-              quantifiedChunkSupporter.createQuantifiedFieldChunk(tQVar, tRcvr, field, snap, PermTimes(tGain, p), tCond,
-                                                             additionalInvFctArgs)
+            val gain = PermTimes(tPerm, c1.permissionScalingFactor)
+            val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedFieldChunk(tQVar, tRcvr, field, snap, gain, tCond, additionalInvFctArgs)
 
             /* [2016-05-05 Malte]
              * The issue described (and solved) in the previous comment is no longer a problem
@@ -240,13 +274,13 @@ trait DefaultProducer[ST <: Store[ST],
             decider.prover.logComment("Nested auxiliary terms")
             assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
                                             triggers = invFct.invOfFct.triggers))
-            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
+            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tPerm), invFct.invOfFct.triggers, s"$qid-perm")
             assume(gainNonNeg)
             decider.prover.logComment("Definitional axioms for inverse functions")
             assume(invFct.definitionalAxioms)
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val ch1 = ch.copy(hints = hints)
-            val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, PermTimes(tGain, p))
+            val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, tPerm)
             decider.prover.logComment("Receivers are non-null")
             assume(Set(tNonNullQuant))
   //          decider.prover.logComment("Definitional axioms for field value functions")
@@ -263,8 +297,9 @@ trait DefaultProducer[ST <: Store[ST],
             val snap = sf(sorts.PredicateSnapFunction(c.predicateSnapMap(predicate)))
             val additionalInvFctArgs = c1.quantifiedVariables
 
+            val gain = PermTimes(tGain, c1.permissionScalingFactor)
             val (ch, invFct) =
-              quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, c.predicateFormalVarMap(predicate), tArgs, snap, PermTimes(tGain, p), tCond,
+              quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, c.predicateFormalVarMap(predicate), tArgs, snap, gain, tCond,
                 additionalInvFctArgs)
 
             decider.prover.logComment("Nested auxiliary terms")

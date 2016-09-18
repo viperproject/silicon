@@ -16,17 +16,18 @@ import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{IdentifierFactory, DefaultContext, SymbolConvert}
+import viper.silicon.state.{IdentifierFactory,ListBackedHeap, DefaultContext, SymbolConvert}
 import viper.silicon.state.terms
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
+import viper.silicon.SymbExLogger
 
 trait FunctionSupporter[H <: Heap[H]] extends VerificationUnit[H, ast.Function]
 
 object FunctionSupporter {
-  def limitedVersion(function: HeapDepFun): Fun = {
+  def limitedVersion(function: HeapDepFun): HeapDepFun = {
     val id = function.id.rename(name => s"$name%limited")
-    Fun(id, function.argSorts, function.resultSort)
+    HeapDepFun(id, function.argSorts, function.resultSort)
   }
 
   def statelessVersion(function: HeapDepFun): Fun = {
@@ -108,6 +109,8 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       log.debug(s"\n\n$comment\n")
       decider.prover.logComment(comment)
 
+	  SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
@@ -168,9 +171,9 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
       val result = decider.locally {
         val preMark = decider.setPathConditionMark()
-        produces(σ, sort => `?s`.convert(sort), FullPerm(), pres, ContractNotWellformed, c)((σ1, c1) => {
+        produces(σ, sort => `?s`.convert(sort), pres, ContractNotWellformed, c)((σ1, c1) => {
           phase1Data :+= Phase1Data(σ1, decider.pcs.after(preMark).assumptions, c1)
-            produces(σ1, sort => `?s`.convert(sort), FullPerm(), posts, ContractNotWellformed, c1)((_, c2) => {
+            produces(σ1, sort => `?s`.convert(sort), posts, ContractNotWellformed, c1)((_, c2) => {
             recorders :+= c2.functionRecorder
             Success()})})}
 
@@ -200,7 +203,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
             decider.assume(p1d.πPre)
             eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
               decider.assume(data.formalResult === tBody)
-              consumes( p1d.σPre, FullPerm(), posts, postconditionViolated, c1)((_, _, c2) => {
+              consumes( p1d.σPre, posts, postconditionViolated, c1)((_, _, c2) => {
                 recorders :+= c2.functionRecorder
                 Success()})})}}
 
