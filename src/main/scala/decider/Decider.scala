@@ -338,11 +338,6 @@ trait DeciderProvider[ST <: Store[ST],
               HeapDepFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
           }
 
-      resultSort match {
-        case _: sorts.FieldValueFunction => quantifiedChunkSupporter.injectFVF(fun.asInstanceOf[Var])
-        case _ => /* Nothing special to do */
-      }
-
       fun
     }
 

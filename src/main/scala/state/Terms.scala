@@ -1561,14 +1561,6 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
   val sort = sorts.Set(elementsSort)
 }
 
-case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends BooleanTerm {
-  utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
-}
-
-object FvfTop extends (String => Identifier) {
-  def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
-}
-
 /* Sort wrappers */
 
 /* Note: Sort wrappers should probably not be used as (outermost) triggers

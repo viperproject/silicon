@@ -87,7 +87,6 @@ package object utils {
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
-    case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -169,7 +168,6 @@ package object utils {
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
-      case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])
