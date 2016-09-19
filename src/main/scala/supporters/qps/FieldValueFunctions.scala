@@ -151,7 +151,7 @@ case class SummarisingFvfDefinition(field: ast.Field,
                                     rcvr: Term,
                                     sourceChunks: Seq[QuantifiedChunk])
                                    (config: Config)
-    extends FvfDefinition with Definition {
+    extends FvfDefinition {
 
   private val triples =
     sourceChunks.map(ch =>
@@ -160,14 +160,9 @@ case class SummarisingFvfDefinition(field: ast.Field,
   private val valDefs =
     triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
 
-  val valueDefinitions: Seq[Term] = Seq(valueDefinitions(rcvr))
+  val valueDefinitions: Seq[Term] = Seq(Let(`?r`, rcvr, And(valDefs)))
 
   val domainDefinitions = Seq(True())
-
-  val declaration: Decl = ConstDecl(fvf.asInstanceOf[Var])
-  val definition: Seq[Term] = valueDefinitions ++ domainDefinitions
-
-  def valueDefinitions(rcvr: Term) = Let(`?r`, rcvr, And(valDefs))
 
   val quantifiedValueDefinitions =
     triples map { case (p, lk1, lk2) =>

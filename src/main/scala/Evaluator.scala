@@ -162,7 +162,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
-                  assume(fvfDef)
+                  assume(fvfDef.quantifiedValueDefinitions)
                     /* Re-emit definition since the previous definition could be nested under
                      * an auxiliary quantifier (resulting from the evaluation of some Silver
                      * quantifier in whose body field 'fa.field' was accessed)
@@ -175,7 +175,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
             case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
-                assume(fvfDef)
+                assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                 val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                                              .recordQPTerms(c1.quantifiedVariables, decider.pcs.branchConditions, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)

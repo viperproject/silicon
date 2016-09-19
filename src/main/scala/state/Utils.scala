@@ -9,7 +9,6 @@ package viper.silicon.state
 import scala.collection.mutable
 import viper.silicon.interfaces.state.{Heap, Store, State}
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.SummarisingFvfDefinition
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -89,7 +88,6 @@ package object utils {
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
-    case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */

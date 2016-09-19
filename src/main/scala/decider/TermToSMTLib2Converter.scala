@@ -251,9 +251,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case _: MagicWandChunkTerm =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
-
-    case fvf: SummarisingFvfDefinition =>
-      render(And(fvf.quantifiedValueDefinitions))
   }
 
   @inline

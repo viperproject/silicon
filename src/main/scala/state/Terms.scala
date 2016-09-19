@@ -73,20 +73,6 @@ object ConstDecl extends (Var => Decl) {
 }
 
 /*
- * Definitions
- * TODO: Should only be a temporary solution. Consider introducing a propery
- *       environment that keeps track of symbols currently in scope, and of
- *       their definitions. Such a change might also affect declarations.
- */
-
-trait Definition extends Term {
-  val sort = sorts.Bool /* FIXME */
-
-  def declaration: Decl
-  def definition: Seq[Term]
-}
-
-/*
  * Applicables and Applications
  */
 
