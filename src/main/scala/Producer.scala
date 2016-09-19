@@ -291,8 +291,8 @@ trait DefaultProducer[ST <: Store[ST],
         //create new quantified predicate chunk
         val predicate = c.program.findPredicate(predname)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , Nil, qid, pve, c) {
-          case (Seq(tQVar), Seq(tCond), tArgsGain, _, tAuxQuantNoTriggers, c1) =>
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , None, qid, pve, c) {
+          case (Seq(tQVar), Seq(tCond), tArgsGain, _, Left(tAuxQuantNoTriggers), c1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
             val snap = sf(sorts.PredicateSnapFunction(c.predicateSnapMap(predicate)))
             val additionalInvFctArgs = c1.quantifiedVariables

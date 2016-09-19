@@ -68,15 +68,26 @@ trait DefaultEvaluator[ST <: Store[ST],
         evals2(σ, es.tail, t :: ts, pvef, c1)(Q))
   }
 
+  /** Wrapper Method for eval, for logging. See Executor.scala for explanation of analogue. **/
   def eval(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
           (Q: (Term, C) => VerificationResult)
           : VerificationResult = {
+    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    eval3(σ, e, pve, c)((e1, c1) => {
+      SymbExLogger.currentLog().collapse(e, sepIdentifier)
+      Q(e1, c1)})
+  }
+
+  def eval3(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
+           (Q: (Term, C) => VerificationResult)
+  : VerificationResult = {
+
 
     /* For debugging only */
     e match {
       case  _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
-          | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
-          | _: ast.WildcardPerm | _: ast.FieldAccess =>
+            | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
+            | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
       case _ =>
         log.debug(s"\nEVAL ${utils.ast.sourceLineColumn(e)}: $e")
@@ -152,6 +163,12 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
+                  assume(fvfDef)
+                  /* Re-emit definition since the previous definition could be nested under
+                   * an auxiliary quantifier (resulting from the evaluation of some Silver
+                   * quantifier in whose body field 'fa.field' was accessed)
+                   * which is protected by a trigger term that we currently don't have.
+                   */
                   val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                   val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                   val c2 = c1.copy(functionRecorder = fr1)
@@ -478,7 +495,8 @@ trait DefaultEvaluator[ST <: Store[ST],
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
                       val c5a = c5.scalePermissionFactor(tPerm)
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), body, pve, c5a)((σ2, c6) => {
-                        val c7 = c6.copy(recordVisited = c2.recordVisited)
+                        val c7 = c6.copy(recordVisited = c2.recordVisited,
+                                          permissionScalingFactor = c5.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
                         eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
