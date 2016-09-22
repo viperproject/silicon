@@ -12,6 +12,14 @@ import viper.silicon.utils.Counter
 sealed trait Identifier {
   def name: String
   def rename(fn: String => String): Identifier
+
+  def withSuffix(suffix: String): SuffixedIdentifier =
+    withSuffix(Identifier.defaultSeparator, suffix)
+
+  def withSuffix(separator: String, suffix: String): SuffixedIdentifier = this match {
+    case _: SimpleIdentifier => SuffixedIdentifier(name, separator, suffix)
+    case si: SuffixedIdentifier => si.copy(separator = separator, suffix = suffix)
+  }
 }
 
 /* TODO: Remove object Identifier, make SimpleIdentifier's and SuffixedIdentifier's
@@ -20,18 +28,20 @@ sealed trait Identifier {
  */
 
 object Identifier {
+  val defaultSeparator = "@"
+
   def apply(name: String): Identifier = SimpleIdentifier(name)
 
-  def apply(prefix: String, separator: String, suffix: Int): Identifier =
+  def apply(prefix: String, separator: String, suffix: String): Identifier =
     SuffixedIdentifier(prefix, separator, suffix)
 }
 
-case class SimpleIdentifier /*private[Identifier]*/ (name: String) extends Identifier {
+case class SimpleIdentifier(name: String) extends Identifier {
   def rename(fn: String => String) = SimpleIdentifier(fn(name))
   override val toString = name
 }
 
-case class SuffixedIdentifier /*private[Identifier]*/ (prefix: String, separator: String, suffix: Int)
+case class SuffixedIdentifier(prefix: String, separator: String, suffix: String)
     extends Identifier {
 
   val name = s"$prefix$separator$suffix"
@@ -50,10 +60,10 @@ class DefaultIdentifierFactory/*(nameSanitizer: NameSanitizer)*/
 
   private val ids: Counter = new Counter
 
-  val separator = "@"
+  val separator = Identifier.defaultSeparator
 
   def fresh(name: String): Identifier = {
-    SuffixedIdentifier(name, separator, ids.next())
+    SuffixedIdentifier(name, separator, ids.next().toString)
   }
 
   def start(): Unit = {}

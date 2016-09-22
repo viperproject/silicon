@@ -26,12 +26,12 @@ trait FunctionSupporter[H <: Heap[H]] extends VerificationUnit[H, ast.Function]
 
 object FunctionSupporter {
   def limitedVersion(function: HeapDepFun): HeapDepFun = {
-    val id = function.id.rename(name => s"$name%limited")
+    val id = function.id.withSuffix("%", "limited")
     HeapDepFun(id, function.argSorts, function.resultSort)
   }
 
   def statelessVersion(function: HeapDepFun): Fun = {
-    val id = function.id.rename(name => s"$name%stateless")
+    val id = function.id.withSuffix("%", "stateless")
     Fun(id, function.argSorts.tail, terms.sorts.Bool)
   }
 }
