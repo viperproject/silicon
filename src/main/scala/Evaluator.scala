@@ -626,7 +626,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 Left(auxQuantGen(Trigger(Nil), Nil))
               else {
                 val triggersAndVars =
-                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, () => fresh("s", sorts.Snap))
+                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, fresh)
                 Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
                              recordPossibleTriggers = c.recordPossibleTriggers,
