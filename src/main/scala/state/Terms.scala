@@ -73,20 +73,6 @@ object ConstDecl extends (Var => Decl) {
 }
 
 /*
- * Definitions
- * TODO: Should only be a temporary solution. Consider introducing a propery
- *       environment that keeps track of symbols currently in scope, and of
- *       their definitions. Such a change might also affect declarations.
- */
-
-trait Definition extends Term {
-  val sort = sorts.Bool /* FIXME */
-
-  def declaration: Decl
-  def definition: Seq[Term]
-}
-
-/*
  * Applicables and Applications
  */
 
@@ -1573,14 +1559,6 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
 
   val elementsSort = sorts.Ref
   val sort = sorts.Set(elementsSort)
-}
-
-case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends BooleanTerm {
-  utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
-}
-
-object FvfTop extends (String => Identifier) {
-  def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
 }
 
 /* Sort wrappers */

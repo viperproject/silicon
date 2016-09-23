@@ -9,7 +9,6 @@ package viper.silicon.state
 import scala.collection.mutable
 import viper.silicon.interfaces.state.{Heap, Store, State}
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.SummarisingFvfDefinition
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -62,48 +61,6 @@ package object utils {
     disjointnessAssumptions.result()
   }
 
-  def partitionAuxiliaryTerms(ts: Iterable[Term]): (Iterable[Term], Iterable[Term]) =
-    ts.partition {
-      case   _: FvfAfterRelation
-           | _: Definition
-           => true
-      case _ => false
-    }
-
-  def detectQuantificationProblems(quantification: Quantification): Seq[String] = {
-    var problems: List[String] = Nil
-
-    quantification.q match {
-      case Exists =>
-        /* No checks yet */
-      case Forall =>
-        /* 1. Check that triggers are present */
-        if (quantification.triggers.isEmpty)
-          problems ::= s"No triggers given"
-
-        /* 2. Check that each trigger set mentions all quantified variables */
-        quantification.triggers.foreach(trigger => {
-          val vars =
-            trigger.p.foldLeft(Set[Var]()){case (varsAcc, term) =>
-              varsAcc ++ term.deepCollect{case v: Var => v}}
-
-          if (!quantification.vars.forall(vars.contains))
-            problems ::= s"Trigger set $trigger does not contain all quantified variables"
-        })
-
-        /* 3. Check that all triggers are valid */
-        quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
-          if (!TriggerGenerator.isPossibleTrigger(term))
-            problems ::= s"Trigger $term is not a possible trigger"
-
-          term.deepCollect{case t if TriggerGenerator.isForbiddenInTrigger(t) => t}
-              .foreach(term => problems ::= s"Term $term may not occur in triggers")
-        })
-    }
-
-    problems.reverse
-  }
-
   def subterms(t: Term): Seq[Term] = t match {
     case _: Symbol | _: Literal | _: MagicWandChunkTerm => Nil
     case op: BinaryOp[Term@unchecked] => List(op.p0, op.p1)
@@ -130,8 +87,6 @@ package object utils {
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
-    case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
-    case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -213,7 +168,6 @@ package object utils {
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
-      case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

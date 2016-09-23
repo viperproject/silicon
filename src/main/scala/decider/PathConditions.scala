@@ -8,7 +8,6 @@ package viper.silicon.decider
 
 import viper.silicon._
 import viper.silicon.state.terms.{And, Implies, True, Term}
-import viper.silicon.state.utils.partitionAuxiliaryTerms
 
 /*
  * Interfaces (public, provide only immutable views)
@@ -158,17 +157,13 @@ private[decider] class DefaultPathConditionStack extends PathConditionStack with
   def pathConditions = assumptions ++ branchConditions
 
   def asConditionals: Seq[Term] = {
-    var topLevelTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
 
-    for (scope <- _scopes;
-         (topLevelAssumptions, nestedAssumptions) = partitionAuxiliaryTerms(scope.assumptions)) {
-
-      topLevelTerms ++= topLevelAssumptions
-      conditionalTerms :+= Implies(scope.branchCondition.getOrElse(True()), And(nestedAssumptions))
+    for (scope <- _scopes) {
+      conditionalTerms :+= Implies(scope.branchCondition.getOrElse(True()), And(scope.assumptions))
     }
 
-    topLevelTerms ++ conditionalTerms
+    conditionalTerms
   }
 
   def setMark(mark: Mark) {
@@ -249,7 +244,8 @@ private[decider] class DefaultPathConditions extends Mutable {
 
   def next() : Int = {
     _counter += 1
-    return _counter - 1
+
+    _counter - 1
   }
 
   def mark(): Mark = {

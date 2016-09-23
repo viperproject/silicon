@@ -30,15 +30,35 @@
   (=> (not (= i ($Seq.length s))) (= ($Seq.index ($Seq.build s v) i) ($Seq.index s i))))
   :pattern ( ($Seq.index ($Seq.build s v) i))
   )))
-(assert (forall ((s0 $Seq<$S$>) (s1 $Seq<$S$>) ) (! (= ($Seq.length ($Seq.append s0 s1)) (+ ($Seq.length s0) ($Seq.length s1)))
+(assert (forall ((s0 $Seq<$S$>) (s1 $Seq<$S$>) ) (!
+  (implies ; The implication was not in the Dafny version
+    (and
+      (not (= s0 $Seq.empty<$S$>))
+      (not (= s1 $Seq.empty<$S$>)))
+    (=
+      ($Seq.length ($Seq.append s0 s1))
+      (+ ($Seq.length s0) ($Seq.length s1))))
   :pattern ( ($Seq.length ($Seq.append s0 s1)))
   )))
 (assert (forall ((t $S$) ) (! (= ($Seq.index ($Seq.singleton t) 0) t)
   :pattern ( ($Seq.index ($Seq.singleton t) 0))
   )))
-(assert (forall ((s0 $Seq<$S$>) (s1 $Seq<$S$>) (n Int) ) (! (and
-  (=> (< n ($Seq.length s0)) (= ($Seq.index ($Seq.append s0 s1) n) ($Seq.index s0 n)))
-  (=> (<= ($Seq.length s0) n) (= ($Seq.index ($Seq.append s0 s1) n) ($Seq.index s1 (- n ($Seq.length s0))))))
+(assert (forall ((s $Seq<$S$>)) (! ; The axiom was not in the Dafny version
+  (= ($Seq.append s $Seq.empty<$S$>) s)
+  :pattern (($Seq.append s $Seq.empty<$S$>))
+  )))
+(assert (forall ((s $Seq<$S$>)) (! ; The axiom was not in the Dafny version
+  (= ($Seq.append $Seq.empty<$S$> s) s)
+  :pattern (($Seq.append $Seq.empty<$S$> s))
+  )))
+(assert (forall ((s0 $Seq<$S$>) (s1 $Seq<$S$>) (n Int) ) (!
+  (implies ; The implication was not in the Dafny version
+    (and
+      (not (= s0 $Seq.empty<$S$>))
+      (not (= s1 $Seq.empty<$S$>)))
+    (and
+      (=> (< n ($Seq.length s0)) (= ($Seq.index ($Seq.append s0 s1) n) ($Seq.index s0 n)))
+      (=> (<= ($Seq.length s0) n) (= ($Seq.index ($Seq.append s0 s1) n) ($Seq.index s1 (- n ($Seq.length s0)))))))
   :pattern ( ($Seq.index ($Seq.append s0 s1) n))
   )))
 (assert (forall ((s $Seq<$S$>) (i Int) (v $S$) ) (! (=> (and

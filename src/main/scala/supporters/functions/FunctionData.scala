@@ -75,7 +75,6 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[this] var freshFvfs: Set[(ast.Field, Var)] = Set.empty
   private[this] var qpTerms: Set[Term] = Set.empty
-  private[functions] var afterRelations: Set[Term] = Set.empty
 
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
     assert(0 <= phase && phase <= 1, s"Cannot advance from phase $phase")
@@ -91,7 +90,6 @@ class FunctionData(val programFunction: ast.Function,
     freshFvfs = mergedFunctionRecorder.freshFvfs.asInstanceOf[Set[(ast.Field, Var)]]
 
     setQpTerms(mergedFunctionRecorder)
-    setAfterRelations()
 
     phase += 1
   }
@@ -120,23 +118,6 @@ class FunctionData(val programFunction: ast.Function,
     }
   }
 
-  private[this] def setAfterRelations(): Unit = {
-    var lastFVF = freshFvfs.map { case (field, fvf) =>
-      val fvfTOP = Var(FvfTop(field.name), fvf.sort)
-      field -> fvfTOP
-    }.toMap
-
-    afterRelations =
-      freshFvfs.map { case (field, freshFvf) =>
-        val fvf = lastFVF(field)
-        val after = FvfAfterRelation(field.name, freshFvf, fvf)
-
-        lastFVF = lastFVF.updated(field, freshFvf)
-
-        after
-      }
-  }
-
   private[this] def bindSymbols(innermostBody: Term): Term = {
     var bindings = Map(formalResult -> limitedFunctionApplication)
     bindings ++= toMap(freshFvfs.map { case (field, fvf) => fvf -> App(fvfGenerators(field), arguments) })
@@ -162,7 +143,7 @@ class FunctionData(val programFunction: ast.Function,
         expressionTranslator.translatePostcondition(program, programFunction.posts, this)
 
       val pre = And(translatedPres)
-      val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(posts))))
+      val innermostBody = And(qpTerms ++ List(Implies(pre, And(posts))))
       val body = bindSymbols(innermostBody)
 
       Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
@@ -211,7 +192,7 @@ class FunctionData(val programFunction: ast.Function,
 
     optBody.map(translatedBody => {
       val pre = And(translatedPres)
-      val innermostBody = And(afterRelations ++ qpTerms ++ List(Implies(pre, And(functionApplication === translatedBody))))
+      val innermostBody = And(qpTerms ++ List(Implies(pre, And(functionApplication === translatedBody))))
       val body = bindSymbols(innermostBody)
       val allTriggers = (
            Seq(Trigger(functionApplication))

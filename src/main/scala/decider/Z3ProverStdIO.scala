@@ -16,6 +16,7 @@ import viper.silicon.interfaces.decider.{Prover, Sat, Unsat, Unknown}
 import viper.silicon.reporting.{Bookkeeper, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
+import viper.silicon.supporters.QuantifierSupporter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
 class Z3ProverStdIO(config: Config,
@@ -155,7 +156,7 @@ class Z3ProverStdIO(config: Config,
      * quantification occurs in positive or negative position.
      */
     term.deepCollect{case q: Quantification => q}.foreach(q => {
-      val problems = viper.silicon.state.utils.detectQuantificationProblems(q)
+      val problems = QuantifierSupporter.detectQuantificationProblems(q)
 
       if (problems.nonEmpty) {
         quantificationLogger.println(s"\n\n${q.toString(true)}")

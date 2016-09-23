@@ -36,8 +36,8 @@
 
 (assert (forall ((r $S$)) (!
   ($Set.in r ($Set.singleton r))
-  ; :pattern (($Set.singleton r)) ; Dafny
-  :pattern (($Set.in r ($Set.singleton r)))
+  :pattern (($Set.singleton r)) ; Dafny
+;  :pattern (($Set.in r ($Set.singleton r)))
   )))
 
 (assert (forall ((r $S$) (o $S$)) (!
@@ -63,16 +63,16 @@
 
 (assert (forall ((a $Set<$S$>) (x $S$)) (!
   ($Set.in x ($Set.unionone a x))
-  ; :pattern (($Set.unionone a x)) ; Dafny
-  :pattern (($Set.in x ($Set.unionone a x)))
+  :pattern (($Set.unionone a x)) ; Dafny
+;  :pattern (($Set.in x ($Set.unionone a x)))
   )))
 
 (assert (forall ((a $Set<$S$>) (x $S$) (y $S$)) (!
   (=>
     ($Set.in y a)
     ($Set.in y ($Set.unionone a x)))
-  ; :pattern (($Set.in y a) ($Set.unionone a x)) ; Dafny
-  :pattern (($Set.in y a) ($Set.in y ($Set.unionone a x)))
+  :pattern (($Set.in y a) ($Set.unionone a x)) ; Dafny
+;  :pattern (($Set.in y a) ($Set.in y ($Set.unionone a x)))
   )))
 
 (assert (forall ((a $Set<$S$>) (x $S$)) (!
@@ -102,16 +102,16 @@
   (=>
     ($Set.in y a)
     ($Set.in y ($Set.union a b)))
-  ; :pattern (($Set.union a b) ($Set.in y a)) ; Dafny
-  :pattern (($Set.in y ($Set.union a b)) ($Set.in y a))
+  :pattern (($Set.union a b) ($Set.in y a)) ; Dafny
+;  :pattern (($Set.in y ($Set.union a b)) ($Set.in y a))
   )))
 
 (assert (forall ((a $Set<$S$>) (b $Set<$S$>) (y $S$)) (!
   (=>
     ($Set.in y b)
     ($Set.in y ($Set.union a b)))
-  ; :pattern (($Set.union a b) ($Set.in y b)) ; Dafny
-  :pattern (($Set.in y ($Set.union a b)) ($Set.in y b))
+  :pattern (($Set.union a b) ($Set.in y b)) ; Dafny
+;  :pattern (($Set.in y ($Set.union a b)) ($Set.in y b))
   )))
 
 ; MS: Commented because the trigger looks too weak
@@ -186,8 +186,8 @@
   (=>
     ($Set.in y b)
     (not ($Set.in y ($Set.difference a b))))
-  ; :pattern (($Set.difference a b) ($Set.in y b)) ; Dafny
-  :pattern (($Set.in y ($Set.difference a b)) ($Set.in y b))
+  :pattern (($Set.difference a b) ($Set.in y b)) ; Dafny
+;  :pattern (($Set.in y ($Set.difference a b)) ($Set.in y b))
   )))
 
 (assert (forall ((a $Set<$S$>) (b $Set<$S$>)) (!
@@ -252,6 +252,6 @@
       (-
         ($Set.card a)
         ($Set.card ($Set.intersection a b)))))
-;  :pattern (($Set.card ($Set.difference a b))) ; Dafny
-  :pattern (($Set.card ($Set.difference a b)) ($Set.card ($Set.intersection a b)))
+  :pattern (($Set.card ($Set.difference a b))) ; Dafny
+;  :pattern (($Set.card ($Set.difference a b)) ($Set.card ($Set.intersection a b)))
   )))

@@ -214,8 +214,8 @@ trait DefaultProducer[ST <: Store[ST],
 
       case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), Nil, qid, pve, c){
-          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, tAuxQuantNoTriggers, c1) =>
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), None, qid, pve, c){
+          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, Left(tAuxQuantNoTriggers), c1) =>
             val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
             val additionalInvFctArgs = c1.quantifiedVariables
             val gain = PermTimes(tPerm, c1.permissionScalingFactor)

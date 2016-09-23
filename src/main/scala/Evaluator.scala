@@ -153,7 +153,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
-          c.fvfCache.get((fa.field, quantifiedChunks)) match { /* TOOD: Drop field from cache map, quantifiedChunks should suffice */
+          c1.fvfCache.get((fa.field, quantifiedChunks)) match { /* TOOD: Drop field from cache map, quantifiedChunks should suffice */
             case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
@@ -162,6 +162,12 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
+                  assume(fvfDef.quantifiedValueDefinitions)
+                    /* Re-emit definition since the previous definition could be nested under
+                     * an auxiliary quantifier (resulting from the evaluation of some Silver
+                     * quantifier in whose body field 'fa.field' was accessed)
+                     * which is protected by a trigger term that we currently don't have.
+                     */
                   val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                   val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                   val c2 = c1.copy(functionRecorder = fr1)
@@ -169,8 +175,8 @@ trait DefaultEvaluator[ST <: Store[ST],
 
             case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
+                assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-                assume(fvfDef)
                 val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                                              .recordQPTerms(c1.quantifiedVariables, decider.pcs.branchConditions, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
                 val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
@@ -401,11 +407,12 @@ trait DefaultEvaluator[ST <: Store[ST],
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
         val name = s"prog.l${utils.ast.sourceLine(sourceQuant)}"
-        evalQuantified(σ, qantOp, vars, Nil, Seq(body), eTriggers, name, pve, c){case (tVars, _, Seq(tBody), tTriggers, tAuxQuant, c1) =>
-          decider.prover.logComment("Nested auxiliary terms")
-          assume(tAuxQuant)
-          val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
-          Q(tQuant, c1)}
+        evalQuantified(σ, qantOp, vars, Nil, Seq(body), Some(eTriggers), name, pve, c){
+          case (tVars, _, Seq(tBody), tTriggers, Right(tAuxQuants), c1) =>
+            decider.prover.logComment("Nested auxiliary terms")
+            assume(tAuxQuants)
+            val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
+            Q(tQuant, c1)}
 
       case fapp @ ast.FuncApp(funcName, eArgs) =>
         val pvePre = PreconditionInAppFalse(fapp)
@@ -584,8 +591,16 @@ trait DefaultEvaluator[ST <: Store[ST],
     resultTerm
   }
 
-  def evalQuantified(σ: S, quant: Quantifier, vars: Seq[ast.LocalVar], es1: Seq[ast.Exp], es2: Seq[ast.Exp], triggers: Seq[ast.Trigger], name: String, pve: PartialVerificationError, c: C)
-                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Quantification, C) => VerificationResult)
+  def evalQuantified(σ: S,
+                     quant: Quantifier,
+                     vars: Seq[ast.LocalVar],
+                     es1: Seq[ast.Exp], /* Are evaluated and added as path conditions before ...*/
+                     es2: Seq[ast.Exp], /* ... these terms are evaluated */
+                     optTriggers: Option[Seq[ast.Trigger]],
+                     name: String,
+                     pve: PartialVerificationError,
+                     c: C)
+                    (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C) => VerificationResult)
                     : VerificationResult = {
 
     val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
@@ -596,24 +611,29 @@ trait DefaultEvaluator[ST <: Store[ST],
                     recordPossibleTriggers = true,
                     possibleTriggers = Map.empty)
 
-    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Iterable[Term], Quantification, C)](QB => {
+    decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C)](QB => {
       val preMark = decider.setPathConditionMark()
       evals(σQuant, es1, _ => pve, c0)((ts1, c1) => {
         val bc = And(ts1)
         decider.setCurrentBranchCondition(bc)
         evals(σQuant, es2, _ => pve, c1)((ts2, c2) => {
           val πDelta = decider.pcs.after(preMark).assumptions - bc
-          evalTriggers(σQuant, triggers, πDelta, pve, c2)((tTriggers, c3) => {
-            val (tAuxTopLevel, tAuxNested) = state.utils.partitionAuxiliaryTerms(πDelta)
-            val tAuxQuant = Quantification(quant, tVars, And(tAuxNested), tTriggers, s"$name-aux")
+          evalTriggers(σQuant, optTriggers.getOrElse(Nil), πDelta, pve, c2)((tTriggers, c3) => {
+            def auxQuantGen(trigger: Trigger, extraVars: Iterable[Var]) =
+              Quantification(quant, tVars ++ extraVars, And(πDelta), Seq(trigger), s"$name-aux")
+            val auxQuant =
+              if (optTriggers.isEmpty)
+                Left(auxQuantGen(Trigger(Nil), Nil))
+              else {
+                val triggersAndVars =
+                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, fresh)
+                Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
                              recordPossibleTriggers = c.recordPossibleTriggers,
                              possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
-            QB(ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c4)})})})
-    }){case (ts1, ts2, tTriggers, tAuxTopLevel, tAuxQuant, c1) =>
-      decider.prover.logComment("Top-level auxiliary terms")
-      assume(tAuxTopLevel)
-      Q(tVars, ts1, ts2, tTriggers, tAuxQuant, c1)
+            QB(ts1, ts2, tTriggers, auxQuant, c4)})})})
+    }){case (ts1, ts2, tTriggers, auxQuant, c1) =>
+      Q(tVars, ts1, ts2, tTriggers, auxQuant, c1)
     }
   }
 
@@ -876,6 +896,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //      case Seq(entry) if entry.newBranchConditions.isEmpty =>
       case Seq(entry) if entry.pathConditionStack.branchConditions.isEmpty =>
         entry.data
+      /* TODO: Create an ite-term (instead of defining a join function) if only two paths are to be joined */
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
         val joinSymbol = decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)

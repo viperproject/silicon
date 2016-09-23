@@ -229,8 +229,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 //        sys.error(s"Unexpected sort '${fvf.sort}' of field value function '$fvf' in lookup term '$term'")
 //    }
 
-    case FvfAfterRelation(field, fvf2, fvf1) => parens("$FVF.after_" <> field <+> render(fvf2) <+> render(fvf1))
-
     /* Other terms */
 
     case First(t) => parens("$Snap.first" <+> render(t))
@@ -251,9 +249,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case _: MagicWandChunkTerm =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
-
-    case fvf: SummarisingFvfDefinition =>
-      render(And(fvf.quantifiedValueDefinitions))
   }
 
   @inline
