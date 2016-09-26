@@ -154,7 +154,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
-          c.fvfCache.get((fa.field, quantifiedChunks)) match { /* TOOD: Drop field from cache map, quantifiedChunks should suffice */
+          c1.fvfCache.get((fa.field, quantifiedChunks)) match { /* TOOD: Drop field from cache map, quantifiedChunks should suffice */
             case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
@@ -163,21 +163,21 @@ trait DefaultEvaluator[ST <: Store[ST],
                 case false =>
                   Failure(pve dueTo InsufficientPermission(fa))
                 case true =>
-                  assume(fvfDef)
-                  /* Re-emit definition since the previous definition could be nested under
-                   * an auxiliary quantifier (resulting from the evaluation of some Silver
-                   * quantifier in whose body field 'fa.field' was accessed)
-                   * which is protected by a trigger term that we currently don't have.
-                   */
+                  assume(fvfDef.quantifiedValueDefinitions)
+                    /* Re-emit definition since the previous definition could be nested under
+                     * an auxiliary quantifier (resulting from the evaluation of some Silver
+                     * quantifier in whose body field 'fa.field' was accessed)
+                     * which is protected by a trigger term that we currently don't have.
+                     */
                   val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                   val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                   val c2 = c1.copy(functionRecorder = fr1)
                   Q(fvfLookup, c2)}
-
             case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
+                assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-                assume(fvfDef)
+
                 val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                                              .recordQPTerms(c1.quantifiedVariables, decider.pcs.branchConditions, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
                 val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
@@ -638,7 +638,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                 Left(auxQuantGen(Trigger(Nil), Nil))
               else {
                 val triggersAndVars =
-                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, () => fresh("s", sorts.Snap))
+                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, fresh)
                 Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
               recordPossibleTriggers = c.recordPossibleTriggers,

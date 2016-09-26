@@ -190,7 +190,7 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
                                     formalArgs:Seq[Var],
                                     sourceChunks: Seq[QuantifiedPredicateChunk])
                                    (config: Config)
-    extends PsfDefinition with Definition {
+    extends PsfDefinition {
 
   private val triples =
     sourceChunks.map(ch =>

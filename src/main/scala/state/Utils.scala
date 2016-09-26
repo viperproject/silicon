@@ -9,7 +9,9 @@ package viper.silicon.state
 import scala.collection.mutable
 import viper.silicon.interfaces.state.{Heap, Store, State}
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
+
+//TODO: remove import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
+
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -88,12 +90,9 @@ package object utils {
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
-    case FvfAfterRelation(_, fvf2, fvf1) => fvf2 :: fvf1 :: Nil
-    case SummarisingFvfDefinition(_, fvf, rcvr, _) => Seq(fvf, rcvr)
     case PredicateDomain(_, psf) => psf :: Nil
     case PredicateLookup(_, psf, args, formalVars) => Seq(psf) ++ args ++ formalVars
-    case PsfAfterRelation(_, psf2, psf1) => psf2 :: psf1 :: Nil
-    case SummarisingPsfDefinition(_, psf, args, formalVars, _) => Seq(psf) ++ args ++ formalVars
+
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -175,10 +174,10 @@ package object utils {
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
-      case FvfAfterRelation(f, fvf2, fvf1) => FvfAfterRelation(f, go(fvf2), go(fvf1))
+
       case PredicateDomain(p, psf) => PredicateDomain(p, go(psf))
       case PredicateLookup(p, psf, args, formalVars) => PredicateLookup(p, go(psf), args map go,formalVars map go)
-      case PsfAfterRelation(p, psf2, psf1) => PsfAfterRelation(p, go(psf2), go(psf1))
+
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

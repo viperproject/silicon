@@ -122,7 +122,7 @@ object SymbExLogger {
   def setConfig(c: Config) {
     if (config == null) {
       config = c
-      setEnabled(config.ideMode())
+      setEnabled(config.ideModeAdvanced())
     }
   }
 
@@ -163,7 +163,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeDotFile() {
-    if (enabled && (FLAG_WRITE_FILES || config.ideMode())) {
+    if (enabled && (FLAG_WRITE_FILES || config.ideModeAdvanced())) {
       val dotRenderer = new DotTreeRenderer()
       val str = dotRenderer.render(memberList)
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "dot_input.dot"))
@@ -177,7 +177,7 @@ object SymbExLogger {
     */
   @elidable(INFO)
   def writeJSFile() {
-    if (enabled && (FLAG_WRITE_FILES || config.ideMode())) {
+    if (enabled && (FLAG_WRITE_FILES || config.ideModeAdvanced())) {
       val jsRenderer = new JSTreeRenderer()
       val pw = new java.io.PrintWriter(new File(getOutputFolder() + "executionTreeData.js"))
       try pw.write(jsRenderer.render(memberList)) finally pw.close()

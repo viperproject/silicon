@@ -104,8 +104,6 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
 
   def splitHeap(h: H, field: String): (Seq[QuantifiedFieldChunk], Seq[Chunk])
 
-  def injectFVF(freshFvf: Var): Unit
-
   def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term]
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]): Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk]
@@ -615,20 +613,12 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
 
     /* ATTENTION: Never create an FVF without calling this method! */
     private def freshFVF(field: ast.Field, isChunkFvf: Boolean) = {
-      freshFVFInAction = true
-
     bookkeeper.logfiles("fvfs").println(s"isChunkFvf = $isChunkFvf")
 
       val freshFvf =
         if (isChunkFvf) {
           val fvfSort = sorts.FieldValueFunction(toSort(field.typ))
           val freshFvf = fresh("fvf#part", fvfSort)
-
-          val fvfTOP = Var(FvfTop(field.name), fvfSort)
-          val fvf = lastFVF.getOrElse(field, fvfTOP)
-          val after = FvfAfterRelation(field.name, freshFvf, fvf)
-          assume(after)
-          lastFVF += (field -> freshFvf)
 
           freshFvf
         } else {
@@ -638,36 +628,8 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           freshFvf
         }
 
-      freshFVFInAction = false
-
       freshFvf
     }
-
-
-    def injectFVF(freshFvf: Var): Unit = {
-      Predef.assert(freshFvf.sort.isInstanceOf[sorts.FieldValueFunction],
-                    s"Expected newFvf to be of sort FieldValueFunction, but found $freshFvf of sort ${freshFvf.sort}")
-
-      if (freshFVFInAction) return
-      val newFvfSort = freshFvf.sort.asInstanceOf[sorts.FieldValueFunction]
-
-      quantifiedFields.foreach{field =>
-        val codomainSort = toSort(field.typ)
-
-        if (codomainSort == newFvfSort.codomainSort) {
-          val fvfSortForTOP = sorts.FieldValueFunction(codomainSort)
-          val fvfTOP = Var(FvfTop(field.name), fvfSortForTOP)
-          val fvf = lastFVF.getOrElse(field, fvfTOP)
-          val after = FvfAfterRelation(field.name, freshFvf, fvf)
-
-          assume(after)
-
-          lastFVF += field -> freshFvf
-        }
-      }
-    }
-
-
 
     /* TODO: Rename such that it becomes obvious that the methods constructs a
      *       *SingletonChunk*FvfDefinition
@@ -840,25 +802,6 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           .toSeq
     }
 
-    /* FVF-after and FVF-top */
-
-    private var quantifiedFields: Set[ast.Field] = Set.empty
-    private var lastFVF: Map[ast.Field, Term] = Map.empty
-    private var freshFVFInAction = false
-    private var quantifiedPredicates: Set[ast.Predicate] = Set.empty
-    private var lastPSF: Map[ast.Predicate, Term] = Map.empty
-    private var freshPSFInAction = false
-  //  def initLastFVF(quantifiedFields: Set[ast.Field]) {
-  //    this.quantifiedFields = quantifiedFields
-  //
-  //    lastFVF = toMap(quantifiedFields.map{field =>
-  //      val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
-  //      val fvfTOP = Var(FvfTop(field.name), fvfSort)
-  //
-  //      field -> fvfTOP
-  //    })
-  //  }
-
     /* Lifetime */
 
     def reset() {
@@ -866,13 +809,6 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       qidCounter.reset()
 
   //    withValueCache.clear()
-      quantifiedFields = quantifiedFields.empty
-      lastFVF = lastFVF.empty
-      freshFVFInAction = false
-
-      quantifiedPredicates = quantifiedPredicates.empty
-      lastPSF = lastPSF.empty
-      freshPSFInAction = false
 
   //    val logs = List(bookkeeper.logfiles("withValueCache"),
   //                    bookkeeper.logfiles("domainDefinitionAxiom"))

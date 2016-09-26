@@ -115,11 +115,10 @@ trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
 
 
 
-  def injectPSF(freshFvf: Var): Unit
-
   def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term]
 
   def hintBasedChunkOrderHeuristic(hints: Seq[Term]): Seq[QuantifiedPredicateChunk] => Seq[QuantifiedPredicateChunk]
+
 }
 
 trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
@@ -458,7 +457,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         val permsTakenFunc = Macro(macroName, formalSorts, sorts.Perm)
         val permsTakenFApp = (t: Seq[Term]) => App(permsTakenFunc, t)
 
-        pNeeded = PermMinus(pNeeded, permsTakenFApp(formalVars)) //TODO: args or formalArgs?
+        pNeeded = PermMinus(pNeeded, permsTakenFApp(formalVars))
         (ch, permsTakenFApp(formalVars), pNeeded)
       }
 
@@ -610,10 +609,8 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
     /* Misc */
 
-
     /* ATTENTION: Never create an PSF without calling this method! */
     private def freshPSF(predicate: ast.Predicate, c:C, isChunkPsf: Boolean) = {
-      freshPSFInAction = true
 
       bookkeeper.logfiles("psfs").println(s"isChunkPsf = $isChunkPsf")
 
@@ -622,13 +619,8 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           val psfSort = sorts.PredicateSnapFunction(c.predicateSnapMap(predicate))
           val freshPsf = fresh("psf#part", psfSort)
 
-          val psfTOP = Var(PsfTop(predicate.name), psfSort)
-          val psf = lastPSF.getOrElse(predicate, psfTOP)
-          val after = PsfAfterRelation(predicate.name, freshPsf, psf)
-          assume(after)
-          lastPSF += (predicate -> freshPsf)
-
           freshPsf
+
         } else {
           val psfSort = sorts.PredicateSnapFunction(sorts.Snap)
           val freshPsf = fresh("psf#tot", psfSort)
@@ -636,32 +628,10 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           freshPsf
         }
 
-      freshPSFInAction = false
+
       freshPsf
+
     }
-
-    def injectPSF(freshPsf: Var): Unit = {
-      Predef.assert(freshPsf.sort.isInstanceOf[sorts.PredicateSnapFunction],
-        s"Expected newPsf to be of sort PredicateSnapFunction, but found $freshPsf of sort ${freshPsf.sort}")
-
-      if (freshPSFInAction) return
-      val newPsfSort = freshPsf.sort.asInstanceOf[sorts.PredicateSnapFunction]
-
-      quantifiedPredicates.foreach{predicate =>
-        //TODO nadmuell: adapt check?
-        //val codomainSort = toSort(predicate.body.map(getOptimalSnapshotSort(_, c.program)._1).getOrElse(sorts.Snap))
-        //if (codomainSort == newPsfSort.codomainSort) {
-          val psfSortForTOP = sorts.PredicateSnapFunction(newPsfSort.codomainSort)
-          val psfTOP = Var(PsfTop(predicate.name), psfSortForTOP)
-          val psf = lastPSF.getOrElse(predicate, psfTOP)
-          val after = PsfAfterRelation(predicate.name, freshPsf, psf)
-
-          assume(after)
-          lastPSF += predicate -> freshPsf
-        //}
-      }
-    }
-
 
     def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term, c:C)
                                 : (Term, Option[SingletonChunkPsfDefinition]) =
@@ -852,14 +822,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         .toSeq
     }
 
-    /* PSF-after and PSF-top */
-
-    private var quantifiedFields: Set[ast.Field] = Set.empty
-    private var lastFVF: Map[ast.Field, Term] = Map.empty
-    private var freshFVFInAction = false
-    private var quantifiedPredicates: Set[ast.Predicate] = Set.empty
-    private var lastPSF: Map[ast.Predicate, Term] = Map.empty
-    private var freshPSFInAction = false
 
     /* Lifetime */
 
@@ -868,13 +830,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       qidCounter.reset()
 
   //    withValueCache.clear()
-      quantifiedFields = quantifiedFields.empty
-      lastFVF = lastFVF.empty
-      freshFVFInAction = false
-
-      quantifiedPredicates = quantifiedPredicates.empty
-      lastPSF = lastPSF.empty
-      freshPSFInAction = false
 
   //    val logs = List(bookkeeper.logfiles("withValueCache"),
   //                    bookkeeper.logfiles("domainDefinitionAxiom"))

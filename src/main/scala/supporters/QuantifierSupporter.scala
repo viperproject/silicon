@@ -12,7 +12,7 @@ import viper.silicon.state.terms._
 trait QuantifierSupporter
 
 object QuantifierSupporter {
-  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: () => Var)
+  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
                                  : Seq[(Trigger, Iterable[Var])] = {
 
     /* TODO: fresh() does not need to declare the new symbols (on the solver level)
@@ -26,8 +26,11 @@ object QuantifierSupporter {
           Trigger(
             trigger.p map (_.transform {
               case app @ App(_: HeapDepFun, args) if args.head != Unit =>
-                val s = subst.getOrElseUpdate(args.head, fresh())
+                val s = subst.getOrElseUpdate(args.head, fresh("s", sorts.Snap))
                 app.copy(args = s +: args.tail)
+              case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] =>
+                val s = subst.getOrElseUpdate(fvf, fresh("fvf", fvf.sort))
+                s
             }(recursive = _ => true)))
         val snaps = subst.values /* A (lazy) iterable*/
         subst = subst.empty      /* subst.clear() would also clear the lazy iterable snaps */

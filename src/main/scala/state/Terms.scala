@@ -80,20 +80,6 @@ object ConstDecl extends (Var => Decl) {
 }
 
 /*
- * Definitions
- * TODO: Should only be a temporary solution. Consider introducing a propery
- *       environment that keeps track of symbols currently in scope, and of
- *       their definitions. Such a change might also affect declarations.
- */
-
-trait Definition extends Term {
-  val sort = sorts.Bool /* FIXME */
-
-  def declaration: Decl
-  def definition: Seq[Term]
-}
-
-/*
  * Applicables and Applications
  */
 
@@ -1582,13 +1568,7 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
   val sort = sorts.Set(elementsSort)
 }
 
-case class FvfAfterRelation(field: String, fvf2: Term, fvf1: Term) extends BooleanTerm {
-  utils.assertSameSorts[sorts.FieldValueFunction](fvf2, fvf1)
-}
 
-object FvfTop extends (String => Identifier) {
-  def apply(fieldName: String): Identifier = Identifier(s"$$fvfTOP_$fieldName")
-}
 /* Quantified predicates */
 case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], formalVars: Seq[Var]) extends Term {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
@@ -1604,14 +1584,14 @@ case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with P
   val elementsSort = sorts.Snap
   val sort = sorts.Set(elementsSort)
 }
-
+/* TODO: remove
 case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
   utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
 }
 
 object PsfTop extends (String => Identifier) {
   def apply(predicateName: String): Identifier = Identifier(s"$$psfTOP_$predicateName")
-}
+}*/
 
 /* Sort wrappers */
 
