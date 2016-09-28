@@ -6,21 +6,13 @@
 
 package viper.silicon.supporters.qps
 
-import viper.silver.ast
 import viper.silicon.Config
 import viper.silicon.utils.Counter
-import viper.silicon.state.terms._
 import viper.silicon.state.terms.utils.BigPermSum
-import viper.silicon.state.{Identifier, QuantifiedPredicateChunk}
-import viper.silicon.supporters.qps
-import viper.silicon.state._
-import viper.silicon.state.SymbolConvert
+import viper.silicon.state.QuantifiedPredicateChunk
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.implicits._
-import viper.silicon.state.terms.predef._
-import viper.silicon.state.terms.sorts.Snap
 import viper.silver.ast
-import viper.silicon.state.terms.{Sort, sorts}
+import viper.silicon.state.terms.sorts
 
 trait PsfDefinition {
   def predicate: ast.Predicate
@@ -43,7 +35,7 @@ private[qps] object PsfDefinition {
                                            : Term = {
 
     val argsSnap: Term = if (args.size == 1) {
-      args.apply(0).convert(sorts.Snap)
+      args.head.convert(sorts.Snap)
     } else {
       args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
     }
@@ -76,7 +68,7 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
   }
 
   val argsSnap: Term = if (args.size == 1) {
-    args.apply(0).convert(sorts.Snap)
+    args.head.convert(sorts.Snap)
   } else {
     args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
   }
@@ -165,7 +157,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     qvars match {
       case Seq(v) =>
         val repl = (t: Term) => {
-            var newTerm:Term = t;
+            val newTerm:Term = t;
             for (i <- formalArgs.indices) {
               newTerm.replace(args.apply(i), formalArgs.apply(i)).replace(v, inverseFunction(formalArgs))
             }

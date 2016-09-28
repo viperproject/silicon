@@ -9,9 +9,9 @@ package viper.silicon.supporters.qps
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission}
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.{Config}
+import viper.silicon.Config
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
@@ -132,7 +132,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
   protected val config: Config
   protected val bookkeeper: Bookkeeper
 
-  import symbolConverter.toSort
   import stateFactory._
   import decider.{assert, fresh, check, assume}
 
@@ -158,7 +157,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
     }
 
     def singletonConditionalPermissions(args: Seq[Term], formalVars:Seq[Var], perms: Term): Term = {
-      var cond = (formalVars zip args).map({case (formalVar, arg) => formalVar === arg}).reduce((cond1:Term, cond2:Term) => And(cond1, cond2))
+      val cond = (formalVars zip args).map({case (formalVar, arg) => formalVar === arg}).reduce((cond1:Term, cond2:Term) => And(cond1, cond2))
       Ite(cond, perms, NoPerm())
     }
 
@@ -293,8 +292,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         } else
           QuantifiedChunkPsfDefinition(predicate, psf, qvars, condition, args, formalVars, chunks /*, true*/)(axiomRewriter, config)
       } else {
-        //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
-        SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks.toSeq)(config)
+        SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks)(config)
       }
     }
 
@@ -314,8 +312,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       if (isChunkPsf) {
           SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
       } else {
-        //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
-        SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks.toSeq)(config)
+        SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks)(config)
       }
     }
 
@@ -337,7 +334,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       *         field value function `fvf`.
       */
     def quantifyChunksForPredicate(h: H, predicate: ast.Predicate, c:C): (H, Seq[SingletonChunkPsfDefinition]) = {
-      var formalArgs:Seq[Var] = c.predicateFormalVarMap(predicate)
+      val formalArgs:Seq[Var] = c.predicateFormalVarMap(predicate)
 
       val (chunks, psfDefOpts) =
         h.values.map {
@@ -621,21 +618,21 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       }
 
     def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
-      var qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
-      var qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
+      val qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
+      val qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
 
       def replaceAll(qvars: Seq[Var], newVars:Seq[Var], term:Term): Term = {
-        var newTerm = term;
+        var newTerm = term
         for (i <- qvars.indices) {
           newTerm = newTerm.replace(qvars.apply(i), newVars.apply(i))
         }
         newTerm
       }
 
-      var cond1 = replaceAll(qvars, qvars1, condition)
-      var cond2 = replaceAll(qvars, qvars2, condition)
-      var args1 = args.map(arg => replaceAll(qvars, qvars1, arg))
-      var args2 = args.map(arg => replaceAll(qvars, qvars2, arg))
+      val cond1 = replaceAll(qvars, qvars1, condition)
+      val cond2 = replaceAll(qvars, qvars2, condition)
+      val args1 = args.map(arg => replaceAll(qvars, qvars1, arg))
+      val args2 = args.map(arg => replaceAll(qvars, qvars2, arg))
 
       val argsEqual = (args1 zip args2).map(argsRenamed =>  argsRenamed._1 === argsRenamed._2).reduce((a1, a2) => And(a1, a2))
       val varsEqual = (qvars1 zip qvars2).map(vars => vars._1 === vars._2).reduce((v1, v2) => And(v1, v2) )
@@ -698,7 +695,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         Predef.assert(term.sort == argSort, s"Expected predicate argument $i of typ $argSort term, but found $term of sort ${term.sort}")
       }
 
-      val func = decider.fresh("inv", ((additionalArgs ++ fct)map (_.sort)), qvar.sort)
+      val func = decider.fresh("inv", (additionalArgs ++ fct)map (_.sort), qvar.sort)
       val inverseFunc = (t: Seq[Term]) => App(func, additionalArgs ++ t)
       val invOFct: Term = inverseFunc(fct)
       val fctOfInv: Seq[Term] = fct map(_.replace(qvar, inverseFunc(formalVars)))

@@ -7,12 +7,12 @@
 package  viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silver.ast.{Predicate, Program, PredicateAccess}
+import viper.silver.ast.{Predicate}
 import viper.silicon.{Config, Map, Set, toSet}
 import viper.silicon.decider.PreambleFileEmitter
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
-import viper.silicon.state.terms.{sorts, _}
+import viper.silicon.state.terms._
 import viper.silicon.state.{SymbolConvert, terms}
 
 trait PredicateSnapFunctionsEmitter extends PreambleEmitter
@@ -43,7 +43,7 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
     }
 
       collectedSorts = (
-        collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction((predicateSnapGenerator.getSnap(predicate))._1))
+        collectedPredicates.map(predicate => terms.sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1))
           + terms.sorts.PredicateSnapFunction(terms.sorts.Snap)
       )
 
