@@ -397,6 +397,7 @@ trait DefaultExecutor[ST <: Store[ST],
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)){
                 case true =>
+                  //handles both quantified and unquantified predicates
                   predicateSupporter.fold(σ, predicate, tArgs, tPerm, pve, c2)(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
@@ -408,6 +409,7 @@ trait DefaultExecutor[ST <: Store[ST],
           eval(σ, ePerm, pve, c1)((tPerm, c2) =>
             decider.assert(σ, IsNonNegative(tPerm)){
               case true =>
+                //handles both quantified and unquantified predicates
                 predicateSupporter.unfold(σ, predicate, tArgs, tPerm, pve, c2, pa)(Q)
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))

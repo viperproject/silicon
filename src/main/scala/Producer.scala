@@ -204,7 +204,7 @@ trait DefaultProducer[ST <: Store[ST],
             var formalArgs:Seq[Var] = c.predicateFormalVarMap(predicate)
             decider.prover.logComment("createPredicateSnapFunction")
             val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, s, c)
-            decider.prover.logComment("assume snapDefinitions")
+            decider.prover.logComment("assume snapDefinition")
             optPsfDef.foreach(psfDef => assume(psfDef.snapDefinitions))
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
             (h + ch, c)

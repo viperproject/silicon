@@ -142,14 +142,15 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val c0 = c.copy(fvfAsSnap = true).scalePermissionFactor(tPerm)
-      //TODO: Perm scaling?
       consume(σ \ insγ, body, pve, c0)((σ1, snap, c1) => {
         decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
           if (c.qpPredicates.contains(predicate)) {
+            //convert snapshot to desired type if necessary
             val snapConvert = snap.convert(c1.predicateSnapMap(predicate))
             var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
             val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snapConvert, c)
             optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
+            //create single quantified predicate chunk with given snapshot
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
             val σ2 = σ1 \ σ.γ \+ ch
             Q(σ2 , c1)
@@ -191,14 +192,15 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val c0 = c.scalePermissionFactor(tPerm)
       if (c.qpPredicates.contains(predicate)) {
-        //TODO: Perm scaling? see else branch
        val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
         val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
         val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+        //remove permission for single predicate
         quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
           case Some((h1, ch, psfDef, c2)) =>
             val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
             decider.assume(psfDomain ++ psfDef.snapDefinitions)
+            //evaluate snapshot value
             val snap = ch.valueAt(tArgs)
             produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c2)((σ2, c3) => {
               decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
@@ -206,7 +208,6 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
           case None => Failure(pve dueTo InsufficientPermission(pa))
         }
-
       } else {
         /*
         chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {

@@ -9,20 +9,17 @@ package viper.silicon.supporters.qps
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission, ReceiverNull}
+import viper.silver.verifier.reasons.{InsufficientPermission}
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.{Config, Map, Set, TriggerSets}
+import viper.silicon.{Config}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.{BigPermSum, consumeExactRead}
-import viper.silicon.state.terms.{perms, _}
+import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.utils.Counter
-import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
-import viper.silicon.supporters.qps.PsfDefinition
-import viper.silicon.supporters.qps.SingletonChunkPsfDefinition
+import viper.silicon.interfaces.state.{Heap, State, Store}
 
 
 case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term, invOfFct: Quantification, fctOfInv: Quantification) {
@@ -544,49 +541,15 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           Forall(ithChunk.formalVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil: Seq[Trigger])
         case Some((perms, arg:Term)) =>
           PermMinus(perms, ithPTaken.replace(formalVars, Seq(arg))) === NoPerm()
-        case Some((perms, args:Seq[Term])) =>
-          PermMinus(perms, ithPTaken.replace(formalVars, args)) === NoPerm()
       }
       (permissionConstraint, depletedCheck)
     }
 
     @inline
     private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var]/*, formalVars:Seq[Term]*/): Option[(Term, Term)] = {
-      /* TODO: nadmuell
-       *         - distinguished between quantified chunks for single and multiple locations
-       *         - separated the initial permission amount from the subtracted amount(s) in each chunk
-       */
-
-      /* This method essentially tries to detect if a quantified chunk provides
-       * permissions to a single location only, in which case there isn't a need
-       * to create, e.g. permission constraints or depleted checks that quantify
-       * over the implicit receiver (i.e. over r).
-       *
-       * With the current approach to handling quantified permissions, a
-       * quantified chunk that provides permissions to a single receiver only
-       * will have a permission term (chunk.perm) of the shape
-       *   (r == t ? p(r) : 0) - p_1(r) - ... - p_n(r)
-       * The conditional represents the initial permission amount that the chunk
-       * was initialised with, and the p_i(r) are amounts that have potentially
-       * been split of during the execution (by construction, it is ensured that
-       * the term is >= 0).
-       *
-       * Quantifying over r is not relevant for such terms, because the only
-       * meaningful choice of r is t. Hence, such terms are rewritten to
-       *   p(t) - p_1(t) - ... - p_n(t)
-       *
-       * I benchmarked the effects of this optimisation on top of Silicon-QP
-       * revision 0bc3d0d81890 (2015-08-11), and the runtime didn't change.
-       * However, in the case of constraining symbolic permissions, the
-       * optimisation will avoid assuming foralls for which no triggers can be
-       * found. These cases are rather rare (at the moment of writing, about 10
-       * for the whole test suite), but probably still worth avoiding.
-       */
-
-      var v: Term = `?r`
-
+      /* TODO: adapt to quantified predicates */
       def eliminateImplicitQVarIfPossible(t: Term): Term = t.transform {
-        case Ite(Equals(`?r`, w), p1, NoPerm()) if !qvar.exists(w.contains) =>
+        /*case Ite(Equals(`?r`, w), p1, NoPerm()) if !qvar.exists(w.contains) =>
           v = w
           p1.replace(`?r`, v)
         case pm @ PermMinus(t1, t2) =>
@@ -596,15 +559,14 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
            */
           val s1 = eliminateImplicitQVarIfPossible(t1)
           if (v == `?r`) pm
-          else PermMinus(s1, t2.replace(`?r`, v))
+          else PermMinus(s1, t2.replace(`?r`, v))*/
         case other =>
           other
       }()
 
       val result = eliminateImplicitQVarIfPossible(perms)
 
-      if (v == `?r`) None
-      else Some((result, v))
+      None
     }
 
     /* Misc */
@@ -657,43 +619,6 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           val psf = freshPSF(predicate, c, true)
           (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))))
       }
-/*
-    def domainDefinitionAxioms(predicate: ast.Predicate, qvar: Var, cond: Term, args: Seq[Term], psf: Term, inv: PredicateInverseFunction) = {
-      val snap = args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-      val axioms = cond match {
-        case SetIn(`qvar`, set) if (snap == qvar) =>
-          /* Optimised axiom in the case where the quantified permission forall is of the
-           * shape "forall x :: x in set ==> acc(x.f)".
-           */
-          Seq(Domain(predicate.name, psf) === set)
-
-        case _ => Seq(
-          /* Create an axiom of the shape "forall x :: x in domain(fvf) <==> cond(x)" */
-          /* TODO: Unify with MultiLocationFvf.domainDefinition */
-          /* TODO: Why does this axiom not use `?r` and inv? */
-          Forall(qvar,
-            Iff(
-              SetIn(snap, PredicateDomain(predicate.name, psf)),
-              cond),
-  //          Trigger(Lookup(field.name, fvf, receiver)))
-            if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(SetIn(snap, Domain(predicate.name, psf))) :: Nil,
-            s"qp.$psf-dom")
-          /* Create an axiom of the shape "forall r :: r in domain(fvf) ==> cond[x |-> inv(r)]" */
-  //        Forall(`?r`,
-  //          Implies(
-  //            SetIn(`?r`, Domain(field.name, fvf)),
-  //            And(
-  //              cond.replace(qvar, inv(`?r`)),
-  //              receiver.replace(qvar, inv(`?r`)) === `?r`)),
-  //          Trigger(SetIn(`?r`, Domain(field.name, fvf))))
-        )
-      }
-
-      //    val log = bookkeeper.logfiles("domainDefinitionAxiom")
-      //    log.println(s"axiom = $axiom")
-
-      axioms
-    }*/
 
     def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
       var qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
@@ -809,14 +734,8 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         matchingChunks ++ otherChunks
       }
 
-    def extractHints(qvar: Option[Var], cond: Option[Term], rcvr: Term): Seq[Term] = {
-      None.orElse(rcvr.find{case SeqAt(seq, _) => seq})
-          .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
-          .toSeq
-    }
-
     def extractHints(qvar: Option[Var], cond: Option[Term], args: Seq[Term]): Seq[Term] = {
-      //TODO nadmuell:inlcude arguments for hint extraction
+      //TODO inlcude arguments for hint extraction
       None.orElse(args.apply(0).find{case SeqAt(seq, _) => seq})
         .orElse(cond.flatMap(_.find { case SeqIn(seq, _) => seq; case SetIn(_, set) => set }))
         .toSeq

@@ -13,9 +13,7 @@ import viper.silicon.decider.PreambleFileEmitter
 import viper.silicon.interfaces.PreambleEmitter
 import viper.silicon.interfaces.decider.Prover
 import viper.silicon.state.terms.{sorts, _}
-import viper.silicon.state.terms.sorts._
 import viper.silicon.state.{SymbolConvert, terms}
-import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 
 trait PredicateSnapFunctionsEmitter extends PreambleEmitter
 
@@ -33,7 +31,7 @@ class DefaultPredicateSnapFunctionsEmitter(prover: => Prover,
 
   def sorts: Set[Sort] = toSet(collectedSorts)
   /* Scala's immutable sets are invariant in their element type, hence
-   * Set[FVF] is not a subtype of Set[Sort], although FVF is one of Sort.
+   * Set[PSF] is not a subtype of Set[Sort], although PSF is one of Sort.
    */
 
 

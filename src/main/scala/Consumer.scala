@@ -219,11 +219,14 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
         val predicate = c.program.findPredicate(predname)
         var formalVars = c.predicateFormalVarMap(predicate)
         val qid = s"prog.l${utils.ast.sourceLine(forall)}"
+        //evaluate arguments
         evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , None, qid, pve, c) {
           case (Seq(tQVar), Seq(tCond), tArgsGain, _, Left(tAuxQuantNoTriggers), c1) =>
             val (tArgs, Seq(tLoss)) = tArgsGain.splitAt(args.size)
+            //assert positve permission
             decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
               case true =>
+                //check injectivity and define inverse function
                 val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val invFct = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, formalVars, tArgs, tCond, c1.quantifiedVariables)
@@ -236,15 +239,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     decider.prover.logComment("Definitional axioms for inverse functions")
                     assume(invFct.definitionalAxioms)
                     val inversePredicate = invFct(formalVars) // e⁻¹(arg1, ..., argn)
+                    //remove permission required
                     quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), inversePredicate, formalVars,  tArgs, tCond, PermTimes(tLoss, c1.permissionScalingFactor), chunkOrderHeuristics, c1) {
                       case Some((h1, ch, psfDef, c2)) =>
                         val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
-                        decider.prover.logComment("Definitional axioms for field value function")
+                        decider.prover.logComment("Definitional axioms for predicate snap function")
                        assume(psfDomain ++ psfDef.snapDefinitions)
                         val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
                           decider.pcs.branchConditions,
                           invFct.definitionalAxioms ++ psfDomain ++ psfDef.snapDefinitions)
-                        val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordPsf(predicate, psfDef.psf) else fr1
+                        val fr2 = if (true) fr1.recordPsf(predicate, psfDef.psf) else fr1
                         val c3 = c2.copy(functionRecorder = fr2, partiallyConsumedHeap = Some(h1))
                           Q(h1, ch.psf.convert(sorts.Snap), c3)
                       case None =>
@@ -270,7 +274,6 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
             }}))
       case ast.AccessPredicate(pa @ ast.PredicateAccess(eArgs, predname), perm)
         if c.qpPredicates.contains(c.program.findPredicate(predname)) =>
-        //TODO nadmuell: implement consuming single prediate under quantifier
         val predicate = c.program.findPredicate(predname)
         val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
 
@@ -278,6 +281,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
           eval(σ, perm, pve, c1)((tPerm, c2) => {
             val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
             val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            //remove requires permission
             quantifiedPredicateChunkSupporter.splitSingleLocation(σ, h, predicate, tArgs, formalVars, PermTimes(tPerm, c2.permissionScalingFactor), chunkOrderHeuristics, c2) {
               case Some((h1, ch, psfDef, c3)) =>
                 val psfDomain = if (c3.psfAsSnap) psfDef.domainDefinitions else Seq.empty

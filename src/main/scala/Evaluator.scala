@@ -364,6 +364,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(`?r`, args.head)))
                 }
+                  //added for quantified predicate permissions
                 case pred: ast.Predicate => {
                   var formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
