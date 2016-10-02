@@ -319,7 +319,7 @@ trait DefaultEvaluator[ST <: Store[ST],
       case ast.PermDiv(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           eval(σ, e1, pve, c1)((t1, c2) =>
-            failIfDivByZero(σ, PermIntDiv(t0, t1), e1, t1, 0, pve, c1)(Q)))
+            failIfDivByZero(σ, PermIntDiv(t0, t1), e1, t1, 0, pve, c2)(Q)))
 
       case ast.PermLeCmp(e0, e1) =>
         evalBinOp(σ, e0, e1, AtMost, pve, c)(Q)
