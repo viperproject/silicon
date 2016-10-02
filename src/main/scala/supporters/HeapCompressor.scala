@@ -184,7 +184,7 @@ trait HeapCompressorProvider[ST <: Store[ST],
 
       val tDists = mutable.ListBuffer[Term]()
 
-      for ((fieldName, pairs) <- pairsPerField;
+      for ((_, pairs) <- pairsPerField;
            Seq((rcvr1, perm1), (rcvr2, perm2)) <- pairs.combinations(2)) {
 
         if (   rcvr1 != rcvr2 /* Not essential for soundness, but avoids fruitless prover calls */

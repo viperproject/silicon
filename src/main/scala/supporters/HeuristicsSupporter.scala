@@ -332,8 +332,6 @@ trait HeuristicsSupporter[ST <: Store[ST],
                    (Q: (S, H, C) => VerificationResult)
                    : VerificationResult = {
 
-      val p = FullPerm()
-
       if (c.exhaleExt) {
         heuristicsLogger.debug(s"  reaction: packaging $wand")
         /* TODO: The next block is an exact copy of the corresponding case in the DefaultConsumer. Reuse code! */
