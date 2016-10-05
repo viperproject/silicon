@@ -20,13 +20,13 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
 
   private val toSort = (typ: ast.Type, _: Any) => symbolConverter.toSort(typ)
 
-  private var program: ast.Program = null
-  private var func: ast.Function = null
-  private var data: FunctionData = null
+  private var program: ast.Program = _
+  private var func: ast.Function = _
+  private var data: FunctionData = _
   private var ignoreAccessPredicates = false
   private var failed = false
 
-  var functionData: Map[ast.Function, FunctionData] = null
+  var functionData: Map[ast.Function, FunctionData] = _
 
   def translate(program: ast.Program,
                 func: ast.Function,
@@ -57,7 +57,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.data = data
     this.failed = false
 
-    (posts.map(p => translate(toSort)(p.whenInhaling)))
+    posts.map(p => translate(toSort)(p.whenInhaling))
   }
 
   def translatePrecondition(program: ast.Program,
@@ -70,7 +70,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.ignoreAccessPredicates = true
     this.failed = false
 
-    (pres.map(p => translate(toSort)(p.whenExhaling)))
+    pres.map(p => translate(toSort)(p.whenExhaling))
   }
 
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
