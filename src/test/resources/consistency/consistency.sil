@@ -15,3 +15,8 @@ method use_recpred(x: Ref)
 {
   var v: Int := unfolding acc(recpred(x)) in x.f
 }
+
+method unsupported_qps(xs: Seq[Ref], hi: Int, lo: Int) {
+  //:: ExpectedOutput(internal:feature.unsupported)
+  inhale forall i: Int :: lo <= i && i < hi ==> acc(xs[i].f) && true
+}
