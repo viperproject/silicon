@@ -22,6 +22,5 @@ method unsupported_qps(xs: Seq[Ref], hi: Int, lo: Int) {
   //:: MissingOutput(internal:feature.unsupported, /silicon/issue/254/)
   inhale forall i: Int :: lo <= i && i < hi ==> acc(xs[i].f) && true
   //:: ExpectedOutput(internal:feature.unsupported)
-  //:: MissingOutput(internal:feature.unsupported, /Silver/issue/175/)
   inhale forall i: Int, j:Int :: lo <= i && i < j ==> acc(xs[i].f) && true
 }
