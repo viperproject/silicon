@@ -17,6 +17,9 @@ method use_recpred(x: Ref)
 }
 
 method unsupported_qps(xs: Seq[Ref], hi: Int, lo: Int) {
-  //:: ExpectedOutput(internal:feature.unsupported)
+  // This is now supported (at least, in Silver) - Silicon should nonetheless reject it until the merged changes have happened
   inhale forall i: Int :: lo <= i && i < hi ==> acc(xs[i].f) && true
+  //:: ExpectedOutput(internal:feature.unsupported)
+  //:: MissingOutput(internal:feature.unsupported, /Silver/issue/175/)
+  inhale forall i: Int, j:Int :: lo <= i && i < j ==> acc(xs[i].f) && true
 }
