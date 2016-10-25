@@ -528,7 +528,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
 
               if (config.disableISCTriggers()) q1 else q1.autoTrigger
 
-            case Some((perms, args:Seq[Term])) =>
+            case Some((perms, args)) =>
               Implies(
                 perms !== NoPerm(),
                 PermLess(conditionalizedPermsOfInv.replace(ithChunk.formalVars.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), args), perms))
