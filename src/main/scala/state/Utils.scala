@@ -10,6 +10,9 @@ import scala.collection.mutable
 import viper.silicon.interfaces.state.{Heap, Store, State}
 import viper.silicon.state.terms._
 
+//TODO: remove import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
+
+
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
     * unsatisfiable constraint `ref != ref`.
@@ -39,7 +42,7 @@ package object utils {
       case bc: BasicChunk =>
         bc.args foreach collect
         collect(bc.snap)
-      case qch: QuantifiedChunk =>
+      case qch: QuantifiedFieldChunk =>
         /* Terms from quantified chunks contain the implicitly quantified receiver `?r`,
          * hence, they can only be used under quantifiers that bind `?r`.
          * An exception are quantified chunks that (definitely) provide permissions to
@@ -87,6 +90,9 @@ package object utils {
       vs ++ ts :+ l.body
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
+    case PredicateDomain(_, psf) => psf :: Nil
+    case PredicateLookup(_, psf, args, formalVars) => Seq(psf) ++ args ++ formalVars
+
   }
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
@@ -168,6 +174,10 @@ package object utils {
       case Let(bindings, body) => Let(bindings map (p => go(p._1) -> go(p._2)), go(body))
       case Domain(f, fvf) => Domain(f, go(fvf))
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
+
+      case PredicateDomain(p, psf) => PredicateDomain(p, go(psf))
+      case PredicateLookup(p, psf, args, formalVars) => PredicateLookup(p, go(psf), args map go,formalVars map go)
+
     }
 
     val beforeRecursion = pre.applyOrElse(term, identity[Term])

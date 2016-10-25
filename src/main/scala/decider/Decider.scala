@@ -19,7 +19,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.reporting.Bookkeeper
 import viper.silicon.supporters.{HeapCompressor, ChunkSupporter}
-import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
 
 trait DeciderProvider[ST <: Store[ST],
                       H <: Heap[H],
@@ -32,6 +32,7 @@ trait DeciderProvider[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val symbolConverter: SymbolConvert
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
+  protected val quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter[ST, H, S, C]
   protected val identifierFactory: IdentifierFactory
   protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
   protected val heapCompressor: HeapCompressor[ST, H, S, C]

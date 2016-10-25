@@ -8,11 +8,11 @@ package viper.silicon.supporters
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.ast.Program
+import viper.silver.ast.{Program, PredicateAccessPredicate, PredicateAccess}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.{Set, Map, toMap}
+import viper.silicon.{Map, Set, toMap}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
@@ -20,13 +20,19 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.SymbExLogger
 
+import viper.silicon.supporters.qps.{QuantifiedPredicateChunkSupporterProvider, SummarisingPsfDefinition}
+import viper.silver.verifier.reasons.InsufficientPermission
+
 class PredicateData(predicate: ast.Predicate)
-                   (private val symbolConvert: SymbolConvert) {
+                (private val symbolConvert: SymbolConvert) {
 
   val argumentSorts = predicate.formalArgs map (fm => symbolConvert.toSort(fm.typ))
 
   val triggerFunction =
     Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
+
+  /*val quantifiedTriggerFunction =
+    Fun(Identifier(s"${predicate.name}%trigger"), sorts.PredicateSnapFunction +: argumentSorts, sorts.Bool)*/
 }
 
 trait PredicateSupporter[ST <: Store[ST],
@@ -65,6 +71,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
             with Producer[ST, H, S, DefaultContext[H]]
             with Consumer[ST, H, S, DefaultContext[H]]
             with ChunkSupporterProvider[ST, H, S]
+            with QuantifiedPredicateChunkSupporterProvider[ST, H, S]
             with MagicWandSupporter[ST, H, S] =>
 
   private type C = DefaultContext[H]
@@ -134,15 +141,27 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-      val c0 = c.copy(fvfAsSnap = true)
-                .scalePermissionFactor(tPerm)
+      val c0 = c.copy(fvfAsSnap = true).scalePermissionFactor(tPerm)
       consume(σ \ insγ, body, pve, c0)((σ1, snap, c1) => {
-        decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-        val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
-        val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap,
-                         permissionScalingFactor = c.permissionScalingFactor)
-        val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
-        Q(σ \ h1, c3)})
+        decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+          if (c.qpPredicates.contains(predicate)) {
+            //convert snapshot to desired type if necessary
+            val snapConvert = snap.convert(c1.predicateSnapMap(predicate))
+            var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
+            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snapConvert, c)
+            optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
+            //create single quantified predicate chunk with given snapshot
+            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
+            val σ2 = σ1 \ σ.γ \+ ch
+            Q(σ2 , c1)
+          } else {
+            val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
+            val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap,
+              permissionScalingFactor = c.permissionScalingFactor)
+            val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
+            Q(σ \ h1, c3)
+          }
+      })
     }
 
     def unfold(σ: S,
@@ -172,11 +191,35 @@ trait PredicateSupporterProvider[ST <: Store[ST],
       val insγ = σ.γ + Γ(predicate.formalArgs map (_.localVar) zip tArgs)
       val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
       val c0 = c.scalePermissionFactor(tPerm)
-      chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, c0.permissionScalingFactor, pve, c0, pa)((h1, snap, c1) => {
-        produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c1)((σ2, c2) => {
-          decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
-          val c3 = c2.copy(permissionScalingFactor = c.permissionScalingFactor)
-          Q(σ2 \ σ.γ, c3)})})
+      if (c.qpPredicates.contains(predicate)) {
+       val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
+        val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
+        val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+        //remove permission for single predicate
+        quantifiedPredicateChunkSupporter.splitSingleLocation(σ, σ.h, predicate, tArgs, formalVars, PermTimes(tPerm, tPerm), chunkOrderHeuristics, c) {
+          case Some((h1, ch, psfDef, c2)) =>
+            val psfDomain = if (c2.fvfAsSnap) psfDef.domainDefinitions else Seq.empty
+            decider.assume(psfDomain ++ psfDef.snapDefinitions)
+            //evaluate snapshot value
+            val snap = ch.valueAt(tArgs)
+            produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c2)((σ2, c3) => {
+              decider.assume(App(predicateData(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
+              Q(σ2 \ σ.γ, c3)})
+
+          case None => Failure(pve dueTo InsufficientPermission(pa))
+        }
+      } else {
+        /*
+        chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, tPerm, pve, c, pa)((h1, snap, c1) => {
+          produce(σ \ h1 \ insγ, s => snap.convert(s), tPerm, body, pve, c1)((σ2, c2) => {
+            decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+            Q(σ2 \ σ.γ, c2)})})*/
+        chunkSupporter.consume(σ, σ.h, predicate.name, tArgs, c0.permissionScalingFactor, pve, c0, pa)((h1, snap, c1) => {
+          produce(σ \ h1 \ insγ, s => snap.convert(s), body, pve, c1)((σ2, c2) => {
+            decider.assume(App(predicateData(predicate).triggerFunction, snap +: tArgs))
+            val c3 = c2.copy(permissionScalingFactor = c.permissionScalingFactor)
+            Q(σ2 \ σ.γ, c3)})})
+      }
     }
 
 /* NOTE: Possible alternative to storing the permission scaling factor in the context

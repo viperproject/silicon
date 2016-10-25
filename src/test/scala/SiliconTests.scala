@@ -16,8 +16,7 @@ import viper.silver.frontend.TranslatorState
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
-  private val silTestDirectories = List("all", "quantifiedpermissions", "wands", "examples")
-
+  private val silTestDirectories = List("all", "quantifiedpermissions", "wands","examples", "quantifiedpredicates" ,"quantifiedcombinations")
   override def testDirectories = siliconTestDirectories ++ silTestDirectories
 
   override def frontend(verifier: Verifier, files: Seq[Path]) = {

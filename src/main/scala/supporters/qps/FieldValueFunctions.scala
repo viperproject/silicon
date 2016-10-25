@@ -12,7 +12,7 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.utils.BigPermSum
-import viper.silicon.state.QuantifiedChunk
+import viper.silicon.state.QuantifiedFieldChunk
 
 trait FvfDefinition {
   def field: ast.Field
@@ -26,7 +26,7 @@ private[qps] object FvfDefinition {
   private[qps] def pointwiseValueDefinition(field: ast.Field,
                                             fvf: Term,
                                             rcvr: Term,
-                                            sourceChunk: QuantifiedChunk,
+                                            sourceChunk: QuantifiedFieldChunk,
                                             rcvrInFvfDomain: Boolean)
                                            : Term = {
 
@@ -44,7 +44,7 @@ private[qps] object FvfDefinition {
 case class SingletonChunkFvfDefinition(field: ast.Field,
                                        fvf: Term,
                                        rcvr: Term,
-                                       valueChoice: Either[Term, Seq[QuantifiedChunk]])
+                                       valueChoice: Either[Term, Seq[QuantifiedFieldChunk]])
     extends FvfDefinition {
 
   val valueDefinitions = valueChoice match {
@@ -63,7 +63,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
                                         qvars: Seq[Var],
                                         condition: Term,
                                         rcvr: Term,
-                                        sourceChunks: Seq[QuantifiedChunk] /*,
+                                        sourceChunks: Seq[QuantifiedFieldChunk] /*,
                                         freshFvf: Boolean*/)
                                        (axiomRewriter: AxiomRewriter, config: Config)
     extends FvfDefinition {
@@ -149,7 +149,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
 case class SummarisingFvfDefinition(field: ast.Field,
                                     fvf: Term,
                                     rcvr: Term,
-                                    sourceChunks: Seq[QuantifiedChunk])
+                                    sourceChunks: Seq[QuantifiedFieldChunk])
                                    (config: Config)
     extends FvfDefinition {
 

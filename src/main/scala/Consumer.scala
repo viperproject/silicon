@@ -19,7 +19,7 @@ import viper.silicon.state.{SymbolConvert, DefaultContext, MagicWandChunk, ListB
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
-import viper.silicon.supporters.qps.QuantifiedChunkSupporter
+import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
 
 trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     extends Consumer[ST, H, S, DefaultContext[H]]
@@ -37,6 +37,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   protected val decider: Decider[ST, H, S, C]
   protected val symbolConverter: SymbolConvert
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
+  protected val quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter[ST, H, S, C]
   protected val stateFormatter: StateFormatter[ST, H, S, String]
   protected val bookkeeper: Bookkeeper
   protected val config: Config
@@ -188,7 +189,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 decider.prover.logComment("Nested auxiliary terms")
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(tQVar, tCond, tRcvr)
+                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, Seq(tRcvr))
                 decider.prover.logComment("Check receiver injectivity")
                 decider.assert(σ, receiverInjective) {
                   case true =>
@@ -214,10 +215,50 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}}
-
+      case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
+        val predicate = c.program.findPredicate(predname)
+        var formalVars = c.predicateFormalVarMap(predicate)
+        val qid = s"prog.l${utils.ast.sourceLine(forall)}"
+        //evaluate arguments
+        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(loss) , None, qid, pve, c) {
+          case (Seq(tQVar), Seq(tCond), tArgsGain, _, Left(tAuxQuantNoTriggers), c1) =>
+            val (tArgs, Seq(tLoss)) = tArgsGain.splitAt(args.size)
+            //assert positve permission
+            decider.assert(σ, Forall(tQVar, Implies(tCond, perms.IsNonNegative(tLoss)), Nil)) {
+              case true =>
+                //check injectivity and define inverse function
+                val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
+                val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+                val invFct = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, formalVars, tArgs, tCond, c1.quantifiedVariables)
+                decider.prover.logComment("Nested auxiliary terms")
+                assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
+                val isInjective = quantifiedPredicateChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
+                decider.prover.logComment("Check receiver injectivity")
+                decider.assert(σ, isInjective) {
+                  case true =>
+                    decider.prover.logComment("Definitional axioms for inverse functions")
+                    assume(invFct.definitionalAxioms)
+                    val inversePredicate = invFct(formalVars) // e⁻¹(arg1, ..., argn)
+                    //remove permission required
+                    quantifiedPredicateChunkSupporter.splitLocations(σ, h, predicate, Some(tQVar), inversePredicate, formalVars,  tArgs, tCond, PermTimes(tLoss, c1.permissionScalingFactor), chunkOrderHeuristics, c1) {
+                      case Some((h1, ch, psfDef, c2)) =>
+                        val psfDomain = if (c2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
+                        decider.prover.logComment("Definitional axioms for predicate snap function")
+                       assume(psfDomain ++ psfDef.snapDefinitions)
+                        val fr1 = c2.functionRecorder.recordQPTerms(c2.quantifiedVariables,
+                          decider.pcs.branchConditions,
+                          invFct.definitionalAxioms ++ psfDomain ++ psfDef.snapDefinitions)
+                        val fr2 = if (true) fr1.recordPsf(predicate, psfDef.psf) else fr1
+                        val c3 = c2.copy(functionRecorder = fr2, partiallyConsumedHeap = Some(h1))
+                          Q(h1, ch.psf.convert(sorts.Snap), c3)
+                      case None =>
+                        Failure(pve dueTo InsufficientPermission(predAccPred.loc))}
+                  case false =>
+                    Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))}
+              case false =>
+                Failure(pve dueTo NegativePermission(loss))}}
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
           if c.qpFields.contains(field) =>
-
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) => {
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
@@ -230,6 +271,24 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
                 Q(h1, ch.valueAt(tRcvr), c4)
               case None => Failure(pve dueTo InsufficientPermission(fa))
+            }}))
+      case ast.AccessPredicate(pa @ ast.PredicateAccess(eArgs, predname), perm)
+        if c.qpPredicates.contains(c.program.findPredicate(predname)) =>
+        val predicate = c.program.findPredicate(predname)
+        val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
+
+        evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>
+          eval(σ, perm, pve, c1)((tPerm, c2) => {
+            val hints = quantifiedPredicateChunkSupporter.extractHints(None, None, tArgs)
+            val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            //remove requires permission
+            quantifiedPredicateChunkSupporter.splitSingleLocation(σ, h, predicate, tArgs, formalVars, PermTimes(tPerm, c2.permissionScalingFactor), chunkOrderHeuristics, c2) {
+              case Some((h1, ch, psfDef, c3)) =>
+                val psfDomain = if (c3.psfAsSnap) psfDef.domainDefinitions else Seq.empty
+                assume(psfDomain ++ psfDef.snapDefinitions)
+                val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
+                Q(h1, ch.valueAt(tArgs), c4)
+              case None => Failure(pve dueTo InsufficientPermission(pa))
             }}))
 
       case let: ast.Let if !let.isPure =>

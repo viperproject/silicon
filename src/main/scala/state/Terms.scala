@@ -12,6 +12,7 @@ import viper.silicon.{Map, Set, toMap}
 import viper.silicon.state
 import viper.silicon.state.{MagicWandChunk, Identifier}
 
+
 sealed trait Node
 
 sealed trait Symbol extends Node {
@@ -55,6 +56,12 @@ object sorts {
     val id = Identifier("FVF[%s]".format(codomainSort))
     override val toString = id.toString
   }
+
+  case class PredicateSnapFunction(codomainSort: Sort) extends Sort {
+    val id = Identifier("PSF[%s]".format(codomainSort))
+    override val toString = id.toString
+  }
+
 }
 
 /*
@@ -1560,6 +1567,31 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
   val elementsSort = sorts.Ref
   val sort = sorts.Set(elementsSort)
 }
+
+
+/* Quantified predicates */
+case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], formalVars: Seq[Var]) extends Term {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+  for (i <- args.indices) {
+    utils.assertSort(args.apply(i), "predicate argument i", formalVars.apply(i).sort)
+  }
+
+  val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
+}
+
+case class PredicateDomain(predname: String, psf: Term) extends SetTerm /*with PossibleTrigger*/ {
+  utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
+  val elementsSort = sorts.Snap
+  val sort = sorts.Set(elementsSort)
+}
+/* TODO: remove
+case class PsfAfterRelation(predname: String, psf2: Term, psf1: Term) extends BooleanTerm {
+  utils.assertSameSorts[sorts.PredicateSnapFunction](psf2, psf1)
+}
+
+object PsfTop extends (String => Identifier) {
+  def apply(predicateName: String): Identifier = Identifier(s"$$psfTOP_$predicateName")
+}*/
 
 /* Sort wrappers */
 

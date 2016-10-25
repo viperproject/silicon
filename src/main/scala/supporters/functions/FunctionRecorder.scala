@@ -7,7 +7,7 @@
 package viper.silicon.supporters.functions
 
 import viper.silver.ast
-import viper.silver.ast.{Field, FuncApp, LocationAccess}
+import viper.silver.ast.{Field, Predicate, FuncApp, LocationAccess}
 import viper.silicon.{Map, Set, Stack}
 import viper.silicon.interfaces.state.Mergeable
 import viper.silicon.state.terms._
@@ -19,17 +19,20 @@ trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   private[functions] def fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]]
   def fappToSnap: Map[ast.FuncApp, Term]
   def freshFvfs: Set[(ast.Field, Term)]
+  def freshPsfs: Set[(ast.Predicate, Term)]
   def qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])]
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]): FunctionRecorder
   def recordFvf(field: ast.Field, fvf: Term): FunctionRecorder
+  def recordPsf(predicate: ast.Predicate, psf:Term) : FunctionRecorder
 }
 
 case class ActualFunctionRecorder(private val _data: FunctionData,
                                   private[functions] val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
                                   private[functions] val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
                                   freshFvfs: Set[(ast.Field, Term)] = Set(),
+                                  freshPsfs: Set[(ast.Predicate, Term)]  = Set(),
                                   qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
     extends FunctionRecorder {
 
@@ -81,6 +84,11 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
     copy(freshFvfs = freshFvfs + ((field, fvf)))
   }
 
+  def recordPsf(predicate: ast.Predicate, psf: Term) = {
+    copy(freshPsfs = freshPsfs + ((predicate, psf)))
+  }
+
+
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other.getClass == this.getClass)
     assert(other.asInstanceOf[ActualFunctionRecorder]._data eq this._data)
@@ -98,9 +106,10 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
       }
 
     val fvfs = freshFvfs ++ other.freshFvfs
+    val psfs = freshPsfs ++ other.freshPsfs
     val qpts = qpTerms ++ other.qpTerms
 
-    copy(locToSnaps = lts, fappToSnaps = fts, freshFvfs = fvfs, qpTerms = qpts)
+    copy(locToSnaps = lts, fappToSnaps = fts, freshFvfs = fvfs, freshPsfs = psfs, qpTerms = qpts)
   }
 
   override lazy val toString = {
@@ -125,7 +134,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   val locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   val qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set.empty
   val freshFvfs: Set[(Field, Term)] = Set.empty
-
+  val freshPsfs: Set[(Predicate, Term)] = Set.empty
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other == this)
 
@@ -134,6 +143,7 @@ case object NoopFunctionRecorder extends FunctionRecorder {
 
   def recordSnapshot(loc: LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder = this
   def recordFvf(field: Field, fvf: Term): FunctionRecorder = this
+  def recordPsf(predicate: Predicate, psf: Term): FunctionRecorder = this
   def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]): FunctionRecorder = this
   def recordSnapshot(fapp: FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
 }

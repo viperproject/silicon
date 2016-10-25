@@ -60,6 +60,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   private def evals2(σ: S, es: Seq[ast.Exp], ts: List[Term], pvef: ast.Exp => PartialVerificationError, c: C)
                     (Q: (List[Term], C) => VerificationResult)
                     : VerificationResult = {
+
     if (es.isEmpty)
       Q(ts.reverse, c)
     else
@@ -78,15 +79,15 @@ trait DefaultEvaluator[ST <: Store[ST],
   }
 
   def eval3(σ: S, e: ast.Exp, pve: PartialVerificationError, c: C)
-          (Q: (Term, C) => VerificationResult)
-          : VerificationResult = {
+           (Q: (Term, C) => VerificationResult)
+  : VerificationResult = {
 
 
     /* For debugging only */
     e match {
       case  _: ast.TrueLit | _: ast.FalseLit | _: ast.NullLit | _: ast.IntLit | _: ast.FullPerm | _: ast.NoPerm
-          | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
-          | _: ast.WildcardPerm | _: ast.FieldAccess =>
+            | _: ast.AbstractLocalVar | _: ast.WildcardPerm | _: ast.FractionalPerm | _: ast.Result
+            | _: ast.WildcardPerm | _: ast.FieldAccess =>
 
       case _ =>
         log.debug(s"\nEVAL ${utils.ast.sourceLineColumn(e)}: $e")
@@ -172,11 +173,11 @@ trait DefaultEvaluator[ST <: Store[ST],
                   val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                   val c2 = c1.copy(functionRecorder = fr1)
                   Q(fvfLookup, c2)}
-
             case _ =>
               quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
                 assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+
                 val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
                                              .recordQPTerms(c1.quantifiedVariables, decider.pcs.branchConditions, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
                 val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
@@ -353,13 +354,25 @@ trait DefaultEvaluator[ST <: Store[ST],
           val usesQPChunks =
             loc match {
               case field: ast.Field => c.qpFields.contains(field)
-              case pred: ast.Predicate => false /* TODO: Support predicates under QPs */
+              case pred: ast.Predicate => c.qpPredicates.contains(pred)
             }
-          val perm =
+          val perm:Term =
             if (usesQPChunks) {
-              val chs = h.values.collect { case ch: QuantifiedChunk if ch.name == name => ch }
-              chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                PermPlus(q, ch.perm.replace(`?r`, args.head))) /* TODO: Support predicates under QPs */
+              loc match {
+                case field: ast.Field => {
+                  val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
+                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                }
+                  //added for quantified predicate permissions
+                case pred: ast.Predicate => {
+                  var formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
+                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
+                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                    PermPlus(q, ch.perm.replace(formalArgs, args)))
+                }
+              }
+
             } else {
               val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
               chs.foldLeft(NoPerm(): Term)((q, ch) => {
@@ -478,13 +491,13 @@ trait DefaultEvaluator[ST <: Store[ST],
                          * to the function arguments and the predicate snapshot
                          * (see 'predicateTriggers' in FunctionData.scala).
                          */
-                      decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: tArgs))
+                      decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
                       val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
                       val c5a = c5.scalePermissionFactor(tPerm)
                       produce(σ1 /*\ insγ*/, s => snap.convert(s), body, pve, c5a)((σ2, c6) => {
                         val c7 = c6.copy(recordVisited = c2.recordVisited,
-                                         permissionScalingFactor = c5.permissionScalingFactor)
+                                          permissionScalingFactor = c5.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
                         eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
@@ -601,15 +614,15 @@ trait DefaultEvaluator[ST <: Store[ST],
                      pve: PartialVerificationError,
                      c: C)
                     (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C) => VerificationResult)
-                    : VerificationResult = {
+  : VerificationResult = {
 
     val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
     val γVars = Γ(vars zip tVars)
     val σQuant = σ \+ γVars
 
     val c0 = c.copy(quantifiedVariables = tVars ++ c.quantifiedVariables,
-                    recordPossibleTriggers = true,
-                    possibleTriggers = Map.empty)
+      recordPossibleTriggers = true,
+      possibleTriggers = Map.empty)
 
     decider.locally[(Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C)](QB => {
       val preMark = decider.setPathConditionMark()
@@ -629,13 +642,14 @@ trait DefaultEvaluator[ST <: Store[ST],
                   QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, fresh)
                 Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
             val c4 = c3.copy(quantifiedVariables = c3.quantifiedVariables.drop(tVars.length),
-                             recordPossibleTriggers = c.recordPossibleTriggers,
-                             possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
+              recordPossibleTriggers = c.recordPossibleTriggers,
+              possibleTriggers = c.possibleTriggers ++ (if (c.recordPossibleTriggers) c3.possibleTriggers else Map()))
             QB(ts1, ts2, tTriggers, auxQuant, c4)})})})
     }){case (ts1, ts2, tTriggers, auxQuant, c1) =>
       Q(tVars, ts1, ts2, tTriggers, auxQuant, c1)
     }
   }
+
 
   def evalImplies(σ: S, tLhs: Term, eRhs: ast.Exp, pve: PartialVerificationError, c: C)
                  (Q: (Term, C) => VerificationResult)
@@ -896,7 +910,6 @@ trait DefaultEvaluator[ST <: Store[ST],
 //      case Seq(entry) if entry.newBranchConditions.isEmpty =>
       case Seq(entry) if entry.pathConditionStack.branchConditions.isEmpty =>
         entry.data
-      /* TODO: Create an ite-term (instead of defining a join function) if only two paths are to be joined */
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
         val joinSymbol = decider.fresh(joinFunctionName, quantifiedVarsSorts, joinSort)
