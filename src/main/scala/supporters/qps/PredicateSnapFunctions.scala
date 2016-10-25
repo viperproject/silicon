@@ -4,6 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/* TODO: Large parts of this code are identical or at least very similar to the code that
+ *       implements the support for quantified permissions to fields - merge it
+ */
+
 package viper.silicon.supporters.qps
 
 import viper.silicon.Config

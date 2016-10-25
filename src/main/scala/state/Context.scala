@@ -41,13 +41,16 @@ case class DefaultContext[H <: Heap[H]]
                           consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
                           letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
+                          /* TODO: Are these entries still necessary? */
                           fvfCache: Map[(ast.Field, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
                           fvfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedFieldChunk]), SummarisingFvfDefinition] = Map.empty,
                           fvfAsSnap: Boolean = false,
 
+                          /* TODO: Are these entries still necessary? */
                           psfCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
                           psfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
                           psfAsSnap: Boolean = false,
+                          /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
                           predicateSnapMap:Map[ast.Predicate, terms.Sort] = Map.empty,
                           predicateFormalVarMap:Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
 

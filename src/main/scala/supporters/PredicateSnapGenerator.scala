@@ -48,6 +48,8 @@ class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
     }
   }
 
+  /* TODO: The remainder of the file is an *identical* copy of code from the DefaultProducer - merge it. */
+
   private def getOptimalSnapshotSort(φ: ast.Exp, program: ast.Program, visited: scala.Seq[String] = Nil)
   : (Sort, Boolean) =
 
