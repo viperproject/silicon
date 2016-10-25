@@ -15,12 +15,3 @@ method use_recpred(x: Ref)
 {
   var v: Int := unfolding acc(recpred(x)) in x.f
 }
-
-method unsupported_qps(xs: Seq[Ref], hi: Int, lo: Int) {
-  // This is now supported (at least, in Silver) - Silicon should nonetheless reject it until the merged changes have happened - afterwards, the ExpectedOutput annotation should be removed
-  //:: ExpectedOutput(internal:feature.unsupported)
-  //:: MissingOutput(internal:feature.unsupported, /silicon/issue/254/)
-  inhale forall i: Int :: lo <= i && i < hi ==> acc(xs[i].f) && true
-  //:: ExpectedOutput(internal:feature.unsupported)
-  inhale forall i: Int, j:Int :: lo <= i && i < j ==> acc(xs[i].f) && true
-}

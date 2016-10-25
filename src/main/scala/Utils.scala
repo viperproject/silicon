@@ -159,7 +159,6 @@ package object utils {
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
-      ++ checkQuantifiedPermissionAssertions(program)
       ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program)))
 
     def createUnsupportedPermissionExpressionError(offendingNode: PositionedNode) = {
@@ -204,24 +203,6 @@ package object utils {
 
         case _ => errors.flatten
       })
-    }
-
-    def checkQuantifiedPermissionAssertions(root: PositionedNode): Seq[VerificationError] =
-      root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
-        case q: silver.ast.QuantifiedExp if !q.isPure => q match {
-          case silver.ast.utility.QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) => errors.flatten
-          case _ => createUnsupportedQuantifiedPermissionAssertionError(q) +: errors.flatten
-        }
-
-        case _ => errors.flatten
-      })
-
-    def createUnsupportedQuantifiedPermissionAssertionError(offendingNode: silver.ast.QuantifiedExp) = {
-      val message = (   "Silicon does not yet support this shape of quantified permission assertion. "
-                     +  "So far, only the following shape is supported: "
-                     +  "forall x: T :: c(x) ==> acc(e(x).f, p(x)), where c(x) is a boolean condition.")
-
-      Internal(offendingNode, FeatureUnsupported(offendingNode, message))
     }
 
     /* Unexpected nodes */
