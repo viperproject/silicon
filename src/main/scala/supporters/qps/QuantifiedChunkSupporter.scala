@@ -9,9 +9,9 @@ package viper.silicon.supporters.qps
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{ReceiverNull, InsufficientPermission}
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.{Set, Map, Config, TriggerSets}
+import viper.silicon.Config
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
@@ -34,15 +34,14 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
   def getFreshInverseFunction(qvar: Var,
                               fct: Term,
                               condition: Term,
+                              perms: Term,
                               additionalArgs: Seq[Var])
                              : InverseFunction
-
-
 
   def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term)
                               : (Term, Option[SingletonChunkFvfDefinition])
 
-  def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]):Term
+  def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term]): Quantification
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term): Quantification
 
@@ -61,7 +60,7 @@ trait QuantifiedChunkSupporter[ST <: Store[ST],
                                  perms: Term,
                                  condition: Term,
                                  additionalArgs: Seq[Var])
-                           : (QuantifiedFieldChunk, InverseFunction)
+                                : (QuantifiedFieldChunk, InverseFunction)
 
   def permission(h: H, receiver: Term, field: ast.Field): Term
 
@@ -179,7 +178,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
         s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
 
-      val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, additionalArgs)
+      val inverseFunction = getFreshInverseFunction(qvar, receiver, condition, perms, additionalArgs)
       val arbitraryInverseRcvr = inverseFunction(`?r`)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseRcvr, condition, perms)
       val ch = QuantifiedFieldChunk(field.name, fvf, condPerms, Some(inverseFunction), Some(condPerms), None, Nil)
@@ -686,22 +685,15 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       axioms
     }
 
-    def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
-      var qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
-      var qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
+    def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term])= {
+      val qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
+      val qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
 
-      def replaceAll(qvars: Seq[Var], newVars:Seq[Var], term:Term): Term = {
-        var newTerm = term;
-        for (i <- qvars.indices) {
-          newTerm = newTerm.replace(qvars.apply(i), newVars.apply(i))
-        }
-        newTerm
-      }
-
-      var cond1 = replaceAll(qvars, qvars1, condition)
-      var cond2 = replaceAll(qvars, qvars2, condition)
-      var args1 = args.map(arg => replaceAll(qvars, qvars1, arg))
-      var args2 = args.map(arg => replaceAll(qvars, qvars2, arg))
+      val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
+      val cond1 = effectiveCondition.replace(qvars, qvars1)
+      val cond2 = effectiveCondition.replace(qvars, qvars2)
+      val args1 = args.map(_.replace(qvars, qvars1))
+      val args2 = args.map(_.replace(qvars, qvars2))
 
       val argsEqual = (args1 zip args2).map(argsRenamed =>  argsRenamed._1 === argsRenamed._2).reduce((a1, a2) => And(a1, a2))
       val varsEqual = (qvars1 zip qvars2).map(vars => vars._1 === vars._2).reduce((v1, v2) => And(v1, v2) )
@@ -717,7 +709,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         qvars1 ++ qvars2,
         implies,
         Nil,
-        /* receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil */
+        /* receiversEqual :: And(effectiveCondition.replace(qvar, vx), effectiveCondition.replace(qvar, vy)) :: Nil */
         s"qp.inj${qidCounter.next()}")
     }
 
@@ -738,13 +730,15 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     /** Creates a fresh inverse function `inv` and returns the function as well as the
       * definitional axioms.
       *
-      * @param qvar A variable (most likely bound by a forall) that occurs in `of`
-      *             and that is the result of the inverse function applied to `of`,
-      *             i.e. `inv(of) = qvar` (if `condition` holds).
+      * @param qvar A variable (most likely bound by a forall) that occurs in `fct`
+      *             and that is the result of the inverse function applied to `fct`,
+      *             i.e. `inv(fct) = qvar` (if `condition` holds).
       * @param fct A term containing the variable `qvar` that can be understood as
       *           the application of an invertible function to `qvar`.
       * @param condition A condition (containing `qvar`) that must hold in order for
-      *                  `inv` to invert `of` to `qvar`.
+      *                  `inv` to invert `fct` to `qvar`.
+      * @param perms A permission term (containing `qvar`) that must denote non-none
+      *              permission in order for `inv` to invert `fct` to `qvar`.
       * @param additionalArgs Additional arguments on which `inv` depends.
       * @return A tuple of
       *           1. the inverse function as a function of a single arguments (the
@@ -754,6 +748,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     def getFreshInverseFunction(qvar: Var,
                                 fct: Term,
                                 condition: Term,
+                                perms: Term,
                                 additionalArgs: Seq[Var])
                                : InverseFunction = {
 
@@ -765,20 +760,21 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
       val inverseFunc = (t: Term) => App(func, additionalArgs :+ t)
       val invOFct: Term = inverseFunc(fct)
       val fctOfInv = fct.replace(qvar, inverseFunc(`?r`))
-      val condInv = condition.replace(qvar, inverseFunc(`?r`))
+      val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
+      val effectiveConditionInv = effectiveCondition.replace(qvar, inverseFunc(`?r`))
 
       val finalAxInvOfFct =
         TriggerGenerator.assembleQuantification(Forall,
                                                 qvar :: Nil,
-                                                Implies(condition, invOFct === qvar),
-                                                if (config.disableISCTriggers()) Nil: Seq[Term] else fct :: And(condition, invOFct) :: Nil,
+                                                Implies(effectiveCondition, invOFct === qvar),
+                                                if (config.disableISCTriggers()) Nil: Seq[Term] else fct :: And(effectiveCondition, invOFct) :: Nil,
                                                 s"qp.${func.id}-exp",
                                                 axiomRewriter)
 
       val finalAxFctOfInv =
         TriggerGenerator.assembleQuantification(Forall,
                                                 `?r` :: Nil,
-                                                Implies(condInv, fctOfInv === `?r`),
+                                                Implies(effectiveConditionInv, fctOfInv === `?r`),
                                                 if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inverseFunc(`?r`)) :: Nil,
                                                 s"qp.${func.id}-imp",
                                                 axiomRewriter)

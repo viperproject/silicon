@@ -33,9 +33,9 @@ case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term,
 
 
 trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
-                               H <: Heap[H],
-                               S <: State[ST, H, S],
-                               C <: Context[C]] {
+                                        H <: Heap[H],
+                                        S <: State[ST, H, S],
+                                        C <: Context[C]] {
 
 
   def getFreshInverseFunction(qvar: Var,
@@ -43,15 +43,16 @@ trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
                               formalVars:Seq[Var],
                               fct: Seq[Term],
                               condition: Term,
+                              perms: Term,
                               additionalArgs: Seq[Var])
-  : PredicateInverseFunction
+                             : PredicateInverseFunction
 
 
 
   def createPredicateSnapFunction(predicate: ast.Predicate, args: Seq[Term], formalVars: Seq[Var], snap: Term, c:C)
-  : (Term, Option[SingletonChunkPsfDefinition])
+                                 : (Term, Option[SingletonChunkPsfDefinition])
 
-  def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term]): Quantification
+  def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term]): Quantification
 
   def singletonConditionalPermissions(args: Seq[Term], formalVars:Seq[Var], perms: Term): Term
 
@@ -189,10 +190,12 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
                                        perms: Term,
                                        condition: Term,
                                        additionalArgs: Seq[Var])
-    : (QuantifiedPredicateChunk, PredicateInverseFunction) = {
+                                      : (QuantifiedPredicateChunk, PredicateInverseFunction) = {
+
       Predef.assert(psf.sort.isInstanceOf[sorts.PredicateSnapFunction],
-        s"Quantified chunk values must be of sort PredicateSnapFunction, but found value $psf of sort ${psf.sort}")
-      val inverseFunction = getFreshInverseFunction(qvar, pred, formalVars, args, condition, additionalArgs)
+                    s"Quantified chunk values must be of sort PredicateSnapFunction, but found value $psf of sort ${psf.sort}")
+
+      val inverseFunction = getFreshInverseFunction(qvar, pred, formalVars, args, condition, perms, additionalArgs)
       val arbitraryInverseArguments = inverseFunction(formalVars)
       val condPerms = conditionalPermissions(qvar, arbitraryInverseArguments, condition, perms)
       val ch = QuantifiedPredicateChunk(pred.name, formalVars, psf, condPerms, Some(inverseFunction),None, None)
@@ -621,22 +624,15 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
           (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))))
       }
 
-    def injectivityAxiom(qvars: Seq[Var], condition: Term, args: Seq[Term])= {
+    def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term])= {
       val qvars1 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
       val qvars2 = qvars.map(qvar => fresh(qvar.id.name, qvar.sort))
 
-      def replaceAll(qvars: Seq[Var], newVars:Seq[Var], term:Term): Term = {
-        var newTerm = term
-        for (i <- qvars.indices) {
-          newTerm = newTerm.replace(qvars.apply(i), newVars.apply(i))
-        }
-        newTerm
-      }
-
-      val cond1 = replaceAll(qvars, qvars1, condition)
-      val cond2 = replaceAll(qvars, qvars2, condition)
-      val args1 = args.map(arg => replaceAll(qvars, qvars1, arg))
-      val args2 = args.map(arg => replaceAll(qvars, qvars2, arg))
+      val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
+      val cond1 = effectiveCondition.replace(qvars, qvars1)
+      val cond2 = effectiveCondition.replace(qvars, qvars2)
+      val args1 = args.map(_.replace(qvars, qvars1))
+      val args2 = args.map(_.replace(qvars, qvars2))
 
       val argsEqual = (args1 zip args2).map(argsRenamed =>  argsRenamed._1 === argsRenamed._2).reduce((a1, a2) => And(a1, a2))
       val varsEqual = (qvars1 zip qvars2).map(vars => vars._1 === vars._2).reduce((v1, v2) => And(v1, v2) )
@@ -652,7 +648,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         qvars1 ++ qvars2,
         implies,
         Nil,
-        /* receiversEqual :: And(condition.replace(qvar, vx), condition.replace(qvar, vy)) :: Nil */
+        /* receiversEqual :: And(effectiveCondition.replace(qvar, vx), effectiveCondition.replace(qvar, vy)) :: Nil */
         s"qp.inj${qidCounter.next()}")
     }
 
@@ -673,13 +669,15 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
     /** Creates a fresh inverse function `inv` and returns the function as well as the
       * definitional axioms.
       *
-      * @param qvar A variable (most likely bound by a forall) that occurs in `of`
-      *             and that is the result of the inverse function applied to `of`,
-      *             i.e. `inv(of) = qvar` (if `condition` holds).
+      * @param qvar A variable (most likely bound by a forall) that occurs in `fct`
+      *             and that is the result of the inverse function applied to `fct`,
+      *             i.e. `inv(fct) = qvar` (if `condition` holds).
       * @param fct A term containing the variable `qvar` that can be understood as
       *           the application of an invertible function to `qvar`.
       * @param condition A condition (containing `qvar`) that must hold in order for
-      *                  `inv` to invert `of` to `qvar`.
+      *                  `inv` to invert `fct` to `qvar`.
+      * @param perms A permission term (containing `qvar`) that must denote non-none
+      *              permission in order for `inv` to invert `fct` to `qvar`.
       * @param additionalArgs Additional arguments on which `inv` depends.
       * @return A tuple of
       *           1. the inverse function as a function of a single arguments (the
@@ -687,12 +685,14 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       *           2. the definitional axioms of the inverse function.
       */
     def getFreshInverseFunction(qvar: Var,
-                                predicate:ast.Predicate,
+                                predicate: ast.Predicate,
                                 formalVars: Seq[Var],
                                 fct: Seq[Term],
                                 condition: Term,
+                                perms: Term,
                                 additionalArgs: Seq[Var])
-    : PredicateInverseFunction = {
+                               : PredicateInverseFunction = {
+
       for (i <- fct.indices) {
         val term = fct.apply(i)
         val argSort = formalVars.apply(i).sort
@@ -703,13 +703,14 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       val inverseFunc = (t: Seq[Term]) => App(func, additionalArgs ++ t)
       val invOFct: Term = inverseFunc(fct)
       val fctOfInv: Seq[Term] = fct map(_.replace(qvar, inverseFunc(formalVars)))
-      val condInv = condition.replace(qvar, inverseFunc(formalVars))
+      val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
+      val effectiveConditionInv = effectiveCondition.replace(qvar, inverseFunc(formalVars))
 
       val finalAxInvOfFct =
         TriggerGenerator.assembleQuantification(Forall,
           qvar :: Nil,
-          Implies(condition, invOFct === qvar),
-          if (config.disableISCTriggers()) Nil: Seq[Term] else /*fct ::*/ And(condition, invOFct) :: Nil,
+          Implies(effectiveCondition, invOFct === qvar),
+          if (config.disableISCTriggers()) Nil: Seq[Term] else /*fct ::*/ And(effectiveCondition, invOFct) :: Nil,
           s"qp.${func.id}-exp",
           axiomRewriter)
 
@@ -718,7 +719,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
       val finalAxFctOfInv =
         TriggerGenerator.assembleQuantification(Forall,
           formalVars,
-          Implies(condInv, inverseConjunction),
+          Implies(effectiveConditionInv, inverseConjunction),
           if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inverseFunc(formalVars)) :: Nil,
           s"qp.${func.id}-imp",
           axiomRewriter)

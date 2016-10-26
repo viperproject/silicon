@@ -185,11 +185,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
                 val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val invFct =
-                  quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, c1.quantifiedVariables)
+                  quantifiedChunkSupporter.getFreshInverseFunction(tQVar, tRcvr, tCond, tPerm, c1.quantifiedVariables)
                 decider.prover.logComment("Nested auxiliary terms")
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
-                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, Seq(tRcvr))
+                val receiverInjective = quantifiedChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tPerm, Seq(tRcvr))
                 decider.prover.logComment("Check receiver injectivity")
                 decider.assert(σ, receiverInjective) {
                   case true =>
@@ -215,6 +215,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     Failure(pve dueTo ReceiverNotInjective(fa))}
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}}
+
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, loss, forall, predAccPred) =>
         val predicate = c.program.findPredicate(predname)
         var formalVars = c.predicateFormalVarMap(predicate)
@@ -229,10 +230,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 //check injectivity and define inverse function
                 val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
                 val chunkOrderHeuristics = quantifiedPredicateChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-                val invFct = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, formalVars, tArgs, tCond, c1.quantifiedVariables)
+                val invFct = quantifiedPredicateChunkSupporter.getFreshInverseFunction(tQVar, predicate, formalVars, tArgs, tCond, tLoss, c1.quantifiedVariables)
                 decider.prover.logComment("Nested auxiliary terms")
                 assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, triggers = invFct.invOfFct.triggers))
-                val isInjective = quantifiedPredicateChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tArgs)
+                val isInjective = quantifiedPredicateChunkSupporter.injectivityAxiom(Seq(tQVar), tCond, tLoss, tArgs)
                 decider.prover.logComment("Check receiver injectivity")
                 decider.assert(σ, isInjective) {
                   case true =>
@@ -257,8 +258,10 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                     Failure(pve dueTo ReceiverNotInjective(predAccPred.loc))}
               case false =>
                 Failure(pve dueTo NegativePermission(loss))}}
+
       case ast.AccessPredicate(fa @ ast.FieldAccess(eRcvr, field), perm)
-          if c.qpFields.contains(field) =>
+              if c.qpFields.contains(field) =>
+
         eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
           eval(σ, perm, pve, c1)((tPerm, c2) => {
             val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
@@ -270,10 +273,11 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 assume(fvfDomain ++ fvfDef.valueDefinitions)
                 val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
                 Q(h1, ch.valueAt(tRcvr), c4)
-              case None => Failure(pve dueTo InsufficientPermission(fa))
-            }}))
+              case None => Failure(pve dueTo InsufficientPermission(fa))}}))
+
       case ast.AccessPredicate(pa @ ast.PredicateAccess(eArgs, predname), perm)
-        if c.qpPredicates.contains(c.program.findPredicate(predname)) =>
+              if c.qpPredicates.contains(c.program.findPredicate(predname)) =>
+
         val predicate = c.program.findPredicate(predname)
         val formalVars:Seq[Var] = c.predicateFormalVarMap(predicate)
 
@@ -288,8 +292,7 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
                 assume(psfDomain ++ psfDef.snapDefinitions)
                 val c4 = c3.copy(partiallyConsumedHeap = Some(h1))
                 Q(h1, ch.valueAt(tArgs), c4)
-              case None => Failure(pve dueTo InsufficientPermission(pa))
-            }}))
+              case None => Failure(pve dueTo InsufficientPermission(pa))}}))
 
       case let: ast.Let if !let.isPure =>
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) => {
