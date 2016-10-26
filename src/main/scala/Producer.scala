@@ -196,6 +196,7 @@ trait DefaultProducer[ST <: Store[ST],
             val gain = PermTimes(tPerm, c2.permissionScalingFactor)
             val (h1, c3) = addNewChunk(σ.h, tRcvr, s, gain, c2)
             Q(h1, c3)}))
+
       case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = c.program.findPredicate(predicateName)
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
@@ -234,10 +235,13 @@ trait DefaultProducer[ST <: Store[ST],
             val gain = PermTimes(tPerm, c1.permissionScalingFactor)
             val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedFieldChunk(tQVar, tRcvr, field, snap, gain, tCond, additionalInvFctArgs)
 
-            /* [2016-05-05 Malte]
+            /* [2016-10-26 Malte]
              * The issue described (and solved) in the previous comment is no longer a problem
-             * because FVF definitional axioms are no longer nested under other quantifiers.
-             * The comment is kept for documentary purposes.
+             * because quantifiers with FVFs in their triggers are rewritten by abstracting over
+             * the concrete FVF with a newly added, quantified variable. This allows the prover
+             * to instantiate the nesting axiom with any FVF and to get to the nested definitional
+             * axioms.
+             * The next comment is kept for documentary purposes.
              *
              * [2015-11-13 Malte]
              * Using the trigger of the inv-of-receiver definitional axiom of the new inverse
@@ -287,6 +291,7 @@ trait DefaultProducer[ST <: Store[ST],
   //          val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, c1.branchConditions, invFct.definitionalAxioms))
             val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordQPTerms(Nil, decider.pcs.branchConditions, invFct.definitionalAxioms))
             Q(σ.h + ch1, c2)}
+
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, gain, forall, predAcc) =>
         //create new quantified predicate chunk
         val predicate = c.program.findPredicate(predname)
