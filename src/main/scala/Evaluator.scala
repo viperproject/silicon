@@ -351,28 +351,22 @@ trait DefaultEvaluator[ST <: Store[ST],
           /* It is assumed that, for a given field/predicate identifier (loc)
            * either only quantified or only non-quantified chunks are used.
            */
-          val usesQPChunks =
-            loc match {
-              case field: ast.Field => c.qpFields.contains(field)
-              case pred: ast.Predicate => c.qpPredicates.contains(pred)
-            }
+          val usesQPChunks = loc match {
+            case field: ast.Field => c.qpFields.contains(field)
+            case pred: ast.Predicate => c.qpPredicates.contains(pred)}
           val perm:Term =
             if (usesQPChunks) {
               loc match {
-                case field: ast.Field => {
+                case field: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(`?r`, args.head)))
-                }
+                case pred: ast.Predicate =>
                   //added for quantified predicate permissions
-                case pred: ast.Predicate => {
                   var formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    PermPlus(q, ch.perm.replace(formalArgs, args)))
-                }
-              }
-
+                    PermPlus(q, ch.perm.replace(formalArgs, args)))}
             } else {
               val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
               chs.foldLeft(NoPerm(): Term)((q, ch) => {
