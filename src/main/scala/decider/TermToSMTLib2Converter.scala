@@ -23,25 +23,25 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
   override val defaultIndent = 2
   override val defaultWidth = 80
 
-  lazy val uninitialized: Doc = value("<not initialized>")
+  lazy val uninitialized: Cont = value("<not initialized>")
 
   private var sanitizedNamesCache: mutable.Map[String, String] = _
 
   private val nameSanitizer = new SmtlibNameSanitizer
 
   def convert(s: Sort): String = {
-    super.pretty(render(s))
+    super.pretty(defaultWidth, render(s))
   }
 
-  protected def render(sort: Sort): Doc = sort match {
+  protected def render(sort: Sort): Cont = sort match {
     case sorts.Int => "Int"
     case sorts.Bool => "Bool"
     case sorts.Perm => "$Perm"
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
-    case sorts.Seq(elementSort) => "$Seq<" <> render(elementSort) <> ">"
-    case sorts.Set(elementSort) => "$Set<" <> render(elementSort) <> ">"
-    case sorts.Multiset(elementSort) => "$Multiset<" <> render(elementSort) <> ">"
+    case sorts.Seq(elementSort) => text("$Seq<") <> render(elementSort) <> ">"
+    case sorts.Set(elementSort) => text("$Set<") <> render(elementSort) <> ">"
+    case sorts.Multiset(elementSort) => text("$Multiset<") <> render(elementSort) <> ">"
     case sorts.UserSort(id) => sanitize(id)
 
     case sorts.Unit =>
@@ -50,17 +50,17 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
        */
       ""
 
-    case sorts.FieldValueFunction(codomainSort) => "$FVF<" <> render(codomainSort) <> ">"
-    case sorts.PredicateSnapFunction(codomainSort) => "$PSF<" <> render(codomainSort) <> ">"
+    case sorts.FieldValueFunction(codomainSort) => text("$FVF<") <> render(codomainSort) <> ">"
+    case sorts.PredicateSnapFunction(codomainSort) => text("$PSF<") <> render(codomainSort) <> ">"
   }
 
   def convert(d: Decl): String = {
-    super.pretty(render(d))
+    super.pretty(defaultWidth, render(d))
   }
 
-  protected def render(decl: Decl): Doc = decl match {
+  protected def render(decl: Decl): Cont = decl match {
     case SortDecl(sort: Sort) =>
-      parens("declare-sort" <+> render(sort))
+      parens(text("declare-sort") <+> render(sort))
 
     case FunctionDecl(fun: Function) =>
       val idDoc = sanitize(fun.id)
@@ -68,9 +68,9 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
       val resultSortDoc = render(fun.resultSort)
 
       if (argSortsDoc.isEmpty)
-        parens("declare-const" <+> idDoc <+> resultSortDoc)
+        parens(text("declare-const") <+> idDoc <+> resultSortDoc)
       else
-        parens("declare-fun" <+> idDoc <+> parens(ssep(argSortsDoc.to[collection.immutable.Seq], space)) <+> resultSortDoc)
+        parens(text("declare-fun") <+> idDoc <+> parens(ssep(argSortsDoc.to[collection.immutable.Seq], space)) <+> resultSortDoc)
 
     case SortWrapperDecl(from, to) =>
       val id = Identifier(sortWrapperName(from, to))
@@ -80,18 +80,18 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case MacroDecl(id, args, body) =>
       val idDoc = sanitize(id)
-      val argDocs = (args map (v => parens(sanitize(v.id) <+> render(v.sort)))).to[collection.immutable.Seq]
+      val argDocs = (args map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq]
       val bodySortDoc = render(body.sort)
       val bodyDoc = render(body)
 
-      parens("define-fun" <+> idDoc <+> parens(ssep(argDocs, space)) <+> bodySortDoc <> nest(line <> bodyDoc))
+      parens(text("define-fun") <+> idDoc <+> parens(ssep(argDocs, space)) <+> bodySortDoc <> nest(defaultIndent, line <> bodyDoc))
   }
 
   def convert(t: Term): String = {
-    super.pretty(render(t))
+    super.pretty(defaultWidth, render(t))
   }
 
-  protected def render(term: Term): Doc = term match {
+  protected def render(term: Term): Cont = term match {
     case lit: Literal => render(lit)
 
     case Ite(t0, t1, t2) =>
@@ -101,7 +101,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
       if (fapp.args.isEmpty)
         sanitize(fapp.applicable.id)
       else
-        parens(sanitize(fapp.applicable.id) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
+        parens(text(sanitize(fapp.applicable.id)) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
 
     /* Split axioms with more than one trigger set into multiple copies of the same
      * axiom, each with a single trigger. This can avoid incompletenesses due to Z3
@@ -114,20 +114,20 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     /* Handle quantifiers that have at most one trigger set */
     case Quantification(quant, vars, body, triggers, name) =>
-      val docVars = ssep((vars map (v => parens(sanitize(v.id) <+> render(v.sort)))).to[collection.immutable.Seq], space)
+      val docVars = ssep((vars map (v => parens(text(sanitize(v.id)) <+> render(v.sort)))).to[collection.immutable.Seq], space)
       val docBody = render(body)
       val docQuant = render(quant)
 
       val docTriggers =
         ssep(triggers.map(trigger => ssep((trigger.p map render).to[collection.immutable.Seq], space))
-                     .map(d => ":pattern" <+> parens(d)).to[collection.immutable.Seq],
+                     .map(d => text(":pattern") <+> parens(d)).to[collection.immutable.Seq],
              line)
 
-      val docQid: Doc =
-        if (name.isEmpty) empty
+      val docQid: Cont =
+        if (name.isEmpty) nil
         else s":qid |$name|"
 
-      parens(docQuant <+> parens(docVars) <+> parens("!" <> nest(line <> docBody <> line <> docTriggers <> line <> docQid)))
+      parens(docQuant <+> parens(docVars) <+> parens(text("!") <> nest(defaultIndent, line <> docBody <> line <> docTriggers <> line <> docQid)))
 
     /* Booleans */
 
@@ -174,13 +174,13 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case IntPermTimes(t0, t1) => renderBinaryOp("*", renderAsReal(t0), renderAsReal(t1))
     case PermIntDiv(t0, t1) => renderBinaryOp("/", renderAsReal(t0), renderAsReal(t1))
     case PermMin(t0, t1) => renderBinaryOp("$Perm.min", render(t0), render(t1))
-    case IsValidPermVar(v) => parens("$Perm.isValidVar" <+> render(v))
-    case IsReadPermVar(v, ub) => parens("$Perm.isReadVar" <+> render(v) <+> render(ub))
+    case IsValidPermVar(v) => parens(text("$Perm.isValidVar") <+> render(v))
+    case IsReadPermVar(v, ub) => parens(text("$Perm.isReadVar") <+> render(v) <+> render(ub))
 
     /* Sequences */
 
     case SeqRanged(t0, t1) => renderBinaryOp("$Seq.range", render(t0), render(t1))
-    case SeqSingleton(t0) => parens("$Seq.singleton" <+> render(t0))
+    case SeqSingleton(t0) => parens(text("$Seq.singleton") <+> render(t0))
     case bop: SeqAppend => renderBinaryOp("$Seq.append", bop)
     case uop: SeqLength => renderUnaryOp("$Seq.length", uop)
     case bop: SeqAt => renderBinaryOp("$Seq.index", bop)
@@ -191,7 +191,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     /* Sets */
 
-    case SingletonSet(t0) => parens("$Set.singleton " <+> render(t0))
+    case SingletonSet(t0) => parens(text("$Set.singleton ") <+> render(t0))
     case bop: SetAdd => renderBinaryOp("$Set.unionone", bop)
     case uop: SetCardinality => renderUnaryOp("$Set.card", uop)
     case bop: SetDifference => renderBinaryOp("$Set.difference", bop)
@@ -207,7 +207,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     /* Multisets */
 
-    case SingletonMultiset(t0) => parens("$Multiset.singleton" <+> render(t0))
+    case SingletonMultiset(t0) => parens(text("$Multiset.singleton") <+> render(t0))
     case bop: MultisetAdd => renderBinaryOp("$Multiset.unionone", bop)
     case uop: MultisetCardinality => renderUnaryOp("$Multiset.card", uop)
     case bop: MultisetDifference => renderBinaryOp("$Multiset.difference", bop)
@@ -218,11 +218,11 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     /* Quantified Permissions */
 
-    case Domain(id, fvf) => parens("$FVF.domain_" <> id <+> render(fvf))
+    case Domain(id, fvf) => parens(text("$FVF.domain_") <> id <+> render(fvf))
 
     case Lookup(field, fvf, at) => //fvf.sort match {
 //      case _: sorts.PartialFieldValueFunction =>
-        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
+        parens(text("$FVF.lookup_") <> field <+> render(fvf) <+> render(at))
 //      case _: sorts.TotalFieldValueFunction =>
 //        render(Apply(fvf, Seq(at)))
 //        parens("$FVF.lookup_" <> field <+> render(fvf) <+> render(at))
@@ -232,7 +232,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
 
 
-    case PredicateDomain(id, psf) => parens("$PSF.domain_" <> id <+> render(psf))
+    case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args, formalVars) =>
       var snap:Term = if (args.size == 1) {
@@ -241,28 +241,28 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
         args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
       }
 
-      parens("$PSF.lookup_" <> id <+> render(psf) <+> render(snap))
+      parens(text("$PSF.lookup_") <> id <+> render(psf) <+> render(snap))
 /*
     case PsfAfterRelation(id, psf2, psf1) => parens("$PSF.after_" <> id <+> render(psf2) <+> render(psf1))
 =======
 >>>>>>> other*/
     /* Other terms */
 
-    case First(t) => parens("$Snap.first" <+> render(t))
-    case Second(t) => parens("$Snap.second" <+> render(t))
+    case First(t) => parens(text("$Snap.first") <+> render(t))
+    case Second(t) => parens(text("$Snap.second") <+> render(t))
 
     case bop: Combine =>
       renderBinaryOp("$Snap.combine", bop)
 
     case SortWrapper(t, to) =>
-      parens(sortWrapperName(t.sort, to) <+> render(t))
+      parens(text(sortWrapperName(t.sort, to)) <+> render(t))
 
     case Distinct(symbols) =>
-      parens("distinct" <+> ssep((symbols.toSeq map (s => sanitize(s.id): Doc)).to[collection.immutable.Seq], space))
+      parens(text("distinct") <+> ssep((symbols.toSeq map (s => sanitize(s.id): Cont)).to[collection.immutable.Seq], space))
 
     case Let(bindings, body) =>
       val docBindings = ssep((bindings.toSeq map (p => parens(render(p._1) <+> render(p._2)))).to[collection.immutable.Seq], space)
-      parens("let" <+> parens(docBindings) <+> render(body))
+      parens(text("let") <+> parens(docBindings) <+> render(body))
 
     case _: MagicWandChunkTerm =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
@@ -278,46 +278,46 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
   @inline
   protected def renderUnaryOp(op: String, t: UnaryOp[Term]) =
-    parens(op <> nest(group(line <> render(t.p))))
+    parens(text(op) <> nest(defaultIndent, group(line <> render(t.p))))
 
   @inline
-  protected def renderUnaryOp(op: String, doc: Doc) =
-    parens(op <> nest(group(line <> doc)))
+  protected def renderUnaryOp(op: String, doc: Cont) =
+    parens(text(op) <> nest(defaultIndent, group(line <> doc)))
 
   @inline
   protected def renderBinaryOp(op: String, t: BinaryOp[Term]) =
-    parens(op <> nest(group(line <> render(t.p0) <> line <> render(t.p1))))
+    parens(text(op) <> nest(defaultIndent, group(line <> render(t.p0) <> line <> render(t.p1))))
 
   @inline
-  protected def renderBinaryOp(op: String, left: Doc, right: Doc) =
-    parens(op <> nest(group(line <> left <> line <> right)))
+  protected def renderBinaryOp(op: String, left: Cont, right: Cont) =
+    parens(text(op) <> nest(defaultIndent, group(line <> left <> line <> right)))
 
   @inline
   protected def renderNAryOp(op: String, terms: Term*) =
-    parens(op <> nest(group(line <> ssep((terms map render).to[collection.immutable.Seq], line))))
+    parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to[collection.immutable.Seq], line))))
 
-  protected def render(q: Quantifier): Doc = q match {
+  protected def render(q: Quantifier): Cont = q match {
     case Forall => "forall"
     case Exists => "exists"
   }
 
-  protected def render(literal: Literal): Doc = literal match {
+  protected def render(literal: Literal): Cont = literal match {
     case IntLiteral(n) =>
       if (n >= 0) n.toString()
-      else parens("- 0" <+> value(-n))
+      else parens(text("- 0") <+> value(-n))
 
     case Unit => "$Snap.unit"
     case True() => "true"
     case False() => "false"
     case Null() => "$Ref.null"
-    case SeqNil(elementSort) => "$Seq.empty<" <> render(elementSort) <> ">"
-    case EmptySet(elementSort) => "$Set.empty<" <> render(elementSort) <> ">"
-    case EmptyMultiset(elementSort) => "$Multiset.empty<" <> render(elementSort) <> ">"
+    case SeqNil(elementSort) => text("$Seq.empty<") <> render(elementSort) <> ">"
+    case EmptySet(elementSort) => text("$Set.empty<") <> render(elementSort) <> ">"
+    case EmptyMultiset(elementSort) => text("$Multiset.empty<") <> render(elementSort) <> ">"
   }
 
-  protected def renderAsReal(t: Term): Doc =
+  protected def renderAsReal(t: Term): Cont =
     if (t.sort == sorts.Int)
-      parens("to_real" <+> render(t))
+      parens(text("to_real") <+> render(t))
     else
       render(t)
 
