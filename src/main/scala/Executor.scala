@@ -244,7 +244,7 @@ trait DefaultExecutor[ST <: Store[ST],
       case ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
 
-      case label @ ast.Label(name) =>
+      case label @ ast.Label(name, invs) =>
         val c1 = c.copy(oldHeaps = c.oldHeaps + (name -> σ.h))
         Q(σ, c1)
 
