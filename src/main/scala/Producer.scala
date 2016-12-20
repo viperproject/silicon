@@ -13,8 +13,8 @@ import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
 import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.state.{DefaultContext, FieldChunk, PredicateChunk, SymbolConvert, ListBackedHeap}
-import viper.silicon.state.terms._
+import viper.silicon.state.{DefaultContext, FieldChunk, ListBackedHeap, PredicateChunk, SymbolConvert}
+import viper.silicon.state.terms.{App, _}
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
@@ -174,7 +174,7 @@ trait DefaultProducer[ST <: Store[ST],
         handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
           produce2(σ \+ γ1, sf, body, pve, c1)(Q))
 
-      case acc @ ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
+      case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
         def addNewChunk(h: H, rcvr: Term, s: Term, p: Term, c: C): (H, C) =
           if (c.qpFields.contains(field)) {
@@ -197,7 +197,7 @@ trait DefaultProducer[ST <: Store[ST],
             val (h1, c3) = addNewChunk(σ.h, tRcvr, s, gain, c2)
             Q(h1, c3)}))
 
-      case acc @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), perm) =>
+      case ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = c.program.findPredicate(predicateName)
         def addNewChunk(h:H, args:Seq[Term], s:Term, p:Term, c:C) : (H, C) =
           if (c.qpPredicates.contains(predicate)) {
@@ -210,8 +210,11 @@ trait DefaultProducer[ST <: Store[ST],
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
             (h + ch, c)
           } else {
-            val ch = PredicateChunk(predicate.name, args, s.convert(sorts.Snap), p)
+            val snap = s.convert(sorts.Snap)
+            val ch = PredicateChunk(predicate.name, args, snap, p)
             val (h1, c1) = chunkSupporter.produce(σ, σ.h, ch, c)
+            if (config.enablePredicateTriggersOnInhale() && c1.functionRecorder == NoopFunctionRecorder)
+              decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap +: args))
             (h1, c1)
           }
         evals(σ, eArgs, _ => pve, c)((tArgs, c1) =>

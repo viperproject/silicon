@@ -306,21 +306,31 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     descr = "Disable caching of value maps (context: iterated separating conjunctions).",
     default = Some(false),
     noshort = true,
-    hidden = false //Silicon.hideInternalOptions
+    hidden = Silicon.hideInternalOptions
   )
 
   val disableISCTriggers = opt[Boolean]("disableISCTriggers",
-    descr = "Don't pick triggers for quantifiers, let the SMT solver do it (context: iterated separating conjunctions).",
+    descr = (  "Don't pick triggers for quantifiers, let the SMT solver do it "
+             + "(context: iterated separating conjunctions)."),
     default = Some(false),
     noshort = true,
-    hidden = false //Silicon.hideInternalOptions
+    hidden = Silicon.hideInternalOptions
   )
 
   val disableChunkOrderHeuristics = opt[Boolean]("disableChunkOrderHeuristics",
-    descr = "Disable heuristic ordering of quantified chunks (context: iterated separating conjunctions).",
+    descr = (  "Disable heuristic ordering of quantified chunks "
+             + "(context: iterated separating conjunctions)."),
     default = Some(false),
     noshort = true,
-    hidden = false //Silicon.hideInternalOptions
+    hidden = Silicon.hideInternalOptions
+  )
+
+  val enablePredicateTriggersOnInhale = opt[Boolean]("enablePredicateTriggersOnInhale",
+    descr = (  "Emit predicate-based function trigger on each inhale of a "
+             + "predicate instance (context: heap-dependent functions)."),
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
   )
 
   /* Option validation */
