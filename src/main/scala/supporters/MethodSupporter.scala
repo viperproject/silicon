@@ -60,49 +60,49 @@ trait MethodSupporterProvider[ST <: Store[ST],
     def emitAxioms(): Unit = { /* No axioms need to be emitted */ }
 
     def verify(method: ast.Method, c: C): Seq[VerificationResult] = {
-        log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
-        decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
+      log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
+      decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-        SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+      SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
-        val ins = method.formalArgs.map(_.localVar)
-        val outs = method.formalReturns.map(_.localVar)
+      val ins = method.formalArgs.map(_.localVar)
+      val outs = method.formalReturns.map(_.localVar)
 
-        val γ = Γ(   ins.map(v => (v, fresh(v)))
-                  ++ outs.map(v => (v, fresh(v)))
-                  ++ method.locals.map(_.localVar).map(v => (v, fresh(v))))
+      val γ = Γ(   ins.map(v => (v, fresh(v)))
+                ++ outs.map(v => (v, fresh(v)))
+                ++ method.locals.map(_.localVar).map(v => (v, fresh(v))))
 
-        val σ = Σ(γ, Ø, Ø)
+      val σ = Σ(γ, Ø, Ø)
 
-        val pres = method.pres
-        val posts = method.posts
-        val body = method.body.toCfg
-        val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
+      val pres = method.pres
+      val posts = method.posts
+      val body = method.body.toCfg
+      val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
-        // common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
+      // common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
 
-        val result =
-          /* Combined the well-formedness check and the execution of the body, which are two separate
-           * rules in Smans' paper.
-           */
-          locally {
-            produces(σ, fresh, pres, ContractNotWellformed, c)((σ1, c2) => {
-              val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-                 (/* Commented due to #201: Self-framingness checks are made too eagerly */
-                  /*locally {
-                    magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}*/
-              /*&&*/ locally {
-                   val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
-                   val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-                    produces(σ2, fresh, posts, ContractNotWellformed, c2)((_, c3) => {
-                      SymbExLogger.currentLog().collapse(null, sepIdentifier)
-                      Success()
-                    })
-                 }
-              && locally {
-                    exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-                      consumes(σ2, posts, postViolated, c3)((σ3, _, c4) =>
-                        Success()))})})}
+      val result =
+        /* Combined the well-formedness check and the execution of the body, which are two separate
+         * rules in Smans' paper.
+         */
+        locally {
+          produces(σ, fresh, pres, ContractNotWellformed, c)((σ1, c2) => {
+            val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
+               (/* Commented due to #201: Self-framingness checks are made too eagerly */
+                /*locally {
+                  magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}*/
+            /*&&*/ locally {
+                 val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+                 val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+                  produces(σ2, fresh, posts, ContractNotWellformed, c2)((_, c3) => {
+                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+                    Success()
+                  })
+               }
+            && locally {
+                  exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
+                    consumes(σ2, posts, postViolated, c3)((σ3, _, c4) =>
+                      Success()))})})}
 
       Seq(result)
     }

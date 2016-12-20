@@ -124,12 +124,13 @@ class DefaultVerifier(val config: Config)
       methodSupporter.units.toList
                            .filterNot(excludeMethod)
                            .flatMap(method => {
-      val c = createInitialContext(method, program)
+
+        val c = createInitialContext(method, program)
 //      ev.quantifiedChunkSupporter.initLastFVF(c.qpFields) /* TODO: Implement properly */
 
-          val res = methodSupporter.verify(method, c)
-          bookkeeper.methodVerified(method.name)
-          res
+        val res = methodSupporter.verify(method, c)
+        bookkeeper.methodVerified(method.name)
+        res
     })
 
     /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */

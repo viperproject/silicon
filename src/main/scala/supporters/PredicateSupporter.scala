@@ -157,7 +157,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
           } else {
             val ch = PredicateChunk(predicate.name, tArgs, snap/*.convert(sorts.Snap)*/, tPerm)
             val c2 = c1.copy(fvfAsSnap = c.fvfAsSnap,
-              permissionScalingFactor = c.permissionScalingFactor)
+                             permissionScalingFactor = c.permissionScalingFactor)
             val (h1, c3) = chunkSupporter.produce(σ1, σ1.h, ch, c2)
             Q(σ \ h1, c3)
           }
