@@ -9,20 +9,21 @@ package viper.silicon.supporters.functions
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
-import viper.silver.verifier.errors.{PostconditionViolated, ContractNotWellformed, FunctionNotWellformed}
+import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 import viper.silicon.supporters.PredicateSupporter
 import viper.silicon._
-import viper.silicon.interfaces.decider.Decider
+import viper.silicon.interfaces.decider.{Decider, ProverLike}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.state.{IdentifierFactory,ListBackedHeap, DefaultContext, SymbolConvert}
+import viper.silicon.state.{DefaultContext, IdentifierFactory, ListBackedHeap, SymbolConvert}
 import viper.silicon.state.terms
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.SymbExLogger
 
-trait FunctionSupporter[H <: Heap[H]] extends VerificationUnit[H, ast.Function]
+trait FunctionSupporter[SO, SY, AX, H <: Heap[H]]
+    extends VerifyingPreambleContributor[SO, SY, AX, H, ast.Function]
 
 object FunctionSupporter {
   def limitedVersion(function: HeapDepFun): HeapDepFun = {
@@ -59,12 +60,17 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
   private case class Phase1Data(σPre: S, πPre: Set[Term], cPre: C)
 
-  object functionsSupporter extends FunctionSupporter[H] {
-    private var program: ast.Program = null
-    private var functionData: Map[ast.Function, FunctionData] = null
+  object functionsSupporter extends FunctionSupporter[Sort, Function, Term, H] {
+    private var program: ast.Program = _
+    private var functionData: Map[ast.Function, FunctionData] = Map.empty
+    private var emittedFunctionAxioms: Vector[Term] = Vector.empty
 
     private val expressionTranslator =
       new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
+
+    def units = functionData.keys.toSeq
+
+    /* Preamble contribution */
 
     def analyze(program: ast.Program) {
       this.program = program
@@ -85,29 +91,45 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       expressionTranslator.functionData = functionData
     }
 
-    def units = functionData.keys.toSeq
+    def emitAxiomsAfterAnalysis(): Unit = {
+      /* No axioms need to be emitted before function verification starts */
+    }
 
-    def sorts: Set[Sort] = Set.empty
-    def declareSorts(): Unit = { /* No sorts need to be declared */ }
+    /* Function supporter generates no sorts during program analysis */
+    val sortsAfterAnalysis: Iterable[Sort] = Seq.empty
+    def declareSortsAfterAnalysis(sink: ProverLike): Unit = ()
 
-    def declareSymbols(): Unit = {
-      decider.prover.logComment("Declaring program functions")
+    private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Function]] = (
+         Seq(Left("Declaring symbols related to program functions (from program analysis)"))
+      ++ functionData.values.flatMap(data =>
+               Seq(data.function, data.limitedFunction, data.statelessFunction)
+            ++ data.fvfGenerators.values
+         ).map(Right(_))
+        )
 
-      functionData.values foreach { data =>
-        decider.prover.declare(FunctionDecl(data.function))
-        decider.prover.declare(FunctionDecl(data.limitedFunction))
-        decider.prover.declare(FunctionDecl(data.statelessFunction))
-        data.fvfGenerators.values foreach (fvfGen => decider.prover.declare(FunctionDecl(fvfGen)))
+    def symbolsAfterAnalysis: Iterable[Function] =
+      (generateFunctionSymbolsAfterAnalysis collect { case Right(f) => f }) ++ Seq(`?s`)
+
+    def declareSymbolsAfterAnalysis(sink: ProverLike): Unit = {
+      generateFunctionSymbolsAfterAnalysis foreach {
+        case Left(comment) => sink.comment(comment)
+        case Right(f) => sink.declare(FunctionDecl(f))
       }
 
-      decider.prover.logComment("Snapshot variable to be used during function verification")
-      decider.prover.declare(ConstDecl(`?s`))
+      sink.comment("Snapshot variable to be used during function verification")
+      sink.declare(ConstDecl(`?s`))
     }
+
+    /* Function supporter generates no axioms during program analysis */
+    val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
+    def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
+
+    /* Verification and subsequent preamble contribution */
 
     def verify(function: ast.Function, c: DefaultContext[H]): Seq[VerificationResult] = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
       log.debug(s"\n\n$comment\n")
-      decider.prover.logComment(comment)
+      decider.prover.comment(comment)
 
 	    SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
@@ -131,9 +153,9 @@ trait FunctionSupporterProvider[ST <: Store[ST],
           result1
 
         case (result1, phase1data) =>
-          decider.prover.assume(data.limitedAxiom)
-          decider.prover.assume(data.triggerAxiom)
-          data.postAxiom foreach decider.prover.assume
+          emitAndRecordFunctionAxioms(data.limitedAxiom)
+          emitAndRecordFunctionAxioms(data.triggerAxiom)
+          emitAndRecordFunctionAxioms(data.postAxiom.toSeq: _*)
 
           if (function.body.isEmpty)
             result1
@@ -145,7 +167,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
               case fatalResult: FatalResult =>
                 data.verificationFailures = data.verificationFailures :+ fatalResult
               case _ =>
-                data.definitionalAxiom foreach decider.prover.assume
+                emitAndRecordFunctionAxioms(data.definitionalAxiom.toSeq: _*)
             }
 
             result1 && result2
@@ -158,7 +180,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
       val comment = ("-" * 5) + " Well-definedness of specifications " + ("-" * 5)
       log.debug(s"\n\n$comment\n")
-      decider.prover.logComment(comment)
+      decider.prover.comment(comment)
 
       val data = functionData(function)
       val pres = function.pres
@@ -185,9 +207,9 @@ trait FunctionSupporterProvider[ST <: Store[ST],
     private def verify(function: ast.Function, phase1data: Seq[Phase1Data], program: ast.Program)
                       : VerificationResult = {
 
-      val comment = ("-" * 10) + " FUNCTION " + function.name + " (verify) " + ("-" * 10)
+      val comment = ("-" * 5) + " Verification of function body and postcondition " + ("-" * 5)
       log.debug(s"\n\n$comment\n")
-      decider.prover.logComment(comment)
+      decider.prover.comment(comment)
 
       val data = functionData(function)
       val posts = function.posts
@@ -212,19 +234,43 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       result
     }
 
-    def emitAxioms(): Unit = {
-      /* No axioms need to be emitted (before function verification starts) */
+    private def emitAndRecordFunctionAxioms(axiom: Term*): Unit = {
+      axiom foreach decider.prover.assume
+      emittedFunctionAxioms = emittedFunctionAxioms ++ axiom
+    }
+
+    private def generateFunctionSymbolsAfterVerification: Iterable[Either[String, Function]] = (
+         Seq(Left("Declaring symbols related to program functions (from verification)"))
+      ++ functionData.values.flatMap(data => data.getFreshSymbolsAcrossAllPhases).map(Right(_)))
+
+    /* Function supporter generates no additional sorts during verification */
+    val sortsAfterVerification: Iterable[Sort] = Seq.empty
+    def declareSortsAfterVerification(sink: ProverLike): Unit = ()
+
+    val symbolsAfterVerification: Iterable[Function] =
+      generateFunctionSymbolsAfterVerification collect { case Right(f) => f }
+
+    def declareSymbolsAfterVerification(sink: ProverLike): Unit = {
+      generateFunctionSymbolsAfterVerification foreach {
+        case Left(comment) => sink.comment(comment)
+        case Right(f) => sink.declare(FunctionDecl(f))
+      }
+    }
+
+    val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
+
+    def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
+      emittedFunctionAxioms foreach sink.assume
     }
 
     /* Lifetime */
 
-    def start(): Unit = {
-      functionData = Map.empty
-    }
+    def start(): Unit = {}
 
     def reset() {
       program = null
       functionData = Map.empty
+      emittedFunctionAxioms = Vector.empty
     }
 
     def stop() {}

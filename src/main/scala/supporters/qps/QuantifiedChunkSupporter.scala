@@ -135,10 +135,10 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
     /* Chunk creation */
 
     def createSingletonQuantifiedChunk(rcvr: Term,
-      field: String,
-      fvf: Term,
-      perms: Term)
-      : QuantifiedFieldChunk = {
+                                       field: String,
+                                       fvf: Term,
+                                       perms: Term)
+                                      : QuantifiedFieldChunk = {
 
       val condPerms = singletonConditionalPermissions(rcvr, perms)
       val hints = extractHints(None, None, rcvr)
@@ -173,7 +173,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                    perms: Term,
                                    condition: Term,
                                    additionalArgs: Seq[Var])
-    : (QuantifiedFieldChunk, InverseFunction) = {
+                                  : (QuantifiedFieldChunk, InverseFunction) = {
 
       Predef.assert(fvf.sort.isInstanceOf[sorts.FieldValueFunction],
         s"Quantified chunk values must be of sort FieldValueFunction, but found value $fvf of sort ${fvf.sort}")
@@ -328,7 +328,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
           QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(axiomRewriter, config)
       } else {
   //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
-        SummarisingFvfDefinition(field, fvf, receiver, chunks.toSeq)(config)
+        SummarisingFvfDefinition(field, fvf, receiver, chunks)(config)
       }
     }
 
@@ -446,7 +446,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
        */
       val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, Ite(condition, perms, NoPerm()), receiver, true)
 
-      decider.prover.logComment(s"Precomputing split data for $receiver.${field.name} # $perms")
+      decider.prover.comment(s"Precomputing split data for $receiver.${field.name} # $perms")
 
       val precomputedData = candidates map { ch =>
         val pTaken = Ite(conditionOfInv, PermMin(ch.perm, pNeeded), NoPerm())
@@ -463,7 +463,7 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
         (ch, permsTakenFApp(`?r`), pNeeded)
       }
 
-      decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
+      decider.prover.comment(s"Done precomputing, updating quantified heap chunks")
 
       var tookEnough = Forall(`?r`, Implies(conditionOfInv, pNeeded === NoPerm()), Nil: Seq[Trigger])
 
@@ -478,12 +478,12 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
                                                        ithPTaken)
 
           if (constrainPermissions) {
-            decider.prover.logComment(s"Constrain original permissions $perms")
+            decider.prover.comment(s"Constrain original permissions $perms")
             assume(permissionConstraint)
 
             residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
           } else {
-            decider.prover.logComment(s"Chunk depleted?")
+            decider.prover.comment(s"Chunk depleted?")
             val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
 
             if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
@@ -496,15 +496,15 @@ trait QuantifiedChunkSupporterProvider[ST <: Store[ST],
            */
           tookEnough = Forall(`?r`, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
 
-          decider.prover.logComment(s"Enough permissions taken?")
+          decider.prover.comment(s"Enough permissions taken?")
           success = check(σ, tookEnough, config.splitTimeout())
         }
       }
 
-      decider.prover.logComment("Final check that enough permissions have been taken")
+      decider.prover.comment("Final check that enough permissions have been taken")
       success = success || check(σ, tookEnough, 0) /* This check is a must-check, i.e. an assert */
 
-      decider.prover.logComment("Done splitting")
+      decider.prover.comment("Done splitting")
 
       val hResidue = H(residue ++ otherChunks)
       val chunkSplitOf = QuantifiedFieldChunk(field.name, fvfDef.fvf, conditionalizedPermsOfInv, None, None, None, Nil)

@@ -59,7 +59,7 @@ trait DefaultExecutor[ST <: Store[ST],
         /* TODO: Use FollowEdge instead of IfBranching */
           branch(σ, tCond, c1,
             (c2: C) => exec(σ, ce.dest, c2)(Q),
-            (c2: C) => Success()))
+            (_: C) => Success()))
 
       case ue: ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
     }
@@ -98,8 +98,7 @@ trait DefaultExecutor[ST <: Store[ST],
           : VerificationResult = {
 
     block match {
-
-      case cblock @ ast.ConditionalBlock(stmt, e, thn, els) =>
+      case cblock @ ast.ConditionalBlock(stmt, e, _, _) =>
         exec(σ, stmt, c)((σ1, c1) => {
 
           val iteLog = new IfThenElseRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
@@ -112,11 +111,11 @@ trait DefaultExecutor[ST <: Store[ST],
           val iteResult = eval(σ1, thn_edge.cond, IfFailed(thn_edge.cond), c1)((tCond, c2) => {
             iteLog.finish_thnCond()
             val thn_branch_res = branch(σ1, tCond, c2,
-              (c3: C) => exec(σ1, thn_edge.dest, c2)((σ_thn, c_thn) => {
+              (c3: C) => exec(σ1, thn_edge.dest, c3)((σ_thn, c_thn) => {
                 iteLog.finish_thnSubs()
                 Q(σ_thn, c_thn)
               }),
-              (c3: C) => Success())
+              (_: C) => Success())
             thn_branch_res
           }) && eval(σ1, els_edge.cond, IfFailed(els_edge.cond), c1)((tCond, c2) => {
             iteLog.finish_elsCond()
@@ -125,7 +124,7 @@ trait DefaultExecutor[ST <: Store[ST],
                 iteLog.finish_elsSubs()
                 Q(σ_els, c_els)
               }),
-              (c3: C) => Success())
+              (_: C) => Success())
             els_branch_res
           })
           SymbExLogger.currentLog().collapse(null, sepIdentifier)
@@ -137,7 +136,7 @@ trait DefaultExecutor[ST <: Store[ST],
           leave(σ1, block, c1)(Q))
 
       case lb: ast.LoopBlock =>
-        decider.prover.logComment(s"loop at ${lb.pos}")
+        decider.prover.comment(s"loop at ${lb.pos}")
 
         /* TODO: We should avoid roundtripping, i.e., parsing a SIL file into an AST,
          *       which is then converted into a CFG, from which we then compute an
@@ -160,7 +159,7 @@ trait DefaultExecutor[ST <: Store[ST],
 
         (locally {
             val mark = decider.setPathConditionMark()
-            decider.prover.logComment("Loop: Check specs well-definedness")
+            decider.prover.comment("Loop: Check specs well-definedness")
             produces(σBody, fresh, lb.invs, ContractNotWellformed, c)((σ1, c1) =>
               produce(σ1, fresh, lb.cond, WhileFailed(loopStmt), c1)((σ2, c2) => {
                 /* Detect potential contradictions between path conditions from the loop guard and
@@ -171,22 +170,22 @@ trait DefaultExecutor[ST <: Store[ST],
                 Success()}))}
         && locally {
             val mark = decider.setPathConditionMark()
-            decider.prover.logComment("Loop: Establish loop invariant")
+            decider.prover.comment("Loop: Establish loop invariant")
             consumes(σ, lb.invs, e => LoopInvariantNotEstablished(e), c)((σ1, _, c1) => {
               phase2data = phase2data :+ (σ1, decider.pcs.after(mark), c1)
               Success()})}
         && {
-            decider.prover.logComment("Loop: Verify loop body")
+            decider.prover.comment("Loop: Verify loop body")
             phase1data.foldLeft(Success(): VerificationResult) {
               case (fatalResult: FatalResult, _) => fatalResult
               case (intermediateResult, (σ1, pcs1, c1)) =>
                 intermediateResult && locally {
                   assume(pcs1.assumptions)
                   exec(σ1, lb.body, c1)((σ2, c2) =>
-                    consumes(σ2, lb.invs, e => LoopInvariantNotPreserved(e), c2)((σ3, _, c3) =>
+                    consumes(σ2, lb.invs, e => LoopInvariantNotPreserved(e), c2)((_, _, _) =>
                       Success()))}}}
         && {
-            decider.prover.logComment("Loop: Continue after loop")
+            decider.prover.comment("Loop: Continue after loop")
             phase2data.foldLeft(Success(): VerificationResult) {
               case (fatalResult: FatalResult, _) => fatalResult
               case (intermediateResult, (σ1, pcs1, c1)) =>
@@ -199,7 +198,7 @@ trait DefaultExecutor[ST <: Store[ST],
                     else
                       leave(σ2, lb, c2)(Q))}}})
 
-        case frp @ ast.ConstrainingBlock(vars, body, succ) =>
+        case frp @ ast.ConstrainingBlock(vars, body, _) =>
           val arps = vars map σ.γ.apply
           val c1 = c.setConstrainable(arps, true)
           exec(σ, body, c1)((σ1, c2) =>
@@ -236,15 +235,15 @@ trait DefaultExecutor[ST <: Store[ST],
       case _ =>
         log.debug(s"\nEXECUTE ${utils.ast.sourceLineColumn(stmt)}: $stmt")
         log.debug(stateFormatter.format(σ, decider.π))
-        decider.prover.logComment("[exec]")
-        decider.prover.logComment(stmt.toString())
+        decider.prover.comment("[exec]")
+        decider.prover.comment(stmt.toString())
     }
 
     val executed = stmt match {
       case ast.Seqn(stmts) =>
         execs(σ, stmts, c)(Q)
 
-      case label @ ast.Label(name, invs) =>
+      case ast.Label(name, _) =>
         val c1 = c.copy(oldHeaps = c.oldHeaps + (name -> σ.h))
         Q(σ, c1)
 
@@ -255,7 +254,7 @@ trait DefaultExecutor[ST <: Store[ST],
             val wand = rhs.asInstanceOf[ast.MagicWand]
             val pve = LetWandFailed(ass)
             magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
-              Q(σ \+ (v, MagicWandChunkTerm(chWand)), c))
+              Q(σ \+ (v, MagicWandChunkTerm(chWand)), c1))
           case _ =>
             eval(σ, rhs, AssignmentFailed(ass), c)((tRhs, c1) => {
               val t = ssaifyRhs(tRhs, v.name, v.typ)
@@ -286,7 +285,7 @@ trait DefaultExecutor[ST <: Store[ST],
           eval(σ, rhs, pve, c1)((tRhs, c2) =>
             chunkSupporter.withChunk(σ, σ.h, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, c2)((fc, c3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ)
-              Q(σ \- fc \+ FieldChunk(tRcvr, field.name, tRhs, fc.perm), c3)})))
+              Q(σ \- fc \+ FieldChunk(tRcvr, field.name, t, fc.perm), c3)})))
 
       case ast.NewStmt(v, fields) =>
         val tRcvr = fresh(v)
@@ -359,11 +358,11 @@ trait DefaultExecutor[ST <: Store[ST],
           case _ =>
             if (config.disableSubsumption()) {
               val r =
-                consume(σ, a, pve, c)((σ1, _, c1) =>
+                consume(σ, a, pve, c)((_, _, _) =>
                   Success())
               r && Q(σ, c)
             } else
-              consume(σ, a, pve, c)((σ1, _, c1) =>
+              consume(σ, a, pve, c)((_, _, c1) =>
                 Q(σ, c1))
         }
 

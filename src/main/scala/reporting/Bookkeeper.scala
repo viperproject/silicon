@@ -18,7 +18,7 @@ import java.text.SimpleDateFormat
 import viper.silver.components.StatefulComponent
 import viper.silicon.{Config, Map}
 
-class Bookkeeper(config: Config) extends StatefulComponent {
+class Bookkeeper(config: Config, uniqueId: String) extends StatefulComponent {
   var branches: Long = 0
   var heapMergeIterations: Long = 0
   var objectDistinctnessComputations: Long = 0
@@ -36,7 +36,7 @@ class Bookkeeper(config: Config) extends StatefulComponent {
   /* TODO: Unify these loggers with those that are used if command-line option -L<logger> is provided */
   var logfiles: scala.collection.immutable.Map[String, MultiRunLogger] =
     scala.collection.immutable.Map[String, MultiRunLogger]().withDefault(name => {
-      val writer = viper.silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name.txt"), false)
+      val writer = viper.silver.utility.Common.PrintWriter(new File(config.tempDirectory(), s"$name-$uniqueId.txt"), false)
       val logger = new MultiRunLogger(writer, () => config.inputFile.map(_.toString))
 
       logfiles += (name -> logger)

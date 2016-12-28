@@ -16,7 +16,7 @@ import viper.silicon.state.QuantifiedFieldChunk
 
 trait FvfDefinition {
   def field: ast.Field
-  def fvf: Term
+  def fvf: Var
   def valueDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
 }
@@ -42,7 +42,7 @@ private[qps] object FvfDefinition {
 }
 
 case class SingletonChunkFvfDefinition(field: ast.Field,
-                                       fvf: Term,
+                                       fvf: Var,
                                        rcvr: Term,
                                        valueChoice: Either[Term, Seq[QuantifiedFieldChunk]])
     extends FvfDefinition {
@@ -59,7 +59,7 @@ case class SingletonChunkFvfDefinition(field: ast.Field,
 }
 
 case class QuantifiedChunkFvfDefinition(field: ast.Field,
-                                        fvf: Term,
+                                        fvf: Var,
                                         qvars: Seq[Var],
                                         condition: Term,
                                         rcvr: Term,
@@ -134,7 +134,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
         val repl = (t: Term) => t.replace(rcvr, `?r`).replace(v, inverseFunction(`?r`))
 
         domainDefinitions match {
-          case Seq(Forall(Seq(`v`), body, triggers, name)) =>
+          case Seq(Forall(Seq(`v`), body, triggers, _)) =>
             Seq(Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.func.id}"))
           case others =>
             others map repl
@@ -147,7 +147,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
 }
 
 case class SummarisingFvfDefinition(field: ast.Field,
-                                    fvf: Term,
+                                    fvf: Var,
                                     rcvr: Term,
                                     sourceChunks: Seq[QuantifiedFieldChunk])
                                    (config: Config)
@@ -160,7 +160,7 @@ case class SummarisingFvfDefinition(field: ast.Field,
   private val valDefs =
     triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
 
-  val valueDefinitions: Seq[Term] = Seq(Let(`?r`, rcvr, And(valDefs)))
+  lazy val valueDefinitions: Seq[Term] = ??? //Seq(Let(`?r`, rcvr, And(valDefs)))
 
   val domainDefinitions = Seq(True())
 

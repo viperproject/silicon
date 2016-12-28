@@ -96,7 +96,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         if (c.reserveHeaps.nonEmpty)
           log.debug("hR = " + c.reserveHeaps.map(stateFormatter.format).mkString("", ",\n     ", ""))
         c.lhsHeap.foreach(h => log.debug("hLHS = " + stateFormatter.format(h)))
-        decider.prover.logComment(s"[eval] $e")
+        decider.prover.comment(s"[eval] $e")
     }
 
     /* Switch to the eval heap (σUsed) of magic wand's exhale-ext, if necessary.
@@ -150,12 +150,13 @@ trait DefaultEvaluator[ST <: Store[ST],
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = decider.freshARP()
         assume(tConstraints)
-        Q(WildcardPerm(tVar), c)
+        val c1 = c.copy(functionRecorder = c.functionRecorder.recordArp(tVar, tConstraints))
+        Q(WildcardPerm(tVar), c1)
 
       case fa: ast.FieldAccess if c.qpFields.contains(fa.field) =>
         eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
           val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
-          c1.fvfCache.get((fa.field, quantifiedChunks)) match { /* TOOD: Drop field from cache map, quantifiedChunks should suffice */
+          c1.fvfCache.get((fa.field, quantifiedChunks)) match { /* TODO: Drop field from cache map, quantifiedChunks should suffice */
             case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
               /* The next assertion must be made if the FVF definition is taken from the cache;
                * in the other case it is part of quantifiedChunkSupporter.withValue.
@@ -175,13 +176,11 @@ trait DefaultEvaluator[ST <: Store[ST],
                   val c2 = c1.copy(functionRecorder = fr1)
                   Q(fvfLookup, c2)}
             case _ =>
-              quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Nil, True(), tRcvr, pve, fa, c1)(fvfDef => {
+              quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Seq.empty, True(), tRcvr, pve, fa, c1)(fvfDef => {
                 assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-
-                val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
-                                             .recordQPTerms(c1.quantifiedVariables, decider.pcs.branchConditions, /*fvfDomain ++ */fvfDef.quantifiedValueDefinitions)
-                val fr2 = if (true/*fvfDef.freshFvf*/) fr1.recordFvf(fa.field, fvfDef.fvf) else fr1
+                val fr2 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
+                                             .recordFvfAndDomain(fvfDef, Seq.empty)
                 val c2 = c1.copy(functionRecorder = fr2,
                                  fvfCache = if (config.disableValueMapCaching()) c1.fvfCache else c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
                 Q(fvfLookup, c2)})}})
@@ -248,7 +247,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 //            Implies(t0, entries.headOption.map(_.data).getOrElse(True()))
 //          })(Q))
 
-      case ite @ ast.CondExp(e0, e1, e2) =>
+      case ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           join[Term, Term](c1, QB =>
             branch(σ, t0, c1,
@@ -355,16 +354,16 @@ trait DefaultEvaluator[ST <: Store[ST],
           val usesQPChunks = loc match {
             case field: ast.Field => c.qpFields.contains(field)
             case pred: ast.Predicate => c.qpPredicates.contains(pred)}
-          val perm:Term =
+          val perm =
             if (usesQPChunks) {
               loc match {
-                case field: ast.Field =>
+                case _: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(`?r`, args.head)))
                 case pred: ast.Predicate =>
                   //added for quantified predicate permissions
-                  var formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
+                  val formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
                   val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
                   chs.foldLeft(NoPerm(): Term)((q, ch) =>
                     PermPlus(q, ch.perm.replace(formalArgs, args)))}
@@ -417,7 +416,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         val name = s"prog.l${utils.ast.sourceLine(sourceQuant)}"
         evalQuantified(σ, qantOp, vars, Nil, Seq(body), Some(eTriggers), name, pve, c){
           case (tVars, _, Seq(tBody), tTriggers, Right(tAuxQuants), c1) =>
-            decider.prover.logComment("Nested auxiliary terms")
+            decider.prover.comment("Nested auxiliary terms")
             assume(tAuxQuants)
             val tQuant = Quantification(qantOp, tVars, tBody, tTriggers, name)
             Q(tQuant, c1)}
@@ -867,7 +866,7 @@ trait DefaultEvaluator[ST <: Store[ST],
      */
 
     val r =
-      evals(σ, remainingTriggerExpressions, _ => pve, c)((remainingTriggerTerms, c1) => {
+      evals(σ, remainingTriggerExpressions, _ => pve, c)((remainingTriggerTerms, _) => {
         optRemainingTriggerTerms = Some(remainingTriggerTerms)
         πDelta = decider.pcs.after(preMark).assumptions //decider.π -- πPre
         Success()})

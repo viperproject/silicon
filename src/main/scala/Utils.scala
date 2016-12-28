@@ -42,16 +42,23 @@ package object utils {
   }
 
   /* NOT thread-safe */
-  class Counter {
-    private var value = -1
+  class Counter(firstValue: Int = 0) extends StatefulComponent {
+    private var nextValue = firstValue
 
     def next() = {
-      value = value + 1
-      value
+      val n = nextValue
+      nextValue = nextValue + 1
+
+      n
     }
 
+    /* Lifetime */
+
+    def start() {}
+    def stop() {}
+
     def reset() {
-      value = -1
+      nextValue = firstValue
     }
   }
 

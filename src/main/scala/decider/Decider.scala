@@ -12,13 +12,13 @@ import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
 import viper.silicon._
-import viper.silicon.interfaces.{VerificationResult, Failure, Success, FatalResult, NonFatalResult}
+import viper.silicon.interfaces.{Failure, FatalResult, NonFatalResult, Success, VerificationResult}
 import viper.silicon.interfaces.decider.{Decider, Prover, Unsat}
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.reporting.Bookkeeper
-import viper.silicon.supporters.{HeapCompressor, ChunkSupporter}
+import viper.silicon.supporters.{ChunkSupporter, HeapCompressor}
 import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
 
 trait DeciderProvider[ST <: Store[ST],
@@ -31,11 +31,18 @@ trait DeciderProvider[ST <: Store[ST],
   protected val config: Config
   protected val bookkeeper: Bookkeeper
   protected val symbolConverter: SymbolConvert
+  protected val termConverter: TermToSMTLib2Converter
+    /* TODO: It is bad that the decider instantiates a concrete prover (e.g. Z3),
+     *       but that it relies on another component to provide a term converter
+     *       that is suitable for this prover.
+     */
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter[ST, H, S, C]
   protected val identifierFactory: IdentifierFactory
   protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
+
+  protected val uniqueId: String
 
   object decider extends Decider[ST, H, S, C] with StatefulComponent {
     private var z3: Z3ProverStdIO = _
@@ -52,7 +59,7 @@ trait DeciderProvider[ST <: Store[ST],
 
     private def createProver(): Option[DependencyNotFoundError] = {
       try {
-        z3 = new Z3ProverStdIO(config, bookkeeper, identifierFactory)
+        z3 = new Z3ProverStdIO(config, config.z3LogFile(uniqueId), bookkeeper, identifierFactory, termConverter)
         z3.start() /* Cannot query Z3 version otherwise */
       } catch {
         case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
@@ -309,12 +316,6 @@ trait DeciderProvider[ST <: Store[ST],
       val permVarConstraints = IsReadPermVar(permVar, upperBound)
 
       (permVar, permVarConstraints)
-    }
-
-    private def asVar(function: Function): Var = {
-      Predef.assert(function.argSorts.isEmpty)
-
-      Var(function.id, function.resultSort)
     }
 
     private def prover_fresh[F <: Function : ClassTag](id: String, argSorts: Seq[Sort], resultSort: Sort): F = {

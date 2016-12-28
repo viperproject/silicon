@@ -445,7 +445,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         summarizePredicateChunks(candidates, predicate, qvar.toSeq, Ite(condition, perms, NoPerm()), args, formalVars, true, c)
       }
 
-      decider.prover.logComment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
+      decider.prover.comment(s"Precomputing split data for ${predicate.name} (${args}) # $perms")
 
       val precomputedData = candidates map { ch =>
         val pTaken = Ite(conditionOfInv, PermMin(ch.perm.replace(ch.formalVars, formalVars), pNeeded), NoPerm())
@@ -462,7 +462,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
         (ch, permsTakenFApp(formalVars), pNeeded)
       }
 
-      decider.prover.logComment(s"Done precomputing, updating quantified heap chunks")
+      decider.prover.comment(s"Done precomputing, updating quantified heap chunks")
 
       var tookEnough = Forall(formalVars, Implies(conditionOfInv, pNeeded === NoPerm()), Nil: Seq[Trigger])
 
@@ -477,12 +477,12 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
               ithPTaken)
 
           if (constrainPermissions) {
-            decider.prover.logComment(s"Constrain original permissions $perms")
+            decider.prover.comment(s"Constrain original permissions $perms")
             assume(permissionConstraint)
 
             residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
           } else {
-            decider.prover.logComment(s"Chunk depleted?")
+            decider.prover.comment(s"Chunk depleted?")
             val chunkDepleted = check(σ, depletedCheck, config.splitTimeout())
             if (!chunkDepleted) residue ::= ithChunk.copy(perm = PermMinus(ithChunk.perm, ithPTaken))
           }
@@ -494,15 +494,15 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
            */
           tookEnough = Forall(formalVars, Implies(conditionOfInv, ithPNeeded === NoPerm()), Nil: Seq[Trigger])
 
-          decider.prover.logComment(s"Enough permissions taken?")
+          decider.prover.comment(s"Enough permissions taken?")
           success = check(σ, tookEnough, config.splitTimeout())
         }
       }
 
-      decider.prover.logComment("Final check that enough permissions have been taken")
+      decider.prover.comment("Final check that enough permissions have been taken")
       success = success || check(σ, tookEnough, 0) /* This check is a must-check, i.e. an assert */
 
-      decider.prover.logComment("Done splitting")
+      decider.prover.comment("Done splitting")
 
       val hResidue = H(residue ++ otherChunks)
       val chunkSplitOf = QuantifiedPredicateChunk(predicate.name, formalVars, psfDef.psf, conditionalizedPermsOfInv, None, None, None, Nil)

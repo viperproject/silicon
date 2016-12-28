@@ -56,8 +56,6 @@ trait DefaultBrancher[ST <: Store[ST],
   protected val bookkeeper: Bookkeeper
   protected val heapCompressor: HeapCompressor[ST, H, S, C]
 
-  import decider.assume
-
   def branch(σ: S,
              t: Term,
              c: C,
@@ -108,8 +106,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
       val result =
         decider.locally {
-          decider.prover.logComment(s"[then-branch $cnt] $guardsTrue")
-//          assume(guardsTrue)
+          decider.prover.comment(s"[then-branch $cnt] $guardsTrue")
           decider.setCurrentBranchCondition(guardsTrue)
           compressHeapIfRetrying(cTrue, σ)
           val r = fTrue(cTrue)
@@ -119,7 +116,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
       result
     } else {
-      decider.prover.logComment(s"[dead then-branch $cnt] $guardsTrue")
+      decider.prover.comment(s"[dead then-branch $cnt] $guardsTrue")
       Unreachable()
     })
       &&
@@ -128,8 +125,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
       val result =
         decider.locally {
-          decider.prover.logComment(s"[else-branch $cnt] $guardsFalse")
-//          assume(guardsFalse)
+          decider.prover.comment(s"[else-branch $cnt] $guardsFalse")
           decider.setCurrentBranchCondition(guardsFalse)
           compressHeapIfRetrying(cFalse, σ)
           val r = fFalse(cFalse)
@@ -139,7 +135,7 @@ trait DefaultBrancher[ST <: Store[ST],
 
       result
     } else {
-      decider.prover.logComment(s"[dead else-branch $cnt] $guardsFalse")
+      decider.prover.comment(s"[dead else-branch $cnt] $guardsFalse")
       Unreachable()
     }))
   }

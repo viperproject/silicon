@@ -6,37 +6,35 @@
 
 package viper.silicon.decider
 
-import java.io.{PrintWriter, BufferedWriter, InputStreamReader, BufferedReader, OutputStreamWriter}
+import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
+import java.util.concurrent.TimeUnit
 import org.slf4s.Logging
-import org.apache.commons.io.FileUtils
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
-import viper.silicon.interfaces.decider.{Prover, Sat, Unsat, Unknown}
+import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{Bookkeeper, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.supporters.QuantifierSupporter
 
 /* TODO: Pass a logger, don't open an own file to log to. */
+
 class Z3ProverStdIO(config: Config,
+                    logfile: Path,
                     bookkeeper: Bookkeeper,
-                    identifierFactory: IdentifierFactory)
+                    identifierFactory: IdentifierFactory,
+                    termConverter: TermToSMTLib2Converter)
     extends Prover
        with Logging {
 
   private var pushPopScopeDepth = 0
   private var lastTimeout: Int = -1
-//  private var isLoggingCommentsEnabled: Boolean = true
-  private var logFile: PrintWriter = _
+  private var logfileWriter: PrintWriter = _
   private var z3: Process = _
   private var input: BufferedReader = _
   private var output: PrintWriter = _
   /* private */ var z3Path: Path = _
-  private var logPath: Path = _
-
-  /* private */ val termConverter = new TermToSMTLib2Converter(bookkeeper)
-  import termConverter._
 
   def z3Version(): Version = {
     val versionPattern = """\(?\s*:version\s+"(.*?)"\)?""".r
@@ -45,29 +43,23 @@ class Z3ProverStdIO(config: Config,
     writeLine("(get-info :version)")
 
     line = input.readLine()
-    logComment(line)
+    comment(line)
 
     line match {
       case versionPattern(v) => Version(v)
-      case _ => throw new Z3InteractionFailed(s"Unexpected output of Z3 while getting version: $line")
+      case _ => throw Z3InteractionFailed(s"Unexpected output of Z3 while getting version: $line")
     }
   }
 
   def start() {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logPath = config.z3LogFile
-    logFile = viper.silver.utility.Common.PrintWriter(logPath.toFile)
+    logfileWriter = viper.silver.utility.Common.PrintWriter(logfile.toFile)
     z3Path = Paths.get(config.z3Exe)
     termConverter.start()
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
     output = new PrintWriter(new BufferedWriter(new OutputStreamWriter(z3.getOutputStream)), true)
-  }
-
-  /* Note: This is just a hack to get the input file name to the prover */
-  def proverRunStarts() {
-    logComment(s"Input file is ${config.inputFile.getOrElse("<unknown>")}")
   }
 
   private def createZ3Instance() = {
@@ -103,29 +95,17 @@ class Z3ProverStdIO(config: Config,
 
   def stop() {
     this.synchronized {
-      logFile.flush()
+      logfileWriter.flush()
       output.flush()
 
-      logFile.close()
+      logfileWriter.close()
       input.close()
       output.close()
 
-      z3.destroy()
-//      z3.waitFor() /* Makes the current thread wait until the process has been shut down */
+      z3.destroyForcibly()
+      z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
 
       termConverter.stop()
-
-      val currentLogPath = config.z3LogFile
-      if (logPath != currentLogPath) {
-        /* This is a hack to make it possible to name the SMTLIB logfile after
-         * the input file that was verified. Currently, Silicon starts Z3 before
-         * the input file name is known, which is partially due to our crappy
-         * and complicated way of how command-line arguments are parsed and
-         * how Silver programs are passed to verifiers.
-         */
-
-        FileUtils.moveFile(logPath.toFile, currentLogPath.toFile)
-      }
     }
   }
 
@@ -165,7 +145,7 @@ class Z3ProverStdIO(config: Config,
       }
     })
 
-    assume(convert(term))
+    assume(termConverter.convert(term))
   }
 
   def assume(term: String) {
@@ -175,7 +155,8 @@ class Z3ProverStdIO(config: Config,
     readSuccess()
   }
 
-  def assert(goal: Term, timeout: Option[Int] = None) = assert(convert(goal), timeout)
+  def assert(goal: Term, timeout: Option[Int] = None) =
+    assert(termConverter.convert(goal), timeout)
 
   def assert(goal: String, timeout: Option[Int]) = {
     bookkeeper.assertionCounter += 1
@@ -187,8 +168,8 @@ class Z3ProverStdIO(config: Config,
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
     }
 
-    logComment(s"${viper.silicon.common.format.formatMillisReadably(duration)}")
-    logComment("(get-info :all-statistics)")
+    comment(s"${viper.silicon.common.format.formatMillisReadably(duration)}")
+    comment("(get-info :all-statistics)")
 
     result
   }
@@ -213,12 +194,11 @@ class Z3ProverStdIO(config: Config,
     (result, endTime - startTime)
   }
 
-
   private def getModel(): Unit = {
     if (config.ideModeAdvanced()) {
-        writeLine("(get-model)")
-        val model = readModel().trim()
-        println(model + "\r\n")
+      writeLine("(get-model)")
+      val model = readModel().trim()
+      println(model + "\r\n")
     }
   }
 
@@ -278,11 +258,11 @@ class Z3ProverStdIO(config: Config,
 
     do {
       line = input.readLine()
-      logComment(line)
+      comment(line)
 
       /* Check that the first line starts with "(:". */
       if (line.isEmpty && !line.startsWith("(:"))
-        throw new Z3InteractionFailed(s"Unexpected output of Z3 while reading statistics: $line")
+        throw Z3InteractionFailed(s"Unexpected output of Z3 while reading statistics: $line")
 
       line match {
         case entryPattern(entryName, entryNumber) =>
@@ -296,7 +276,7 @@ class Z3ProverStdIO(config: Config,
     toMap(stats)
   }
 
-  def logComment(str: String) = {
+  def comment(str: String) = {
     val sanitisedStr =
       str.replaceAll("\r", "")
          .replaceAll("\n", "\n; ")
@@ -309,13 +289,13 @@ class Z3ProverStdIO(config: Config,
     val fun = Fun(id, argSorts, resultSort)
     val decl = FunctionDecl(fun)
 
-    emit(convert(decl))
+    emit(termConverter.convert(decl))
 
     fun
   }
 
   def declare(decl: Decl) {
-    val str = convert(decl)
+    val str = termConverter.convert(decl)
     emit(str)
   }
 
@@ -333,7 +313,7 @@ class Z3ProverStdIO(config: Config,
     val answer = readLine()
 
     if (answer != "success")
-      throw new Z3InteractionFailed(s"Unexpected output of Z3. Expected 'success' but found: $answer")
+      throw Z3InteractionFailed(s"Unexpected output of Z3. Expected 'success' but found: $answer")
   }
 
   private def readUnsat(): Boolean = readLine() match {
@@ -342,7 +322,7 @@ class Z3ProverStdIO(config: Config,
     case "unknown" => false
 
     case result =>
-      throw new Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
+      throw Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
   }
 
   private def readModel(): String = {
@@ -372,7 +352,7 @@ class Z3ProverStdIO(config: Config,
 
     while (repeat) {
       result = input.readLine()
-      if (result.toLowerCase != "success") logComment(result)
+      if (result.toLowerCase != "success") comment(result)
 
       val warning = result.startsWith("WARNING")
       if (warning) log.info(s"Z3: $result")
@@ -384,7 +364,7 @@ class Z3ProverStdIO(config: Config,
   }
 
   private def logToFile(str: String) {
-    logFile.println(str)
+    logfileWriter.println(str)
   }
 
   private def writeLine(out: String) = {

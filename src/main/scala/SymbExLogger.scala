@@ -1,5 +1,5 @@
-/* TODO: add a type argument H to the SymbExLogger. 
- * Importing the type variable H as it is done currently 
+/* TODO: add a type argument H to the SymbExLogger.
+ * Importing the type variable H as it is done currently
  * results in having to cast the argument c at each creation
  * of a Record type, e.g. ConsumeRecord
  */
@@ -9,15 +9,15 @@ package viper.silicon
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
 
-import state.{DefaultContext, DefaultState, ListBackedHeap, MapBackedStore}
-import viper.silicon.interfaces.state.Heap
-import viper.silver.ast
-import viper.silicon.state.terms._
-import viper.silicon.DefaultVerifier.H
-import viper.silver.verifier.AbstractError
-import viper.silicon.reporting.DefaultStateFormatter
 import scala.annotation.elidable
 import scala.annotation.elidable._
+import viper.silver.ast
+import viper.silver.verifier.AbstractError
+import viper.silicon.interfaces.state.Heap
+import viper.silicon.reporting.DefaultStateFormatter
+import viper.silicon.state.{DefaultContext, DefaultState, ListBackedHeap, MapBackedStore}
+import viper.silicon.state.terms._
+import viper.silicon.verifier.BaseVerifier.H
 
 /*
  *  For instructions on how to use/visualise recording, have a look at
@@ -87,7 +87,7 @@ object SymbExLogger {
   var enabled = false
 
   /** Config of Silicon. Used by StateFormatters. **/
-  private var config: Config = null
+  private var config: Config = _
 
   /** Add a new log for a method, function or predicate (member).
     *

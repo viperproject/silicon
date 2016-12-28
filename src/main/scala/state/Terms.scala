@@ -8,7 +8,7 @@ package viper.silicon.state.terms
 
 import scala.reflect.ClassTag
 import viper.silver.ast.utility.Visitor
-import viper.silicon.{Map, Set, toMap}
+import viper.silicon.{Map, Set, toMap, toSet}
 import viper.silicon.state
 import viper.silicon.state.{MagicWandChunk, Identifier}
 
@@ -277,6 +277,23 @@ sealed trait Term extends Node {
   }
 
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
+
+  lazy val freeVariables =
+    this.reduceTree((t: Term, freeVarsChildren: Seq[Set[Var]]) => {
+      val freeVars: Set[Var] = toSet(freeVarsChildren.flatten)
+
+      t match {
+        case q: Quantification =>
+          freeVars filterNot q.vars.contains
+        case l: Let =>
+          val lvars = l.bindings.keySet
+          freeVars diff lvars
+        case v: Var =>
+          freeVars + v
+        case _ =>
+          freeVars
+      }
+    })
 }
 
 trait UnaryOp[E] {
@@ -1640,7 +1657,7 @@ class Distinct(val ts: Set[Symbol]) extends BooleanTerm with StructuralEquality 
   override val toString = s"Distinct($ts)"
 }
 
-object Distinct {
+object Distinct extends (Set[Symbol] => Term) {
   def apply(ts: Set[Symbol]): Term =
     if (ts.nonEmpty) new Distinct(ts)
     else True()

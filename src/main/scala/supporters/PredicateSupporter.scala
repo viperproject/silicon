@@ -8,20 +8,19 @@ package viper.silicon.supporters
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.ast.{Program, PredicateAccessPredicate, PredicateAccess}
+import viper.silver.ast.Program
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.{Map, Set, toMap}
-import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces._
+import viper.silicon.{Map, toMap}
+import viper.silicon.interfaces.decider.{Decider, ProverLike}
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.SymbExLogger
-
-import viper.silicon.supporters.qps.{QuantifiedPredicateChunkSupporterProvider, SummarisingPsfDefinition}
-import viper.silver.verifier.reasons.InsufficientPermission
+import viper.silicon.interfaces._
+import viper.silicon.supporters.qps.QuantifiedPredicateChunkSupporterProvider
 
 class PredicateData(predicate: ast.Predicate)
                 (private val symbolConvert: SymbolConvert) {
@@ -30,16 +29,13 @@ class PredicateData(predicate: ast.Predicate)
 
   val triggerFunction =
     Fun(Identifier(s"${predicate.name}%trigger"), sorts.Snap +: argumentSorts, sorts.Bool)
-
-  /*val quantifiedTriggerFunction =
-    Fun(Identifier(s"${predicate.name}%trigger"), sorts.PredicateSnapFunction +: argumentSorts, sorts.Bool)*/
 }
 
 trait PredicateSupporter[ST <: Store[ST],
                          H <: Heap[H],
                          S <: State[ST, H, S],
                          C <: Context[C]]
-    extends VerificationUnit[H, ast.Predicate] {
+    extends VerifyingPreambleContributor[Sort, Fun, Term, H, ast.Predicate] {
 
   def data: Map[ast.Predicate, PredicateData]
 
@@ -76,17 +72,24 @@ trait PredicateSupporterProvider[ST <: Store[ST],
 
   private type C = DefaultContext[H]
 
+  /* PreambleBlock = Comment x Lines */
+  private type PreambleBlock = (String, Iterable[String])
+
   protected val decider: Decider[ST, H, S, DefaultContext[H]]
   protected val stateFactory: StateFactory[ST, H, S]
   protected val symbolConverter: SymbolConvert
-  protected val identifierFactory: IdentifierFactory
 
   import decider.{fresh, locally}
   import stateFactory._
 
   object predicateSupporter extends PredicateSupporter[ST, H, S, C] {
-    private var program: ast.Program = null
-    private var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
+    /*private*/ var program: ast.Program = _
+    /*private*/ var predicateData: Map[ast.Predicate, PredicateData] = Map.empty
+
+    def data = predicateData
+    def units = predicateData.keys.toSeq
+
+    /* Preamble contribution */
 
     def analyze(program: Program): Unit = {
       this.program = program
@@ -95,21 +98,28 @@ trait PredicateSupporterProvider[ST <: Store[ST],
         program.predicates map (pred => pred -> new PredicateData(pred)(symbolConverter)))
     }
 
-    def data = predicateData
-    def units = predicateData.keys.toSeq
+    /* Predicate supporter generates no sorts */
+    val sortsAfterAnalysis: Iterable[Sort] = Seq.empty
+    def declareSortsAfterAnalysis(sink: ProverLike): Unit = ()
 
-    def sorts: Set[Sort] = Set.empty
-    def declareSorts(): Unit = { /* No sorts need to be declared */ }
-
-    def declareSymbols(): Unit = {
-      decider.prover.logComment("Declaring predicate trigger functions")
-      predicateData.values foreach (data =>
-        decider.prover.declare(FunctionDecl(data.triggerFunction)))
+    def symbolsAfterAnalysis: Iterable[Fun] = {
+      predicateData.values map (_.triggerFunction)
     }
+
+    def declareSymbolsAfterAnalysis(sink: ProverLike): Unit = {
+      sink.comment("Declaring predicate trigger functions")
+      symbolsAfterAnalysis foreach (f => sink.declare(FunctionDecl(f)))
+    }
+
+    /* Predicate supporter generates no axioms */
+    val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
+    def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
+
+    /* Verification and subsequent preamble contribution */
 
     def verify(predicate: ast.Predicate, c: DefaultContext[H]): Seq[VerificationResult] = {
       log.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
-      decider.prover.logComment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
+      decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
       SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
@@ -126,14 +136,26 @@ trait PredicateSupporterProvider[ST <: Store[ST],
                 locally {
                   magicWandSupporter.checkWandsAreSelfFraming(σ.γ, σ.h, predicate, c)}
             &&  locally {
-                  produce(σ, decider.fresh, body, err, c)((_, c1) =>
+                  produce(σ, decider.fresh, body, err, c)((_, _) =>
                     Success())})
       }
 
       Seq(result)
     }
 
-    def emitAxioms(): Unit = { /* No axioms need to be emitted */ }
+    /* Predicate supporter generates no sorts */
+    val sortsAfterVerification: Iterable[Sort] = Seq.empty
+    def declareSortsAfterVerification(sink: ProverLike): Unit = ()
+
+    /* Predicate supporter does not generate additional symbols during verification */
+    val symbolsAfterVerification: Iterable[Fun] = Seq.empty
+    def declareSymbolsAfterVerification(sink: ProverLike): Unit = ()
+
+    /* Predicate supporter generates no axioms */
+    val axiomsAfterVerification: Iterable[Term] = Seq.empty
+    def emitAxiomsAfterVerification(sink: ProverLike): Unit = ()
+
+    /* Other predicate-related operations */
 
     def fold(σ: S, predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError, c: C)
             (Q: (S, C) => VerificationResult)
@@ -147,7 +169,7 @@ trait PredicateSupporterProvider[ST <: Store[ST],
           if (c.qpPredicates.contains(predicate)) {
             //convert snapshot to desired type if necessary
             val snapConvert = snap.convert(c1.predicateSnapMap(predicate))
-            var formalArgs:Seq[Var] = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
+            val formalArgs = predicate.formalArgs.map(formalArg => Var(Identifier(formalArg.name), symbolConverter.toSort(formalArg.typ)))
             val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createSingletonPredicateSnapFunction(predicate, tArgs, formalArgs, snapConvert, c)
             optPsfDef.foreach(psfDef => decider.assume(psfDef.domainDefinitions ++ psfDef.snapDefinitions))
             //create single quantified predicate chunk with given snapshot

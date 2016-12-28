@@ -4,64 +4,55 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper.silicon.supporters
+package viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon.Set
+import viper.silicon.{Config, Map, Set}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConvert
 import viper.silicon.state.terms.{SortDecl, sorts}
 
-trait MultisetsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
+trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
-/* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
-
-class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String],
-                                  symbolConverter: SymbolConvert,
-                                  termConverter: TermConverter[String, String, String])
-    extends MultisetsContributor[sorts.Multiset, String, String] {
+class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[String, String],
+                                            symbolConverter: SymbolConvert,
+                                            termConverter: TermConverter[String, String, String],
+                                            config: Config)
+    extends FieldValueFunctionsContributor[sorts.FieldValueFunction, String, String] {
 
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedSorts: Set[sorts.Multiset] = Set.empty
+  private var collectedFields: Set[ast.Field] = Set.empty
+  private var collectedSorts: Set[sorts.FieldValueFunction] = Set.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
   /* Lifetime */
 
   def reset() {
+    collectedFields = Set.empty
     collectedSorts = Set.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
 
-  def start() {}
   def stop() {}
+  def start() {}
 
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var multisetTypes = Set[ast.MultisetType]()
-
-    program visit { case t: ast.Typed =>
-      /* Process the type itself and its type constituents, but ignore types
-       * that use type parameters. The assumption is that the latter are
-       * handled by the domain emitter.
-       */
-      t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
-        case s: ast.MultisetType =>
-          multisetTypes += s
-//        case s: ast.SeqType =>
-//          /* Sequences depend on multisets */
-//          multisetTypes += ast.MultisetType(s.elementType)
-        case _ =>
-          /* Ignore other types */
-      }
+    program visit {
+      case ast.utility.QuantifiedPermissions.QPForall(_, _, _, f, _, _, _) =>
+        collectedFields += f
     }
 
-    collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[sorts.Multiset])
+    collectedSorts = (
+        collectedFields.map(f => sorts.FieldValueFunction(symbolConverter.toSort(f.typ)))
+      + sorts.FieldValueFunction(sorts.Ref))
+
     collectedFunctionDecls = generateFunctionDecls
     collectedAxioms = generateAxioms
   }
@@ -77,40 +68,46 @@ class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String]
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    val templateFile = "/dafny_axioms/multisets_declarations_dafny.smt2"
+    val templateFile = "/field_value_functions_declarations.smt2"
 
-    collectedSorts map {s =>
-      val substitutions = Map("$S$" -> termConverter.convert(s.elementsSort))
+    collectedFields map (f => {
+      val sort = symbolConverter.toSort(f.typ)
+      val id = f.name
+      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort))
       val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
 
-      (s"$templateFile [${s.elementsSort}]", declarations)
-    }
+      (s"$templateFile [$id: $sort]", declarations)
+    })
   }
 
   def generateAxioms: Iterable[PreambleBlock] = {
-    val templateFile = "/dafny_axioms/multisets_axioms_dafny.smt2"
+    val templateFile =
+      if (config.disableISCTriggers()) "/field_value_functions_axioms_no_triggers.smt2"
+      else "/field_value_functions_axioms.smt2"
 
-    collectedSorts map {s =>
-      val substitutions = Map("$S$" -> termConverter.convert(s.elementsSort))
+    collectedFields map (f => {
+      val sort = symbolConverter.toSort(f.typ)
+      val id = f.name
+      val substitutions = Map("$FLD$" -> id, "$S$" -> termConverter.convert(sort))
       val declarations = preambleReader.readParametricPreamble(templateFile, substitutions)
 
-      (s"$templateFile [${s.elementsSort}]", declarations)
-    }
+      (s"$templateFile [$id: $sort]", declarations)
+    })
   }
 
-  def sortsAfterAnalysis: Set[sorts.Multiset] = collectedSorts
+  def sortsAfterAnalysis: Set[sorts.FieldValueFunction] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))
   }
 
-  def symbolsAfterAnalysis: Iterable[String] =
+  val symbolsAfterAnalysis: Iterable[String] =
     extractPreambleLines(collectedFunctionDecls)
 
   def declareSymbolsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedFunctionDecls)
 
-  def axiomsAfterAnalysis: Iterable[String] =
+  val axiomsAfterAnalysis: Iterable[String] =
     extractPreambleLines(collectedAxioms)
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit =

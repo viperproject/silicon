@@ -15,7 +15,7 @@ import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Sort
-import viper.silicon.state.{DefaultContext, ListBackedHeap, terms}
+import viper.silicon.state.{DefaultContext, ListBackedHeap}
 import viper.silicon.SymbExLogger
 
 trait MethodSupporter[ST <: Store[ST],
@@ -46,7 +46,7 @@ trait MethodSupporterProvider[ST <: Store[ST],
   import stateFactory._
 
   object methodSupporter extends MethodSupporter[ST, H, S, C] {
-    private var program: ast.Program = null
+    private var program: ast.Program = _
 
     def analyze(program: ast.Program): Unit = {
       this.program = program
@@ -55,13 +55,13 @@ trait MethodSupporterProvider[ST <: Store[ST],
     def units = program.methods
 
     def sorts: Set[Sort] = Set.empty
-    def declareSorts(): Unit = { /* No sorts need to be declared */ }
-    def declareSymbols(): Unit = { /* No symbols need to be declared */ }
-    def emitAxioms(): Unit = { /* No axioms need to be emitted */ }
+    def declareSortsAfterAnalysis(): Unit = { /* No sorts need to be declared */ }
+    def declareSymbolsAfterAnalysis(): Unit = { /* No symbols need to be declared */ }
+    def emitAxiomsAfterAnalysis(): Unit = { /* No axioms need to be emitted */ }
 
     def verify(method: ast.Method, c: C): Seq[VerificationResult] = {
       log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
-      decider.prover.logComment("%s %s %s".format("-" * 10, method.name, "-" * 10))
+      decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
       SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
@@ -94,14 +94,14 @@ trait MethodSupporterProvider[ST <: Store[ST],
             /*&&*/ locally {
                  val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
                  val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-                  produces(σ2, fresh, posts, ContractNotWellformed, c2)((_, c3) => {
+                  produces(σ2, fresh, posts, ContractNotWellformed, c2)((_, _) => {
                     SymbExLogger.currentLog().collapse(null, sepIdentifier)
                     Success()
                   })
                }
             && locally {
                   exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-                    consumes(σ2, posts, postViolated, c3)((σ3, _, c4) =>
+                    consumes(σ2, posts, postViolated, c3)((_, _, _) =>
                       Success()))})})}
 
       Seq(result)

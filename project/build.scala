@@ -117,7 +117,7 @@ object SiliconBuild extends Build {
   def internalDep = if (isBuildServer) Nil else Seq(dependencies.silSrc % "compile->compile;test->test")
 
   def externalDep = (
-       Seq(dependencies.jgrapht, dependencies.commonsIO, dependencies.scallop)
+       Seq(dependencies.jgrapht, dependencies.commonsIO, dependencies.commonsPool, dependencies.scallop)
     ++ dependencies.logging
     ++ (if (isBuildServer) Seq(dependencies.sil % "compile->compile;test->test") else Nil))
 
@@ -132,6 +132,7 @@ object SiliconBuild extends Build {
     lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.0"
 
     lazy val commonsIO = "commons-io" % "commons-io" % "2.4"
+    lazy val commonsPool = "org.apache.commons" % "commons-pool2" % "2.4.2"
 
     lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"
     lazy val silSrc = RootProject(new java.io.File("../silver"))

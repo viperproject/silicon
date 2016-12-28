@@ -21,13 +21,13 @@ package object silicon {
   def toSet[A](it: Iterable[A]): Set[A] = Set.empty ++ it
   def toSet[A](it: Iterator[A]): Set[A] = Set.empty ++ it
 
-  type Map[K, V] = scala.collection.immutable.ListMap[K, V]
+  type Map[K, +V] = scala.collection.immutable.ListMap[K, V]
   val Map = scala.collection.immutable.ListMap
 
   @inline
   def toMap[K, V](it: Iterable[(K, V)]): Map[K, V] = Map.empty ++ it
 
-  type Stack[E] = Seq[E]
+  type Stack[+E] = Seq[E]
   val Stack = List
 
   /* Mutable collections with a deterministic iteration order */

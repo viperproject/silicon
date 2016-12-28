@@ -147,14 +147,6 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
-//  val disableSnapshotCaching = opt[Boolean]("disableSnapshotCaching",
-//    descr = (  "Disable caching of snapshot symbols. "
-//             + "Caching reduces the number of symbols the prover has to work with."),
-//    default = Some(false),
-//    noshort = true,
-//    hidden = Silicon.hideInternalOptions
-//  )
-
   val disableShortCircuitingEvaluations = opt[Boolean]("disableShortCircuitingEvaluations",
     descr = (  "Disable short-circuiting evaluation of AND, OR. If disabled, "
              + "evaluating e.g., i > 0 && f(i), will fail if f's precondition requires i > 0."),
@@ -213,10 +205,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
                 .getOrElse("z3" + (if (isWindows) ".exe" else "")))
   }
 
-  val defaultRawZ3LogFile = "logfile.smt2"
+  val defaultRawZ3LogFile = "logfile"
+  val z3LogFileExtension = "smt2"
 
   private val rawZ3LogFile = opt[ConfigValue[String]]("z3LogFile",
-    descr = s"Log file containing the interaction with Z3 (default: <tempDirectory>/$defaultRawZ3LogFile)",
+    descr = (  "Log file containing the interaction with Z3, "
+             + s"extension $z3LogFileExtension will be appended. "
+             + s"(default: <tempDirectory>/$defaultRawZ3LogFile.$z3LogFileExtension)"),
     default = Some(DefaultValue(defaultRawZ3LogFile)),
     noshort = true,
     hidden = false
@@ -224,21 +219,20 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
 
   var inputFile: Option[Path] = None
 
-  private lazy val defaultZ3LogFile = Paths.get(tempDirectory(), defaultRawZ3LogFile)
-
-  def z3LogFile: Path = rawZ3LogFile() match {
+  def z3LogFile(suffix: String = ""): Path = rawZ3LogFile() match {
     case UserValue(logfile) =>
       logfile.toLowerCase match {
         case "$infile" =>
-          inputFile.map(f =>
-            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some("smt2")).toPath
-          ).getOrElse(defaultZ3LogFile)
+          ??? /* TODO: Reconsider: include suffix; prover started before infile is known */
+//          inputFile.map(f =>
+//            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(z3LogFileExtension)).toPath
+//          ).getOrElse(defaultZ3LogFile)
         case _ =>
-          Paths.get(logfile)
+          Paths.get(s"$logfile-$suffix.$z3LogFileExtension")
       }
 
     case DefaultValue(logfile) =>
-      defaultZ3LogFile
+      Paths.get(tempDirectory(), s"$defaultRawZ3LogFile-$suffix.$z3LogFileExtension")
   }
 
   val z3Args = opt[String]("z3Args",
@@ -331,6 +325,14 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     default = Some(false),
     noshort = true,
     hidden = Silicon.hideInternalOptions
+  )
+
+  val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
+    descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
+             + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
+    default = Some(Runtime.getRuntime.availableProcessors()),
+    noshort = true,
+    hidden = false
   )
 
   /* Option validation */

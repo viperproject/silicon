@@ -75,7 +75,7 @@ trait DefaultJoiner[ST <: Store[ST],
         val cJoined =
           entries.foldLeft(cInit)((cAcc, localData) => {
             val pcs = localData.pathConditionStack.asConditionals
-            decider.prover.logComment("Joined path conditions")
+            decider.prover.comment("Joined path conditions")
             decider.assume(pcs)
 
             cAcc.merge(localData.c)

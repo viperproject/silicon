@@ -8,19 +8,19 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
-import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
+import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
+
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.Try
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
-    Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
+import viper.silver.verifier.{CliOptionError => SilCliOptionError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silver.frontend.SilFrontend
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.VerificationException
+import viper.silicon.verifier.MasterVerifier
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -56,7 +56,7 @@ object Silicon {
   val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
-  val hideInternalOptions = true
+  val hideInternalOptions = false
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
@@ -97,8 +97,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
          with Logging {
 
-  private type V = DefaultVerifier
-
   val name: String = Silicon.name
   val version = Silicon.version
   val buildVersion = Silicon.buildVersion
@@ -118,7 +116,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: V = null
+  private var verifier: MasterVerifier = _
 
   def this() = this(Nil)
 
@@ -155,7 +153,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     setLogLevelsFromConfig()
 
-    verifier = new DefaultVerifier(config)
+    verifier = new MasterVerifier(config)
     verifier.start()
   }
 
@@ -213,8 +211,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       case _ => None
     }
 
-    verifier.decider.prover.proverRunStarts()
-
     val consistencyErrors = utils.consistency.check(program)
 
     if (consistencyErrors.nonEmpty) {
@@ -241,7 +237,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case VerificationException(error) =>
           result = Some(SilFailure(error :: Nil))
 
-        case te: TimeoutException =>
+        case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
 
         case ee: ExecutionException =>
@@ -390,7 +386,7 @@ object SiliconRunner extends SiliconFrontend {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
     } catch {
-      case ex: org.rogach.scallop.exceptions.ScallopResult =>
+      case _: org.rogach.scallop.exceptions.ScallopResult =>
         /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
     } finally {
       siliconInstance.stop()

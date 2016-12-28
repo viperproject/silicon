@@ -20,7 +20,7 @@ import viper.silicon.state.terms.sorts
 
 trait PsfDefinition {
   def predicate: ast.Predicate
-  def psf: Term
+  def psf: Var
   def snapDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
 }
@@ -59,7 +59,7 @@ private[qps] object PsfDefinition {
 
 
 case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
-                                       psf: Term,
+                                       psf: Var,
                                        args: Seq[Term],
                                        formalArgs : Seq[Var],
                                        valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]])
@@ -80,7 +80,7 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
-                                        psf: Term,
+                                        psf: Var,
                                         qvars: Seq[Var],
                                         condition: Term,
                                         args: Seq[Term],
@@ -132,7 +132,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 
   val domainDefinitions: Seq[Term] = {
     val argsSnap: Term = if (args.size == 1) {
-      args.apply(0).convert(sorts.Snap)
+      args.head.convert(sorts.Snap)
     } else {
       args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
     }
@@ -161,14 +161,14 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     qvars match {
       case Seq(v) =>
         val repl = (t: Term) => {
-            val newTerm:Term = t;
+            val newTerm: Term = t
             for (i <- formalArgs.indices) {
               newTerm.replace(args.apply(i), formalArgs.apply(i)).replace(v, inverseFunction(formalArgs))
             }
             newTerm
         }
         domainDefinitions match {
-          case Seq(Forall(Seq(`v`), body, triggers, name)) =>
+          case Seq(Forall(Seq(`v`), body, triggers, _)) =>
             Seq(Forall(formalArgs, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$psf-dom-${inverseFunction.func.id}"))
           case others =>
             others map repl
@@ -181,7 +181,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 }
 
 case class SummarisingPsfDefinition(predicate: ast.Predicate,
-                                    psf: Term,
+                                    psf: Var,
                                     args: Seq[Term],
                                     formalArgs:Seq[Var],
                                     sourceChunks: Seq[QuantifiedPredicateChunk])
