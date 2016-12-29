@@ -22,6 +22,7 @@ case class DefaultContext[H <: Heap[H]]
                           constrainableARPs: Set[Term] = Set(),
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
+                          underJoin: Boolean = false,
                           functionRecorder: FunctionRecorder = NoopFunctionRecorder,
                           recordPossibleTriggers: Boolean = false,
                           possibleTriggers: Map[ast.Exp, Term] = Map(),
@@ -92,7 +93,7 @@ case class DefaultContext[H <: Heap[H]]
 
   def merge(other: DefaultContext[H]): DefaultContext[H] = this match {
     case DefaultContext(program1, qpFields1, qpPredicates1, recordVisited1, visited1, constrainableARPs1,
-                        quantifiedVariables1, retrying1, functionRecorder1, recordPossibleTriggers1,
+                        quantifiedVariables1, retrying1, underJoin1, functionRecorder1, recordPossibleTriggers1,
                         possibleTriggers1, oldHeaps1, partiallyConsumedHeap1, permissionScalingFactor1,
                         reserveHeaps1, exhaleExt1, lhsHeap1,
                         applyHeuristics1, heuristicsDepth1, triggerAction1,
@@ -102,7 +103,7 @@ case class DefaultContext[H <: Heap[H]]
 
       other match {
         case DefaultContext(`program1`, `qpFields1`, `qpPredicates1`, recordVisited2, `visited1`,
-                            `constrainableARPs1`, `quantifiedVariables1`, retrying2, functionRecorder2,
+                            `constrainableARPs1`, `quantifiedVariables1`, retrying2, `underJoin1`, functionRecorder2,
                             `recordPossibleTriggers1`, possibleTriggers2, `oldHeaps1`, `partiallyConsumedHeap1`, `permissionScalingFactor1`,
                             `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
                             `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,

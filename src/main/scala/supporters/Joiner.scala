@@ -18,7 +18,7 @@ case class JoinDataEntry[C <: Context[C], D]
                          c: C)
 
 trait Joiner[C <: Context[C]] {
-  def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
+  def join[D, JD](c: C, block: (C, (D, C) => VerificationResult) => VerificationResult)
                  (merge: (Seq[JoinDataEntry[C, D]]) => JD)
                  (Q: (JD, C) => VerificationResult)
                  : VerificationResult
@@ -33,7 +33,7 @@ trait DefaultJoiner[ST <: Store[ST],
 
   val decider: Decider[ST, H, S, C]
 
-  def join[D, JD](c: C, block: ((D, C) => VerificationResult) => VerificationResult)
+  def join[D, JD](c: C, block: (C, (D, C) => VerificationResult) => VerificationResult)
                  (merge: (Seq[JoinDataEntry[C, D]]) => JD)
                  (Q: (JD, C) => VerificationResult)
                  : VerificationResult = {
@@ -51,9 +51,11 @@ trait DefaultJoiner[ST <: Store[ST],
 
     decider.locally {
       val preMark = decider.setPathConditionMark()
+      val c1 = c.copy(underJoin = true)
 
-      block((data, c1) => {
-        entries :+= JoinDataEntry(data, decider.pcs.after(preMark), c1)
+      block(c1, (data, c2) => {
+        val c3 = c2.copy(underJoin = c.underJoin)
+        entries :+= JoinDataEntry(data, decider.pcs.after(preMark), c3)
         Success()
       })
     } && {

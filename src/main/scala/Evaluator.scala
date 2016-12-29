@@ -249,10 +249,10 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       case ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
-          join[Term, Term](c1, QB =>
-            branch(σ, t0, c1,
-              (c2: C) => eval(σ, e1, pve, c2)(QB),
-              (c2: C) => eval(σ, e2, pve, c2)(QB))
+          join[Term, Term](c1, (c2, QB) =>
+            branch(σ, t0, c2,
+              (c3: C) => eval(σ, e1, pve, c3)(QB),
+              (c3: C) => eval(σ, e2, pve, c3)(QB))
           )(entries => {
             val (t1, t2) = entries match {
               case Seq(entry) if entry.pathConditionStack.branchConditions.head == t0 =>
@@ -439,19 +439,19 @@ trait DefaultEvaluator[ST <: Store[ST],
            *       Hence, the joinedFApp will take two arguments, namely, i*i and i,
            *       although the latter is not necessary.
            */
-          join[Term, Term](c2, QB => {
-            val c3 = c2.copy(recordVisited = true,
+          join[Term, Term](c2, (c3, QB) => {
+            val c4 = c3.copy(recordVisited = true,
                              fvfAsSnap = true)
-            consumes(σ, pre, _ => pvePre, c3)((_, s, c4) => {
+            consumes(σ, pre, _ => pvePre, c4)((_, s, c5) => {
               val s1 = s.convert(sorts.Snap)
               val tFApp = App(symbolConverter.toFunction(func), s1 :: tArgs)
-              val c5 = c4.copy(recordVisited = c2.recordVisited,
+              val c6 = c5.copy(recordVisited = c3.recordVisited,
 //                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1),
-                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, decider.pcs.branchConditions, s1),
-                               fvfAsSnap = c2.fvfAsSnap)
+                               functionRecorder = c5.functionRecorder.recordSnapshot(fapp, decider.pcs.branchConditions, s1),
+                               fvfAsSnap = c3.fvfAsSnap)
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
-              val c6 = if (c5.recordPossibleTriggers) c5.copy(possibleTriggers = c5.possibleTriggers + (fapp -> tFApp)) else c5
-              QB(tFApp, c6)})
+              val c7 = if (c6.recordPossibleTriggers) c6.copy(possibleTriggers = c6.possibleTriggers + (fapp -> tFApp)) else c6
+              QB(tFApp, c7)})
             })(join(toSort(func.typ), s"joined_${func.name}", joinFunctionArgs))(Q)})
 
       case ast.Unfolding(
@@ -465,8 +465,8 @@ trait DefaultEvaluator[ST <: Store[ST],
             eval(σ, ePerm, pve, c1)((tPerm, c2) =>
               decider.assert(σ, IsNonNegative(tPerm)) {
                 case true =>
-                  join[Term, Term](c2, QB => {
-                    val c3 = c2.incCycleCounter(predicate)
+                  join[Term, Term](c2, (c3, QB) => {
+                    val c4 = c3.incCycleCounter(predicate)
                                .copy(recordVisited = true)
                       /* [2014-12-10 Malte] The commented code should replace the code following
                        * it, but using it slows down RingBufferRd.sil significantly. The generated
@@ -477,9 +477,9 @@ trait DefaultEvaluator[ST <: Store[ST],
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-                    consume(σ, acc, pve, c3)((σ1, snap, c4) => {
+                    consume(σ, acc, pve, c4)((σ1, snap, c5) => {
 //                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
-                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, snap))
+                      val c6 = c5.copy(functionRecorder = c5.functionRecorder.recordSnapshot(pa, decider.pcs.branchConditions, snap))
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
                          * to the function arguments and the predicate snapshot
@@ -487,14 +487,14 @@ trait DefaultEvaluator[ST <: Store[ST],
                          */
                       decider.assume(App(predicateSupporter.data(predicate).triggerFunction, snap.convert(terms.sorts.Snap) +: tArgs))
 //                    val insγ = Γ(predicate.formalArgs map (_.localVar) zip tArgs)
-                      val body = pa.predicateBody(c5.program).get /* Only non-abstract predicates can be unfolded */
-                      val c5a = c5.scalePermissionFactor(tPerm)
-                      produce(σ1 /*\ insγ*/, s => snap.convert(s), body, pve, c5a)((σ2, c6) => {
-                        val c7 = c6.copy(recordVisited = c2.recordVisited,
-                                          permissionScalingFactor = c5.permissionScalingFactor)
+                      val body = pa.predicateBody(c6.program).get /* Only non-abstract predicates can be unfolded */
+                      val c7 = c6.scalePermissionFactor(tPerm)
+                      produce(σ1 /*\ insγ*/, s => snap.convert(s), body, pve, c7)((σ2, c8) => {
+                        val c9 = c8.copy(recordVisited = c3.recordVisited,
+                                          permissionScalingFactor = c6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         val σ3 = σ2 //\ (g = σ.g)
-                        eval(σ3 /*\ σ.γ*/, eIn, pve, c7)(QB)})})
+                        eval(σ3 /*\ σ.γ*/, eIn, pve, c9)(QB)})})
                   })(join(toSort(eIn.typ), "joinedIn", c2.quantifiedVariables))(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
@@ -649,10 +649,10 @@ trait DefaultEvaluator[ST <: Store[ST],
                  (Q: (Term, C) => VerificationResult)
                  : VerificationResult = {
 
-    join[Term, Term](c, QB =>
-      branch(σ, tLhs, c,
-        (c1: C) => eval(σ, eRhs, pve, c1)(QB),
-        (c1: C) => QB(True(), c1))
+    join[Term, Term](c, (c1, QB) =>
+      branch(σ, tLhs, c1,
+        (c2: C) => eval(σ, eRhs, pve, c2)(QB),
+        (c2: C) => QB(True(), c2))
     )(entries => {
       assert(entries.length <= 2)
       Implies(tLhs, entries.headOption.map(_.data).getOrElse(True()))
