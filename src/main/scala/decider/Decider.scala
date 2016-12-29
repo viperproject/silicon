@@ -11,7 +11,8 @@ import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon._
+import viper.silicon.{Config, Silicon}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{Failure, FatalResult, NonFatalResult, Success, VerificationResult}
 import viper.silicon.interfaces.decider.{Decider, Prover, Unsat}
 import viper.silicon.interfaces.state._
@@ -55,7 +56,7 @@ trait DeciderProvider[ST <: Store[ST],
     def prover: Prover = z3
 
     def pcs: PathConditionStack = pathConditions.stack
-    def π: Set[Term] = pathConditions.assumptions
+    def π: InsertionOrderedSet[Term] = pathConditions.assumptions
 
     private def createProver(): Option[DependencyNotFoundError] = {
       try {
@@ -159,7 +160,7 @@ trait DeciderProvider[ST <: Store[ST],
 
     def setCurrentBranchCondition(t: Term) {
       pathConditions.setCurrentBranchCondition(t)
-      assume(Set(t))
+      assume(InsertionOrderedSet(Seq(t)))
     }
 
     def setPathConditionMark() = pathConditions.mark()
@@ -167,7 +168,7 @@ trait DeciderProvider[ST <: Store[ST],
     /* Assuming facts */
 
     def assume(t: Term) {
-      assume(Set(t))
+      assume(InsertionOrderedSet(Seq(t)))
     }
 
     /* TODO: CRITICAL!
@@ -178,12 +179,14 @@ trait DeciderProvider[ST <: Store[ST],
      * but the interface does NOT guarantee mutability!
      */
 
-    def assume(terms: Iterable[Term]) {
-      val newTerms = toSet(terms filterNot isKnownToBeTrue)
+    def assume(terms: Iterable[Term]): Unit = assume(InsertionOrderedSet(terms))
+
+    def assume(terms: InsertionOrderedSet[Term]): Unit = {
+      val newTerms = terms filterNot isKnownToBeTrue
       if (terms.nonEmpty) assumeWithoutSmokeChecks(newTerms)
     }
 
-    private def assumeWithoutSmokeChecks(terms: Set[Term]) = {
+    private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
       /* Add terms to Silicon-managed path conditions */
       terms foreach pathConditions.add
 

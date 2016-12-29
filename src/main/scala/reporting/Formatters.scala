@@ -6,16 +6,16 @@
 
 package viper.silicon.reporting
 
-import viper.silicon._
+import viper.silver.ast.AbstractLocalVar
+import viper.silicon.Config
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state.{Heap, State, StateFormatter, Store}
 import viper.silicon.state.terms._
-import viper.silver.ast.AbstractLocalVar
 
-class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-(val config: Config)
-  extends StateFormatter[ST, H, S, String] {
+class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]](val config: Config)
+    extends StateFormatter[ST, H, S, String] {
 
-  def format(σ: S, π: Set[Term]): String = {
+  def format(σ: S, π: InsertionOrderedSet[Term]): String = {
     val γStr = format(σ.γ)
     val hStr = format(σ.h, "h")
     val gStr = format(σ.g, "g")
@@ -45,7 +45,7 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     if (values.isEmpty) "{}" else id + values.mkString("(", ", ", ")")
   }
 
-  def format(π: Set[Term]): String = {
+  def format(π: InsertionOrderedSet[Term]): String = {
     /* Attention: Hides non-null and combine terms. */
     if (π.isEmpty) "{}"
     else
@@ -58,7 +58,7 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
   }
 
   //Methods for SymbexLogger
-  def toJson(σ: S, π: Set[Term]): String = {
+  def toJson(σ: S, π: InsertionOrderedSet[Term]): String = {
     val γStr = toJson(σ.γ)
     val hStr = toJson(σ.h)
     val gStr = toJson(σ.g)
@@ -78,7 +78,7 @@ class DefaultStateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     if (values.isEmpty) "[]" else values.mkString("[\"", "\",\"", "\"]")
   }
 
-  private def toJson(π: Set[Term]): String = {
+  private def toJson(π: InsertionOrderedSet[Term]): String = {
     /* Attention: Hides non-null and combine terms. */
     val filteredPcs = π.filterNot {
       case c: BuiltinEquals if c.p0.isInstanceOf[Combine]

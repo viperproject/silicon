@@ -11,7 +11,8 @@
 package  viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon.{Config, Map, Set}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConvert
@@ -29,8 +30,8 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedPredicates: Set[ast.Predicate] = Set.empty
-  private var collectedSorts: Set[Sort] = Set.empty // TODO: Make Set[sorts.PredicateSnapFunction]
+  private var collectedPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty
+  private var collectedSorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty // TODO: Make Set[sorts.PredicateSnapFunction]
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
@@ -38,8 +39,8 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
   /* Lifetime */
 
   def reset() {
-    collectedPredicates = Set.empty
-    collectedSorts = Set.empty
+    collectedPredicates = InsertionOrderedSet.empty
+    collectedSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
@@ -59,7 +60,7 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
 
     collectedSorts = (
         (collectedPredicates.map(predicate =>
-          sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1)): Set[Sort])
+          sorts.PredicateSnapFunction(predicateSnapGenerator.getSnap(predicate)._1)): InsertionOrderedSet[Sort])
             + sorts.PredicateSnapFunction(sorts.Snap)
             + sorts.Set(sorts.Snap) // TODO: Needed? See comment below in generateFunctionDecls
         )
@@ -118,7 +119,7 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
     })
   }
 
-  def sortsAfterAnalysis: Set[Sort] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[Sort] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

@@ -8,9 +8,10 @@ package viper.silicon.state.terms
 
 import scala.reflect.ClassTag
 import viper.silver.ast.utility.Visitor
-import viper.silicon.{Map, Set, toMap, toSet}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Map, toMap}
 import viper.silicon.state
-import viper.silicon.state.{MagicWandChunk, Identifier}
+import viper.silicon.state.{Identifier, MagicWandChunk}
 
 
 sealed trait Node
@@ -280,7 +281,7 @@ sealed trait Term extends Node {
 
   lazy val freeVariables =
     this.reduceTree((t: Term, freeVarsChildren: Seq[Set[Var]]) => {
-      val freeVars: Set[Var] = toSet(freeVarsChildren.flatten)
+      val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(freeVarsChildren.flatten)
 
       t match {
         case q: Quantification =>

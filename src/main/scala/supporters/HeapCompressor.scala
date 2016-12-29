@@ -8,7 +8,8 @@ package viper.silicon.supporters
 
 import scala.collection.mutable
 import org.slf4s.Logging
-import viper.silicon._
+import viper.silicon.Config
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.reporting.Bookkeeper
@@ -99,14 +100,14 @@ trait HeapCompressorProvider[ST <: Store[ST],
     }
 
     private def singleMerge(σ: S, destChunks: Seq[PermissionChunk], newChunks: Seq[PermissionChunk], c: C)
-                           : (Seq[PermissionChunk], Map[PermissionChunk, PermissionChunk], Set[Term]) = {
+                           : (Seq[PermissionChunk], Map[PermissionChunk, PermissionChunk], InsertionOrderedSet[Term]) = {
 
       bookkeeper.heapMergeIterations += 1
 
       /* TODO: Fix `matches` map - subsequent matches override previous matches! */
 
       val (mergedChunks, matches, tSnaps) = {
-        val initial = (destChunks, Map[PermissionChunk, PermissionChunk](), Set[Term]())
+        val initial = (destChunks, Map[PermissionChunk, PermissionChunk](), InsertionOrderedSet[Term]())
 
         newChunks.foldLeft(initial) { case ((accMergedChunks, accMatches, accSnapEqs), newChunk) =>
           /* accMergedChunks: already merged chunks

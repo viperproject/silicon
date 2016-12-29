@@ -314,7 +314,7 @@ trait DefaultExecutor[ST <: Store[ST],
            * already existing bindings for the same vars when they are added
            * (via ++).
            */
-        assume(toSet(arpConstraints))
+        assume(arpConstraints)
         Q(σ \ γ1, c)
 
       case inhale @ ast.Inhale(a) => a match {

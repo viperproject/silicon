@@ -290,7 +290,7 @@ trait DefaultProducer[ST <: Store[ST],
             val ch1 = ch.copy(hints = hints)
             val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, tPerm)
             decider.prover.comment("Receivers are non-null")
-            assume(Set(tNonNullQuant))
+            assume(tNonNullQuant)
             val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordFieldInv(invFct))
             Q(σ.h + ch1, c2)}
 

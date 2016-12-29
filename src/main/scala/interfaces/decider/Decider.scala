@@ -8,11 +8,12 @@ package viper.silicon.interfaces.decider
 
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
+import viper.silicon.Map
 import viper.silicon.decider.{Mark, PathConditionStack}
-import viper.silicon.{Map, Set}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.interfaces.state.{Context, Store, Heap, State}
-import viper.silicon.state.terms.{FullPerm, Term, Var, Sort, Function}
+import viper.silicon.interfaces.state.{Context, Heap, State, Store}
+import viper.silicon.state.terms.{FullPerm, Function, Sort, Term, Var}
 
 trait Decider[ST <: Store[ST],
               H <: Heap[H],
@@ -23,7 +24,7 @@ trait Decider[ST <: Store[ST],
   def prover: Prover
 
   def pcs: PathConditionStack
-  def π: Set[Term]
+  def π: InsertionOrderedSet[Term]
 
   def checkSmoke(): Boolean
 
@@ -37,6 +38,7 @@ trait Decider[ST <: Store[ST],
   def setPathConditionMark(): Mark
 
   def assume(t: Term)
+  def assume(ts: InsertionOrderedSet[Term])
   def assume(ts: Iterable[Term])
 
   def tryOrFail[R](σ: S, c: C)

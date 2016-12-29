@@ -8,16 +8,20 @@ package viper.silicon
 
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
-
 import scala.annotation.elidable
 import scala.annotation.elidable._
 import viper.silver.ast
 import viper.silver.verifier.AbstractError
-import viper.silicon.interfaces.state.Heap
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state.{DefaultContext, DefaultState, ListBackedHeap, MapBackedStore}
 import viper.silicon.state.terms._
 import viper.silicon.verifier.BaseVerifier.H
+
+/* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
+ *       probably irrelevant for logging. I.e. it might be ok if these sets were
+ *       traversed in non-deterministic order.
+ */
 
 /*
  *  For instructions on how to use/visualise recording, have a look at
@@ -98,7 +102,7 @@ object SymbExLogger {
     * @param c      Current context.
     */
   @elidable(INFO)
-  def insertMember(member: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
+  def insertMember(member: ast.Member, s: AnyRef, pcs: InsertionOrderedSet[Term], c: DefaultContext[H]) {
     memberList = memberList ++ List(new SymbLog(member, s, pcs, c))
   }
 
@@ -226,7 +230,7 @@ object SymbExLogger {
   * Concept: One object of SymbLog per Method/Predicate/Function. SymbLog
   * is used in the SymbExLogger-object.
   */
-class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
+class SymbLog(v: ast.Member, s: AnyRef, pcs: InsertionOrderedSet[Term], c: DefaultContext[H]) {
   var main = v match {
     case m: ast.Method => new MethodRecord(m, s, pcs, c)
     case p: ast.Predicate => new PredicateRecord(p, s, pcs, c)
@@ -236,7 +240,7 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
 
   private var stack = List[SymbolicRecord](main)
   private var sepCounter = 0
-  private var sepSet = Set[Int]()
+  private var sepSet = InsertionOrderedSet[Int]()
 
   private def current(): SymbolicRecord = {
     stack.head
@@ -289,7 +293,7 @@ class SymbLog(v: ast.Member, s: AnyRef, pcs: Set[Term], c: DefaultContext[H]) {
     */
   @elidable(INFO)
   def initializeBranching() {
-    sepSet = Set[Int]()
+    sepSet = InsertionOrderedSet[Int]()
   }
 
   /**
@@ -783,7 +787,7 @@ sealed trait SymbolicRecord {
   // Decider's internal representation for the pcs.
   // However, the recording happens to early such that the wrong
   // PathConditionStack Object is stored when using the PathConditionStack
-  val pcs: Set[Term]
+  val pcs: InsertionOrderedSet[Term]
   val context: DefaultContext[H]
   var subs = List[SymbolicRecord]()
 
@@ -822,7 +826,7 @@ trait MultiChildUnorderedRecord extends MultiChildRecord
 
 trait SequentialRecord extends SymbolicRecord
 
-class MethodRecord(v: ast.Method, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends MemberRecord {
+class MethodRecord(v: ast.Method, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
   val pcs = p
@@ -843,7 +847,7 @@ class MethodRecord(v: ast.Method, s: AnyRef, p: Set[Term], c: DefaultContext[H])
   }
 }
 
-class PredicateRecord(v: ast.Predicate, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends MemberRecord {
+class PredicateRecord(v: ast.Predicate, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
   val pcs = p
@@ -864,7 +868,7 @@ class PredicateRecord(v: ast.Predicate, s: AnyRef, p: Set[Term], c: DefaultConte
   }
 }
 
-class FunctionRecord(v: ast.Function, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends MemberRecord {
+class FunctionRecord(v: ast.Function, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends MemberRecord {
   val value = v
   val state = s
   val pcs = p
@@ -885,7 +889,7 @@ class FunctionRecord(v: ast.Function, s: AnyRef, p: Set[Term], c: DefaultContext
   }
 }
 
-class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
+class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
   val pcs = p
@@ -901,7 +905,7 @@ class ExecuteRecord(v: ast.Stmt, s: AnyRef, p: Set[Term], c: DefaultContext[H]) 
   }
 }
 
-class EvaluateRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
+class EvaluateRecord(v: ast.Exp, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
   val pcs = p
@@ -917,7 +921,7 @@ class EvaluateRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]) 
   }
 }
 
-class ProduceRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
+class ProduceRecord(v: ast.Exp, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = v
   val state = s
   val pcs = p
@@ -933,7 +937,7 @@ class ProduceRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]) e
   }
 }
 
-class ConsumeRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H])
+class ConsumeRecord(v: ast.Exp, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H])
   extends SequentialRecord {
   val value = v
   val state = s
@@ -950,7 +954,7 @@ class ConsumeRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H])
   }
 }
 
-class WellformednessCheckRecord(v: Seq[ast.Exp], s: AnyRef, p: Set[Term], c: DefaultContext[H])
+class WellformednessCheckRecord(v: Seq[ast.Exp], s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H])
   extends MultiChildUnorderedRecord {
   val value = null
   val conditions = v
@@ -967,7 +971,7 @@ class WellformednessCheckRecord(v: Seq[ast.Exp], s: AnyRef, p: Set[Term], c: Def
   }
 }
 
-class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H])
+class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H])
   extends MultiChildUnorderedRecord {
   val value = v
   //meaningless since there is no directly usable if-then-else structure in the AST
@@ -1026,7 +1030,7 @@ class IfThenElseRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H]
   }
 }
 
-class CondExpRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H], env: String)
+class CondExpRecord(v: ast.Exp, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H], env: String)
   extends MultiChildOrderedRecord {
   val value = v
   val state = s
@@ -1084,7 +1088,7 @@ class CondExpRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H], e
   }
 }
 
-class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[H], env: String)
+class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H], env: String)
   extends MultiChildUnorderedRecord {
   val value = v
   val state = s
@@ -1138,7 +1142,7 @@ class GlobalBranchRecord(v: ast.Exp, s: AnyRef, p: Set[Term], c: DefaultContext[
   }
 }
 
-class CommentRecord(str: String, s: AnyRef, p: Set[Term], c: DefaultContext[H]) extends SequentialRecord {
+class CommentRecord(str: String, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H]) extends SequentialRecord {
   val value = null
   val state = s
   val pcs = p
@@ -1169,7 +1173,7 @@ class CommentRecord(str: String, s: AnyRef, p: Set[Term], c: DefaultContext[H]) 
   }
 }
 
-class MethodCallRecord(v: ast.MethodCall, s: AnyRef, p: Set[Term], c: DefaultContext[H])
+class MethodCallRecord(v: ast.MethodCall, s: AnyRef, p: InsertionOrderedSet[Term], c: DefaultContext[H])
   extends MultiChildOrderedRecord {
   val value = v
   val state = s

@@ -7,19 +7,20 @@
 package viper.silicon.state
 
 import viper.silver.ast
+import viper.silicon.{Map, Stack}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
-import viper.silicon.{Map, Set, Stack}
-import viper.silicon.interfaces.state.{Mergeable, Context, Heap}
-import viper.silicon.state.terms.{Var, Term}
-import viper.silicon.supporters.functions.{NoopFunctionRecorder, FunctionRecorder}
+import viper.silicon.interfaces.state.{Context, Heap, Mergeable}
+import viper.silicon.state.terms.{Term, Var}
+import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 
 case class DefaultContext[H <: Heap[H]]
                          (program: ast.Program,
-                          qpFields: Set[ast.Field],
-                          qpPredicates: Set[ast.Predicate],
+                          qpFields: InsertionOrderedSet[ast.Field],
+                          qpPredicates: InsertionOrderedSet[ast.Predicate],
                           recordVisited: Boolean = false,
                           visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
-                          constrainableARPs: Set[Term] = Set(),
+                          constrainableARPs: InsertionOrderedSet[Term] = InsertionOrderedSet.empty,
                           quantifiedVariables: Stack[Var] = Nil,
                           retrying: Boolean = false,
                           underJoin: Boolean = false,
@@ -184,12 +185,11 @@ case class DefaultContext[H <: Heap[H]]
                fvfCache = fvfCache3,
                fvfPredicateCache = fvfPredicateCache3,
                fvfAsSnap = fvfAsSnap1 || fvfAsSnap2,
+               psfCache = psfCache3,
                psfPredicateCache = psfPredicateCache3,
                psfAsSnap = psfAsSnap1 || psfAsSnap2,
                predicateSnapMap = predicateSnapMap3,
                predicateFormalVarMap = predicateFormalVarMap3)
-
-
 
         case _ =>
 //          println("\n[Context.merge]")

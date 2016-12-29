@@ -9,22 +9,20 @@ package viper.silicon.supporters
 import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.errors._
-import viper.silicon._
+import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.Sort
 import viper.silicon.state.{DefaultContext, ListBackedHeap}
-import viper.silicon.SymbExLogger
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 
 trait MethodSupporter[ST <: Store[ST],
                       H <: Heap[H],
                       S <: State[ST, H, S],
                       C <: Context[C]]
-    extends VerificationUnit[H, ast.Method] {
-
-}
+    extends VerificationUnit[H, ast.Method]
 
 trait MethodSupporterProvider[ST <: Store[ST],
                               H <: Heap[H],
@@ -54,7 +52,7 @@ trait MethodSupporterProvider[ST <: Store[ST],
 
     def units = program.methods
 
-    def sorts: Set[Sort] = Set.empty
+    def sorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty
     def declareSortsAfterAnalysis(): Unit = { /* No sorts need to be declared */ }
     def declareSymbolsAfterAnalysis(): Unit = { /* No symbols need to be declared */ }
     def emitAxiomsAfterAnalysis(): Unit = { /* No axioms need to be emitted */ }

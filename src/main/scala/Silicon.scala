@@ -9,7 +9,7 @@ package viper.silicon
 import java.text.SimpleDateFormat
 import java.io.File
 import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
-
+import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.Try
@@ -299,7 +299,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
               *       well-formedness.
               */
              .reverse
-             .foldLeft((Set[String](), List[Failure]())){
+             .foldLeft((immutable.Set.empty[String], List[Failure]())){
                 case ((ss, rs), f: Failure) =>
                   if (ss.contains(f.message.readableMessage)) (ss, rs)
                   else (ss + f.message.readableMessage, f :: rs)

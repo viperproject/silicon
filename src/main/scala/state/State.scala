@@ -6,9 +6,8 @@
 
 package viper.silicon.state
 
-import scala.collection.mutable
 import viper.silver.ast
-import viper.silicon.{Map, MSet, toSet}
+import viper.silicon.Map
 import viper.silicon.interfaces.state.{Store, Heap, State, Chunk}
 import viper.silicon.state.terms.Term
 
@@ -54,11 +53,11 @@ case class ListBackedHeap(private var chunks: IndexedSeq[Chunk]) extends Heap[Li
   def empty = new ListBackedHeap()
 
   def +(ch: Chunk) = ListBackedHeap(chunks :+ ch)
-  def +(h: ListBackedHeap) = new ListBackedHeap(h.chunks ++ chunks)
+  def +(h: ListBackedHeap) = ListBackedHeap(h.chunks ++ chunks)
 
   def -(ch: Chunk) = {
     val (prefix, suffix) = chunks.span(_ != ch)
-    new ListBackedHeap(prefix ++ suffix.drop(1))
+    ListBackedHeap(prefix ++ suffix.tail)
   }
 }
 

@@ -6,8 +6,9 @@
 
 package viper.silicon.decider
 
-import viper.silicon._
-import viper.silicon.state.terms.{And, Decl, Implies, Term, True}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.Stack
+import viper.silicon.state.terms.{And, Implies, Term, True}
 
 /*
  * Interfaces (public, provide only immutable views)
@@ -16,8 +17,8 @@ import viper.silicon.state.terms.{And, Decl, Implies, Term, True}
 sealed trait PathConditionScope {
   def add(t: Term): Unit
   def branchCondition: Option[Term]
-  def assumptions: Set[Term]
-//  def pathConditions: Set[Term] // pathConditions = assumptions + branchCondition
+  def assumptions: InsertionOrderedSet[Term]
+//  def pathConditions: InsertionOrderedSet[Term] // pathConditions = assumptions + branchCondition
   def marks: Map[Mark, Int]
 }
 
@@ -26,8 +27,8 @@ sealed trait PathConditionStack {
   def pushScope(): Unit
   def popScope(): Unit
   def branchConditions: Stack[Term]
-  def assumptions: Set[Term]
-//  def pathConditions: Set[Term] // pathConditions = assumptions ++ branchConditions
+  def assumptions: InsertionOrderedSet[Term]
+//  def pathConditions: InsertionOrderedSet[Term] // pathConditions = assumptions ++ branchConditions
   def contains(t: Term): Boolean
   def asConditionals: Seq[Term]
   def after(mark: Mark): PathConditionStack
@@ -37,28 +38,12 @@ sealed trait PathConditionStack {
  * Implementations (private, mutable)
  */
 
-/* Implementation note:
- *   Set (alias immutable.ListSet) is iterates over its elements in *reverse* insertion order
- *   (because prepending to a List is cheaper than appending).
- *   That is, the set obtained from
- *     Set(1,2,3) + 4
- *   will be iterated over (map, foreach, ...) as
- *     [4,3,2,1]
- *
- *   TODO: ListSet.contains, and therefore also ListSet.+, is in O(n) because it requires
- *         iterating over the whole list.
- *         Unfortunately, there is no more efficient immutable insertion-ordered set in the
- *         Scala standard library.
- *         There is mutable.LinkedHashSet, though.
- *         Another option might be to maintain a set (for look-ups) and a list (for iterations).
- */
-
 private[decider] class DefaultScope extends PathConditionScope with Mutable {
   private var _branchCondition: Option[Term] = None
-  private var _assumptions: Set[Term] = Set.empty
+  private var _assumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _marks: Map[Mark, Int] = Map.empty
     /* A map entry `m -> i` means that the assumptions obtained from
-     * `_assumptions.dropRight(i)` have been added after mark `m`.
+     * `_assumptions.drop(i)` have been added after mark `m`.
      */
 
   def branchCondition = _branchCondition
@@ -84,11 +69,7 @@ private[decider] class DefaultScope extends PathConditionScope with Mutable {
 
     val scope = new DefaultScope()
     scope._branchCondition = _branchCondition
-    scope._assumptions = _assumptions.dropRight(i).drop(0)
-      /* The final drop(0) is effectively a reverse. It is necessary because, given a ListSet xs
-       * with entries [4,3,2,1], xs.dropRight(2) will yield a new ListSet with entries [3,4],
-       * and not, as one might expect, [4,3].
-       */
+    scope._assumptions = _assumptions.drop(i)
 
     scope._marks =
       _marks.dropWhile(_._1 != mark)
@@ -112,7 +93,7 @@ private[decider] class DefaultScope extends PathConditionScope with Mutable {
 
 private[decider] class DefaultPathConditionStack extends PathConditionStack with Mutable {
   private var _scopes: Stack[DefaultScope] = Stack.empty
-  private var _assumptions: Set[Term] = Set.empty
+  private var _assumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
     /* Invariant: _assumptions == _scopes map (_.assumptions) reduce (_ ++ _) */
   private var _branchConditions: Stack[Term] = Stack.empty
     /* Invariant: _branchConditions == _scopes flatMap (_.branchCondition) */

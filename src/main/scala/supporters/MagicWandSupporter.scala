@@ -206,7 +206,7 @@ trait MagicWandSupporter[ST <: Store[ST],
             case _ => True()
           }
 
-        decider.assume(toSet(tEqs))
+        decider.assume(tEqs.toIterable)
 
         Q(visitedHeaps.reverse ++ heapsToVisit, consumedChunks, cCurr)
       } else

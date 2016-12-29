@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
 import viper.silicon.supporters.PredicateSupporter
-import viper.silicon._
+import viper.silicon.{Config, Map, toMap}
 import viper.silicon.interfaces.decider.{Decider, ProverLike}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
@@ -21,6 +21,7 @@ import viper.silicon.state.terms
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
 import viper.silicon.SymbExLogger
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 
 trait FunctionSupporter[SO, SY, AX, H <: Heap[H]]
     extends VerifyingPreambleContributor[SO, SY, AX, H, ast.Function]
@@ -58,7 +59,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
   import decider.fresh
   import stateFactory._
 
-  private case class Phase1Data(σPre: S, πPre: Set[Term], cPre: C)
+  private case class Phase1Data(σPre: S, πPre: InsertionOrderedSet[Term], cPre: C)
 
   object functionsSupporter extends FunctionSupporter[Sort, Function, Term, H] {
     private var program: ast.Program = _
@@ -79,7 +80,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
       functionData = toMap(
         heights.map { case (func, height) =>
-          val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
+          val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
                                       identifierFactory, pred => predicateSupporter.data(pred), config)
           func -> data})

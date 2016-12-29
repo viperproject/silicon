@@ -7,7 +7,8 @@
 package viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon.{Config, Map, Set}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConvert
@@ -24,16 +25,16 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedFields: Set[ast.Field] = Set.empty
-  private var collectedSorts: Set[sorts.FieldValueFunction] = Set.empty
+  private var collectedFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty
+  private var collectedSorts: InsertionOrderedSet[sorts.FieldValueFunction] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
   /* Lifetime */
 
   def reset() {
-    collectedFields = Set.empty
-    collectedSorts = Set.empty
+    collectedFields = InsertionOrderedSet.empty
+    collectedSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
@@ -95,7 +96,7 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
     })
   }
 
-  def sortsAfterAnalysis: Set[sorts.FieldValueFunction] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[sorts.FieldValueFunction] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

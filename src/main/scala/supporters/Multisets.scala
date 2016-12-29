@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.Set
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConvert
@@ -25,14 +25,14 @@ class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String]
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedSorts: Set[sorts.Multiset] = Set.empty
+  private var collectedSorts: InsertionOrderedSet[sorts.Multiset] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
   /* Lifetime */
 
   def reset() {
-    collectedSorts = Set.empty
+    collectedSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
@@ -43,7 +43,7 @@ class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String]
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var multisetTypes = Set[ast.MultisetType]()
+    var multisetTypes = InsertionOrderedSet[ast.MultisetType]()
 
     program visit { case t: ast.Typed =>
       /* Process the type itself and its type constituents, but ignore types
@@ -98,7 +98,7 @@ class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String]
     }
   }
 
-  def sortsAfterAnalysis: Set[sorts.Multiset] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[sorts.Multiset] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

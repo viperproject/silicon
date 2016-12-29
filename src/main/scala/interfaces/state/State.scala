@@ -7,7 +7,8 @@
 package viper.silicon.interfaces.state
 
 import viper.silver.ast
-import viper.silicon.{Set, Map}
+import viper.silicon.Map
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.Term
 
 /* Conventions:
@@ -59,8 +60,8 @@ trait State[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]] {
 }
 
 trait StateFormatter[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S], F] {
-  def format(σ: S, π: Set[Term]): F
+  def format(σ: S, π: InsertionOrderedSet[Term]): F
   def format(γ: ST): F
   def format(h: H): F
-  def format(π: Set[Term]): F
+  def format(π: InsertionOrderedSet[Term]): F
 }

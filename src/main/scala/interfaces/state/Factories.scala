@@ -8,7 +8,7 @@ package viper.silicon.interfaces.state
 
 import scala.language.implicitConversions
 import viper.silver.ast
-import viper.silicon.{Map, Set}
+import viper.silicon.Map
 import viper.silicon.state.terms.Term
 
 object factoryUtils {

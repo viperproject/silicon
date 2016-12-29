@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.Set
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConvert
@@ -23,7 +23,7 @@ class DefaultSequencesContributor(preambleReader: PreambleReader[String, String]
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedSorts: Set[sorts.Seq] = Set.empty
+  private var collectedSorts: InsertionOrderedSet[sorts.Seq] = InsertionOrderedSet.empty
   private var collectedGeneralFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedIntFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedGeneralAxioms: Iterable[PreambleBlock] = Seq.empty
@@ -32,7 +32,7 @@ class DefaultSequencesContributor(preambleReader: PreambleReader[String, String]
   /* Lifetime */
 
   def reset() {
-    collectedSorts = Set.empty
+    collectedSorts = InsertionOrderedSet.empty
     collectedGeneralFunctionDecls = Seq.empty
     collectedIntFunctionDecls = Seq.empty
     collectedGeneralAxioms = Seq.empty
@@ -45,7 +45,7 @@ class DefaultSequencesContributor(preambleReader: PreambleReader[String, String]
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var sequenceTypes = Set[ast.SeqType]()
+    var sequenceTypes = InsertionOrderedSet[ast.SeqType]()
 
     program visit { case t: ast.Typed =>
       /* Process the type itself and its type constituents, but ignore types
@@ -124,7 +124,7 @@ class DefaultSequencesContributor(preambleReader: PreambleReader[String, String]
     }
   }
 
-  def sortsAfterAnalysis: Set[sorts.Seq] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[sorts.Seq] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

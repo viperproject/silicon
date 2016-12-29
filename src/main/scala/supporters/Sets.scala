@@ -7,7 +7,7 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.Set
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConvert
@@ -27,14 +27,14 @@ class DefaultSetsContributor(preambleReader: PreambleReader[String, String],
   /* PreambleBlock = Comment x Lines */
   private type PreambleBlock = (String, Iterable[String])
 
-  private var collectedSorts: Set[sorts.Set] = Set.empty
+  private var collectedSorts: InsertionOrderedSet[sorts.Set] = InsertionOrderedSet.empty
   private var collectedFunctionDecls: Iterable[PreambleBlock] = Seq.empty
   private var collectedAxioms: Iterable[PreambleBlock] = Seq.empty
 
   /* Lifetime */
 
   def reset() {
-    collectedSorts = Set.empty
+    collectedSorts = InsertionOrderedSet.empty
     collectedFunctionDecls = Seq.empty
     collectedAxioms = Seq.empty
   }
@@ -45,7 +45,7 @@ class DefaultSetsContributor(preambleReader: PreambleReader[String, String],
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var setTypes = Set[ast.SetType]()
+    var setTypes = InsertionOrderedSet[ast.SetType]()
     var foundQuantifiedPermissions = false
 
     program visit {
@@ -111,7 +111,7 @@ class DefaultSetsContributor(preambleReader: PreambleReader[String, String],
     }
   }
 
-  def sortsAfterAnalysis: Set[sorts.Set] = collectedSorts
+  def sortsAfterAnalysis: InsertionOrderedSet[sorts.Set] = collectedSorts
 
   def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
     sortsAfterAnalysis foreach (s => sink.declare(SortDecl(s)))

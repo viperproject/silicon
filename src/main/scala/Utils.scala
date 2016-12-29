@@ -10,7 +10,8 @@ import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
-import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 
 package object utils {
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
@@ -107,7 +108,10 @@ package object utils {
           )(e.pos)
       })(recursive = _ => true)
 
-    def autoTrigger(forall: silver.ast.Forall, qpFields: Set[silver.ast.Field]): silver.ast.Forall = {
+    def autoTrigger(forall: silver.ast.Forall,
+                    qpFields: InsertionOrderedSet[silver.ast.Field])
+                   : silver.ast.Forall = {
+
       /* Allow qp-fields in triggers */
 //      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger {
 //        case fa: silver.ast.FieldAccess => qpFields contains fa.field

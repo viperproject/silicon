@@ -7,7 +7,7 @@
 package viper.silicon.state
 
 import viper.silver.ast
-import viper.silicon.{Map, toMap, Set}
+import viper.silicon.{Map, toMap}
 import viper.silicon.interfaces.state.{Chunk, StoreFactory, HeapFactory, StateFactory}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.state.terms.Term
@@ -15,7 +15,7 @@ import viper.silicon.state.terms.Term
 trait DefaultStoreFactory extends StoreFactory[MapBackedStore] {
   def Γ() = new MapBackedStore()
   def Γ(pair: (ast.AbstractLocalVar, Term)) = new MapBackedStore(pair)
-  def Γ(pairs: Iterable[(ast.AbstractLocalVar, Term)]) = new MapBackedStore(toMap(pairs))
+  def Γ(pairs: Iterable[(ast.AbstractLocalVar, Term)]) = MapBackedStore(toMap(pairs))
   def Γ(store: Map[ast.AbstractLocalVar, Term]) = MapBackedStore(store)
 }
 

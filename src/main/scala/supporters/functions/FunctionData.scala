@@ -8,7 +8,8 @@ package viper.silicon.supporters.functions
 
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
-import viper.silicon._
+import viper.silicon.{Config, Map, toMap}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.state.{IdentifierFactory, SymbolConvert}
 import viper.silicon.state.terms._
@@ -18,7 +19,7 @@ import viper.silicon.supporters.qps._
 
 class FunctionData(val programFunction: ast.Function,
                    val height: Int,
-                   val quantifiedFields: Set[ast.Field],
+                   val quantifiedFields: InsertionOrderedSet[ast.Field],
                    val program: ast.Program)
                   (symbolConverter: SymbolConvert,
                    expressionTranslator: HeapAccessReplacingExpressionTranslator,
@@ -79,17 +80,17 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
   private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[this] var freshFvfsAndDomains: Set[(FvfDefinition, Seq[Term])] = Set.empty
-  private[this] var freshPsfsAndDomains: Set[(PsfDefinition, Seq[Term])] = Set.empty
-  private[this] var freshFieldInvs: Set[InverseFunction] = Set.empty
-  private[this] var freshPredInvs: Set[PredicateInverseFunction] = Set.empty
-  private[this] var freshArps: Set[(Var, Term)] = Set.empty
-  private[this] var freshSymbolsAcrossAllPhases: Set[Function] = Set.empty
+  private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+  private[this] var freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+  private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet.empty
+  private[this] var freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
+  private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
-  private[functions] def getFreshFieldInvs: Set[InverseFunction] = freshFieldInvs
-  private[functions] def getFreshPredInvs: Set[PredicateInverseFunction] = freshPredInvs
-  private[functions] def getFreshArps: Set[Var] = freshArps.map(_._1)
-  private[functions] def getFreshSymbolsAcrossAllPhases: Set[Function] = freshSymbolsAcrossAllPhases
+  private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunction] = freshFieldInvs
+  private[functions] def getFreshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = freshPredInvs
+  private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
+  private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = freshSymbolsAcrossAllPhases
 
   private[functions] def advancePhase(recorders: Seq[FunctionRecorder]): Unit = {
     assert(0 <= phase && phase <= 1, s"Cannot advance from phase $phase")
@@ -115,7 +116,7 @@ class FunctionData(val programFunction: ast.Function,
     phase += 1
   }
 
-  private def generateNestedDefinitionalAxioms: Set[Term] = (
+  private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = (
        freshFieldInvs.flatMap(_.definitionalAxioms)
     ++ freshPredInvs.flatMap(_.definitionalAxioms)
     ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef) =>

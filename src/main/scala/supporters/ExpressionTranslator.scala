@@ -7,7 +7,8 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{Map, Set, toMap}
+import viper.silicon.{Map, toMap}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.{Identifier, SymbolConvert}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.functions.FunctionSupporter
@@ -24,7 +25,7 @@ trait ExpressionTranslator {
    * TODO: Can't we do without toSort? Or at least with a less type-specific one?
    */
   protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
-                          qpFields: Set[ast.Field])
+                          qpFields: InsertionOrderedSet[ast.Field])
                          (exp: ast.Exp)
                          : Term = {
 

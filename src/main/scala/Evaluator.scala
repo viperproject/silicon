@@ -11,6 +11,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.reporting.Bookkeeper
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
@@ -21,7 +22,7 @@ import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
-import viper.silicon.supporters.qps.{SummarisingFvfDefinition, QuantifiedChunkSupporter}
+import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, SummarisingFvfDefinition}
 import viper.silicon.supporters.functions.FunctionSupporter
 
 trait DefaultEvaluator[ST <: Store[ST],
@@ -608,7 +609,7 @@ trait DefaultEvaluator[ST <: Store[ST],
                      pve: PartialVerificationError,
                      c: C)
                     (Q: (Seq[Var], Seq[Term], Seq[Term], Seq[Trigger], Either[Quantification, Seq[Quantification]], C) => VerificationResult)
-  : VerificationResult = {
+                    : VerificationResult = {
 
     val tVars = vars map (v => fresh(v.name, toSort(v.typ)))
     val γVars = Γ(vars zip tVars)
@@ -643,7 +644,6 @@ trait DefaultEvaluator[ST <: Store[ST],
       Q(tVars, ts1, ts2, tTriggers, auxQuant, c1)
     }
   }
-
 
   def evalImplies(σ: S, tLhs: Term, eRhs: ast.Exp, pve: PartialVerificationError, c: C)
                  (Q: (Term, C) => VerificationResult)
@@ -740,7 +740,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
   private def evalTriggers(σ: S,
                            silverTriggers: Seq[ast.Trigger],
-                           bodyPathConditions: Set[Term],
+                           bodyPathConditions: InsertionOrderedSet[Term],
                            pve: PartialVerificationError,
                            c: C)
                           (Q: (Seq[Trigger], C) => VerificationResult)
@@ -831,7 +831,7 @@ trait DefaultEvaluator[ST <: Store[ST],
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
 //    val πPre: Set[Term] = decider.π
     val preMark = decider.setPathConditionMark()
-    var πDelta: Set[Term] = Set()
+    var πDelta = InsertionOrderedSet.empty[Term]
 
     /* TODO: Evaluate as many remaining expressions as possible, i.e. don't
      *       stop if evaluating one fails

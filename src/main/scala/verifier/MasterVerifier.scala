@@ -12,6 +12,7 @@ import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils,
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon._
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.utils
 import viper.silicon.interfaces._
@@ -208,8 +209,8 @@ class MasterVerifier(config: Config)
   }
 
   private def createInitialContext(member: ast.Member, program: ast.Program): C = {
-    val quantifiedFields = toSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
-    val quantifiedPredicates = toSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
+    val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(member, program))
+    val quantifiedPredicates = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedPredicates(member, program))
     val applyHeuristics = program.fields.exists(_.name.equalsIgnoreCase("__CONFIG_HEURISTICS"))
 
     DefaultContext[H](program = program,

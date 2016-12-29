@@ -7,7 +7,11 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{MMap, MMultiMap, MSet, Map, MultiMap, Set}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.common.collections.immutable.InsertionOrderedSet._
+import viper.silicon.common.collections.immutable.MultiMap._
+import viper.silicon.common.collections.mutable.MMultiMap
+import viper.silicon.{MMap, MSet, Map, toMap}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.{SymbolConvert, terms}
@@ -25,9 +29,9 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
 
   /* TODO: Group emitted declarations and axioms by source domain. */
 
-  private var collectedSorts = Set[Sort]()
-  private var collectedFunctions = Set[terms.DomainFun]()
-  private var collectedAxioms = Set[Term]()
+  private var collectedSorts = InsertionOrderedSet[Sort]()
+  private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
+  private var collectedAxioms = InsertionOrderedSet[Term]()
   private var uniqueSymbols = MultiMap.empty[Sort, Symbol]
 
   /* Lifetime */
@@ -52,7 +56,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
     collectDomainMembers(concreteDomainMemberInstances)
   }
 
-  private def collectDomainSorts(domainTypes: Set[ast.DomainType]) {
+  private def collectDomainSorts(domainTypes: InsertionOrderedSet[ast.DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -61,7 +65,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
     })
   }
 
-  private def collectDomainMembers(members: Map[ast.Domain, Set[DomainMemberInstance]]) {
+  private def collectDomainMembers(members: Map[ast.Domain, InsertionOrderedSet[DomainMemberInstance]]) {
     /* Since domain member instances come with Sil types, but the corresponding prover declarations
      * work with sorts, it can happen that two instances with different types result in the
      * same function declaration because the types are mapped to the same sort(s).
@@ -81,7 +85,8 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
     members.foreach{case (_, memberInstances) =>
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
 
-      val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
+      val functionInstances: InsertionOrderedSet[DomainFunctionInstance] =
+        memberInstances collect { case dfi: DomainFunctionInstance => dfi }
 
       functionInstances.foreach(fi => {
         val inSorts = fi.member.formalArgs map (a => symbolConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
@@ -128,9 +133,9 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
    * @return The set of concrete domain types that are used in the given program. For all `dt` in
    *         the returned set, `dt.isConcrete` holds.
    */
-  private def collectConcreteDomainTypes(program: ast.Program): Set[ast.DomainType] = {
-    var domains: Set[ast.DomainType] = Set()
-    var newDomains: Set[ast.DomainType] = Set()
+  private def collectConcreteDomainTypes(program: ast.Program): InsertionOrderedSet[ast.DomainType] = {
+    var domains: InsertionOrderedSet[ast.DomainType] = InsertionOrderedSet()
+    var newDomains: InsertionOrderedSet[ast.DomainType] = InsertionOrderedSet()
 
     var ds: Iterable[ast.DomainType] =
       program.domains filter (_.typVars.isEmpty) map (ast.DomainType(_, Map.empty[ast.TypeVar, ast.Type]))
@@ -157,9 +162,9 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
   }
 
   private def collectConcreteDomainTypes(node: ast.Node, typeVarsMap: Map[ast.TypeVar, ast.Type])
-                                        : Set[ast.DomainType] = {
+                                        : InsertionOrderedSet[ast.DomainType] = {
 
-    var domains: Set[ast.DomainType] = Set()
+    var domains: InsertionOrderedSet[ast.DomainType] = InsertionOrderedSet()
 
     node visit {
       case t: ast.Typed => t.typ match {
@@ -174,8 +179,9 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
     domains
   }
 
-  private def collectConcreteDomainMemberInstances(program: ast.Program, concreteDomainTypes: Set[ast.DomainType])
-                                                  : Map[ast.Domain, Set[DomainMemberInstance]] = {
+  private def collectConcreteDomainMemberInstances(program: ast.Program,
+                                                   concreteDomainTypes: InsertionOrderedSet[ast.DomainType])
+                                                  : Map[ast.Domain, InsertionOrderedSet[DomainMemberInstance]] = {
 
     val membersWithSource = domainMembers(program)
 
@@ -233,11 +239,11 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
       insert(instances, newInstances)
     }
 
-    val instancesConvertedInnerSets: MMap[ast.Domain, Set[DomainMemberInstance]] =
-      instances map {case (k, v) => (k, Set.empty ++ v)}
+    val instancesConvertedInnerSets: MMap[ast.Domain, InsertionOrderedSet[DomainMemberInstance]] =
+      instances map {case (k, v) => (k, InsertionOrderedSet.empty ++ v)}
 
-    val instancesConvertedOuterMaps: Map[ast.Domain, Set[DomainMemberInstance]] =
-      Map.empty ++ instancesConvertedInnerSets
+    val instancesConvertedOuterMaps: Map[ast.Domain, InsertionOrderedSet[DomainMemberInstance]] =
+      toMap(instancesConvertedInnerSets)
 
     instancesConvertedOuterMaps
   }
@@ -374,7 +380,7 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
       symbolConverter.toSort(concreteType)
     }
 
-    translate(toSort, Set.empty)(ax.exp) match {
+    translate(toSort, InsertionOrderedSet.empty)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 
