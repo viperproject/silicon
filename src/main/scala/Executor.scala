@@ -54,13 +54,8 @@ trait DefaultExecutor[ST <: Store[ST],
                     : VerificationResult = {
 
     edge match {
-      case ce: ast.ConditionalEdge =>
-        eval(σ, ce.cond, IfFailed(ce.cond), c)((tCond, c1) =>
-          branch(σ, tCond, c1,
-            (c2: C) => exec(σ, ce.dest, c2)(Q),
-            (_: C) => Success()))
-
       case ue: ast.UnconditionalEdge => exec(σ, ue.dest, c)(Q)
+      case ce: ast.ConditionalEdge => sys.error(s"Unexpected conditional edge: $ce")
     }
   }
 
