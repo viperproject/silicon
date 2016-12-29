@@ -7,13 +7,14 @@
 package viper.silicon.decider
 
 import viper.silicon._
-import viper.silicon.state.terms.{And, Implies, True, Term}
+import viper.silicon.state.terms.{And, Decl, Implies, Term, True}
 
 /*
  * Interfaces (public, provide only immutable views)
  */
 
 sealed trait PathConditionScope {
+  def add(t: Term): Unit
   def branchCondition: Option[Term]
   def assumptions: Set[Term]
 //  def pathConditions: Set[Term] // pathConditions = assumptions + branchCondition
@@ -21,7 +22,9 @@ sealed trait PathConditionScope {
 }
 
 sealed trait PathConditionStack {
-  def scopes: Stack[PathConditionScope]
+  def add(t: Term): Unit
+  def pushScope(): Unit
+  def popScope(): Unit
   def branchConditions: Stack[Term]
   def assumptions: Set[Term]
 //  def pathConditions: Set[Term] // pathConditions = assumptions ++ branchConditions
@@ -120,8 +123,6 @@ private[decider] class DefaultPathConditionStack extends PathConditionStack with
      */
 
   pushScope() /* Create an initial scope */
-
-  def scopes = _scopes
 
   def pushScope() { _scopes = new DefaultScope() +: _scopes }
 
@@ -226,6 +227,9 @@ private[decider] class DefaultPathConditionStack extends PathConditionStack with
        |  _scopes = ${_scopes}""".stripMargin
 }
 
+/* TODO: Is this merely a wrapper around a PathConditionStack? If so, why?
+ * TODO: Extract a meaningful interface
+ */
 private[decider] class DefaultPathConditions extends Mutable {
   private var _counter = 0
   private val _stack: DefaultPathConditionStack = new DefaultPathConditionStack()
