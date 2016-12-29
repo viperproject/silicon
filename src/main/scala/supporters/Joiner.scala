@@ -27,8 +27,7 @@ trait Joiner[C <: Context[C]] {
 trait DefaultJoiner[ST <: Store[ST],
                     H <: Heap[H],
                     S <: State[ST, H, S]]
-    extends Joiner[DefaultContext[H]]
-{ this: DefaultBrancher[ST, H, S] =>
+    extends Joiner[DefaultContext[H]] {
 
   private[this] type C = DefaultContext[H]
 
