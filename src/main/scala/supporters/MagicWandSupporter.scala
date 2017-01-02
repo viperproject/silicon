@@ -10,15 +10,15 @@ import scala.util.control.Breaks._
 import org.slf4s.{LoggerFactory, Logging}
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InternalReason, NegativePermission, InsufficientPermission}
+import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 import viper.silver.ast.utility.{Nodes, Visitor}
 import viper.silver.verifier.errors._
 import viper.silicon._
+import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.state.factoryUtils.Ø
-import viper.silicon.decider.PathConditionStack
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
@@ -300,7 +300,7 @@ trait MagicWandSupporter[ST <: Store[ST],
       val σEmp = Σ(σ.γ, Ø, σ.g)
       val c0 = c.copy(reserveHeaps = Nil, exhaleExt = false)
 
-      var pcsFromHeapIndepExprs = Vector[PathConditionStack]()
+      var pcsFromHeapIndepExprs = Vector[RecordedPathConditions]()
 
       val r = locally {
         produce(σEmp, fresh, wand.left, pve, c0)((σLhs, c1) => {

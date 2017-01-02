@@ -47,7 +47,7 @@ trait DeciderProvider[ST <: Store[ST],
 
   object decider extends Decider[ST, H, S, C] with StatefulComponent {
     private var z3: Z3ProverStdIO = _
-    private var pathConditions: DefaultPathConditions = _
+    private var pathConditions: PathConditionStack = _
 
   //  val paLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
   //  val proverAssertionTimingsLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
@@ -55,7 +55,7 @@ trait DeciderProvider[ST <: Store[ST],
 
     def prover: Prover = z3
 
-    def pcs: PathConditionStack = pathConditions.stack
+    def pcs: PathConditionStack = pathConditions
     def π: InsertionOrderedSet[Term] = pathConditions.assumptions
 
     private def createProver(): Option[DependencyNotFoundError] = {
@@ -87,13 +87,13 @@ trait DeciderProvider[ST <: Store[ST],
     /* Life cycle */
 
     def start() {
-      pathConditions = new DefaultPathConditions()
+      pathConditions = new LayeredPathConditionStack()
       createProver()
     }
 
     def reset() {
       z3.reset()
-      pathConditions = new DefaultPathConditions()
+      pathConditions = new LayeredPathConditionStack()
     }
 
     def stop() {

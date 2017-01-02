@@ -256,9 +256,9 @@ trait DefaultEvaluator[ST <: Store[ST],
               (c3: C) => eval(σ, e2, pve, c3)(QB))
           )(entries => {
             val (t1, t2) = entries match {
-              case Seq(entry) if entry.pathConditionStack.branchConditions.head == t0 =>
+              case Seq(entry) if entry.pathConditions.branchConditions.head == t0 =>
                 (entry.data, partiallyAppliedFresh("$deadElse", c.quantifiedVariables, e2.typ))
-              case Seq(entry) if entry.pathConditionStack.branchConditions.head == Not(t0) =>
+              case Seq(entry) if entry.pathConditions.branchConditions.head == Not(t0) =>
                 (partiallyAppliedFresh("$deadThen", c.quantifiedVariables, e1.typ), entry.data)
               case Seq(entry1, entry2) =>
                 (entry1.data, entry2.data)
@@ -902,7 +902,7 @@ trait DefaultEvaluator[ST <: Store[ST],
 
     entries match {
 //      case Seq(entry) if entry.newBranchConditions.isEmpty =>
-      case Seq(entry) if entry.pathConditionStack.branchConditions.isEmpty =>
+      case Seq(entry) if entry.pathConditions.branchConditions.isEmpty =>
         entry.data
       case _ =>
         val quantifiedVarsSorts = joinFunctionArgs.map(_.sort)
@@ -910,7 +910,7 @@ trait DefaultEvaluator[ST <: Store[ST],
         val joinTerm = App(joinSymbol, joinFunctionArgs)
 
         val joinDefEqs = entries map (entry =>
-          Implies(And(entry.pathConditionStack.branchConditions), joinTerm === entry.data))
+          Implies(And(entry.pathConditions.branchConditions), joinTerm === entry.data))
 
 //        println(s"  joinTerm = $joinTerm")
 //        println(s"  joinDefEqs = ")

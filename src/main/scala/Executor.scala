@@ -7,16 +7,16 @@
 package viper.silicon
 
 import org.slf4s.Logging
-import viper.silicon.decider.PathConditionStack
 import viper.silver.ast
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
+import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state.{Store, Heap, State, StateFactory, StateFormatter}
+import viper.silicon.interfaces.state.{Heap, State, StateFactory, StateFormatter, Store}
 import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.state.terms._
-import viper.silicon.state.{FieldChunk, SymbolConvert, DefaultContext, ListBackedHeap}
+import viper.silicon.state.{DefaultContext, FieldChunk, ListBackedHeap, SymbolConvert}
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.supporters._
 import viper.silicon.supporters.qps.QuantifiedChunkSupporter
@@ -148,8 +148,8 @@ trait DefaultExecutor[ST <: Store[ST],
         val γBody = Γ(wvs.foldLeft(σ.γ.values)((map, v) => map.updated(v, fresh(v))))
         val σBody = Σ(γBody, Ø, σ.g) /* Use the old-state of the surrounding block as the old-state of the loop. */
 
-        var phase1data: Vector[(S, PathConditionStack, C)] = Vector.empty
-        var phase2data: Vector[(S, PathConditionStack, C)] = Vector.empty
+        var phase1data: Vector[(S, RecordedPathConditions, C)] = Vector.empty
+        var phase2data: Vector[(S, RecordedPathConditions, C)] = Vector.empty
 
         (locally {
             val mark = decider.setPathConditionMark()

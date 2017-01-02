@@ -6,15 +6,15 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.decider.PathConditionStack
+import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces.{Success, VerificationResult}
 import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state.{State, Heap, Store, Context}
+import viper.silicon.interfaces.state.{Context, Heap, State, Store}
 import viper.silicon.state.DefaultContext
 
 case class JoinDataEntry[C <: Context[C], D]
                         (data: D,
-                         pathConditionStack: PathConditionStack,
+                         pathConditions: RecordedPathConditions,
                          c: C)
 
 trait Joiner[C <: Context[C]] {
@@ -75,7 +75,7 @@ trait DefaultJoiner[ST <: Store[ST],
 
         val cJoined =
           entries.foldLeft(cInit)((cAcc, localData) => {
-            val pcs = localData.pathConditionStack.asConditionals
+            val pcs = localData.pathConditions.asConditionals
             decider.prover.comment("Joined path conditions")
             decider.assume(pcs)
 

@@ -23,6 +23,7 @@ trait Decider[ST <: Store[ST],
 
   def prover: Prover
 
+  /* TODO: Consider removing pcs and using π instead, i.e. π: PathConditionStack */
   def pcs: PathConditionStack
   def π: InsertionOrderedSet[Term]
 
