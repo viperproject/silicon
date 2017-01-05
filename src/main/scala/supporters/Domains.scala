@@ -14,7 +14,7 @@ import viper.silicon.common.collections.mutable.MMultiMap
 import viper.silicon.{MMap, MSet, Map, toMap}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state.{SymbolConvert, terms}
+import viper.silicon.state.{SymbolConverter, terms}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
 import viper.silicon.implicits._
 
@@ -23,7 +23,7 @@ trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX]
   def emitUniquenessAssumptionsAfterAnalysis(sink: ProverLike): Unit
 }
 
-class DefaultDomainsContributor(symbolConverter: SymbolConvert,
+class DefaultDomainsContributor(symbolConverter: SymbolConverter,
                                 domainTranslator: DomainsTranslator[Term])
     extends DomainsContributor[Sort, DomainFun, Term, Term] {
 
@@ -302,6 +302,8 @@ class DefaultDomainsContributor(symbolConverter: SymbolConvert,
     uniquenessAssumptionsAfterAnalysis foreach (t => sink.assume(t))
   }
 
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
+
   /*
    * Internal declarations
    */
@@ -366,7 +368,7 @@ trait DomainsTranslator[R] {
   def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): R
 }
 
-class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
+class DefaultDomainsTranslator(val symbolConverter: SymbolConverter)
     extends DomainsTranslator[Term]
        with ExpressionTranslator {
 

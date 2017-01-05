@@ -7,20 +7,18 @@
 package viper.silicon.verifier
 
 import viper.silver.components.StatefulComponent
-import viper.silicon._
 import viper.silicon.supporters._
-import viper.silicon.verifier.BaseVerifier._
 
-class SlaveVerifier(config: Config,
+class SlaveVerifier(master: MasterVerifier,
                     uniqueId: String)
-    extends BaseVerifier(config, uniqueId)
-       with PredicateSupporterProvider[ST, H, S]
-       with MethodSupporterProvider[ST, H, S] {
+    extends BaseVerifier(Verifier.config, uniqueId)
+       with DefaultMethodVerificationUnitProvider {
 
   private val statefulSubcomponents = List[StatefulComponent](
-    predicateSupporter,
     methodSupporter
   )
+
+  def verificationPoolManager: VerificationPoolManager = master.verificationPoolManager
 
   /* Lifetime */
 

@@ -10,11 +10,12 @@ import org.slf4s.Logging
 import viper.silver.ast
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConvert}
+import viper.silicon.rules.functionSupporter
+import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
 
-class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert,
+class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
        with Logging {
@@ -133,7 +134,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         if (callerHeight < calleeHeight)
           fapp
         else
-          fapp.copy(applicable = FunctionSupporter.limitedVersion(fun))
+          fapp.copy(applicable = functionSupporter.limitedVersion(fun))
 
       case _ => super.translate(toSort, qpFields)(e)
     }

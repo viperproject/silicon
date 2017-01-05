@@ -133,7 +133,7 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
   protected def getArgs(term: Term): Seq[Term] = term.subterms
 }
 
-class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
+class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/)
     extends GenericAxiomRewriter[Sort, Term, Var, Quantification, Equals, And, Implies, Plus, Minus,
                                  Trigger] {
 
@@ -182,10 +182,11 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
 
   protected val solver = SimpleArithmeticSolver
 
-  protected def fresh(name: String, typ: Type) = Var(Identifier(s"$name@rw${counter.next()}"), typ)
+  protected def fresh(name: String, typ: Type): Var =
+    Var(Identifier(s"$name@rw${counter.next()}"), typ)
 
   protected def log(message: String): Unit = {
-    logger.println(message)
+//    logger.println(message)
   }
 
   protected def log(key: String, item: Any) {
@@ -193,12 +194,12 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
   }
 
   protected def log(key: String, items: Iterable[Any]) {
-    if (items.size <= 1)
-      logger.println(s"  $key: $items")
-    else {
-      logger.println(s"  $key:")
-      items foreach (item => logger.println(s"    $item"))
-    }
+//    if (items.size <= 1)
+//      logger.println(s"  $key: $items")
+//    else {
+//      logger.println(s"  $key:")
+//      items foreach (item => logger.println(s"    $item"))
+//    }
   }
 }
 

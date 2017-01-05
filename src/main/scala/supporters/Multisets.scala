@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
-import viper.silicon.state.SymbolConvert
+import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
 
 trait MultisetsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
@@ -18,7 +18,7 @@ trait MultisetsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 /* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
 
 class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String],
-                                  symbolConverter: SymbolConvert,
+                                  symbolConverter: SymbolConverter,
                                   termConverter: TermConverter[String, String, String])
     extends MultisetsContributor[sorts.Multiset, String, String] {
 
@@ -115,4 +115,6 @@ class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String]
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedAxioms)
+
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 }

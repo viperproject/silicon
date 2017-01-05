@@ -12,8 +12,13 @@ import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.{Sort, Term, Var}
+import viper.silicon.verifier.Verifier
 
 package object utils {
+  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
+  def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
+
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
     if (it.isEmpty)
       unit
@@ -43,7 +48,10 @@ package object utils {
   }
 
   /* NOT thread-safe */
-  class Counter(firstValue: Int = 0) extends StatefulComponent {
+  class Counter(firstValue: Int = 0)
+      extends StatefulComponent
+         with Cloneable {
+
     private var nextValue = firstValue
 
     def next() = {
@@ -61,6 +69,13 @@ package object utils {
     def reset() {
       nextValue = firstValue
     }
+
+    override def clone(): Counter = {
+      val clonedCounter = new Counter(firstValue)
+      clonedCounter.nextValue = nextValue
+
+      clonedCounter
+    }
   }
 
   /* A base implementation of start/reset/stop is required by the
@@ -71,6 +86,8 @@ package object utils {
     @inline def reset() {}
     @inline def stop() {}
   }
+
+  trait MustBeReinitializedAfterReset { this: StatefulComponent => }
 
   /* http://www.tikalk.com/java/blog/avoiding-nothing */
   object notNothing {

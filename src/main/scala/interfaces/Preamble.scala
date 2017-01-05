@@ -9,7 +9,6 @@ package viper.silicon.interfaces
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.interfaces.state.Heap
 
 trait PreambleReader[I, O] {
   def readPreamble(resource: I): Iterable[O]
@@ -35,11 +34,13 @@ trait PreambleContributor[+SO, +SY, +AX] extends StatefulComponent {
 
   def axiomsAfterAnalysis: Iterable[AX]
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit
+
+  def updateGlobalStateAfterAnalysis(): Unit
 }
 
-trait VerifyingPreambleContributor[+SO, +SY, +AX, H <: Heap[H], U <: ast.Node]
+trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
     extends PreambleContributor[SO, SY, AX]
-       with VerificationUnit[H, U] {
+       with VerificationUnit[U] {
 
   def sortsAfterVerification: Iterable[SO]
   def declareSortsAfterVerification(sink: ProverLike): Unit
@@ -49,4 +50,6 @@ trait VerifyingPreambleContributor[+SO, +SY, +AX, H <: Heap[H], U <: ast.Node]
 
   def axiomsAfterVerification: Iterable[AX]
   def emitAxiomsAfterVerification(sink: ProverLike): Unit
+
+  def contributeToGlobalStateAfterVerification(): Unit
 }

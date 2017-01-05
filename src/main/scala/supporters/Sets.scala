@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
-import viper.silicon.state.SymbolConvert
+import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
 
 trait SetsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
@@ -20,7 +20,7 @@ trait SetsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
  */
 
 class DefaultSetsContributor(preambleReader: PreambleReader[String, String],
-                             symbolConverter: SymbolConvert,
+                             symbolConverter: SymbolConverter,
                              termConverter: TermConverter[String, String, String])
     extends SetsContributor[sorts.Set, String, String] {
 
@@ -128,4 +128,6 @@ class DefaultSetsContributor(preambleReader: PreambleReader[String, String],
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedAxioms)
+
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 }

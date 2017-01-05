@@ -16,14 +16,11 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.Config
-import viper.silicon.interfaces.decider.Decider
 import viper.silicon.interfaces.state._
-import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.terms.utils.{BigPermSum, consumeExactRead}
 import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.utils.Counter
-import viper.silicon.interfaces.state.{Heap, State, Store}
 
 
 case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term, invOfFct: Quantification, fctOfInv: Quantification) {
@@ -35,7 +32,7 @@ case class PredicateInverseFunction(func: Function, function: Seq[Term] => Term,
 trait QuantifiedPredicateChunkSupporter[ST <: Store[ST],
                                         H <: Heap[H],
                                         S <: State[ST, H, S],
-                                        C <: Context[C]] {
+                                        C <: State[C]] {
 
 
   def getFreshInverseFunction(qvar: Var,
@@ -131,7 +128,7 @@ trait QuantifiedPredicateChunkSupporterProvider[ST <: Store[ST],
   private[this] type C = DefaultContext[H]
 
   protected val decider: Decider[ST, H, S, DefaultContext[H]]
-  protected val symbolConverter: SymbolConvert
+  protected val symbolConverter: SymbolConverter
   protected val stateFactory: StateFactory[ST, H, S]
   protected val axiomRewriter: AxiomRewriter
   protected val config: Config

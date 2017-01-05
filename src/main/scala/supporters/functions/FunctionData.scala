@@ -11,17 +11,28 @@ import viper.silver.ast.utility.Functions
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.state.{IdentifierFactory, SymbolConvert}
+import viper.silicon.rules.{InverseFunction, functionSupporter}
+import viper.silicon.state.{IdentifierFactory, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
 import viper.silicon.supporters.PredicateData
 import viper.silicon.supporters.qps._
 
+/* TODO: Refactor FunctionData!
+ *       Separate computations from "storing" the final results and sharing
+ *       them with other components. Computations should probably be moved to the
+ *       FunctionVerificationUnit.
+ */
 class FunctionData(val programFunction: ast.Function,
                    val height: Int,
                    val quantifiedFields: InsertionOrderedSet[ast.Field],
                    val program: ast.Program)
-                  (symbolConverter: SymbolConvert,
+                  /* Note: Holding references to fixed symbol converter, identifier factory, ...
+                   *       (instead of going through a verifier) is only safe if these are
+                   *       either effectively independent of verifiers or if they are not used
+                   *       with/in the context of different verifiers.
+                   */
+                  (symbolConverter: SymbolConverter,
                    expressionTranslator: HeapAccessReplacingExpressionTranslator,
                    identifierFactory: IdentifierFactory,
                    predicateData: ast.Predicate => PredicateData,
@@ -34,15 +45,15 @@ class FunctionData(val programFunction: ast.Function,
    */
 
   val function: HeapDepFun = symbolConverter.toFunction(programFunction)
-  val limitedFunction = FunctionSupporter.limitedVersion(function)
-  val statelessFunction = FunctionSupporter.statelessVersion(function)
+  val limitedFunction = functionSupporter.limitedVersion(function)
+  val statelessFunction = functionSupporter.statelessVersion(function)
 
   val formalArgs: Map[ast.AbstractLocalVar, Var] = toMap(
     for (arg <- programFunction.formalArgs;
-         v = arg.localVar)
+         x = arg.localVar)
     yield
-      v -> Var(identifierFactory.fresh(v.name),
-               symbolConverter.toSort(v.typ)))
+      x -> Var(identifierFactory.fresh(x.name),
+               symbolConverter.toSort(x.typ)))
 
   val formalResult = Var(identifierFactory.fresh(programFunction.result.name),
                          symbolConverter.toSort(programFunction.result.typ))
@@ -81,14 +92,14 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])] = InsertionOrderedSet.empty
-  private[this] var freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+//  private[this] var freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet.empty
-  private[this] var freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
+//  private[this] var freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunction] = freshFieldInvs
-  private[functions] def getFreshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = freshPredInvs
+//  private[functions] def getFreshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = freshPredInvs
   private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
   private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = freshSymbolsAcrossAllPhases
 
@@ -104,21 +115,21 @@ class FunctionData(val programFunction: ast.Function,
     locToSnap = mergedFunctionRecorder.locToSnap
     fappToSnap = mergedFunctionRecorder.fappToSnap
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
-    freshPsfsAndDomains = mergedFunctionRecorder.freshPsfsAndDomains
+//    freshPsfsAndDomains = mergedFunctionRecorder.freshPsfsAndDomains
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
-    freshPredInvs = mergedFunctionRecorder.freshPredInvs
+//    freshPredInvs = mergedFunctionRecorder.freshPredInvs
     freshArps = mergedFunctionRecorder.freshArps
 
     freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
     freshSymbolsAcrossAllPhases ++= freshFieldInvs.map(_.func)
-    freshSymbolsAcrossAllPhases ++= freshPredInvs.map(_.func)
+//    freshSymbolsAcrossAllPhases ++= freshPredInvs.map(_.func)
 
     phase += 1
   }
 
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = (
        freshFieldInvs.flatMap(_.definitionalAxioms)
-    ++ freshPredInvs.flatMap(_.definitionalAxioms)
+//    ++ freshPredInvs.flatMap(_.definitionalAxioms)
     ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef) =>
          (fvfDef match {
             case fvfDef: SummarisingFvfDefinition => fvfDef.quantifiedValueDefinitions

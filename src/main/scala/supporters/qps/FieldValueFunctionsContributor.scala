@@ -11,13 +11,13 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Config, Map}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
-import viper.silicon.state.SymbolConvert
+import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
 class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[String, String],
-                                            symbolConverter: SymbolConvert,
+                                            symbolConverter: SymbolConverter,
                                             termConverter: TermConverter[String, String, String],
                                             config: Config)
     extends FieldValueFunctionsContributor[sorts.FieldValueFunction, String, String] {
@@ -113,4 +113,6 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedAxioms)
+
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 }

@@ -20,7 +20,7 @@ import viper.silver.frontend.SilFrontend
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.VerificationException
-import viper.silicon.verifier.MasterVerifier
+import viper.silicon.verifier.DefaultMasterVerifier
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -53,7 +53,7 @@ object Silicon {
   val copyright = "(c) Copyright ETH Zurich 2012 - 2016"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.3.2")
-  val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
+  val z3MaxVersion: Option[Version] = Some(Version("4.5.0")) /* X.Y.Z if that is the last *supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
   val hideInternalOptions = false
@@ -116,7 +116,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: MasterVerifier = _
+  private var verifier: DefaultMasterVerifier = _
+
+  private var startTime: Long = _
+  private var elapsedMillis: Long = _
 
   def this() = this(Nil)
 
@@ -153,7 +156,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     setLogLevelsFromConfig()
 
-    verifier = new MasterVerifier(config)
+    verifier = new DefaultMasterVerifier(config)
     verifier.start()
   }
 
@@ -179,6 +182,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     assert(lifetimeState == LifetimeState.Started || lifetimeState == LifetimeState.Running,
            "Silicon must be started before it can be reset")
 
+    startTime = 0
+    elapsedMillis = 0
+
     verifier.reset()
   }
 
@@ -202,7 +208,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     lifetimeState = LifetimeState.Running
 
     //bookkeeping for Viper IVE
-    verifier.bookkeeper.reportInitialProgress(program)
+//    verifier.bookkeeper.reportInitialProgress(program)
 
     log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
@@ -280,12 +286,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
-    verifier.bookkeeper.branches = 1
-    verifier.bookkeeper.startTime = System.currentTimeMillis()
+//    verifier.bookkeeper.branches = 1
+    /*verifier.bookkeeper.*/startTime = System.currentTimeMillis()
 
     val results = verifier.verify(program)
 
-    verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
+    /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
     val failures =
       results.flatMap(r => r :: r.allPrevious)
@@ -312,30 +318,31 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
              })
 
     if (config.showStatistics.isDefined) {
-      val proverStats = verifier.decider.statistics()
-
-      verifier.bookkeeper.proverStatistics = proverStats
-      verifier.bookkeeper.errors = failures.length
-
-      config.showStatistics.get match {
-        case None =>
-
-        case Some((Config.Sink.Stdio, "")) =>
-          log.info("")
-          log.info(verifier.bookkeeper.toString)
-          log.info("")
-
-        case Some((Config.Sink.File, path)) =>
-          viper.silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
-
-        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
-      }
+      ???
+//      val proverStats = verifier.decider.statistics()
+//
+//      verifier.bookkeeper.proverStatistics = proverStats
+//      verifier.bookkeeper.errors = failures.length
+//
+//      config.showStatistics.get match {
+//        case None =>
+//
+//        case Some((Config.Sink.Stdio, "")) =>
+//          log.info("")
+//          log.info(verifier.bookkeeper.toString)
+//          log.info("")
+//
+//        case Some((Config.Sink.File, path)) =>
+//          viper.silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
+//
+//        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
+//      }
     }
 
     failures foreach (f => logFailure(f, s => log.info(s)))
 
     log.info("\nVerification finished in %s with %s error(s)".format(
-        viper.silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
+        viper.silicon.common.format.formatMillisReadably(/*verifier.bookkeeper.*/elapsedMillis),
         failures.length))
 
     failures

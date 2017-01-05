@@ -16,10 +16,10 @@ import viper.silicon.state.terms._
 
 class TriggerRewriterTests extends FunSuite with Matchers {
   val dummySink = new PrintWriter(new StringWriter())
-  val dummyLogger = new MultiRunLogger(dummySink, () => None)
+//  val dummyLogger = new MultiRunLogger(dummySink, () => None)
   val counter = new viper.silicon.utils.Counter()
 
-  val rewriter = new AxiomRewriter(counter, dummyLogger) {
+  val rewriter = new AxiomRewriter(counter/*, dummyLogger*/) {
     override def rewrite(quantification: Quantification) = {
       val result = super.rewrite(quantification)
       counter.reset()

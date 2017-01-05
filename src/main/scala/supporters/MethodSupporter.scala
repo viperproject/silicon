@@ -6,71 +6,53 @@
 
 package viper.silicon.supporters
 
-import org.slf4s.Logging
+import org.slf4s.Logger
 import viper.silver.ast
+import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
-import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
-import viper.silicon.interfaces.decider.Decider
-import viper.silicon.interfaces.state.factoryUtils.Ø
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state._
-import viper.silicon.state.terms.Sort
-import viper.silicon.state.{DefaultContext, ListBackedHeap}
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.Decider
+import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
+import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.utils.freshSnap
 
-trait MethodSupporter[ST <: Store[ST],
-                      H <: Heap[H],
-                      S <: State[ST, H, S],
-                      C <: Context[C]]
-    extends VerificationUnit[H, ast.Method]
+/* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
-trait MethodSupporterProvider[ST <: Store[ST],
-                              H <: Heap[H],
-                              S <: State[ST, H, S]]
-    { this:      Logging
-            with Evaluator[ST, H, S, DefaultContext[H]]
-            with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[ST, H, S, DefaultContext[H]]
-            with Executor[ST, H, S, DefaultContext[H]]
-            with ChunkSupporterProvider[ST, H, S]
-            with MagicWandSupporter[ST, H, S] =>
+trait MethodVerificationUnit extends VerificationUnit[ast.Method]
 
-  private type C = DefaultContext[H]
+trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verifier =>
+  def logger: Logger
+  def decider: Decider
 
-  protected val decider: Decider[ST, H, S, DefaultContext[H]]
-  protected val stateFactory: StateFactory[ST, H, S]
+  object methodSupporter extends MethodVerificationUnit with StatefulComponent {
+    import executor._
+    import producer._
+    import consumer._
 
-  import decider.{fresh, locally}
-  import stateFactory._
-
-  object methodSupporter extends MethodSupporter[ST, H, S, C] {
-    private var program: ast.Program = _
+    private var _units: Seq[ast.Method] = _
 
     def analyze(program: ast.Program): Unit = {
-      this.program = program
+      _units = program.methods
     }
 
-    def units = program.methods
+    def units = _units
 
-    def sorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty
-    def declareSortsAfterAnalysis(): Unit = { /* No sorts need to be declared */ }
-    def declareSymbolsAfterAnalysis(): Unit = { /* No symbols need to be declared */ }
-    def emitAxiomsAfterAnalysis(): Unit = { /* No axioms need to be emitted */ }
-
-    def verify(method: ast.Method, c: C): Seq[VerificationResult] = {
-      log.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
+    def verify(sInit: State, method: ast.Method): Seq[VerificationResult] = {
+      logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-      SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+//      SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val ins = method.formalArgs.map(_.localVar)
       val outs = method.formalReturns.map(_.localVar)
 
-      val γ = Γ(   ins.map(v => (v, fresh(v)))
-                ++ outs.map(v => (v, fresh(v)))
-                ++ method.locals.map(_.localVar).map(v => (v, fresh(v))))
+      val g = Store(   ins.map(x => (x, decider.fresh(x)))
+                    ++ outs.map(x => (x, decider.fresh(x)))
+                    ++ method.locals.map(_.localVar).map(x => (x, decider.fresh(x))))
 
-      val σ = Σ(γ, Ø, Ø)
+      val s = sInit.copy(g = g, h = Heap(), oldHeaps = OldHeaps())
 
       val pres = method.pres
       val posts = method.posts
@@ -79,28 +61,49 @@ trait MethodSupporterProvider[ST <: Store[ST],
 
       // common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
 
+//      println("\n[BEFORE GETTING STARTED]")
+
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
-        locally {
-          produces(σ, fresh, pres, ContractNotWellformed, c)((σ1, c2) => {
-            val σ2 = σ1 \ (γ = σ1.γ, h = Ø, g = σ1.h)
-               (/* Commented due to #201: Self-framingness checks are made too eagerly */
-                /*locally {
-                  magicWandSupporter.checkWandsAreSelfFraming(σ1.γ, σ1.h, method, c2)}*/
-            /*&&*/ locally {
-                 val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
-                 val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-                  produces(σ2, fresh, posts, ContractNotWellformed, c2)((_, _) => {
-                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
-                    Success()
-                  })
-               }
-            && locally {
-                  exec(σ1 \ (g = σ1.h), body, c2)((σ2, c3) =>
-                    consumes(σ2, posts, postViolated, c3)((_, _, _) =>
-                      Success()))})})}
+        executionFlowController.locally(s, v)((s1, v1) => {
+          produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
+//            println("\n[AFTER PRODUCING methods.pres]")
+//            println(s"v2.uniqueId = ${v2.uniqueId}")
+//            println("v2.decider.pcs.assumptions = ")
+//            v2.decider.pcs.assumptions foreach println
+  //            println("v2.decider.pcs.branchConditions = ")
+  //            v2.decider.pcs.branchConditions foreach println
+
+            val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
+           (   executionFlowController.locally(s2a, v2)((s3, v3) => {
+                  val s4 = s3.copy(h = Heap())
+//                 val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+//                 val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+//                   println("\n[BEFORE PRODUCING methods.posts]")
+//                   println("v3.decider.pcs.assumptions = ")
+//                   v3.decider.pcs.assumptions foreach println
+                  produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, v4) => {
+//                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+//                    println("\n[AFTER PRODUCING methods.posts]")
+//                    println("v4.decider.pcs.assumptions = ")
+//                    v4.decider.pcs.assumptions foreach println
+                    Success()})})
+            && {
+//                 println("\n[SECOND LOCALLY]")
+//                 println(s"v2.uniqueId = ${v2.uniqueId}")
+//                 println("v2.decider.pcs.assumptions = ")
+//                 v2.decider.pcs.assumptions foreach println
+
+               executionFlowController.locally(s2a, v2)((s3, v3) =>  {
+//                 println("[BEFORE EXECUTING methods.body]")
+//                 println("v3.decider.pcs.assumptions = ")
+//                 v3.decider.pcs.assumptions foreach println
+
+                  exec(s3, body, v3)((s4, v4) =>
+                    consumes(s4, posts, postViolated, v4)((_, _, _) =>
+                      Success()))}) }  )})})
 
       Seq(result)
     }
@@ -110,7 +113,7 @@ trait MethodSupporterProvider[ST <: Store[ST],
     def start() {}
 
     def reset(): Unit = {
-      program = null
+      _units = Seq.empty
     }
 
     def stop() {}

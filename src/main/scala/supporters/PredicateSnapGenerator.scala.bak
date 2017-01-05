@@ -10,10 +10,10 @@ import viper.silver.ast
 import viper.silver.ast.{Predicate, PredicateAccess, Program}
 import viper.silicon.Map
 import viper.silicon.state.terms.{Sort, Var, sorts}
-import viper.silicon.state.{Identifier, SymbolConvert, terms}
+import viper.silicon.state.{Identifier, SymbolConverter, terms}
 import viper.silicon.interfaces.{Consumer, Evaluator, Failure, Producer, VerificationResult}
 
-class PredicateSnapGenerator(symbolConverter: SymbolConvert) {
+class PredicateSnapGenerator(symbolConverter: SymbolConverter) {
 
   var snapMap:Map[Predicate, terms.Sort] = Map()
   var formalVarMap:Map[Predicate, Seq[terms.Var]] = Map()

@@ -11,7 +11,11 @@ import viper.silicon.Stack
 import viper.silicon.state.terms.{And, Decl, Implies, Term, True}
 import viper.silicon.utils.Counter
 
-sealed trait RecordedPathConditions {
+/*
+ * Interfaces
+ */
+
+trait RecordedPathConditions {
   def branchConditions: Stack[Term]
   def assumptions: InsertionOrderedSet[Term]
   def declarations: InsertionOrderedSet[Decl]
@@ -19,14 +23,14 @@ sealed trait RecordedPathConditions {
   def asConditionals: Seq[Term]
 }
 
-sealed trait PathConditionScope {
+trait PathConditionScope {
   def add(assumption: Term): Unit
   def branchCondition: Option[Term]
   def assumptions: InsertionOrderedSet[Term]
   def marks: Map[Mark, Int]
 }
 
-sealed trait PathConditionStack extends RecordedPathConditions {
+trait PathConditionStack extends RecordedPathConditions {
   def setCurrentBranchCondition(condition: Term): Unit
   def add(assumption: Term): Unit
   def add(declaration: Decl): Unit
@@ -34,13 +38,19 @@ sealed trait PathConditionStack extends RecordedPathConditions {
   def popScope(): Unit
   def mark(): Mark
   def after(mark: Mark): RecordedPathConditions
+  def isEmpty: Boolean
+  def duplicate(): PathConditionStack
+    /* Public method 'clone' impossible, see https://issues.scala-lang.org/browse/SI-6760 */
 }
 
 /*
  * Implementations (mostly mutable!)
  */
 
-private class PathConditionStackLayer extends Mutable {
+private class PathConditionStackLayer
+    extends Mutable
+       with Cloneable {
+
   private var _branchCondition: Option[Term] = None
   private var _assumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
@@ -51,7 +61,10 @@ private class PathConditionStackLayer extends Mutable {
   def pathConditions: InsertionOrderedSet[Term] = _assumptions ++ _branchCondition
 
   def branchCondition_=(condition: Term) {
-    assert(_branchCondition.isEmpty)
+    assert(_branchCondition.isEmpty,
+             s"Branch condition is already set (to ${_branchCondition.get}), "
+           + s"won't override (with $condition).")
+
     _branchCondition = Some(condition)
   }
 
@@ -64,6 +77,11 @@ private class PathConditionStackLayer extends Mutable {
 
   def contains(pathCondition: Term) =
     _assumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
+
+  override def clone(): AnyRef = {
+    /* Attention: the original and its clone must not share any mutable data! */
+    super.clone()
+  }
 }
 
 private trait LayeredPathConditionStackLike {
@@ -105,12 +123,13 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
 private[decider] class LayeredPathConditionStack
     extends LayeredPathConditionStackLike
        with PathConditionStack
-       with Mutable {
+       with Mutable
+       with Cloneable {
 
   private var layers: Stack[PathConditionStackLayer] = Stack.empty
   private var markToLength: Map[Mark, Int] = Map.empty
   private var scopeMarks: List[Mark] = List.empty
-  private val markCounter = new Counter(0)
+  private var markCounter = new Counter(0)
 
   /* Set of assumptions across all layers. Maintained separately to improve performance. */
   private var allAssumptions = InsertionOrderedSet.empty[Term]
@@ -118,6 +137,11 @@ private[decider] class LayeredPathConditionStack
   pushScope() /* Create an initial layer on the stack */
 
   def setCurrentBranchCondition(condition: Term): Unit = {
+//    println("\n[setCurrentBranchCondition]")
+//    println(s"  condition = $condition")
+//    println(s"  layers.head.branchCondition = ${layers.head.branchCondition}")
+//    println(this.toString)
+
     layers.head.branchCondition = condition
   }
 
@@ -152,19 +176,27 @@ private[decider] class LayeredPathConditionStack
   }
 
   private def popLayersAndRemoveMark(mark: Mark): Unit = {
-    val dropLength = layers.length - markToLength(mark)
+    val targetLength = markToLength(mark)
+    val dropLength = layers.length - targetLength
 
     markToLength = markToLength - mark
 
-    /* TODO: Remove marks pointing to popped layers */
+//    /* Remove marks pointing to popped layers (including mark itself) */
+//    markToLength = markToLength filter (_._2 < targetLength)
+//      /* TODO: Performance? Do lazily, e.g. when isEmpty is called? */
 
     var i = 0
     layers =
       layers.dropWhile(layer => {
         i += 1
-         allAssumptions --= layer.assumptions
-        i <= dropLength
-      })
+        allAssumptions --= layer.assumptions
+        i < dropLength
+        /* If i < dropLength is false, the current - and last-to-drop - layer won't be
+         * dropped, but its assumptions have already been removed from allAssumptions.
+         * Subsequently taking the tail of the remaining layers results in also
+         * dropping the last layer that needs to be dropped.
+         */
+      }).tail
   }
 
   def branchConditions: Stack[Term] = layers.flatMap(_.branchCondition)
@@ -193,5 +225,60 @@ private[decider] class LayeredPathConditionStack
     val afterLayers = layers.take(afterLength)
 
     new DefaultRecordedPathConditions(afterLayers)
+  }
+
+  def isEmpty: Boolean = (
+       layers.forall(_.branchCondition.isEmpty)
+    && allAssumptions.isEmpty
+    && (markToLength.keySet -- scopeMarks).isEmpty)
+
+  override def duplicate(): LayeredPathConditionStack = {
+    /* Attention: The original and its clone must not share any mutable data! */
+
+    val clonedStack = new LayeredPathConditionStack
+
+    /* Sharing immutable data is safe */
+    clonedStack.allAssumptions = allAssumptions
+    clonedStack.markToLength = markToLength
+    clonedStack.scopeMarks = scopeMarks
+
+    /* Mutable data is cloned */
+    clonedStack.markCounter = markCounter.clone()
+    clonedStack.layers = layers map (_.clone().asInstanceOf[PathConditionStackLayer])
+
+    clonedStack
+  }
+
+  override def toString: String =  {
+    val sb = new StringBuilder(s"${this.getClass.getSimpleName}:\n")
+    val sep = s" ${"-" * 10}\n"
+
+    sb.append(sep)
+
+    sb.append(s"  height: ${layers.length}\n")
+    sb.append(s"  allAssumptions:\n")
+    for (assumption <- allAssumptions) {
+      sb.append(s"    $assumption\n")
+    }
+
+    sb.append(sep)
+
+    for (layer <- layers) {
+      sb.append(s"  branch condition: ${layer.branchCondition}\n")
+      sb.append( "  assumptions:\n")
+      for (assumption <- layer.assumptions) {
+        sb.append(s"    $assumption\n")
+      }
+    }
+
+    sb.append(sep)
+
+    val marks = markToLength.keySet -- scopeMarks
+    sb.append("  marks:\n")
+    marks foreach (m => {
+      sb.append(s"    $m -> ${markToLength(m)} (${scopeMarks.contains(m)})\n")
+    })
+
+    sb.result()
   }
 }

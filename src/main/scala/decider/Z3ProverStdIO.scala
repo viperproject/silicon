@@ -9,22 +9,20 @@ package viper.silicon.decider
 import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
+
 import org.slf4s.Logging
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
-import viper.silicon.reporting.{Bookkeeper, Z3InteractionFailed}
+import viper.silicon.reporting.Z3InteractionFailed
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.supporters.QuantifierSupporter
+import viper.silicon.verifier.Verifier
 
-/* TODO: Pass a logger, don't open an own file to log to. */
-
-class Z3ProverStdIO(config: Config,
-                    logfile: Path,
-                    bookkeeper: Bookkeeper,
-                    identifierFactory: IdentifierFactory,
-                    termConverter: TermToSMTLib2Converter)
+class Z3ProverStdIO(uniqueId: String,
+                    termConverter: TermToSMTLib2Converter,
+                    identifierFactory: IdentifierFactory)
     extends Prover
        with Logging {
 
@@ -47,15 +45,15 @@ class Z3ProverStdIO(config: Config,
 
     line match {
       case versionPattern(v) => Version(v)
-      case _ => throw Z3InteractionFailed(s"Unexpected output of Z3 while getting version: $line")
+      case _ => throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while getting version: $line")
     }
   }
 
   def start() {
     pushPopScopeDepth = 0
     lastTimeout = -1
-    logfileWriter = viper.silver.utility.Common.PrintWriter(logfile.toFile)
-    z3Path = Paths.get(config.z3Exe)
+    logfileWriter = viper.silver.utility.Common.PrintWriter(Verifier.config.z3LogFile(uniqueId).toFile)
+    z3Path = Paths.get(Verifier.config.z3Exe)
     termConverter.start()
     z3 = createZ3Instance()
     input = new BufferedReader(new InputStreamReader(z3.getInputStream))
@@ -65,7 +63,7 @@ class Z3ProverStdIO(config: Config,
   private def createZ3Instance() = {
     log.info(s"Starting Z3 at $z3Path")
 
-    val userProvidedZ3Args: Array[String] = config.z3Args.get match {
+    val userProvidedZ3Args: Array[String] = Verifier.config.z3Args.get match {
       case None =>
         Array()
 
@@ -128,28 +126,28 @@ class Z3ProverStdIO(config: Config,
     readSuccess()
   }
 
-  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
+//  private val quantificationLogger = bookkeeper.logfiles("quantification-problems")
 
   def assume(term: Term) = {
-    /* Detect certain simple problems with quantifiers.
-     * Note that the current checks don't take in account whether or not a
-     * quantification occurs in positive or negative position.
-     */
-    term.deepCollect{case q: Quantification => q}.foreach(q => {
-      val problems = QuantifierSupporter.detectQuantificationProblems(q)
-
-      if (problems.nonEmpty) {
-        quantificationLogger.println(s"\n\n${q.toString(true)}")
-        quantificationLogger.println("Problems:")
-        problems.foreach(p => quantificationLogger.println(s"  $p"))
-      }
-    })
+//    /* Detect certain simple problems with quantifiers.
+//     * Note that the current checks don't take in account whether or not a
+//     * quantification occurs in positive or negative position.
+//     */
+//    term.deepCollect{case q: Quantification => q}.foreach(q => {
+//      val problems = QuantifierSupporter.detectQuantificationProblems(q)
+//
+//      if (problems.nonEmpty) {
+//        quantificationLogger.println(s"\n\n${q.toString(true)}")
+//        quantificationLogger.println("Problems:")
+//        problems.foreach(p => quantificationLogger.println(s"  $p"))
+//      }
+//    })
 
     assume(termConverter.convert(term))
   }
 
   def assume(term: String) {
-    bookkeeper.assumptionCounter += 1
+//    bookkeeper.assumptionCounter += 1
 
     writeLine("(assert " + term + ")")
     readSuccess()
@@ -159,11 +157,11 @@ class Z3ProverStdIO(config: Config,
     assert(termConverter.convert(goal), timeout)
 
   def assert(goal: String, timeout: Option[Int]) = {
-    bookkeeper.assertionCounter += 1
+//    bookkeeper.assertionCounter += 1
 
     setTimeout(timeout)
 
-    val (result, duration) = config.assertionMode() match {
+    val (result, duration) = Verifier.config.assertionMode() match {
       case Config.AssertionMode.SoftConstraints => assertUsingSoftConstraints(goal)
       case Config.AssertionMode.PushPop => assertUsingPushPop(goal)
     }
@@ -195,10 +193,11 @@ class Z3ProverStdIO(config: Config,
   }
 
   private def getModel(): Unit = {
-    if (config.ideModeAdvanced()) {
-      writeLine("(get-model)")
-      val model = readModel().trim()
-      println(model + "\r\n")
+    if (Verifier.config.ideModeAdvanced()) {
+      ???
+//      writeLine("(get-model)")
+//      val model = readModel().trim()
+//      println(model + "\r\n")
     }
   }
 
@@ -233,7 +232,7 @@ class Z3ProverStdIO(config: Config,
   }
 
   private def setTimeout(timeout: Option[Int]) {
-    val effectiveTimeout = timeout.getOrElse(config.z3Timeout)
+    val effectiveTimeout = timeout.getOrElse(Verifier.config.z3Timeout)
 
     /* [2015-07-27 Malte] Setting the timeout unnecessarily often seems to
      * worsen performance, if only a bit. For the current test suite of
@@ -262,7 +261,7 @@ class Z3ProverStdIO(config: Config,
 
       /* Check that the first line starts with "(:". */
       if (line.isEmpty && !line.startsWith("(:"))
-        throw Z3InteractionFailed(s"Unexpected output of Z3 while reading statistics: $line")
+        throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while reading statistics: $line")
 
       line match {
         case entryPattern(entryName, entryNumber) =>
@@ -299,13 +298,13 @@ class Z3ProverStdIO(config: Config,
     emit(str)
   }
 
-  def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }
-  def resetAssumptionCounter() { bookkeeper.assumptionCounter = 0 }
+//  def resetAssertionCounter() { bookkeeper.assertionCounter = 0 }
+//  def resetAssumptionCounter() { bookkeeper.assumptionCounter = 0 }
 
-  def resetCounters() {
-    resetAssertionCounter()
-    resetAssumptionCounter()
-  }
+//  def resetCounters() {
+//    resetAssertionCounter()
+//    resetAssumptionCounter()
+//  }
 
   /* TODO: Handle multi-line output, e.g. multiple error messages. */
 
@@ -313,7 +312,7 @@ class Z3ProverStdIO(config: Config,
     val answer = readLine()
 
     if (answer != "success")
-      throw Z3InteractionFailed(s"Unexpected output of Z3. Expected 'success' but found: $answer")
+      throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3. Expected 'success' but found: $answer")
   }
 
   private def readUnsat(): Boolean = readLine() match {
@@ -322,7 +321,7 @@ class Z3ProverStdIO(config: Config,
     case "unknown" => false
 
     case result =>
-      throw Z3InteractionFailed(s"Unexpected output of Z3 while trying to refute an assertion: $result")
+      throw Z3InteractionFailed(uniqueId, s"Unexpected output of Z3 while trying to refute an assertion: $result")
   }
 
   private def readModel(): String = {

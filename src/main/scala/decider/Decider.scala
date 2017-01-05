@@ -7,60 +7,101 @@
 package viper.silicon.decider
 
 import scala.reflect.{ClassTag, classTag}
-import org.slf4s.Logging
+import org.slf4s.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon.{Config, Silicon}
+import viper.silicon.Silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.{Failure, FatalResult, NonFatalResult, Success, VerificationResult}
-import viper.silicon.interfaces.decider.{Decider, Prover, Unsat}
-import viper.silicon.interfaces.state._
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.reporting.Bookkeeper
-import viper.silicon.supporters.{ChunkSupporter, HeapCompressor}
-import viper.silicon.supporters.qps.{QuantifiedChunkSupporter, QuantifiedPredicateChunkSupporter}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
 
-trait DeciderProvider[ST <: Store[ST],
-                      H <: Heap[H],
-                      S <: State[ST, H, S]]
-    { this: Logging =>
+/*
+ * Interfaces
+ */
 
-  private[this] type C = DefaultContext[H]
+trait Decider {
+  def prover: Prover
+  def pcs: PathConditionStack
 
-  protected val config: Config
-  protected val bookkeeper: Bookkeeper
-  protected val symbolConverter: SymbolConvert
-  protected val termConverter: TermToSMTLib2Converter
-    /* TODO: It is bad that the decider instantiates a concrete prover (e.g. Z3),
-     *       but that it relies on another component to provide a term converter
-     *       that is suitable for this prover.
+  def pushScope(): Unit
+  def popScope(): Unit
+
+  def checkSmoke(): Boolean
+
+  def setCurrentBranchCondition(t: Term)
+  def setPathConditionMark(): Mark
+
+  def assume(t: Term)
+  def assume(ts: InsertionOrderedSet[Term], enforceAssumption: Boolean = false)
+  def assume(ts: Iterable[Term])
+
+  def check(t: Term, timeout: Int): Boolean
+
+  /* TODO: Consider changing assert such that
+   *         1. It passes State and Operations to the continuation
+   *         2. The implementation reacts to a failing assertion by e.g. a state consolidation
+   */
+  def assert(t: Term, timeout: Option[Int] = None)(Q:  Boolean => VerificationResult): VerificationResult
+
+  def fresh(id: String, sort: Sort): Var
+  def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
+
+  def fresh(sort: Sort): Var
+  def fresh(v: ast.AbstractLocalVar): Var
+  def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
+
+  def freshFunctions: InsertionOrderedSet[Function]
+  def declareAndRecordAsFresh(functions: Iterable[Function]): Unit
+  def setPcs(other: PathConditionStack): Unit
+
+  def statistics(): Map[String, String]
+}
+
+/*
+ * Implementations
+ */
+
+trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
+  def logger: Logger
+  def symbolConverter: SymbolConverter
+  def termConverter: TermToSMTLib2Converter
+    /* TODO: Bad design: this decider chooses which prover to instantiate,
+     *       but relies on another component to provide a suitable TermConverter
      */
-  protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
-  protected val quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter[ST, H, S, C]
-  protected val identifierFactory: IdentifierFactory
-  protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
-  protected val heapCompressor: HeapCompressor[ST, H, S, C]
+  def identifierFactory: IdentifierFactory
 
-  protected val uniqueId: String
-
-  object decider extends Decider[ST, H, S, C] with StatefulComponent {
+  object decider extends Decider with StatefulComponent {
     private var z3: Z3ProverStdIO = _
     private var pathConditions: PathConditionStack = _
 
-  //  val paLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "perm-asserts.txt"))
-  //  val proverAssertionTimingsLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "z3timings.txt"))
-  //  lazy val fcwpLog = common.io.PrintWriter(new java.io.File(config.tempDirectory(), "findChunkWithProver.txt"))
+    private var _freshFunctions: InsertionOrderedSet[Function] = _
 
     def prover: Prover = z3
 
     def pcs: PathConditionStack = pathConditions
-    def π: InsertionOrderedSet[Term] = pathConditions.assumptions
+
+    def setPcs(other: PathConditionStack) = {
+//      println(s"[setPcs | ${Thread.currentThread().getId} | $uniqueId]")
+//      Predef.assert(pcs.isEmpty,   "Replacing a decider's path condition stack require the "
+//                                 + s"current stack to be empty:\n$pcs")
+
+      pathConditions = other
+
+      pathConditions.assumptions foreach prover.assume
+    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
       try {
-        z3 = new Z3ProverStdIO(config, config.z3LogFile(uniqueId), bookkeeper, identifierFactory, termConverter)
+        z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
+  //                             config,
+  //                             config.z3LogFile(uniqueId),
+  //                             context.bookkeeper,
+  //                             context.identifierFactory,
+  //                             context.termConverter)
         z3.start() /* Cannot query Z3 version otherwise */
       } catch {
         case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
@@ -73,13 +114,13 @@ trait DeciderProvider[ST <: Store[ST],
       }
 
       val z3Version = z3.z3Version()
-      log.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
+      logger.info(s"Using Z3 $z3Version located at ${z3.z3Path}")
 
       if (z3Version < Silicon.z3MinVersion)
-        log.warn(s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version")
+        logger.warn(s"Expected at least Z3 version ${Silicon.z3MinVersion.version}, but found $z3Version")
 
       if (Silicon.z3MaxVersion.fold(false)(_ < z3Version))
-        log.warn(  s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
+        logger.warn(  s"Silicon might not work with Z3 version $z3Version, consider using ${Silicon.z3MaxVersion.get}")
 
       None
     }
@@ -88,12 +129,14 @@ trait DeciderProvider[ST <: Store[ST],
 
     def start() {
       pathConditions = new LayeredPathConditionStack()
+      _freshFunctions = InsertionOrderedSet.empty
       createProver()
     }
 
     def reset() {
       z3.reset()
       pathConditions = new LayeredPathConditionStack()
+      _freshFunctions = InsertionOrderedSet.empty
     }
 
     def stop() {
@@ -102,63 +145,24 @@ trait DeciderProvider[ST <: Store[ST],
 
     /* Assumption scope handling */
 
-    private def pushScope() {
+    def pushScope() {
       pathConditions.pushScope()
       z3.push()
     }
 
-    private def popScope() {
+    def popScope() {
       z3.pop()
       pathConditions.popScope()
     }
 
-    def locally[D](block: (D => VerificationResult) => VerificationResult)
-                  (Q: D => VerificationResult)
-                  : VerificationResult = {
-
-      var optBlockData: Option[D] = None
-
-      pushScope()
-
-      val blockResult: VerificationResult =
-        block(blockData => {
-          Predef.assert(optBlockData.isEmpty,
-                          "Unexpectedly found more than one block data result. Note that the local "
-                        + "block is not expected to branch (non-locally)")
-
-          optBlockData = Some(blockData)
-
-          Success()})
-
-      popScope()
-
-      blockResult match {
-        case _: FatalResult =>
-          /* If the local block yielded a fatal result, then the continuation Q
-           * will not be invoked. That is, the current execution path will be
-           * terminated.
-           */
-          blockResult
-
-        case _: NonFatalResult =>
-          /* If the local block yielded a non-fatal result, then the continuation
-           * will only be invoked if the execution of the block yielded data
-           * that the continuation Q can be invoked with, i.e. a result of type D.
-           * If the block's execution did not yield such a result, then the
-           * current execution path will be terminated.
-           */
-          optBlockData match {
-            case Some(localData) => blockResult && Q(localData)
-            case None => blockResult
-          }
-      }
-    }
-
-    def locally(block: => VerificationResult): VerificationResult = {
-      locally[VerificationResult](QS => QS(block))(Predef.identity)
-    }
-
     def setCurrentBranchCondition(t: Term) {
+//      println("\n[setCurrentBranchCondition]")
+//      println(s"  uniqueId = $uniqueId")
+//      println(s"  thread = ${Thread.currentThread().getId}")
+//      println(s"  pathConditions = ${System.identityHashCode(pathConditions)}")
+//      println(s"  t = $t")
+//      println(pathConditions)
+
       pathConditions.setCurrentBranchCondition(t)
       assume(InsertionOrderedSet(Seq(t)))
     }
@@ -168,22 +172,18 @@ trait DeciderProvider[ST <: Store[ST],
     /* Assuming facts */
 
     def assume(t: Term) {
-      assume(InsertionOrderedSet(Seq(t)))
+      assume(InsertionOrderedSet(Seq(t)), false)
     }
 
-    /* TODO: CRITICAL!
-     * pathConditions are used as if they are guaranteed to be mutable, e.g.
-     *   pathConditions.pushScope()
-     * instead of
-     *   pathConditions = pathConditions.pushScope()
-     * but the interface does NOT guarantee mutability!
-     */
+    def assume(terms: Iterable[Term]): Unit =
+      assume(InsertionOrderedSet(terms), false)
 
-    def assume(terms: Iterable[Term]): Unit = assume(InsertionOrderedSet(terms))
+    def assume(terms: InsertionOrderedSet[Term], enforceAssumption: Boolean = false): Unit = {
+      val filteredTerms =
+        if (enforceAssumption) terms
+        else terms filterNot isKnownToBeTrue
 
-    def assume(terms: InsertionOrderedSet[Term]): Unit = {
-      val newTerms = terms filterNot isKnownToBeTrue
-      if (terms.nonEmpty) assumeWithoutSmokeChecks(newTerms)
+      if (filteredTerms.nonEmpty) assumeWithoutSmokeChecks(filteredTerms)
     }
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
@@ -198,92 +198,20 @@ trait DeciderProvider[ST <: Store[ST],
 
     /* Asserting facts */
 
-    def checkSmoke() = prover.check(config.checkTimeout.get) == Unsat
+    def checkSmoke() = prover.check(Verifier.config.checkTimeout.get) == Unsat
 
-    def tryOrFail[R](σ: S, c: C)
-                    (block:    (S, C, (R, C) => VerificationResult, Failure => VerificationResult)
-                            => VerificationResult)
-                    (Q: (R, C) => VerificationResult)
-                    : VerificationResult = {
+    def check(t: Term, timeout: Int) = deciderAssert(t, Some(timeout))
 
-      val chunks = σ.h.values
-      var failure: Option[Failure] = None
-
-      var r =
-        block(
-          σ,
-          c,
-          (r, c1) => Q(r, c1),
-          f => {
-            Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
-            failure = Some(f)
-            f})
-
-      r =
-        if (failure.isEmpty)
-          r
-        else {
-          heapCompressor.compress(σ, σ.h, c)
-          block(σ, c.copy(retrying = true), (r, c2) => Q(r, c2.copy(retrying = false)), f => f)
-        }
-
-      if (failure.nonEmpty) {
-        /* TODO: The current way of having HeapCompressor change h is convenient
-         *       because it makes the compression transparent to the user, and
-         *       also, because a compression that is performed while evaluating
-         *       an expression has a lasting effect even after the evaluation,
-         *       although eval doesn't return a heap.
-         *       HOWEVER, it violates the assumption that the heap is immutable,
-         *       which is likely to cause problems, see next paragraph.
-         *       It would probably be better to have methods that potentially
-         *       compress heaps explicitly pass on a new heap.
-         *       If tryOrFail would do that, then every method using it would
-         *       have to do so as well, e.g., withChunk.
-         *       Moreover, eval might have to return a heap as well.
-         */
-        /*
-         * Restore the chunks as they existed before compressing the heap.
-         * The is done to avoid problems with the DefaultBrancher, where
-         * the effects of compressing the heap in one branch leak into the
-         * other branch.
-         * Consider the following method specs:
-         *   requires acc(x.f, k) && acc(y.f, k)
-         *   ensures x == y ? acc(x.f, 2 * k) : acc(x.f, k) && acc(y.f, k)
-         * Compressing the heap inside the if-branch updates the same h
-         * that is passed to the else-branch, which then might not verify,
-         * because now x != y but the heap only contains acc(x.f, 2 * k)
-         * (or acc(y.f, 2 * k)).
-         */
-        /* Instead of doing what's currently done, the DefaultBrancher could also
-         * be changed s.t. it resets the chunks after backtracking from the first
-         * branch. The disadvantage of that solution, however, would be that the
-         * DefaultBrancher would essentially have to clean up an operation that
-         * is conceptually unrelated.
-         */
-        σ.h.replace(chunks)
-      }
-
-      r
-    }
-
-    def check(σ: S, t: Term, timeout: Int) = assert(σ, t, Some(timeout), null)
-
-    def assert(σ: S, t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
-      val success = assert(σ, t, timeout, null)
-
-      /* Heuristics could also be invoked whenever an assertion fails. */
-  //    if (!success) {
-  //      heapCompressor.compress(σ, σ.h)
-  //      success = assert(σ, t, null)
-  //    }
+    def assert(t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult) = {
+      val success = deciderAssert(t, timeout)
 
       Q(success)
     }
 
-    protected def assert(σ: S, t: Term, timeout: Option[Int], logSink: java.io.PrintWriter) = {
+    private def deciderAssert(t: Term, timeout: Option[Int]) = {
       val asserted = isKnownToBeTrue(t)
 
-      asserted || proverAssert(t, timeout, logSink)
+      asserted || proverAssert(t, timeout)
     }
 
     private def isKnownToBeTrue(t: Term) = t match {
@@ -294,35 +222,35 @@ trait DeciderProvider[ST <: Store[ST],
       case _ => false
     }
 
-    private def proverAssert(t: Term, timeout: Option[Int], logSink: java.io.PrintWriter) = {
-      if (logSink != null)
-        logSink.println(t)
-
-  //    val startTime = System.currentTimeMillis()
+    private def proverAssert(t: Term, timeout: Option[Int]) = {
       val result = prover.assert(t, timeout)
-  //    val endTime = System.currentTimeMillis()
-  //    proverAssertionTimingsLog.println("%08d  %s".format(endTime - startTime, t))
 
       result
     }
 
     /* Fresh symbols */
 
-    def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort) = prover_fresh[Fun](id, argSorts, resultSort)
+    def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort) =
+      prover_fresh[Fun](id, argSorts, resultSort)
+
     def fresh(id: String, sort: Sort) = prover_fresh[Var](id, Nil, sort)
 
     def fresh(s: Sort) = prover_fresh[Var]("$t", Nil, s)
-    def fresh(v: ast.AbstractLocalVar) = prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
+
+    def fresh(v: ast.AbstractLocalVar) =
+      prover_fresh[Var](v.name, Nil, symbolConverter.toSort(v.typ))
 
     def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term) = {
-      val permVar = fresh(id, sorts.Perm)
+      val permVar = prover_fresh[Var](id, Nil, sorts.Perm)
       val permVarConstraints = IsReadPermVar(permVar, upperBound)
 
       (permVar, permVarConstraints)
     }
 
-    private def prover_fresh[F <: Function : ClassTag](id: String, argSorts: Seq[Sort], resultSort: Sort): F = {
-      bookkeeper.freshSymbols += 1
+    private def prover_fresh[F <: Function : ClassTag]
+                            (id: String, argSorts: Seq[Sort], resultSort: Sort)
+                            : F = {
+//      context.bookkeeper.freshSymbols += 1
 
       val proverFun = prover.fresh(id, argSorts, resultSort)
 
@@ -343,7 +271,17 @@ trait DeciderProvider[ST <: Store[ST],
               HeapDepFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
           }
 
+      _freshFunctions = _freshFunctions + fun
+
       fun
+    }
+
+    def freshFunctions: InsertionOrderedSet[Function] = _freshFunctions
+
+    def declareAndRecordAsFresh(functions: Iterable[Function]): Unit = {
+      functions foreach (f => prover.declare(FunctionDecl(f)))
+
+      _freshFunctions = _freshFunctions ++ functions
     }
 
     /* Misc */

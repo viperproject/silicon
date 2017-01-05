@@ -10,13 +10,13 @@ import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
-import viper.silicon.state.SymbolConvert
+import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
 
 trait SequencesContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
 class DefaultSequencesContributor(preambleReader: PreambleReader[String, String],
-                                  symbolConverter: SymbolConvert,
+                                  symbolConverter: SymbolConverter,
                                   termConverter: TermConverter[String, String, String])
     extends SequencesContributor[sorts.Seq, String, String] {
 
@@ -141,4 +141,6 @@ class DefaultSequencesContributor(preambleReader: PreambleReader[String, String]
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedGeneralAxioms, collectedIntAxioms)
+
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 }

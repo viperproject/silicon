@@ -6,68 +6,48 @@
 
 package viper.silicon.supporters.functions
 
-import org.slf4s.Logging
+import org.slf4s.Logger
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
+import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
-import viper.silicon.supporters.PredicateSupporter
-import viper.silicon.{Config, Map, toMap}
-import viper.silicon.interfaces.decider.{Decider, ProverLike}
-import viper.silicon.interfaces.state.factoryUtils.Ø
+import viper.silicon.{Map, toMap}
+import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state._
-import viper.silicon.state.{DefaultContext, IdentifierFactory, ListBackedHeap, SymbolConvert}
-import viper.silicon.state.terms
+import viper.silicon.state._
+import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?s`
-import viper.silicon.SymbExLogger
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.Decider
+import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.utils.toSf
 
-trait FunctionSupporter[SO, SY, AX, H <: Heap[H]]
-    extends VerifyingPreambleContributor[SO, SY, AX, H, ast.Function]
+trait FunctionVerificationUnit[SO, SY, AX]
+    extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
 
-object FunctionSupporter {
-  def limitedVersion(function: HeapDepFun): HeapDepFun = {
-    val id = function.id.withSuffix("%", "limited")
-    HeapDepFun(id, function.argSorts, function.resultSort)
-  }
+trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Verifier =>
+  def logger: Logger
+  def decider: Decider
+  def symbolConverter: SymbolConverter
 
-  def statelessVersion(function: HeapDepFun): Fun = {
-    val id = function.id.withSuffix("%", "stateless")
-    Fun(id, function.argSorts.tail, terms.sorts.Bool)
-  }
-}
+  private case class Phase1Data(sPre: State, pcsPre: InsertionOrderedSet[Term])
 
-trait FunctionSupporterProvider[ST <: Store[ST],
-                                H <: Heap[H],
-                                S <: State[ST, H, S]]
-    { this:      Logging
-            with Evaluator[ST, H, S, DefaultContext[H]]
-            with Producer[ST, H, S, DefaultContext[H]]
-            with Consumer[ST, H, S, DefaultContext[H]] =>
+  object functionsSupporter
+      extends FunctionVerificationUnit[Sort, Function, Term]
+         with StatefulComponent {
 
-  private type C = DefaultContext[H]
-  private type AxiomGenerator = () => Quantification
+    import producer._
+    import consumer._
+    import evaluator._
 
-  protected val config: Config
-  protected val decider: Decider[ST, H, S, C]
-  protected val stateFactory: StateFactory[ST, H, S]
-  protected val symbolConverter: SymbolConvert
-  protected val identifierFactory: IdentifierFactory
-  protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
-
-  import decider.fresh
-  import stateFactory._
-
-  private case class Phase1Data(σPre: S, πPre: InsertionOrderedSet[Term], cPre: C)
-
-  object functionsSupporter extends FunctionSupporter[Sort, Function, Term, H] {
     private var program: ast.Program = _
     private var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
 
     private val expressionTranslator =
-      new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
+      new HeapAccessReplacingExpressionTranslator(symbolConverter, v.decider.fresh)
 
     def units = functionData.keys.toSeq
 
@@ -82,7 +62,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
         heights.map { case (func, height) =>
           val quantifiedFields = InsertionOrderedSet(ast.utility.QuantifiedPermissions.quantifiedFields(func, program))
           val data = new FunctionData(func, height, quantifiedFields, program)(symbolConverter, expressionTranslator,
-                                      identifierFactory, pred => predicateSupporter.data(pred), config)
+                                      identifierFactory, pred => Verifier.predicateData(pred), Verifier.config)
           func -> data})
 
       /* TODO: FunctionData and HeapAccessReplacingExpressionTranslator depend
@@ -125,29 +105,33 @@ trait FunctionSupporterProvider[ST <: Store[ST],
     val axiomsAfterAnalysis: Iterable[Term] = Seq.empty
     def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = ()
 
+    def updateGlobalStateAfterAnalysis(): Unit = {
+      Verifier.functionData = functionData
+    }
+
     /* Verification and subsequent preamble contribution */
 
-    def verify(function: ast.Function, c: DefaultContext[H]): Seq[VerificationResult] = {
+    def verify(sInit: State, function: ast.Function): Seq[VerificationResult] = {
       val comment = ("-" * 10) + " FUNCTION " + function.name + ("-" * 10)
-      log.debug(s"\n\n$comment\n")
+      logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
-	    SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+//	    SymbExLogger.insertMember(function, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
       val data = functionData(function)
       data.formalArgs.values foreach (v => decider.prover.declare(ConstDecl(v)))
       decider.prover.declare(ConstDecl(data.formalResult))
 
-      Seq(handleFunction(function, c))
+      Seq(handleFunction(sInit, function))
     }
 
-    private def handleFunction(function: ast.Function, c0: DefaultContext[H]): VerificationResult = {
+    private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val c = c0.copy(quantifiedVariables = c0.quantifiedVariables ++ data.arguments,
-                      functionRecorder = ActualFunctionRecorder(data))
+      val s = sInit.copy(quantifiedVariables = sInit.quantifiedVariables ++ data.arguments,
+                         functionRecorder = ActualFunctionRecorder(data))
 
       /* Phase 1: Check well-definedness of the specifications */
-      checkSpecificationWelldefinedness(function, c) match {
+      checkSpecificationWelldefinedness(s, function) match {
         case (result1: FatalResult, _) =>
           data.verificationFailures = data.verificationFailures :+ result1
 
@@ -162,7 +146,7 @@ trait FunctionSupporterProvider[ST <: Store[ST],
             result1
           else {
             /* Phase 2: Verify the function's postcondition */
-            val result2 = verify(function, phase1data, program)
+            val result2 = verify(function, phase1data)
 
             result2 match {
               case fatalResult: FatalResult =>
@@ -176,40 +160,40 @@ trait FunctionSupporterProvider[ST <: Store[ST],
       }
     }
 
-    private def checkSpecificationWelldefinedness(function: ast.Function, c: C)
+    private def checkSpecificationWelldefinedness(sInit: State, function: ast.Function)
                                                  : (VerificationResult, Seq[Phase1Data]) = {
 
       val comment = ("-" * 5) + " Well-definedness of specifications " + ("-" * 5)
-      log.debug(s"\n\n$comment\n")
+      logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
       val data = functionData(function)
       val pres = function.pres
       val posts = function.posts
-      val γ = Γ(data.formalArgs + (function.result -> data.formalResult))
-      val σ = Σ(γ, Ø, Ø)
+      val g = Store(data.formalArgs + (function.result -> data.formalResult))
+      val s = sInit.copy(g = g, h = Heap(), oldHeaps = OldHeaps())
 
       var phase1Data: Seq[Phase1Data] = Vector.empty
       var recorders: Seq[FunctionRecorder] = Vector.empty
 
-      val result = decider.locally {
+      val result = executionFlowController.locally(s, v)((s0, _) => {
         val preMark = decider.setPathConditionMark()
-        produces(σ, sort => `?s`.convert(sort), pres, ContractNotWellformed, c)((σ1, c1) => {
-          phase1Data :+= Phase1Data(σ1, decider.pcs.after(preMark).assumptions, c1)
-            produces(σ1, sort => `?s`.convert(sort), posts, ContractNotWellformed, c1)((_, c2) => {
-            recorders :+= c2.functionRecorder
-            Success()})})}
+        produces(s0, toSf(`?s`), pres, ContractNotWellformed, v)((s1, _) => {
+          phase1Data :+= Phase1Data(s1, decider.pcs.after(preMark).assumptions)
+            produces(s1, toSf(`?s`), posts, ContractNotWellformed, v)((s2, _) => {
+            recorders :+= s2.functionRecorder
+            Success()})})})
 
       data.advancePhase(recorders)
 
       (result, phase1Data)
     }
 
-    private def verify(function: ast.Function, phase1data: Seq[Phase1Data], program: ast.Program)
+    private def verify(function: ast.Function, phase1data: Seq[Phase1Data])
                       : VerificationResult = {
 
       val comment = ("-" * 5) + " Verification of function body and postcondition " + ("-" * 5)
-      log.debug(s"\n\n$comment\n")
+      logger.debug(s"\n\n$comment\n")
       decider.prover.comment(comment)
 
       val data = functionData(function)
@@ -221,14 +205,14 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
       val result = phase1data.foldLeft(Success(): VerificationResult) {
         case (fatalResult: FatalResult, _) => fatalResult
-        case (intermediateResult, p1d) =>
-          intermediateResult && decider.locally {
-            decider.assume(p1d.πPre)
-            eval(p1d.σPre, body, FunctionNotWellformed(function), p1d.cPre)((tBody, c1) => {
+        case (intermediateResult, Phase1Data(sPre, pcsPre)) =>
+          intermediateResult && executionFlowController.locally(sPre, v)((s1, _) => {
+            decider.assume(pcsPre)
+            eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {
               decider.assume(data.formalResult === tBody)
-              consumes( p1d.σPre, posts, postconditionViolated, c1)((_, _, c2) => {
-                recorders :+= c2.functionRecorder
-                Success()})})}}
+              consumes(s2, posts, postconditionViolated, v)((s3, _, _) => {
+                recorders :+= s3.functionRecorder
+                Success()})})})}
 
       data.advancePhase(recorders)
 
@@ -262,6 +246,10 @@ trait FunctionSupporterProvider[ST <: Store[ST],
 
     def emitAxiomsAfterVerification(sink: ProverLike): Unit = {
       emittedFunctionAxioms foreach sink.assume
+    }
+
+    def contributeToGlobalStateAfterVerification(): Unit = {
+      Verifier.functionData = functionData
     }
 
     /* Lifetime */
