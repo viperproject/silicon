@@ -1,0 +1,18 @@
+method main()
+{
+    var i:Int := 1
+    var j:Bool := true
+
+    while(i < 5) 
+        invariant i < 5
+    {
+        while(j) 
+            invariant j == false
+        {
+            j := false
+        }
+        i := i + 1
+    }
+
+    assert(i == 5)
+}

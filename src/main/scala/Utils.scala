@@ -155,19 +155,19 @@ package object utils {
   }
 
   object consistency {
-    type PositionedNode = silver.ast.Node with silver.ast.Positioned
+    type ErrorNode = silver.ast.Node with silver.ast.Positioned with silver.ast.TransformableErrors
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
       ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program)))
 
-    def createUnsupportedPermissionExpressionError(offendingNode: PositionedNode) = {
+    def createUnsupportedPermissionExpressionError(offendingNode: ErrorNode) = {
       val message = s"Silicon doesn't support the permission expression $offendingNode."
 
       Internal(offendingNode, FeatureUnsupported(offendingNode, message))
     }
 
-    def checkPermissions(root: PositionedNode): Seq[VerificationError] =
+    def checkPermissions(root: ErrorNode): Seq[VerificationError] =
       root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
         case eps: silver.ast.EpsilonPerm => createUnsupportedPermissionExpressionError(eps) +: errors.flatten
         case _ => errors.flatten
@@ -207,7 +207,7 @@ package object utils {
 
     /* Unexpected nodes */
 
-    def createUnexpectedInhaleExhaleExpressionError(offendingNode: PositionedNode) = {
+    def createUnexpectedInhaleExhaleExpressionError(offendingNode: ErrorNode) = {
       val explanation =
         "InhaleExhale-expressions should have been eliminated by calling expr.whenInhaling/Exhaling."
 
@@ -216,7 +216,7 @@ package object utils {
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
 
-    def createUnexpectedNodeDuringDomainTranslationError(offendingNode: PositionedNode) = {
+    def createUnexpectedNodeDuringDomainTranslationError(offendingNode: ErrorNode) = {
       val explanation = "The expression should not occur in domain expressions."
       val stackTrace = new Throwable().getStackTrace
 
