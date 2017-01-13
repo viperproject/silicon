@@ -1,0 +1,12 @@
+function f(x: Bool):Bool 
+    requires x == true
+{
+    x == true
+}
+
+method main()
+{
+    var i:Bool := false
+    //assert(true && f(i))
+    assert(true && (i == true && i == true))
+}

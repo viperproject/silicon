@@ -1,0 +1,11 @@
+method main()
+{
+    foo()
+}
+
+method foo() 
+requires false
+ensures true
+{
+
+}
