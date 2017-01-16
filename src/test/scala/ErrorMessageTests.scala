@@ -24,15 +24,9 @@ class ErrorMessageTests extends FunSuite {
     val files = Seq("simple")
 
     val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (a: Assert, _) => Exhale(a.exp)(a.pos, a.info, ErrTrafo({
-        case ExhaleFailed(_, r) => AssertFailed(a, r.offendingNode.transformReason(r))
-      }))
-      case (o@And(f: FalseLit, right), _) => FalseLit()(o.pos, o.info, ReTrafo({
-        case AssertionFalse(_) => AssertionFalse(o)
-      }))
-      case (o@And(left, f: FalseLit), _) => FalseLit()(o.pos, o.info, ReTrafo({
-        case AssertionFalse(_) => AssertionFalse(o)
-      }))
+      case (a: Assert, _) => Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r) => AssertFailed(a, r) }))
+      case (o@And(f: FalseLit, right), _) => FalseLit()(o.pos, o.info, ReTrafo({ case AssertionFalse(_) => AssertionFalse(o) }))
+      case (o@And(left, f: FalseLit), _) => FalseLit()(o.pos, o.info, ReTrafo({ case AssertionFalse(_) => AssertionFalse(o) }))
     })
 
     val frontend = new DummyFrontend
@@ -90,10 +84,40 @@ class ErrorMessageTests extends FunSuite {
     }
   }
 
+  test("CombinedRewrites") {
+    val filePrefix = "ErrorMessageTests\\CombinedRewrites\\"
+    val files = Seq("simple", "involved", "involved2")
+
+    val frontend = new DummyFrontend
+    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
+    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
+    backend.start()
+    frontend.init(backend)
+
+    val andStrat = StrategyBuilder.SimpleStrategy[Node]({
+      case (a@And(l:BoolLit, r:BoolLit), _) => BoolLit(l.value && r.value)(a.pos, a.info, a.errT ++ NodeTrafo({ case b:BoolLit => a}))
+    })
+
+    val orStrat = StrategyBuilder.SimpleStrategy[Node]({
+      case (o@Or(l:BoolLit, r:BoolLit), _) => BoolLit(l.value || r.value)(o.pos, o.info, o.errT ++ NodeTrafo({case b:BoolLit => o}))
+    })
+
+    val notStrat = StrategyBuilder.SimpleStrategy[Node]({
+      case (n1@Not(n2@Not(e:Exp)), _) => e.duplicateErrorTrafo(e.errT ++ NodeTrafo({case e2:Exp => n1}))
+    })
+
+    val strat = andStrat + orStrat + notStrat
+
+    files foreach { fileName: String => {
+      executeTest(filePrefix, strat, frontend, backend, fileName)
+    }
+    }
+  }
+
   test("MethodInlining") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
     val filePrefix = "ErrorMessageTests\\MethodInlining\\"
-    val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
+    val files = Seq("simple" , "withArgs", "withArgsNRes", "withFields")
 
     val frontend = new DummyFrontend
     val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
@@ -102,44 +126,33 @@ class ErrorMessageTests extends FunSuite {
     frontend.init(backend)
 
     val replaceStrat = StrategyBuilder.ContextStrategy[Node, Map[Exp, Exp]]({
-      case (l:LocalVar, c) => {
-        if (c.custom.contains(l)) c.custom(l) else l
-      }
+      case (l: LocalVar, c) => if (c.custom.contains(l)) c.custom(l).duplicateErrorTrafo(NodeTrafo({ case _ => l })) else l
     }, Map.empty[Exp, Exp])
 
-    val preError = (m:MethodCall, invert: Map[Exp, Exp]) => ErrTrafo({
-      case ExhaleFailed(_, r) => {
-        val inContext = new PartialContextC[Node, Map[Exp, Exp]](invert)
-        val newNode = replaceStrat.execute(r.offendingNode, inContext).asInstanceOf[ErrorNode]
-
-        PreconditionInCallFalse(m, r.withNode(newNode).asInstanceOf[ErrorReason])
-      }
+    val preError = (m: MethodCall) => ErrTrafo({
+      case ExhaleFailed(_, r) => PreconditionInCallFalse(m, r)
     })
-    val postError = (x:Exp, m:Contracted, invert: Map[Exp, Exp]) => ErrTrafo({
-      case InhaleFailed(_, r) => {
-        val inContext = new PartialContextC[Node, Map[Exp, Exp]](invert)
-        val newNode = replaceStrat.execute(r.offendingNode, inContext).asInstanceOf[ErrorNode]
-        PostconditionViolated(x, m, r.withNode(newNode).asInstanceOf[ErrorReason])
-      }
+
+    val postError = (x: Exp, m: Contracted) => ErrTrafo({
+      case InhaleFailed(_, r) => PostconditionViolated(x, m, r)
     })
 
     val strat = StrategyBuilder.AncestorStrategy[Node]({
-      case (m:MethodCall, a) =>
+      case (m: MethodCall, a) =>
         // Get method declaration
         val mDecl = a.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
 
         // Create an exhale statement for every precondition and replace parameters with arguments
-        val replacer:Map[Exp, Exp] = mDecl.formalArgs.zip(m.args).map( x => x._1.localVar -> x._2).toMap
+        val replacer: Map[Exp, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
         val context = new PartialContextC[Node, Map[Exp, Exp]](replacer)
-        val exPres = mDecl.pres.map( replaceStrat.execute(_, context).asInstanceOf[Exp]).map( x => Exhale(x)(x.pos, x.info, preError(m, replacer.map( _.swap))))
+        val exPres = mDecl.pres.map(replaceStrat.execute(_, context).asInstanceOf[Exp]).map(x => Exhale(x)(x.pos, x.info, preError(m)))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
-        val replacer2:Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map( x => x._1.localVar -> x._2).toMap ++ replacer
+        val replacer2: Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
-        val inPosts = mDecl.posts.map( replaceStrat.execute(_, context2).asInstanceOf[Exp] ).map( x => Inhale(x)(x.pos, x.info, postError(x, mDecl, replacer2.map( _.swap))))
+        val inPosts = mDecl.posts.map(replaceStrat.execute(_, context2).asInstanceOf[Exp]).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
         Seqn(exPres ++ inPosts)(m.pos, m.info)
-
     }) traverse Traverse.Innermost
 
     files foreach { fileName: String => {
@@ -160,25 +173,25 @@ class ErrorMessageTests extends FunSuite {
     frontend.init(backend)
 
     val replaceStrat = StrategyBuilder.ContextStrategy[Node, Map[LocalVar, LocalVar]]({
-      case (l:LocalVar, c) => if (c.custom.contains(l)) c.custom(l) else l
+      case (l: LocalVar, c) => if (c.custom.contains(l)) c.custom(l) else l
     }, Map.empty[LocalVar, LocalVar])
 
     val listPres = collection.mutable.ListBuffer.empty[Exp]
 
     val strat = StrategyBuilder.AncestorStrategy[Node]({
-      case (p:Program, _) => listPres.clear(); p // Start with a clean list
-      case (f:FuncApp, a) => {
-        val fDecl = a.ancestorList.head.asInstanceOf[Program].functions.find( _.name == f.funcname).get
-        val replacer:Map[LocalVar, LocalVar] = fDecl.formalArgs.zip(f.formalArgs).map( x => x._1.localVar -> x._2.localVar).toMap
+      case (p: Program, _) => listPres.clear(); p // Start with a clean list
+      case (f: FuncApp, a) => {
+        val fDecl = a.ancestorList.head.asInstanceOf[Program].functions.find(_.name == f.funcname).get
+        val replacer: Map[LocalVar, LocalVar] = fDecl.formalArgs.zip(f.formalArgs).map(x => x._1.localVar -> x._2.localVar).toMap
         val context = new PartialContextC[Node, Map[LocalVar, LocalVar]](replacer)
 
-        listPres ++= fDecl.pres.map( replaceStrat.execute(_, context).asInstanceOf[Exp])
+        listPres ++= fDecl.pres.map(replaceStrat.execute(_, context).asInstanceOf[Exp])
 
-        if(fDecl.body.isDefined) replaceStrat.execute(fDecl.body.get, context) else f
+        if (fDecl.body.isDefined) replaceStrat.execute(fDecl.body.get, context) else f
       }
-      case (e:Exp, a) if e.typ == Bool => {
+      case (e: Exp, a) if e.typ == Bool => {
         listPres.append(e)
-        val res = listPres.reduce( And(_, _ )(e.pos))
+        val res = listPres.reduce(And(_, _)(e.pos))
         listPres.clear()
         res
       }
