@@ -179,7 +179,7 @@ trait ExpressionTranslator {
 
       case as: ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
       case as: ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
-      case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
+      case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset, as.left)
       case as: ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
       case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
       case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
