@@ -1,0 +1,472 @@
+field Wand_list_for_list__lemma: Int
+
+field Wand_list_for_list__in_1: Ref
+
+field Wand_list_for_list__in_1_0: Seq[Int]
+
+field Wand_list_for_list__out_1: Ref
+
+field Wand_list_for_list__out_1_0: Seq[Int]
+
+field Wand_list_for_list__this_1: Ref
+
+field Wand_list_for_list__L2_1: Seq[Int]
+
+field Wand_list_for_list__tmp_suffix_1: Seq[Int]
+
+field Wand_list_for_list__L1_1: Seq[Int]
+
+field Wand_list_for_list__tmp_1: Ref
+
+field Wand_list_for_list__suffix_1: Seq[Int]
+
+field Wand_list_for_list__cursor_1: Ref
+
+field Wand_list_for_list__wand_1: Ref
+
+field Wand_list_for_list__this_2: Ref
+
+field Wand_list_for_list__L2_2: Seq[Int]
+
+field Wand_list_for_list__L1_2: Seq[Int]
+
+field List__val: Int
+
+field List__next: Ref
+
+function Wand_list_for_list__get_in_1(diz: Ref): Ref
+  requires diz != null
+  requires acc(Wand_list_for_list__valid_wand(diz), write)
+  ensures result != null
+{
+  (unfolding acc(Wand_list_for_list__valid_wand(diz), write) in diz.Wand_list_for_list__in_1)
+}
+
+function Wand_list_for_list__get_in_1_0(diz: Ref): Seq[Int]
+  requires diz != null
+  requires acc(Wand_list_for_list__valid_wand(diz), write)
+{
+  (unfolding acc(Wand_list_for_list__valid_wand(diz), write) in diz.Wand_list_for_list__in_1_0)
+}
+
+function Wand_list_for_list__get_out_1(diz: Ref): Ref
+  requires diz != null
+  requires acc(Wand_list_for_list__valid_wand(diz), write)
+  ensures result != null
+{
+  (unfolding acc(Wand_list_for_list__valid_wand(diz), write) in diz.Wand_list_for_list__out_1)
+}
+
+function Wand_list_for_list__get_out_1_0(diz: Ref): Seq[Int]
+  requires diz != null
+  requires acc(Wand_list_for_list__valid_wand(diz), write)
+{
+  (unfolding acc(Wand_list_for_list__valid_wand(diz), write) in diz.Wand_list_for_list__out_1_0)
+}
+
+function List__contents(diz: Ref): Seq[Int]
+  requires diz != null
+  requires acc(List__state(diz), write)
+{
+  (unfolding acc(List__state(diz), write) in (diz.List__next == null ? Seq(diz.List__val) : Seq(diz.List__val) ++ List__contents(diz.List__next)))
+}
+
+function List__get_next(diz: Ref): Ref
+  requires diz != null
+  requires acc(List__state(diz), write)
+{
+  (unfolding acc(List__state(diz), write) in diz.List__next)
+}
+
+predicate Wand_list_for_list__valid_wand(diz: Ref) {
+  acc(diz.Wand_list_for_list__lemma, wildcard) && (1 <= diz.Wand_list_for_list__lemma) && acc(diz.Wand_list_for_list__in_1, wildcard) && (diz.Wand_list_for_list__in_1 != null) && acc(diz.Wand_list_for_list__in_1_0, wildcard) && acc(diz.Wand_list_for_list__out_1, wildcard) && (diz.Wand_list_for_list__out_1 != null) && acc(diz.Wand_list_for_list__out_1_0, wildcard) && acc(diz.Wand_list_for_list__this_1, wildcard) && acc(diz.Wand_list_for_list__L2_1, wildcard) && acc(diz.Wand_list_for_list__tmp_suffix_1, wildcard) && acc(diz.Wand_list_for_list__L1_1, wildcard) && acc(diz.Wand_list_for_list__tmp_1, wildcard) && acc(diz.Wand_list_for_list__suffix_1, wildcard) && acc(diz.Wand_list_for_list__cursor_1, wildcard) && acc(diz.Wand_list_for_list__wand_1, wildcard) && ((diz.Wand_list_for_list__lemma == 1) ==> (diz.Wand_list_for_list__this_1 != null) && acc(diz.Wand_list_for_list__tmp_1.List__val, write) && acc(diz.Wand_list_for_list__tmp_1.List__next, write) && (diz.Wand_list_for_list__tmp_1.List__next == diz.Wand_list_for_list__cursor_1) && (diz.Wand_list_for_list__tmp_suffix_1 == Seq(diz.Wand_list_for_list__tmp_1.List__val) ++ diz.Wand_list_for_list__suffix_1) && ((diz.Wand_list_for_list__wand_1 != null) && acc(Wand_list_for_list__valid_wand(diz.Wand_list_for_list__wand_1), write) && (Wand_list_for_list__get_in_1(diz.Wand_list_for_list__wand_1) == diz.Wand_list_for_list__tmp_1) && (Wand_list_for_list__get_in_1_0(diz.Wand_list_for_list__wand_1) == diz.Wand_list_for_list__tmp_suffix_1 ++ diz.Wand_list_for_list__L2_1) && (Wand_list_for_list__get_out_1(diz.Wand_list_for_list__wand_1) == diz.Wand_list_for_list__this_1) && (Wand_list_for_list__get_out_1_0(diz.Wand_list_for_list__wand_1) == diz.Wand_list_for_list__L1_1 ++ diz.Wand_list_for_list__L2_1)) && (diz.Wand_list_for_list__in_1 == diz.Wand_list_for_list__cursor_1) && (diz.Wand_list_for_list__in_1_0 == diz.Wand_list_for_list__suffix_1 ++ diz.Wand_list_for_list__L2_1) && (diz.Wand_list_for_list__out_1 == diz.Wand_list_for_list__this_1) && (diz.Wand_list_for_list__out_1_0 == diz.Wand_list_for_list__L1_1 ++ diz.Wand_list_for_list__L2_1)) && acc(diz.Wand_list_for_list__this_2, wildcard) && acc(diz.Wand_list_for_list__L2_2, wildcard) && acc(diz.Wand_list_for_list__L1_2, wildcard) && ((diz.Wand_list_for_list__lemma == 2) ==> (diz.Wand_list_for_list__this_2 != null) && (diz.Wand_list_for_list__in_1 == diz.Wand_list_for_list__this_2) && (diz.Wand_list_for_list__in_1_0 == diz.Wand_list_for_list__L1_2 ++ diz.Wand_list_for_list__L2_2) && (diz.Wand_list_for_list__out_1 == diz.Wand_list_for_list__this_2) && (diz.Wand_list_for_list__out_1_0 == diz.Wand_list_for_list__L1_2 ++ diz.Wand_list_for_list__L2_2)) && (diz.Wand_list_for_list__lemma <= 2)
+}
+
+predicate List__state(diz: Ref) {
+  acc(diz.List__val, write) && acc(diz.List__next, write) && ((diz.List__next != null) ==> acc(List__state(diz.List__next), write))
+}
+
+method Wand_list_for_list___apply(diz: Ref, current_thread_id: Int)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires acc(Wand_list_for_list__valid_wand(diz), write)
+  requires acc(List__state(Wand_list_for_list__get_in_1(diz)), write)
+  requires List__contents(Wand_list_for_list__get_in_1(diz)) == Wand_list_for_list__get_in_1_0(diz)
+  requires Wand_list_for_list__get_out_1(diz) != null
+  ensures acc(List__state(old(Wand_list_for_list__get_out_1(diz))), write)
+  ensures List__contents(old(Wand_list_for_list__get_out_1(diz))) == old(Wand_list_for_list__get_out_1_0(diz))
+{
+  unfold acc(Wand_list_for_list__valid_wand(diz), write)
+  if (diz.Wand_list_for_list__lemma == 1) {
+    fold acc(List__state(diz.Wand_list_for_list__tmp_1), write)
+    Wand_list_for_list___apply(diz.Wand_list_for_list__wand_1, current_thread_id)
+    assert acc(List__state(old(Wand_list_for_list__get_out_1(diz))), write) && (List__contents(old(Wand_list_for_list__get_out_1(diz))) == old(Wand_list_for_list__get_out_1_0(diz)))
+    inhale false
+  } elseif (diz.Wand_list_for_list__lemma == 2) {
+    assert acc(List__state(old(Wand_list_for_list__get_out_1(diz))), write) && (List__contents(old(Wand_list_for_list__get_out_1(diz))) == old(Wand_list_for_list__get_out_1_0(diz)))
+    inhale false
+  }
+}
+
+method Wand_list_for_list__Wand_list_for_list(current_thread_id: Int) returns (sys__result: Ref)
+  requires current_thread_id >= 0
+  ensures sys__result != null
+  ensures acc(sys__result.Wand_list_for_list__lemma, write) && (sys__result.Wand_list_for_list__lemma == 0)
+  ensures acc(sys__result.Wand_list_for_list__in_1, write) && (sys__result.Wand_list_for_list__in_1 == null)
+  ensures acc(sys__result.Wand_list_for_list__in_1_0, write) && (sys__result.Wand_list_for_list__in_1_0 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__out_1, write) && (sys__result.Wand_list_for_list__out_1 == null)
+  ensures acc(sys__result.Wand_list_for_list__out_1_0, write) && (sys__result.Wand_list_for_list__out_1_0 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__this_1, write) && (sys__result.Wand_list_for_list__this_1 == null)
+  ensures acc(sys__result.Wand_list_for_list__L2_1, write) && (sys__result.Wand_list_for_list__L2_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__tmp_suffix_1, write) && (sys__result.Wand_list_for_list__tmp_suffix_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__L1_1, write) && (sys__result.Wand_list_for_list__L1_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__tmp_1, write) && (sys__result.Wand_list_for_list__tmp_1 == null)
+  ensures acc(sys__result.Wand_list_for_list__suffix_1, write) && (sys__result.Wand_list_for_list__suffix_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__cursor_1, write) && (sys__result.Wand_list_for_list__cursor_1 == null)
+  ensures acc(sys__result.Wand_list_for_list__wand_1, write) && (sys__result.Wand_list_for_list__wand_1 == null)
+  ensures acc(sys__result.Wand_list_for_list__this_2, write) && (sys__result.Wand_list_for_list__this_2 == null)
+  ensures acc(sys__result.Wand_list_for_list__L2_2, write) && (sys__result.Wand_list_for_list__L2_2 == Seq[Int]())
+  ensures acc(sys__result.Wand_list_for_list__L1_2, write) && (sys__result.Wand_list_for_list__L1_2 == Seq[Int]())
+{
+  var diz: Ref
+  var __flatten_2: Int
+  var __flatten_3: Seq[Int]
+  var __flatten_4: Seq[Int]
+  var __flatten_5: Seq[Int]
+  var __flatten_6: Seq[Int]
+  var __flatten_7: Seq[Int]
+  var __flatten_8: Seq[Int]
+  var __flatten_9: Seq[Int]
+  var __flatten_10: Seq[Int]
+  var __flatten_45: Int
+  var __flatten_46: Seq[Int]
+  var __flatten_47: Seq[Int]
+  var __flatten_48: Seq[Int]
+  var __flatten_49: Seq[Int]
+  var __flatten_50: Seq[Int]
+  var __flatten_51: Seq[Int]
+  var __flatten_52: Seq[Int]
+  var __flatten_53: Seq[Int]
+  diz := new(Wand_list_for_list__lemma, Wand_list_for_list__in_1, Wand_list_for_list__in_1_0, Wand_list_for_list__out_1, Wand_list_for_list__out_1_0, Wand_list_for_list__this_1, Wand_list_for_list__L2_1, Wand_list_for_list__tmp_suffix_1, Wand_list_for_list__L1_1, Wand_list_for_list__tmp_1, Wand_list_for_list__suffix_1, Wand_list_for_list__cursor_1, Wand_list_for_list__wand_1, Wand_list_for_list__this_2, Wand_list_for_list__L2_2, Wand_list_for_list__L1_2)
+  __flatten_2 := 0
+  __flatten_45 := __flatten_2
+  diz.Wand_list_for_list__lemma := __flatten_45
+  diz.Wand_list_for_list__in_1 := null
+  __flatten_3 := Seq[Int]()
+  __flatten_46 := __flatten_3
+  diz.Wand_list_for_list__in_1_0 := __flatten_46
+  diz.Wand_list_for_list__out_1 := null
+  __flatten_4 := Seq[Int]()
+  __flatten_47 := __flatten_4
+  diz.Wand_list_for_list__out_1_0 := __flatten_47
+  diz.Wand_list_for_list__this_1 := null
+  __flatten_5 := Seq[Int]()
+  __flatten_48 := __flatten_5
+  diz.Wand_list_for_list__L2_1 := __flatten_48
+  __flatten_6 := Seq[Int]()
+  __flatten_49 := __flatten_6
+  diz.Wand_list_for_list__tmp_suffix_1 := __flatten_49
+  __flatten_7 := Seq[Int]()
+  __flatten_50 := __flatten_7
+  diz.Wand_list_for_list__L1_1 := __flatten_50
+  diz.Wand_list_for_list__tmp_1 := null
+  __flatten_8 := Seq[Int]()
+  __flatten_51 := __flatten_8
+  diz.Wand_list_for_list__suffix_1 := __flatten_51
+  diz.Wand_list_for_list__cursor_1 := null
+  diz.Wand_list_for_list__wand_1 := null
+  diz.Wand_list_for_list__this_2 := null
+  __flatten_9 := Seq[Int]()
+  __flatten_52 := __flatten_9
+  diz.Wand_list_for_list__L2_2 := __flatten_52
+  __flatten_10 := Seq[Int]()
+  __flatten_53 := __flatten_10
+  diz.Wand_list_for_list__L1_2 := __flatten_53
+  sys__result := diz
+  assert (sys__result != null) && (acc(sys__result.Wand_list_for_list__lemma, write) && (sys__result.Wand_list_for_list__lemma == 0)) && (acc(sys__result.Wand_list_for_list__in_1, write) && (sys__result.Wand_list_for_list__in_1 == null)) && (acc(sys__result.Wand_list_for_list__in_1_0, write) && (sys__result.Wand_list_for_list__in_1_0 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__out_1, write) && (sys__result.Wand_list_for_list__out_1 == null)) && (acc(sys__result.Wand_list_for_list__out_1_0, write) && (sys__result.Wand_list_for_list__out_1_0 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__this_1, write) && (sys__result.Wand_list_for_list__this_1 == null)) && (acc(sys__result.Wand_list_for_list__L2_1, write) && (sys__result.Wand_list_for_list__L2_1 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__tmp_suffix_1, write) && (sys__result.Wand_list_for_list__tmp_suffix_1 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__L1_1, write) && (sys__result.Wand_list_for_list__L1_1 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__tmp_1, write) && (sys__result.Wand_list_for_list__tmp_1 == null)) && (acc(sys__result.Wand_list_for_list__suffix_1, write) && (sys__result.Wand_list_for_list__suffix_1 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__cursor_1, write) && (sys__result.Wand_list_for_list__cursor_1 == null)) && (acc(sys__result.Wand_list_for_list__wand_1, write) && (sys__result.Wand_list_for_list__wand_1 == null)) && (acc(sys__result.Wand_list_for_list__this_2, write) && (sys__result.Wand_list_for_list__this_2 == null)) && (acc(sys__result.Wand_list_for_list__L2_2, write) && (sys__result.Wand_list_for_list__L2_2 == Seq[Int]())) && (acc(sys__result.Wand_list_for_list__L1_2, write) && (sys__result.Wand_list_for_list__L1_2 == Seq[Int]()))
+  inhale false
+}
+
+method List__List(current_thread_id: Int, v: Int) returns (sys__result: Ref)
+  requires current_thread_id >= 0
+  ensures sys__result != null
+  ensures acc(List__state(sys__result), write)
+  ensures List__contents(sys__result) == Seq(v)
+{
+  var diz: Ref
+  var __flatten_11: Int
+  var __flatten_54: Int
+  diz := new(List__val, List__next)
+  __flatten_11 := v
+  __flatten_54 := __flatten_11
+  diz.List__val := __flatten_54
+  diz.List__next := null
+  fold acc(List__state(diz), write)
+  sys__result := diz
+  assert (sys__result != null) && acc(List__state(sys__result), write) && (List__contents(sys__result) == Seq(v))
+  inhale false
+}
+
+method List__append_rec(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int], L2: Seq[Int])
+  requires diz != null
+  requires current_thread_id >= 0
+  requires acc(List__state(diz), write)
+  requires List__contents(diz) == L1
+  requires l != null
+  requires acc(List__state(l), write)
+  requires List__contents(l) == L2
+  ensures acc(List__state(diz), write)
+  ensures List__contents(diz) == L1 ++ L2
+{
+  var __flatten_12: Ref
+  var __flatten_55: Ref
+  var __flatten_56: Seq[Int]
+  unfold acc(List__state(diz), write)
+  if (diz.List__next == null) {
+    __flatten_12 := l
+    __flatten_55 := __flatten_12
+    diz.List__next := __flatten_55
+  } else {
+    __flatten_56 := List__contents(diz.List__next)
+    List__append_rec(diz.List__next, current_thread_id, l, __flatten_56, L2)
+  }
+  fold acc(List__state(diz), write)
+}
+
+method List__Wand_list_for_list_lemma_1(diz: Ref, current_thread_id: Int, this_1: Ref, L2_1: Seq[Int], tmp_suffix_1: Seq[Int], L1_1: Seq[Int], tmp_1: Ref, suffix_1: Seq[Int], cursor_1: Ref, wand_1: Ref, in_1: Ref, in_1_0: Seq[Int], out_1: Ref, out_1_0: Seq[Int]) returns (sys__result: Ref)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires this_1 != null
+  requires acc(tmp_1.List__val, write)
+  requires acc(tmp_1.List__next, write)
+  requires tmp_1.List__next == cursor_1
+  requires tmp_suffix_1 == Seq(tmp_1.List__val) ++ suffix_1
+  requires wand_1 != null
+  requires acc(Wand_list_for_list__valid_wand(wand_1), write)
+  requires Wand_list_for_list__get_in_1(wand_1) == tmp_1
+  requires Wand_list_for_list__get_in_1_0(wand_1) == tmp_suffix_1 ++ L2_1
+  requires Wand_list_for_list__get_out_1(wand_1) == this_1
+  requires Wand_list_for_list__get_out_1_0(wand_1) == L1_1 ++ L2_1
+  requires in_1 != null
+  requires in_1 == cursor_1
+  requires in_1_0 == suffix_1 ++ L2_1
+  requires out_1 != null
+  requires out_1 == this_1
+  requires out_1_0 == L1_1 ++ L2_1
+  ensures sys__result != null
+  ensures acc(Wand_list_for_list__valid_wand(sys__result), write)
+  ensures Wand_list_for_list__get_in_1(sys__result) == in_1
+  ensures Wand_list_for_list__get_in_1_0(sys__result) == in_1_0
+  ensures Wand_list_for_list__get_out_1(sys__result) == out_1
+  ensures Wand_list_for_list__get_out_1_0(sys__result) == out_1_0
+{
+  var vwand: Ref
+  var __flatten_14: Ref
+  var __flatten_15: Int
+  var __flatten_16: Ref
+  var __flatten_17: Seq[Int]
+  var __flatten_18: Seq[Int]
+  var __flatten_19: Seq[Int]
+  var __flatten_20: Ref
+  var __flatten_21: Seq[Int]
+  var __flatten_22: Ref
+  var __flatten_23: Ref
+  var __flatten_24: Ref
+  var __flatten_25: Seq[Int]
+  var __flatten_26: Ref
+  var __flatten_27: Seq[Int]
+  var __flatten_28: Ref
+  var __flatten_59: Int
+  var __flatten_60: Ref
+  var __flatten_61: Seq[Int]
+  var __flatten_62: Seq[Int]
+  var __flatten_63: Seq[Int]
+  var __flatten_64: Ref
+  var __flatten_65: Seq[Int]
+  var __flatten_66: Ref
+  var __flatten_67: Ref
+  var __flatten_68: Ref
+  var __flatten_69: Seq[Int]
+  var __flatten_70: Ref
+  var __flatten_71: Seq[Int]
+  __flatten_14 := Wand_list_for_list__Wand_list_for_list(current_thread_id)
+  vwand := __flatten_14
+  __flatten_15 := 1
+  __flatten_59 := __flatten_15
+  vwand.Wand_list_for_list__lemma := __flatten_59
+  __flatten_16 := this_1
+  __flatten_60 := __flatten_16
+  vwand.Wand_list_for_list__this_1 := __flatten_60
+  __flatten_17 := L2_1
+  __flatten_61 := __flatten_17
+  vwand.Wand_list_for_list__L2_1 := __flatten_61
+  __flatten_18 := tmp_suffix_1
+  __flatten_62 := __flatten_18
+  vwand.Wand_list_for_list__tmp_suffix_1 := __flatten_62
+  __flatten_19 := L1_1
+  __flatten_63 := __flatten_19
+  vwand.Wand_list_for_list__L1_1 := __flatten_63
+  __flatten_20 := tmp_1
+  __flatten_64 := __flatten_20
+  vwand.Wand_list_for_list__tmp_1 := __flatten_64
+  __flatten_21 := suffix_1
+  __flatten_65 := __flatten_21
+  vwand.Wand_list_for_list__suffix_1 := __flatten_65
+  __flatten_22 := cursor_1
+  __flatten_66 := __flatten_22
+  vwand.Wand_list_for_list__cursor_1 := __flatten_66
+  __flatten_23 := wand_1
+  __flatten_67 := __flatten_23
+  vwand.Wand_list_for_list__wand_1 := __flatten_67
+  __flatten_24 := in_1
+  __flatten_68 := __flatten_24
+  vwand.Wand_list_for_list__in_1 := __flatten_68
+  __flatten_25 := in_1_0
+  __flatten_69 := __flatten_25
+  vwand.Wand_list_for_list__in_1_0 := __flatten_69
+  __flatten_26 := out_1
+  __flatten_70 := __flatten_26
+  vwand.Wand_list_for_list__out_1 := __flatten_70
+  __flatten_27 := out_1_0
+  __flatten_71 := __flatten_27
+  vwand.Wand_list_for_list__out_1_0 := __flatten_71
+  fold acc(Wand_list_for_list__valid_wand(vwand), write)
+  __flatten_28 := vwand
+  sys__result := __flatten_28
+  assert (sys__result != null) && acc(Wand_list_for_list__valid_wand(sys__result), write) && (Wand_list_for_list__get_in_1(sys__result) == in_1) && (Wand_list_for_list__get_in_1_0(sys__result) == in_1_0) && (Wand_list_for_list__get_out_1(sys__result) == out_1) && (Wand_list_for_list__get_out_1_0(sys__result) == out_1_0)
+  inhale false
+}
+
+method List__Wand_list_for_list_lemma_2(diz: Ref, current_thread_id: Int, this_2: Ref, L2_2: Seq[Int], L1_2: Seq[Int], in_1: Ref, in_1_0: Seq[Int], out_1: Ref, out_1_0: Seq[Int]) returns (sys__result: Ref)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires this_2 != null
+  requires in_1 != null
+  requires in_1 == this_2
+  requires in_1_0 == L1_2 ++ L2_2
+  requires out_1 != null
+  requires out_1 == this_2
+  requires out_1_0 == L1_2 ++ L2_2
+  ensures sys__result != null
+  ensures acc(Wand_list_for_list__valid_wand(sys__result), write)
+  ensures Wand_list_for_list__get_in_1(sys__result) == in_1
+  ensures Wand_list_for_list__get_in_1_0(sys__result) == in_1_0
+  ensures Wand_list_for_list__get_out_1(sys__result) == out_1
+  ensures Wand_list_for_list__get_out_1_0(sys__result) == out_1_0
+{
+  var vwand: Ref
+  var __flatten_29: Ref
+  var __flatten_30: Int
+  var __flatten_31: Ref
+  var __flatten_32: Seq[Int]
+  var __flatten_33: Seq[Int]
+  var __flatten_34: Ref
+  var __flatten_35: Seq[Int]
+  var __flatten_36: Ref
+  var __flatten_37: Seq[Int]
+  var __flatten_38: Ref
+  var __flatten_73: Int
+  var __flatten_74: Ref
+  var __flatten_75: Seq[Int]
+  var __flatten_76: Seq[Int]
+  var __flatten_77: Ref
+  var __flatten_78: Seq[Int]
+  var __flatten_79: Ref
+  var __flatten_80: Seq[Int]
+  __flatten_29 := Wand_list_for_list__Wand_list_for_list(current_thread_id)
+  vwand := __flatten_29
+  __flatten_30 := 2
+  __flatten_73 := __flatten_30
+  vwand.Wand_list_for_list__lemma := __flatten_73
+  __flatten_31 := this_2
+  __flatten_74 := __flatten_31
+  vwand.Wand_list_for_list__this_2 := __flatten_74
+  __flatten_32 := L2_2
+  __flatten_75 := __flatten_32
+  vwand.Wand_list_for_list__L2_2 := __flatten_75
+  __flatten_33 := L1_2
+  __flatten_76 := __flatten_33
+  vwand.Wand_list_for_list__L1_2 := __flatten_76
+  __flatten_34 := in_1
+  __flatten_77 := __flatten_34
+  vwand.Wand_list_for_list__in_1 := __flatten_77
+  __flatten_35 := in_1_0
+  __flatten_78 := __flatten_35
+  vwand.Wand_list_for_list__in_1_0 := __flatten_78
+  __flatten_36 := out_1
+  __flatten_79 := __flatten_36
+  vwand.Wand_list_for_list__out_1 := __flatten_79
+  __flatten_37 := out_1_0
+  __flatten_80 := __flatten_37
+  vwand.Wand_list_for_list__out_1_0 := __flatten_80
+  fold acc(Wand_list_for_list__valid_wand(vwand), write)
+  __flatten_38 := vwand
+  sys__result := __flatten_38
+  assert (sys__result != null) && acc(Wand_list_for_list__valid_wand(sys__result), write) && (Wand_list_for_list__get_in_1(sys__result) == in_1) && (Wand_list_for_list__get_in_1_0(sys__result) == in_1_0) && (Wand_list_for_list__get_out_1(sys__result) == out_1) && (Wand_list_for_list__get_out_1_0(sys__result) == out_1_0)
+  inhale false
+}
+
+method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int], L2: Seq[Int])
+  requires diz != null
+  requires current_thread_id >= 0
+  requires acc(List__state(diz), write)
+  requires List__contents(diz) == L1
+  requires l != null
+  requires acc(List__state(l), write)
+  requires List__contents(l) == L2
+  ensures acc(List__state(diz), write)
+  ensures List__contents(diz) == L1 ++ L2
+{
+  var cursor: Ref
+  var prefix: Seq[Int]
+  var suffix: Seq[Int]
+  var __flatten_39: Seq[Int]
+  var vwand: Ref
+  var __flatten_40: Seq[Int]
+  var __flatten_41: Ref
+  var __flatten_42: Ref
+  var __flatten_81: Seq[Int]
+  var __flatten_82: Seq[Int]
+  var __flatten_84: Ref
+    var tmp: Ref // moved manually from loop, due to Carbon issue 74
+    var tmp_suffix: Seq[Int] // moved manually from loop, due to Carbon issue 74
+  cursor := diz
+  prefix := Seq[Int]()
+  __flatten_81 := List__contents(cursor)
+  __flatten_39 := __flatten_81
+  suffix := __flatten_39
+  vwand := List__Wand_list_for_list_lemma_2(diz, current_thread_id, diz, L2, L1, diz, L1 ++ L2, diz, L1 ++ L2)
+  while (List__get_next(cursor) != null)
+    invariant cursor != null
+    invariant acc(List__state(cursor), write)
+    invariant suffix == List__contents(cursor)
+    invariant prefix ++ suffix == L1
+    invariant l != null
+    invariant acc(List__state(l), write)
+    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Carbon/issue/77/)
+    invariant List__contents(l) == L2
+    invariant vwand != null
+    invariant acc(Wand_list_for_list__valid_wand(vwand), write)
+    invariant Wand_list_for_list__get_in_1(vwand) == cursor
+    invariant Wand_list_for_list__get_in_1_0(vwand) == suffix ++ L2
+    invariant Wand_list_for_list__get_out_1(vwand) == diz
+    invariant Wand_list_for_list__get_out_1_0(vwand) == L1 ++ L2
+  {
+    tmp := cursor
+    tmp_suffix := suffix
+    unfold acc(List__state(cursor), write)
+    prefix := prefix ++ Seq(cursor.List__val)
+    __flatten_82 := List__contents(cursor.List__next)
+    __flatten_40 := __flatten_82
+    suffix := __flatten_40
+    cursor := cursor.List__next
+    __flatten_41 := List__Wand_list_for_list_lemma_1(diz, current_thread_id, diz, L2, tmp_suffix, L1, tmp, suffix, cursor, vwand, cursor, suffix ++ L2, diz, L1 ++ L2)
+    vwand := __flatten_41
+  }
+  unfold acc(List__state(cursor), write)
+  __flatten_42 := l
+  __flatten_84 := __flatten_42
+  cursor.List__next := __flatten_84
+  fold acc(List__state(cursor), write)
+  Wand_list_for_list___apply(vwand, current_thread_id)
+}

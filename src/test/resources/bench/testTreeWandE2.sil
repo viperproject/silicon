@@ -1,0 +1,492 @@
+field Wand_state_contains_for_state_contains__lemma: Int
+
+field Wand_state_contains_for_state_contains__in_1: Ref
+
+field Wand_state_contains_for_state_contains__in_1_0: Seq[Int]
+
+field Wand_state_contains_for_state_contains__out_1: Ref
+
+field Wand_state_contains_for_state_contains__out_1_0: Seq[Int]
+
+field Wand_state_contains_for_state_contains__this_1: Ref
+
+field Wand_state_contains_for_state_contains__target_contents_1: Seq[Int]
+
+field Wand_state_contains_for_state_contains__prev_contents_1: Seq[Int]
+
+field Wand_state_contains_for_state_contains__prev_1: Ref
+
+field Wand_state_contains_for_state_contains__cur_contents_1: Seq[Int]
+
+field Wand_state_contains_for_state_contains__top_1: Ref
+
+field Wand_state_contains_for_state_contains__cur_1: Ref
+
+field Wand_state_contains_for_state_contains__wand_1: Ref
+
+field Wand_state_contains_for_state_contains__this_2: Ref
+
+field Wand_state_contains_for_state_contains__target_contents_2: Seq[Int]
+
+field Wand_state_contains_for_state_contains__top_2: Ref
+
+field Tree__data: Int
+
+field Tree__left: Ref
+
+field Tree__right: Ref
+
+function Wand_state_contains_for_state_contains__get_in_1(diz: Ref): Ref
+  requires diz != null
+  requires acc(Wand_state_contains_for_state_contains__valid_wand(diz), write)
+  ensures result != null
+{
+  (unfolding acc(Wand_state_contains_for_state_contains__valid_wand(diz), write) in diz.Wand_state_contains_for_state_contains__in_1)
+}
+
+function Wand_state_contains_for_state_contains__get_in_1_0(diz: Ref): Seq[Int]
+  requires diz != null
+  requires acc(Wand_state_contains_for_state_contains__valid_wand(diz), write)
+{
+  (unfolding acc(Wand_state_contains_for_state_contains__valid_wand(diz), write) in diz.Wand_state_contains_for_state_contains__in_1_0)
+}
+
+function Wand_state_contains_for_state_contains__get_out_1(diz: Ref): Ref
+  requires diz != null
+  requires acc(Wand_state_contains_for_state_contains__valid_wand(diz), write)
+  ensures result != null
+{
+  (unfolding acc(Wand_state_contains_for_state_contains__valid_wand(diz), write) in diz.Wand_state_contains_for_state_contains__out_1)
+}
+
+function Wand_state_contains_for_state_contains__get_out_1_0(diz: Ref): Seq[Int]
+  requires diz != null
+  requires acc(Wand_state_contains_for_state_contains__valid_wand(diz), write)
+{
+  (unfolding acc(Wand_state_contains_for_state_contains__valid_wand(diz), write) in diz.Wand_state_contains_for_state_contains__out_1_0)
+}
+
+function Tree__tolist(t: Ref): Seq[Int]
+  requires (t != null) ==> acc(Tree__state(t), write)
+{
+  (t == null ? Seq[Int]() : (unfolding acc(Tree__state(t), write) in Tree__tolist(t.Tree__left) ++ Seq(t.Tree__data) ++ Tree__tolist(t.Tree__right)))
+}
+
+function Tree__sorted_list(s: Seq[Int]): Bool
+{
+  (forall i: Int :: (1 < i) && (i < |s|) ==> (s[i - 1] <= s[i]))
+}
+
+function Tree__sorted(t: Ref): Bool
+  requires (t != null) ==> acc(Tree__state(t), write)
+{
+  Tree__sorted_list(Tree__tolist(t))
+}
+
+predicate Wand_state_contains_for_state_contains__valid_wand(diz: Ref) {
+  acc(diz.Wand_state_contains_for_state_contains__lemma, wildcard) && (1 <= diz.Wand_state_contains_for_state_contains__lemma) && acc(diz.Wand_state_contains_for_state_contains__in_1, wildcard) && (diz.Wand_state_contains_for_state_contains__in_1 != null) && acc(diz.Wand_state_contains_for_state_contains__in_1_0, wildcard) && acc(diz.Wand_state_contains_for_state_contains__out_1, wildcard) && (diz.Wand_state_contains_for_state_contains__out_1 != null) && acc(diz.Wand_state_contains_for_state_contains__out_1_0, wildcard) && acc(diz.Wand_state_contains_for_state_contains__this_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__target_contents_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__prev_contents_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__prev_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__cur_contents_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__top_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__cur_1, wildcard) && acc(diz.Wand_state_contains_for_state_contains__wand_1, wildcard) && ((diz.Wand_state_contains_for_state_contains__lemma == 1) ==> (diz.Wand_state_contains_for_state_contains__this_1 != null) && (|diz.Wand_state_contains_for_state_contains__prev_contents_1| > 0) && (|diz.Wand_state_contains_for_state_contains__cur_contents_1| > 0) && (acc(diz.Wand_state_contains_for_state_contains__prev_1.Tree__left, write) && acc(diz.Wand_state_contains_for_state_contains__prev_1.Tree__data, write)) && (acc(diz.Wand_state_contains_for_state_contains__prev_1.Tree__right, write) && ((diz.Wand_state_contains_for_state_contains__prev_1.Tree__right != null) ==> acc(Tree__state(diz.Wand_state_contains_for_state_contains__prev_1.Tree__right), write))) && (diz.Wand_state_contains_for_state_contains__prev_1.Tree__left == diz.Wand_state_contains_for_state_contains__cur_1) && (diz.Wand_state_contains_for_state_contains__prev_contents_1 == diz.Wand_state_contains_for_state_contains__cur_contents_1 ++ Seq(diz.Wand_state_contains_for_state_contains__prev_1.Tree__data) ++ Tree__tolist(diz.Wand_state_contains_for_state_contains__prev_1.Tree__right)) && ((diz.Wand_state_contains_for_state_contains__wand_1 != null) && acc(Wand_state_contains_for_state_contains__valid_wand(diz.Wand_state_contains_for_state_contains__wand_1), write) && (Wand_state_contains_for_state_contains__get_in_1(diz.Wand_state_contains_for_state_contains__wand_1) == diz.Wand_state_contains_for_state_contains__prev_1) && (Wand_state_contains_for_state_contains__get_in_1_0(diz.Wand_state_contains_for_state_contains__wand_1) == diz.Wand_state_contains_for_state_contains__prev_contents_1[1..]) && (Wand_state_contains_for_state_contains__get_out_1(diz.Wand_state_contains_for_state_contains__wand_1) == diz.Wand_state_contains_for_state_contains__top_1) && (Wand_state_contains_for_state_contains__get_out_1_0(diz.Wand_state_contains_for_state_contains__wand_1) == diz.Wand_state_contains_for_state_contains__target_contents_1)) && (diz.Wand_state_contains_for_state_contains__in_1 == diz.Wand_state_contains_for_state_contains__cur_1) && (diz.Wand_state_contains_for_state_contains__in_1_0 == diz.Wand_state_contains_for_state_contains__cur_contents_1[1..]) && (diz.Wand_state_contains_for_state_contains__out_1 == diz.Wand_state_contains_for_state_contains__top_1) && (diz.Wand_state_contains_for_state_contains__out_1_0 == diz.Wand_state_contains_for_state_contains__target_contents_1)) && acc(diz.Wand_state_contains_for_state_contains__this_2, wildcard) && acc(diz.Wand_state_contains_for_state_contains__target_contents_2, wildcard) && acc(diz.Wand_state_contains_for_state_contains__top_2, wildcard) && ((diz.Wand_state_contains_for_state_contains__lemma == 2) ==> (diz.Wand_state_contains_for_state_contains__this_2 != null) && (diz.Wand_state_contains_for_state_contains__in_1 == diz.Wand_state_contains_for_state_contains__top_2) && (diz.Wand_state_contains_for_state_contains__in_1_0 == diz.Wand_state_contains_for_state_contains__target_contents_2) && (diz.Wand_state_contains_for_state_contains__out_1 == diz.Wand_state_contains_for_state_contains__top_2) && (diz.Wand_state_contains_for_state_contains__out_1_0 == diz.Wand_state_contains_for_state_contains__target_contents_2)) && (diz.Wand_state_contains_for_state_contains__lemma <= 2)
+}
+
+predicate Tree__state(diz: Ref) {
+  acc(diz.Tree__data, write) && acc(diz.Tree__left, write) && acc(diz.Tree__right, write) && ((diz.Tree__left != null) ==> acc(Tree__state(diz.Tree__left), write)) && ((diz.Tree__right != null) ==> acc(Tree__state(diz.Tree__right), write))
+}
+
+method Wand_state_contains_for_state_contains___apply(diz: Ref, current_thread_id: Int)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires acc(Wand_state_contains_for_state_contains__valid_wand(diz), write)
+  requires acc(Tree__state(Wand_state_contains_for_state_contains__get_in_1(diz)), write)
+  requires Tree__tolist(Wand_state_contains_for_state_contains__get_in_1(diz)) == Wand_state_contains_for_state_contains__get_in_1_0(diz)
+  requires Wand_state_contains_for_state_contains__get_out_1(diz) != null
+  ensures acc(Tree__state(old(Wand_state_contains_for_state_contains__get_out_1(diz))), write)
+  ensures Tree__tolist(old(Wand_state_contains_for_state_contains__get_out_1(diz))) == old(Wand_state_contains_for_state_contains__get_out_1_0(diz))
+{
+  unfold acc(Wand_state_contains_for_state_contains__valid_wand(diz), write)
+  if (diz.Wand_state_contains_for_state_contains__lemma == 1) {
+    fold acc(Tree__state(diz.Wand_state_contains_for_state_contains__prev_1), write)
+    assert acc(Tree__state(diz.Wand_state_contains_for_state_contains__prev_1), write) && (Tree__tolist(diz.Wand_state_contains_for_state_contains__prev_1) == diz.Wand_state_contains_for_state_contains__prev_contents_1[1..])
+    Wand_state_contains_for_state_contains___apply(diz.Wand_state_contains_for_state_contains__wand_1, current_thread_id)
+    assert acc(Tree__state(old(Wand_state_contains_for_state_contains__get_out_1(diz))), write) && (Tree__tolist(old(Wand_state_contains_for_state_contains__get_out_1(diz))) == old(Wand_state_contains_for_state_contains__get_out_1_0(diz)))
+    inhale false
+  } elseif (diz.Wand_state_contains_for_state_contains__lemma == 2) {
+    assert acc(Tree__state(old(Wand_state_contains_for_state_contains__get_out_1(diz))), write) && (Tree__tolist(old(Wand_state_contains_for_state_contains__get_out_1(diz))) == old(Wand_state_contains_for_state_contains__get_out_1_0(diz)))
+    inhale false
+  }
+}
+
+method Wand_state_contains_for_state_contains__Wand_state_contains_for_state_contains(current_thread_id: Int) returns (sys__result: Ref)
+  requires current_thread_id >= 0
+  ensures sys__result != null
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__lemma, write) && (sys__result.Wand_state_contains_for_state_contains__lemma == 0)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__in_1, write) && (sys__result.Wand_state_contains_for_state_contains__in_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__in_1_0, write) && (sys__result.Wand_state_contains_for_state_contains__in_1_0 == Seq[Int]())
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__out_1, write) && (sys__result.Wand_state_contains_for_state_contains__out_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__out_1_0, write) && (sys__result.Wand_state_contains_for_state_contains__out_1_0 == Seq[Int]())
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__this_1, write) && (sys__result.Wand_state_contains_for_state_contains__this_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__target_contents_1, write) && (sys__result.Wand_state_contains_for_state_contains__target_contents_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__prev_contents_1, write) && (sys__result.Wand_state_contains_for_state_contains__prev_contents_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__prev_1, write) && (sys__result.Wand_state_contains_for_state_contains__prev_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__cur_contents_1, write) && (sys__result.Wand_state_contains_for_state_contains__cur_contents_1 == Seq[Int]())
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__top_1, write) && (sys__result.Wand_state_contains_for_state_contains__top_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__cur_1, write) && (sys__result.Wand_state_contains_for_state_contains__cur_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__wand_1, write) && (sys__result.Wand_state_contains_for_state_contains__wand_1 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__this_2, write) && (sys__result.Wand_state_contains_for_state_contains__this_2 == null)
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__target_contents_2, write) && (sys__result.Wand_state_contains_for_state_contains__target_contents_2 == Seq[Int]())
+  ensures acc(sys__result.Wand_state_contains_for_state_contains__top_2, write) && (sys__result.Wand_state_contains_for_state_contains__top_2 == null)
+{
+  var diz: Ref
+  var __flatten_2: Int
+  var __flatten_3: Seq[Int]
+  var __flatten_4: Seq[Int]
+  var __flatten_5: Seq[Int]
+  var __flatten_6: Seq[Int]
+  var __flatten_7: Seq[Int]
+  var __flatten_8: Seq[Int]
+  var __flatten_46: Int
+  var __flatten_47: Seq[Int]
+  var __flatten_48: Seq[Int]
+  var __flatten_49: Seq[Int]
+  var __flatten_50: Seq[Int]
+  var __flatten_51: Seq[Int]
+  var __flatten_52: Seq[Int]
+  diz := new(Wand_state_contains_for_state_contains__lemma, Wand_state_contains_for_state_contains__in_1, Wand_state_contains_for_state_contains__in_1_0, Wand_state_contains_for_state_contains__out_1, Wand_state_contains_for_state_contains__out_1_0, Wand_state_contains_for_state_contains__this_1, Wand_state_contains_for_state_contains__target_contents_1, Wand_state_contains_for_state_contains__prev_contents_1, Wand_state_contains_for_state_contains__prev_1, Wand_state_contains_for_state_contains__cur_contents_1, Wand_state_contains_for_state_contains__top_1, Wand_state_contains_for_state_contains__cur_1, Wand_state_contains_for_state_contains__wand_1, Wand_state_contains_for_state_contains__this_2, Wand_state_contains_for_state_contains__target_contents_2, Wand_state_contains_for_state_contains__top_2)
+  __flatten_2 := 0
+  __flatten_46 := __flatten_2
+  diz.Wand_state_contains_for_state_contains__lemma := __flatten_46
+  diz.Wand_state_contains_for_state_contains__in_1 := null
+  __flatten_3 := Seq[Int]()
+  __flatten_47 := __flatten_3
+  diz.Wand_state_contains_for_state_contains__in_1_0 := __flatten_47
+  diz.Wand_state_contains_for_state_contains__out_1 := null
+  __flatten_4 := Seq[Int]()
+  __flatten_48 := __flatten_4
+  diz.Wand_state_contains_for_state_contains__out_1_0 := __flatten_48
+  diz.Wand_state_contains_for_state_contains__this_1 := null
+  __flatten_5 := Seq[Int]()
+  __flatten_49 := __flatten_5
+  diz.Wand_state_contains_for_state_contains__target_contents_1 := __flatten_49
+  __flatten_6 := Seq[Int]()
+  __flatten_50 := __flatten_6
+  diz.Wand_state_contains_for_state_contains__prev_contents_1 := __flatten_50
+  diz.Wand_state_contains_for_state_contains__prev_1 := null
+  __flatten_7 := Seq[Int]()
+  __flatten_51 := __flatten_7
+  diz.Wand_state_contains_for_state_contains__cur_contents_1 := __flatten_51
+  diz.Wand_state_contains_for_state_contains__top_1 := null
+  diz.Wand_state_contains_for_state_contains__cur_1 := null
+  diz.Wand_state_contains_for_state_contains__wand_1 := null
+  diz.Wand_state_contains_for_state_contains__this_2 := null
+  __flatten_8 := Seq[Int]()
+  __flatten_52 := __flatten_8
+  diz.Wand_state_contains_for_state_contains__target_contents_2 := __flatten_52
+  diz.Wand_state_contains_for_state_contains__top_2 := null
+  sys__result := diz
+  assert (sys__result != null) && (acc(sys__result.Wand_state_contains_for_state_contains__lemma, write) && (sys__result.Wand_state_contains_for_state_contains__lemma == 0)) && (acc(sys__result.Wand_state_contains_for_state_contains__in_1, write) && (sys__result.Wand_state_contains_for_state_contains__in_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__in_1_0, write) && (sys__result.Wand_state_contains_for_state_contains__in_1_0 == Seq[Int]())) && (acc(sys__result.Wand_state_contains_for_state_contains__out_1, write) && (sys__result.Wand_state_contains_for_state_contains__out_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__out_1_0, write) && (sys__result.Wand_state_contains_for_state_contains__out_1_0 == Seq[Int]())) && (acc(sys__result.Wand_state_contains_for_state_contains__this_1, write) && (sys__result.Wand_state_contains_for_state_contains__this_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__target_contents_1, write) && (sys__result.Wand_state_contains_for_state_contains__target_contents_1 == Seq[Int]())) && (acc(sys__result.Wand_state_contains_for_state_contains__prev_contents_1, write) && (sys__result.Wand_state_contains_for_state_contains__prev_contents_1 == Seq[Int]())) && (acc(sys__result.Wand_state_contains_for_state_contains__prev_1, write) && (sys__result.Wand_state_contains_for_state_contains__prev_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__cur_contents_1, write) && (sys__result.Wand_state_contains_for_state_contains__cur_contents_1 == Seq[Int]())) && (acc(sys__result.Wand_state_contains_for_state_contains__top_1, write) && (sys__result.Wand_state_contains_for_state_contains__top_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__cur_1, write) && (sys__result.Wand_state_contains_for_state_contains__cur_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__wand_1, write) && (sys__result.Wand_state_contains_for_state_contains__wand_1 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__this_2, write) && (sys__result.Wand_state_contains_for_state_contains__this_2 == null)) && (acc(sys__result.Wand_state_contains_for_state_contains__target_contents_2, write) && (sys__result.Wand_state_contains_for_state_contains__target_contents_2 == Seq[Int]())) && (acc(sys__result.Wand_state_contains_for_state_contains__top_2, write) && (sys__result.Wand_state_contains_for_state_contains__top_2 == null))
+  inhale false
+}
+
+method Tree__Wand_state_contains_for_state_contains_lemma_1(diz: Ref, current_thread_id: Int, this_1: Ref, target_contents_1: Seq[Int], prev_contents_1: Seq[Int], prev_1: Ref, cur_contents_1: Seq[Int], top_1: Ref, cur_1: Ref, wand_1: Ref, in_1: Ref, in_1_0: Seq[Int], out_1: Ref, out_1_0: Seq[Int]) returns (sys__result: Ref)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires this_1 != null
+  requires |prev_contents_1| > 0
+  requires |cur_contents_1| > 0
+  requires acc(prev_1.Tree__left, write)
+  requires acc(prev_1.Tree__data, write)
+  requires acc(prev_1.Tree__right, write)
+  requires (prev_1.Tree__right != null) ==> acc(Tree__state(prev_1.Tree__right), write)
+  requires prev_1.Tree__left == cur_1
+  requires prev_contents_1 == cur_contents_1 ++ Seq(prev_1.Tree__data) ++ Tree__tolist(prev_1.Tree__right)
+  requires wand_1 != null
+  requires acc(Wand_state_contains_for_state_contains__valid_wand(wand_1), write)
+  requires Wand_state_contains_for_state_contains__get_in_1(wand_1) == prev_1
+  requires Wand_state_contains_for_state_contains__get_in_1_0(wand_1) == prev_contents_1[1..]
+  requires Wand_state_contains_for_state_contains__get_out_1(wand_1) == top_1
+  requires Wand_state_contains_for_state_contains__get_out_1_0(wand_1) == target_contents_1
+  requires in_1 != null
+  requires in_1 == cur_1
+  requires in_1_0 == cur_contents_1[1..]
+  requires out_1 != null
+  requires out_1 == top_1
+  requires out_1_0 == target_contents_1
+  ensures sys__result != null
+  ensures acc(Wand_state_contains_for_state_contains__valid_wand(sys__result), write)
+  ensures Wand_state_contains_for_state_contains__get_in_1(sys__result) == in_1
+  ensures Wand_state_contains_for_state_contains__get_in_1_0(sys__result) == in_1_0
+  ensures Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1
+  ensures Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0
+{
+  var vwand: Ref
+  var __flatten_9: Ref
+  var __flatten_10: Int
+  var __flatten_11: Ref
+  var __flatten_12: Seq[Int]
+  var __flatten_13: Seq[Int]
+  var __flatten_14: Ref
+  var __flatten_15: Seq[Int]
+  var __flatten_16: Ref
+  var __flatten_17: Ref
+  var __flatten_18: Ref
+  var __flatten_19: Ref
+  var __flatten_20: Seq[Int]
+  var __flatten_21: Ref
+  var __flatten_22: Seq[Int]
+  var __flatten_23: Ref
+  var __flatten_54: Int
+  var __flatten_55: Ref
+  var __flatten_56: Seq[Int]
+  var __flatten_57: Seq[Int]
+  var __flatten_58: Ref
+  var __flatten_59: Seq[Int]
+  var __flatten_60: Ref
+  var __flatten_61: Ref
+  var __flatten_62: Ref
+  var __flatten_63: Ref
+  var __flatten_64: Seq[Int]
+  var __flatten_65: Ref
+  var __flatten_66: Seq[Int]
+  __flatten_9 := Wand_state_contains_for_state_contains__Wand_state_contains_for_state_contains(current_thread_id)
+  vwand := __flatten_9
+  __flatten_10 := 1
+  __flatten_54 := __flatten_10
+  vwand.Wand_state_contains_for_state_contains__lemma := __flatten_54
+  __flatten_11 := this_1
+  __flatten_55 := __flatten_11
+  vwand.Wand_state_contains_for_state_contains__this_1 := __flatten_55
+  __flatten_12 := target_contents_1
+  __flatten_56 := __flatten_12
+  vwand.Wand_state_contains_for_state_contains__target_contents_1 := __flatten_56
+  __flatten_13 := prev_contents_1
+  __flatten_57 := __flatten_13
+  vwand.Wand_state_contains_for_state_contains__prev_contents_1 := __flatten_57
+  __flatten_14 := prev_1
+  __flatten_58 := __flatten_14
+  vwand.Wand_state_contains_for_state_contains__prev_1 := __flatten_58
+  __flatten_15 := cur_contents_1
+  __flatten_59 := __flatten_15
+  vwand.Wand_state_contains_for_state_contains__cur_contents_1 := __flatten_59
+  __flatten_16 := top_1
+  __flatten_60 := __flatten_16
+  vwand.Wand_state_contains_for_state_contains__top_1 := __flatten_60
+  __flatten_17 := cur_1
+  __flatten_61 := __flatten_17
+  vwand.Wand_state_contains_for_state_contains__cur_1 := __flatten_61
+  __flatten_18 := wand_1
+  __flatten_62 := __flatten_18
+  vwand.Wand_state_contains_for_state_contains__wand_1 := __flatten_62
+  __flatten_19 := in_1
+  __flatten_63 := __flatten_19
+  vwand.Wand_state_contains_for_state_contains__in_1 := __flatten_63
+  __flatten_20 := in_1_0
+  __flatten_64 := __flatten_20
+  vwand.Wand_state_contains_for_state_contains__in_1_0 := __flatten_64
+  __flatten_21 := out_1
+  __flatten_65 := __flatten_21
+  vwand.Wand_state_contains_for_state_contains__out_1 := __flatten_65
+  __flatten_22 := out_1_0
+  __flatten_66 := __flatten_22
+  vwand.Wand_state_contains_for_state_contains__out_1_0 := __flatten_66
+  fold acc(Wand_state_contains_for_state_contains__valid_wand(vwand), write)
+  __flatten_23 := vwand
+  sys__result := __flatten_23
+  assert (sys__result != null) && acc(Wand_state_contains_for_state_contains__valid_wand(sys__result), write) && (Wand_state_contains_for_state_contains__get_in_1(sys__result) == in_1) && (Wand_state_contains_for_state_contains__get_in_1_0(sys__result) == in_1_0) && (Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1) && (Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0)
+  inhale false
+}
+
+method Tree__Wand_state_contains_for_state_contains_lemma_2(diz: Ref, current_thread_id: Int, this_2: Ref, target_contents_2: Seq[Int], top_2: Ref, in_1: Ref, in_1_0: Seq[Int], out_1: Ref, out_1_0: Seq[Int]) returns (sys__result: Ref)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires this_2 != null
+  requires in_1 != null
+  requires in_1 == top_2
+  requires in_1_0 == target_contents_2
+  requires out_1 != null
+  requires out_1 == top_2
+  requires out_1_0 == target_contents_2
+  ensures sys__result != null
+  ensures acc(Wand_state_contains_for_state_contains__valid_wand(sys__result), write)
+  ensures Wand_state_contains_for_state_contains__get_in_1(sys__result) == in_1
+  ensures Wand_state_contains_for_state_contains__get_in_1_0(sys__result) == in_1_0
+  ensures Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1
+  ensures Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0
+{
+  var vwand: Ref
+  var __flatten_24: Ref
+  var __flatten_25: Int
+  var __flatten_26: Ref
+  var __flatten_27: Seq[Int]
+  var __flatten_28: Ref
+  var __flatten_29: Ref
+  var __flatten_30: Seq[Int]
+  var __flatten_31: Ref
+  var __flatten_32: Seq[Int]
+  var __flatten_33: Ref
+  var __flatten_68: Int
+  var __flatten_69: Ref
+  var __flatten_70: Seq[Int]
+  var __flatten_71: Ref
+  var __flatten_72: Ref
+  var __flatten_73: Seq[Int]
+  var __flatten_74: Ref
+  var __flatten_75: Seq[Int]
+  __flatten_24 := Wand_state_contains_for_state_contains__Wand_state_contains_for_state_contains(current_thread_id)
+  vwand := __flatten_24
+  __flatten_25 := 2
+  __flatten_68 := __flatten_25
+  vwand.Wand_state_contains_for_state_contains__lemma := __flatten_68
+  __flatten_26 := this_2
+  __flatten_69 := __flatten_26
+  vwand.Wand_state_contains_for_state_contains__this_2 := __flatten_69
+  __flatten_27 := target_contents_2
+  __flatten_70 := __flatten_27
+  vwand.Wand_state_contains_for_state_contains__target_contents_2 := __flatten_70
+  __flatten_28 := top_2
+  __flatten_71 := __flatten_28
+  vwand.Wand_state_contains_for_state_contains__top_2 := __flatten_71
+  __flatten_29 := in_1
+  __flatten_72 := __flatten_29
+  vwand.Wand_state_contains_for_state_contains__in_1 := __flatten_72
+  __flatten_30 := in_1_0
+  __flatten_73 := __flatten_30
+  vwand.Wand_state_contains_for_state_contains__in_1_0 := __flatten_73
+  __flatten_31 := out_1
+  __flatten_74 := __flatten_31
+  vwand.Wand_state_contains_for_state_contains__out_1 := __flatten_74
+  __flatten_32 := out_1_0
+  __flatten_75 := __flatten_32
+  vwand.Wand_state_contains_for_state_contains__out_1_0 := __flatten_75
+  fold acc(Wand_state_contains_for_state_contains__valid_wand(vwand), write)
+  __flatten_33 := vwand
+  sys__result := __flatten_33
+  assert (sys__result != null) && acc(Wand_state_contains_for_state_contains__valid_wand(sys__result), write) && (Wand_state_contains_for_state_contains__get_in_1(sys__result) == in_1) && (Wand_state_contains_for_state_contains__get_in_1_0(sys__result) == in_1_0) && (Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1) && (Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0)
+  inhale false
+}
+
+method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__result: Ref)
+  requires diz != null
+  requires current_thread_id >= 0
+  requires top != null
+  requires acc(Tree__state(top), write)
+  ensures (sys__result != null) ==> acc(Tree__state(sys__result), write)
+  ensures old(Tree__tolist(top))[1..] == Tree__tolist(sys__result)
+  ensures old(Tree__sorted(top)) ==> Tree__sorted(sys__result)
+{
+  var prev_contents: Seq[Int]
+  var prev: Ref
+  var vwand: Ref
+  var cur_contents: Seq[Int]
+  var left: Ref
+  var cur: Ref
+  var orig_contents: Seq[Int]
+  var __flatten_34: Seq[Int]
+  var target_contents: Seq[Int]
+  var __flatten_35: Seq[Int]
+  var __flatten_36: Ref
+  var __flatten_37: Seq[Int]
+  var __flatten_38: Seq[Int]
+  var __flatten_39: Seq[Int]
+  var __flatten_40: Ref
+  var __flatten_41: Ref
+  var __flatten_43: Ref
+  var __flatten_76: Seq[Int]
+  var __flatten_77: Seq[Int]
+  var __flatten_78: Seq[Int]
+  var __flatten_79: Seq[Int]
+  var __flatten_80: Seq[Int]
+  var __flatten_82: Ref
+  __flatten_76 := Tree__tolist(top)
+  __flatten_34 := __flatten_76
+  orig_contents := __flatten_34
+  __flatten_77 := Tree__tolist(top)
+  __flatten_35 := __flatten_77
+  target_contents := __flatten_35[1..]
+  unfold acc(Tree__state(top), write)
+  if (top.Tree__left == null) {
+    assert orig_contents == Tree__tolist(top.Tree__left) ++ Seq(top.Tree__data) ++ Tree__tolist(top.Tree__right)
+    assert Tree__tolist(top.Tree__left) == Seq[Int]()
+    __flatten_36 := top.Tree__right
+    sys__result := __flatten_36
+    assert ((sys__result != null) ==> acc(Tree__state(sys__result), write)) && (old(Tree__tolist(top))[1..] == Tree__tolist(sys__result)) && (old(Tree__sorted(top)) ==> Tree__sorted(sys__result))
+    inhale false
+  } else {
+    cur := top
+    left := top.Tree__left
+    cur_contents := orig_contents
+    assert cur_contents == Tree__tolist(left) ++ Seq(top.Tree__data) ++ Tree__tolist(top.Tree__right)
+    unfold acc(Tree__state(left), write)
+    vwand := Tree__Wand_state_contains_for_state_contains_lemma_2(diz, current_thread_id, diz, target_contents, top, top, target_contents, top, target_contents)
+    while (left.Tree__left != null)
+      invariant acc(cur.Tree__left, write)
+      invariant acc(cur.Tree__data, write)
+      invariant acc(cur.Tree__right, write)
+      invariant cur.Tree__left == left
+      invariant (cur.Tree__right != null) ==> acc(Tree__state(cur.Tree__right), write)
+      invariant acc(left.Tree__left, write)
+      invariant acc(left.Tree__data, write)
+      invariant acc(left.Tree__right, write)
+      invariant (left.Tree__left != null) ==> acc(Tree__state(left.Tree__left), write)
+      invariant (left.Tree__right != null) ==> acc(Tree__state(left.Tree__right), write)
+      invariant cur_contents == Tree__tolist(left.Tree__left) ++ Seq(left.Tree__data) ++ Tree__tolist(left.Tree__right) ++ Seq(cur.Tree__data) ++ Tree__tolist(cur.Tree__right)
+      invariant vwand != null
+      invariant acc(Wand_state_contains_for_state_contains__valid_wand(vwand), write)
+      invariant Wand_state_contains_for_state_contains__get_in_1(vwand) == cur
+      invariant Wand_state_contains_for_state_contains__get_in_1_0(vwand) == cur_contents[1..]
+      invariant Wand_state_contains_for_state_contains__get_out_1(vwand) == top
+      invariant Wand_state_contains_for_state_contains__get_out_1_0(vwand) == target_contents
+    {
+      prev := cur
+      prev_contents := cur_contents
+      cur := left
+      left := cur.Tree__left
+      unfold acc(Tree__state(left), write)
+      __flatten_78 := Tree__tolist(left.Tree__left)
+      __flatten_37 := __flatten_78
+      __flatten_79 := Tree__tolist(left.Tree__right)
+      __flatten_38 := __flatten_79
+      cur_contents := __flatten_37 ++ Seq(left.Tree__data) ++ __flatten_38
+      __flatten_80 := Tree__tolist(cur.Tree__right)
+      __flatten_39 := __flatten_80
+      cur_contents := cur_contents ++ Seq(cur.Tree__data) ++ __flatten_39
+      assert |prev_contents| > 0
+      assert |cur_contents| > 0
+      assert prev_contents == cur_contents ++ Seq(prev.Tree__data) ++ Tree__tolist(prev.Tree__right)
+      __flatten_40 := Tree__Wand_state_contains_for_state_contains_lemma_1(diz, current_thread_id, diz, target_contents, prev_contents, prev, cur_contents, top, cur, vwand, cur, cur_contents[1..], top, target_contents)
+      vwand := __flatten_40
+    }
+    __flatten_41 := left.Tree__left
+    __flatten_82 := __flatten_41
+    cur.Tree__left := __flatten_82
+    fold acc(Tree__state(cur), write)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    // confirmed by Stefan Blom
+    assert Tree__tolist(cur) == cur_contents[1..]
+    assert acc(Tree__state(cur), write) && (Tree__tolist(cur) == Tree__tolist(cur))
+    assert acc(Tree__state(cur), write) && (Tree__tolist(cur) == cur_contents[1..])
+    Wand_state_contains_for_state_contains___apply(vwand, current_thread_id)
+    __flatten_43 := top
+    sys__result := __flatten_43
+    assert ((sys__result != null) ==> acc(Tree__state(sys__result), write)) && (old(Tree__tolist(top))[1..] == Tree__tolist(sys__result)) && (old(Tree__sorted(top)) ==> Tree__sorted(sys__result))
+    inhale false
+  }
+}
+
+method Tree__Tree(current_thread_id: Int) returns (sys__result: Ref)
+  requires current_thread_id >= 0
+  ensures sys__result != null
+  ensures acc(sys__result.Tree__data, write) && (sys__result.Tree__data == 0)
+  ensures acc(sys__result.Tree__left, write) && (sys__result.Tree__left == null)
+  ensures acc(sys__result.Tree__right, write) && (sys__result.Tree__right == null)
+{
+  var diz: Ref
+  var __flatten_44: Int
+  var __flatten_84: Int
+  diz := new(Tree__data, Tree__left, Tree__right)
+  __flatten_44 := 0
+  __flatten_84 := __flatten_44
+  diz.Tree__data := __flatten_84
+  diz.Tree__left := null
+  diz.Tree__right := null
+  sys__result := diz
+  assert (sys__result != null) && (acc(sys__result.Tree__data, write) && (sys__result.Tree__data == 0)) && (acc(sys__result.Tree__left, write) && (sys__result.Tree__left == null)) && (acc(sys__result.Tree__right, write) && (sys__result.Tree__right == null))
+  inhale false
+}
