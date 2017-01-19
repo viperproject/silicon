@@ -39,6 +39,7 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
 
     val poolConfig: GenericObjectPoolConfig = new GenericObjectPoolConfig()
     poolConfig.setMaxTotal(numberOfSlaveVerifiers)
+    poolConfig.setMaxIdle(numberOfSlaveVerifiers) /* Prevent pool from shutting down idle Z3 instances */
     poolConfig.setBlockWhenExhausted(true)
 
     val factory = PoolUtils.synchronizedPooledFactory(slaveVerifierPoolableObjectFactory)
