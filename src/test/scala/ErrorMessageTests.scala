@@ -6,7 +6,6 @@ package viper.silicon.tests
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.FunSuite
-import sun.org.mozilla.javascript.internal.ast.FunctionCall
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, ErrorReason, Failure => SilFailure}
 import viper.silicon.Silicon
 import viper.silver.ast._
@@ -23,10 +22,10 @@ class ErrorMessageTests extends FunSuite {
     val filePrefix = "ErrorMessageTests\\MeetingExample\\"
     val files = Seq("simple")
 
-    val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (a: Assert, _) => Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r) => AssertFailed(a, r) }))
-      case (o@And(f: FalseLit, right), _) => FalseLit()(o.pos, o.info, ReTrafo({ case AssertionFalse(_) => AssertionFalse(o) }))
-      case (o@And(left, f: FalseLit), _) => FalseLit()(o.pos, o.info, ReTrafo({ case AssertionFalse(_) => AssertionFalse(o) }))
+    val strat = ViperStrategy.Slim({
+      case a: Assert => Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r) => AssertFailed(a, r) }))
+      case o@And(f: FalseLit, right) => FalseLit()()
+      case o@And(left, f: FalseLit) => FalseLit()()
     })
 
     val frontend = new DummyFrontend
@@ -52,30 +51,22 @@ class ErrorMessageTests extends FunSuite {
     backend.start()
     frontend.init(backend)
 
-    val func1: PartialFunction[AbstractVerificationError, AbstractVerificationError] = {
-      case AssertFailed(as, r) => LoopInvariantNotPreserved(as.exp, r)
-    }
-
-    val func2: PartialFunction[AbstractVerificationError, AbstractVerificationError] = {
-      case AssertFailed(as, r) => LoopInvariantNotEstablished(as.exp, r)
-    }
-
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     var count = 0
-    val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (w: While, _) =>
+    val strat = ViperStrategy.Slim({
+      case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
         Seqn(Seq(
-          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo(func2)),
+          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo( { case AssertFailed(as, r) => LoopInvariantNotEstablished(as.exp, r) })),
           If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
           Label("loop" + count, Seq(TrueLit()()))(w.pos, w.info),
           w.body,
-          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo(func1)),
+          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo({ case AssertFailed(as, r) => LoopInvariantNotPreserved(as.exp, r) })),
           If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
           Label("skiploop" + count, Seq(TrueLit()()))(w.pos, w.info)
-        ))(w.pos, w.info)
+        ))()
     })
 
     files foreach { fileName: String => {
@@ -94,16 +85,16 @@ class ErrorMessageTests extends FunSuite {
     backend.start()
     frontend.init(backend)
 
-    val andStrat = StrategyBuilder.SimpleStrategy[Node]({
-      case (a@And(l:BoolLit, r:BoolLit), _) => BoolLit(l.value && r.value)(a.pos, a.info, a.errT ++ NodeTrafo({ case b:BoolLit => a}))
+    val andStrat = ViperStrategy.Slim({
+      case a@And(l:BoolLit, r:BoolLit) => BoolLit(l.value && r.value)()
     })
 
-    val orStrat = StrategyBuilder.SimpleStrategy[Node]({
-      case (o@Or(l:BoolLit, r:BoolLit), _) => BoolLit(l.value || r.value)(o.pos, o.info, o.errT ++ NodeTrafo({case b:BoolLit => o}))
+    val orStrat = ViperStrategy.Slim({
+      case o@Or(l:BoolLit, r:BoolLit) => BoolLit(l.value || r.value)()
     })
 
-    val notStrat = StrategyBuilder.SimpleStrategy[Node]({
-      case (n1@Not(n2@Not(e:Exp)), _) => e.duplicateErrorTrafo(e.errT ++ NodeTrafo({case e2:Exp => n1}))
+    val notStrat = ViperStrategy.Slim({
+      case n1@Not(n2@Not(e:Exp)) => e
     })
 
     val strat = andStrat + orStrat + notStrat
@@ -125,8 +116,8 @@ class ErrorMessageTests extends FunSuite {
     backend.start()
     frontend.init(backend)
 
-    val replaceStrat = StrategyBuilder.ContextStrategy[Node, Map[Exp, Exp]]({
-      case (l: LocalVar, c) => if (c.custom.contains(l)) c.custom(l).duplicateErrorTrafo(NodeTrafo({ case _ => l })) else l
+    val replaceStrat = ViperStrategy.Context[Map[Exp, Exp]]({
+      case (l: LocalVar, c) => if (c.custom.contains(l)) c.custom(l) else l
     }, Map.empty[Exp, Exp])
 
     val preError = (m: MethodCall) => ErrTrafo({
@@ -137,7 +128,7 @@ class ErrorMessageTests extends FunSuite {
       case InhaleFailed(_, r) => PostconditionViolated(x, m, r)
     })
 
-    val strat = StrategyBuilder.AncestorStrategy[Node]({
+    val strat = ViperStrategy.Ancestor({
       case (m: MethodCall, a) =>
         // Get method declaration
         val mDecl = a.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
@@ -145,14 +136,14 @@ class ErrorMessageTests extends FunSuite {
         // Create an exhale statement for every precondition and replace parameters with arguments
         val replacer: Map[Exp, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
         val context = new PartialContextC[Node, Map[Exp, Exp]](replacer)
-        val exPres = mDecl.pres.map(replaceStrat.execute(_, context).asInstanceOf[Exp]).map(x => Exhale(x)(x.pos, x.info, preError(m)))
+        val exPres = mDecl.pres.map(replaceStrat.execute[Exp](_, context)).map(x => Exhale(x)(x.pos, x.info, preError(m)))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
         val replacer2: Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
-        val inPosts = mDecl.posts.map(replaceStrat.execute(_, context2).asInstanceOf[Exp]).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
+        val inPosts = mDecl.posts.map(replaceStrat.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
-        Seqn(exPres ++ inPosts)(m.pos, m.info)
+        Seqn(exPres ++ inPosts)()
     }) traverse Traverse.Innermost
 
     files foreach { fileName: String => {
@@ -162,80 +153,7 @@ class ErrorMessageTests extends FunSuite {
 
   }
 
-  test("FunctionInlining") {
-    val filePrefix = "ErrorMessageTests\\FunctionInlining\\"
-    val files = Seq("simple")
-
-    val frontend = new DummyFrontend
-    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
-    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
-    backend.start()
-    frontend.init(backend)
-
-    val replaceStrat = StrategyBuilder.ContextStrategy[Node, Map[LocalVar, LocalVar]]({
-      case (l: LocalVar, c) => if (c.custom.contains(l)) c.custom(l) else l
-    }, Map.empty[LocalVar, LocalVar])
-
-    val listPres = collection.mutable.ListBuffer.empty[Exp]
-
-    val strat = StrategyBuilder.AncestorStrategy[Node]({
-      case (p: Program, _) => listPres.clear(); p // Start with a clean list
-      case (f: FuncApp, a) => {
-        val fDecl = a.ancestorList.head.asInstanceOf[Program].functions.find(_.name == f.funcname).get
-        val replacer: Map[LocalVar, LocalVar] = fDecl.formalArgs.zip(f.formalArgs).map(x => x._1.localVar -> x._2.localVar).toMap
-        val context = new PartialContextC[Node, Map[LocalVar, LocalVar]](replacer)
-
-        listPres ++= fDecl.pres.map(replaceStrat.execute(_, context).asInstanceOf[Exp])
-
-        if (fDecl.body.isDefined) replaceStrat.execute(fDecl.body.get, context) else f
-      }
-      case (e: Exp, a) if e.typ == Bool => {
-        listPres.append(e)
-        val res = listPres.reduce(And(_, _)(e.pos))
-        listPres.clear()
-        res
-      }
-    }) traverse Traverse.BottomUp
-
-
-
-    files foreach { fileName: String => {
-      val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".sil")
-      assert(testFile != null, s"File $filePrefix$fileName not found")
-      val file = Paths.get(testFile.toURI)
-
-      frontend.reset(file)
-      frontend.parse()
-      frontend.typecheck()
-      frontend.translate()
-
-      val targetNode: Program = frontend.translatorResult
-
-      val transformed = strat.execute(targetNode)
-
-      val errorTransformed = backend.verify(transformed.asInstanceOf[Program]) match {
-        case SilFailure(errors) => {
-          SilFailure(errors.map {
-            {
-              case a: AbstractVerificationError => a.transformedError()
-              case rest => rest
-            }
-          })
-        }
-        case rest => rest
-      }
-      val errorRef = backend.verify(targetNode)
-
-      //  println("Old: " + targetNode.toString())
-      println("Transformed: " + errorTransformed.toString)
-      println("Reference: " + errorRef.toString)
-      assert(errorTransformed.toString == errorRef.toString, "Files are not equal")
-    }
-    }
-
-  }
-
-  def executeTest(filePrefix: String, strat: Strategy[Node, _], frontend: DummyFrontend, backend: Silicon, fileName: String): Unit = {
+  def executeTest(filePrefix: String, strat: StrategyInterface[Node], frontend: DummyFrontend, backend: Silicon, fileName: String): Unit = {
     val testFile = getClass.getClassLoader.getResource(filePrefix + fileName + ".sil")
     assert(testFile != null, s"File $filePrefix$fileName not found")
     val file = Paths.get(testFile.toURI)
@@ -247,9 +165,10 @@ class ErrorMessageTests extends FunSuite {
 
     val targetNode: Program = frontend.translatorResult
 
-    val transformed = strat.execute(targetNode)
+    val transformed = strat.execute[Program](targetNode)
+    println("DEBUG: Transformed Program:" + transformed.toString)
 
-    val errorTransformed = backend.verify(transformed.asInstanceOf[Program]) match {
+    val errorTransformed = backend.verify(transformed) match {
       case SilFailure(errors) => {
         SilFailure(errors.map {
           {

@@ -1,0 +1,7 @@
+method main()
+{
+    var i:Bool := false
+    //assert(true && f(i))
+    assert(1 + 1 == 2)
+    assert(1 + 1 == 3)
+}
