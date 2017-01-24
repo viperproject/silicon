@@ -19,6 +19,7 @@ import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters._
+import viper.silicon.supporters.qps.SummarisingFvfDefinition
 import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
 
@@ -167,37 +168,37 @@ object evaluator extends EvaluationRules with Immutable {
         val s1 = s.copy(functionRecorder = s.functionRecorder.recordArp(tVar, tConstraints))
         Q(s1, WildcardPerm(tVar), v)
 
-      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) => ???
-//        eval(σ, fa.rcv, pve, c)((tRcvr, c1) => {
-//          val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(σ.h, fa.field.name)
-//          c1.fvfCache.get((fa.field, quantifiedChunks)) match { /* TODO: Drop field from cache map, quantifiedChunks should suffice */
-//            case Some(fvfDef: SummarisingFvfDefinition) if !config.disableValueMapCaching() =>
-//              /* The next assertion must be made if the FVF definition is taken from the cache;
-//               * in the other case it is part of quantifiedChunkSupporter.withValue.
-//               */
-//              decider.assert(σ, PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
-//                case false =>
-//                  Failure(pve dueTo InsufficientPermission(fa))
-//                case true =>
-//                  assume(fvfDef.quantifiedValueDefinitions)
-//                    /* Re-emit definition since the previous definition could be nested under
-//                     * an auxiliary quantifier (resulting from the evaluation of some Silver
-//                     * quantifier in whose body field 'fa.field' was accessed)
-//                     * which is protected by a trigger term that we currently don't have.
-//                     */
-//                  val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-//                  val fr1 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
-//                  val c2 = c1.copy(functionRecorder = fr1)
-//                  Q(fvfLookup, c2)}
-//            case _ =>
-//              quantifiedChunkSupporter.withValue(σ, σ.h, fa.field, Seq.empty, True(), tRcvr, pve, fa, c1)(fvfDef => {
-//                assume(fvfDef.quantifiedValueDefinitions)
-//                val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
-//                val fr2 = c1.functionRecorder.recordSnapshot(fa, decider.pcs.branchConditions, fvfLookup)
-//                                             .recordFvfAndDomain(fvfDef, Seq.empty)
-//                val c2 = c1.copy(functionRecorder = fr2,
-//                                 fvfCache = if (config.disableValueMapCaching()) c1.fvfCache else c1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
-//                Q(fvfLookup, c2)})}})
+      case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
+        eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
+          val (quantifiedChunks, _) = quantifiedChunkSupporter.splitHeap(s1.h, fa.field.name)
+          s1.fvfCache.get((fa.field, quantifiedChunks)) match { /* TODO: Drop field from cache map, quantifiedChunks should suffice */
+            case Some(fvfDef: SummarisingFvfDefinition) if !Verifier.config.disableValueMapCaching() =>
+              /* The next assertion must be made if the FVF definition is taken from the cache;
+               * in the other case it is part of quantifiedChunkSupporter.withValue.
+               */
+              v1.decider.assert(PermLess(NoPerm(), fvfDef.totalPermissions(tRcvr))) {
+                case false =>
+                  Failure(pve dueTo InsufficientPermission(fa))
+                case true =>
+                  v1.decider.assume(fvfDef.quantifiedValueDefinitions)
+                    /* Re-emit definition since the previous definition could be nested under
+                     * an auxiliary quantifier (resulting from the evaluation of some Silver
+                     * quantifier in whose body field 'fa.field' was accessed)
+                     * which is protected by a trigger term that we currently don't have.
+                     */
+                  val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+                  val fr1 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
+                  val s2 = s1.copy(functionRecorder = fr1)
+                  Q(s2, fvfLookup, v1)}
+            case _ =>
+              quantifiedChunkSupporter.withValue(s1, s1.h, fa.field, Seq.empty, True(), tRcvr, pve, fa, v1)(fvfDef => {
+                v1.decider.assume(fvfDef.quantifiedValueDefinitions)
+                val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
+                val fr2 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
+                                             .recordFvfAndDomain(fvfDef, Seq.empty)
+                val s2 = s1.copy(functionRecorder = fr2,
+                                 fvfCache = if (Verifier.config.disableValueMapCaching()) s1.fvfCache else s1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
+                Q(s2, fvfLookup, v1)})}})
 
       case fa: ast.FieldAccess =>
         evalLocationAccess(s, fa, pve, v)((s1, name, args, v1) =>
@@ -224,7 +225,7 @@ object evaluator extends EvaluationRules with Immutable {
             evalOld(s, h, e0, pve, v)(Q)}
 
       case ast.ApplyOld(e0) =>
-        eval(s.copy(h = s.lhsHeap.get), e0, pve, v)(Q)
+        evalOld(s, s.lhsHeap.get, e0, pve, v)(Q)
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
@@ -373,19 +374,19 @@ object evaluator extends EvaluationRules with Immutable {
             case pred: ast.Predicate => s1.qpPredicates.contains(pred)}
           val perm =
             if (usesQPChunks) {
-              ???
-//              loc match {
-//                case _: ast.Field =>
-//                  val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
-//                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
-//                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
-//                case pred: ast.Predicate =>
+              loc match {
+                case _: ast.Field =>
+                  val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
+                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                case pred: ast.Predicate =>
 //                  //added for quantified predicate permissions
-//                  val formalArgs:Seq[Var] =
-//                    pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), v1.symbolConverter.toSort(formalArg.typ)))
-//                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
-//                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
-//                    PermPlus(q, ch.perm.replace(formalArgs, args)))}
+                  val formalArgs:Seq[Var] =
+                    pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), v1.symbolConverter.toSort(formalArg.typ)))
+                  val chs = h.values.collect { case ch: QuantifiedPredicateChunk if ch.name == name => ch }
+                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                    PermPlus(q, ch.perm.replace(formalArgs, args)))
+              }
             } else {
               val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
               chs.foldLeft(NoPerm(): Term)((q, ch) => {

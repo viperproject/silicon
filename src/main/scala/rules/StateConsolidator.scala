@@ -125,8 +125,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
           case ch2: QuantifiedFieldChunk =>
             (ch2 +: accMergedChunks, accMatches, accSnapEqs)
-//          case ch2: QuantifiedPredicateChunk =>
-//            (ch2 +: accMergedChunks, accMatches, accSnapEqs)
+
+          case ch2: QuantifiedPredicateChunk =>
+            (ch2 +: accMergedChunks, accMatches, accSnapEqs)
         }
       }
     }

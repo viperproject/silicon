@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silicon.{Map, Stack}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.supporters.qps.SummarisingFvfDefinition
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 
@@ -56,12 +56,12 @@ final case class State(
 
          qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
          /* TODO: Are these entries still necessary? */
-//         psfCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
-//         psfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
-         psfAsSnap: Boolean = false)
+         psfCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
+         psfPredicateCache: Map[(ast.Predicate, Seq[QuantifiedPredicateChunk]), SummarisingPsfDefinition] = Map.empty,
+         psfAsSnap: Boolean = false,
          /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
-//         predicateSnapMap:Map[ast.Predicate, terms.Sort] = Map.empty,
-//         predicateFormalVarMap:Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
+         predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
+         predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -127,7 +127,8 @@ object State {
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
                  recordEffects1, consumedChunks1, letBoundVars1,
                  qpFields1, fvfCache1, fvfPredicateCache1, fvfAsSnap1,
-                 qpPredicates1, psfAsSnap1) =>
+                 qpPredicates1, psfCache1, psfPredicateCache1, psfAsSnap1,
+                 predicateSnapMap1, predicateFormalVarMap1) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -146,7 +147,8 @@ object State {
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                      `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
                      `qpFields1`, fvfCache2, fvfPredicateCache2, `fvfAsSnap1`,
-                     `qpPredicates1`, `psfAsSnap1`) =>
+                     `qpPredicates1`, psfCache2, psfPredicateCache2, `psfAsSnap1`,
+                     `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
@@ -176,38 +178,40 @@ object State {
                   fvfPredicateCache1
               }
 
-        //      val psfCache3 =
-        //        viper.silicon.utils.conflictFreeUnion(psfCache1, psfCache2) match {
-        //          case Right(m3) => m3
-        //          case _ =>
-        //            /* TODO: See comment above */
-        //            assert(psfCache1.size == psfCache2.size)
-        //            psfCache1
-        //        }
+            val psfCache3 =
+              viper.silicon.utils.conflictFreeUnion(psfCache1, psfCache2) match {
+                case Right(m3) => m3
+                case _ =>
+                  /* TODO: See comment above */
+                  assert(psfCache1.size == psfCache2.size)
+                  psfCache1
+              }
 
-        //      val psfPredicateCache3 =
-        //        viper.silicon.utils.conflictFreeUnion(psfPredicateCache1, psfPredicateCache2) match {
-        //          case Right(m3) => m3
-        //          case _ =>
-        //            /* TODO: See comment above */
-        //            assert(psfPredicateCache1.size == psfPredicateCache2.size)
-        //            psfPredicateCache1
-        //        }
+            val psfPredicateCache3 =
+              viper.silicon.utils.conflictFreeUnion(psfPredicateCache1, psfPredicateCache2) match {
+                case Right(m3) => m3
+                case _ =>
+                  /* TODO: See comment above */
+                  assert(psfPredicateCache1.size == psfPredicateCache2.size)
+                  psfPredicateCache1
+              }
 
-        //      /* TODO: Unclear what the size check guarantees */
-        //      val predicateSnapMap3 : Map[ast.Predicate, terms.Sort] =
-        //        if (predicateSnapMap1.size > predicateSnapMap2.size) predicateSnapMap1
-        //        else predicateSnapMap2
-
-        //      /* TODO: Unclear what the size check guarantees */
-        //      val predicateFormalVarMap3 : Map[ast.Predicate, Seq[terms.Var]] =
-        //        if (predicateFormalVarMap1.size > predicateFormalVarMap2.size) predicateFormalVarMap1
-        //        else predicateFormalVarMap2
+//            /* TODO: Unclear what the size check guarantees */
+//            val predicateSnapMap3 : Map[ast.Predicate, terms.Sort] =
+//              if (predicateSnapMap1.size > predicateSnapMap2.size) predicateSnapMap1
+//              else predicateSnapMap2
+//
+//            /* TODO: Unclear what the size check guarantees */
+//            val predicateFormalVarMap3 : Map[ast.Predicate, Seq[terms.Var]] =
+//              if (predicateFormalVarMap1.size > predicateFormalVarMap2.size) predicateFormalVarMap1
+//              else predicateFormalVarMap2
 
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
                     fvfCache = fvfCache3,
-                    fvfPredicateCache = fvfPredicateCache3)
+                    fvfPredicateCache = fvfPredicateCache3,
+                    psfCache = psfCache3,
+                    psfPredicateCache = psfPredicateCache3)
 
           case _ =>
             sys.error("State merging failed: unexpected mismatch between symbolic states")
@@ -219,7 +223,9 @@ object State {
     pre.copy(functionRecorder = post.functionRecorder,
              possibleTriggers = post.possibleTriggers,
              fvfCache = post.fvfCache,
-             fvfPredicateCache = post.fvfPredicateCache)
+             fvfPredicateCache = post.fvfPredicateCache,
+             psfCache = post.psfCache,
+             psfPredicateCache = post.psfPredicateCache)
   }
 
   def conflictFreeUnionOrAbort[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K,V] =

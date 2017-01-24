@@ -7,7 +7,6 @@
 package viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon.Config
 import viper.silicon.rules.InverseFunction
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._

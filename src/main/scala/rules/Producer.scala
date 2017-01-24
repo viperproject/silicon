@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.{utils => _, _}
+import viper.silicon.state.{FieldChunk, Heap, PredicateChunk, State}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
@@ -167,9 +167,9 @@ object producer extends ProductionRules with Immutable {
 //          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
-      case let: ast.Let if !let.isPure => ???
-//        handle[ast.Exp](σ, let, pve, c)((γ1, body, c1) =>
-//          produce2(σ \+ γ1, sf, body, pve, c1)(Q))
+      case let: ast.Let if !let.isPure =>
+        letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
+          produce2(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
@@ -178,12 +178,11 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpFields.contains(field)) {
-            ???
-//            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, s)
-//            optFvfDef.foreach(fvfDef => assume(fvfDef.valueDefinitions))
-//            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
-//            val c1 = optFvfDef.fold(c)(fvfDef => c.copy(functionRecorder = c.functionRecorder.recordFvfAndDomain(fvfDef, Seq.empty)))
-//            (h + ch, c1)
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, snap, v)
+            optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.valueDefinitions))
+            val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
+            val s1 = optFvfDef.fold(s)(fvfDef => s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(fvfDef, Seq.empty)))
+            Q(s1, h + ch, v)
           } else {
             val ch = FieldChunk(rcvr, field.name, snap, p)
             chunkSupporter.produce(s, h, ch, v)(Q)
@@ -206,15 +205,14 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpPredicates.contains(predicate)) {
-            ???
-//            decider.prover.comment("define formalVArgs")
-//            val formalArgs:Seq[Var] = c.predicateFormalVarMap(predicate)
-//            decider.prover.comment("createPredicateSnapFunction")
-//            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, s, c)
-//            decider.prover.comment("assume snapDefinition")
-//            optPsfDef.foreach(psfDef => assume(psfDef.snapDefinitions))
-//            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
-//            (h + ch, c)
+            v.decider.prover.comment("define formalVArgs")
+            val formalArgs:Seq[Var] = s.predicateFormalVarMap(predicate)
+            v.decider.prover.comment("createPredicateSnapFunction")
+            val (psf, optPsfDef) = quantifiedPredicateChunkSupporter.createPredicateSnapFunction(predicate, args, formalArgs, snap, s.predicateSnapMap, v)
+            v.decider.prover.comment("assume snapDefinition")
+            optPsfDef.foreach(psfDef => v.decider.assume(psfDef.snapDefinitions))
+            val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
+            Q(s, h + ch, v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = PredicateChunk(predicate.name, args, snap1, p)
@@ -234,101 +232,97 @@ object producer extends ProductionRules with Immutable {
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, s2.h, tArgs, snap, gain, v2)(Q)}))
 
-      case wand: ast.MagicWand => ???
-//        magicWandSupporter.createChunk(σ, wand, pve, c)((chWand, c1) =>
-//          Q(σ.h + chWand, c1))
+      case wand: ast.MagicWand =>
+        magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
+          Q(s1, s1.h + chWand, v1))
 
-      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) => ???
-//        val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-//        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), None, qid, pve, c){
-//          case (Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, Left(tAuxQuantNoTriggers), c1) =>
-//            val snap = sf(sorts.FieldValueFunction(toSort(field.typ)))
-//            val additionalInvFctArgs = c1.quantifiedVariables
-//            val gain = PermTimes(tPerm, c1.permissionScalingFactor)
-//            val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedFieldChunk(tQVar, tRcvr, field, snap, gain, tCond, additionalInvFctArgs)
-//
-//            /* [2016-10-26 Malte]
-//             * The issue described (and solved) in the previous comment is no longer a problem
-//             * because quantifiers with FVFs in their triggers are rewritten by abstracting over
-//             * the concrete FVF with a newly added, quantified variable. This allows the prover
-//             * to instantiate the nesting axiom with any FVF and to get to the nested definitional
-//             * axioms.
-//             * The next comment is kept for documentary purposes.
-//             *
-//             * [2015-11-13 Malte]
-//             * Using the trigger of the inv-of-receiver definitional axiom of the new inverse
-//             * function as the trigger of the auxiliary quantifier seems like a good choice
-//             * because whenever we need to learn something about the new inverse function,
-//             * we might be interested in the auxiliary assumptions as well.
-//             *
-//             * This choice of triggers, however, might be problematic when quantified field
-//             * dereference chains, e.g. x.g.f, where access to x.g and to x.g.f is quantified,
-//             * are used in pure assertions, as witnessed by method test04 in test case
-//             * quantified permissions/sets/generalised_shape.sil.
-//             *
-//             * In such a scenario, the receiver of (x.g).f will be an fvf-lookup, e.g.
-//             * lookup_g(fvf1, x), but since fvf1 was introduced when evaluating x.g, the
-//             * definitional axioms will be nested under the quantifier that is triggered by
-//             * lookup_g(fvf1, x). In particular, the lookup definitional axiom, i.e. the one
-//             * stating that lookup_g(fvf1, x) == lookup_g(fvf0, x) will be nested.
-//             *
-//             * Since we (currently) introduce a new FVF per field dereference, asserting that
-//             * we have permissions to (x.g).f (e.g. at some later point) will introduce a new
-//             * FVF fvf2, alongside a definitional axiom stating that
-//             * lookup_g(fvf2, x) == lookup_g(fvf0, x).
-//             *
-//             * In order to prove that we hold permissions to (x.g).f, we would need to
-//             * instantiate the auxiliary quantifier, but that quantifier is only triggered by
-//             * lookup_g(fvf1, x).
-//             *
-//             * Hence, we do the following: if the only trigger for the auxiliary quantifier is
-//             * of the shape lookup_g(fvf1, x), then we search the body for the equality
-//             * lookup_g(fvf1, x) == lookup_g(fvf0, x), and we use lookup_g(fvf0, x) as the
-//             * trigger. Searching the body is only necessary because, at the current point, we
-//             * no longer know the relation between fvf1 and fvf0 (it could be preserved, though).
-//             */
-//            decider.prover.comment("Nested auxiliary terms")
-//            assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
-//                                            triggers = invFct.invOfFct.triggers))
-//            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tPerm), invFct.invOfFct.triggers, s"$qid-perm")
-//            assume(gainNonNeg)
-//            decider.prover.comment("Definitional axioms for inverse functions")
-//            assume(invFct.definitionalAxioms)
-//            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
-//            val ch1 = ch.copy(hints = hints)
-//            val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, tPerm)
-//            decider.prover.comment("Receivers are non-null")
-//            assume(tNonNullQuant)
-//            val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordFieldInv(invFct))
-//            Q(σ.h + ch1, c2)}
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
+        val qid = s"prog.l${viper.silicon.utils.ast.sourceLine(forall)}"
+        evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), None, qid, pve, v){
+          case (s1, Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, Left(tAuxQuantNoTriggers), v1) =>
+            val snap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(field.typ)), v1)
+            val additionalInvFctArgs = s1.quantifiedVariables
+            val gain = PermTimes(tPerm, s1.permissionScalingFactor)
+            val (ch, invFct) = quantifiedChunkSupporter.createQuantifiedFieldChunk(tQVar, tRcvr, field, snap, gain, tCond, additionalInvFctArgs, v1)
 
-      case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, gain, forall, _) => ???
-//        //create new quantified predicate chunk
-//        val predicate = c.program.findPredicate(predname)
-//        val qid = s"prog.l${utils.ast.sourceLine(forall)}"
-//        evalQuantified(σ, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , None, qid, pve, c) {
-//          case (Seq(tQVar), Seq(tCond), tArgsGain, _, Left(tAuxQuantNoTriggers), c1) =>
-//            val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
-//            val snap = sf(sorts.PredicateSnapFunction(c.predicateSnapMap(predicate)))
-//            val additionalInvFctArgs = c1.quantifiedVariables
-//
-//            val gain = PermTimes(tGain, c1.permissionScalingFactor)
-//            val (ch, invFct) =
-//              quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, c.predicateFormalVarMap(predicate), tArgs, snap, gain, tCond,
-//                additionalInvFctArgs)
-//
-//            decider.prover.comment("Nested auxiliary terms")
-//            assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
-//              triggers = invFct.invOfFct.triggers))
-//
-//            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
-//            assume(gainNonNeg)
-//            decider.prover.comment("Definitional axioms for inverse functions")
-//            assume(invFct.definitionalAxioms)
-//            val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
-//            val ch1 = ch.copy(hints = hints)
-//            val c2 = c1.copy(functionRecorder = c1.functionRecorder.recordPredInv(invFct))
-//            Q(σ.h + ch1, c2)}
+            /* [2016-10-26 Malte]
+             * The issue described (and solved) in the previous comment is no longer a problem
+             * because quantifiers with FVFs in their triggers are rewritten by abstracting over
+             * the concrete FVF with a newly added, quantified variable. This allows the prover
+             * to instantiate the nesting axiom with any FVF and to get to the nested definitional
+             * axioms.
+             * The next comment is kept for documentary purposes.
+             *
+             * [2015-11-13 Malte]
+             * Using the trigger of the inv-of-receiver definitional axiom of the new inverse
+             * function as the trigger of the auxiliary quantifier seems like a good choice
+             * because whenever we need to learn something about the new inverse function,
+             * we might be interested in the auxiliary assumptions as well.
+             *
+             * This choice of triggers, however, might be problematic when quantified field
+             * dereference chains, e.g. x.g.f, where access to x.g and to x.g.f is quantified,
+             * are used in pure assertions, as witnessed by method test04 in test case
+             * quantified permissions/sets/generalised_shape.sil.
+             *
+             * In such a scenario, the receiver of (x.g).f will be an fvf-lookup, e.g.
+             * lookup_g(fvf1, x), but since fvf1 was introduced when evaluating x.g, the
+             * definitional axioms will be nested under the quantifier that is triggered by
+             * lookup_g(fvf1, x). In particular, the lookup definitional axiom, i.e. the one
+             * stating that lookup_g(fvf1, x) == lookup_g(fvf0, x) will be nested.
+             *
+             * Since we (currently) introduce a new FVF per field dereference, asserting that
+             * we have permissions to (x.g).f (e.g. at some later point) will introduce a new
+             * FVF fvf2, alongside a definitional axiom stating that
+             * lookup_g(fvf2, x) == lookup_g(fvf0, x).
+             *
+             * In order to prove that we hold permissions to (x.g).f, we would need to
+             * instantiate the auxiliary quantifier, but that quantifier is only triggered by
+             * lookup_g(fvf1, x).
+             *
+             * Hence, we do the following: if the only trigger for the auxiliary quantifier is
+             * of the shape lookup_g(fvf1, x), then we search the body for the equality
+             * lookup_g(fvf1, x) == lookup_g(fvf0, x), and we use lookup_g(fvf0, x) as the
+             * trigger. Searching the body is only necessary because, at the current point, we
+             * no longer know the relation between fvf1 and fvf0 (it could be preserved, though).
+             */
+            v1.decider.prover.comment("Nested auxiliary terms")
+            v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
+                                                       triggers = invFct.invOfFct.triggers))
+            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tPerm), invFct.invOfFct.triggers, s"$qid-perm")
+            v1.decider.assume(gainNonNeg)
+            v1.decider.prover.comment("Definitional axioms for inverse functions")
+            v1.decider.assume(invFct.definitionalAxioms)
+            val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
+            val ch1 = ch.copy(hints = hints)
+            val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, tPerm, v1)
+            v1.decider.prover.comment("Receivers are non-null")
+            v1.decider.assume(tNonNullQuant)
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(invFct))
+            Q(s2, s2.h + ch1, v1)}
+
+      case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, gain, forall, _) =>
+        //create new quantified predicate chunk
+        val predicate = Verifier.program.findPredicate(predname)
+        val qid = s"prog.l${viper.silicon.utils.ast.sourceLine(forall)}"
+        evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , None, qid, pve, v) {
+          case (s1, Seq(tQVar), Seq(tCond), tArgsGain, _, Left(tAuxQuantNoTriggers), v1) =>
+            val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
+            val snap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
+            val additionalInvFctArgs = s1.quantifiedVariables
+            val gain = PermTimes(tGain, s1.permissionScalingFactor)
+            val (ch, invFct) = quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, s1.predicateFormalVarMap(predicate), tArgs, snap, gain, tCond, additionalInvFctArgs, v1)
+
+            v1.decider.prover.comment("Nested auxiliary terms")
+            v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
+                              triggers = invFct.invOfFct.triggers))
+            val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
+            v1.decider.assume(gainNonNeg)
+            v1.decider.prover.comment("Definitional axioms for inverse functions")
+            v1.decider.assume(invFct.definitionalAxioms)
+            val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
+            val ch1 = ch.copy(hints = hints)
+            val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordPredInv(invFct))
+            Q(s2, s2.h + ch1, v1)}
 
       case _: ast.InhaleExhaleExp =>
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))

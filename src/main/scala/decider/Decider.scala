@@ -49,13 +49,16 @@ trait Decider {
 
   def fresh(id: String, sort: Sort): Var
   def fresh(id: String, argSorts: Seq[Sort], resultSort: Sort): Function
+  def freshMacro(id: String, formalArgs: Seq[Var], body: Term): Macro
 
   def fresh(sort: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
 
-  def freshFunctions: InsertionOrderedSet[Function]
-  def declareAndRecordAsFresh(functions: Iterable[Function]): Unit
+  def freshFunctions: InsertionOrderedSet[FunctionDecl]
+  def freshMacros: Vector[MacroDecl]
+  def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit
+  def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
   def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
@@ -78,7 +81,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var z3: Z3ProverStdIO = _
     private var pathConditions: PathConditionStack = _
 
-    private var _freshFunctions: InsertionOrderedSet[Function] = _
+    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _
+    private var _freshMacros: Vector[MacroDecl] = _
 
     def prover: Prover = z3
 
@@ -130,6 +134,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     def start() {
       pathConditions = new LayeredPathConditionStack()
       _freshFunctions = InsertionOrderedSet.empty
+      _freshMacros = Vector.empty
       createProver()
     }
 
@@ -137,6 +142,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       z3.reset()
       pathConditions = new LayeredPathConditionStack()
       _freshFunctions = InsertionOrderedSet.empty
+      _freshMacros = Vector.empty
     }
 
     def stop() {
@@ -247,6 +253,18 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       (permVar, permVarConstraints)
     }
 
+    def freshMacro(id: String, formalArgs: Seq[Var], body: Term): Macro = {
+      val name = identifierFactory.fresh(id)
+      val argSorts = formalArgs map (_.sort)
+      val macroDecl = MacroDecl(name, formalArgs, body)
+
+      prover.declare(macroDecl)
+
+      _freshMacros = _freshMacros :+ macroDecl
+
+      Macro(name, argSorts, body.sort)
+    }
+
     private def prover_fresh[F <: Function : ClassTag]
                             (id: String, argSorts: Seq[Sort], resultSort: Sort)
                             : F = {
@@ -271,17 +289,24 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               HeapDepFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
           }
 
-      _freshFunctions = _freshFunctions + fun
+      _freshFunctions = _freshFunctions + FunctionDecl(fun)
 
       fun
     }
 
-    def freshFunctions: InsertionOrderedSet[Function] = _freshFunctions
+    def freshFunctions: InsertionOrderedSet[FunctionDecl] = _freshFunctions
+    def freshMacros: Vector[MacroDecl] = _freshMacros
 
-    def declareAndRecordAsFresh(functions: Iterable[Function]): Unit = {
-      functions foreach (f => prover.declare(FunctionDecl(f)))
+    def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit = {
+      functions foreach prover.declare
 
       _freshFunctions = _freshFunctions ++ functions
+    }
+
+    def declareAndRecordAsFreshMacros(macros: Vector[MacroDecl]): Unit = {
+      macros foreach prover.declare
+
+      _freshMacros = _freshMacros ++ macros
     }
 
     /* Misc */

@@ -8,7 +8,7 @@ package viper.silicon.state
 
 import viper.silver.ast
 import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
-import viper.silicon.rules.InverseFunction
+import viper.silicon.rules.{InverseFunction, PredicateInverseFunction}
 import viper.silicon.state.terms.{Lookup, PermMinus, PermPlus, PredicateLookup, Term, Var, sorts}
 import viper.silicon.state.terms.predef.`?r`
 
@@ -87,27 +87,27 @@ case class QuantifiedFieldChunk(name: String,
   override def toString = s"${terms.Forall} ${`?r`} :: ${`?r`}.$name -> $fvf # $perm"
 }
 
-//case class QuantifiedPredicateChunk(name: String,
-//                                    formalVars: Seq[Var],
-//                                    psf: Term,
-//                                    perm: Term,
-//                                    inv: Option[PredicateInverseFunction],
-//                                    initialCond: Option[Term],
-//                                    singletonArgs: Option[Seq[Term]],
-//                                    hints: Seq[Term] = Nil)
-//  extends PermissionChunk {
-//
-//  assert(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
-//  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
-//
-//  def valueAt(args: Seq[Term]) = PredicateLookup(name, psf, args, formalVars)
-//
-//  def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))
-//  def -(perm: Term) = copy(perm = PermMinus(this.perm, perm))
-//  def \(perm: Term) = copy(perm = perm)
-//
-//  override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $name(${formalVars.mkString(",")}) -> $psf # $perm"
-//}
+case class QuantifiedPredicateChunk(name: String,
+                                    formalVars: Seq[Var],
+                                    psf: Term,
+                                    perm: Term,
+                                    inv: Option[PredicateInverseFunction],
+                                    initialCond: Option[Term],
+                                    singletonArgs: Option[Seq[Term]],
+                                    hints: Seq[Term] = Nil)
+  extends PermissionChunk {
+
+  assert(psf.sort.isInstanceOf[terms.sorts.PredicateSnapFunction], s"Quantified predicate chunk values must be of sort PredicateSnapFunction ($psf), but found ${psf.sort}")
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+
+  def valueAt(args: Seq[Term]) = PredicateLookup(name, psf, args, formalVars)
+
+  def +(perm: Term) = copy(perm = PermPlus(this.perm, perm))
+  def -(perm: Term) = copy(perm = PermMinus(this.perm, perm))
+  def \(perm: Term) = copy(perm = perm)
+
+  override def toString = s"${terms.Forall}  ${formalVars.mkString(",")} :: $name(${formalVars.mkString(",")}) -> $psf # $perm"
+}
 
 case class MagicWandChunk(ghostFreeWand: ast.MagicWand,
                           bindings: Map[ast.AbstractLocalVar, Term],

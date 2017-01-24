@@ -11,12 +11,14 @@
 package viper.silicon.supporters.qps
 
 import viper.silicon.Config
+import viper.silicon.rules.PredicateInverseFunction
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.QuantifiedPredicateChunk
 import viper.silicon.state.terms._
 import viper.silver.ast
 import viper.silicon.state.terms.sorts
+import viper.silicon.verifier.Verifier
 
 trait PsfDefinition {
   def predicate: ast.Predicate
@@ -87,7 +89,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
                                         formalArgs: Seq[Var],
                                         sourceChunks: Seq[QuantifiedPredicateChunk] /*,
                                         freshPsf: Boolean*/)
-                                       (axiomRewriter: AxiomRewriter, config: Config)
+                                       (axiomRewriter: AxiomRewriter)
     extends PsfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationPredicateSnapFunctionDefinition must be used "
@@ -125,7 +127,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
       Forall(
         formalArgs,
         snapDefinition,
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newPsfLookupTriggers) :: Trigger(sourcePsfLookupTriggers) :: Nil,
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newPsfLookupTriggers) :: Trigger(sourcePsfLookupTriggers) :: Nil,
         s"qp.$psf-lookup-${axiomCounter.next()}")
     }
   }
@@ -142,7 +144,7 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
-      if (config.disableISCTriggers())
+      if (Verifier.config.disableISCTriggers())
         (Nil, Nil)
       else
         TriggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
@@ -185,7 +187,6 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
                                     args: Seq[Term],
                                     formalArgs:Seq[Var],
                                     sourceChunks: Seq[QuantifiedPredicateChunk])
-                                   (config: Config)
     extends PsfDefinition {
 
   private val triples =
@@ -209,7 +210,7 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
       Forall(
         formalArgs,
         Implies(PermLess(NoPerm(), p), lk1 === lk2),
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
     }
 
   def totalPermissions(args: Seq[Term], formalArgs: Seq[Var]) = {

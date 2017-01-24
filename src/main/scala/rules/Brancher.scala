@@ -95,7 +95,8 @@ object brancher extends BranchingRules with Immutable {
          * "offloading" verifier are captured.
          */
         val functionsOfCurrentDecider = v.decider.freshFunctions
-        val assumptionsOfCurrentDecider = v.decider.pcs.assumptions
+        val macrosOfCurrentDecider = v.decider.freshMacros
+//        val assumptionsOfCurrentDecider = v.decider.pcs.assumptions
         val pcsOfCurrentDecider = v.decider.pcs.duplicate()
 
 //        println(s"\n[INIT elseBranchVerificationTask v.uniqueId = ${v.uniqueId}]")
@@ -111,7 +112,7 @@ object brancher extends BranchingRules with Immutable {
 
           val res =
             executionFlowController.locally(s, v0)((s1, v1) => {
-              var optOldPcs: Option[PathConditionStack] = None
+//              var optOldPcs: Option[PathConditionStack] = None
 
               if (v.uniqueId != v1.uniqueId) {
 //                println(s"\n[Shifting execution from ${v.uniqueId} to ${v1.uniqueId}]")
@@ -120,10 +121,15 @@ object brancher extends BranchingRules with Immutable {
 //                println(s"  else-branch: $cnt | $negatedCondition")
 
                 val newFunctions = functionsOfCurrentDecider -- v1.decider.freshFunctions
+                val newMacros = macrosOfCurrentDecider.diff(v1.decider.freshMacros)
 //                val newAssumptions = assumptionsOfCurrentDecider -- v1.decider.pcs.assumptions
 
-//                println("  assumptionsOfCurrentDecider = ")
-//                assumptionsOfCurrentDecider foreach (a => println(s"    $a"))
+//                println(s"  macros of source verifier (${v.uniqueId}) = ")
+//                macrosOfCurrentDecider foreach (a => println(s"    $a"))
+//                println("  macros of dest verifier = ")
+//                v1.decider.freshMacros foreach (a => println(s"    $a"))
+//                println("  delta = ")
+//                newMacros foreach (a => println(s"    $a"))
 //                println("  v1.decider.pcs.assumptions = ")
 //                v1.decider.pcs.assumptions foreach (a => println(s"    $a"))
 //                println("  v1.decider.pcs.branchConditions = ")
@@ -132,7 +138,9 @@ object brancher extends BranchingRules with Immutable {
                 v1.decider.prover.comment(s"[Shifting execution from ${v.uniqueId} to ${v1.uniqueId}]")
                 v1.decider.prover.comment(s"Bulk-declaring functions")
                 // functionsToDeclare foreach (f => v1.decider.prover.declare(FunctionDecl(f)))
-                v1.decider.declareAndRecordAsFresh(newFunctions)
+                v1.decider.declareAndRecordAsFreshFunctions(newFunctions)
+                v1.decider.prover.comment(s"Bulk-declaring macros")
+                v1.decider.declareAndRecordAsFreshMacros(newMacros)
 //                v1.decider.prover.comment(s"Bulk-assuming path conditions")
 //                v1.decider.assume(newAssumptions, true)
 

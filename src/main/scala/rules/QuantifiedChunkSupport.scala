@@ -13,7 +13,6 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.utils.{BigPermSum, consumeExactRead}
 import viper.silicon.supporters.qps.{FvfDefinition, QuantifiedChunkFvfDefinition, SingletonChunkFvfDefinition, SummarisingFvfDefinition}
-import viper.silicon.utils.Counter
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
@@ -28,7 +27,7 @@ case class InverseFunction(func: Function,
   def apply(t: Term) = function(t)
 }
 
-trait QuantifiedChunkSupporter extends SymbolicExecutionRules {
+trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   def getFreshInverseFunction(qvar: Var,
                               fct: Term,
                               condition: Term,
@@ -111,9 +110,7 @@ trait QuantifiedChunkSupporter extends SymbolicExecutionRules {
                                   : Seq[QuantifiedFieldChunk] => Seq[QuantifiedFieldChunk]
 }
 
-object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable {
-  import producer._
-  import consumer._
+object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   /* Chunk creation */
 
@@ -436,12 +433,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable 
 
     val precomputedData = candidates map { ch =>
       val pTaken = Ite(conditionOfInv, PermMin(ch.perm, pNeeded), NoPerm())
-      val macroName = Identifier(s"pTaken${v.counter(this)}")
-      val macroDecl = MacroDecl(macroName, `?r` :: Nil, pTaken)
-
-      v.decider.prover.declare(macroDecl)
-
-      val permsTakenFunc = Macro(macroName, Seq(`?r`.sort), sorts.Perm)
+      val permsTakenFunc = v.decider.freshMacro("pTaken", `?r` :: Nil, pTaken)
       val permsTakenFApp = (t: Term) => App(permsTakenFunc, t :: Nil)
 
       pNeeded = PermMinus(pNeeded, permsTakenFApp(`?r`))
@@ -460,7 +452,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable 
         val constrainPermissions = !consumeExactRead(perms, s.constrainableARPs)
 
         val (permissionConstraint, depletedCheck) =
-          createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv, constrainPermissions, ithChunk,
+          createPermissionConstraintAndDepletedCheck(qvar, conditionalizedPermsOfInv,
+                                                     constrainPermissions, ithChunk,
                                                      ithPTaken, v)
 
         if (constrainPermissions) {
@@ -516,7 +509,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable 
                        Implies(
                          ithChunk.perm !== NoPerm(),
                          PermLess(conditionalizedPermsOfInv, ithChunk.perm)),
-                       Nil: Seq[Trigger], s"qp.srp${v.counter(this)}")
+                       Nil: Seq[Trigger], s"qp.srp${v.counter(this).next()}")
 
             if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
 
@@ -539,7 +532,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable 
   }
 
   @inline
-  private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var]): Option[(Term, Term)] = {
+  private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var])
+                                             : Option[(Term, Term)] = {
+
     /* TODO: This code could be improved significantly if we
      *         - distinguished between quantified chunks for single and multiple locations
      *         - separated the initial permission amount from the subtracted amount(s) in each chunk
@@ -697,7 +692,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable 
       implies,
       Nil,
       /* receiversEqual :: And(effectiveCondition.replace(qvar, vx), effectiveCondition.replace(qvar, vy)) :: Nil */
-      s"qp.inj${v.counter(this)}")
+      s"qp.inj${v.counter(this).next()}")
   }
 
   def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term, v: Verifier) = {
@@ -706,7 +701,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupporter with Immutable 
         qvar,
         Implies(And(cond, PermLess(NoPerm(), perms)), rcvr !== Null()),
         Nil,
-        s"qp.null${v.counter(this)}")
+        s"qp.null${v.counter(this).next()}")
     val axRaw = if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
 
     val ax = v.axiomRewriter.rewrite(axRaw).getOrElse(axRaw)

@@ -51,7 +51,8 @@ class DefaultMasterVerifier(config: Config)
   protected val multisetsContributor = new DefaultMultisetsContributor(preambleReader, symbolConverter, termConverter)
   protected val domainsContributor = new DefaultDomainsContributor(symbolConverter, domainTranslator)
   protected val fieldValueFunctionsContributor = new DefaultFieldValueFunctionsContributor(preambleReader, symbolConverter, termConverter, config)
-//  protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
+  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
+  protected val predicateSnapFunctionsContributor = new DefaultPredicateSnapFunctionsContributor(preambleReader, symbolConverter, termConverter, predSnapGenerator, config)
 
   private val _verificationPoolManager: VerificationPoolManager = new VerificationPoolManager(this)
   def verificationPoolManager: VerificationPoolManager = _verificationPoolManager
@@ -60,7 +61,7 @@ class DefaultMasterVerifier(config: Config)
     uniqueIdCounter,
     sequencesContributor, setsContributor, multisetsContributor, domainsContributor,
     fieldValueFunctionsContributor,
-//    predicateSnapFunctionsContributor,
+    predSnapGenerator, predicateSnapFunctionsContributor,
     functionsSupporter, predicateSupporter,
     _verificationPoolManager
   )
@@ -109,8 +110,9 @@ class DefaultMasterVerifier(config: Config)
   /* Program verification */
 
   def verify(program: ast.Program): List[VerificationResult] = {
-//    predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
     Verifier.program = program
+
+    predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
 
 
     allProvers.comment("Started: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()) /*bookkeeper.formattedStartTime*/)
@@ -185,9 +187,9 @@ class DefaultMasterVerifier(config: Config)
 
     State(qpFields = quantifiedFields,
           qpPredicates = quantifiedPredicates,
-          applyHeuristics = applyHeuristics)
-//          predicateSnapMap = predSnapGenerator.snapMap,
-//          predicateFormalVarMap = predSnapGenerator.formalVarMap)
+          applyHeuristics = applyHeuristics,
+          predicateSnapMap = predSnapGenerator.snapMap,
+          predicateFormalVarMap = predSnapGenerator.formalVarMap)
   }
 
   private def excludeMethod(method: ast.Method) = (
@@ -220,7 +222,7 @@ class DefaultMasterVerifier(config: Config)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-//    predicateSnapFunctionsContributor,
+    predicateSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -231,7 +233,7 @@ class DefaultMasterVerifier(config: Config)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-//    predicateSnapFunctionsContributor,
+    predicateSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -242,7 +244,7 @@ class DefaultMasterVerifier(config: Config)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-//    predicateSnapFunctionsContributor,
+    predicateSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -257,7 +259,7 @@ class DefaultMasterVerifier(config: Config)
     sequencesContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-//    predicateSnapFunctionsContributor,
+    predicateSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )
@@ -268,7 +270,7 @@ class DefaultMasterVerifier(config: Config)
     multisetsContributor,
     domainsContributor,
     fieldValueFunctionsContributor,
-//    predicateSnapFunctionsContributor,
+    predicateSnapFunctionsContributor,
     functionsSupporter,
     predicateSupporter
   )

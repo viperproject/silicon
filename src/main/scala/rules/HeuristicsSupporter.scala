@@ -25,6 +25,17 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
   /* tryOperation-Methods with varying output arity */
 
   @inline
+  def tryOperation[O1]
+                  (description: String)
+                  (s: State, h: Heap, v: Verifier)
+                  (action: (State, Heap, Verifier, (State, O1, Verifier) => VerificationResult) => VerificationResult)
+                  (Q: (State, O1, Verifier) => VerificationResult)
+                  : VerificationResult = {
+
+    tryWithReactions[O1](description)(s, h, v)(action, None)(Q)
+  }
+
+  @inline
   def tryOperation[O1, O2]
                   (description: String)
                   (s: State, h: Heap, v: Verifier)
@@ -80,13 +91,12 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
   private def tryWithReactions[O]
                               (description: String)
-                              (s: State, h: Heap, v: Verifier)
+                              (_s: State, h: Heap, v: Verifier)
                               (action: (State, Heap, Verifier, (State, O, Verifier) => VerificationResult) => VerificationResult,
                                initialFailure: Option[Failure])
                               (Q: (State, O, Verifier) => VerificationResult)
-                              : VerificationResult =
-    action(s, h, v, Q)
-//  {
+                              : VerificationResult = {
+
 //    val myId = cnt; cnt += 1
 //    val baseIdent = "  "
 //    var printedHeader = false
@@ -110,12 +120,12 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 //      val messagePrefix = baseIdent * ident
 //      heuristicsLogger.debug(s"$prefix($myId)$messagePrefix $msg")
 //    }
-//
-//    var localActionSuccess = false
-//    val c =
-//      if (_c.triggerAction == null) _c.copy(triggerAction = action)
-//      else _c
-//
+
+    var localActionSuccess = false
+    val s =
+      if (_s.triggerAction == null) _s.copy(triggerAction = action)
+      else _s
+
 //    if (initialFailure.nonEmpty) {
 //      lnsay(s"retrying $description")
 //      say(s"s.h = ${σ.h}")
@@ -123,59 +133,59 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 //      say(s"c.reserveHeaps:")
 //      c.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
 //    }
-//
-//    val globalActionResult =
-//      action(σ, h, c, (outputs, c1) => {
-//        /* We are here if the `action` invoked the success continuation `QS` */
-//        localActionSuccess = true
+
+    val globalActionResult =
+      action(s, h, v, (s1, outputs, v1) => {
+        /* We are here if the `action` invoked the success continuation `QS` */
+        localActionSuccess = true
 //        if (initialFailure.nonEmpty) say(s"$description succeeded locally")
-//        val c2 =
-//          if (action.eq(c1.triggerAction))
-//            c1.copy(triggerAction = null, heuristicsDepth = 0)
-//          else
-//            c1
-//          /* TODO: depth may only be reset if this action is not part of the
-//           *       execution of a reaction. I don't (yet) know how to detect
-//           *       this, though ...
-//           */
-////          stack = stack.tail
-//        Q(outputs, c2)})
-//
-//    /* The `action` is either a regular piece of symbolic execution code, e.g.,
-//     * a part of a rule in the consumer, that is wrapped by `tryOperation`, or
-//     * it is a reaction that was chosen by a heuristic.
-//     *
-//     * The former is expected to invoke the success continuation `QS` that is
-//     * passed to the action by `tryOperation` in order to indicate that the
-//     * action locally succeeds. The goal of this is to not apply heuristics
-//     * if an action failed after it locally succeeded, which in turn reduces
-//     * the number of reactions, and thereby, symbolic execution branches.
-//     *
-//     * The latter is *not* expected to invoke the success continuation `QS`,
-//     * because we want to backtrack over unsuccessful reactions in order to
-//     * try the next reaction on the same depth. Moreover, the depth will be
-//     * reset to 0 in the `QS`, which allows further (nested) heuristics.
-//     */
-//
-//    var reactionResult: VerificationResult = globalActionResult
-//      /* A bit hacky, but having an initial result here simplifies things quite a bit */
-//
-//    globalActionResult match {
-//      case _ if    localActionSuccess
-//                || !globalActionResult.isFatal
-//                || !c.applyHeuristics
+        val s2 =
+          if (action.eq(s1.triggerAction))
+            s1.copy(triggerAction = null, heuristicsDepth = 0)
+          else
+            s1
+          /* TODO: depth may only be reset if this action is not part of the
+           *       execution of a reaction. I don't (yet) know how to detect
+           *       this, though ...
+           */
+//          stack = stack.tail
+        Q(s2, outputs, v1)})
+
+    /* The `action` is either a regular piece of symbolic execution code, e.g.,
+     * a part of a rule in the consumer, that is wrapped by `tryOperation`, or
+     * it is a reaction that was chosen by a heuristic.
+     *
+     * The former is expected to invoke the success continuation `QS` that is
+     * passed to the action by `tryOperation` in order to indicate that the
+     * action locally succeeds. The goal of this is to not apply heuristics
+     * if an action failed after it locally succeeded, which in turn reduces
+     * the number of reactions, and thereby, symbolic execution branches.
+     *
+     * The latter is *not* expected to invoke the success continuation `QS`,
+     * because we want to backtrack over unsuccessful reactions in order to
+     * try the next reaction on the same depth. Moreover, the depth will be
+     * reset to 0 in the `QS`, which allows further (nested) heuristics.
+     */
+
+    var reactionResult: VerificationResult = globalActionResult
+      /* A bit hacky, but having an initial result here simplifies things quite a bit */
+
+    globalActionResult match {
+      case _ if    localActionSuccess
+                || !globalActionResult.isFatal
+                || !s.applyHeuristics
 //                || stack.size >= 10 * config.maxHeuristicsDepth() /* TODO: Ugly hack! Shouldn't be necessary */
-//                || c.heuristicsDepth >= config.maxHeuristicsDepth() => /* Quit trying heuristics */
-//
+                || s.heuristicsDepth >= Verifier.config.maxHeuristicsDepth() => /* Quit trying heuristics */
+
 //        /* TODO: Remove */
 //        if (stack.size >= 10 * config.maxHeuristicsDepth()) {
 //          log.debug("[tryWithReactions] ******************* Heuristics stack grew too large ***************** ")
 ////            Thread.sleep(2500)
 //        }
-//
-//      case actionFailure: Failure =>
+
+      case actionFailure: Failure =>
 //        stack ::= myId
-//
+
 //        say(s"action $myId failed (locally and globally)")
 //        say(s"description = $description")
 //        say(s"globalActionResult = $globalActionResult")
@@ -184,178 +194,177 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 //        say(s"depth = ${c.heuristicsDepth}", 2)
 //        say(s"applyHeuristics = ${c.applyHeuristics}", 2)
 //        say(s"exhaleExt = ${c.exhaleExt}", 2)
-////          Thread.sleep(500)
-//
-//        var remainingReactions = generateReactions(σ, h, c, actionFailure)
-//        var triedReactions = 0
-//
+
+        var remainingReactions = generateReactions(s, h, v, actionFailure)
+        var triedReactions = 0
+
 //        say(s"generated ${remainingReactions.length} possible reactions")
-//
-//        while (reactionResult.isFatal && remainingReactions.nonEmpty) {
+
+        while (reactionResult.isFatal && remainingReactions.nonEmpty) {
 //          lnsay(s"trying next reaction (${triedReactions + 1} out of ${triedReactions + remainingReactions.length})")
-//
-//          val c1 = c.copy(heuristicsDepth = c.heuristicsDepth + 1)
+
+          val s1 = s.copy(h = h,
+                          heuristicsDepth = s.heuristicsDepth + 1)
 //          bookkeeper.appliedHeuristicReactions += 1
-//
-//          reactionResult =
-//            heuristicsSupporter.tryOperation[S, H](s"applying heuristic ($myId)")(σ \ h, h, c1)((σ1, h1, c2, QS) =>
-//              remainingReactions.head.apply(σ1, h1, c2)((σ2, h2, c3) => {
+
+          reactionResult =
+            heuristicsSupporter.tryOperation[Heap](s"applying heuristic")(s1, h, v)((s1, h1, v1, QS) =>
+              remainingReactions.head.apply(s1, h1, v1)((s2, h2, v2) => {
 //                say(s"reaction ${triedReactions + 1} locally succeeded")
 //                say(s"s2.h = ${σ2.h}")
 //                say(s"h2 = $h2")
 //                say(s"c3.reserveHeaps:")
 //                c3.reserveHeaps.map(stateFormatter.format).foreach(str => say(str, 2))
-//                QS(σ2, h2, c3)})
-//            )((σ1, h1, c2) => {
-//                tryWithReactions(description)(σ1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
-//
+                QS(s2, h2, v2)})
+            )((σ1, h1, c2) => {
+                tryWithReactions(description)(σ1, h1, c2)(action, initialFailure.orElse(Some(actionFailure)))(Q)})
+
 //          lnsay(s"returned from reaction ${triedReactions + 1} (out of ${triedReactions + remainingReactions.length})")
 //          say(s"reactionResult = $reactionResult")
-//
-//          triedReactions += 1
-//
-//          remainingReactions = remainingReactions.tail
-//        }
-//
+
+          triedReactions += 1
+
+          remainingReactions = remainingReactions.tail
+        }
+
 //        stack = stack.tail
 //
 //        lnsay(s"existing tryWithReactions")
 //        say(s"localActionSuccess = $localActionSuccess")
 //        say(s"reactionResult = $reactionResult")
-//    }
-//
-//    reactionResult match {
-//      case _ if !reactionResult.isFatal =>
-//        reactionResult
-//
-//      case reactionFailure: Failure =>
-//        initialFailure.getOrElse(globalActionResult)
-//    }
-//  }
+    }
+
+    reactionResult match {
+      case _ if !reactionResult.isFatal =>
+        reactionResult
+
+      case reactionFailure: Failure =>
+        initialFailure.getOrElse(globalActionResult)
+    }
+  }
 
   def generateReactions(s: State, h: Heap, v: Verifier, cause: Failure)
-                       : Seq[(State, Heap, Verifier) => ((State, Heap, Verifier) => VerificationResult) => VerificationResult] = ???
-//  {
-//
-//    val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
-//
-//    def ok(e: ast.Exp) = !e.existsDefined { case lv: ast.AbstractLocalVar if σ.γ.get(lv).isEmpty => }
-//
-//    /* HS1: Apply/unfold if wand/pred containing missing wand or acc
-//     * HS2: package/fold missing wand/pred
-//     * HS3: Apply/unfold all other wands/preds
-//     */
-//
-//    cause.message.reason match {
-//      case reason: MagicWandChunkNotFound =>
-//        val chunks = (σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)).toSeq.distinct
-//
-//        /* HS1 (wands) */
-//        val wand = reason.offendingNode
-//        val structureMatcher = matchers.structure(wand, c.program)
-//        val wandChunks = wandInstancesMatching(chunks, structureMatcher)
-//        val applyWandReactions = wandChunks flatMap {
-//          case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
-//          case _ => None
-//        }
-//
-//        /* HS2 */
-//        val packageReaction =
-//          if (ok(wand)) Some(packageWand(wand, pve) _)
-//          else None
-//
-//        applyWandReactions ++ packageReaction
-//
-//      case reason: InsufficientPermission =>
-//        val locationMatcher = matchers.location(reason.offendingNode.loc(c.program), c.program)
-//        val chunks = (σ.h.values ++ h.values ++ c.reserveHeaps.flatMap(_.values)).toSeq.distinct
-//
-//        /* HS1 (wands) */
-//        val wandChunks = wandInstancesMatching(chunks, locationMatcher)
-//        val applyWandReactions = wandChunks flatMap {
-//          case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
-//          case _ => None
-//        }
-//
-//        /* HS1 (predicates) */
-//        val predicateAccesses = predicateInstancesMatching(σ, h, c, locationMatcher)
-//        val unfoldPredicateReactions = predicateAccesses flatMap {
-//          case acc if ok(acc) => Some(unfoldPredicate(acc, pve) _)
-//          case _ => None
-//        }
-//
-//        /* HS2 (predicates) */
-//        val foldPredicateReactions =
-//          reason.offendingNode match {
-//            case pa: ast.PredicateAccess if ok(pa) =>
-//              val foldMissing = foldPredicate(ast.PredicateAccessPredicate(pa, ast.FullPerm()())(), pve) _
-//
-//              val optFoldLoad =
-//                cause.load match {
-//                  case Some(ts) =>
-//                    assert(pa.args.length == ts.length)
-//                    Some(foldPredicate(c.program.findPredicate(pa.predicateName), ts.toList, FullPerm(), pve) _)
-//
-//                  case _ => None
-//                }
-//
-//              optFoldLoad.toSeq :+ foldMissing
-//
-//            case _ => Nil
-//          }
-//
-//        applyWandReactions ++ unfoldPredicateReactions ++ foldPredicateReactions
-//
-//      case _ => Nil
-//    }
-//  }
+                       : Seq[(State, Heap, Verifier) => ((State, Heap, Verifier) => VerificationResult) => VerificationResult] = {
+
+    val pve = HeuristicsFailed(ast.TrueLit()()) /* TODO: Use a meaningful node */
+
+    def ok(e: ast.Exp) = !e.existsDefined { case lv: ast.AbstractLocalVar if s.g.get(lv).isEmpty => }
+
+    /* HS1: Apply/unfold if wand/pred containing missing wand or acc
+     * HS2: package/fold missing wand/pred
+     * HS3: Apply/unfold all other wands/preds
+     */
+
+    cause.message.reason match {
+      case reason: MagicWandChunkNotFound =>
+        val chunks = (s.h.values ++ h.values ++ s.reserveHeaps.flatMap(_.values)).toSeq.distinct
+
+        /* HS1 (wands) */
+        val wand = reason.offendingNode
+        val structureMatcher = matchers.structure(wand, Verifier.program)
+        val wandChunks = wandInstancesMatching(chunks, structureMatcher)
+        val applyWandReactions = wandChunks flatMap {
+          case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
+          case _ => None
+        }
+
+        /* HS2 */
+        val packageReaction =
+          if (ok(wand)) Some(packageWand(wand, pve) _)
+          else None
+
+        applyWandReactions ++ packageReaction
+
+      case reason: InsufficientPermission =>
+        val locationMatcher = matchers.location(reason.offendingNode.loc(Verifier.program), Verifier.program)
+        val chunks = (s.h.values ++ h.values ++ s.reserveHeaps.flatMap(_.values)).toSeq.distinct
+
+        /* HS1 (wands) */
+        val wandChunks = wandInstancesMatching(chunks, locationMatcher)
+        val applyWandReactions = wandChunks flatMap {
+          case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
+          case _ => None
+        }
+
+        /* HS1 (predicates) */
+        val predicateAccesses = predicateInstancesMatching(s, h, v, locationMatcher)
+        val unfoldPredicateReactions = predicateAccesses flatMap {
+          case acc if ok(acc) => Some(unfoldPredicate(acc, pve) _)
+          case _ => None
+        }
+
+        /* HS2 (predicates) */
+        val foldPredicateReactions =
+          reason.offendingNode match {
+            case pa: ast.PredicateAccess if ok(pa) =>
+              val foldMissing = foldPredicate(ast.PredicateAccessPredicate(pa, ast.FullPerm()())(), pve) _
+
+              val optFoldLoad =
+                cause.load match {
+                  case Some(ts) =>
+                    assert(pa.args.length == ts.length)
+                    Some(foldPredicate(Verifier.program.findPredicate(pa.predicateName), ts.toList, FullPerm(), pve) _)
+
+                  case _ => None
+                }
+
+              optFoldLoad.toSeq :+ foldMissing
+
+            case _ => Nil
+          }
+
+        applyWandReactions ++ unfoldPredicateReactions ++ foldPredicateReactions
+
+      case _ => Nil
+    }
+  }
 
   /* Heuristics */
 
   def packageWand(wand: ast.MagicWand, pve: PartialVerificationError)
                  (s: State, h: Heap, v: Verifier)
                  (Q: (State, Heap, Verifier) => VerificationResult)
-                 : VerificationResult = ???
-  //{
-//    if (c.exhaleExt) {
+                 : VerificationResult = {
+
+    if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: packaging $wand")
-//      /* TODO: The next block is an exact copy of the corresponding case in the DefaultConsumer. Reuse code! */
-//      magicWandSupporter.packageWand(σ \ h, wand, pve, c)((chWand, c1) => {
-//        val hOps = c1.reserveHeaps.head + chWand
-//        val c2 = c1.copy(exhaleExt = true,
-//                         reserveHeaps = H() +: hOps +: c1.reserveHeaps.tail,
-//                         lhsHeap = None)
-//        assert(c2.reserveHeaps.length == c.reserveHeaps.length)
-//        assert(c2.consumedChunks.length == c.consumedChunks.length)
-//        assert(c2.consumedChunks.length == c2.reserveHeaps.length - 1)
-//        val σEmp = Σ(σ.γ, H(), σ.g)
-//        Q(σEmp, σEmp.h, c2)})
-//    } else {
+      /* TODO: The next block is an exact copy of the corresponding case in the consumer. Reuse code! */
+      magicWandSupporter.packageWand(s.copy(h = h), wand, pve, v)((s1, chWand, v1) => {
+        val hOps = s1.reserveHeaps.head + chWand
+        val s2 = s1.copy(exhaleExt = true,
+                         reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
+                         lhsHeap = None)
+        assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+        assert(s2.consumedChunks.length == s.consumedChunks.length)
+        assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
+        val sEmp = s2.copy(h = Heap())
+        Q(sEmp, sEmp.h, v1)})
+    } else {
 //      heuristicsLogger.debug(s"  reaction: package $wand")
-//      val packageStmt = ast.Package(wand)()
-//      exec(σ \ h, packageStmt, c)((σ1, c1) => {
-//        Q(σ1, σ1.h, c1)})
-//    }
-//  }
+      val packageStmt = ast.Package(wand)()
+      exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
+        Q(s1, s1.h, v1)})
+    }
+  }
 
   def applyWand(wand: ast.MagicWand, bindings: Map[ast.AbstractLocalVar, Term], pve: PartialVerificationError)
                (s: State, h: Heap, v: Verifier)
                (Q: (State, Heap, Verifier) => VerificationResult)
-               : VerificationResult = ???
-//  {
-//    /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
-//
-//    if (c.exhaleExt) {
+               : VerificationResult = {
+
+    /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
+
+    if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: applying $wand")
-//      val lhsAndWand = ast.And(wand.left, wand)()
-//      magicWandSupporter.applyingWand(σ \ h, Γ(bindings), wand, lhsAndWand, pve, c)(Q)
-//    } else {
+      val lhsAndWand = ast.And(wand.left, wand)()
+      magicWandSupporter.applyingWand(s.copy(h = h), Store(bindings), wand, lhsAndWand, pve, v)(Q)
+    } else {
 //      heuristicsLogger.debug(s"  reaction: apply $wand")
-//      val applyStmt = ast.Apply(wand)()
-//      exec(σ \ h \ Γ(bindings), applyStmt, c)((σ1, c1) => {
-//        Q(σ1 \ σ.γ, σ1.h, c1)})
-//    }
-//  }
+      val applyStmt = ast.Apply(wand)()
+      exec(s.copy(g = Store(bindings), h = h), applyStmt, v)((s1, v1) => {
+        Q(s1.copy(g = s.g), s1.h, v1)})
+    }
+  }
 
   def unfoldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
                      (s: State, h: Heap, v: Verifier)
@@ -365,8 +374,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: unfolding $acc")
-//      magicWandSupporter.unfoldingPredicate(σ \ h, acc, pve, c)(Q)
-      ???
+      magicWandSupporter.unfoldingPredicate(s.copy(h = h), acc, pve, v)(Q)
     } else {
 //      heuristicsLogger.debug(s"  reaction: unfold $acc")
       val unfoldStmt = ast.Unfold(acc)()
@@ -382,8 +390,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: folding $acc")
-//      magicWandSupporter.foldingPredicate(σ \ h, acc, pve, c)(Q)
-      ???
+      magicWandSupporter.foldingPredicate(s.copy(h = h), acc, pve, v)(Q)
     } else {
 //      heuristicsLogger.debug(s"  reaction: fold $acc")
       val foldStmt = ast.Fold(acc)()

@@ -136,4 +136,6 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
 
   def emitAxiomsAfterAnalysis(sink: ProverLike): Unit =
     emitPreambleLines(sink, collectedAxioms)
+
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 }

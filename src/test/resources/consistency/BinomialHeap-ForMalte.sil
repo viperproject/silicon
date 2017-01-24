@@ -1,0 +1,639 @@
+/*
+On Nov 18, 2016, I found the bug. It occurs in method merge, which might drop nodes.
+The smallest counterexample contains trees of degrees 0, 2, 3 (that is, 13 nodes) and removes
+the root of the middle tree. The resulting merge operation drops all other nodes of this tree,
+resulting in 10 instead of the expected 12 nodes. The "Executable" folder contains Java code
+that reproduces this behavior.
+*/
+
+
+
+field key: Int;
+field degree: Int;
+field parent: Ref;  // BinomialHeapNode
+field sibling: Ref; // BinomialHeapNode
+field child: Ref;   // BinomialHeapNode
+
+
+predicate tree(this: Ref) {
+  acc(this.key) && acc(this.degree) && acc(this.child) && acc(this.parent) &&
+  0 <= this.degree &&
+  heapseg(this.child, null) &&
+  this.degree == segLength(this.child, null) &&
+  (0 < this.degree  ==> segDegree(this.child, null, 0) == this.degree - 1) &&
+  validChildren(this.child, null)  &&
+  (this.child != null ==> segParent(this.child, null) == this)                                   
+}
+
+function treeKey(this: Ref): Int
+  requires tree(this)
+{
+  unfolding tree(this) in this.key
+}
+
+function treeDegree(this: Ref): Int
+  requires tree(this)
+  ensures  0 <= result
+{
+  unfolding tree(this) in this.degree
+}
+
+function treeSize(this: Ref): Int
+  requires tree(this)
+{
+  unfolding tree(this) in this.degree == 0 ? 1 : 1 + segSize(this.child, null)
+}
+
+function treeParent(this: Ref): Ref
+  requires tree(this)
+{
+  unfolding tree(this) in this.parent
+}
+
+predicate heapseg(this: Ref, last: Ref) {
+  this != last ==>
+    tree(this) && acc(this.sibling) &&
+    heapseg(this.sibling, last) &&
+    (this.sibling != last ==> treeParent(this) == segParent(this.sibling, last))  // all trees have the same parent
+}
+
+function segLength(this: Ref, last: Ref): Int
+  requires heapseg(this, last)
+  ensures  0 <= result
+{
+  this == last ? 0 : 1 + unfolding heapseg(this, last) in segLength(this.sibling, last)
+}
+
+function segSize(this: Ref, last: Ref): Int
+  requires heapseg(this, last)
+  ensures  this == last ==> result == 0  // this is needed to avoid unfolding empty heapsegs
+{
+  this == last ? 0 : (unfolding heapseg(this, last) in treeSize(this) + segSize(this.sibling, last))
+}
+
+function segDegree(this: Ref, last: Ref, index: Int): Int
+  requires heapseg(this, last)
+  requires 0 <= index && index < segLength(this, last)
+  ensures  0 <= result
+{
+  unfolding heapseg(this, last) in
+  (index == 0 ?  treeDegree(this) : segDegree(this.sibling, last, index - 1))
+}  
+
+function segParent(this: Ref, last: Ref): Ref
+  requires heapseg(this, last) && this != last
+{
+  unfolding heapseg(this, last) in treeParent(this)
+}
+
+function sorted(this: Ref, last: Ref): Bool
+  requires heapseg(this, last)
+  ensures  result ==> presorted(this, last)
+{
+  //1 < segLength(this, last) ==> unfolding heapseg(this, last) in treeDegree(this) < segDegree(this.sibling, last, 0) && sorted(this.sibling, last)
+  1 < segLength(this, last) ==> segDegree(this, last, 0) < segDegree(this, last, 1) && (unfolding heapseg(this, last) in sorted(this.sibling, last))
+}
+
+function presorted(this: Ref, last: Ref): Bool
+  requires heapseg(this, last)
+{
+  (1 < segLength(this, last) ==> unfolding heapseg(this, last) in treeDegree(this) <= segDegree(this.sibling, last, 0) && presorted(this.sibling, last)) && 
+  (2 < segLength(this, last) && segDegree(this, last, 0) == segDegree(this, last, 1) ==> segDegree(this, last, 1) < segDegree(this, last, 2))
+}
+
+function validChildren(this: Ref, last: Ref): Bool
+  requires heapseg(this, last)
+{
+  1 < segLength(this, last) ==> unfolding heapseg(this, last) in treeDegree(this) == segDegree(this.sibling, last, 0) + 1 && validChildren(this.sibling, last)
+}  
+
+method reverse(this: Ref, sibl: Ref) returns (res: Ref)
+  requires heapseg(this, null) && validChildren(this, null) && 0 < segLength(this, null)
+  requires heapseg(sibl, null) && sorted(sibl, null)
+  requires sibl != null ==> segDegree(this, null, 0) < segDegree(sibl, null, 0)   
+  requires sibl != null ==> segParent(this, null) == segParent(sibl, null)
+  ensures res != null
+  ensures heapseg(res, null)
+  ensures sorted(res, null)
+  ensures segSize(res, null) == old(segSize(this, null)) + old(segSize(sibl, null))
+  ensures segParent(res, null) == old(segParent(this, null))
+{
+  unfold heapseg(this, null)
+  if (this.sibling != null) {
+    var s: Ref
+    s := this.sibling
+    this.sibling := sibl  // This line was moved before the call to use the heap predicate (rather than an lseg)
+    fold heapseg(this, null)
+    res := reverse(s, this);
+  } else {
+    // here we make use of the ensures  of segSize
+    res := this;
+    this.sibling := sibl;  // This line was moved into the if-stmt (and duplicated) to simplify the folding of predicates
+    fold heapseg(res, null)
+  }
+}
+
+
+method concat(a: Ref, b: Ref, c: Ref)
+  requires heapseg(a, b) && heapseg(b, c)
+  requires c != null ==> tree(c)
+  requires a != b && b != c ==> segParent(a, b) == segParent(b, c)
+  ensures  heapseg(a, c)
+  ensures  segLength(a, c) == old(segLength(a,b)) + old(segLength(b,c))
+  ensures  forall i: Int :: 0 <= i && i < old(segLength(a,b)) ==> segDegree(a, c, i) == old(segDegree(a, b, i))
+  ensures  forall i: Int :: old(segLength(a,b)) <= i && i < segLength(a,c) ==> segDegree(a, c, i) == old(segDegree(b, c, i - segLength(a,b)))
+  ensures  c != null ==> tree(c) && treeDegree(c) == old(treeDegree(c)) && treeSize(c) == old(treeSize(c)) && treeParent(c) == old(treeParent(c))
+  // when we start with strictly sorted segments, we get a strictly sorted result 
+  ensures old(sorted(a, b)) && old(sorted(b, c)) && 
+          old(0 < segLength(a, b) && 0 < segLength(b, c) ==> segDegree(a, b, segLength(a, b) - 1) < segDegree(b, c, 0)) ==> sorted(a, c)
+  // when we start with pre-sorted segments, we get a pre-sorted result 
+  ensures old(presorted(a, b)) && old(presorted(b, c)) && 
+          old(0 < segLength(a, b) && 0 < segLength(b, c) ==> segDegree(a, b, segLength(a, b) - 1) <= segDegree(b, c, 0) &&
+            (2 <= segLength(a, b) && segDegree(a, b, segLength(a, b) - 1) == segDegree(a, b, segLength(a, b) - 2) ==> segDegree(a, b, segLength(a, b) - 1) < segDegree(b, c, 0)) &&
+            (2 <= segLength(b, c) && segDegree(b, c, 0)                 == segDegree(b, c, 1)                 ==> segDegree(a, b, segLength(a, b) - 1) < segDegree(b, c, 0)))
+          ==> presorted(a, c)
+  ensures old(validChildren(a, b)) && old(validChildren(b, c)) &&
+          old(0 < segLength(a, b) && 0 < segLength(b, c) ==> segDegree(a, b, segLength(a, b) - 1) == segDegree(b, c, 0) + 1)
+          ==>
+          validChildren(a, c)
+  ensures segSize(a, c) == old(segSize(a, b)) + old(segSize(b, c))      
+  ensures a != b ==> segParent(a, c) == old(segParent(a, b))    
+  ensures b != c ==> segParent(a, c) == old(segParent(b, c))    
+{
+  if (a != b) {
+    unfold heapseg(a, b)
+    concat(a.sibling, b, c)
+    assert c != null ==> unfolding tree(a) in unfolding acc(tree(c), 1/2) in a != c  // non-aliasing follows from permissions inside the predicates
+    fold heapseg(a, c)
+  }
+}
+
+
+// It is interesting that findMinNode cannot be pure or require read permissions
+// since it manipulates predicates.
+method findMinNode(arg: Ref) returns (res: Ref)
+  requires arg != null && heapseg(arg, null) && sorted(arg, null)
+  ensures  res != null
+  ensures  heapseg(arg, res) && sorted(arg, res) 
+  ensures  heapseg(res, null) && sorted(res, null)
+  ensures  arg != res ==> segDegree(arg, res, segLength(arg, res) - 1) < segDegree(res, null, 0)
+  ensures  segSize(arg, res) + segSize(res, null) == old(segSize(arg, null))
+  ensures  arg != res ==> segParent(arg, res) == old(segParent(arg, null))
+  ensures  segParent(res, null) == old(segParent(arg, null))
+{
+  var x: Ref := arg
+  res := arg
+  var min: Int
+
+  min := unfolding heapseg(x, null) in treeKey(x)
+  fold heapseg(arg, res)
+  fold heapseg(res, x)
+
+  while (x != null)
+    invariant heapseg(arg, res) && sorted(arg, res) 
+    invariant heapseg(res, x) && sorted(res, x)
+    invariant heapseg(x, null) && sorted(x, null)
+    invariant arg != res && res != x ==> segDegree(arg, res, segLength(arg, res) - 1) < segDegree(res, x, 0)
+    invariant x != null && res != x ==> segDegree(res, x, segLength(res, x) - 1) < segDegree(x, null, 0)
+    invariant arg != res && res == x && x != null ==> segDegree(arg, res, segLength(arg, res) - 1) < segDegree(x, null, 0)
+    invariant res != null
+    invariant segSize(arg, res) + segSize(res, x) + segSize(x, null) == old(segSize(arg, null))
+    invariant arg != res && res != x ==> segParent(arg, res) == segParent(res, x)
+    invariant res != x && x != null ==> segParent(res, x) == segParent(x, null)
+    invariant arg != res && x != null ==> segParent(arg, res) == segParent(x, null)
+    invariant arg != res ==> segParent(arg, res) == old(segParent(arg, null))
+    invariant res != x ==> segParent(res, x) == old(segParent(arg, null))
+    invariant x != null ==> segParent(x, null) == old(segParent(arg, null))
+  {
+    unfold heapseg(x, null)
+    if (treeKey(x) < min) {
+      concat(arg, res, x)
+      res := x
+      min := treeKey(x)
+      fold heapseg(res, res)
+    }
+    var tmp: Ref := x
+    x := x.sibling
+    //assert unfolding heapseg(x, null) in tmp != x    // at some point, this was necessary; here, a predicate postcondition would be useful to state this != this.sibling
+    fold heapseg(x, x)
+    fold heapseg(tmp, x)
+    unfold heapseg(x, null)  // TODO: check whether concat should take a heapseg(c,d) instead of tree(c), and make it a read permission
+    //assert segDegree(tmp, x, segLength(tmp, x) - 1) == unfolding heapseg(tmp, x) in treeDegree(tmp)  // this was needed for the verification to go through
+    concat(res, tmp, x)
+    fold heapseg(x, null)
+  }
+}
+
+
+// *************************************************************
+// * class BinomialHeap
+// ************************************************************* /
+
+field Nodes: Ref // BinomialHeapNode
+field size: Int // not read in the code, so we can omit it and simplify the predicates
+
+predicate heap(this: Ref) {
+  acc(this.Nodes) &&
+  heapseg(this.Nodes, null) && sorted(this.Nodes, null) && 
+  (this.Nodes != null ==> segParent(this.Nodes, null) == null) &&
+  acc(this.size) &&
+  this.size == segSize(this.Nodes, null)
+}
+
+
+method merge(this: Ref, binHeap: Ref)
+  requires acc(this.Nodes) &&
+           heapseg(this.Nodes, null) && sorted(this.Nodes, null)
+  requires this.Nodes != null
+  requires heapseg(binHeap, null) && sorted(binHeap, null)
+  requires binHeap != null ==> segParent(this.Nodes, null) == segParent(binHeap, null)
+  ensures  acc(this.Nodes) && this.Nodes != null && heapseg(this.Nodes, null) && presorted(this.Nodes, null)
+  ensures  segSize(this.Nodes, null) == old(segSize(this.Nodes, null)) + old(segSize(binHeap, null))
+  ensures  segParent(this.Nodes, null) == old(segParent(this.Nodes, null))
+{
+  var temp1: Ref
+  var temp2: Ref
+  temp1 := this.Nodes
+  temp2 := binHeap
+
+  fold heapseg(this.Nodes, temp1)
+  while (temp1 != null && temp2 != null) 
+    invariant heapseg(temp1, null) && sorted(temp1, null)
+    invariant heapseg(temp2, null) && sorted(temp2, null)
+    invariant acc(this.Nodes) && this.Nodes != null
+    invariant heapseg(this.Nodes, temp1) && presorted(this.Nodes, temp1)
+    invariant 0 < segLength(this.Nodes, temp1) && 0 < segLength(temp1, null) ==> 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) <= segDegree(temp1, null, 0) &&
+                (2 <= segLength(this.Nodes, temp1) && 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) == segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 2) ==> 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) < segDegree(temp1, null, 0))
+    invariant 0 < segLength(this.Nodes, temp1) && 0 < segLength(temp2, null) ==> 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) <= segDegree(temp2, null, 0) &&
+                (2 <= segLength(this.Nodes, temp1) && 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) == segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 2) ==> 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) < segDegree(temp2, null, 0))   
+    invariant 0 < segLength(this.Nodes, temp1) && 0 < segLength(temp1, null) && 0 < segLength(temp2, null) ==>
+                (segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) < segDegree(temp1, null, 0) || 
+                segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) < segDegree(temp2, null, 0))        
+    invariant temp1 != this.Nodes && 0 < segLength(temp1, null) && 0 < segLength(temp2, null) ==>
+                segDegree(temp1, null, 0) <= segDegree(temp2, null, 0)
+    invariant segSize(this.Nodes, temp1) + segSize(temp1, null) + segSize(temp2, null) == old(segSize(this.Nodes, null)) + old(segSize(binHeap, null))     
+    invariant temp1 != null && temp2 != null ==> segParent(temp1, null) == segParent(temp2, null)   
+    invariant this.Nodes != temp1 && temp1 != null ==> segParent(this.Nodes, temp1) == segParent(temp1, null)   
+    invariant this.Nodes != temp1 && temp2 != null ==> segParent(this.Nodes, temp1) == segParent(temp2, null)   
+    invariant this.Nodes != temp1 ==> segParent(this.Nodes, temp1) == old(segParent(this.Nodes, null))
+    invariant temp1 != null ==> segParent(temp1, null) == old(segParent(this.Nodes, null))
+    invariant temp2 != null ==> segParent(temp2, null) == old(segParent(this.Nodes, null))
+  {
+    var tmp: Ref
+    unfold heapseg(temp1, null)
+    unfold heapseg(temp2, null)
+
+    if (treeDegree(temp1)  == treeDegree(temp2)) {
+      tmp := temp2
+      temp2 := temp2.sibling
+      tmp.sibling := temp1.sibling
+      temp1.sibling := tmp
+
+      fold heapseg(tmp, tmp)
+      fold heapseg(temp1, tmp)
+      assert segSize(temp1, tmp) == unfolding heapseg(temp1, tmp) in treeSize(temp1)  // this assertion is necessary; maybe fold does not provide the necessary trigger?
+      concat(this.Nodes, temp1, tmp)
+
+      temp1 := tmp  // this is the fixed line
+      // The following line is the original version, which leads to the bug
+      // temp1 := tmp.sibling
+
+      fold heapseg(tmp, null)
+    } else {
+      if (treeDegree(temp1) < treeDegree(temp2)) {
+        if (temp1.sibling == null || 
+            segDegree(temp1.sibling, null, 0)  > treeDegree(temp2)) {
+          tmp := temp2
+          temp2 := temp2.sibling
+          tmp.sibling := temp1.sibling
+          temp1.sibling := tmp
+          fold heapseg(tmp, tmp)
+          fold heapseg(temp1, tmp)
+          concat(this.Nodes, temp1, tmp)
+
+          temp1 := tmp  // this is the fixed line
+          // The following line is the original version, which leads to ANOTHER bug!
+          // temp1 := tmp.sibling
+
+          fold heapseg(tmp, null)
+        } else {
+          tmp := temp1.sibling
+          fold heapseg(temp2, null)
+          fold heapseg(tmp, tmp)          
+          fold heapseg(temp1, tmp)
+          unfold heapseg(tmp, null)          
+          concat(this.Nodes, temp1, tmp)
+          fold heapseg(tmp, null)          
+          temp1 := tmp
+        }
+      } else {
+        tmp := temp1
+        temp1 := temp2
+        temp2 := temp2.sibling
+        temp1.sibling := tmp
+        fold heapseg(tmp, null)
+        fold heapseg(temp1, null)
+        if (tmp == this.Nodes) {
+          this.Nodes := temp1
+          fold heapseg(this.Nodes, temp1)
+        } else {
+          assert false  // this is to demonstrate that the conditional in the original implementation is not needed
+        }      
+      }
+    }      
+  }
+	if (temp1 == null) {
+	  temp1 := this.Nodes
+    fold heapseg(this.Nodes, temp1)
+
+		while (unfolding heapseg(temp1, null) in temp1.sibling != null) 
+      invariant temp1 != null
+      invariant heapseg(temp1, null) && presorted(temp1, null)
+      invariant heapseg(temp2, null) && sorted(temp2, null)
+      invariant acc(this.Nodes) && this.Nodes != null
+      invariant heapseg(this.Nodes, temp1) && presorted(this.Nodes, temp1)
+      invariant 0 < segLength(temp1, null)
+      invariant 0 < segLength(this.Nodes, temp1) ==> 
+                  segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) <= segDegree(temp1, null, 0) 
+                  &&
+                  (2 <= segLength(this.Nodes, temp1) && 
+                  segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) == segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 2) ==> 
+                  segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) < segDegree(temp1, null, 0))
+                  &&
+                  (2 <= segLength(temp1, null) && 
+                  segDegree(temp1, null, 0) == segDegree(temp1, null, 1) ==> 
+                  segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1) < segDegree(temp1, null, 0))
+      invariant 0 < segLength(temp2, null) ==> 
+                  segDegree(temp1, null, segLength(temp1, null) - 1) <= segDegree(temp2, null, 0) 
+                  &&
+                  (2 <= segLength(this.Nodes, temp1) + segLength(temp1, null) && 
+                  (2 <= segLength(temp1, null) ? segDegree(temp1, null, segLength(temp1, null) - 2) : segDegree(this.Nodes, temp1, segLength(this.Nodes, temp1) - 1)) ==  segDegree(temp1, null, segLength(temp1, null) - 1) ==>
+                  segDegree(temp1, null, segLength(temp1, null) - 1) < segDegree(temp2, null, 0))
+      invariant segSize(this.Nodes, temp1) + segSize(temp1, null) + segSize(temp2, null) == old(segSize(this.Nodes, null)) + old(segSize(binHeap, null))
+      invariant temp2 != null ==> segParent(temp1, null) == segParent(temp2, null)   
+      invariant this.Nodes != temp1 ==> segParent(this.Nodes, temp1) == segParent(temp1, null)   
+      invariant this.Nodes != temp1 && temp2 != null ==> segParent(this.Nodes, temp1) == segParent(temp2, null)   
+      invariant segParent(temp1, null) == old(segParent(this.Nodes, null))
+      invariant temp2 != null ==> segParent(temp2, null) == old(segParent(this.Nodes, null))
+    {
+      unfold heapseg(temp1, null)
+      var t: Ref := temp1
+			temp1 := temp1.sibling
+      assert unfolding heapseg(temp1, null) in unfolding tree(t) in unfolding tree(temp1) in t != temp1  // this assertion is necessary
+
+      fold heapseg(temp1, temp1)
+      fold heapseg(t, temp1)
+      unfold heapseg(temp1, null)
+      concat(this.Nodes, t, temp1)
+      fold heapseg(temp1, null)
+		}
+
+
+    unfold heapseg(temp1, null)
+    // The following should be fixed by generating triggers when a predicate is inhaled (not only when it's folded)
+    // Instead of the assertion, we could unfold heapseg(temp2, null), which triggers an unrolling of sorted(temp2, null)
+    //assert 1 < segLength(temp2, null) ==> segDegree(temp2, null, 0) < segDegree(temp2, null, 1)  // This seems to be an important assertion to get the proof through
+		temp1.sibling := temp2
+    fold heapseg(temp1, null)
+	} // if(temp1 == null)
+
+  concat(this.Nodes, temp1, null)
+}
+
+
+// unionNodes takes two binomial heaps and creates a new binomial heap with the same elements.
+// The algorithm requires that the intermediate list after merge is a pre-heap, that is,
+// is sorted in a non-decreasing way, but has at most two nodes for each degree. Without
+// this property, the algorithm would produce trees that are not binomial trees because
+// the can have duplicates in the children list.
+//
+method unionNodes(this: Ref, binHeap: Ref)
+  requires acc(this.Nodes) &&
+           heapseg(this.Nodes, null) && sorted(this.Nodes, null)
+  requires this.Nodes != null
+  requires heapseg(binHeap, null) && sorted(binHeap, null)
+  requires binHeap != null ==> segParent(this.Nodes, null) == segParent(binHeap, null)
+  ensures  acc(this.Nodes) &&
+           heapseg(this.Nodes, null) && sorted(this.Nodes, null)
+  ensures  this.Nodes != null
+  ensures  segSize(this.Nodes, null) == old(segSize(this.Nodes, null)) + old(segSize(binHeap, null))
+  ensures  segParent(this.Nodes, null) == old(segParent(this.Nodes, null))
+{
+		merge(this, binHeap)
+
+    var prevTemp: Ref
+    var temp: Ref
+    var nextTemp: Ref
+		prevTemp := null
+    temp := this.Nodes
+    unfold heapseg(this.Nodes, null)
+    nextTemp := temp.sibling
+
+  	while (nextTemp != null) 
+      invariant acc(this.Nodes)
+      invariant prevTemp != null ==> heapseg(this.Nodes, prevTemp) && sorted(this.Nodes, prevTemp)
+      invariant prevTemp == null ==> this.Nodes == temp
+      invariant heapseg(nextTemp, null) && presorted(nextTemp, null)
+      invariant tree(temp) && acc(temp.sibling) && temp.sibling == nextTemp && 
+                (nextTemp != null ==> treeDegree(temp) <= segDegree(nextTemp, null, 0) &&
+                                      treeParent(temp) == segParent(nextTemp, null))
+      invariant prevTemp != null ==> tree(prevTemp) && acc(prevTemp.sibling) && prevTemp.sibling == temp && 
+                treeDegree(prevTemp) <= treeDegree(temp) &&
+                treeParent(prevTemp) == treeParent(temp)                
+      invariant prevTemp != null && 0 < segLength(this.Nodes, prevTemp) && 2 <= segLength(nextTemp, null) && 
+                treeDegree(temp) == segDegree(nextTemp, null, 0) && segDegree(nextTemp, null, 0) == segDegree(nextTemp, null, 1)
+                ==>
+                treeDegree(prevTemp) < treeDegree(temp)
+      invariant prevTemp != null && treeDegree(prevTemp) == treeDegree(temp)  
+                ==>
+                0 < segLength(nextTemp, null) && treeDegree(temp) == segDegree(nextTemp, null, 0) && 
+                (2 <= segLength(nextTemp, null)  ==> segDegree(nextTemp, null, 0) < segDegree(nextTemp, null, 1))
+      invariant prevTemp != null && 0 < segLength(this.Nodes, prevTemp)
+                ==>
+                segDegree(this.Nodes, prevTemp, segLength(this.Nodes, prevTemp) - 1) < treeDegree(prevTemp)
+      invariant prevTemp != null ==> 
+                segSize(this.Nodes, prevTemp) + treeSize(prevTemp) + treeSize(temp) + segSize(nextTemp, null) == old(segSize(this.Nodes, null)) + old(segSize(binHeap, null))
+      invariant prevTemp == null ==> 
+                treeSize(temp) + segSize(nextTemp, null) == old(segSize(this.Nodes, null)) + old(segSize(binHeap, null))
+      invariant prevTemp != null && this.Nodes != prevTemp ==> segParent(this.Nodes, prevTemp) == treeParent(prevTemp)
+      invariant treeParent(temp) == old(segParent(this.Nodes, null))
+    { 
+      unfold heapseg(nextTemp, null)
+  		if (treeDegree(temp) != treeDegree(nextTemp)
+					|| (nextTemp.sibling != null && segDegree(nextTemp.sibling, null, 0)  == treeDegree(temp))) {
+        if(prevTemp == null) { // ghost
+          fold heapseg(this.Nodes, temp)
+        } else {
+          fold heapseg(temp, temp)
+          fold heapseg(prevTemp, temp)
+          concat(this.Nodes, prevTemp, temp)
+        }
+				prevTemp := temp
+				temp := nextTemp
+			} else {
+				if (treeKey(temp) <= treeKey(nextTemp)) {
+					temp.sibling := nextTemp.sibling
+          unfold tree(nextTemp)
+					nextTemp.parent := temp
+          fold tree(nextTemp)
+          unfold tree(temp)
+					nextTemp.sibling := temp.child
+					temp.child := nextTemp
+					temp.degree := temp.degree + 1
+          fold heapseg(temp.child, null)
+          fold tree(temp)
+				} else { 
+					if (prevTemp == null) {
+						this.Nodes := nextTemp
+					} else {
+						prevTemp.sibling := nextTemp
+					}
+          unfold tree(temp)
+					temp.parent := nextTemp
+          fold tree(temp)
+          unfold tree(nextTemp)
+					temp.sibling := nextTemp.child
+          fold heapseg(temp, null)
+					nextTemp.child := temp
+					nextTemp.degree := nextTemp.degree + 1
+          fold tree(nextTemp)
+                 
+					temp := nextTemp
+				}
+  		}
+
+			nextTemp := temp.sibling  
+  }
+  fold heapseg(nextTemp, null)
+  fold heapseg(temp, null)
+  fold heapseg(prevTemp, null)
+  concat(this.Nodes, prevTemp, null)
+}
+
+
+// According to the competition challenge, this is the method that
+//   contains a bug because it does not maintain the invariant. So far,
+//   we have not detected the bug. This might be the case because it is
+//   in the callee method union or because it affects the fields we did
+//   not model so far, namely size and parent.
+method extractMin(this: Ref) returns (res: Ref)
+  requires heap(this)
+  ensures heap(this)
+{
+  unfold heap(this)
+  var nodes: Ref := this.Nodes
+  if (nodes == null) {
+    res := null
+  } else {
+    var temp: Ref := nodes
+    var prevTemp: Ref := null
+    var minNode: Ref
+    minNode := findMinNode(nodes)
+    // I moved the case split before the loop because it simplifies the loop invariant;
+    // this is the only case where prevTemp == null after the loop
+    if(minNode == nodes) {
+      unfold heapseg(temp, null)
+      this.Nodes := temp.sibling
+    } else {
+      while (temp != minNode)  // removed condition on key since it is not needed
+        invariant heapseg(temp, minNode) && sorted(temp, minNode)
+        invariant heapseg(minNode, null) && sorted(minNode, null)
+        invariant prevTemp == null ==> temp == nodes
+        invariant prevTemp != null ==> heapseg(nodes, prevTemp) && sorted(nodes, prevTemp)
+        invariant prevTemp != null ==> tree(prevTemp) && acc(prevTemp.sibling) && prevTemp.sibling == temp
+        invariant prevTemp != null && prevTemp != nodes ==> segDegree(nodes, prevTemp, segLength(nodes, prevTemp) - 1) < treeDegree(prevTemp)
+        invariant prevTemp != null && temp != minNode ==> treeDegree(prevTemp) < segDegree(temp, minNode, 0)
+        invariant prevTemp != null && temp == minNode ==> treeDegree(prevTemp) < segDegree(minNode, null, 0)
+        invariant temp != minNode ==> segDegree(temp, minNode, segLength(temp, minNode) - 1) < segDegree(minNode, null, 0) 
+        invariant prevTemp != null ==> segSize(nodes, prevTemp) + treeSize(prevTemp) + segSize(temp, minNode) + segSize(minNode, null)  == old(unfolding heap(this) in segSize(this.Nodes, null))
+        invariant prevTemp == null ==> segSize(temp, minNode) + segSize(minNode, null)  == old(unfolding heap(this) in segSize(this.Nodes, null))
+        invariant temp != minNode ==> segParent(temp, minNode) == null
+        invariant minNode != null ==> segParent(minNode, null) == null
+        invariant prevTemp != null && nodes != prevTemp ==> segParent(nodes, prevTemp) == null
+        invariant prevTemp != null ==> treeParent(prevTemp) == null
+      {
+        unfold heapseg(temp, minNode)
+        if(prevTemp == null) {  // ghost code
+          fold heapseg(nodes, temp)
+        } else {
+        	fold heapseg(temp, temp)
+        	fold heapseg(prevTemp, temp)
+        	concat(nodes, prevTemp, temp)
+        }
+
+        prevTemp := temp
+        temp := temp.sibling
+      }
+
+      unfold heapseg(minNode, null)
+      prevTemp.sibling := temp.sibling
+      fold heapseg(prevTemp, null)
+      concat(nodes, prevTemp, null)
+    }
+
+    var oldTreeSize: Int := treeSize(temp)
+    unfold tree(temp)
+    temp := temp.child
+    var fakeNode: Ref := temp
+
+
+    // The following loop sets the parent-fields of the minimum node's children to null.
+    fold heapseg(fakeNode, temp)
+    while (temp != null) 
+      invariant heapseg(fakeNode, temp)
+      invariant heapseg(temp, null)
+      invariant validChildren(fakeNode, temp)
+      invariant validChildren(temp, null)
+      invariant 0 < segLength(fakeNode, temp) && 0 < segLength(temp, null)
+                ==> segDegree(fakeNode, temp, segLength(fakeNode, temp) - 1) == segDegree(temp, null, 0) + 1
+      invariant fakeNode != temp ==> segParent(fakeNode, temp) == null
+      invariant segSize(fakeNode, temp) + segSize(temp, null) == oldTreeSize - 1
+    {
+      unfold heapseg(temp, null)
+      unfold tree(temp)
+      temp.parent := null
+      fold tree(temp)
+      prevTemp := temp
+      temp := temp.sibling
+      fold heapseg(temp, temp)
+      fold heapseg(prevTemp, temp)
+      unfold heapseg(temp, null)
+      concat(fakeNode, prevTemp, temp)
+      fold heapseg(temp, null)
+    }
+
+    var r: Ref
+    if ((this.Nodes == null) && (fakeNode == null)) {
+      this.size := 0
+    } else {
+      if ((this.Nodes == null) && (fakeNode != null)) {
+        // In this case, the heap consists of a single tree, so the new heap essentially consists
+        // of the minimum's children
+        r := reverse(fakeNode, null)
+        this.Nodes := r 
+        this.size := this.size - 1
+      } else {
+        if ((this.Nodes != null) && (fakeNode == null)) {
+          // In this case, the heap contains more trees, but the minimum tree has no children
+          this.size := this.size - 1
+        } else {
+          fold heapseg(null, null)     
+          r := reverse(fakeNode, null)
+          unionNodes(this, r)
+          this.size := this.size - 1
+        }
+      }
+    }
+
+  res := minNode
+  }
+  fold heap(this)
+}
+
+//@TIMING:{"total":0,"timings":[8,3762,4410,4460,4539,4796,4886,4922,5028,5109,5167,5267,5290,5409,5423,5449,6149,31121,67584,212017,212019]}

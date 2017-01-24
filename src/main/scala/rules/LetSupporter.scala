@@ -13,7 +13,7 @@ import viper.silicon.state.{State, Store}
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
 
-trait LetHandler extends SymbolicExecutionRules {
+trait LetSupportRules extends SymbolicExecutionRules {
   def handle[E <: ast.Exp]
             (s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
             (Q: (State, Store, E, Verifier) => VerificationResult)
@@ -25,7 +25,7 @@ trait LetHandler extends SymbolicExecutionRules {
             : VerificationResult
 }
 
-object letHandler extends LetHandler with Immutable {
+object letSupporter extends LetSupportRules with Immutable {
   import evaluator._
 
   def handle[E <: ast.Exp]

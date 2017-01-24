@@ -13,11 +13,11 @@ import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.state.{FieldChunk, Heap, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
-import viper.silicon.state.{utils => _, _}
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.utils.{freshSnap, toSf}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -36,9 +36,9 @@ trait ExecutionRules extends SymbolicExecutionRules {
 }
 
 object executor extends ExecutionRules with Immutable {
+  import consumer._
   import evaluator._
   import producer._
-  import consumer._
 
   private def follow(s: State, edge: ast.Edge, v: Verifier)
                     (Q: (State, Verifier) => VerificationResult)
@@ -83,7 +83,7 @@ object executor extends ExecutionRules with Immutable {
           : VerificationResult = {
 
     block match {
-      case cblock @ ast.ConditionalBlock(stmt, e, _, _) =>
+      case cblock @ ast.ConditionalBlock(stmt, _, _, _) =>
         exec(s, stmt, v)((s1, v1) => {
           val thn_edge = cblock.succs.head
           val els_edge = cblock.succs(1)
@@ -118,10 +118,11 @@ object executor extends ExecutionRules with Immutable {
           /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
         val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
-        val sBody = State(gBody, Heap(), s.oldHeaps) /* Use the old-state of the surrounding block as the old-state of the loop. */
+        val sBody = s.copy(g = gBody, h = Heap())
 
-        var phase1data: Vector[(State, RecordedPathConditions, InsertionOrderedSet[Function])] = Vector.empty
-        var phase2data: Vector[(State, RecordedPathConditions, InsertionOrderedSet[Function])] = Vector.empty
+        type PhaseData = (State, RecordedPathConditions, InsertionOrderedSet[FunctionDecl])
+        var phase1data: Vector[PhaseData] = Vector.empty
+        var phase2data: Vector[PhaseData] = Vector.empty
 
         (  executionFlowController.locally(sBody/*.copy(parallelizeBranches = false)*/, v)((s0, v0) => {
               val mark = v0.decider.setPathConditionMark()
@@ -159,10 +160,10 @@ object executor extends ExecutionRules with Immutable {
                 case (fatalResult: FatalResult, _) => fatalResult
                 case (intermediateResult, (s0, pcs1, ff1)) =>
                   intermediateResult && executionFlowController.locally(s0/*.copy(parallelizeBranches = s.parallelizeBranches)*/, v)((s1, v1) => {
-                    v1.decider.declareAndRecordAsFresh(ff1 -- v1.decider.freshFunctions)
+                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions)
                     v1.decider.assume(pcs1.assumptions)
                     exec(s1, lb.body, v1)((s2, v2) =>
-                      consumes(s2, lb.invs, e => LoopInvariantNotPreserved(e), v2)((_, _, v3) => {
+                      consumes(s2, lb.invs, e => LoopInvariantNotPreserved(e), v2)((_, _, _) => {
 //                        println(s"  ${Thread.currentThread().getId} | ${v.uniqueId} | ${v3.uniqueId}")
                         Success()}))})}}
         && {
@@ -175,7 +176,7 @@ object executor extends ExecutionRules with Immutable {
                   intermediateResult && executionFlowController.locally(s0/*.copy(parallelizeBranches = s.parallelizeBranches)*/, v)((s1, v1) => {
 //                    v1.decider.prover.comment(s"v0.uniqueId = ${v0.uniqueId}")
 //                    v1.decider.prover.comment(s"v.uniqueId = ${v.uniqueId}")
-                    v1.decider.declareAndRecordAsFresh(ff1 -- v1.decider.freshFunctions)
+                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions)
                     v1.decider.assume(pcs1.assumptions)
                     produces(s1.copy(g = gBody), freshSnap,  lb.invs :+ notGuard, _ => WhileFailed(loopStmt), v1)((s2, v2) =>
                       /* Detect potential contradictions (as before) */
@@ -250,20 +251,20 @@ object executor extends ExecutionRules with Immutable {
       /* Assignment for a field that contains quantified chunks */
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
               if s.qpFields.contains(field) =>
-        ???
-//        val pve = AssignmentFailed(ass)
-//        eval(σ, eRcvr, pve, c)((tRcvr, c1) =>
-//          eval(σ, rhs, pve, c1)((tRhs, c2) => {
-//            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
-//            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-//            quantifiedChunkSupporter.splitSingleLocation(σ, σ.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, c2) {
-//              case Some((h1, _, _, c3)) =>
-//                val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs)
-//                optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
-//                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
-//                Q(σ \ h1 \+ ch, c3)
-//              case None =>
-//                Failure(pve dueTo InsufficientPermission(fa))}}))
+
+        val pve = AssignmentFailed(ass)
+        eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
+          eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
+            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+            val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
+            quantifiedChunkSupporter.splitSingleLocation(s2, s2.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, v2) {
+              case Some((s3, h3, _, _)) =>
+                val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs, v2)
+                optFvfDef.foreach(fvfDef => v2.decider.assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
+                Q(s3.copy(h = h3 + ch), v2)
+              case None =>
+                Failure(pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
         val pve = AssignmentFailed(ass)
@@ -281,10 +282,9 @@ object executor extends ExecutionRules with Immutable {
           val p = FullPerm()
           val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
           if (s.qpFields.contains(field)) {
-            ???
-//            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, s)
-//            optFvfDef.foreach(fvfDef => assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
-//            quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, snap, v)
+            optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
           } else
             FieldChunk(tRcvr, field.name, snap, p)})
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
@@ -429,8 +429,8 @@ object executor extends ExecutionRules with Immutable {
         val pve = ApplyFailed(apply)
 
         def QL(s1: State, g: Store, wand: ast.MagicWand, v1: Verifier) = {
-          /* The given heap is not σ.h, but rather the consumed portion only. However,
-           * using σ.h should not be a problem as long as the heap that is used as
+          /* The lhs-heap is not s1.h, but rather the consumed portion only. However,
+           * using s1.h should not be a problem as long as the heap that is used as
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
