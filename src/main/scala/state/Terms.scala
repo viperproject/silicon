@@ -268,12 +268,19 @@ sealed trait Term extends Node {
     else
       this.transform{case `original` => replacement}()
 
-  def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term = {
-    this.transform{case t: T if replacements.contains(t) => replacements(t)}()
-  }
+  def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term =
+    if (replacements.isEmpty)
+      this
+    else
+      this.transform{case t: T if replacements.contains(t) => replacements(t)}()
 
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
-    this.replace(toMap(originals.zip(replacements)))
+//    assert(originals.length == replacements.length)
+
+    if (originals.isEmpty)
+      this
+    else
+      this.replace(toMap(originals.zip(replacements)))
   }
 
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
