@@ -671,6 +671,13 @@ object And extends (Iterable[Term] => Term) {
   def unapply(e: And) = Some(e.ts)
 }
 
+object AndOrTerm {
+  def unapply(t: Term) = t match {
+    case And(ts) => Some(ts)
+    case _ => Some(Seq(t))
+  }
+}
+
 class Implies(val p0: Term, val p1: Term) extends BooleanTerm
     with StructuralEqualityBinaryOp[Term] {
 
