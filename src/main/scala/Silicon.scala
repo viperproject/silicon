@@ -53,7 +53,7 @@ object Silicon {
   val copyright = "(c) Copyright ETH Zurich 2012 - 2016"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.3.2")
-  val z3MaxVersion: Option[Version] = Some(Version("4.5.0")) /* X.Y.Z if that is the last *supported* version */
+  val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the last *supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
   val hideInternalOptions = false
