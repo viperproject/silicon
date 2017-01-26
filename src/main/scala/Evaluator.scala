@@ -355,13 +355,16 @@ trait DefaultEvaluator[ST <: Store[ST],
           val usesQPChunks = loc match {
             case field: ast.Field => c.qpFields.contains(field)
             case pred: ast.Predicate => c.qpPredicates.contains(pred)}
-          val perm:Term =
+          val perm =
             if (usesQPChunks) {
               loc match {
                 case field: ast.Field =>
                   val chs = h.values.collect { case ch: QuantifiedFieldChunk if ch.name == name => ch }
-                  chs.foldLeft(NoPerm(): Term)((q, ch) =>
-                    PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                  val perm =
+                    chs.foldLeft(NoPerm(): Term)((q, ch) =>
+                      PermPlus(q, ch.perm.replace(`?r`, args.head)))
+                  assume(PermAtMost(perm, FullPerm()))
+                  perm
                 case pred: ast.Predicate =>
                   //added for quantified predicate permissions
                   var formalArgs:Seq[Var] = pred.formalArgs.map(formalArg => Var(Identifier(formalArg.name), toSort(formalArg.typ)))
@@ -370,9 +373,12 @@ trait DefaultEvaluator[ST <: Store[ST],
                     PermPlus(q, ch.perm.replace(formalArgs, args)))}
             } else {
               val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
-              chs.foldLeft(NoPerm(): Term)((q, ch) => {
-                val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
-                PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
+              val perm =
+                chs.foldLeft(NoPerm(): Term)((q, ch) => {
+                  val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
+                  PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
+              assume(PermAtMost(perm, FullPerm()))
+              perm
             }
           Q(perm, c1)})
 
