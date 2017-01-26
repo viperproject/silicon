@@ -93,6 +93,7 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
          | _: SnapshotTerm
          | _: Domain
          | _: Lookup
+         | _: PredicateLookup
          => true
     case _ => false
   }
