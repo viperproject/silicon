@@ -59,7 +59,8 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       val body = method.body.toCfg
       val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
 
-      // common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
+//      common.io.toFile(method.toString(), new java.io.File(s"${config.tempDirectory()}/${method.name}.sil"))
+//      common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
 
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
