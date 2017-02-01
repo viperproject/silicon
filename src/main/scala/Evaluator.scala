@@ -363,7 +363,13 @@ trait DefaultEvaluator[ST <: Store[ST],
                   val perm =
                     chs.foldLeft(NoPerm(): Term)((q, ch) =>
                       PermPlus(q, ch.perm.replace(`?r`, args.head)))
-                  assume(PermAtMost(perm, FullPerm()))
+                  /* TODO: Try again once Silicon fully supports field accesses as triggers.
+                   *       Currently, adding these axioms makes several of the RSL examples
+                   *       exhibit matching loops (potentially other examples as well).
+                   */
+//                  decider.prover.logComment(s"perm($locacc)  ~~>  assume upper permission bound")
+//                  decider.prover.logComment(perm.toString)
+//                  assume(PermAtMost(perm, FullPerm()))
                   perm
                 case pred: ast.Predicate =>
                   //added for quantified predicate permissions
@@ -377,7 +383,10 @@ trait DefaultEvaluator[ST <: Store[ST],
                 chs.foldLeft(NoPerm(): Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
                   PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
-              assume(PermAtMost(perm, FullPerm()))
+              /* TODO: See todo above */
+//              decider.prover.logComment(s"perm($locacc)  ~~>  assume upper permission bound")
+//              decider.prover.logComment(perm.toString)
+//              assume(PermAtMost(perm, FullPerm()))
               perm
             }
           Q(perm, c1)})
