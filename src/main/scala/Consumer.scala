@@ -443,16 +443,16 @@ trait DefaultConsumer[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
     val σ1 = σ \ magicWandSupporter.getEvalHeap(σ, c)
     val c1 = c.copy(reserveHeaps = Nil, exhaleExt = false)
 
-    decider.tryOrFail[S](σ1, c1)((σ2, c2, QS, QF) => {
+    decider.tryOrFail0(σ1, c1)((σ2, c2, QS) => {
       eval(σ2, e, pve, c2)((t, c3) =>
         decider.assert(σ2, t) {
           case true =>
             assume(t)
-            QS(σ2, c3)
+            QS(c3)
           case false =>
-            QF(Failure(pve dueTo AssertionFalse(e)))
+            Failure(pve dueTo AssertionFalse(e))
         })
-    })((_, c2) => {
+    })(c2 => {
       val c3 = c2.copy(reserveHeaps = c.reserveHeaps,
                        exhaleExt = c.exhaleExt)
       Q(Unit, c3)

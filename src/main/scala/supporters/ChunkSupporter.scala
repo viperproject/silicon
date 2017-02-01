@@ -181,7 +181,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
                  (Q: (BasicChunk, C) => VerificationResult)
                  : VerificationResult = {
 
-      decider.tryOrFail[BasicChunk](σ \ h, c)((σ1, c1, QS, QF) =>
+      decider.tryOrFail1[BasicChunk](σ \ h, c)((σ1, c1, QS) =>
         getChunk(σ1, σ1.h, name, args, c1) match {
         case Some(chunk) =>
           QS(chunk, c1)
@@ -190,7 +190,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
           if (decider.checkSmoke())
             Success() /* TODO: Mark branch as dead? */
           else
-            QF(Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args))}
+            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}
       )(Q)
     }
 
@@ -205,7 +205,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
                  (Q: (BasicChunk, C) => VerificationResult)
                  : VerificationResult =
 
-      decider.tryOrFail[BasicChunk](σ \ h, c)((σ1, c1, QS, QF) =>
+      decider.tryOrFail1[BasicChunk](σ \ h, c)((σ1, c1, QS) =>
         withChunk(σ1, σ1.h, name, args, locacc, pve, c1)((ch, c2) => {
           val permCheck =  optPerms match {
             case Some(p) => PermAtMost(p, ch.perm)
@@ -222,7 +222,7 @@ trait ChunkSupporterProvider[ST <: Store[ST],
               decider.assume(permCheck)
               QS(ch, c2)
             case false =>
-              QF(Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args))}})
+              Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}})
       )(Q)
 
     def getChunk(σ: S, h: H, name: String, args: Seq[Term], c: C): Option[BasicChunk] =
