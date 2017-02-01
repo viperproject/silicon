@@ -190,34 +190,43 @@ trait DeciderProvider[ST <: Store[ST],
 
     def checkSmoke() = prover.check(config.checkTimeout.get) == Unsat
 
-    def tryOrFail[R](σ: S, c: C)
-                    (block:    (S, C, (R, C) => VerificationResult, Failure => VerificationResult)
-                            => VerificationResult)
-                    (Q: (R, C) => VerificationResult)
-                    : VerificationResult = {
+    def tryOrFail1[R](σ: S, c: C)
+                     (action: (S, C, (R, C) => VerificationResult) => VerificationResult)
+                     (Q: (R, C) => VerificationResult)
+                     : VerificationResult = {
 
       val chunks = σ.h.values
-      var failure: Option[Failure] = None
+//      var failure: Option[Failure] = None
+      var localActionSuccess = false
+      var compressed = false
 
-      var r =
-        block(
+      /* TODO: Consider how to handle situations where the action branches and the first branch
+       *       succeeds, i.e. localActionSuccess has been set to true, but the second fails.
+       *       Currently, the verification will fail without attempting to remedy the situation,
+       *       e.g. by performing a state consolidation.
+       */
+
+      val firstActionResult =
+        action(
           σ,
           c,
-          (r, c1) => Q(r, c1),
-          f => {
-            Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
-            failure = Some(f)
-            f})
+          (r, c1) => {
+            localActionSuccess = true
+            Q(r, c1)
+          })
 
-      r =
-        if (failure.isEmpty)
-          r
+      val finalActionResult =
+        if (   localActionSuccess /* Action succeeded locally */
+            || !firstActionResult.isFatal) /* Action yielded non-fatal result (e.g. because the
+                                            * current branch turned out to be infeasible) */
+          firstActionResult
         else {
           heapCompressor.compress(σ, σ.h, c)
-          block(σ, c.copy(retrying = true), (r, c2) => Q(r, c2.copy(retrying = false)), f => f)
+          compressed = true
+          action(σ, c.copy(retrying = true), (r, c2) => Q(r, c2.copy(retrying = false)))
         }
 
-      if (failure.nonEmpty) {
+      if (compressed) {
         /* TODO: The current way of having HeapCompressor change h is convenient
          *       because it makes the compression transparent to the user, and
          *       also, because a compression that is performed while evaluating
@@ -253,8 +262,15 @@ trait DeciderProvider[ST <: Store[ST],
         σ.h.replace(chunks)
       }
 
-      r
+      finalActionResult
     }
+
+  def tryOrFail0(σ: S, c: C)
+                (action: (S, C, C => VerificationResult) => VerificationResult)
+                (Q: C => VerificationResult)
+                : VerificationResult =
+
+      tryOrFail1[scala.Null](σ, c)((σ1, c1, QS) => action(σ1, c1, c2 => QS(null, c2)))((`null`, c2) => Q(c2))
 
     def check(σ: S, t: Term, timeout: Int) = assert(σ, t, Some(timeout), null)
 

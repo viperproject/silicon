@@ -39,11 +39,15 @@ trait Decider[ST <: Store[ST],
   def assume(t: Term)
   def assume(ts: Iterable[Term])
 
-  def tryOrFail[R](σ: S, c: C)
-                  (block:    (S, C, (R, C) => VerificationResult, Failure => VerificationResult)
-                          => VerificationResult)
-                  (Q: (R, C) => VerificationResult)
-                  : VerificationResult
+  def tryOrFail1[R](σ: S, c: C)
+                   (action: (S, C, (R, C) => VerificationResult) => VerificationResult)
+                   (Q: (R, C) => VerificationResult)
+                   : VerificationResult
+
+  def tryOrFail0(σ: S, c: C)
+                (action: (S, C, C => VerificationResult) => VerificationResult)
+                (Q: C => VerificationResult)
+                : VerificationResult
 
   def check(σ: S, t: Term, timeout: Int): Boolean
   def assert(σ: S, t: Term, timeout: Option[Int] = None)(Q: Boolean => VerificationResult): VerificationResult
