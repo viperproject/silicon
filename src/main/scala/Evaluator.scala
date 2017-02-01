@@ -46,6 +46,7 @@ trait DefaultEvaluator[ST <: Store[ST],
   protected val predicateSupporter: PredicateSupporter[ST, H, S, C]
   protected val quantifiedChunkSupporter: QuantifiedChunkSupporter[ST, H, S, C]
   protected val chunkSupporter: ChunkSupporter[ST, H, S, C]
+  protected val identifierFactory: IdentifierFactory
 
   import decider.{fresh, assume}
   import stateFactory._
@@ -222,9 +223,12 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        /* TODO: Avoid evaluating e0 twice */
-        val e1Short = ast.Implies(e0, e1)(e1.pos, e1.info)
-        evalBinOp(σ, e0, e1Short, (t1, t2) => And(t1, t2), pve, c)(Q)
+        /* Evaluate `e0 && e1` as `e0 && (e0 ==> e1)`, but without evaluating `e0` twice */
+        eval(σ, e0, pve, c)((t0, c1) => {
+          val lv = ast.LocalVar(identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
+          val e1Short = ast.Implies(lv, e1)(e1.pos, e1.info)
+          eval(σ \+ (lv, t0), e1Short, pve, c1)((t1, c2) =>
+            Q(And(t0, t1), c2))})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if config.disableShortCircuitingEvaluations() =>
@@ -232,23 +236,18 @@ trait DefaultEvaluator[ST <: Store[ST],
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
-        /* TODO: Avoid evaluating e0 twice */
-        val e1Short = ast.And(ast.Not(e0)(e0.pos, e0.info), e1)(e1.pos, e1.info)
-        evalBinOp(σ, e0, e1Short, (t1, t2) => Or(t1, t2), pve, c)(Q)
+        /* Evaluate `e0 || e1` as `e0 || (!e0 && e1)`, but without evaluating `e0` twice */
+        eval(σ, e0, pve, c)((t0, c1) => {
+          val lv = ast.LocalVar(identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
+          val e1Short = ast.And(ast.Not(lv)(e0.pos, e0.info), e1)(e1.pos, e1.info)
+          eval(σ \+ (lv, t0), e1Short, pve, c1)((t1, c2) =>
+            Q(Or(t0, t1), c2))})
 
       case ast.Implies(e0, e1) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           evalImplies(σ, t0, e1, pve, c1)(Q))
-//          join[Term, Term](c1, QB =>
-//            branch(σ, t0, c1,
-//              (c2: C) => eval(σ, e1, pve, c2)(QB),
-//              (c2: C) => QB(True(), c2))
-//          )(entries => {
-//            assert(entries.length <= 2)
-//            Implies(t0, entries.headOption.map(_.data).getOrElse(True()))
-//          })(Q))
 
-      case ite @ ast.CondExp(e0, e1, e2) =>
+      case ast.CondExp(e0, e1, e2) =>
         eval(σ, e0, pve, c)((t0, c1) =>
           join[Term, Term](c1, QB =>
             branch(σ, t0, c1,
