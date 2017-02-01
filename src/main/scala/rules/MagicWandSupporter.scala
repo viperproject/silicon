@@ -6,12 +6,8 @@
 
 package viper.silicon.rules
 
-import scala.util.control.Breaks._
-import org.slf4s.{LoggerFactory, Logging}
 import viper.silver.ast
-import viper.silver.ast.utility.{Nodes, Visitor}
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
@@ -20,7 +16,6 @@ import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
-import viper.silicon.supporters.PredicateVerificationUnit
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 
@@ -149,46 +144,23 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     var toLose = pLoss
     var heapsToVisit = hs
     var visitedHeaps: List[Heap] = Nil
-    //      var chunks: List[DirectChunk] = Nil
     var sCurr = s
     var vCurr = v
-
-//      println("\n[consumeFromMultipleHeaps]")
-//      println(s"  heaps = ${hs.length}")
-//      println(s"  toLose = $toLose")
-//      println(s"  heapsToVisit = $heapsToVisit")
-//      println(s"  visitedHeaps = $visitedHeaps")
-//      println(s"  consumedChunks = ${consumedChunks.toList}")
 
     while (heapsToVisit.nonEmpty && !v.decider.check(IsNoAccess(toLose), Verifier.config.checkTimeout())) {
       val h = heapsToVisit.head
       heapsToVisit = heapsToVisit.tail
 
-//        println(s"\n  h = $h")
       val (s1, h1, optCh1, toLose1, v1) = consumeMaxPermissions(sCurr, h, name, args, toLose, vCurr)
-//        println(s"  h1 = $h1")
-//        println(s"  optCh1 = $optCh1")
-//        println(s"  toLose1 = $toLose1")
 
       visitedHeaps = h1 :: visitedHeaps
-//        chunks =
-//          optCh1 match {
-//            case None => chunks
-//  //          case Some(ch) => (ch, visitedHeaps.length  - 1) :: chunks
-//            case Some(ch) => ch :: chunks
-//          }
+
       assert(consumedChunks(hs.length - 1 - heapsToVisit.length).isEmpty)
       consumedChunks(hs.length - 1 - heapsToVisit.length) = optCh1
       toLose = toLose1
       sCurr = s1
       vCurr = v1
     }
-
-//      println(s"\n  X toLose = $toLose")
-//      println(s"  X heapsToVisit = $heapsToVisit")
-//      println(s"  X visitedHeaps = $visitedHeaps")
-//      println(s"  X consumedChunks = ${consumedChunks.toList}")
-//      println(s"  X done? ${decider.check(σ, IsNoAccess(toLose), config.checkTimeout())}")
 
     if (vCurr.decider.check(IsNoAccess(toLose), Verifier.config.checkTimeout())) {
       val tEqs =
@@ -228,11 +200,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             (pLoss, PermMinus(ch.perm, pLoss), NoPerm())
           else
             (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
-//        println("  [consumeMaxPermissions]")
-//        println(s"    ch.perm = ${ch.perm}")
-//        println(s"    pLost = $pLost")
-//        println(s"    pKeep = $pKeep")
-//        println(s"    pToConsume = $pToConsume")
         val h1 =
           if (v.decider.check(IsNoAccess(pKeep), Verifier.config.checkTimeout())) h - ch
           else h - ch + (ch \ pKeep)
@@ -295,7 +262,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
      *       during some executions - since such crashes are hard to debug, branch parallelisation
      *       has been disabled for now.
      */
-
     val sEmp = s.copy(h = Heap(),
                       reserveHeaps = Nil,
                       exhaleExt = false,
@@ -563,9 +529,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                exhaleExt = false)
               predicateSupporter.unfold(s4, predicate, tArgs, tPerm, pve, v3, pa)((s5, v4) => { /* s5.h = σUsed'' */
                 val hOpsJoinUsed = stateConsolidator.merge(s.reserveHeaps(1), s5.h, v4)
-//                val c4a = c4.decCycleCounter(predicate)
-//                            .copy(reserveHeaps = H() +: hOpsJoinUsed +: c3.reserveHeaps.drop(2),
-//                                  exhaleExt = true)
                 val s6 = s5.decCycleCounter(predicate)
                            .copy(h = Heap(),
                                  reserveHeaps = Heap() +: hOpsJoinUsed +: s3.reserveHeaps.drop(2),

@@ -195,11 +195,7 @@ class TermToSMTLib2Converter()
     case bop: SetDifference => renderBinaryOp("$Set.difference", bop)
     case bop: SetIntersection => renderBinaryOp("$Set.intersection", bop)
     case bop: SetUnion => renderBinaryOp("$Set.union", bop)
-    case bop: SetIn =>
-      renderBinaryOp("$Set.in", bop)
-//      val expandedTerm = SetSubset(SingletonSet(bop.p0), bop.p1)
-//      render(expandedTerm)
-//      renderBinaryOp("$Map.select", render(bop.p1), render(bop.p0))
+    case bop: SetIn => renderBinaryOp("$Set.in", bop)
     case bop: SetSubset => renderBinaryOp("$Set.subset", bop)
     case bop: SetDisjoint => renderBinaryOp("$Set.disjoint", bop)
 

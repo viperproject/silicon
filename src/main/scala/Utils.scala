@@ -129,11 +129,6 @@ package object utils {
                     qpFields: InsertionOrderedSet[silver.ast.Field])
                    : silver.ast.Forall = {
 
-      /* Allow qp-fields in triggers */
-//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger {
-//        case fa: silver.ast.FieldAccess => qpFields contains fa.field
-//      }
-
       val defaultTriggerForall = forall.autoTrigger
 
       val autoTriggeredForall =
@@ -165,8 +160,6 @@ package object utils {
 
           advancedTriggerForall
         }
-
-//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger(PartialFunction.empty)
 
       autoTriggeredForall
     }

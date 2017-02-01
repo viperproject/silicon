@@ -28,8 +28,6 @@ abstract class BaseVerifier(val config: Config,
     extends utils.NoOpStatefulComponent
        with Verifier
        with DefaultDeciderProvider {
-//       with QuantifiedChunkSupporterProvider
-//       with QuantifiedPredicateChunkSupporterProvider
 
   val logger: Logger = LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId")
 

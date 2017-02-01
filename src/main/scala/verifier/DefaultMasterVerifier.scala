@@ -164,7 +164,7 @@ class DefaultMasterVerifier(config: Config)
 
     val verificationTaskFutures: Seq[Future[Seq[VerificationResult]]] =
       program.methods.filterNot(excludeMethod).map(method => {
-        val s = createInitialState(method, program).copy(parallelizeBranches = true)
+        val s = createInitialState(method, program)/*.copy(parallelizeBranches = true)*/ /* [BRANCH-PARALLELISATION] */
         _verificationPoolManager.queueVerificationTask(v => v.methodSupporter.verify(s, method))
       })
 

@@ -737,8 +737,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     Predef.assert(fct.sort == sorts.Ref, s"Expected ref-sorted term, but found $fct of sort ${fct.sort}")
 
-//    val funcSort = sorts.Arrow((additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
-//    val funcSymbol = decider.fresh("inv", funcSort)
     val func = v.decider.fresh("inv", (additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
     val inverseFunc = (t: Term) => App(func, additionalArgs :+ t)
     val invOFct: Term = inverseFunc(fct)

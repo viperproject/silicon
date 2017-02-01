@@ -124,9 +124,8 @@ object executor extends ExecutionRules with Immutable {
         var phase1data: Vector[PhaseData] = Vector.empty
         var phase2data: Vector[PhaseData] = Vector.empty
 
-        (  executionFlowController.locally(sBody/*.copy(parallelizeBranches = false)*/, v)((s0, v0) => {
+        (  executionFlowController.locally(sBody, v)((s0, v0) => {
               val mark = v0.decider.setPathConditionMark()
-//              println("==== Loop: Check specs well-definedness ==== ")
               v0.decider.prover.comment("Loop: Check specs well-definedness")
               produces(s0, freshSnap, lb.invs, ContractNotWellformed, v0)((s1, v1) =>
                 produce(s1, freshSnap, lb.cond, WhileFailed(loopStmt), v1)((s2, v2) => {
@@ -134,52 +133,40 @@ object executor extends ExecutionRules with Immutable {
                    * from the invariant (e.g. due to conditionals)
                    */
                   if (!v2.decider.checkSmoke()) {
-//                    println(s"  ${Thread.currentThread().getId} | ${v2.uniqueId}")
-                    phase1data = phase1data :+ (s2, v2.decider.pcs.after(mark), v2.decider.freshFunctions)
+                    phase1data = phase1data :+ (s2,
+                                                v2.decider.pcs.after(mark),
+                                                InsertionOrderedSet.empty[FunctionDecl] /*v2.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
                   }
                   Success()}))})
-        && executionFlowController.locally(s/*.copy(parallelizeBranches = false)*/, v)((s0, v0) => {
+        && executionFlowController.locally(s, v)((s0, v0) => {
               val mark = v0.decider.setPathConditionMark()
-//              println("==== Loop: Establish loop invariant ==== ")
-//              println("\n[exec/while AAAAAA]")
-//              println(s"  mark = $mark")
-//              println(s"  v0.uniqueId = ${v0.uniqueId}")
-//              println(s"  v0.decider.pcs = ${v0.decider.pcs}")
               v0.decider.prover.comment("Loop: Establish loop invariant")
               consumes(s0, lb.invs, e => LoopInvariantNotEstablished(e), v0)((s1, _, v1) => {
-//              println("\n[exec/while BBBBBBBB]")
-//              println(s"  v1.uniqueId = ${v1.uniqueId}")
-//              println(s"  v1.decider.pcs = ${v1.decider.pcs}")
-//                println(s"  ${Thread.currentThread().getId} | ${v1.uniqueId}")
-                phase2data = phase2data :+ (s1, v1.decider.pcs.after(mark), v1.decider.freshFunctions)
+                phase2data = phase2data :+ (s1,
+                                           v1.decider.pcs.after(mark),
+                                           InsertionOrderedSet.empty[FunctionDecl] /*v1.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
                 Success()})})
         && {
-//              println("==== Loop: Verify loop body ==== ")
               v.decider.prover.comment("Loop: Verify loop body")
               phase1data.foldLeft(Success(): VerificationResult) {
                 case (fatalResult: FatalResult, _) => fatalResult
                 case (intermediateResult, (s0, pcs1, ff1)) =>
-                  intermediateResult && executionFlowController.locally(s0/*.copy(parallelizeBranches = s.parallelizeBranches)*/, v)((s1, v1) => {
-                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions)
+                  intermediateResult && executionFlowController.locally(s0, v)((s1, v1) => {
+//                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                     v1.decider.assume(pcs1.assumptions)
                     exec(s1, lb.body, v1)((s2, v2) =>
                       consumes(s2, lb.invs, e => LoopInvariantNotPreserved(e), v2)((_, _, _) => {
-//                        println(s"  ${Thread.currentThread().getId} | ${v.uniqueId} | ${v3.uniqueId}")
                         Success()}))})}}
         && {
-//              println("==== Loop: Continue after loop ==== ")
               v.decider.prover.comment("Loop: Continue after loop")
               phase2data.foldLeft(Success(): VerificationResult) {
                 case (fatalResult: FatalResult, _) => fatalResult
                 case (intermediateResult, (s0, pcs1, ff1)) =>
-//                  println(s"  ${Thread.currentThread().getId} | ${v.uniqueId} | ${v0.uniqueId}")
-                  intermediateResult && executionFlowController.locally(s0/*.copy(parallelizeBranches = s.parallelizeBranches)*/, v)((s1, v1) => {
-//                    v1.decider.prover.comment(s"v0.uniqueId = ${v0.uniqueId}")
-//                    v1.decider.prover.comment(s"v.uniqueId = ${v.uniqueId}")
-                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions)
+                  intermediateResult && executionFlowController.locally(s0, v)((s1, v1) => {
+//                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                     v1.decider.assume(pcs1.assumptions)
                     produces(s1.copy(g = gBody), freshSnap,  lb.invs :+ notGuard, _ => WhileFailed(loopStmt), v1)((s2, v2) =>
-                      /* Detect potential contradictions (as before) */
+                      /* Detect potential contradictions (analogous to above) */
                       if (v2.decider.checkSmoke())
                         Success() /* TODO: Mark branch as dead? */
                       else

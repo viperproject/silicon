@@ -254,14 +254,6 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.Implies(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
           evalImplies(s1, t0, e1, pve, v1)(Q))
-//          join[Term, Term](c1, QB =>
-//            branch(σ, t0, c1,
-//              (c2: C) => eval(σ, e1, pve, c2)(QB),
-//              (c2: C) => QB(True(), c2))
-//          )(entries => {
-//            assert(entries.length <= 2)
-//            Implies(t0, entries.headOption.map(_.data).getOrElse(True()))
-//          })(Q))
 
       case ast.CondExp(e0, e1, e2) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
@@ -466,7 +458,6 @@ object evaluator extends EvaluationRules with Immutable {
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
               val s5 = s4.copy(h = s2.h,
                                recordVisited = s2.recordVisited,
-//                               functionRecorder = c4.functionRecorder.recordSnapshot(fapp, c4.branchConditions, s1),
                                functionRecorder = s4.functionRecorder.recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1),
                                fvfAsSnap = s2.fvfAsSnap)
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
@@ -497,7 +488,6 @@ object evaluator extends EvaluationRules with Immutable {
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(s4, acc, pve, v3)((s5, snap, v4) => {
-//                      val c5 = c4.copy(functionRecorder = c4.functionRecorder.recordSnapshot(pa, c4.branchConditions, snap))
                       val s6 = s5.copy(functionRecorder = s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap))
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
@@ -652,9 +642,6 @@ object evaluator extends EvaluationRules with Immutable {
                 val triggersAndVars =
                   QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, v4.decider.fresh)
                 Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
-//            val s6 = s5.copy(quantifiedVariables = s5.quantifiedVariables.drop(tVars.length),
-//                             recordPossibleTriggers = s.recordPossibleTriggers,
-//                             possibleTriggers = s.possibleTriggers ++ (if (s.recordPossibleTriggers) s5.possibleTriggers else Map()))
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()
             QB((s5, ts1, ts2, tTriggers, auxQuant, additionalPossibleTriggers))})})})
@@ -686,28 +673,11 @@ object evaluator extends EvaluationRules with Immutable {
                      : VerificationResult =
 
     if (s.retrying) {
-//      /* See comment in DefaultDecider.tryOrFail */
-//      var originalChunks: Option[Iterable[Chunk]] = None
-//      def compressHeapIfRetrying(c: C, σ: S, h: H) {
-//        if (c.retrying) {
-//          originalChunks = Some(h.values)
-//          heapCompressor.compress(σ, h, c)
-//        }
-//      }
-//      def restoreHeapIfPreviouslyCompressed(h: H) {
-//        originalChunks match {
-//          case Some(chunks) => h.replace(chunks)
-//          case None => /* Nothing to do here */
-//        }
-//      }
-
-//      compressHeapIfRetrying(c, σ, h)
       val r =
         eval(s.copy(h = h, partiallyConsumedHeap = None), e, pve, v)((s1, t, v1) => {
           val s2 = s1.copy(h = s.h,
                            partiallyConsumedHeap = s.partiallyConsumedHeap)
           Q(s2, t, v1)})
-//      restoreHeapIfPreviouslyCompressed(h)
 
       r
     } else
@@ -855,7 +825,6 @@ object evaluator extends EvaluationRules with Immutable {
      */
 
     var optRemainingTriggerTerms: Option[Seq[Term]] = None
-//    val πPre: Set[Term] = decider.π
     val preMark = v.decider.setPathConditionMark()
     var πDelta = InsertionOrderedSet.empty[Term]
 
@@ -923,12 +892,7 @@ object evaluator extends EvaluationRules with Immutable {
 
     assert(entries.nonEmpty, "Expected at least one join data entry")
 
-//    println("\n[Evaluator.join]")
-//    println("  entries = ")
-//    entries foreach (e => println(s"  $e"))
-
     entries match {
-//      case Seq(entry) if entry.newBranchConditions.isEmpty =>
       case Seq(entry) if entry.pathConditions.branchConditions.isEmpty =>
         (entry.s, entry.data)
       case _ =>
@@ -940,10 +904,6 @@ object evaluator extends EvaluationRules with Immutable {
           Implies(And(entry.pathConditions.branchConditions), joinTerm === entry.data))
 
         val sJoined = entries.tail.foldLeft(entries.head.s)((sAcc, entry) =>sAcc.merge(entry.s))
-
-//        println(s"  joinTerm = $joinTerm")
-//        println(s"  joinDefEqs = ")
-//        joinDefEqs foreach (e => println(s"  $e"))
 
         v.decider.assume(joinDefEqs)
 

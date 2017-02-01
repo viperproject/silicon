@@ -227,7 +227,6 @@ object producer extends ProductionRules with Immutable {
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
             v2.decider.assume(PermAtMost(NoPerm(), tPerm))
-//            val snap = sf(s2.predicateSnapMap(predicate))
             val snap = sf(predicate.body.map(getOptimalSnapshotSort(_, Verifier.program, v2)._1).getOrElse(sorts.Snap), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, s2.h, tArgs, snap, gain, v2)(Q)}))

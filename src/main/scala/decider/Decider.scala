@@ -55,11 +55,12 @@ trait Decider {
   def fresh(v: ast.AbstractLocalVar): Var
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
 
-  def freshFunctions: InsertionOrderedSet[FunctionDecl]
-  def freshMacros: Vector[MacroDecl]
-  def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit
-  def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
-  def setPcs(other: PathConditionStack): Unit
+/* [BRANCH-PARALLELISATION] */
+//  def freshFunctions: InsertionOrderedSet[FunctionDecl]
+//  def freshMacros: Vector[MacroDecl]
+//  def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit
+//  def declareAndRecordAsFreshMacros(functions: Vector[MacroDecl]): Unit
+//  def setPcs(other: PathConditionStack): Unit
 
   def statistics(): Map[String, String]
 }
@@ -81,31 +82,21 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     private var z3: Z3ProverStdIO = _
     private var pathConditions: PathConditionStack = _
 
-    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _
-    private var _freshMacros: Vector[MacroDecl] = _
+//    private var _freshFunctions: InsertionOrderedSet[FunctionDecl] = _ /* [BRANCH-PARALLELISATION] */
+//    private var _freshMacros: Vector[MacroDecl] = _
 
     def prover: Prover = z3
 
     def pcs: PathConditionStack = pathConditions
 
-    def setPcs(other: PathConditionStack) = {
-//      println(s"[setPcs | ${Thread.currentThread().getId} | $uniqueId]")
-//      Predef.assert(pcs.isEmpty,   "Replacing a decider's path condition stack require the "
-//                                 + s"current stack to be empty:\n$pcs")
-
-      pathConditions = other
-
-      pathConditions.assumptions foreach prover.assume
-    }
+//    def setPcs(other: PathConditionStack) = { /* [BRANCH-PARALLELISATION] */
+//      pathConditions = other
+//      pathConditions.assumptions foreach prover.assume
+//    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
       try {
         z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
-  //                             config,
-  //                             config.z3LogFile(uniqueId),
-  //                             context.bookkeeper,
-  //                             context.identifierFactory,
-  //                             context.termConverter)
         z3.start() /* Cannot query Z3 version otherwise */
       } catch {
         case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
@@ -133,16 +124,16 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     def start() {
       pathConditions = new LayeredPathConditionStack()
-      _freshFunctions = InsertionOrderedSet.empty
-      _freshMacros = Vector.empty
+//      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
+//      _freshMacros = Vector.empty
       createProver()
     }
 
     def reset() {
       z3.reset()
       pathConditions = new LayeredPathConditionStack()
-      _freshFunctions = InsertionOrderedSet.empty
-      _freshMacros = Vector.empty
+//      _freshFunctions = InsertionOrderedSet.empty /* [BRANCH-PARALLELISATION] */
+//      _freshMacros = Vector.empty
     }
 
     def stop() {
@@ -162,13 +153,6 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     def setCurrentBranchCondition(t: Term) {
-//      println("\n[setCurrentBranchCondition]")
-//      println(s"  uniqueId = $uniqueId")
-//      println(s"  thread = ${Thread.currentThread().getId}")
-//      println(s"  pathConditions = ${System.identityHashCode(pathConditions)}")
-//      println(s"  t = $t")
-//      println(pathConditions)
-
       pathConditions.setCurrentBranchCondition(t)
       assume(InsertionOrderedSet(Seq(t)))
     }
@@ -260,7 +244,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
       prover.declare(macroDecl)
 
-      _freshMacros = _freshMacros :+ macroDecl
+//      _freshMacros = _freshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
 
       Macro(name, argSorts, body.sort)
     }
@@ -289,25 +273,27 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
               HeapDepFun(proverFun.id, proverFun.argSorts, proverFun.resultSort).asInstanceOf[F]
           }
 
-      _freshFunctions = _freshFunctions + FunctionDecl(fun)
+//      _freshFunctions = _freshFunctions + FunctionDecl(fun) /* [BRANCH-PARALLELISATION] */
 
       fun
     }
 
-    def freshFunctions: InsertionOrderedSet[FunctionDecl] = _freshFunctions
-    def freshMacros: Vector[MacroDecl] = _freshMacros
 
-    def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit = {
-      functions foreach prover.declare
-
-      _freshFunctions = _freshFunctions ++ functions
-    }
-
-    def declareAndRecordAsFreshMacros(macros: Vector[MacroDecl]): Unit = {
-      macros foreach prover.declare
-
-      _freshMacros = _freshMacros ++ macros
-    }
+/* [BRANCH-PARALLELISATION] */
+//    def freshFunctions: InsertionOrderedSet[FunctionDecl] = _freshFunctions
+//    def freshMacros: Vector[MacroDecl] = _freshMacros
+//
+//    def declareAndRecordAsFreshFunctions(functions: InsertionOrderedSet[FunctionDecl]): Unit = {
+//      functions foreach prover.declare
+//
+//      _freshFunctions = _freshFunctions ++ functions
+//    }
+//
+//    def declareAndRecordAsFreshMacros(macros: Vector[MacroDecl]): Unit = {
+//      macros foreach prover.declare
+//
+//      _freshMacros = _freshMacros ++ macros
+//    }
 
     /* Misc */
 

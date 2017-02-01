@@ -459,13 +459,6 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
 
     val precomputedData = candidates map { ch =>
       val pTaken = Ite(conditionOfInv, PermMin(ch.perm.replace(ch.formalVars, formalVars), pNeeded), NoPerm())
-    //      val macroName = Identifier("predPTaken" + permsTakenCounter.next())
-    //      val macroDecl = MacroDecl(macroName, formalVars, pTaken)
-
-    //      decider.prover.declare(macroDecl)
-
-    //      val formalSorts = formalVars.map(x => x.sort)
-    //      val permsTakenFunc = Macro(macroName, formalSorts, sorts.Perm)
       val permsTakenFunc = v.decider.freshMacro("predPTaken", formalVars, pTaken)
       val permsTakenFApp = (t: Seq[Term]) => App(permsTakenFunc, t)
 

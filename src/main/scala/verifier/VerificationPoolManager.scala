@@ -94,25 +94,11 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
       var slave: SlaveVerifier = null
 
       try {
-//        println(s"[${Thread.currentThread().getId}]")
-//        println(s"  ###### Starting slave verification task")
-//        println(s"  getNumActive = ${slaveVerifierPool.getNumActive}")
-//        println(s"  getNumIdle = ${slaveVerifierPool.getNumIdle}")
-
         slave = slaveVerifierPool.borrowObject()
-//        println(s"${Thread.currentThread().getId} BORROWS ${slave.uniqueId}")
 
-//        println(s"  Borrowed slave = ${slave.uniqueId}")
-
-        val r = task(slave)
-
-//        println(s"[${Thread.currentThread().getId} | ${slave.uniqueId}]")
-//        println(s"  ###### Done with slave verification task")
-
-        r
+        task(slave)
       } finally {
         if (slave != null) {
-//          println(s"${Thread.currentThread().getId} RETURNS ${slave.uniqueId}")
           slaveVerifierPool.returnObject(slave)
         }
       }
@@ -139,29 +125,3 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
     teardownSlaveVerifierPool()
   }
 }
-
-//class CustomFutureReturningExecutor(numberOfThreads: Int)
-//    /* The initialisation of the ThreadPoolExecutor corresponds to OpenJDK-8's implementation of
-//     * java.util.concurrent.Executors.newFixedThreadPool
-//     * See http://grepcode.com/file/repository.grepcode.com/java/root/jdk/openjdk/8u40-b25/java/util/concurrent/Executors.java
-//     */
-//    extends ThreadPoolExecutor(numberOfThreads,
-//                               numberOfThreads,
-//                               0L,
-//                               TimeUnit.MILLISECONDS,
-//                               new LinkedBlockingQueue[Runnable]()) {
-//
-//  override protected def newTaskFor[T](runnable: Runnable, default: T): RunnableFuture = ???
-//
-//  override protected def newTaskFor[T](callable: Callable[T]): RunnableFuture = {
-////    if (callable instanceof IdentifiableCallable) {
-////      return ((IdentifiableCallable) callable).newTask();
-////    } else {
-////      return super.newTaskFor(callable); // A regular Callable, delegate to parent
-////    }
-//  ???}
-//}
-//
-//class QueryableFutureTask[T](callable: Callable[T]) extends FutureTask(callable) {
-//
-//}

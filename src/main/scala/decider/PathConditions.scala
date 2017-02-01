@@ -137,11 +137,6 @@ private[decider] class LayeredPathConditionStack
   pushScope() /* Create an initial layer on the stack */
 
   def setCurrentBranchCondition(condition: Term): Unit = {
-//    println("\n[setCurrentBranchCondition]")
-//    println(s"  condition = $condition")
-//    println(s"  layers.head.branchCondition = ${layers.head.branchCondition}")
-//    println(this.toString)
-
     layers.head.branchCondition = condition
   }
 

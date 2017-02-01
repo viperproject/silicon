@@ -255,11 +255,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             else ee
 
           handleThrowable(ex)
-//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
-        case ex: Exception =>
-          handleThrowable(ex)
-//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+        case ex: Exception => handleThrowable(ex)
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()

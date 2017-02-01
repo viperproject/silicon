@@ -24,8 +24,6 @@ trait Verifier {
   def counter(id: AnyRef): Counter
 
   def decider: Decider
-//  def quantifiedPredicateChunkSupporter: QuantifiedPredicateChunkSupporter
-//  def quantifiedChunkSupporter: QuantifiedChunkSupporter
   def symbolConverter: SymbolConverter
   def stateFormatter: StateFormatter
   def identifierFactory: IdentifierFactory

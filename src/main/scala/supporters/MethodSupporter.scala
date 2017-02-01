@@ -61,46 +61,22 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       // common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
 
-//      println("\n[BEFORE GETTING STARTED]")
-
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate
          * rules in Smans' paper.
          */
         executionFlowController.locally(s, v)((s1, v1) => {
           produces(s1, freshSnap, pres, ContractNotWellformed, v1)((s2, v2) => {
-//            println("\n[AFTER PRODUCING methods.pres]")
-//            println(s"v2.uniqueId = ${v2.uniqueId}")
-//            println("v2.decider.pcs.assumptions = ")
-//            v2.decider.pcs.assumptions foreach println
-  //            println("v2.decider.pcs.branchConditions = ")
-  //            v2.decider.pcs.branchConditions foreach println
-
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
-           (   executionFlowController.locally(s2a, v2)((s3, v3) => {
+            (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())
 //                 val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 //                 val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-//                   println("\n[BEFORE PRODUCING methods.posts]")
-//                   println("v3.decider.pcs.assumptions = ")
-//                   v3.decider.pcs.assumptions foreach println
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, v4) => {
 //                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
-//                    println("\n[AFTER PRODUCING methods.posts]")
-//                    println("v4.decider.pcs.assumptions = ")
-//                    v4.decider.pcs.assumptions foreach println
                     Success()})})
             && {
-//                 println("\n[SECOND LOCALLY]")
-//                 println(s"v2.uniqueId = ${v2.uniqueId}")
-//                 println("v2.decider.pcs.assumptions = ")
-//                 v2.decider.pcs.assumptions foreach println
-
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-//                 println("[BEFORE EXECUTING methods.body]")
-//                 println("v3.decider.pcs.assumptions = ")
-//                 v3.decider.pcs.assumptions foreach println
-
                   exec(s3, body, v3)((s4, v4) =>
                     consumes(s4, posts, postViolated, v4)((_, _, _) =>
                       Success()))}) }  )})})
