@@ -79,16 +79,6 @@ object Silicon {
 
     silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
 
-    silicon.config.initialize {
-      case _ =>
-        /* Ignore command-line errors, --help, --version and other non-positive
-         * results from Scallop.
-         * After initialized has been set to true, Silicon itself will not call
-         * config.initialize again.
-         */
-        silicon.config.initialized = true
-    }
-
     silicon
   }
 }
@@ -141,40 +131,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Started
 
-    if (!_config.initialized) initializeLazyScallopConfig()
-        /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
-         *       that initialises the verifier's configuration. However, this
-         *       requires the verifier to inherit from SilFrontend, which is
-         *       not really meaningful.
-         *       The configuration logic should thus be refactored such that
-         *       a Verifier can be used without extending SilFrontend, while
-         *       still ensuring that, e.g., a config is not initialised twice,
-         *       and that a reasonable default handling of --version, --help
-         *       or --dependencies is can be shared.
-         */
-
     setLogLevelsFromConfig()
 
     verifier = new DefaultVerifier(config)
     verifier.start()
-  }
-
-  /* TODO: Corresponds partially to code from SilFrontend. The design of command-line parsing should be improved.
-   * TODO: Would be nice if logger could be used instead of printHelp()ing to stdout.
-   */
-  protected def initializeLazyScallopConfig() {
-    _config.initialize {
-      case org.rogach.scallop.exceptions.Version =>
-        println(_config.builder.vers.get)
-        throw org.rogach.scallop.exceptions.Version
-      case ex: org.rogach.scallop.exceptions.Help =>
-        _config.printHelp()
-        throw ex
-      case ex: org.rogach.scallop.exceptions.ScallopException =>
-        println(SilCliOptionError(ex.message + ".").readableMessage)
-        _config.printHelp()
-        throw ex
-    }
   }
 
   private def reset() {
@@ -231,7 +191,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
       try {
         val failures =
-          if (config.timeout.get.getOrElse(0) == 0)
+          if (config.timeout.toOption.getOrElse(0) == 0)
             future.get()
           else
             future.get(config.timeout(), TimeUnit.SECONDS)
@@ -321,7 +281,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       verifier.bookkeeper.proverStatistics = proverStats
       verifier.bookkeeper.errors = failures.length
 
-      config.showStatistics.get match {
+      config.showStatistics.toOption match {
         case None =>
 
         case Some((Config.Sink.Stdio, "")) =>
@@ -389,25 +349,27 @@ object SiliconRunner extends SiliconFrontend {
     try {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
-    } catch {
-      case ex: org.rogach.scallop.exceptions.ScallopResult =>
-        /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
     } finally {
       siliconInstance.stop()
+        /* TODO: This currently seems necessary to make sure that Z3 is terminated
+         *       if Silicon is supposed to terminate prematurely because of a
+         *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
+         *       at the point where the TimeoutException is caught, but that doesn't
+         *       seem to work. A few forum posts mentioned that Process.destroy
+         *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
+         *       the process to kill has no input/output data left in the
+         *       corresponding streams.
+         */
     }
 
-    sys.exit(result match {
-      case SilSuccess => 0
-      case SilFailure(_) => 1
-    })
-      /* TODO: This currently seems necessary to make sure that Z3 is terminated
-       *       if Silicon is supposed to terminate prematurely because of a
-       *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
-       *       at the point where the TimeoutException is caught, but that doesn't
-       *       seem to work. A few forum posts mentioned that Process.destroy
-       *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
-       *       the process to kill has no input/output data left in the
-       *       corresponding streams.
-       */
+    val exitCode =
+      if (   config.error.nonEmpty /* Handling command line options failed */
+          || config.exit           /* Must terminate for some other reason */
+          || result != SilSuccess) /* Verification (includes parsing) failed */
+        1
+      else
+        0
+
+    sys.exit(exitCode)
   }
 }

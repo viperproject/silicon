@@ -188,7 +188,7 @@ trait DeciderProvider[ST <: Store[ST],
 
     /* Asserting facts */
 
-    def checkSmoke() = prover.check(config.checkTimeout.get) == Unsat
+    def checkSmoke() = prover.check(config.checkTimeout.toOption) == Unsat
 
     def tryOrFail1[R](σ: S, c: C)
                      (action: (S, C, (R, C) => VerificationResult) => VerificationResult)
