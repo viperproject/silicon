@@ -17,12 +17,39 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 
 trait ConsumptionRules extends SymbolicExecutionRules {
+
+  /** Consume assertion `a` from state `s`.
+    *
+    * @param s The state to consume the assertion from.
+    * @param a The assertion to consume.
+    * @param pve The error to report in case the consumption fails.
+    * @param v The verifier to use.
+    * @param Q The continuation to invoke if the consumption succeeded, with the following
+    *          arguments: state (1st argument) and verifier (3rd argument) resulting from the
+    *          consumption, and a heap snapshot (2bd argument )representing the values of the
+    *          consumed partial heap.
+    * @return The result of the continuation.
+    */
   def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult
 
+  /** Subsequently consumes the assertions `as` (from head to tail), starting in state `s`.
+    *
+    * `consumes(s, as, _ => pve, v)` should (not yet tested ...) be equivalent to
+    * `consume(s, BigAnd(as), pve, v)`, expect that the former allows a more-fine-grained
+    * error messages.
+    *
+    * @param s The state to consume the assertions from.
+    * @param as The assertions to consume.
+    * @param pvef The error to report in case a consumption fails. Given assertions `as`, an error
+    *             `pvef(as_i)` will be reported if consuming assertion `as_i` fails.
+    * @param v @see [[consume]]
+    * @param Q @see [[consume]]
+    * @return @see [[consume]]
+    */
   def consumes(s: State,
-               a: Seq[ast.Exp],
+               as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier)
               (Q: (State, Term, Verifier) => VerificationResult)

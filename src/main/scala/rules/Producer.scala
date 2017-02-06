@@ -16,6 +16,18 @@ import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
 
 trait ProductionRules extends SymbolicExecutionRules {
+
+  /** Produce assertion `a` into state `s`.
+    *
+    * @param s The state to produce the assertion into.
+    * @param sf The heap snapshot determining the values of the produced partial heap.
+    * @param a The assertion to produce.
+    * @param pve The error to report in case the production fails.
+    * @param v The verifier to use.
+    * @param Q The continuation to invoke if the production succeeded, with the state and
+    *          the verifier resulting from the production as arguments.
+    * @return The result of the continuation.
+    */
   def produce(s: State,
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
@@ -24,6 +36,21 @@ trait ProductionRules extends SymbolicExecutionRules {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult
 
+  /** Subsequently produces assertions `as` into state `s`.
+    *
+    * `produces(s, sf, as, _ => pve, v)` should (not yet tested ...) be equivalent to
+    * `produce(s, sf, BigAnd(as), pve, v)`, expect that the former allows a more-fine-grained
+    * error messages.
+    *
+    * @param s The state to produce the assertions into.
+    * @param sf The heap snapshots determining the values of the produced partial heaps.
+    * @param as The assertions to produce.
+    * @param pvef The error to report in case the production fails. Given assertions `as`, an error
+    *             `pvef(as_i)` will be reported if producing assertion `as_i` fails.
+    * @param v @see [[produce]]
+    * @param Q @see [[produce]]
+    * @return @see [[produce]]
+    */
   def produces(s: State,
                sf: (Sort, Verifier) => Term,
                as: Seq[ast.Exp],
