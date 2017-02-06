@@ -63,7 +63,7 @@ class Z3ProverStdIO(uniqueId: String,
   private def createZ3Instance() = {
     log.info(s"Starting Z3 at $z3Path")
 
-    val userProvidedZ3Args: Array[String] = Verifier.config.z3Args.get match {
+    val userProvidedZ3Args: Array[String] = Verifier.config.z3Args.toOption match {
       case None =>
         Array()
 

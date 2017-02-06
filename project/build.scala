@@ -1,7 +1,6 @@
 import sbt._
 import Keys._
-import sbtassembly.Plugin._
-import AssemblyKeys._
+import sbtassembly.AssemblyPlugin.autoImport._
 import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
 
@@ -10,13 +9,12 @@ object SiliconBuild extends Build {
   /* Base settings */
 
   lazy val baseSettings = (
-       Defaults.defaultSettings
-    ++ hgIdSettings
+       hgIdSettings
     ++ brandSettings
     ++ Seq(
           organization := "viper",
           version := "1.1-SNAPSHOT",
-          scalaVersion := "2.11.7",
+          scalaVersion := "2.11.8",
           scalacOptions in Compile ++= Seq(
             "-deprecation",
             "-unchecked",
@@ -34,7 +32,6 @@ object SiliconBuild extends Build {
       base = file("."),
       settings = (
            baseSettings
-        ++ assemblySettings
         ++ Seq(
               name := "Silicon",
               mainClass in assembly := Some("viper.silicon.Silicon"),
@@ -126,12 +123,12 @@ object SiliconBuild extends Build {
   object dependencies {
     lazy val logging = Seq(
       "org.slf4s" %% "slf4s-api" % "1.7.12",
-      "org.slf4j" % "slf4j-log4j12" % "1.7.12")
+      "org.slf4j" % "slf4j-log4j12" % "1.7.22")
 
-    lazy val scallop = "org.rogach" %% "scallop" % "0.9.5"
-    lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.0"
+    lazy val scallop = "org.rogach" %% "scallop" % "2.0.7"
+    lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.1"
 
-    lazy val commonsIO = "commons-io" % "commons-io" % "2.4"
+    lazy val commonsIO = "commons-io" % "commons-io" % "2.5"
     lazy val commonsPool = "org.apache.commons" % "commons-pool2" % "2.4.2"
 
     lazy val sil = "viper" %% "silver" %  "0.1-SNAPSHOT"

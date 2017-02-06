@@ -201,8 +201,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   lazy val z3Exe: String = {
     val isWindows = System.getProperty("os.name").toLowerCase.startsWith("windows")
 
-    rawZ3Exe.get.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
-                .getOrElse("z3" + (if (isWindows) ".exe" else "")))
+    rawZ3Exe.toOption.getOrElse(envOrNone(Silicon.z3ExeEnvironmentVariable)
+                     .getOrElse("z3" + (if (isWindows) ".exe" else "")))
   }
 
   val defaultRawZ3LogFile = "logfile"
@@ -260,7 +260,7 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
             })
         .orElse{
             val z3TimeoutArg = """-t:(\d+)""".r
-            z3Args.get.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
+            z3Args.toOption.flatMap(args => z3TimeoutArg findFirstMatchIn args map(_.group(1).toInt))}
         .getOrElse(0)
 
   val maxHeuristicsDepth = opt[Int]("maxHeuristicsDepth",
@@ -341,6 +341,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case Some(n) if n < 0 => Left(s"Timeout must be non-negative, but $n was provided")
     case _ => Right(Unit)
   }
+
+  verify()
 }
 
 object Config {

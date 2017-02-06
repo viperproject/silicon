@@ -188,7 +188,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     /* Asserting facts */
 
-    def checkSmoke() = prover.check(Verifier.config.checkTimeout.get) == Unsat
+    def checkSmoke() = prover.check(Verifier.config.checkTimeout.toOption) == Unsat
 
     def check(t: Term, timeout: Int) = deciderAssert(t, Some(timeout))
 
