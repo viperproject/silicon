@@ -372,7 +372,13 @@ object evaluator extends EvaluationRules with Immutable {
                   val perm =
                     chs.foldLeft(NoPerm(): Term)((q, ch) =>
                       PermPlus(q, ch.perm.replace(`?r`, args.head)))
-                  v1.decider.assume(PermAtMost(perm, FullPerm()))
+                  /* TODO: Try again once Silicon fully supports field accesses as triggers.
+                   *       Currently, adding these axioms makes several of the RSL examples
+                   *       exhibit matching loops (potentially other examples as well).
+                   */
+//                  v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
+//                  v1.decider.prover.comment(perm.toString)
+//                  v1.decider.assume(PermAtMost(perm, FullPerm()))
                   perm
                 case pred: ast.Predicate =>
 //                  //added for quantified predicate permissions
@@ -388,7 +394,10 @@ object evaluator extends EvaluationRules with Immutable {
                 chs.foldLeft(NoPerm(): Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
                   PermPlus(q, Ite(argsPairWiseEqual, ch.perm, NoPerm()))})
-              v1.decider.assume(PermAtMost(perm, FullPerm()))
+              /* TODO: See todo above */
+//              v1.decider.prover.comment(s"perm($locacc)  ~~>  assume upper permission bound")
+//              v1.decider.prover.comment(perm.toString)
+//              v1.decider.assume(PermAtMost(perm, FullPerm()))
               perm
             }
           Q(s1, perm, v1)})
