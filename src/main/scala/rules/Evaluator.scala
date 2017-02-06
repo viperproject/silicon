@@ -237,9 +237,12 @@ object evaluator extends EvaluationRules with Immutable {
 
       /* Short-circuiting evaluation of AND */
       case ast.And(e0, e1) =>
-        /* TODO: Avoid evaluating e0 twice */
-        val e1Short = ast.Implies(e0, e1)(e1.pos, e1.info)
-        evalBinOp(s, e0, e1Short, (t1, t2) => And(t1, t2), pve, v)(Q)
+        /* Evaluate `e0 && e1` as `e0 && (e0 ==> e1)`, but without evaluating `e0` twice */
+        eval(s, e0, pve, v)((s1, t0, v1) => {
+          val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
+          val e1Short = ast.Implies(lv, e1)(e1.pos, e1.info)
+          eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
+            Q(s2, And(t0, t1), v2))})
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
@@ -247,9 +250,12 @@ object evaluator extends EvaluationRules with Immutable {
 
       /* Short-circuiting evaluation of OR */
       case ast.Or(e0, e1) =>
-        /* TODO: Avoid evaluating e0 twice */
-        val e1Short = ast.And(ast.Not(e0)(e0.pos, e0.info), e1)(e1.pos, e1.info)
-        evalBinOp(s, e0, e1Short, (t1, t2) => Or(t1, t2), pve, v)(Q)
+        /* Evaluate `e0 || e1` as `e0 || (!e0 && e1)`, but without evaluating `e0` twice */
+        eval(s, e0, pve, v)((s1, t0, v1) => {
+          val lv = ast.LocalVar(v1.identifierFactory.fresh("v").name)(e0.typ, e0.pos, e0.info)
+          val e1Short = ast.And(ast.Not(lv)(e0.pos, e0.info), e1)(e1.pos, e1.info)
+          eval(s1.copy(g = s1.g + (lv, t0)), e1Short, pve, v1)((s2, t1, v2) =>
+            Q(s2, Or(t0, t1), v2))})
 
       case ast.Implies(e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>
