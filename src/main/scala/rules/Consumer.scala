@@ -449,14 +449,14 @@ object consumer extends ConsumptionRules with Immutable {
                     reserveHeaps = Nil,
                     exhaleExt = false)
 
-    executionFlowController.tryOrFail(s1, v)((s2, v1, QS, QF) => {
+    executionFlowController.tryOrFail0(s1, v)((s2, v1, QS) => {
       eval(s2, e, pve, v1)((s3, t, v2) =>
         v2.decider.assert(t) {
           case true =>
             v2.decider.assume(t)
             QS(s3, v2)
           case false =>
-            QF(Failure(pve dueTo AssertionFalse(e)))})
+            Failure(pve dueTo AssertionFalse(e))})
     })((s4, v4) => {
       val s5 = s4.copy(h = s.h,
                        reserveHeaps = s.reserveHeaps,

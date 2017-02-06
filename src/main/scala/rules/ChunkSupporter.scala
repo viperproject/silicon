@@ -180,19 +180,17 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                (Q: (State, Heap, BasicChunk, Verifier) => VerificationResult)
                : VerificationResult = {
 
-    type R = (Heap, BasicChunk)
-
-    executionFlowController.tryOrFailWithResult[R](s.copy(h = h), v)((s1, v1, QS, QF) =>
+    executionFlowController.tryOrFail2[Heap, BasicChunk](s.copy(h = h), v)((s1, v1, QS) =>
       getChunk(s1.h, name, args, v1) match {
         case Some(chunk) =>
-          QS(s1.copy(h = s.h), (s1.h, chunk), v1)
+          QS(s1.copy(h = s.h), s1.h, chunk, v1)
 
         case None =>
           if (v1.decider.checkSmoke())
             Success() /* TODO: Mark branch as dead? */
           else
-            QF(Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args))}
-    ){case (s1, (h1, chunk), v1) => Q(s1, h1, chunk, v1)}
+            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}
+    )(Q)
   }
 
   def withChunk(s: State,
@@ -206,9 +204,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                (Q: (State, Heap, BasicChunk, Verifier) => VerificationResult)
                : VerificationResult = {
 
-    type R = (Heap, BasicChunk)
-
-    executionFlowController.tryOrFailWithResult[R](s.copy(h = h), v)((s1, v1, QS, QF) =>
+    executionFlowController.tryOrFail2[Heap, BasicChunk](s.copy(h = h), v)((s1, v1, QS) =>
       withChunk(s1, s1.h, name, args, locacc, pve, v1)((s2, h2, ch, v2) => {
         val permCheck = optPerms match {
           case Some(p) => PermAtMost(p, ch.perm)
@@ -223,12 +219,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         v2.decider.assert(permCheck) {
           case true =>
             v2.decider.assume(permCheck)
-            QS(s2.copy(h = s.h), (h2, ch), v2)
+            QS(s2.copy(h = s.h), h2, ch, v2)
           case false =>
-            QF(Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args))
+            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
         }
       })
-    ){case (s1, (h1, chunk), v1) => Q(s1, h1, chunk, v1)}
+    )(Q)
   }
 
   def withChunk(s: State,

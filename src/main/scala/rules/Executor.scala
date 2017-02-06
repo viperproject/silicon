@@ -321,11 +321,11 @@ object executor extends ExecutionRules with Immutable {
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
-            executionFlowController.tryOrFail(s, v)((s1, v1, QS, QF) => {
+            executionFlowController.tryOrFail0(s, v)((s1, v1, QS) => {
               if (v1.decider.checkSmoke())
                 QS(s1, v1)
               else
-                QF(Failure(pve dueTo AssertionFalse(a)))
+                Failure(pve dueTo AssertionFalse(a))
               })((_, _) => Success())
 
           case ast.LocalVar("SLEEP") => /* TODO: Remove once parallelisation is implemented */
