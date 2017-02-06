@@ -33,9 +33,11 @@ object brancher extends BranchingRules with Immutable {
     val negatedCondition = Not(condition)
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
 
+    /* False if the then-branch is dead, i.e. if the condition is known to be false */
     val executeThenBranch =
       !v.decider.check(negatedCondition, Verifier.config.checkTimeout())
 
+    /* False if the else-branch is dead, i.e. if the condition is known to be true */
     val executeElseBranch = (
          !executeThenBranch
       || !v.decider.check(condition, Verifier.config.checkTimeout()))
