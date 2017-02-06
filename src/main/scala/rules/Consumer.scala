@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.verifier.reasons._
 import viper.silver.verifier.{PartialVerificationError, VerificationError}
@@ -60,68 +61,117 @@ object consumer extends ConsumptionRules with Immutable {
   import brancher._
   import evaluator._
 
+  /* See the comment in Producer.scala for an overview of the different produce methods: the
+   * different consume methods provided by the consumer work and interact analogously.
+   */
+
+  /** @inheritdoc */
   def consume(s: State, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
              (Q: (State, Term, Verifier) => VerificationResult)
              : VerificationResult = {
 
-    consume(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
+    consumeR(s, s.h, a.whenExhaling, pve, v)((s1, h1, snap, v1) => {
       val s2 = s1.copy(h = h1,
                        partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap, v1)})
   }
 
+  /** @inheritdoc */
   def consumes(s: State,
                as: Seq[ast.Exp],
                pvef: ast.Exp => PartialVerificationError,
                v: Verifier)
               (Q: (State, Term, Verifier) => VerificationResult)
-              : VerificationResult =
+              : VerificationResult = {
 
-    consumes(s, s.h, as map (_.whenExhaling), pvef, v)((s1, snap1, v1) => {
+    val allTlcs = mutable.ListBuffer[ast.Exp]()
+    val allPves = mutable.ListBuffer[PartialVerificationError]()
+
+    as.foreach(a => {
+      val tlcs = a.whenExhaling.topLevelConjuncts
+      val pves = Seq.fill(tlcs.length)(pvef(a))
+
+      allTlcs ++= tlcs
+      allPves ++= pves
+    })
+
+    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, snap1, v1) => {
       val s2 = s1.copy(partiallyConsumedHeap = s.partiallyConsumedHeap)
-      Q(s2, snap1, v1)})
-
-  private def consumes(s: State,
-                       h: Heap,
-                       as: Seq[ast.Exp],
-                       pvef: ast.Exp => PartialVerificationError,
-                       v: Verifier)
-                       (Q: (State, Term, Verifier) => VerificationResult)
-                       : VerificationResult =
-
-    /* Note: See the code comment about produce vs. produces in
-     * DefaultProducer.produces. The same applies to consume vs. consumes.
-     */
-
-    if (as.isEmpty)
-      Q(s.copy(h = h), Unit, v)
-    else {
-      val a = as.head
-
-      if (as.tail.isEmpty)
-        consume(s, h, a, pvef(a), v)((s1, h1, snap1, v1) =>
-          Q(s1.copy(h = h1), snap1, v1))
-      else
-        consume(s, h, a, pvef(a), v)((s1, h1, snap1, v1) =>
-          consumes(s1, h1, as.tail, pvef, v1)((s2, snap2, v2) => {
-            Q(s2, Combine(snap1, snap2), v2)}))
-    }
-
-  /** Wrapper Method for consume, for logging. See Executor.scala for explanation of analogue. **/
-  @inline
-  private def consume(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                     (Q: (State, Heap, Term, Verifier) => VerificationResult)
-                     : VerificationResult = {
-
-//    val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
-    consume2(s, h, a, pve, v)((s1, h1, snap1, v1) => {
-//      SymbExLogger.currentLog().collapse(φ, SEP_identifier)
-      Q(s1, h1, snap1, v1)})
+      Q(s2, snap1, v1)
+    })
   }
 
-  private def consume2(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+  private def consumeTlcs(s: State,
+                          h: Heap,
+                          tlcs: Seq[ast.Exp],
+                          pves: Seq[PartialVerificationError],
+                          v: Verifier)
+                         (Q: (State, Term, Verifier) => VerificationResult)
+                            /* TODO: Why doesn't this continuation take the consumption-heap
+                             *       as an argument? */
+                         : VerificationResult =
+
+    if (tlcs.isEmpty)
+      Q(s.copy(h = h), Unit, v)
+    else {
+      val a = tlcs.head
+      val pve = pves.head
+
+      if (tlcs.tail.isEmpty)
+        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
+          Q(s1.copy(h = h1), snap1, v1))
+      else
+        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
+          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, snap2, v2) =>
+            Q(s2, Combine(snap1, snap2), v2)))
+    }
+
+  private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
                       : VerificationResult = {
+
+    val tlcs = a.topLevelConjuncts
+    val pves = Seq.fill(tlcs.length)(pve)
+
+    consumeTlcs(s, h, tlcs, pves, v)((s1, snap1, v1) =>
+      Q(s1, s1.h, snap1, v1))
+  }
+
+  /** Wrapper/decorator for consume that injects the following operations:
+    *   - Logging, see Executor.scala for an explanation
+    *   - Failure-driven state consolidation
+    */
+  protected def wrappedConsumeTlc(s: State,
+                                  h: Heap,
+                                  a: ast.Exp,
+                                  pve: PartialVerificationError,
+                                  v: Verifier)
+                                 (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                                 : VerificationResult = {
+
+    /* tryOrFail effects the "main" heap s.h, so we temporarily set the consume-heap h to be the
+     * main heap. Note that the main heap is used for evaluating expressions during an ongoing
+     * consume.
+     */
+    val sInit = s.copy(h = h)
+    executionFlowController.tryOrFail2[Heap, Term](sInit, v)((s0, v1, QS) => {
+      val h0 = s0.h
+      val s1 = s0.copy(h = s.h)
+
+      /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
+       *       Globally the types match, but locally the type system does not know.
+       */
+//      val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(a, s1, decider.pcs, c1.asInstanceOf[DefaultContext[ListBackedHeap]]))
+
+      consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
+//        SymbExLogger.currentLog().collapse(Ï†, SEP_identifier)
+        QS(s2, h2, snap2, v2)})
+    })(Q)
+  }
+
+  private def consumeTlc(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
+                        (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                        : VerificationResult = {
 
     /* ATTENTION: Expressions such as `perm(...)` must be evaluated in-place,
      * i.e. in the partially consumed heap which is denoted by `h` here. The
@@ -130,22 +180,13 @@ object consumer extends ConsumptionRules with Immutable {
      * time permissions have been consumed.
      */
 
-    if (!a.isInstanceOf[ast.And]) {
-      v.logger.debug(s"\nCONSUME ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
-      v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
-      v.logger.debug("h = " + v.stateFormatter.format(h))
-      if (s.reserveHeaps.nonEmpty)
-        v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
-    }
+    v.logger.debug(s"\nCONSUME ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
+    v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
+    v.logger.debug("h = " + v.stateFormatter.format(h))
+    if (s.reserveHeaps.nonEmpty)
+      v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
 
     val consumed = a match {
-      case ast.And(a1, a2)
-              if !a.isPure || Verifier.config.handlePureConjunctsIndividually() =>
-
-        consume(s, h, a1, pve, v)((s1, h1, snap1, v1) =>
-          consume(s1, h1, a2, pve, v1)((s2, h2, snap2, v2) => {
-            Q(s2, h2, Combine(snap1, snap2), v2)}))
-
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
 //        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
 //        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
@@ -154,7 +195,7 @@ object consumer extends ConsumptionRules with Immutable {
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
 //          impLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
-            (s2, v2) => consume(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
+            (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
               val res1 = Q(s3, h3, snap3, v3)
 //              impLog.finish_thnSubs()
 //              SymbExLogger.currentLog().prepareOtherBranch(impLog)
@@ -173,12 +214,12 @@ object consumer extends ConsumptionRules with Immutable {
         eval(s, e0, pve, v)((s1, t0, v1) => {
 //          gbLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
-            (s2, v2) => consume(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
+            (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
               val res1 = Q(s3, h3, snap3, v3)
 //              gbLog.finish_thnSubs()
 //              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
               res1}),
-            (s2, v2) => consume(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
+            (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
               val res2 = Q(s3, h3, snap3, v3)
 //              gbLog.finish_elsSubs()
               res2}))
@@ -309,7 +350,7 @@ object consumer extends ConsumptionRules with Immutable {
               s2.copy(letBoundVars = s2.letBoundVars ++ g1.values)
             else
               s2
-          consume(s3, h, body, pve, v1)(Q)})
+          consumeR(s3, h, body, pve, v1)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>
@@ -389,7 +430,7 @@ object consumer extends ConsumptionRules with Immutable {
           assert(s2.consumedChunks.length == s.consumedChunks.length)
           assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
           val sEmp = s2.copy(h = Heap())
-          consume(sEmp, sEmp.h, eIn, pve, v1)((s3, h3, _, v3) =>
+          consumeR(sEmp, sEmp.h, eIn, pve, v1)((s3, h3, _, v3) =>
             Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))})
 
       case ast.ApplyingGhostOp(eWandOrVar, eIn) =>
@@ -410,19 +451,19 @@ object consumer extends ConsumptionRules with Immutable {
 
         heuristicsSupporter.tryOperation[Heap](s"applying $eWand")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
           magicWandSupporter.applyingWand(s1, g1, eWand, eLHSAndWand, pve, v1)(QS)){case (s2, h2, v2) =>
-            consume(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
+            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
               Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
 
       case ast.FoldingGhostOp(acc: ast.PredicateAccessPredicate, eIn) =>
         heuristicsSupporter.tryOperation[Heap](s"folding $acc")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
           magicWandSupporter.foldingPredicate(s1, acc, pve, v1)(QS)){case (s2, h2, v2) =>
-            consume(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
+            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
               Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
 
       case ast.UnfoldingGhostOp(acc: ast.PredicateAccessPredicate, eIn) =>
         heuristicsSupporter.tryOperation[Heap](s"unfolding $acc")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
           magicWandSupporter.unfoldingPredicate(s1, acc, pve, v1)(QS)){case (s2, h2, v2) =>
-            consume(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
+            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
               Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
 
       case _ =>
@@ -443,7 +484,10 @@ object consumer extends ConsumptionRules with Immutable {
      *
      * Switch to the eval heap (σUsed) of magic wand's exhale-ext, if necessary.
      * This is done here already (the evaluator would do it as well) to ensure that the eval
-     * heap is compressed by tryOrFail if the assertion fails.
+     * heap is consolidated by tryOrFail if the assertion fails.
+     * The latter is also the reason for wrapping the assertion check in a tryOrFail block:
+     * the tryOrFail that wraps the consumption of each top-level conjunct would not consolidate
+     * the right heap.
      */
     val s1 = s.copy(h = magicWandSupporter.getEvalHeap(s),
                     reserveHeaps = Nil,

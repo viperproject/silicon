@@ -6,11 +6,12 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.{FieldChunk, Heap, PredicateChunk, State}
+import viper.silicon.state.{FieldChunk, PredicateChunk, State}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
@@ -64,8 +65,32 @@ object producer extends ProductionRules with Immutable {
   import brancher._
   import evaluator._
 
-  /* TODO: Why not produce into the current heap s.h directly? Because of the magic wand support? */
+  /* Overview of and interaction between the different available produce-methods:
+   *   - `produce` and `produces` are the entry methods and intended to be called by *clients*
+   *     (e.g. from the executor), but *not* by the implementation of the producer itself
+   *     (e.g. recursively).
+   *   - Produce methods suffixed with `tlc` (or `tlcs`) expect top-level conjuncts as assertions.
+   *     The other produce methods therefore split the given assertion(s) into top-level
+   *     conjuncts and forward these to `produceTlcs`.
+   *   - `produceTlc` implements the actual symbolic execution rules for producing an assertion,
+   *     and `produceTlcs` is basically `produceTlc` lifted to a sequence of assertions
+   *     (a continuation-aware fold, if you will).
+   *   - Certain operations such as logging need to be performed per produced top-level conjunct.
+   *     This is implemented by `wrappedProduceTlc`: a wrapper around (or decorator for)
+   *     `produceTlc` that performs additional operations before/after invoking `produceTlc`.
+   *     `produceTlcs` therefore repeatedly invokes `wrappedProduceTlc` (and not `produceTlc`
+   *     directly)
+   *   - `produceR` is intended for recursive calls: it takes an assertion, splits it into
+   *     top-level conjuncts and uses `produceTlcs` to produce each of them (hence, each assertion
+   *     to produce passes `wrappedProduceTlc` before finally reaching `produceTlc`).
+   *   - Note that the splitting into top-level conjuncts performed by `produceR` is not redundant,
+   *     although the entry methods such as `produce` split assertions as well: if a client needs
+   *     to produce `a1 && (b ==> a2 && a3) && a4`, then the entry method will split the assertion
+   *     into the sequence `[a1, b ==> a2 && a3, a4]`, and the recursively produced assertion
+   *     `a2 && a3` (after having branched over `b`) needs to be split again.
+   */
 
+  /** @inheritdoc */
   def produce(s: State,
               sf: (Sort, Verifier) => Term,
               a: ast.Exp,
@@ -74,9 +99,9 @@ object producer extends ProductionRules with Immutable {
              (Q: (State, Verifier) => VerificationResult)
              : VerificationResult =
 
-    produce2(s, sf, a.whenInhaling, pve, v)((s1, h, v1) =>
-      Q(s1.copy(h = h), v1))
+    produceR(s, sf, a.whenInhaling, pve, v)(Q)
 
+  /** @inheritdoc */
   def produces(s: State,
                sf: (Sort, Verifier) => Term,
                as: Seq[ast.Exp],
@@ -85,71 +110,93 @@ object producer extends ProductionRules with Immutable {
               (Q: (State, Verifier) => VerificationResult)
               : VerificationResult = {
 
-    /* Note: Produces(φs) allows more fine-grained error reporting when compared
-     * to produce(BigAnd(φs)) because with produces, each φ in φs can be
-     * produced with its own PartialVerificationError. The two differ in
-     * behaviour, though, because producing a list of, e.g., preconditions, with
-     * produce results in more explicit conjunctions, and thus in more
-     * combine-terms, which can affect the snapshot structure of predicates and
-     * functions.
-     */
+    val allTlcs = mutable.ListBuffer[ast.Exp]()
+    val allPves = mutable.ListBuffer[PartialVerificationError]()
+
+    as.foreach(a => {
+      val tlcs = a.whenInhaling.topLevelConjuncts
+      val pves = Seq.fill(tlcs.length)(pvef(a))
+
+      allTlcs ++= tlcs
+      allPves ++= pves
+    })
+
+    produceTlcs(s, sf, allTlcs.result(), allPves.result(), v)(Q)
+  }
+
+  private def produceTlcs(s: State,
+                          sf: (Sort, Verifier) => Term,
+                          as: Seq[ast.Exp],
+                          pves: Seq[PartialVerificationError],
+                          v: Verifier)
+                         (Q: (State, Verifier) => VerificationResult)
+                         : VerificationResult = {
+
     if (as.isEmpty)
       Q(s, v)
     else {
       val a = as.head.whenInhaling
+      val pve = pves.head
 
       if (as.tail.isEmpty)
-        produce(s, sf, a, pvef(a), v)(Q)
+        wrappedProduceTlc(s, sf, a, pve, v)(Q)
       else {
         val (sf0, sf1) = createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
-           *       the tail of the (decreasing list parameter φs) is BigAnd-ed
+           *       the tail of the (decreasing list parameter Ï†s) is BigAnd-ed
            *       over and over again.
            */
 
-        produce(s, sf0, a, pvef(a), v)((s1, v1) => {
-          produces(s1, sf1, as.tail, pvef, v1)(Q)})
+        wrappedProduceTlc(s, sf0, a, pve, v)((s1, v1) =>
+          produceTlcs(s1, sf1, as.tail, pves.tail, v1)(Q))
       }
     }
   }
 
-  /** Wrapper Method for produce, for logging. See Executor.scala for explanation of analogue. **/
-  @inline
-  private def produce2(s: State,
+  private def produceR(s: State,
                        sf: (Sort, Verifier) => Term,
                        a: ast.Exp,
                        pve: PartialVerificationError,
                        v: Verifier)
-                      (Q: (State, Heap, Verifier) => VerificationResult)
+                      (Q: (State, Verifier) => VerificationResult)
                       : VerificationResult = {
 
-//    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(φ, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
-    produce3(s, sf, a, pve, v)((s1, h1, v1) => {
-//      SymbExLogger.currentLog().collapse(φ, sepIdentifier)
-      Q(s1, h1, v1)})
+    val tlcs = a.topLevelConjuncts
+    val pves = Seq.fill(tlcs.length)(pve)
+
+    produceTlcs(s, sf, tlcs, pves, v)(Q)
   }
 
-  private def produce3(s: State,
-                       sf: (Sort, Verifier) => Term,
-                       a: ast.Exp,
-                       pve: PartialVerificationError,
-                       v: Verifier)
-                      (Q: (State, Heap, Verifier) => VerificationResult)
-                      : VerificationResult = {
+  /** Wrapper/decorator for consume that injects the following operations:
+    *   - Logging, see Executor.scala for an explanation
+    */
+  private def wrappedProduceTlc(s: State,
+                                sf: (Sort, Verifier) => Term,
+                                a: ast.Exp,
+                                pve: PartialVerificationError,
+                                v: Verifier)
+                               (Q: (State, Verifier) => VerificationResult)
+                               : VerificationResult = {
 
-    if (!a.isInstanceOf[ast.And]) {
-      v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
-      v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
-    }
+//    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(s, a, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    produceTlc(s, sf, a, pve, v)((s1, v1) => {
+//      SymbExLogger.currentLog().collapse(a, sepIdentifier)
+      Q(s1, v1)})
+  }
+
+  private def produceTlc(s: State,
+                         sf: (Sort, Verifier) => Term,
+                         a: ast.Exp,
+                         pve: PartialVerificationError,
+                         v: Verifier)
+                        (Q: (State, Verifier) => VerificationResult)
+                        : VerificationResult = {
+
+    v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
+    v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 
     val produced = a match {
-      case ast.And(a0, a1) if !a.isPure || Verifier.config.handlePureConjunctsIndividually() =>
-        val (sf0, sf1) = createSnapshotPair(s, sf, a0, a1, v)
-        produce2(s, sf0, a0, pve, v)((s1, h1, v1) => {
-          produce2(s1.copy(h = h1), sf1, a1, pve, v1)((s2, h2, v2) =>
-            Q(s2, h2, v2))})
-
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
 //        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
 //        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
@@ -158,8 +205,8 @@ object producer extends ProductionRules with Immutable {
         eval(s, e0, pve, v)((s1, t0, v1) => {
 //          impLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
-            (s2, v2) => produce2(s2, sf, a0, pve, v2)((s3, h3, v3) => {
-              val res1 = Q(s3, h3, v3)
+            (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
+              val res1 = Q(s3, v3)
 //              impLog.finish_thnSubs()
 //              SymbExLogger.currentLog().prepareOtherBranch(impLog)
               res1}),
@@ -169,7 +216,7 @@ object producer extends ProductionRules with Immutable {
                  * otherwise. In order words, only make this assumption if `sf` has
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
-              val res2 = Q(s2, s2.h, v2)
+              val res2 = Q(s2,  v2)
 //              impLog.finish_elsSubs()
               res2})
 //          SymbExLogger.currentLog().collapse(null, sepIdentifier)
@@ -182,13 +229,13 @@ object producer extends ProductionRules with Immutable {
         eval(s, e0, pve, v)((s1, t0, v1) => {
 //          gbLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
-            (s2, v2) => produce2(s2, sf, a1, pve, v2)((s3, h3, v3) => {
-              val res1 = Q(s3, h3, v3)
+            (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
+              val res1 = Q(s3, v3)
 //              gbLog.finish_thnSubs()
 //              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
               res1}),
-            (s2, v2) => produce2(s2, sf, a2, pve, v2)((s3, h3, v3) => {
-              val res2 = Q(s3, h3, v3)
+            (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
+              val res2 = Q(s3, v3)
 //              gbLog.finish_elsSubs()
               res2}))
 //          SymbExLogger.currentLog().collapse(null, sepIdentifier)
@@ -196,12 +243,12 @@ object producer extends ProductionRules with Immutable {
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>
-          produce2(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
+          produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
 
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
         /* TODO: Verify similar to the code in DefaultExecutor/ast.NewStmt - unify */
-        def addNewChunk(s: State, h: Heap, rcvr: Term, snap: Term, p: Term, v: Verifier)
-                       (Q: (State, Heap, Verifier) => VerificationResult)
+        def addNewChunk(s: State, rcvr: Term, snap: Term, p: Term, v: Verifier)
+                       (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
           if (s.qpFields.contains(field)) {
@@ -209,10 +256,11 @@ object producer extends ProductionRules with Immutable {
             optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.valueDefinitions))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             val s1 = optFvfDef.fold(s)(fvfDef => s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(fvfDef, Seq.empty)))
-            Q(s1, h + ch, v)
+            Q(s1.copy(h = s1.h + ch), v)
           } else {
             val ch = FieldChunk(rcvr, field.name, snap, p)
-            chunkSupporter.produce(s, h, ch, v)(Q)
+            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
+              Q(s1.copy(h = h1), v1))
           }
         }
 
@@ -222,13 +270,13 @@ object producer extends ProductionRules with Immutable {
             v2.decider.assume(Implies(PermLess(NoPerm(), tPerm), tRcvr !== Null()))
             val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            addNewChunk(s2, s2.h, tRcvr, snap, gain, v2)(Q)}))
+            addNewChunk(s2, tRcvr, snap, gain, v2)(Q)}))
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = Verifier.program.findPredicate(predicateName)
 
-        def addNewChunk(s: State, h: Heap, args: Seq[Term], snap: Term, p: Term, v: Verifier)
-                       (Q: (State, Heap, Verifier) => VerificationResult)
+        def addNewChunk(s: State, args: Seq[Term], snap: Term, p: Term, v: Verifier)
+                       (Q: (State, Verifier) => VerificationResult)
                        : VerificationResult = {
 
           if (s.qpPredicates.contains(predicate)) {
@@ -239,14 +287,14 @@ object producer extends ProductionRules with Immutable {
             v.decider.prover.comment("assume snapDefinition")
             optPsfDef.foreach(psfDef => v.decider.assume(psfDef.snapDefinitions))
             val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(args, formalArgs, predicate.name, psf, p)
-            Q(s, h + ch, v)
+            Q(s.copy(h = s.h + ch), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = PredicateChunk(predicate.name, args, snap1, p)
-            chunkSupporter.produce(s, h, ch, v)((s1, h1, v1) => {
+            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
               if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder)
               v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
-              Q(s1, h1, v1)
+              Q(s1.copy(h = h1), v1)
             })
           }
         }
@@ -256,16 +304,17 @@ object producer extends ProductionRules with Immutable {
             v2.decider.assume(PermAtMost(NoPerm(), tPerm))
             val snap = sf(predicate.body.map(getOptimalSnapshotSort(_, Verifier.program, v2)._1).getOrElse(sorts.Snap), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
-            addNewChunk(s2, s2.h, tArgs, snap, gain, v2)(Q)}))
+            addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
-          Q(s1, s1.h + chWand, v1))
+          Q(s1.copy(h = s1.h + chWand), v1))
 
-      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
+      case qpf @ ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
         val qid = s"prog.l${viper.silicon.utils.ast.sourceLine(forall)}"
-        evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), None, qid, pve, v){
-          case (s1, Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, Left(tAuxQuantNoTriggers), v1) =>
+        val optTrigger = if (qpf.triggers.isEmpty) None else Some(qpf.triggers)
+        evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), optTrigger, qid, pve, v){
+          case (s1, Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, auxQuantResult, v1) =>
             val snap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(field.typ)), v1)
             val additionalInvFctArgs = s1.quantifiedVariables
             val gain = PermTimes(tPerm, s1.permissionScalingFactor)
@@ -311,20 +360,34 @@ object producer extends ProductionRules with Immutable {
              * trigger. Searching the body is only necessary because, at the current point, we
              * no longer know the relation between fvf1 and fvf0 (it could be preserved, though).
              */
+
             v1.decider.prover.comment("Nested auxiliary terms")
-            v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
-                                                       triggers = invFct.invOfFct.triggers))
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                /* No explicit triggers were provided and we resort to those from the inverse
+                 * function axiom "e⁻ ¹(e(x)) = x" (i.e. from `invOfFct`). Since the trigger
+                 * generation code might have added quantified variables to the axiom, we need
+                 * to account for that.
+                 */
+                v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars,
+                                                           triggers = invFct.invOfFct.triggers))
+              case Right(tAuxQuants) =>
+                /* Explicit triggers were provided. */
+                v1.decider.assume(tAuxQuants)
+            }
+            /* TODO: Reconsider choice of triggers */
             val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tPerm), invFct.invOfFct.triggers, s"$qid-perm")
             v1.decider.assume(gainNonNeg)
             v1.decider.prover.comment("Definitional axioms for inverse functions")
             v1.decider.assume(invFct.definitionalAxioms)
             val hints = quantifiedChunkSupporter.extractHints(Some(tQVar), Some(tCond), tRcvr)
             val ch1 = ch.copy(hints = hints)
+            /* TODO: Reconsider choice of triggers */
             val tNonNullQuant = quantifiedChunkSupporter.receiverNonNullAxiom(tQVar, tCond, tRcvr, tPerm, v1)
             v1.decider.prover.comment("Receivers are non-null")
             v1.decider.assume(tNonNullQuant)
             val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordFieldInv(invFct))
-            Q(s2, s2.h + ch1, v1)}
+            Q(s2.copy(h = s2.h + ch1), v1)}
 
       case ast.utility.QuantifiedPermissions.QPPForall(qvar, cond, args, predname, gain, forall, _) =>
         //create new quantified predicate chunk
@@ -337,7 +400,6 @@ object producer extends ProductionRules with Immutable {
             val additionalInvFctArgs = s1.quantifiedVariables
             val gain = PermTimes(tGain, s1.permissionScalingFactor)
             val (ch, invFct) = quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, s1.predicateFormalVarMap(predicate), tArgs, snap, gain, tCond, additionalInvFctArgs, v1)
-
             v1.decider.prover.comment("Nested auxiliary terms")
             v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
                               triggers = invFct.invOfFct.triggers))
@@ -348,7 +410,7 @@ object producer extends ProductionRules with Immutable {
             val hints = quantifiedPredicateChunkSupporter.extractHints(Some(tQVar), Some(tCond), tArgs)
             val ch1 = ch.copy(hints = hints)
             val s2 = s1.copy(functionRecorder = s1.functionRecorder.recordPredInv(invFct))
-            Q(s2, s2.h + ch1, v1)}
+            Q(s2.copy(h = s2.h + ch1), v1)}
 
       case _: ast.InhaleExhaleExp =>
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
@@ -358,7 +420,7 @@ object producer extends ProductionRules with Immutable {
         v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
         eval(s, a, pve, v)((s1, t, v1) => {
           v1.decider.assume(t)
-          Q(s1, s1.h, v1)})
+          Q(s1, v1)})
     }
 
     produced
