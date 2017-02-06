@@ -24,6 +24,8 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
+    v.decider.prover.comment("[state consolidation]")
+
     val (permissionChunks, otherChunk) = partition(s.h)
 
     var continue = false
@@ -45,8 +47,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     assumeValidPermissionAmounts(mergedChunks, v)
 
-    val referenceIneqs = deriveReferenceInequalities(mergedChunks, v)
+    val referenceIneqs = computeUpperPermissionBoundAssumptions(mergedChunks, v)
 
+    v.decider.prover.comment("assuming upper bounds for field permissions")
     v.decider.assume(referenceIneqs)
 
     s.copy(h = Heap(mergedChunks ++ otherChunk))
@@ -148,26 +151,35 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     (tSnap, tSnapDef)
   }
 
-  /* Derives which references cannot be aliases from the available permissions */
-  private def deriveReferenceInequalities(chs: Seq[PermissionChunk], v: Verifier): List[Term] = {
+  /* Compute assumptions capturing that a valid field permission amount cannot exceed write permission */
+  private def computeUpperPermissionBoundAssumptions(chs: Seq[PermissionChunk], v: Verifier): List[Term] = {
 //    bookkeeper.objectDistinctnessComputations += 1
 
     val pairsPerField = mutable.HashMap[String, mutable.ListBuffer[(Term, Term)]]()
+//    val pairsPerFieldQP = mutable.HashMap[String, mutable.ListBuffer[Term]]()
 
     def add(fieldName: String, rcvr: Term, perm: Term) {
       pairsPerField.getOrElseUpdate(fieldName, mutable.ListBuffer[(Term, Term)]())
                    .append((rcvr, perm))
     }
 
+//    def addQP(fieldName: String, perm: Term) {
+//      pairsPerFieldQP.getOrElseUpdate(fieldName, mutable.ListBuffer[Term]())
+//                     .append(perm)
+//    }
+
     chs foreach {
       case FieldChunk(rcvr, fieldName, _, perm) =>
         add(fieldName, rcvr, perm)
       case QuantifiedFieldChunk(fieldName, _, perm, _, _, Some(rcvr), _) =>
+        /* Singleton quantified chunks are treated analogous to non-quantified chunks */
         add(fieldName, rcvr, perm.replace(`?r`, rcvr))
+//      case QuantifiedFieldChunk(fieldName, _, perm, _, _, _, _) =>
+//        addQP(fieldName, perm)
       case _ =>
     }
 
-    val tDists = mutable.ListBuffer[Term]()
+    val tAssumptions = mutable.ListBuffer[Term]()
 
     for ((_, pairs) <- pairsPerField;
          Seq((rcvr1, perm1), (rcvr2, perm2)) <- pairs.combinations(2)) {
@@ -175,11 +187,25 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       if (   rcvr1 != rcvr2 /* Not essential for soundness, but avoids fruitless prover calls */
           && v.decider.check(PermLess(FullPerm(), PermPlus(perm1, perm2)), Verifier.config.checkTimeout())) {
 
-        tDists += (rcvr1 !== rcvr2)
+        tAssumptions += (rcvr1 !== rcvr2)
       }
     }
 
-    tDists.result()
+//    val r1 = Var(Identifier("r1"), sorts.Ref)
+//    val r2 = Var(Identifier("r2"), sorts.Ref)
+//    var rs = Seq(r1, r2)
+//
+//    for ((field, perms) <- pairsPerFieldQP;
+//         Seq(p1, p2) <- perms.combinations(2);
+//         perm1 = p1.replace(`?r`, r1);
+//         perm2 = p2.replace(`?r`, r2)) {
+//
+//      tAssumptions += Forall(rs, Implies(r1 === r2, PermAtMost(PermPlus(perm1, perm2), FullPerm())), Nil).autoTrigger
+//        /* TODO: Give each quantifier a unique QID */
+//        /* TODO: Body probably won't contain any (good) triggers - we need a field access trigger! */
+//    }
+
+    tAssumptions.result()
   }
 
   private def assumeValidPermissionAmounts(chs: Seq[PermissionChunk], v: Verifier) {
