@@ -20,15 +20,29 @@ trait ExecutionFlowRules extends SymbolicExecutionRules {
              (block: (State, Verifier) => VerificationResult)
              : VerificationResult
 
-  def tryOrFailWithResult[R](s: State, v: Verifier)
-                            (block:    (State, Verifier, (State, R, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
-                            (Q: (State, R, Verifier) => VerificationResult)
-                            : VerificationResult
+//  def tryOrFailWithResult[R](s: State, v: Verifier)
+//                            (block:    (State, Verifier, (State, R, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
+//                            (Q: (State, R, Verifier) => VerificationResult)
+//                            : VerificationResult
+//
+//  def tryOrFail(s: State, v: Verifier)
+//               (block:    (State, Verifier, (State, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
+//               (Q: (State, Verifier) => VerificationResult)
+//               : VerificationResult
+  def tryOrFail0(s: State, v: Verifier)
+                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
+                (Q: (State, Verifier) => VerificationResult)
+                : VerificationResult
 
-  def tryOrFail(s: State, v: Verifier)
-               (block:    (State, Verifier, (State, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
-               (Q: (State, Verifier) => VerificationResult)
-               : VerificationResult
+  def tryOrFail1[R1](s: State, v: Verifier)
+                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
+                    (Q: (State, R1, Verifier) => VerificationResult)
+                    : VerificationResult
+
+  def tryOrFail2[R1, R2](s: State, v: Verifier)
+                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
+                        (Q: (State, R1, R2, Verifier) => VerificationResult)
+                        : VerificationResult
 }
 
 object executionFlowController extends ExecutionFlowRules with Immutable {
@@ -81,38 +95,60 @@ object executionFlowController extends ExecutionFlowRules with Immutable {
 
     locallyWithResult[VerificationResult](s, v)((s1, v1, QL) => QL(block(s1, v1)))(Predef.identity)
 
-  def tryOrFailWithResult[R](s: State, v: Verifier)
-                            (block:    (State, Verifier, (State, R, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
-                            (Q: (State, R, Verifier) => VerificationResult)
-                            : VerificationResult = {
 
-    var failure: Option[Failure] = None
+  private def tryOrFailWithResult[R](s: State, v: Verifier)
+                                    (action: (State, Verifier, (State, R, Verifier) => VerificationResult) => VerificationResult)
+                                    (Q: (State, R, Verifier) => VerificationResult)
+                                    : VerificationResult = {
 
-    var r =
-      block(
+    var localActionSuccess = false
+    var compressed = false
+
+    /* TODO: Consider how to handle situations where the action branches and the first branch
+     *       succeeds, i.e. localActionSuccess has been set to true, but the second fails.
+     *       Currently, the verification will fail without attempting to remedy the situation,
+     *       e.g. by performing a state consolidation.
+     */
+
+    var firstActionResult =
+      action(
         s,
         v,
-        (s1, r, v1) => Q(s1, r, v1),
-        f => {
-          Predef.assert(failure.isEmpty, s"Expected $f to be the first failure, but already have $failure")
-          failure = Some(f)
-          f})
+        (s1, r, v1) => {
+          localActionSuccess = true
+          Q(s1, r, v1)})
 
-    r =
-      if (failure.isEmpty)
-        r
+    val finalActionResult =
+      if (   localActionSuccess /* Action succeeded locally */
+          || !firstActionResult.isFatal) /* Action yielded non-fatal result (e.g. because the
+                                          * current branch turned out to be infeasible) */
+        firstActionResult
       else {
         val s0 = stateConsolidator.consolidate(s, v)
-        block(s0.copy(retrying = true), v, (s1, r, v1) => Q(s1.copy(retrying = false), r, v1), f => f)
+        action(s0.copy(retrying = true), v, (s1, r, v1) => Q(s1.copy(retrying = false), r, v1))
       }
 
-    r
+    finalActionResult
   }
 
-  def tryOrFail(s: State, v: Verifier)
-               (block:    (State, Verifier, (State, Verifier) => VerificationResult, Failure => VerificationResult) => VerificationResult)
-               (Q: (State, Verifier) => VerificationResult)
-               : VerificationResult =
+  def tryOrFail0(s: State, v: Verifier)
+                (action: (State, Verifier, (State, Verifier) => VerificationResult) => VerificationResult)
+                (Q: (State, Verifier) => VerificationResult)
+                : VerificationResult =
 
-    tryOrFailWithResult[Unit](s, v)((s1, v1, QS, QF) => block(s1, v1, (s2, v2) => QS(s2, (), v2), QF))((s2, _, v2) => Q(s2, v2))
+      tryOrFailWithResult[scala.Null](s, v)((s1, v1, QS) => action(s1, v1, (s2, v2) => QS(s2, null, v2)))((s2, `null`, v2) => Q(s2, v2))
+
+  def tryOrFail1[R1](s: State, v: Verifier)
+                    (action: (State, Verifier, (State, R1, Verifier) => VerificationResult) => VerificationResult)
+                    (Q: (State, R1, Verifier) => VerificationResult)
+                    : VerificationResult =
+
+      tryOrFailWithResult[R1](s, v)(action)(Q)
+
+  def tryOrFail2[R1, R2](s: State, v: Verifier)
+                        (action: (State, Verifier, (State, R1, R2, Verifier) => VerificationResult) => VerificationResult)
+                        (Q: (State, R1, R2, Verifier) => VerificationResult)
+                        : VerificationResult =
+
+      tryOrFailWithResult[(R1, R2)](s, v)((s1, v1, QS) => action(s1, v1, (s2, r21, r22, v2) => QS(s2, (r21, r22), v2)))((s2, r, v2) => Q(s2, r._1, r._2, v2))
 }
