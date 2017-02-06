@@ -13,7 +13,7 @@ package viper.silicon.rules
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
-import viper.silicon.Map
+import viper.silicon.{Map, toMap}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms.utils.{BigPermSum, consumeExactRead}
@@ -526,7 +526,7 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
                                                        v: Verifier)
                                                        : (Term, Term) = {
 
-    val result = eliminateImplicitQVarIfPossible(ithChunk.perm, qvar)
+    val result = eliminateImplicitQVarIfPossible(ithChunk.perm, ithChunk.formalVars, qvar)
 
     val permissionConstraint =
       if (constrainPermissions)
@@ -540,10 +540,10 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
 
             if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
 
-          case Some((perms, args)) =>
+          case Some((perms, bindings)) =>
             Implies(
               perms !== NoPerm(),
-              PermLess(conditionalizedPermsOfInv.replace(ithChunk.formalVars.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2)), args), perms))
+              PermLess(conditionalizedPermsOfInv.replace(bindings), perms))
         }
       else
         True()
@@ -551,38 +551,63 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
     val depletedCheck = result match {
       case None =>
         Forall(ithChunk.formalVars, PermMinus(ithChunk.perm, ithPTaken) === NoPerm(), Nil: Seq[Trigger])
-      case Some((perms, arg:Term)) =>
-        PermMinus(perms, ithPTaken.replace(formalVars, Seq(arg))) === NoPerm()
+      case Some((perms, bindings)) =>
+        PermMinus(perms, ithPTaken.replace(bindings)) === NoPerm()
     }
 
     (permissionConstraint, depletedCheck)
   }
 
   @inline
-  private def eliminateImplicitQVarIfPossible(perms: Term, qvar: Option[Var]/*, formalVars:Seq[Term]*/)
-                                             : Option[(Term, Term)] = {
+  private def eliminateImplicitQVarIfPossible(perms: Term,
+                                              formalVars:Seq[Term],
+                                              qvar: Option[Var])
+                                             : Option[(Term, Map[Var, Term])] = {
 
-    /* TODO: adapt to quantified predicates */
+    var optBindings: Option[Map[Var, Term]] = None
 
-//    def eliminateImplicitQVarIfPossible(t: Term): Term = t.transform {
-//      /*case Ite(Equals(`?r`, w), p1, NoPerm()) if !qvar.exists(w.contains) =>
-//        v = w
-//        p1.replace(`?r`, v)
-//      case pm @ PermMinus(t1, t2) =>
-//        /* By construction, the "subtraction tree" should be left-leaning,
-//         * with the initial permission amount (the conditional) as its
-//         * left-most term.
-//         */
-//        val s1 = eliminateImplicitQVarIfPossible(t1)
-//        if (v == `?r`) pm
-//        else PermMinus(s1, t2.replace(`?r`, v))*/
-//      case other =>
-//        other
-//    }()
-//
-//    val result = eliminateImplicitQVarIfPossible(perms)
+    object LiftedAnd {
+      def unapply(t: Term): Some[Seq[Term]] = t match {
+        case And(ts) => Some(ts)
+        case _ => Some(Seq(t))
+      }
+    }
 
-    None
+    def eliminateImplicitQVarIfPossible(t: Term): Term = t.transform {
+      case Ite(LiftedAnd(conds), t1, NoPerm()) =>
+        val potentialBindings: Map[Var, Term] = toMap(
+          conds collect {
+            case Equals(lv: Var, rt) if !qvar.contains(lv) && !qvar.exists(rt.contains) =>
+              (lv, rt)
+          })
+
+        if (potentialBindings.size == conds.length) {
+          optBindings = Some(potentialBindings)
+          t1.replace(potentialBindings)
+        } else {
+          t
+        }
+      case pm @ PermMinus(t1, t2) =>
+        /* By construction, the "subtraction tree" should be left-leaning,
+         * with the initial permission amount (the conditional) as its
+         * left-most term.
+         */
+        val s1 = eliminateImplicitQVarIfPossible(t1) /* Potentially sets optBindings to Some(bindings) */
+
+        optBindings match {
+          case Some(bindings) =>
+            val s2 = t2.replace(bindings)
+            PermMinus(s1, s2)
+          case None =>
+            t
+        }
+      case _ =>
+        t
+    }()
+
+    val perms1 = eliminateImplicitQVarIfPossible(perms)
+
+    optBindings.map(bindings => (perms1, bindings))
   }
 
   /* Misc */
