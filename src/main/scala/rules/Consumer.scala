@@ -95,8 +95,9 @@ object consumer extends ConsumptionRules with Immutable {
       allPves ++= pves
     })
 
-    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, snap1, v1) => {
-      val s2 = s1.copy(partiallyConsumedHeap = s.partiallyConsumedHeap)
+    consumeTlcs(s, s.h, allTlcs.result(), allPves.result(), v)((s1, h1, snap1, v1) => {
+      val s2 = s1.copy(h = h1,
+                       partiallyConsumedHeap = s.partiallyConsumedHeap)
       Q(s2, snap1, v1)
     })
   }
@@ -106,25 +107,23 @@ object consumer extends ConsumptionRules with Immutable {
                           tlcs: Seq[ast.Exp],
                           pves: Seq[PartialVerificationError],
                           v: Verifier)
-                         (Q: (State, Term, Verifier) => VerificationResult)
-                            /* TODO: Why doesn't this continuation take the consumption-heap
-                             *       as an argument? */
-                         : VerificationResult =
+                         (Q: (State, Heap, Term, Verifier) => VerificationResult)
+                         : VerificationResult = {
 
     if (tlcs.isEmpty)
-      Q(s.copy(h = h), Unit, v)
+      Q(s, h, Unit, v)
     else {
       val a = tlcs.head
       val pve = pves.head
 
       if (tlcs.tail.isEmpty)
-        wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
-          Q(s1.copy(h = h1), snap1, v1))
+        wrappedConsumeTlc(s, h, a, pve, v)(Q)
       else
         wrappedConsumeTlc(s, h, a, pve, v)((s1, h1, snap1, v1) =>
-          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, snap2, v2) =>
-            Q(s2, Combine(snap1, snap2), v2)))
+          consumeTlcs(s1, h1, tlcs.tail, pves.tail, v1)((s2, h2, snap2, v2) =>
+            Q(s2, h2, Combine(snap1, snap2), v2)))
     }
+  }
 
   private def consumeR(s: State, h: Heap, a: ast.Exp, pve: PartialVerificationError, v: Verifier)
                       (Q: (State, Heap, Term, Verifier) => VerificationResult)
@@ -133,8 +132,7 @@ object consumer extends ConsumptionRules with Immutable {
     val tlcs = a.topLevelConjuncts
     val pves = Seq.fill(tlcs.length)(pve)
 
-    consumeTlcs(s, h, tlcs, pves, v)((s1, snap1, v1) =>
-      Q(s1, s1.h, snap1, v1))
+    consumeTlcs(s, h, tlcs, pves, v)(Q)
   }
 
   /** Wrapper/decorator for consume that injects the following operations:
@@ -155,8 +153,8 @@ object consumer extends ConsumptionRules with Immutable {
      */
     val sInit = s.copy(h = h)
     executionFlowController.tryOrFail2[Heap, Term](sInit, v)((s0, v1, QS) => {
-      val h0 = s0.h
-      val s1 = s0.copy(h = s.h)
+      val h0 = s0.h /* h0 is h, but potentially consolidated */
+      val s1 = s0.copy(h = s.h) /* s1 is s, but the retrying flag might be set */
 
       /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
        *       Globally the types match, but locally the type system does not know.
