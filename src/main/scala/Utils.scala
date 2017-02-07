@@ -125,10 +125,16 @@ package object utils {
           )(e.pos)
       })(recursive = _ => true)
 
-    def autoTrigger(forall: silver.ast.Forall,
-                    qpFields: InsertionOrderedSet[silver.ast.Field])
-                   : silver.ast.Forall = {
-
+    /** Aims to compute triggers for the given quantifier `forall` by successively trying
+      * different strategies.
+      *
+      * Attention: This method is *not* thread-safe, because it uses
+      * [[silver.ast.utility.Triggers.TriggerGeneration]] , which is itself not thread-safe.
+      *
+      * @param forall The quantifier to compute triggers for.
+      * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
+      */
+    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
       val defaultTriggerForall = forall.autoTrigger
 
       val autoTriggeredForall =

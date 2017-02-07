@@ -89,7 +89,12 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
                                         formalArgs: Seq[Var],
                                         sourceChunks: Seq[QuantifiedPredicateChunk] /*,
                                         freshPsf: Boolean*/)
-                                       (axiomRewriter: AxiomRewriter)
+                                       /* TODO: All following arguments should not be necessary.
+                                        *       Consider separating this class into a factory (with
+                                        *       business logic) and a "stupid" data container.
+                                        */
+                                       (triggerGenerator: TriggerGenerator,
+                                        axiomRewriter: AxiomRewriter)
     extends PsfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationPredicateSnapFunctionDefinition must be used "
@@ -141,16 +146,16 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
 
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
+    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
       if (Verifier.config.disableISCTriggers())
         (Nil, Nil)
       else
-        TriggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
+        triggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
                         .getOrElse((Nil, Nil))
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+    triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
 
     val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")

@@ -66,7 +66,12 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
                                         rcvr: Term,
                                         sourceChunks: Seq[QuantifiedFieldChunk] /*,
                                         freshFvf: Boolean*/)
-                                       (axiomRewriter: AxiomRewriter)
+                                       /* TODO: All following arguments should not be necessary.
+                                        *       Consider separating this class into a factory (with
+                                        *       business logic) and a "stupid" data container.
+                                        */
+                                       (triggerGenerator: TriggerGenerator,
+                                        axiomRewriter: AxiomRewriter)
     extends FvfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationFieldValueFunctionDefinition must be used "
@@ -112,16 +117,16 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
   val domainDefinitions: Seq[Term] = {
     val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
+    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
       if (Verifier.config.disableISCTriggers())
         (Nil, Nil)
       else
-        TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
+        triggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
                         .getOrElse((Nil, Nil))
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+    triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
     val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$fvf-dom")
     val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)

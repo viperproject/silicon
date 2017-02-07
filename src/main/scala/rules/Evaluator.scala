@@ -437,8 +437,10 @@ object evaluator extends EvaluationRules with Immutable {
       case sourceQuant: ast.QuantifiedExp /*if config.disableLocalEvaluations()*/ =>
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall, s.qpFields)
-            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+            /* It is expected that quantifiers have already been provided with triggers,
+             * either explicitly or by using a trigger generator.
+             */
+            (forall, Forall, forall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
@@ -661,7 +663,7 @@ object evaluator extends EvaluationRules with Immutable {
                 Left(auxQuantGen(Trigger(Nil), Nil))
               else {
                 val triggersAndVars =
-                  QuantifierSupporter.makeTriggersHeapIndependent(tTriggers, v4.decider.fresh)
+                  v4.quantifierSupporter.makeTriggersHeapIndependent(tTriggers, v4.decider.fresh)
                 Right(triggersAndVars map {case (ts, vs) => auxQuantGen(ts, vs)})}
             val additionalPossibleTriggers: Map[ast.Exp, Term] =
               if (s.recordPossibleTriggers) s5.possibleTriggers else Map()

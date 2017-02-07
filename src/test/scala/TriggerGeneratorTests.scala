@@ -8,17 +8,18 @@ package viper.silicon.tests
 
 import org.scalatest.FunSuite
 import viper.silicon.state.Identifier
-import viper.silicon.state.terms.TriggerGenerator.{TriggerSet, generateTriggerSetGroups}
 import viper.silicon.state.terms._
 
 class TriggerGeneratorTests extends FunSuite {
+  val triggerGenerator = new TriggerGenerator()
+
   test("Work in simple cases") {
     val i = Var(Identifier("i"), sorts.Int)
     val s = Var(Identifier("S"), sorts.Seq(sorts.Int))
     val t = SeqAt(s, i)
 
-    assert(generateTriggerSetGroups(i :: Nil, t) match {
-      case Seq((Seq(TriggerSet(Seq(`t`))), Seq())) => true
+    assert(triggerGenerator.generateTriggerSetGroups(i :: Nil, t) match {
+      case Seq((Seq(triggerGenerator.TriggerSet(Seq(`t`))), Seq())) => true
       case other => false
     })
   }
@@ -28,7 +29,7 @@ class TriggerGeneratorTests extends FunSuite {
     val s = Var(Identifier("S"), sorts.Seq(sorts.Int))
     val t = SeqAt(s, Plus(i, IntLiteral(1)))
 
-    assert(generateTriggerSetGroups(i :: Nil, t).isEmpty)
+    assert(triggerGenerator.generateTriggerSetGroups(i :: Nil, t).isEmpty)
   }
 
 //  ignore should "not do stupid stuff" in {

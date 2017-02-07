@@ -11,7 +11,7 @@ import viper.silver.components.StatefulComponent
 import viper.silicon.{utils, _}
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
 import viper.silicon.state._
-import viper.silicon.state.terms.AxiomRewriter
+import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.utils.Counter
@@ -43,7 +43,9 @@ abstract class BaseVerifier(val config: Config,
   val termConverter = new TermToSMTLib2Converter(/*bookkeeper*/)
   val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
   val identifierFactory = new DefaultIdentifierFactory(uniqueId)
-  val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/)
+  val triggerGenerator = new TriggerGenerator()
+  val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
+  val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
 //  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
 
   private val statefulSubcomponents = List[StatefulComponent](

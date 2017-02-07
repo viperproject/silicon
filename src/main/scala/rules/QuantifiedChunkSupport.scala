@@ -304,7 +304,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       if (qvars.isEmpty) {
         SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
       } else
-        QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(v.axiomRewriter)
+        QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(v.triggerGenerator, v.axiomRewriter)
     } else {
 //      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
       SummarisingFvfDefinition(field, fvf, receiver, chunks)
@@ -511,7 +511,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                          PermLess(conditionalizedPermsOfInv, ithChunk.perm)),
                        Nil: Seq[Trigger], s"qp.srp${v.counter(this).next()}")
 
-            if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
+            if (Verifier.config.disableISCTriggers()) q1 else v.quantifierSupporter.autoTrigger(q1)
 
           case Some((perms, singleRcvr)) =>
             Implies(
@@ -702,7 +702,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         Implies(And(cond, PermLess(NoPerm(), perms)), rcvr !== Null()),
         Nil,
         s"qp.null${v.counter(this).next()}")
-    val axRaw = if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
+    val axRaw = if (Verifier.config.disableISCTriggers()) q1 else v.quantifierSupporter.autoTrigger(q1)
 
     val ax = v.axiomRewriter.rewrite(axRaw).getOrElse(axRaw)
 
@@ -745,7 +745,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     val effectiveConditionInv = effectiveCondition.replace(qvar, inverseFunc(`?r`))
 
     val finalAxInvOfFct =
-      TriggerGenerator.assembleQuantification(
+      v.triggerGenerator.assembleQuantification(
         Forall,
         qvar :: Nil,
         Implies(effectiveCondition, invOFct === qvar),
@@ -754,7 +754,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         v.axiomRewriter)
 
     val finalAxFctOfInv =
-      TriggerGenerator.assembleQuantification(
+      v.triggerGenerator.assembleQuantification(
         Forall,
         `?r` :: Nil,
         Implies(effectiveConditionInv, fctOfInv === `?r`),

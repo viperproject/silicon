@@ -287,21 +287,21 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
       if (qvars.isEmpty) {
         SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
       } else
-        QuantifiedChunkPsfDefinition(predicate, psf, qvars, condition, args, formalVars, chunks /*, true*/)(v.axiomRewriter)
+        QuantifiedChunkPsfDefinition(predicate, psf, qvars, condition, args, formalVars, chunks /*, true*/)(v.triggerGenerator, v.axiomRewriter)
     } else {
       SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks)
     }
   }
 
-  private def singletonPredicateSummarizeChunks( chunks: Seq[QuantifiedPredicateChunk],
-                                        predicate: ast.Predicate,
-                                        condition: Term,
-                                        args: Seq[Term],
-                                        formalVars: Seq[Var],
-                                        isChunkPsf: Boolean,
-                                        predicateSnapMap: Map[ast.Predicate, terms.Sort],
-                                        v: Verifier)
-                                        : PsfDefinition = {
+  private def singletonPredicateSummarizeChunks(chunks: Seq[QuantifiedPredicateChunk],
+                                                predicate: ast.Predicate,
+                                                condition: Term,
+                                                args: Seq[Term],
+                                                formalVars: Seq[Var],
+                                                isChunkPsf: Boolean,
+                                                predicateSnapMap: Map[ast.Predicate, terms.Sort],
+                                                v: Verifier)
+                                               : PsfDefinition = {
 
     Predef.assert(chunks.forall(_.name == predicate.name),
       s"Expected all chunks to be about precicate $predicate, but got ${chunks.mkString(", ")}")
@@ -518,13 +518,13 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
   }
 
   private def createPermissionConstraintAndDepletedCheck(qvar: Option[Var], // x
-                                                       conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
-                                                       constrainPermissions: Boolean,
-                                                       ithChunk: QuantifiedPredicateChunk,
-                                                       formalVars: Seq[Var],
-                                                       ithPTaken: Term,
-                                                       v: Verifier)
-                                                       : (Term, Term) = {
+                                                         conditionalizedPermsOfInv: Term, // c(e⁻¹(r)) ? p_init(r) : 0
+                                                         constrainPermissions: Boolean,
+                                                         ithChunk: QuantifiedPredicateChunk,
+                                                         formalVars: Seq[Var],
+                                                         ithPTaken: Term,
+                                                         v: Verifier)
+                                                        : (Term, Term) = {
 
     val result = eliminateImplicitQVarIfPossible(ithChunk.perm, ithChunk.formalVars, qvar)
 
@@ -538,7 +538,7 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
                          PermLess(conditionalizedPermsOfInv, ithChunk.perm)),
                        Nil: Seq[Trigger], s"qp.srp${v.counter(this).next()}")
 
-            if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
+            if (Verifier.config.disableISCTriggers()) q1 else v.quantifierSupporter.autoTrigger(q1)
 
           case Some((perms, bindings)) =>
             Implies(
@@ -702,20 +702,6 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
       s"qp.inj${v.counter(this).next()}")
   }
 
-  def receiverNonNullAxiom(qvar: Var, cond: Term, rcvr: Term, perms: Term, v: Verifier) = {
-    val q1 =
-      Forall(
-        qvar,
-        Implies(And(cond, PermLess(NoPerm(), perms)), rcvr !== Null()),
-        Nil,
-        s"qp.null${v.counter(this).next()}")
-    val axRaw = if (Verifier.config.disableISCTriggers()) q1 else q1.autoTrigger
-
-    val ax = v.axiomRewriter.rewrite(axRaw).getOrElse(axRaw)
-
-    ax
-  }
-
   /** Creates a fresh inverse function `inv` and returns the function as well as the
     * definitional axioms.
     *
@@ -758,7 +744,7 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
     val effectiveConditionInv = effectiveCondition.replace(qvar, inverseFunc(formalVars))
 
     val finalAxInvOfFct =
-      TriggerGenerator.assembleQuantification(Forall,
+      v.triggerGenerator.assembleQuantification(Forall,
         qvar :: Nil,
         Implies(effectiveCondition, invOFct === qvar),
         if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else /*fct ::*/ And(effectiveCondition, invOFct) :: Nil,
@@ -768,7 +754,7 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
     val inverseConjunction = (fctOfInv zip formalVars).map(args => args._1 === args._2).reduceLeft((a, b) => And(a, b))
 
     val finalAxFctOfInv =
-      TriggerGenerator.assembleQuantification(Forall,
+      v.triggerGenerator.assembleQuantification(Forall,
         formalVars,
         Implies(effectiveConditionInv, inverseConjunction),
         if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inverseFunc(formalVars)) :: Nil,

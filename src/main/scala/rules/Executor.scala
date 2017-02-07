@@ -463,7 +463,7 @@ object executor extends ExecutionRules with Immutable {
          /* Cheap (and likely to succeed) matches come first */
          rhs
 
-       case _ if    rhs.existsDefined { case t if TriggerGenerator.isForbiddenInTrigger(t) => true }
+       case _ if    rhs.existsDefined { case t if v.triggerGenerator.isForbiddenInTrigger(t) => true }
                  || rhs.isInstanceOf[WildcardPerm] /* Fixes issue #110 (somewhat indirectly) */
             =>
 

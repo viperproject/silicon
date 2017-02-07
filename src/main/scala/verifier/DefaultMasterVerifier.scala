@@ -109,7 +109,15 @@ class DefaultMasterVerifier(config: Config)
 
   /* Program verification */
 
-  def verify(program: ast.Program): List[VerificationResult] = {
+  def verify(_program: ast.Program): List[VerificationResult] = {
+    /** Trigger computation is currently not thread-safe; hence, all triggers are computed
+      * up-front, before the program is verified in parallel.
+      * See also [[viper.silicon.utils.ast.autoTrigger]].
+      */
+    val program = _program.transform {
+      case forall: ast.Forall if forall.isPure => viper.silicon.utils.ast.autoTrigger(forall)
+    }()
+
     Verifier.program = program
 
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?

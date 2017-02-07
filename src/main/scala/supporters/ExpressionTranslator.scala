@@ -72,8 +72,10 @@ trait ExpressionTranslator {
 
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall, qpFields)
-            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+            /* It is expected that quantifiers have already been provided with triggers,
+             * either explicitly or by using a trigger generator.
+             */
+            (forall, Forall, forall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")

@@ -24,7 +24,14 @@ object Trigger extends (Seq[Term] => Trigger) {
   def unapply(trigger: Trigger) = Some(trigger.p)
 }
 
-object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification] {
+/** Attention: The trigger generator is *not* thread-safe, among other things because its
+  * filters for accepting/rejecting possible triggers can be changed
+  * (see, e.g. [[GenericTriggerGenerator.setCustomIsForbiddenInTrigger]]).
+  */
+class TriggerGenerator
+    extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification]
+       with Mutable {
+
   protected def hasSubnode(root: Term, child: Term) = root.hasSubterm(child)
   protected def visit[A](root: Term)(f: PartialFunction[Term, A]) = root.visit(f)
   protected def deepCollect[A](root: Term)(f: PartialFunction[Term, A]) = root.deepCollect(f)
@@ -134,7 +141,8 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
   protected def getArgs(term: Term): Seq[Term] = term.subterms
 }
 
-class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/)
+class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
+                    triggerGenerator: GenericTriggerGenerator[Term, Sort, Term, Var, Quantification])
     extends GenericAxiomRewriter[Sort, Term, Var, Quantification, Equals, And, Implies, Plus, Minus,
                                  Trigger] {
 
@@ -175,7 +183,7 @@ class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/)
   protected def Trigger(exps: Seq[Exp]) = terms.Trigger(exps)
 
   /* True iff the given node is not allowed in triggers */
-  protected def isForbiddenInTrigger(e: Exp): Boolean = TriggerGenerator.isForbiddenInTrigger(e)
+  protected def isForbiddenInTrigger(e: Exp): Boolean = triggerGenerator.isForbiddenInTrigger(e)
 
   /*
    * Abstract members - dependencies

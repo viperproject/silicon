@@ -9,9 +9,31 @@ package viper.silicon.supporters
 import viper.silicon.state.terms.{App, HeapDepFun, Trigger}
 import viper.silicon.state.terms._
 
-trait QuantifierSupporter
+trait QuantifierSupporter {
+  def autoTrigger(q: Quantification): Quantification
 
-object QuantifierSupporter {
+  def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
+                                 : Seq[(Trigger, Iterable[Var])]
+
+  def detectQuantificationProblems(quantification: Quantification): Seq[String]
+}
+
+class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends QuantifierSupporter {
+  def autoTrigger(q: Quantification): Quantification = {
+      if (q.triggers.nonEmpty) {
+        /* Triggers were given explicitly */
+        q
+      } else {
+        triggerGenerator.generateTriggerSetGroup(q.vars, q.body) match {
+          case Some((generatedTriggerSets, extraVariables)) =>
+            val generatedTriggers = generatedTriggerSets.map(set => Trigger(set.exps))
+            Quantification(q.q, q.vars ++ extraVariables, q.body, generatedTriggers, q.name)
+          case _ =>
+            q
+        }
+      }
+    }
+
   def makeTriggersHeapIndependent(triggers: Seq[Trigger], fresh: (String, Sort) => Var)
                                  : Seq[(Trigger, Iterable[Var])] = {
 
@@ -64,10 +86,10 @@ object QuantifierSupporter {
 
         /* 3. Check that all triggers are valid */
         quantification.triggers.foreach(trigger => trigger.p.foreach{term =>
-          if (!TriggerGenerator.isPossibleTrigger(term))
+          if (!triggerGenerator.isPossibleTrigger(term))
             problems ::= s"Trigger $term is not a possible trigger"
 
-          term.deepCollect{case t if TriggerGenerator.isForbiddenInTrigger(t) => t}
+          term.deepCollect{case t if triggerGenerator.isForbiddenInTrigger(t) => t}
               .foreach(term => problems ::= s"Term $term may not occur in triggers")
         })
     }

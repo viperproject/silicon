@@ -447,28 +447,13 @@ object Exists extends Quantifier {
   override val toString = "QE"
 }
 
-class Quantification private[terms] (val q: Quantifier,
+class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
                                      val vars: Seq[Var],
                                      val body: Term,
                                      val triggers: Seq[Trigger],
                                      val name: String)
     extends BooleanTerm
        with StructuralEquality {
-
-  lazy val autoTrigger: Quantification = {
-    if (triggers.nonEmpty) {
-      /* Triggers were given explicitly */
-      this
-    } else {
-      TriggerGenerator.generateTriggerSetGroup(vars, body) match {
-        case Some((generatedTriggerSets, extraVariables)) =>
-          val generatedTriggers = generatedTriggerSets.map(set => Trigger(set.exps))
-          Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
-        case _ =>
-          this
-      }
-    }
-  }
 
   val equalityDefiningMembers = q :: vars :: body :: triggers :: Nil
 
