@@ -328,10 +328,6 @@ object executor extends ExecutionRules with Immutable {
                 Failure(pve dueTo AssertionFalse(a))
               })((_, _) => Success())
 
-          case ast.LocalVar("SLEEP") => /* TODO: Remove once parallelisation is implemented */
-            Thread.sleep(2000)
-            Q(s, v)
-
           case _ =>
             if (Verifier.config.disableSubsumption()) {
               val r =
