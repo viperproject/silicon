@@ -76,7 +76,7 @@ case class FunctionDecl(func: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 case class MacroDecl(id: Identifier, args: Seq[Var], body: Term) extends Decl
 
-object ConstDecl extends (Var => Decl) {
+object ConstDecl extends (Var => Decl) { /* TODO: Inconsistent naming - Const vs Var */
   def apply(v: Var) = FunctionDecl(v)
 }
 
