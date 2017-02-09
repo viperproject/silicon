@@ -45,13 +45,25 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private var program: ast.Program = _
     private var functionData: Map[ast.Function, FunctionData] = Map.empty
     private var emittedFunctionAxioms: Vector[Term] = Vector.empty
+    private var freshVars: Vector[Var] = Vector.empty
 
     private val expressionTranslator =
-      new HeapAccessReplacingExpressionTranslator(symbolConverter, v.decider.fresh)
+      new HeapAccessReplacingExpressionTranslator(symbolConverter, fresh)
 
     def units = functionData.keys.toSeq
 
     /* Preamble contribution */
+
+    /** Wrapper around `v.decider.fresh` that records the newly introduced variable, such that
+      * these can later on (after the analysis and/or the verification phase) be declared to
+      * the other verifiers.
+      */
+    private def fresh(id: String, sort: Sort): Var = {
+      val x = v.decider.fresh(id, sort)
+      freshVars = freshVars :+ x
+
+      x
+    }
 
     def analyze(program: ast.Program) {
       this.program = program
@@ -99,6 +111,12 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
       sink.comment("Snapshot variable to be used during function verification")
       sink.declare(ConstDecl(`?s`))
+
+      /* The analysis phase should not have introduced any fresh (via decider.fresh)
+       * variables. If it needs to, freshVars might need to be reset after the
+       * analysis phase/before the verification phase.
+       */
+      assert(freshVars.isEmpty)
     }
 
     /* Function supporter generates no axioms during program analysis */
@@ -240,6 +258,8 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
         case Left(comment) => sink.comment(comment)
         case Right(f) => sink.declare(FunctionDecl(f))
       }
+
+      freshVars foreach (x => sink.declare(ConstDecl(x)))
     }
 
     val axiomsAfterVerification: Iterable[Term] = emittedFunctionAxioms
@@ -260,6 +280,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       program = null
       functionData = Map.empty
       emittedFunctionAxioms = Vector.empty
+      freshVars = Vector.empty
     }
 
     def stop() {}
