@@ -10,6 +10,7 @@ import org.slf4s.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
+import viper.silicon.common.io.toFile
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
@@ -45,6 +46,11 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
 //      SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
 
+      val pres = method.pres
+      val posts = method.posts
+      val body = method.body.toCfg()
+      val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
+
       val ins = method.formalArgs.map(_.localVar)
       val outs = method.formalReturns.map(_.localVar)
 
@@ -52,15 +58,13 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     ++ outs.map(x => (x, decider.fresh(x)))
                     ++ method.locals.map(_.localVar).map(x => (x, decider.fresh(x))))
 
-      val s = sInit.copy(g = g, h = Heap(), oldHeaps = OldHeaps())
+      val s = sInit.copy(g = g,
+                         h = Heap(),
+                         oldHeaps = OldHeaps(),
+                         methodCfg = body)
 
-      val pres = method.pres
-      val posts = method.posts
-      val body = method.body.toCfg
-      val postViolated = (offendingNode: ast.Exp) => PostconditionViolated(offendingNode, method)
-
-//      common.io.toFile(method.toString(), new java.io.File(s"${config.tempDirectory()}/${method.name}.sil"))
-//      common.io.toFile(body.toDot, new java.io.File(s"${config.tempDirectory()}/${method.name}.dot"))
+//      toFile(method.toString(), new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.sil"))
+//      toFile(body.toDot, new java.io.File(s"${Verifier.config.tempDirectory()}/${method.name}.dot"))
 
       val result =
         /* Combined the well-formedness check and the execution of the body, which are two separate

@@ -8,6 +8,7 @@ package viper.silicon.state
 
 import viper.silicon.common.Mergeable
 import viper.silver.ast
+import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.{Map, Stack}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.State.OldHeaps
@@ -24,6 +25,9 @@ final case class State(
 
          recordVisited: Boolean = false,
          visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
+
+         methodCfg: SilverCfg = null,
+         invariantContexts: Stack[Heap] = Stack.empty,
 
          constrainableARPs: InsertionOrderedSet[Term] = InsertionOrderedSet.empty,
          quantifiedVariables: Stack[Var] = Nil,
@@ -115,6 +119,7 @@ object State {
       case State(g1, h1, oldHeaps1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
+                 methodCfg1, invariantContexts1,
                  constrainableARPs1,
                  quantifiedVariables1,
                  retrying1,
@@ -135,6 +140,7 @@ object State {
           case State(`g1`, `h1`, `oldHeaps1`,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
+                     `methodCfg1`, `invariantContexts1`,
                      `constrainableARPs1`,
                      `quantifiedVariables1`,
                      `retrying1`,

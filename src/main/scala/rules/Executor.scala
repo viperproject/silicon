@@ -7,7 +7,11 @@
 package viper.silicon.rules
 
 import viper.silver.ast
+import viper.silver.cfg
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.errors._
+import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -21,7 +25,7 @@ import viper.silicon.verifier.Verifier
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
-           block: ast.Block,
+           cfg: SilverCfg,
            v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult
@@ -40,143 +44,150 @@ object executor extends ExecutionRules with Immutable {
   import evaluator._
   import producer._
 
-  private def follow(s: State, edge: ast.Edge, v: Verifier)
+  private def follow(s: State, edge: SilverEdge, v: Verifier)
                     (Q: (State, Verifier) => VerificationResult)
                     : VerificationResult = {
 
+    val s1 = edge.kind match {
+      case cfg.Kind.Out =>
+        val s1 = s.copy(h = stateConsolidator.merge(s.h, s.invariantContexts.head, v),
+                        invariantContexts = s.invariantContexts.tail)
+        s1
+      case _ =>
+        /* No need to do anything special. See also the handling of loop heads in exec below. */
+        s
+    }
+
     edge match {
-      case ue: ast.UnconditionalEdge => exec(s, ue.dest, v)(Q)
-      case ce: ast.ConditionalEdge => sys.error(s"Unexpected conditional edge: $ce")
+      case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] =>
+        eval(s1, ce.condition, IfFailed(ce.condition), v)((s2, tCond, v1) =>
+          /* Using branch(...) here ensures that the edge condition is recorded
+           * as a branch condition on the pathcondition stack.
+           */
+          brancher.branch(s2, tCond, v1,
+            (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
+            (_, _)  => Success()))
+
+      case ue: cfg.UnconditionalEdge[ast.Stmt, ast.Exp] =>
+        exec(s1, ue.target, ue.kind, v)(Q)
     }
   }
 
-  private def follows(s: State, edges: Seq[ast.Edge], v: Verifier)
+  private def follows(s: State,
+                      edges: Seq[SilverEdge],
+                      pvef: ast.Exp => PartialVerificationError,
+                      v: Verifier)
                      (Q: (State, Verifier) => VerificationResult)
                      : VerificationResult = {
 
     if (edges.isEmpty) {
       Q(s, v)
     } else
-      follows2(s, edges, v)(Q)
+      edges.foldLeft(Success(): VerificationResult) {
+        case (fatalResult: FatalResult, _) => fatalResult
+        case (_, edge) => follow(s, edge, v)(Q)
+      }
   }
 
-  private def follows2(s: State, edges: Seq[ast.Edge], v: Verifier)
-                      (Q: (State, Verifier) => VerificationResult)
-                      : VerificationResult = {
+  def exec(s: State, graph: SilverCfg, v: Verifier)
+          (Q: (State, Verifier) => VerificationResult)
+          : VerificationResult = {
 
-    if (edges.isEmpty) {
-      Success()
-    } else {
-      follow(s, edges.head, v)(Q) && follows2(s, edges.tail, v)(Q)
-    }
+    exec(s, graph.entry, cfg.Kind.Normal, v)(Q)
   }
 
-  private def leave(s: State, block: ast.Block, v: Verifier)
-                   (Q: (State, Verifier) => VerificationResult)
-                   : VerificationResult = {
-
-    follows(s, block.succs, v)(Q)
-  }
-
-  def exec(s: State, block: ast.Block, v: Verifier)
+  def exec(s: State, block: SilverBlock, incomingEdgeKind: cfg.Kind.Value, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
     block match {
-      case cblock @ ast.ConditionalBlock(stmt, _, _, _) =>
-        exec(s, stmt, v)((s1, v1) => {
-          val thn_edge = cblock.succs.head
-          val els_edge = cblock.succs(1)
+      case cfg.StatementBlock(stmt) =>
+        execs(s, stmt, v)((s1, v1) =>
+          follows(s1, s1.methodCfg.outEdges(block), IfFailed, v1)(Q))
 
-          assert(els_edge.cond == ast.Not(thn_edge.cond)(),
-                   s"Unexpected mismatch: else-branch condition ${els_edge.cond} is not "
-                 + s"syntactically the negation of the then-branch condition ${thn_edge.cond}")
+      case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
+           | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
 
-          eval(s1, thn_edge.cond, IfFailed(thn_edge.cond), v1)((s2, tCond, v2) => {
-            brancher.branch(s2, tCond, v2,
-              (s3, v3) => exec(s3, thn_edge.dest, v3)(Q),
-              (s3, v3) => exec(s3, els_edge.dest, v3)(Q))})})
-
-      case block @ ast.StatementBlock(stmt, _) =>
-        exec(s, stmt, v)((s1, v1) =>
-          leave(s1, block, v1)(Q))
-
-      case lb: ast.LoopBlock =>
-        v.decider.prover.comment(s"loop at ${lb.pos}")
-
-        /* TODO: We should avoid roundtripping, i.e., parsing a SIL file into an AST,
-         *       which is then converted into a CFG, from which we then compute an
-         *       AST again.
+        /* It is expected that the CFG of a method *body* is executed, not that of
+         * the whole method (which includes pre-/postcondition blocks).
+         * See also the MethodSupporter.
          */
-        val loopStmt = lb.toAst.asInstanceOf[ast.While]
-        val notGuard = ast.Not(lb.cond)(lb.cond.pos, lb.cond.info)
+        sys.error(s"Unexpected block: $block")
 
-        /* Havoc local variables that are assigned to in the loop body but
-         * that have been declared outside of it, i.e. before the loop.
-         */
-        val wvs = (lb.locals.map(_.localVar) ++ lb.writtenVars).distinct.filterNot(_.typ == ast.Wand)
-          /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
+      case block @ cfg.LoopHeadBlock(invs, stmts) =>
+        incomingEdgeKind match {
+          case cfg.Kind.In =>
+            /* High-level steps:
+             *   - Check loop invariant for self-framingness
+             *   - Check that the loop guard is framed by the invariant
+             *   - Exhale invariant of the target block
+             *   - Push leftover state onto invariant context stack
+             *   - Create state in which to execute the loop body by producing the
+             *     invariant into an empty heap
+             *   - Execute the statements in the loop head block
+             *   - Follow the outgoing edges
+             */
 
-        val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
-        val sBody = s.copy(g = gBody, h = Heap())
+            /* Havoc local variables that are assigned to in the loop body */
+            val wvs = s.methodCfg.writtenVars(block).filterNot(_.typ == ast.Wand)
+              /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
-        type PhaseData = (State, RecordedPathConditions, InsertionOrderedSet[FunctionDecl])
-        var phase1data: Vector[PhaseData] = Vector.empty
-        var phase2data: Vector[PhaseData] = Vector.empty
+            val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
+            val sBody = s.copy(g = gBody, h = Heap())
 
-        (  executionFlowController.locally(sBody, v)((s0, v0) => {
-              val mark = v0.decider.setPathConditionMark()
-              v0.decider.prover.comment("Loop: Check specs well-definedness")
-              produces(s0, freshSnap, lb.invs, ContractNotWellformed, v0)((s1, v1) =>
-                produce(s1, freshSnap, lb.cond, WhileFailed(loopStmt), v1)((s2, v2) => {
-                  /* Detect potential contradictions between path conditions from the loop guard and
-                   * from the invariant (e.g. due to conditionals)
-                   */
-                  if (!v2.decider.checkSmoke()) {
-                    phase1data = phase1data :+ (s2,
-                                                v2.decider.pcs.after(mark),
-                                                InsertionOrderedSet.empty[FunctionDecl] /*v2.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
-                  }
-                  Success()}))})
-        && executionFlowController.locally(s, v)((s0, v0) => {
-              val mark = v0.decider.setPathConditionMark()
-              v0.decider.prover.comment("Loop: Establish loop invariant")
-              consumes(s0, lb.invs, e => LoopInvariantNotEstablished(e), v0)((s1, _, v1) => {
-                phase2data = phase2data :+ (s1,
-                                           v1.decider.pcs.after(mark),
-                                           InsertionOrderedSet.empty[FunctionDecl] /*v1.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
-                Success()})})
-        && {
-              v.decider.prover.comment("Loop: Verify loop body")
-              phase1data.foldLeft(Success(): VerificationResult) {
-                case (fatalResult: FatalResult, _) => fatalResult
-                case (intermediateResult, (s0, pcs1, ff1)) =>
-                  intermediateResult && executionFlowController.locally(s0, v)((s1, v1) => {
-//                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                    v1.decider.assume(pcs1.assumptions)
-                    exec(s1, lb.body, v1)((s2, v2) =>
-                      consumes(s2, lb.invs, e => LoopInvariantNotPreserved(e), v2)((_, _, _) => {
-                        Success()}))})}}
-        && {
-              v.decider.prover.comment("Loop: Continue after loop")
-              phase2data.foldLeft(Success(): VerificationResult) {
-                case (fatalResult: FatalResult, _) => fatalResult
-                case (intermediateResult, (s0, pcs1, ff1)) =>
-                  intermediateResult && executionFlowController.locally(s0, v)((s1, v1) => {
-//                    v1.decider.declareAndRecordAsFreshFunctions(ff1 -- v1.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
-                    v1.decider.assume(pcs1.assumptions)
-                    produces(s1.copy(g = gBody), freshSnap,  lb.invs :+ notGuard, _ => WhileFailed(loopStmt), v1)((s2, v2) =>
-                      /* Detect potential contradictions (analogous to above) */
+            val edges = s.methodCfg.outEdges(block)
+            val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
+            val sortedEdges = otherEdges ++ outEdges
+            val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
+                                            .distinct
+
+            type PhaseData = (State, RecordedPathConditions, InsertionOrderedSet[FunctionDecl])
+            var phase1data: Vector[PhaseData] = Vector.empty
+
+            (executionFlowController.locally(sBody, v)((s0, v0) => {
+                v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
+                val mark = v0.decider.setPathConditionMark()
+                produces(s0, freshSnap, invs, ContractNotWellformed, v0)((s1, v1) => {
+                  phase1data = phase1data :+ (s1,
+                                              v1.decider.pcs.after(mark),
+                                              InsertionOrderedSet.empty[FunctionDecl] /*v2.decider.freshFunctions*/ /* [BRANCH-PARALLELISATION] */)
+                  v1.decider.prover.comment("Loop head block: Check well-definedness of edge conditions")
+                  edgeConditions.foldLeft(Success(): VerificationResult) {
+                    case (fatalResult: FatalResult, _) => fatalResult
+                    case (intermediateResult, eCond) =>
+                      intermediateResult && executionFlowController.locally(s1, v1)((s2, v2) => {
+                        eval(s2, eCond, WhileFailed(eCond), v2)((_, _, _) =>
+                          Success())})}})})
+            && executionFlowController.locally(s, v)((s0, v0) => {
+                v0.decider.prover.comment("Loop head block: Establish invariant")
+                consumes(s0, invs, LoopInvariantNotEstablished, v0)((sLeftover, _, v1) => {
+                  v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
+                  phase1data.foldLeft(Success(): VerificationResult) {
+                    case (fatalResult: FatalResult, _) => fatalResult
+                    case (intermediateResult, (s1, pcs, ff1)) =>
+                      val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
+                      intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
+//                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
+                      v2.decider.assume(pcs.assumptions)
                       if (v2.decider.checkSmoke())
-                        Success() /* TODO: Mark branch as dead? */
-                      else
-                        leave(s2, lb, v2)(Q))})}})
+                        Success()
+                      else {
+                        execs(s3, stmts, v2)((s4, v3) => {
+                          v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
+                          follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
 
-        case frp @ ast.ConstrainingBlock(vars, body, _) =>
-          val arps = vars map s.g.apply
-          val s1 = s.setConstrainable(arps, true)
-          exec(s1, body, v)((s2, v1) =>
-            leave(s2.setConstrainable(arps, false), frp, v1)(Q))
+          case cfg.Kind.Normal =>
+            v.decider.prover.comment("Loop head block: Re-establish invariant")
+            consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
+              Success())
+          case _ =>
+            sys.error(s"Unexpected edge of kind $incomingEdgeKind leading to loop head block $block")
+        }
+
+      case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
+        val arps = vars map s.g.apply
+        exec(s.setConstrainable(arps, true), body, v)((s1, v1) =>
+          follows(s1.setConstrainable(arps, false), s1.methodCfg.outEdges(block), Internal(_), v1)(Q))
     }
   }
 
@@ -220,6 +231,11 @@ object executor extends ExecutionRules with Immutable {
       case ast.Label(name, _) =>
         val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> s.h))
         Q(s1, v)
+
+      case ast.LocalVarDeclStmt(decl) =>
+        val x = decl.localVar
+        val t = v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ))
+        Q(s.copy(g = s.g + (x -> t)), v)
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
         x.typ match {
