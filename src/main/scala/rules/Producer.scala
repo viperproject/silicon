@@ -255,7 +255,9 @@ object producer extends ProductionRules with Immutable {
             val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, snap, v)
             optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.valueDefinitions))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
-            val s1 = optFvfDef.fold(s)(fvfDef => s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(fvfDef, Seq.empty)))
+            val s1 = optFvfDef.fold(s)(fvfDef => {
+              val fr1 = s.functionRecorder.recordFvfAndDomain(fvfDef, Seq.empty, s.quantifiedVariables)
+              s.copy(functionRecorder = fr1)})
             Q(s1.copy(h = s1.h + ch), v)
           } else {
             val ch = FieldChunk(rcvr, field.name, snap, p)

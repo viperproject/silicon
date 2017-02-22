@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
-import viper.silicon.{Config, Map, toMap}
+import viper.silicon.{Config, Map, Stack, toMap}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunction, functionSupporter}
@@ -91,7 +91,7 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
   private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+  private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term], Stack[Var])] = InsertionOrderedSet.empty
 //  private[this] var freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet.empty
 //  private[this] var freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
@@ -130,11 +130,43 @@ class FunctionData(val programFunction: ast.Function,
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = (
        freshFieldInvs.flatMap(_.definitionalAxioms)
 //    ++ freshPredInvs.flatMap(_.definitionalAxioms)
-    ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef) =>
-         (fvfDef match {
-            case fvfDef: SummarisingFvfDefinition => fvfDef.quantifiedValueDefinitions
-            case _ => fvfDef.valueDefinitions
-          }) ++ domDef
+    ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef, _qvars) =>
+          val qvars = _qvars filterNot arguments.contains
+
+           val (fvfDefTerms, domDefTerms) = fvfDef match {
+              case fvfDef: SummarisingFvfDefinition =>
+                (fvfDef.quantifiedValueDefinitions, domDef)
+              case fvfDef: QuantifiedChunkFvfDefinition =>
+                (fvfDef.valueDefinitions, domDef)
+              case fvfDef: SingletonChunkFvfDefinition =>
+                val unquantifiedValueDefs = fvfDef.valueDefinitions
+
+                val varsToQuantify =
+                  unquantifiedValueDefs.collect{case vd => vd.freeVariables filter qvars.contains}
+                                       .flatten
+
+                varsToQuantify match {
+                  case Seq() =>
+                    (unquantifiedValueDefs, domDef)
+                  case Seq(qv) =>
+                    val fvfDefTerms = fvfDef.quantifiedValueDefinitions(qv)
+                    val domDefTerms =
+                      /* TODO: The code here assumes that domDef == fvfDef.domainDefinitions, but
+                       *       this is not enforced.
+                       *       The whole design of FvfDefinition and its implementations should be
+                       *       reconsidered: e.g. separate the pure data groups/containers from the
+                       *       computation of definitionals axioms; is it really worth collecting
+                       *       fvfDef and domDef independently?
+                       */
+                      fvfDef.quantifiedDomainDefinitions(qv)
+
+                    (fvfDefTerms, domDefTerms)
+                  case _ =>
+                    sys.error(s"Expected at most one variable that needs to be quantified, but found $varsToQuantify")
+                }
+            }
+
+          fvfDefTerms ++ domDefTerms
        }
     ++ freshArps.map(_._2)
   )
@@ -142,7 +174,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] def bindSymbols(innermostBody: Term): Term = {
     val bindings: Map[Var, Term] = (
          Map(formalResult -> limitedFunctionApplication)
-      ++ freshFvfsAndDomains.map { case (fvfDef, _) =>
+      ++ freshFvfsAndDomains.map { case (fvfDef, _, _) =>
                   fvfDef.fvf -> App(fvfGenerators(fvfDef.field), arguments) })
 
     Let(toMap(bindings), innermostBody)

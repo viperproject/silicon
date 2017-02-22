@@ -250,7 +250,7 @@ object consumer extends ConsumptionRules with Immutable {
                         val fvfDomain = if (s2.fvfAsSnap) fvfDef.domainDefinitions(invFct) else Seq.empty
                         v1.decider.prover.comment("Definitional axioms for field value function")
                         v1.decider.assume(fvfDomain ++ fvfDef.valueDefinitions)
-                        val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef, fvfDomain)
+                        val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef, fvfDomain, s2.quantifiedVariables)
                                                      .recordFieldInv(invFct)
                         val s3 = s2.copy(functionRecorder = fr3,
                                          partiallyConsumedHeap = Some(h2))
@@ -292,7 +292,7 @@ object consumer extends ConsumptionRules with Immutable {
                         val psfDomain = if (s2.psfAsSnap) psfDef.domainDefinitions(invFct) else Seq.empty
                         v1.decider.prover.comment("Definitional axioms for predicate snap function")
                         v1.decider.assume(psfDomain ++ psfDef.snapDefinitions)
-                        val fr3 = s2.functionRecorder.recordPsfAndDomain(psfDef, psfDomain)
+                        val fr3 = s2.functionRecorder.recordPsfAndDomain(psfDef, psfDomain, s2.quantifiedVariables)
                                                      .recordPredInv(invFct)
                         val s3 = s2.copy(functionRecorder = fr3, partiallyConsumedHeap = Some(h2))
                         Q(s3, h2, ch.psf.convert(sorts.Snap), v1)
@@ -315,7 +315,7 @@ object consumer extends ConsumptionRules with Immutable {
               case Some((s3, h3, ch, fvfDef)) =>
                 val fvfDomain = if (s3.fvfAsSnap) fvfDef.domainDefinitions else Seq.empty
                 v2.decider.assume(fvfDomain ++ fvfDef.valueDefinitions)
-                val fr4 = s3.functionRecorder.recordFvfAndDomain(fvfDef, fvfDomain)
+                val fr4 = s3.functionRecorder.recordFvfAndDomain(fvfDef, fvfDomain, s3.quantifiedVariables)
                 val s4 = s3.copy(partiallyConsumedHeap = Some(h3),
                                  functionRecorder = fr4)
                 Q(s4, h3, ch.valueAt(tRcvr), v2)

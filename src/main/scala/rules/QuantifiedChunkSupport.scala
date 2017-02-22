@@ -302,7 +302,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     if (isChunkFvf) {
       if (qvars.isEmpty) {
-        SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
+        SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)(v.triggerGenerator, v.axiomRewriter)
       } else
         QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(v.triggerGenerator, v.axiomRewriter)
     } else {
@@ -625,8 +625,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
       case _ =>
         val fvf = freshFVF(field, true, v)
+        val fvfDef = SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))(v.triggerGenerator, v.axiomRewriter)
 
-        (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))))
+        (fvf, Some(fvfDef))
     }
 
 

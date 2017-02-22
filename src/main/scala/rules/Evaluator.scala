@@ -195,7 +195,7 @@ object evaluator extends EvaluationRules with Immutable {
                 v1.decider.assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                 val fr2 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
-                                             .recordFvfAndDomain(fvfDef, Seq.empty)
+                                             .recordFvfAndDomain(fvfDef, Seq.empty, s1.quantifiedVariables)
                 val s2 = s1.copy(functionRecorder = fr2,
                                  fvfCache = if (Verifier.config.disableValueMapCaching()) s1.fvfCache else s1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
                 Q(s2, fvfLookup, v1)})}})
