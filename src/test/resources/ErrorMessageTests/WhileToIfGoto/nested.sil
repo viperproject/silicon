@@ -4,10 +4,10 @@ method main()
     var j:Bool := true
 
     while(i < 5) 
-        invariant i < 5
+        invariant i <= 5
     {
         while(j) 
-            invariant j == false
+            invariant i <= 5
         {
             j := false
         }

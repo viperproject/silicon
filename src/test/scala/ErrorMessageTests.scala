@@ -9,14 +9,39 @@ import org.scalatest.FunSuite
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, ErrorReason, Failure => SilFailure}
 import viper.silicon.Silicon
 import viper.silver.ast._
+import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
 
-import scala.collection.mutable
 
 class ErrorMessageTests extends FunSuite {
+
+  test("TestSHIT") {
+    val frontend = new DummyFrontend
+
+    val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
+    backend.parseCommandLine(List("--ignoreFile", "dummy.sil"))
+    backend.start()
+
+    frontend.init(backend)
+    val fileName = "ErrorMessageTests\\test.sil"
+
+    val testFile = getClass.getClassLoader.getResource(fileName)
+    assert(testFile != null, s"File $fileName not found")
+    val file = Paths.get(testFile.toURI)
+
+    frontend.reset(file)
+    frontend.parse()
+    frontend.typecheck()
+    frontend.translate()
+
+    val targetNode: Program = frontend.translatorResult
+
+    val errorRef = backend.verify(targetNode)
+
+    println("Reference: " + errorRef.toString)
+  }
 
   test("MeetingExample") {
     val filePrefix = "ErrorMessageTests\\MeetingExample\\"
@@ -43,7 +68,7 @@ class ErrorMessageTests extends FunSuite {
 
   test("WhileToIfGoto") {
     val filePrefix = "ErrorMessageTests\\WhileToIfGoto\\"
-    val files = Seq("simple", "nested")
+    val files = Seq("simple"/*, "nested"*/)
 
     val frontend = new DummyFrontend
     val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
@@ -117,7 +142,7 @@ class ErrorMessageTests extends FunSuite {
     frontend.init(backend)
 
     val replaceStrat = ViperStrategy.Context[Map[Exp, Exp]]({
-      case (l: LocalVar, c) => if (c.custom.contains(l)) c.custom(l) else l
+      case (l: LocalVar, c) => if (c.c.contains(l)) c.c(l) else l
     }, Map.empty[Exp, Exp])
 
     val preError = (m: MethodCall) => ErrTrafo({
@@ -206,4 +231,3 @@ class DummyFrontend extends SilFrontend {
     (_program, _errors)
   }
 }
-

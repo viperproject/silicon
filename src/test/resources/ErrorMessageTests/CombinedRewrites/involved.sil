@@ -1,5 +1,5 @@
 method main()
 {
 
-    assert(!!((true || false) && (!true || !!false)))
+    assert(true && (!true || !!false))
 }
