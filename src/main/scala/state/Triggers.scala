@@ -24,7 +24,14 @@ object Trigger extends (Seq[Term] => Trigger) {
   def unapply(trigger: Trigger) = Some(trigger.p)
 }
 
-object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification] {
+/** Attention: The trigger generator is *not* thread-safe, among other things because its
+  * filters for accepting/rejecting possible triggers can be changed
+  * (see, e.g. [[GenericTriggerGenerator.setCustomIsForbiddenInTrigger]]).
+  */
+class TriggerGenerator
+    extends GenericTriggerGenerator[Term, Sort, Term, Var, Quantification]
+       with Mutable {
+
   protected def hasSubnode(root: Term, child: Term) = root.hasSubterm(child)
   protected def visit[A](root: Term)(f: PartialFunction[Term, A]) = root.visit(f)
   protected def deepCollect[A](root: Term)(f: PartialFunction[Term, A]) = root.deepCollect(f)
@@ -93,6 +100,7 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
          | _: SnapshotTerm
          | _: Domain
          | _: Lookup
+         | _: PredicateLookup
          => true
     case _ => false
   }
@@ -133,7 +141,8 @@ object TriggerGenerator extends GenericTriggerGenerator[Term, Sort, Term, Var, Q
   protected def getArgs(term: Term): Seq[Term] = term.subterms
 }
 
-class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
+class AxiomRewriter(counter: Counter/*, logger: MultiRunLogger*/,
+                    triggerGenerator: GenericTriggerGenerator[Term, Sort, Term, Var, Quantification])
     extends GenericAxiomRewriter[Sort, Term, Var, Quantification, Equals, And, Implies, Plus, Minus,
                                  Trigger] {
 
@@ -174,7 +183,7 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
   protected def Trigger(exps: Seq[Exp]) = terms.Trigger(exps)
 
   /* True iff the given node is not allowed in triggers */
-  protected def isForbiddenInTrigger(e: Exp): Boolean = TriggerGenerator.isForbiddenInTrigger(e)
+  protected def isForbiddenInTrigger(e: Exp): Boolean = triggerGenerator.isForbiddenInTrigger(e)
 
   /*
    * Abstract members - dependencies
@@ -182,10 +191,11 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
 
   protected val solver = SimpleArithmeticSolver
 
-  protected def fresh(name: String, typ: Type) = Var(Identifier(s"$name@rw${counter.next()}"), typ)
+  protected def fresh(name: String, typ: Type): Var =
+    Var(Identifier(s"$name@rw${counter.next()}"), typ)
 
   protected def log(message: String): Unit = {
-    logger.println(message)
+//    logger.println(message)
   }
 
   protected def log(key: String, item: Any) {
@@ -193,12 +203,12 @@ class AxiomRewriter(counter: Counter, logger: MultiRunLogger)
   }
 
   protected def log(key: String, items: Iterable[Any]) {
-    if (items.size <= 1)
-      logger.println(s"  $key: $items")
-    else {
-      logger.println(s"  $key:")
-      items foreach (item => logger.println(s"    $item"))
-    }
+//    if (items.size <= 1)
+//      logger.println(s"  $key: $items")
+//    else {
+//      logger.println(s"  $key:")
+//      items foreach (item => logger.println(s"    $item"))
+//    }
   }
 }
 

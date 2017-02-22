@@ -10,9 +10,15 @@ import viper.silver
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
-import viper.silver.verifier.reasons.{UnexpectedNode, FeatureUnsupported}
+import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms.{Sort, Term, Var}
+import viper.silicon.verifier.Verifier
 
 package object utils {
+  def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
+  def toSf(t: Term): (Sort, Verifier) => Term = (sort, _) => t.convert(sort)
+
   def mapReduceLeft[E](it: Iterable[E], f: E => E, op: (E, E) => E, unit: E): E =
     if (it.isEmpty)
       unit
@@ -42,16 +48,33 @@ package object utils {
   }
 
   /* NOT thread-safe */
-  class Counter {
-    private var value = -1
+  class Counter(firstValue: Int = 0)
+      extends StatefulComponent
+         with Cloneable {
+
+    private var nextValue = firstValue
 
     def next() = {
-      value = value + 1
-      value
+      val n = nextValue
+      nextValue = nextValue + 1
+
+      n
     }
 
+    /* Lifetime */
+
+    def start() {}
+    def stop() {}
+
     def reset() {
-      value = -1
+      nextValue = firstValue
+    }
+
+    override def clone(): Counter = {
+      val clonedCounter = new Counter(firstValue)
+      clonedCounter.nextValue = nextValue
+
+      clonedCounter
     }
   }
 
@@ -63,6 +86,8 @@ package object utils {
     @inline def reset() {}
     @inline def stop() {}
   }
+
+  trait MustBeReinitializedAfterReset { this: StatefulComponent => }
 
   /* http://www.tikalk.com/java/blog/avoiding-nothing */
   object notNothing {
@@ -100,12 +125,16 @@ package object utils {
           )(e.pos)
       })(recursive = _ => true)
 
-    def autoTrigger(forall: silver.ast.Forall, qpFields: Set[silver.ast.Field]): silver.ast.Forall = {
-      /* Allow qp-fields in triggers */
-//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger {
-//        case fa: silver.ast.FieldAccess => qpFields contains fa.field
-//      }
-
+    /** Aims to compute triggers for the given quantifier `forall` by successively trying
+      * different strategies.
+      *
+      * Attention: This method is *not* thread-safe, because it uses
+      * [[silver.ast.utility.Triggers.TriggerGeneration]] , which is itself not thread-safe.
+      *
+      * @param forall The quantifier to compute triggers for.
+      * @return A quantifier that is equal to the input quantifier, except potentially for triggers.
+      */
+    def autoTrigger(forall: silver.ast.Forall): silver.ast.Forall = {
       val defaultTriggerForall = forall.autoTrigger
 
       val autoTriggeredForall =
@@ -137,8 +166,6 @@ package object utils {
 
           advancedTriggerForall
         }
-
-//      silver.ast.utility.Triggers.TriggerGeneration.setCustomIsPossibleTrigger(PartialFunction.empty)
 
       autoTriggeredForall
     }

@@ -9,10 +9,10 @@ package viper.silicon.reporting
 import viper.silver.ast
 import viper.silver.verifier.AbstractError
 
-case class Z3InteractionFailed(message: String) extends RuntimeException(message) with AbstractError {
+case class Z3InteractionFailed(proverId: String, message: String) extends RuntimeException(message) with AbstractError {
   def pos = ast.NoPosition
   def fullId = "z3.interaction.failed"
-  def readableMessage = s"Interaction with Z3 failed: $message"
+  def readableMessage = s"Interaction with Z3 (instance $proverId) failed: $message"
 }
 
 case class VerificationException(error: AbstractError) extends RuntimeException(error.readableMessage)

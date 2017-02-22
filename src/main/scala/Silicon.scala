@@ -8,19 +8,19 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.io.File
-import java.util.concurrent.{ExecutionException, Callable, Executors, TimeUnit, TimeoutException}
+import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
+import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.Try
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silver.verifier.{Verifier => SilVerifier, VerificationResult => SilVerificationResult,
-    Success => SilSuccess, Failure => SilFailure, DefaultDependency => SilDefaultDependency,
-    TimeoutOccurred => SilTimeoutOccurred, CliOptionError => SilCliOptionError}
+import viper.silver.verifier.{CliOptionError => SilCliOptionError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silver.frontend.SilFrontend
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.VerificationException
+import viper.silicon.verifier.DefaultMasterVerifier
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -53,10 +53,10 @@ object Silicon {
   val copyright = "(c) Copyright ETH Zurich 2012 - 2016"
   val z3ExeEnvironmentVariable = "Z3_EXE"
   val z3MinVersion = Version("4.3.2")
-  val z3MaxVersion: Option[Version] = Some(Version("4.4.0")) /* X.Y.Z if that is the last *supported* version */
+  val z3MaxVersion: Option[Version] = None // Some(Version("4.5.0")) /* X.Y.Z if that is the last *supported* version */
   val dependencies = Seq(SilDefaultDependency("Z3", z3MinVersion.version, "http://z3.codeplex.com/"))
 
-  val hideInternalOptions = true
+  val hideInternalOptions = false
 
   def optionsFromScalaTestConfigMap(configMap: collection.Map[String, Any]): Seq[String] =
     configMap.flatMap {
@@ -79,16 +79,6 @@ object Silicon {
 
     silicon.parseCommandLine(args :+ "dummy-file-to-prevent-cli-parser-from-complaining-about-missing-file-name.silver")
 
-    silicon.config.initialize {
-      case _ =>
-        /* Ignore command-line errors, --help, --version and other non-positive
-         * results from Scallop.
-         * After initialized has been set to true, Silicon itself will not call
-         * config.initialize again.
-         */
-        silicon.config.initialized = true
-    }
-
     silicon
   }
 }
@@ -96,8 +86,6 @@ object Silicon {
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
          with Logging {
-
-  private type V = DefaultVerifier
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -118,7 +106,10 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private var lifetimeState: LifetimeState = LifetimeState.Instantiated
-  private var verifier: V = null
+  private var verifier: DefaultMasterVerifier = _
+
+  private var startTime: Long = _
+  private var elapsedMillis: Long = _
 
   def this() = this(Nil)
 
@@ -141,45 +132,18 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     lifetimeState = LifetimeState.Started
 
-    if (!_config.initialized) initializeLazyScallopConfig()
-        /* TODO: Hack! SIL's SilFrontend has a method initializeLazyScallopConfig()
-         *       that initialises the verifier's configuration. However, this
-         *       requires the verifier to inherit from SilFrontend, which is
-         *       not really meaningful.
-         *       The configuration logic should thus be refactored such that
-         *       a Verifier can be used without extending SilFrontend, while
-         *       still ensuring that, e.g., a config is not initialised twice,
-         *       and that a reasonable default handling of --version, --help
-         *       or --dependencies is can be shared.
-         */
-
     setLogLevelsFromConfig()
 
-    verifier = new DefaultVerifier(config)
+    verifier = new DefaultMasterVerifier(config)
     verifier.start()
-  }
-
-  /* TODO: Corresponds partially to code from SilFrontend. The design of command-line parsing should be improved.
-   * TODO: Would be nice if logger could be used instead of printHelp()ing to stdout.
-   */
-  protected def initializeLazyScallopConfig() {
-    _config.initialize {
-      case org.rogach.scallop.exceptions.Version =>
-        println(_config.builder.vers.get)
-        throw org.rogach.scallop.exceptions.Version
-      case ex: org.rogach.scallop.exceptions.Help =>
-        _config.printHelp()
-        throw ex
-      case ex: org.rogach.scallop.exceptions.ScallopException =>
-        println(SilCliOptionError(ex.message + ".").readableMessage)
-        _config.printHelp()
-        throw ex
-    }
   }
 
   private def reset() {
     assert(lifetimeState == LifetimeState.Started || lifetimeState == LifetimeState.Running,
            "Silicon must be started before it can be reset")
+
+    startTime = 0
+    elapsedMillis = 0
 
     verifier.reset()
   }
@@ -204,7 +168,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     lifetimeState = LifetimeState.Running
 
     //bookkeeping for Viper IVE
-    verifier.bookkeeper.reportInitialProgress(program)
+//    verifier.bookkeeper.reportInitialProgress(program)
 
     log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
@@ -212,8 +176,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       case sp: ast.AbstractSourcePosition => Some(sp.file)
       case _ => None
     }
-
-    verifier.decider.prover.proverRunStarts()
 
     val consistencyErrors = utils.consistency.check(program)
 
@@ -224,14 +186,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       val executor = Executors.newSingleThreadExecutor()
 
       val future = executor.submit(new Callable[List[Failure]] {
-        def call() = {
-          runVerifier(program)
-        }
+        def call(): List[Failure] = runVerifier(program)
       })
 
       try {
         val failures =
-          if (config.timeout.get.getOrElse(0) == 0)
+          if (config.timeout.toOption.getOrElse(0) == 0)
             future.get()
           else
             future.get(config.timeout(), TimeUnit.SECONDS)
@@ -241,7 +201,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case VerificationException(error) =>
           result = Some(SilFailure(error :: Nil))
 
-        case te: TimeoutException =>
+        case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
 
         case ee: ExecutionException =>
@@ -253,11 +213,8 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             else ee
 
           handleThrowable(ex)
-//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
 
-        case ex: Exception =>
-          handleThrowable(ex)
-//          result = Some(SilFailure(SilExceptionThrown(ex) :: Nil))
+        case ex: Exception => handleThrowable(ex)
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -284,12 +241,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
-    verifier.bookkeeper.branches = 1
-    verifier.bookkeeper.startTime = System.currentTimeMillis()
+//    verifier.bookkeeper.branches = 1
+    /*verifier.bookkeeper.*/startTime = System.currentTimeMillis()
 
     val results = verifier.verify(program)
 
-    verifier.bookkeeper.elapsedMillis = System.currentTimeMillis() - verifier.bookkeeper.startTime
+    /*verifier.bookkeeper.*/elapsedMillis = System.currentTimeMillis() - /*verifier.bookkeeper.*/startTime
 
     val failures =
       results.flatMap(r => r :: r.allPrevious)
@@ -303,7 +260,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
               *       well-formedness.
               */
              .reverse
-             .foldLeft((Set[String](), List[Failure]())){
+             .foldLeft((immutable.Set.empty[String], List[Failure]())){
                 case ((ss, rs), f: Failure) =>
                   if (ss.contains(f.message.readableMessage)) (ss, rs)
                   else (ss + f.message.readableMessage, f :: rs)
@@ -316,30 +273,31 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
              })
 
     if (config.showStatistics.isDefined) {
-      val proverStats = verifier.decider.statistics()
-
-      verifier.bookkeeper.proverStatistics = proverStats
-      verifier.bookkeeper.errors = failures.length
-
-      config.showStatistics.get match {
-        case None =>
-
-        case Some((Config.Sink.Stdio, "")) =>
-          log.info("")
-          log.info(verifier.bookkeeper.toString)
-          log.info("")
-
-        case Some((Config.Sink.File, path)) =>
-          viper.silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
-
-        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
-      }
+      ???
+//      val proverStats = verifier.decider.statistics()
+//
+//      verifier.bookkeeper.proverStatistics = proverStats
+//      verifier.bookkeeper.errors = failures.length
+//
+//      config.showStatistics.get match {
+//        case None =>
+//
+//        case Some((Config.Sink.Stdio, "")) =>
+//          log.info("")
+//          log.info(verifier.bookkeeper.toString)
+//          log.info("")
+//
+//        case Some((Config.Sink.File, path)) =>
+//          viper.silver.utility.Common.toFile(verifier.bookkeeper.toJson, new File(path))
+//
+//        case _ => /* Should never be reached if the arguments to showStatistics have been validated */
+//      }
     }
 
     failures foreach (f => logFailure(f, s => log.info(s)))
 
     log.info("\nVerification finished in %s with %s error(s)".format(
-        viper.silicon.common.format.formatMillisReadably(verifier.bookkeeper.elapsedMillis),
+        viper.silicon.common.format.formatMillisReadably(/*verifier.bookkeeper.*/elapsedMillis),
         failures.length))
 
     failures
@@ -389,25 +347,27 @@ object SiliconRunner extends SiliconFrontend {
     try {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
-    } catch {
-      case ex: org.rogach.scallop.exceptions.ScallopResult =>
-        /* Can be raised by Silicon.initializeLazyScallopConfig, should have been handled there already. */
     } finally {
       siliconInstance.stop()
+        /* TODO: This currently seems necessary to make sure that Z3 is terminated
+         *       if Silicon is supposed to terminate prematurely because of a
+         *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
+         *       at the point where the TimeoutException is caught, but that doesn't
+         *       seem to work. A few forum posts mentioned that Process.destroy
+         *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
+         *       the process to kill has no input/output data left in the
+         *       corresponding streams.
+         */
     }
 
-    sys.exit(result match {
-      case SilSuccess => 0
-      case SilFailure(_) => 1
-    })
-      /* TODO: This currently seems necessary to make sure that Z3 is terminated
-       *       if Silicon is supposed to terminate prematurely because of a
-       *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
-       *       at the point where the TimeoutException is caught, but that doesn't
-       *       seem to work. A few forum posts mentioned that Process.destroy
-       *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
-       *       the process to kill has no input/output data left in the
-       *       corresponding streams.
-       */
+    val exitCode =
+      if (   config.error.nonEmpty /* Handling command line options failed */
+          || config.exit           /* Must terminate for some other reason */
+          || result != SilSuccess) /* Verification (includes parsing) failed */
+        1
+      else
+        0
+
+    sys.exit(exitCode)
   }
 }

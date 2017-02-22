@@ -7,33 +7,42 @@
 package viper.silicon.supporters.functions
 
 import viper.silver.ast
-import viper.silver.ast.{Field, Predicate, FuncApp, LocationAccess}
-import viper.silicon.{Map, Set, Stack}
-import viper.silicon.interfaces.state.Mergeable
+import viper.silver.ast.{FuncApp, LocationAccess}
+import viper.silicon.common.Mergeable
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.rules.{InverseFunction, PredicateInverseFunction}
+import viper.silicon.{Map, Stack}
 import viper.silicon.state.terms._
+import viper.silicon.supporters.qps.{FvfDefinition, PsfDefinition}
 
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def data: Option[FunctionData]
-  private[functions] def locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]]
+  private[functions] def locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]]
   def locToSnap: Map[ast.LocationAccess, Term]
-  private[functions] def fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]]
+  private[functions] def fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]]
   def fappToSnap: Map[ast.FuncApp, Term]
-  def freshFvfs: Set[(ast.Field, Term)]
-  def freshPsfs: Set[(ast.Predicate, Term)]
-  def qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])]
+  def freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])]
+  def freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])]
+  def freshFieldInvs: InsertionOrderedSet[InverseFunction]
+  def freshPredInvs: InsertionOrderedSet[PredicateInverseFunction]
+  def freshArps: InsertionOrderedSet[(Var, Term)]
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder
-  def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]): FunctionRecorder
-  def recordFvf(field: ast.Field, fvf: Term): FunctionRecorder
-  def recordPsf(predicate: ast.Predicate, psf:Term) : FunctionRecorder
+  def recordFvfAndDomain(fvf: FvfDefinition, domainDefinition: Seq[Term]): FunctionRecorder
+  def recordPsfAndDomain(psf: PsfDefinition, domainDefinition: Seq[Term]): FunctionRecorder
+  def recordFieldInv(inv: InverseFunction): FunctionRecorder
+  def recordPredInv(inv: PredicateInverseFunction): FunctionRecorder
+  def recordArp(arp: Var, constraint: Term): FunctionRecorder
 }
 
 case class ActualFunctionRecorder(private val _data: FunctionData,
-                                  private[functions] val locToSnaps: Map[ast.LocationAccess, Set[(Stack[Term], Term)]] = Map(),
-                                  private[functions] val fappToSnaps: Map[ast.FuncApp, Set[(Stack[Term], Term)]] = Map(),
-                                  freshFvfs: Set[(ast.Field, Term)] = Set(),
-                                  freshPsfs: Set[(ast.Predicate, Term)]  = Set(),
-                                  qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set())
+                                  private[functions] val locToSnaps: Map[ast.LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
+                                  private[functions] val fappToSnaps: Map[ast.FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map(),
+                                  freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])] = InsertionOrderedSet(),
+                                  freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet(),
+                                  freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet(),
+                                  freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet(),
+                                  freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet())
     extends FunctionRecorder {
 
   val data = Some(_data)
@@ -67,27 +76,28 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
   }
 
   def recordSnapshot(loc: ast.LocationAccess, guards: Stack[Term], snap: Term) = {
-    val guardsToSnaps = locToSnaps.getOrElse(loc, Set()) + (guards -> snap)
+    val guardsToSnaps = locToSnaps.getOrElse(loc, InsertionOrderedSet()) + (guards -> snap)
     copy(locToSnaps = locToSnaps + (loc -> guardsToSnaps))
   }
 
   def recordSnapshot(fapp: ast.FuncApp, guards: Stack[Term], snap: Term) = {
-    val guardsToSnaps = fappToSnaps.getOrElse(fapp, Set()) + (guards -> snap)
+    val guardsToSnaps = fappToSnaps.getOrElse(fapp, InsertionOrderedSet()) + (guards -> snap)
     copy(fappToSnaps = fappToSnaps + (fapp -> guardsToSnaps))
   }
 
-  def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]) = {
-    copy(qpTerms = qpTerms + ((qvars, guards, ts)))
-  }
+  def recordFvfAndDomain(fvf: FvfDefinition, domainDefinition: Seq[Term]): FunctionRecorder =
+    copy(freshFvfsAndDomains = freshFvfsAndDomains + ((fvf, domainDefinition)))
 
-  def recordFvf(field: ast.Field, fvf: Term) = {
-    copy(freshFvfs = freshFvfs + ((field, fvf)))
-  }
+  def recordPsfAndDomain(psf: PsfDefinition, domainDefinition: Seq[Term]): FunctionRecorder =
+    copy(freshPsfsAndDomains= freshPsfsAndDomains + ((psf, domainDefinition)))
 
-  def recordPsf(predicate: ast.Predicate, psf: Term) = {
-    copy(freshPsfs = freshPsfs + ((predicate, psf)))
-  }
+  def recordFieldInv(inv: InverseFunction): FunctionRecorder =
+    copy(freshFieldInvs = freshFieldInvs + inv)
 
+  def recordPredInv(inv: PredicateInverseFunction): FunctionRecorder =
+    copy(freshPredInvs = freshPredInvs + inv)
+
+  def recordArp(arp: Var, constraint: Term) = copy(freshArps = freshArps + ((arp, constraint)))
 
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other.getClass == this.getClass)
@@ -95,21 +105,27 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
     val lts =
       other.locToSnaps.foldLeft(locToSnaps){case (accLts, (loc, guardsToSnaps)) =>
-        val guardsToSnaps1 = accLts.getOrElse(loc, Set()) ++ guardsToSnaps
+        val guardsToSnaps1 = accLts.getOrElse(loc, InsertionOrderedSet()) ++ guardsToSnaps
         accLts + (loc -> guardsToSnaps1)
       }
 
     val fts =
       other.fappToSnaps.foldLeft(fappToSnaps){case (accFts, (fapp, guardsToSnaps)) =>
-        val guardsToSnaps1 = accFts.getOrElse(fapp, Set()) ++ guardsToSnaps
+        val guardsToSnaps1 = accFts.getOrElse(fapp, InsertionOrderedSet()) ++ guardsToSnaps
         accFts + (fapp -> guardsToSnaps1)
       }
 
-    val fvfs = freshFvfs ++ other.freshFvfs
-    val psfs = freshPsfs ++ other.freshPsfs
-    val qpts = qpTerms ++ other.qpTerms
+    val fvfs = freshFvfsAndDomains ++ other.freshFvfsAndDomains
+    val psfs = freshPsfsAndDomains ++ other.freshPsfsAndDomains
+    val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
+    val predInvs = freshPredInvs ++ other.freshPredInvs
 
-    copy(locToSnaps = lts, fappToSnaps = fts, freshFvfs = fvfs, freshPsfs = psfs, qpTerms = qpts)
+    copy(locToSnaps = lts,
+         fappToSnaps = fts,
+         freshFvfsAndDomains = fvfs,
+         freshPsfsAndDomains = psfs,
+         freshFieldInvs = fieldInvs,
+         freshPredInvs = predInvs)
   }
 
   override lazy val toString = {
@@ -128,13 +144,16 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
 case object NoopFunctionRecorder extends FunctionRecorder {
   val data = None
-  private[functions] val fappToSnaps: Map[FuncApp, Set[(Stack[Term], Term)]] = Map.empty
+  private[functions] val fappToSnaps: Map[FuncApp, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[functions] val locToSnaps: Map[LocationAccess, Set[(Stack[Term], Term)]] = Map.empty
+  private[functions] val locToSnaps: Map[LocationAccess, InsertionOrderedSet[(Stack[Term], Term)]] = Map.empty
   val locToSnap: Map[ast.LocationAccess, Term] = Map.empty
-  val qpTerms: Set[(Seq[Var], Stack[Term], Iterable[Term])] = Set.empty
-  val freshFvfs: Set[(Field, Term)] = Set.empty
-  val freshPsfs: Set[(Predicate, Term)] = Set.empty
+  val freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+  val freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+  val freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet.empty
+  val freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
+  val freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+
   def merge(other: FunctionRecorder): FunctionRecorder = {
     assert(other == this)
 
@@ -142,8 +161,10 @@ case object NoopFunctionRecorder extends FunctionRecorder {
   }
 
   def recordSnapshot(loc: LocationAccess, guards: Stack[Term], snap: Term): FunctionRecorder = this
-  def recordFvf(field: Field, fvf: Term): FunctionRecorder = this
-  def recordPsf(predicate: Predicate, psf: Term): FunctionRecorder = this
-  def recordQPTerms(qvars: Seq[Var], guards: Stack[Term], ts: Iterable[Term]): FunctionRecorder = this
+  def recordFvfAndDomain(fvf: FvfDefinition, domainDefinition: Seq[Term]): FunctionRecorder = this
+  def recordPsfAndDomain(psf: PsfDefinition, domainDefinition: Seq[Term]): FunctionRecorder = this
+  def recordFieldInv(inv: InverseFunction): FunctionRecorder = this
+  def recordPredInv(inv: PredicateInverseFunction): FunctionRecorder = this
   def recordSnapshot(fapp: FuncApp, guards: Stack[Term], snap: Term): FunctionRecorder = this
+  def recordArp(arp: Var, constraint: Term): FunctionRecorder = this
 }

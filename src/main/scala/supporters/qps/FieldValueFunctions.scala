@@ -7,16 +7,17 @@
 package viper.silicon.supporters.qps
 
 import viper.silver.ast
-import viper.silicon.Config
+import viper.silicon.rules.InverseFunction
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.Counter
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.QuantifiedFieldChunk
+import viper.silicon.utils.Counter
+import viper.silicon.verifier.Verifier
 
 trait FvfDefinition {
   def field: ast.Field
-  def fvf: Term
+  def fvf: Var
   def valueDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
 }
@@ -42,7 +43,7 @@ private[qps] object FvfDefinition {
 }
 
 case class SingletonChunkFvfDefinition(field: ast.Field,
-                                       fvf: Term,
+                                       fvf: Var,
                                        rcvr: Term,
                                        valueChoice: Either[Term, Seq[QuantifiedFieldChunk]])
     extends FvfDefinition {
@@ -59,13 +60,18 @@ case class SingletonChunkFvfDefinition(field: ast.Field,
 }
 
 case class QuantifiedChunkFvfDefinition(field: ast.Field,
-                                        fvf: Term,
+                                        fvf: Var,
                                         qvars: Seq[Var],
                                         condition: Term,
                                         rcvr: Term,
                                         sourceChunks: Seq[QuantifiedFieldChunk] /*,
                                         freshFvf: Boolean*/)
-                                       (axiomRewriter: AxiomRewriter, config: Config)
+                                       /* TODO: All following arguments should not be necessary.
+                                        *       Consider separating this class into a factory (with
+                                        *       business logic) and a "stupid" data container.
+                                        */
+                                       (triggerGenerator: TriggerGenerator,
+                                        axiomRewriter: AxiomRewriter)
     extends FvfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationFieldValueFunctionDefinition must be used "
@@ -103,7 +109,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
       Forall(
         `?r`,
         valueDefinition,
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newFvfLookupTriggers) :: Trigger(sourceFvfLookupTriggers) :: Nil,
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newFvfLookupTriggers) :: Trigger(sourceFvfLookupTriggers) :: Nil,
         s"qp.$fvf-lookup-${axiomCounter.next()}")
     }
   }
@@ -111,16 +117,16 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
   val domainDefinitions: Seq[Term] = {
     val rcvrInDomain = SetIn(rcvr, Domain(field.name, fvf))
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
+    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
-      if (config.disableISCTriggers())
+      if (Verifier.config.disableISCTriggers())
         (Nil, Nil)
       else
-        TriggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
+        triggerGenerator.generateFirstTriggerGroup(qvars, rcvrInDomain :: And(rcvrInDomain, condition) :: Nil)
                         .getOrElse((Nil, Nil))
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+    triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
     val forall = Forall(qvars ++ extraVars, Iff(rcvrInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$fvf-dom")
     val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
@@ -134,7 +140,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
         val repl = (t: Term) => t.replace(rcvr, `?r`).replace(v, inverseFunction(`?r`))
 
         domainDefinitions match {
-          case Seq(Forall(Seq(`v`), body, triggers, name)) =>
+          case Seq(Forall(Seq(`v`), body, triggers, _)) =>
             Seq(Forall(`?r`, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$fvf-dom-${inverseFunction.func.id}"))
           case others =>
             others map repl
@@ -147,10 +153,9 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
 }
 
 case class SummarisingFvfDefinition(field: ast.Field,
-                                    fvf: Term,
+                                    fvf: Var,
                                     rcvr: Term,
                                     sourceChunks: Seq[QuantifiedFieldChunk])
-                                   (config: Config)
     extends FvfDefinition {
 
   private val triples =
@@ -160,7 +165,7 @@ case class SummarisingFvfDefinition(field: ast.Field,
   private val valDefs =
     triples map { case (p, lk1, lk2) => Implies(PermLess(NoPerm(), p), lk1 === lk2) }
 
-  val valueDefinitions: Seq[Term] = Seq(Let(`?r`, rcvr, And(valDefs)))
+  lazy val valueDefinitions: Seq[Term] = ??? //Seq(Let(`?r`, rcvr, And(valDefs)))
 
   val domainDefinitions = Seq(True())
 
@@ -169,7 +174,7 @@ case class SummarisingFvfDefinition(field: ast.Field,
       Forall(
         `?r`,
         Implies(PermLess(NoPerm(), p), lk1 === lk2),
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
     }
 
   def totalPermissions(rcvr: Term) = {

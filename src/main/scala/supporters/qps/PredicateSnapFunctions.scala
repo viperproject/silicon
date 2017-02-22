@@ -11,16 +11,18 @@
 package viper.silicon.supporters.qps
 
 import viper.silicon.Config
+import viper.silicon.rules.PredicateInverseFunction
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.QuantifiedPredicateChunk
 import viper.silicon.state.terms._
 import viper.silver.ast
 import viper.silicon.state.terms.sorts
+import viper.silicon.verifier.Verifier
 
 trait PsfDefinition {
   def predicate: ast.Predicate
-  def psf: Term
+  def psf: Var
   def snapDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
 }
@@ -59,7 +61,7 @@ private[qps] object PsfDefinition {
 
 
 case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
-                                       psf: Term,
+                                       psf: Var,
                                        args: Seq[Term],
                                        formalArgs : Seq[Var],
                                        valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]])
@@ -80,14 +82,19 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
-                                        psf: Term,
+                                        psf: Var,
                                         qvars: Seq[Var],
                                         condition: Term,
                                         args: Seq[Term],
                                         formalArgs: Seq[Var],
                                         sourceChunks: Seq[QuantifiedPredicateChunk] /*,
                                         freshPsf: Boolean*/)
-                                       (axiomRewriter: AxiomRewriter, config: Config)
+                                       /* TODO: All following arguments should not be necessary.
+                                        *       Consider separating this class into a factory (with
+                                        *       business logic) and a "stupid" data container.
+                                        */
+                                       (triggerGenerator: TriggerGenerator,
+                                        axiomRewriter: AxiomRewriter)
     extends PsfDefinition {
 
   assert(qvars.nonEmpty,   "A MultiLocationPredicateSnapFunctionDefinition must be used "
@@ -125,30 +132,30 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
       Forall(
         formalArgs,
         snapDefinition,
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newPsfLookupTriggers) :: Trigger(sourcePsfLookupTriggers) :: Nil,
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(newPsfLookupTriggers) :: Trigger(sourcePsfLookupTriggers) :: Nil,
         s"qp.$psf-lookup-${axiomCounter.next()}")
     }
   }
 
   val domainDefinitions: Seq[Term] = {
     val argsSnap: Term = if (args.size == 1) {
-      args.apply(0).convert(sorts.Snap)
+      args.head.convert(sorts.Snap)
     } else {
       args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
     }
     val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
 
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(TriggerGenerator.advancedIsForbiddenInTrigger)
+    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
 
     val (triggers, extraVars) =
-      if (config.disableISCTriggers())
+      if (Verifier.config.disableISCTriggers())
         (Nil, Nil)
       else
-        TriggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
+        triggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
                         .getOrElse((Nil, Nil))
 
-    TriggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+    triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
 
     val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")
@@ -161,14 +168,14 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     qvars match {
       case Seq(v) =>
         val repl = (t: Term) => {
-            val newTerm:Term = t;
+            val newTerm: Term = t
             for (i <- formalArgs.indices) {
               newTerm.replace(args.apply(i), formalArgs.apply(i)).replace(v, inverseFunction(formalArgs))
             }
             newTerm
         }
         domainDefinitions match {
-          case Seq(Forall(Seq(`v`), body, triggers, name)) =>
+          case Seq(Forall(Seq(`v`), body, triggers, _)) =>
             Seq(Forall(formalArgs, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$psf-dom-${inverseFunction.func.id}"))
           case others =>
             others map repl
@@ -181,11 +188,10 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
 }
 
 case class SummarisingPsfDefinition(predicate: ast.Predicate,
-                                    psf: Term,
+                                    psf: Var,
                                     args: Seq[Term],
                                     formalArgs:Seq[Var],
                                     sourceChunks: Seq[QuantifiedPredicateChunk])
-                                   (config: Config)
     extends PsfDefinition {
 
   private val triples =
@@ -209,7 +215,7 @@ case class SummarisingPsfDefinition(predicate: ast.Predicate,
       Forall(
         formalArgs,
         Implies(PermLess(NoPerm(), p), lk1 === lk2),
-        if (config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Seq(Trigger(lk1), Trigger(lk2)))
     }
 
   def totalPermissions(args: Seq[Term], formalArgs: Seq[Var]) = {

@@ -8,13 +8,48 @@ package viper.silicon.interfaces
 
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silicon.Set
-import viper.silicon.state.terms.Sort
+import viper.silicon.interfaces.decider.ProverLike
 
-trait PreambleEmitter extends StatefulComponent {
-  def analyze(program: ast.Program)
-  def sorts: Set[Sort]
-  def declareSorts()
-  def declareSymbols()
-  def emitAxioms()
+trait PreambleReader[I, O] {
+  def readPreamble(resource: I): Iterable[O]
+  def readParametricPreamble(resource: String, substitutions: Map[I, O]): Iterable[O]
+
+  def emitPreamble(preamble: Iterable[O], sink: ProverLike): Unit
+
+  def emitPreamble(resource: I, sink: ProverLike): Unit = {
+    emitPreamble(readPreamble(resource), sink)
+  }
+
+  def emitParametricPreamble(resource: String, substitutions: Map[I, O], sink: ProverLike): Unit
+}
+
+trait PreambleContributor[+SO, +SY, +AX] extends StatefulComponent {
+  def analyze(program: ast.Program): Unit
+
+  def sortsAfterAnalysis: Iterable[SO]
+  def declareSortsAfterAnalysis(sink: ProverLike): Unit
+
+  def symbolsAfterAnalysis: Iterable[SY]
+  def declareSymbolsAfterAnalysis(sink: ProverLike): Unit
+
+  def axiomsAfterAnalysis: Iterable[AX]
+  def emitAxiomsAfterAnalysis(sink: ProverLike): Unit
+
+  def updateGlobalStateAfterAnalysis(): Unit
+}
+
+trait VerifyingPreambleContributor[+SO, +SY, +AX, U <: ast.Node]
+    extends PreambleContributor[SO, SY, AX]
+       with VerificationUnit[U] {
+
+  def sortsAfterVerification: Iterable[SO]
+  def declareSortsAfterVerification(sink: ProverLike): Unit
+
+  def symbolsAfterVerification: Iterable[SY]
+  def declareSymbolsAfterVerification(sink: ProverLike): Unit
+
+  def axiomsAfterVerification: Iterable[AX]
+  def emitAxiomsAfterVerification(sink: ProverLike): Unit
+
+  def contributeToGlobalStateAfterVerification(): Unit
 }

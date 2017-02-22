@@ -51,10 +51,10 @@ case class SuffixedIdentifier(prefix: String, separator: String, suffix: String)
 
 trait IdentifierFactory {
   def separator: String
-  def fresh(name: String/*, namespace: Namespace*/): Identifier
+  def fresh(name: String): Identifier
 }
 
-class DefaultIdentifierFactory/*(nameSanitizer: NameSanitizer)*/
+class DefaultIdentifierFactory(namespace: String)
     extends IdentifierFactory
        with StatefulComponent {
 
@@ -63,7 +63,7 @@ class DefaultIdentifierFactory/*(nameSanitizer: NameSanitizer)*/
   val separator = Identifier.defaultSeparator
 
   def fresh(name: String): Identifier = {
-    SuffixedIdentifier(name, separator, ids.next().toString)
+    SuffixedIdentifier(name, separator, s"${ids.next()}$separator$namespace")
   }
 
   def start(): Unit = {}

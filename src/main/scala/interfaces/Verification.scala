@@ -7,7 +7,6 @@
 package viper.silicon.interfaces
 
 import viper.silver.verifier.VerificationError
-import viper.silicon.interfaces.state.{Store, Heap, State}
 import viper.silicon.state.terms.Term
 
 /*

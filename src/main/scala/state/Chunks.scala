@@ -8,10 +8,9 @@ package viper.silicon.state
 
 import viper.silver.ast
 import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
-import viper.silicon.state.terms.{Lookup, PredicateLookup, PermMinus, PermPlus, Term, Var, sorts}
+import viper.silicon.rules.{InverseFunction, PredicateInverseFunction}
+import viper.silicon.state.terms.{Lookup, PermMinus, PermPlus, PredicateLookup, Term, Var, sorts}
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.supporters.qps.InverseFunction
-import viper.silicon.supporters.qps.PredicateInverseFunction
 
 sealed abstract class BasicChunk(val name: String,
                                  val args: Seq[Term],

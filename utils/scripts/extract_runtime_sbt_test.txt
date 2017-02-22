@@ -1,0 +1,1 @@
+$ perl -0ne 'print "$1, $2, $3\n" while(/\[info\] - (.*?) \[Silicon-Silver\]\n.*\n.*? (\d+\.?\d*) (sec \(verify\))/g)' times.txt | sort -n -t , -k 2 -r > times_sec.txt

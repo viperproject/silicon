@@ -7,36 +7,38 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{MultiMap, MMultiMap, Map, MSet, MMap, Set}
-import viper.silicon.interfaces.PreambleEmitter
-import viper.silicon.interfaces.decider.Prover
-import viper.silicon.state.{SymbolConvert, terms}
-import viper.silicon.state.terms.Term
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.common.collections.immutable.InsertionOrderedSet._
+import viper.silicon.common.collections.immutable.MultiMap._
+import viper.silicon.common.collections.mutable.MMultiMap
+import viper.silicon.{MMap, MSet, Map, toMap}
+import viper.silicon.interfaces.PreambleContributor
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.state.{SymbolConverter, terms}
+import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
 import viper.silicon.implicits._
 
-trait DomainsEmitter extends PreambleEmitter {
-  def emitUniquenessAssumptions()
+trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
+  def uniquenessAssumptionsAfterAnalysis: Iterable[UA]
+  def emitUniquenessAssumptionsAfterAnalysis(sink: ProverLike): Unit
 }
 
-class DefaultDomainsEmitter(prover: => Prover,
-                            domainTranslator: DomainsTranslator[Term],
-                            symbolConverter: SymbolConvert)
-    extends DomainsEmitter {
+class DefaultDomainsContributor(symbolConverter: SymbolConverter,
+                                domainTranslator: DomainsTranslator[Term])
+    extends DomainsContributor[Sort, DomainFun, Term, Term] {
 
   /* TODO: Group emitted declarations and axioms by source domain. */
 
-  private var collectedSorts = Set[terms.Sort]()
-  private var collectedSymbols = Set[terms.DomainFun]()
-  private var collectedAxioms = Set[terms.Term]()
-  private var uniqueSymbols = MultiMap.empty[terms.Sort, terms.Symbol]
-
-  def sorts = collectedSorts
+  private var collectedSorts = InsertionOrderedSet[Sort]()
+  private var collectedFunctions = InsertionOrderedSet[terms.DomainFun]()
+  private var collectedAxioms = InsertionOrderedSet[Term]()
+  private var uniqueSymbols = MultiMap.empty[Sort, Symbol]
 
   /* Lifetime */
 
   def reset() {
     collectedSorts = collectedSorts.empty
-    collectedSymbols = collectedSymbols.empty
+    collectedFunctions = collectedFunctions.empty
     collectedAxioms = collectedAxioms.empty
     uniqueSymbols = MultiMap.empty
   }
@@ -51,11 +53,10 @@ class DefaultDomainsEmitter(prover: => Prover,
     val concreteDomainMemberInstances = collectConcreteDomainMemberInstances(program, concreteDomainTypes)
 
     collectDomainSorts(concreteDomainTypes)
-
     collectDomainMembers(concreteDomainMemberInstances)
   }
 
-  private def collectDomainSorts(domainTypes: Set[ast.DomainType]) {
+  private def collectDomainSorts(domainTypes: InsertionOrderedSet[ast.DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -64,11 +65,7 @@ class DefaultDomainsEmitter(prover: => Prover,
     })
   }
 
-  def declareSorts() {
-    collectedSorts foreach (s => prover.declare(terms.SortDecl(s)))
-  }
-
-  private def collectDomainMembers(members: Map[ast.Domain, Set[DomainMemberInstance]]) {
+  private def collectDomainMembers(members: Map[ast.Domain, InsertionOrderedSet[DomainMemberInstance]]) {
     /* Since domain member instances come with Sil types, but the corresponding prover declarations
      * work with sorts, it can happen that two instances with different types result in the
      * same function declaration because the types are mapped to the same sort(s).
@@ -85,10 +82,11 @@ class DefaultDomainsEmitter(prover: => Prover,
      *       instances.
      */
 
-    members.foreach{case (domain, memberInstances) =>
+    members.foreach{case (_, memberInstances) =>
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
 
-      val functionInstances = memberInstances collect {case dfi: DomainFunctionInstance => dfi}
+      val functionInstances: InsertionOrderedSet[DomainFunctionInstance] =
+        memberInstances collect { case dfi: DomainFunctionInstance => dfi }
 
       functionInstances.foreach(fi => {
         val inSorts = fi.member.formalArgs map (a => symbolConverter.toSort(a.typ.substitute(fi.typeVarsMap)))
@@ -96,7 +94,7 @@ class DefaultDomainsEmitter(prover: => Prover,
         val id = symbolConverter.toSortSpecificId(fi.member.name, inSorts :+ outSort)
         val fct = terms.DomainFun(id, inSorts, outSort)
 
-        collectedSymbols += fct
+        collectedFunctions += fct
 
         if (fi.member.unique) {
           assert(fi.member.formalArgs.isEmpty,
@@ -107,7 +105,7 @@ class DefaultDomainsEmitter(prover: => Prover,
       })
     }
 
-    members.foreach{case (domain, memberInstances) =>
+    members.foreach{case (_, memberInstances) =>
       assert(memberInstances forall (_.isConcrete), "Expected only concrete domain member instances")
 
       val axiomInstances = memberInstances collect {case dai: DomainAxiomInstance => dai}
@@ -117,21 +115,6 @@ class DefaultDomainsEmitter(prover: => Prover,
         collectedAxioms += tAx
       })
     }
-  }
-
-  def declareSymbols() {
-    collectedSymbols foreach {function =>
-      val functionDecl = terms.FunctionDecl(function)
-      prover.declare(functionDecl)
-    }
-  }
-
-  def emitAxioms() {
-    collectedAxioms foreach prover.assume
-  }
-
-  def emitUniquenessAssumptions() {
-    uniqueSymbols.map.values foreach (symbols => prover.assume(terms.Distinct(symbols)))
   }
 
   private def domainMembers(domain: ast.Domain): Map[ast.DomainMember, ast.Domain] = {
@@ -150,9 +133,9 @@ class DefaultDomainsEmitter(prover: => Prover,
    * @return The set of concrete domain types that are used in the given program. For all `dt` in
    *         the returned set, `dt.isConcrete` holds.
    */
-  private def collectConcreteDomainTypes(program: ast.Program): Set[ast.DomainType] = {
-    var domains: Set[ast.DomainType] = Set()
-    var newDomains: Set[ast.DomainType] = Set()
+  private def collectConcreteDomainTypes(program: ast.Program): InsertionOrderedSet[ast.DomainType] = {
+    var domains: InsertionOrderedSet[ast.DomainType] = InsertionOrderedSet()
+    var newDomains: InsertionOrderedSet[ast.DomainType] = InsertionOrderedSet()
 
     var ds: Iterable[ast.DomainType] =
       program.domains filter (_.typVars.isEmpty) map (ast.DomainType(_, Map.empty[ast.TypeVar, ast.Type]))
@@ -179,9 +162,9 @@ class DefaultDomainsEmitter(prover: => Prover,
   }
 
   private def collectConcreteDomainTypes(node: ast.Node, typeVarsMap: Map[ast.TypeVar, ast.Type])
-                                        : Set[ast.DomainType] = {
+                                        : InsertionOrderedSet[ast.DomainType] = {
 
-    var domains: Set[ast.DomainType] = Set()
+    var domains: InsertionOrderedSet[ast.DomainType] = InsertionOrderedSet()
 
     node visit {
       case t: ast.Typed => t.typ match {
@@ -196,8 +179,9 @@ class DefaultDomainsEmitter(prover: => Prover,
     domains
   }
 
-  private def collectConcreteDomainMemberInstances(program: ast.Program, concreteDomainTypes: Set[ast.DomainType])
-                                                  : Map[ast.Domain, Set[DomainMemberInstance]] = {
+  private def collectConcreteDomainMemberInstances(program: ast.Program,
+                                                   concreteDomainTypes: InsertionOrderedSet[ast.DomainType])
+                                                  : Map[ast.Domain, InsertionOrderedSet[DomainMemberInstance]] = {
 
     val membersWithSource = domainMembers(program)
 
@@ -207,14 +191,15 @@ class DefaultDomainsEmitter(prover: => Prover,
     /* Get member instances from concrete domain types. */
     insert(
       instances,
-      concreteDomainTypes map {case dt =>
+      concreteDomainTypes map (dt => {
         val domain = program.findDomain(dt.domainName)
         val members: MSet[DomainMemberInstance] =
           MSet((domain.functions.map(DomainFunctionInstance(_, dt.typVarsMap))
-                ++ domain.axioms.map(DomainAxiomInstance(_, dt.typVarsMap))
-               ):_*)
+              ++ domain.axioms.map(DomainAxiomInstance(_, dt.typVarsMap))
+              ): _*)
 
-        (domain, members)})
+        (domain, members)
+        }))
 
     /* Get member instances from the program. Since the passed type variable mapping is empty,
      * this will only collect domain functions from domain function applications in which all
@@ -233,7 +218,7 @@ class DefaultDomainsEmitter(prover: => Prover,
     while (continue) {
       val nextNewInstances = InstanceCollection.empty
 
-      newInstances foreach {case (domain, memberInstances) =>
+      newInstances foreach {case (_, memberInstances) =>
         memberInstances foreach {instance =>
           val ms =
             collectConcreteDomainMemberInstances(program,
@@ -254,11 +239,11 @@ class DefaultDomainsEmitter(prover: => Prover,
       insert(instances, newInstances)
     }
 
-    val instancesConvertedInnerSets: MMap[ast.Domain, Set[DomainMemberInstance]] =
-      instances map {case (k, v) => (k, Set.empty ++ v)}
+    val instancesConvertedInnerSets: MMap[ast.Domain, InsertionOrderedSet[DomainMemberInstance]] =
+      instances map {case (k, v) => (k, InsertionOrderedSet.empty ++ v)}
 
-    val instancesConvertedOuterMaps: Map[ast.Domain, Set[DomainMemberInstance]] =
-      Map.empty ++ instancesConvertedInnerSets
+    val instancesConvertedOuterMaps: Map[ast.Domain, InsertionOrderedSet[DomainMemberInstance]] =
+      toMap(instancesConvertedInnerSets)
 
     instancesConvertedOuterMaps
   }
@@ -291,6 +276,33 @@ class DefaultDomainsEmitter(prover: => Prover,
 
     instances
   }
+
+  def sortsAfterAnalysis: Iterable[terms.Sort] = collectedSorts
+
+  def declareSortsAfterAnalysis(sink: ProverLike): Unit = {
+    collectedSorts foreach (s => sink.declare(terms.SortDecl(s)))
+  }
+
+  def symbolsAfterAnalysis: Iterable[terms.DomainFun] = collectedFunctions
+
+  def declareSymbolsAfterAnalysis(sink: ProverLike): Unit = {
+    collectedFunctions foreach (f => sink.declare(terms.FunctionDecl(f)))
+  }
+
+  def axiomsAfterAnalysis: Iterable[terms.Term] = collectedAxioms
+
+  def emitAxiomsAfterAnalysis(sink: ProverLike): Unit = {
+    collectedAxioms foreach (ax => sink.assume(ax))
+  }
+
+  def uniquenessAssumptionsAfterAnalysis: Iterable[Term] =
+    uniqueSymbols.map.values map Distinct
+
+  def emitUniquenessAssumptionsAfterAnalysis(sink: ProverLike): Unit = {
+    uniquenessAssumptionsAfterAnalysis foreach (t => sink.assume(t))
+  }
+
+  def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 
   /*
    * Internal declarations
@@ -328,21 +340,21 @@ class DefaultDomainsEmitter(prover: => Prover,
 
   /* For debugging purposes, please don't remove. */
 
-  private def show(ic: Iterable[(ast.Domain, Iterable[DomainMemberInstance])]) {
-    ic foreach {case (domain, memberInstances) =>
-      memberInstances foreach (mi => println("    " + mi))
-    }
-  }
-
-  private def diff(ic1: InstanceCollection, ic2: InstanceCollection): InstanceCollection = {
-    val ic3 = InstanceCollection.empty
-
-    ic1 foreach {case (domain, memberInstances) =>
-      memberInstances foreach {instance =>
-        if (!ic2.entryExists(domain, _ == instance)) ic3.addBinding(domain, instance)}}
-
-    ic3
-  }
+//  private def show(ic: Iterable[(ast.Domain, Iterable[DomainMemberInstance])]) {
+//    ic foreach {case (_, memberInstances) =>
+//      memberInstances foreach (mi => println("    " + mi))
+//    }
+//  }
+//
+//  private def diff(ic1: InstanceCollection, ic2: InstanceCollection): InstanceCollection = {
+//    val ic3 = InstanceCollection.empty
+//
+//    ic1 foreach {case (domain, memberInstances) =>
+//      memberInstances foreach {instance =>
+//        if (!ic2.entryExists(domain, _ == instance)) ic3.addBinding(domain, instance)}}
+//
+//    ic3
+//  }
 }
 
 object DomainPrettyPrinter {
@@ -356,7 +368,7 @@ trait DomainsTranslator[R] {
   def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): R
 }
 
-class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
+class DefaultDomainsTranslator(val symbolConverter: SymbolConverter)
     extends DomainsTranslator[Term]
        with ExpressionTranslator {
 
@@ -370,7 +382,7 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConvert)
       symbolConverter.toSort(concreteType)
     }
 
-    translate(toSort, Set.empty)(ax.exp) match {
+    translate(toSort, InsertionOrderedSet.empty)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 

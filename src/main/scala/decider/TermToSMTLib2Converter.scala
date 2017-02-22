@@ -9,13 +9,11 @@ package viper.silicon.decider
 import scala.collection.mutable
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
-import viper.silicon.reporting.Bookkeeper
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition }
 import viper.silver.ast.pretty.FastPrettyPrinterBase
 
-class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
+class TermToSMTLib2Converter()
     extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
@@ -197,11 +195,7 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case bop: SetDifference => renderBinaryOp("$Set.difference", bop)
     case bop: SetIntersection => renderBinaryOp("$Set.intersection", bop)
     case bop: SetUnion => renderBinaryOp("$Set.union", bop)
-    case bop: SetIn =>
-      renderBinaryOp("$Set.in", bop)
-//      val expandedTerm = SetSubset(SingletonSet(bop.p0), bop.p1)
-//      render(expandedTerm)
-//      renderBinaryOp("$Map.select", render(bop.p1), render(bop.p0))
+    case bop: SetIn => renderBinaryOp("$Set.in", bop)
     case bop: SetSubset => renderBinaryOp("$Set.subset", bop)
     case bop: SetDisjoint => renderBinaryOp("$Set.disjoint", bop)
 
@@ -235,17 +229,14 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
     case PredicateLookup(id, psf, args, formalVars) =>
-      var snap:Term = if (args.size == 1) {
-        args.apply(0).convert(sorts.Snap)
+      val snap: Term = if (args.size == 1) {
+        args.head.convert(sorts.Snap)
       } else {
-        args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+        args.reduce((arg1: Term, arg2: Term) => Combine(arg1, arg2))
       }
 
       parens(text("$PSF.lookup_") <> id <+> render(psf) <+> render(snap))
-/*
-    case PsfAfterRelation(id, psf2, psf1) => parens("$PSF.after_" <> id <+> render(psf2) <+> render(psf1))
-=======
->>>>>>> other*/
+
     /* Other terms */
 
     case First(t) => parens(text("$Snap.first") <+> render(t))
@@ -266,14 +257,6 @@ class TermToSMTLib2Converter(bookkeeper: Bookkeeper)
 
     case _: MagicWandChunkTerm =>
       sys.error(s"Unexpected term $term cannot be translated to SMTLib code")
-/*<<<<<<< local
-
-    case fvf: SummarisingFvfDefinition =>
-      render(And(fvf.quantifiedValueDefinitions))
-    case psf: SummarisingPsfDefinition =>
-      render(And(psf.quantifiedSnapDefinitions))
-=======
->>>>>>> other*/
   }
 
   @inline

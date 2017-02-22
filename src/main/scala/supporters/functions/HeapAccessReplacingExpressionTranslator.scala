@@ -8,12 +8,14 @@ package viper.silicon.supporters.functions
 
 import org.slf4s.Logging
 import viper.silver.ast
-import viper.silicon.{Map, Set}
-import viper.silicon.state.{SimpleIdentifier, SuffixedIdentifier, Identifier, SymbolConvert}
+import viper.silicon.Map
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.rules.functionSupporter
+import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
 
-class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert,
+class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
        with Logging {
@@ -78,7 +80,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
    * See public `translate` methods.
    */
   override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
-                                   qpFields: Set[ast.Field] = data.quantifiedFields)
+                                   qpFields: InsertionOrderedSet[ast.Field] = data.quantifiedFields)
                                   (e: ast.Exp)
                                   : Term =
 
@@ -107,7 +109,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
          * 'x' is bound by the surrounding quantifier.
          */
         val tQuant = super.translate(toSort, qpFields)(eQuant).asInstanceOf[Quantification]
-        val names = tQuant.vars.toSet[Var].map(_.id.name)
+        val names = tQuant.vars.map(_.id.name)
 
         tQuant.transform { case v: Var =>
           v.id match {
@@ -132,7 +134,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         if (callerHeight < calleeHeight)
           fapp
         else
-          fapp.copy(applicable = FunctionSupporter.limitedVersion(fun))
+          fapp.copy(applicable = functionSupporter.limitedVersion(fun))
 
       case _ => super.translate(toSort, qpFields)(e)
     }

@@ -8,9 +8,10 @@ package viper.silicon.state.terms
 
 import scala.reflect.ClassTag
 import viper.silver.ast.utility.Visitor
-import viper.silicon.{Map, Set, toMap}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Map, toMap}
 import viper.silicon.state
-import viper.silicon.state.{MagicWandChunk, Identifier}
+import viper.silicon.state.{Identifier, MagicWandChunk}
 
 
 sealed trait Node
@@ -75,7 +76,7 @@ case class FunctionDecl(func: Function) extends Decl
 case class SortWrapperDecl(from: Sort, to: Sort) extends Decl
 case class MacroDecl(id: Identifier, args: Seq[Var], body: Term) extends Decl
 
-object ConstDecl extends (Var => Decl) {
+object ConstDecl extends (Var => Decl) { /* TODO: Inconsistent naming - Const vs Var */
   def apply(v: Var) = FunctionDecl(v)
 }
 
@@ -268,15 +269,39 @@ sealed trait Term extends Node {
     else
       this.transform{case `original` => replacement}()
 
-  def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term = {
-    this.transform{case t: T if replacements.contains(t) => replacements(t)}()
-  }
+  def replace[T <: Term : ClassTag](replacements: Map[T, Term]): Term =
+    if (replacements.isEmpty)
+      this
+    else
+      this.transform{case t: T if replacements.contains(t) => replacements(t)}()
 
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
-    this.replace(toMap(originals.zip(replacements)))
+//    assert(originals.length == replacements.length)
+
+    if (originals.isEmpty)
+      this
+    else
+      this.replace(toMap(originals.zip(replacements)))
   }
 
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
+
+  lazy val freeVariables =
+    this.reduceTree((t: Term, freeVarsChildren: Seq[Set[Var]]) => {
+      val freeVars: InsertionOrderedSet[Var] = InsertionOrderedSet(freeVarsChildren.flatten)
+
+      t match {
+        case q: Quantification =>
+          freeVars filterNot q.vars.contains
+        case l: Let =>
+          val lvars = l.bindings.keySet
+          freeVars diff lvars
+        case v: Var =>
+          freeVars + v
+        case _ =>
+          freeVars
+      }
+    })
 }
 
 trait UnaryOp[E] {
@@ -422,28 +447,13 @@ object Exists extends Quantifier {
   override val toString = "QE"
 }
 
-class Quantification private[terms] (val q: Quantifier,
+class Quantification private[terms] (val q: Quantifier, /* TODO: Rename */
                                      val vars: Seq[Var],
                                      val body: Term,
                                      val triggers: Seq[Trigger],
                                      val name: String)
     extends BooleanTerm
        with StructuralEquality {
-
-  lazy val autoTrigger: Quantification = {
-    if (triggers.nonEmpty) {
-      /* Triggers were given explicitly */
-      this
-    } else {
-      TriggerGenerator.generateTriggerSetGroup(vars, body) match {
-        case Some((generatedTriggerSets, extraVariables)) =>
-          val generatedTriggers = generatedTriggerSets.map(set => Trigger(set.exps))
-          Quantification(q, vars ++ extraVariables, body, generatedTriggers, name)
-        case _ =>
-          this
-      }
-    }
-  }
 
   val equalityDefiningMembers = q :: vars :: body :: triggers :: Nil
 
@@ -1640,7 +1650,7 @@ class Distinct(val ts: Set[Symbol]) extends BooleanTerm with StructuralEquality 
   override val toString = s"Distinct($ts)"
 }
 
-object Distinct {
+object Distinct extends (Set[Symbol] => Term) {
   def apply(ts: Set[Symbol]): Term =
     if (ts.nonEmpty) new Distinct(ts)
     else True()

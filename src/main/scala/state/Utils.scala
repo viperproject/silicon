@@ -7,18 +7,13 @@
 package viper.silicon.state
 
 import scala.collection.mutable
-import viper.silicon.interfaces.state.{Heap, Store, State}
 import viper.silicon.state.terms._
-
-//TODO: remove import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
-
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
     * unsatisfiable constraint `ref != ref`.
     */
-  def computeReferenceDisjointnesses[ST <: Store[ST], H <: Heap[H], S <: State[ST, H, S]]
-                                    (σ: S, ref: Term)
+  def computeReferenceDisjointnesses(s: State, ref: Term)
                                     : Seq[Term] = {
 
     val refs = mutable.HashSet[Term]()
@@ -35,10 +30,10 @@ package object utils {
     }
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed values from the store */
-    σ.γ.values.values foreach collect
+    s.g.values.values foreach collect
 
     /* Collect all Ref/Set[Ref]/Seq[Ref]-typed terms from heap chunks */
-    σ.h.values.foreach {
+    s.h.values.foreach {
       case bc: BasicChunk =>
         bc.args foreach collect
         collect(bc.snap)

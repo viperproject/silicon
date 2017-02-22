@@ -7,13 +7,14 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{Map, Set, toMap}
-import viper.silicon.state.{Identifier, SymbolConvert}
+import viper.silicon.{Map, toMap}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.rules.functionSupporter
+import viper.silicon.state.{Identifier, SymbolConverter}
 import viper.silicon.state.terms._
-import viper.silicon.supporters.functions.FunctionSupporter
 
 trait ExpressionTranslator {
-  val symbolConverter: SymbolConvert
+  val symbolConverter: SymbolConverter
 
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
    *       reuse code because the code in DefaultEvaluator uses the state whereas this one here
@@ -24,7 +25,7 @@ trait ExpressionTranslator {
    * TODO: Can't we do without toSort? Or at least with a less type-specific one?
    */
   protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
-                          qpFields: Set[ast.Field])
+                          qpFields: InsertionOrderedSet[ast.Field])
                          (exp: ast.Exp)
                          : Term = {
 
@@ -71,8 +72,10 @@ trait ExpressionTranslator {
 
         val (eQuant, qantOp, eTriggers) = sourceQuant match {
           case forall: ast.Forall =>
-            val autoTriggeredForall = viper.silicon.utils.ast.autoTrigger(forall, qpFields)
-            (autoTriggeredForall, Forall, autoTriggeredForall.triggers)
+            /* It is expected that quantifiers have already been provided with triggers,
+             * either explicitly or by using a trigger generator.
+             */
+            (forall, Forall, forall.triggers)
           case exists: ast.Exists =>
             (exists, Exists, Seq())
           case _: ast.ForPerm => sys.error(s"Unexpected quantified expression $sourceQuant")
@@ -81,11 +84,11 @@ trait ExpressionTranslator {
         val body = eQuant.exp
         val vars = eQuant.variables map (_.localVar)
 
-        /** IMPORTANT: Keep in sync with [[viper.silicon.DefaultEvaluator.evalTrigger]] */
+        /** IMPORTANT: Keep in sync with [[viper.silicon.rules.evaluator.evalTrigger]] */
         val translatedTriggers = eTriggers map (triggerSet => Trigger(triggerSet.exps map (trigger =>
           f(trigger) match {
             case app @ App(fun: HeapDepFun, _) =>
-              app.copy(applicable = FunctionSupporter.limitedVersion(fun))
+              app.copy(applicable = functionSupporter.limitedVersion(fun))
             case other => other
           }
         )))
@@ -179,7 +182,7 @@ trait ExpressionTranslator {
 
       case as: ast.AnySetUnion => translateAnySetBinExp(as, SetUnion, MultisetUnion)
       case as: ast.AnySetIntersection => translateAnySetBinExp(as, SetIntersection, MultisetIntersection)
-      case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset)
+      case as: ast.AnySetSubset => translateAnySetBinExp(as, SetSubset, MultisetSubset, as.left)
       case as: ast.AnySetMinus => translateAnySetBinExp(as, SetDifference, MultisetDifference)
       case as: ast.AnySetContains => translateAnySetBinExp(as, SetIn, (t0, t1) => MultisetCount(t1, t0), as.right)
       case as: ast.AnySetCardinality => translateAnySetUnExp(as, SetCardinality, MultisetCardinality, as.exp)
