@@ -252,7 +252,7 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpFields.contains(field)) {
-            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, rcvr, snap, s.quantifiedVariables, v)
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createSingletonFieldValueFunction(s, field, rcvr, snap, v)
             optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.valueDefinitions))
             val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(rcvr, field.name, fvf, p)
             val s1 = optFvfDef.fold(s)(fvfDef => {

@@ -36,12 +36,40 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                               v: Verifier)
                              : InverseFunction
 
-  def createFieldValueFunction(field: ast.Field,
-                               rcvr: Term,
-                               value: Term,
-                               additionalFvfArgs: Seq[Var],
-                               v: Verifier)
-                              : (Term, Option[SingletonChunkFvfDefinition])
+  /** Returns a FVF that represents a *single* heap location.
+    *
+    * Attention: don't use this method in a context where the receiver is indirectly quantified
+    * over! An example of such a situation is the following:
+    *
+    *   function f(x: Ref): Int
+    *     requires acc(x.f)
+    *
+    *   // client
+    *   inhale forall y in ys :: acc(y.f)
+    *   inhale forall y in ys :: f(y)
+    *
+    * Consuming the precondition of f(y) entails consuming acc(y.f), which yields a FVF that
+    * represents a single heap location (namely y.f). However, this FVF should actually represent
+    * a family of singleton heaps - one per possible instantiation of y - and hence, the FVF
+    * should depend on y.
+    * However, this method does not create - or rather, does not allow creating - singleton FVFs
+    * that depend on additional arguments.
+    *
+    * @param s Current state.
+    * @param field Field for which to create a FVF.
+    * @param rcvr Receiver (non-quantified!); `rcvr.field` denotes the single heap location
+    *             represented by the returned FVF.
+    * @param value Value of the single heap location. I.e. looking up `rcvr` in the returned FVF
+    *              will yield `value`.
+    * @param v Current verifier.
+    * @return The newly-created FVF.
+    */
+  def createSingletonFieldValueFunction(s: State,
+                                        field: ast.Field,
+                                        rcvr: Term,
+                                        value: Term,
+                                        v: Verifier)
+                                       : (Term, Option[SingletonChunkFvfDefinition])
 
   def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term], v: Verifier)
                       : Quantification
@@ -560,30 +588,33 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     freshFvf
   }
 
-  /* TODO: Rename such that it becomes obvious that the methods constructs a
-   *       *SingletonChunk*FvfDefinition
-   */
-  def createFieldValueFunction(field: ast.Field,
-                               rcvr: Term,
-                               value: Term,
-                               additionalFvfArgs: Seq[Var],
-                               v: Verifier)
-                              : (Term, Option[SingletonChunkFvfDefinition]) =
+
+  /** @inheritdoc */
+  def createSingletonFieldValueFunction(s: State,
+                                        field: ast.Field,
+                                        rcvr: Term,
+                                        value: Term,
+                                        v: Verifier)
+                                       : (Term, Option[SingletonChunkFvfDefinition]) = {
+
+    val additionalFvfArgs = (
+         s.functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+      ++ s.quantifiedVariables filter rcvr.contains)
 
     value.sort match {
       case _: sorts.FieldValueFunction =>
-        /* The value is already a field value function, in which case we don't create a fresh one. */
-        assert(additionalFvfArgs.isEmpty) /* TODO: How to proceed if non-empty? */
-        (value, None)
+        sys.error("Seems that this code is reachable after all ...")
+//        /* The value is already a field value function, in which case we don't create a fresh one. */
+//        assert(additionalFvfArgs.isEmpty) /* TODO: How to proceed if non-empty? */
+//        (value, None)
 
       case _ =>
-        val fvf = freshFVF(field, true, additionalFvfArgs, v)
+        val fvf = freshFVF(field, isChunkFvf = true, additionalFvfArgs, v)
         val fvfDef = SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))(v.triggerGenerator, v.axiomRewriter)
 
         (fvf, Some(fvfDef))
     }
-
-
+  }
 
   def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
     val axioms = cond match {
