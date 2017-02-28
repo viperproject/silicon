@@ -262,7 +262,7 @@ object executor extends ExecutionRules with Immutable {
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
             quantifiedChunkSupporter.splitSingleLocation(s2, s2.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, v2) {
               case Some((s3, h3, _, _)) =>
-                val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs, v2)
+                val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, tRhs, s2.quantifiedVariables, v2)
                 optFvfDef.foreach(fvfDef => v2.decider.assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
                 val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
                 Q(s3.copy(h = h3 + ch), v2)
@@ -285,7 +285,7 @@ object executor extends ExecutionRules with Immutable {
           val p = FullPerm()
           val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
           if (s.qpFields.contains(field)) {
-            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, snap, v)
+            val (fvf, optFvfDef) = quantifiedChunkSupporter.createFieldValueFunction(field, tRcvr, snap, s.quantifiedVariables, v)
             optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
           } else

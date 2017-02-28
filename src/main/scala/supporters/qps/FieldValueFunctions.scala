@@ -17,7 +17,7 @@ import viper.silicon.verifier.Verifier
 
 sealed trait FvfDefinition {
   def field: ast.Field
-  def fvf: Var
+  def fvf: Term
   def valueDefinitions: Seq[Term]
   def domainDefinitions: Seq[Term]
 }
@@ -82,7 +82,7 @@ private[qps] object FvfDefinition {
 }
 
 case class SingletonChunkFvfDefinition(field: ast.Field,
-                                       fvf: Var,
+                                       fvf: Term,
                                        rcvr: Term,
                                        valueChoice: Either[Term, Seq[QuantifiedFieldChunk]])
                                        /* TODO: All following arguments should not be necessary.
@@ -119,7 +119,7 @@ case class SingletonChunkFvfDefinition(field: ast.Field,
 }
 
 case class QuantifiedChunkFvfDefinition(field: ast.Field,
-                                        fvf: Var,
+                                        fvf: Term,
                                         qvars: Seq[Var],
                                         condition: Term,
                                         rcvr: Term,
@@ -196,7 +196,7 @@ case class QuantifiedChunkFvfDefinition(field: ast.Field,
 
 /* TODO: Is this still different (enough) from QuantifiedChunkFvfDefinition? */
 case class SummarisingFvfDefinition(field: ast.Field,
-                                    fvf: Var,
+                                    fvf: Term,
                                     rcvr: Term,
                                     sourceChunks: Seq[QuantifiedFieldChunk])
     extends FvfDefinition {
