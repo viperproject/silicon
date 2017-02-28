@@ -292,52 +292,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
   /* Manipulating quantified chunks */
 
-  /** Replaces all non-quantified chunks for `field` in `h` with a corresponding
-    * quantified chunk. That is, each chunk `x.field |-> v # p` will be replaced
-    * with a chunk `forall ?r :: r.field |-> fvf # ?r == x ? W : Z`, and the
-    * original value will be preserved by the assumption that `fvf(x) == v` (for
-    * a fresh field value function `fvf`, see `createFieldValueFunction`).
-    *
-    * `h` remains unchanged if it contains no non-quantified chunks for `field`.
-    *
-    * @param h A heap in which to quantify all chunks for `field`.
-    * @param field A field whose chunks in `h` are to be quantified.
-    * @return A pair `(h1, ts)` where `h1` is `h` except that all non-quantified
-    *         chunks for `field` have been replaced by corresponding quantified
-    *         chunks. `ts` is the set of assumptions axiomatising the fresh
-    *         field value function `fvf`.
-    */
-  def quantifyChunksForField(h: Heap, field: ast.Field, additionalFvfArgs: Seq[Var], v: Verifier)
-                            : (Heap, Seq[SingletonChunkFvfDefinition]) = {
-
-    val (chunks, fvfDefOpts) =
-      h.values.map {
-        case ch: FieldChunk if ch.name == field.name =>
-          val (fvf, optFvfDef) = createFieldValueFunction(field, ch.rcvr, ch.snap, additionalFvfArgs, v)
-          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvf, ch.perm)
-
-          (qch, optFvfDef)
-
-        case ch =>
-          (ch, None)
-      }.unzip
-
-    (Heap(chunks), fvfDefOpts.flatten.toSeq)
-  }
-
-  def quantifyHeapForFields(h: Heap,
-                            fields: Seq[ast.Field],
-                            additionalFvfArgs: Seq[Var],
-                            v: Verifier)
-                           : (Heap, Seq[SingletonChunkFvfDefinition]) = {
-
-    fields.foldLeft((h, Seq[SingletonChunkFvfDefinition]())){case ((hAcc, fvfDefsAcc), field) =>
-      val (h1, fvfDef1) = quantifyChunksForField(hAcc, field, additionalFvfArgs, v)
-
-      (h1, fvfDefsAcc ++ fvfDef1)
-    }
-  }
-
   def splitSingleLocation(s: State,
                           h: Heap,
                           field: ast.Field,
