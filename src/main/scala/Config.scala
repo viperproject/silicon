@@ -335,6 +335,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = false
   )
 
+  val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
+    descr ="Print the final program that is going to be verified.",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   /* Option validation */
 
   validateOpt(timeout) {

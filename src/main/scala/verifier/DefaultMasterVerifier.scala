@@ -118,6 +118,10 @@ class DefaultMasterVerifier(config: Config)
       case forall: ast.Forall if forall.isPure => viper.silicon.utils.ast.autoTrigger(forall)
     }()
 
+    if (config.printTranslatedProgram()) {
+      println(program)
+    }
+
     Verifier.program = program
 
     predSnapGenerator.setup(program) // TODO: Why did Nadja put this here?
