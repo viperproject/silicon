@@ -18,7 +18,7 @@ As an example, consider the following simple C++ program, which runs two threads
     #include <thread>
     #include <mutex>
     #include <assert.h>
-
+    
     struct Cell {
       int val;
     };
