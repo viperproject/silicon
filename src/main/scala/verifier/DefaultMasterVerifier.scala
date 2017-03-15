@@ -116,6 +116,10 @@ class DefaultMasterVerifier(config: Config)
       */
     val program = _program.transform {
       case forall: ast.Forall if forall.isPure => viper.silicon.utils.ast.autoTrigger(forall)
+    }()
+
+    if (config.printTranslatedProgram()) {
+      println(program)
     }
 
     Verifier.program = program

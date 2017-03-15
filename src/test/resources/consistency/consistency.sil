@@ -15,3 +15,20 @@ method use_recpred(x: Ref)
 {
   var v: Int := unfolding acc(recpred(x)) in x.f
 }
+
+
+// Issue #271
+
+field g: Int
+
+predicate pair(x: Ref) {
+  //:: ExpectedOutput(internal:feature.unsupported)
+  [acc(x.f) && acc(x.g),
+   acc(x.g) && acc(x.f)]
+}
+
+function getf(x: Ref): Int
+  //:: ExpectedOutput(internal:feature.unsupported)
+  requires [acc(x.f) && acc(x.g),
+            acc(x.g) && acc(x.f)]
+{ x.f }

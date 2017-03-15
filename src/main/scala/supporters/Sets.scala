@@ -45,33 +45,14 @@ class DefaultSetsContributor(preambleReader: PreambleReader[String, String],
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var setTypes = InsertionOrderedSet[ast.SetType]()
-    var foundQuantifiedPermissions = false
+    var setTypes = program.groundTypeInstances.collect{case s: ast.SetType => s}.to[InsertionOrderedSet]
 
-    program visit {
-      case q: ast.QuantifiedExp if !foundQuantifiedPermissions && !q.isPure =>
-        /* Axioms generated for quantified permissions depend on sets */
-        foundQuantifiedPermissions = true
-        program.fields foreach {f => setTypes += ast.SetType(f.typ)}
-        setTypes += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */
-
-      case t: ast.Typed =>
-        /* Process the type itself and its type constituents, but ignore types
-         * that use type parameters. The assumption is that the latter are
-         * handled by the domain emitter.
-         */
-        t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
-          case s: ast.SetType =>
-            setTypes += s
-          case s: ast.MultisetType =>
-            /* Multisets depend on sets */
-            setTypes += ast.SetType(s.elementType)
-//          case s: ast.SeqType =>
-//            /* Sequences depend on multisets, which in turn depend on sets */
-//            setTypes += ast.SetType(s.elementType)
-          case _ =>
-          /* Ignore other types */
-        }
+    /* Axioms generated for quantified permissions depend on sets.
+     * Hence, we add the appropriate set types iff quantified permissions are used in the program.
+     */
+    if (program.existsDefined { case q: ast.QuantifiedExp if !q.isPure => }) {
+      program.fields foreach {f => setTypes += ast.SetType(f.typ)}
+      setTypes += ast.SetType(ast.Ref) /* $FVF.domain_f is ref-typed */
     }
 
     collectedSorts = setTypes map (st => symbolConverter.toSort(st).asInstanceOf[sorts.Set])

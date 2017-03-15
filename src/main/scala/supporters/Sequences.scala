@@ -45,23 +45,7 @@ class DefaultSequencesContributor(preambleReader: PreambleReader[String, String]
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var sequenceTypes = InsertionOrderedSet[ast.SeqType]()
-
-    program visit { case t: ast.Typed =>
-      /* Process the type itself and its type constituents, but ignore types
-       * that use type parameters. The assumption is that the latter are
-       * handled by the domain emitter.
-       */
-      t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
-        case s: ast.SeqType =>
-          sequenceTypes += s
-//        case s: ast.MultisetType =>
-//          /* Sequences depend on multisets */
-//          sequenceTypes += ast.SeqType(s.elementType)
-        case _ =>
-        /* Ignore other types */
-      }
-    }
+    val sequenceTypes = program.groundTypeInstances.collect{case s: ast.SeqType => s}.to[InsertionOrderedSet]
 
     collectedSorts = sequenceTypes map (st => symbolConverter.toSort(st).asInstanceOf[sorts.Seq])
     collectedGeneralFunctionDecls = generateGeneralFunctionDecls

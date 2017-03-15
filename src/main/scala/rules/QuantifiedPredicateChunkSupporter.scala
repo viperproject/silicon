@@ -317,59 +317,6 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
 
   /* Manipulating quantified chunks */
 
-  /** Replaces all non-quantified chunks for `field` in `h` with a corresponding
-    * quantified chunk. That is, each chunk `x.field |-> v # p` will be replaced
-    * with a chunk `forall ?r :: r.field |-> fvf # ?r == x ? W : Z`, and the
-    * original value will be preserved by the assumption that `fvf(x) == v` (for
-    * a fresh field value function `fvf`, see `createFieldValueFunction`).
-    *
-    * `h` remains unchanged if it contains no non-quantified chunks for `field`.
-    *
-    * @param h A heap in which to quantify all chunks for `field`.
-    * @param predicate A predicate whose chunks in `h` are to be quantified.
-    * @return A pair `(h1, ts)` where `h1` is `h` except that all non-quantified
-    *         chunks for `field` have been replaced by corresponding quantified
-    *         chunks. `ts` is the set of assumptions axiomatising the fresh
-    *         field value function `fvf`.
-    */
-  def quantifyChunksForPredicate(h: Heap,
-                                 predicate: ast.Predicate,
-                                 predicateSnapMap: Map[ast.Predicate, terms.Sort],
-                                 predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]],
-                                 v: Verifier)
-                                : (Heap, Seq[SingletonChunkPsfDefinition]) = {
-
-    val formalArgs:Seq[Var] = predicateFormalVarMap(predicate)
-
-    val (chunks, psfDefOpts) =
-      h.values.map {
-        case ch: PredicateChunk if ch.name == predicate.name =>
-          val (psf, optPsfDef) = createPredicateSnapFunction(predicate, ch.args, formalArgs, ch.snap, predicateSnapMap, v)
-          val qch = createSingletonQuantifiedPredicateChunk(ch.args, formalArgs, predicate.name, psf, ch.perm)
-
-          (qch, optPsfDef)
-
-        case ch =>
-          (ch, None)
-      }.unzip
-
-    (Heap(chunks), psfDefOpts.flatten.toSeq)
-  }
-
-  def quantifyHeapForPredicates(h: Heap,
-                                predicates: Seq[ast.Predicate],
-                                predicateSnapMap: Map[ast.Predicate, terms.Sort],
-                                predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]],
-                                v: Verifier)
-                               : (Heap, Seq[SingletonChunkPsfDefinition]) = {
-
-    predicates.foldLeft((h, Seq[SingletonChunkPsfDefinition]())){case ((hAcc, psfDefsAcc), predicate) =>
-      val (h1, psfDef1) = quantifyChunksForPredicate(hAcc, predicate, predicateSnapMap, predicateFormalVarMap, v)
-
-      (h1, psfDefsAcc ++ psfDef1)
-    }
-  }
-
   def splitSingleLocation(s: State,
                           h: Heap,
                           predicate: ast.Predicate,
