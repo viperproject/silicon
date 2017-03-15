@@ -14,6 +14,7 @@ import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, Var}
 import viper.silicon.verifier.Verifier
+import viper.silver.ast.utility.Rewriter.Traverse
 
 package object utils {
   def freshSnap: (Sort, Verifier) => Var = (sort, v) => v.decider.fresh(sort)
@@ -123,7 +124,7 @@ package object utils {
             silver.ast.LeCmp(a, x)(e.pos),
             silver.ast.LtCmp(x, b)(e.pos)
           )(e.pos)
-      })(recursive = _ => true)
+      }, Traverse.TopDown)
 
     /** Aims to compute triggers for the given quantifier `forall` by successively trying
       * different strategies.

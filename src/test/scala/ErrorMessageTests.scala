@@ -17,7 +17,7 @@ import viper.silver.verifier.errors._
 
 class ErrorMessageTests extends FunSuite {
 
-  test("TestSHIT") {
+  test("Test") {
     val frontend = new DummyFrontend
 
     val backend = new Silicon(List("startedBy" -> s"Unit test ${this.getClass.getSimpleName}"))
@@ -175,7 +175,6 @@ class ErrorMessageTests extends FunSuite {
       executeTest(filePrefix, strat, frontend, backend, fileName)
     }
     }
-
   }
 
   def executeTest(filePrefix: String, strat: StrategyInterface[Node], frontend: DummyFrontend, backend: Silicon, fileName: String): Unit = {
@@ -191,7 +190,6 @@ class ErrorMessageTests extends FunSuite {
     val targetNode: Program = frontend.translatorResult
 
     val transformed = strat.execute[Program](targetNode)
-    println("DEBUG: Transformed Program:" + transformed.toString)
 
     val errorTransformed = backend.verify(transformed) match {
       case SilFailure(errors) => {
