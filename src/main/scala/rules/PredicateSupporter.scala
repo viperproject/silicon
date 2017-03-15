@@ -63,7 +63,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val ch = quantifiedPredicateChunkSupporter.createSingletonQuantifiedPredicateChunk(tArgs, formalArgs, predicate.name, psf, tPerm)
         Q(s2.copy(g = s.g, h = s2.h + ch) , v1)
       } else {
-        val ch = PredicateChunk(predicate.name, tArgs, snap, tPerm)
+        val ch = PredicateChunk(predicate.name, tArgs, snap.convert(sorts.Snap), tPerm)
         val s3 = s2.copy(g = s.g,
                          fvfAsSnap = s.fvfAsSnap,
                          permissionScalingFactor = s.permissionScalingFactor)

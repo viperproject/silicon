@@ -8,7 +8,7 @@ package viper.silicon.supporters.functions
 
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
-import viper.silicon.{Config, Map, toMap}
+import viper.silicon.{Config, Map, Stack, toMap}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
 import viper.silicon.rules.{InverseFunction, functionSupporter}
@@ -72,13 +72,6 @@ class FunctionData(val programFunction: ast.Function,
   val triggerAxiom =
     Forall(arguments, triggerFunctionApplication, Trigger(limitedFunctionApplication))
 
-  val fvfGenerators: Map[ast.Field, Fun] = toMap(
-    quantifiedFields map (field => {
-        val fvfSort = sorts.FieldValueFunction(symbolConverter.toSort(field.typ))
-        val id = function.id.rename(name => s"${name}_fvfgen_${field.name}")
-
-        field -> Fun(id, function.argSorts, fvfSort) }))
-
   /*
    * Data collected during phases 1 (well-definedness checking) and 2 (verification)
    */
@@ -91,7 +84,7 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
   private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term])] = InsertionOrderedSet.empty
+  private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term], Stack[Var])] = InsertionOrderedSet.empty
 //  private[this] var freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term])] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet.empty
 //  private[this] var freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
@@ -122,6 +115,14 @@ class FunctionData(val programFunction: ast.Function,
 
     freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
     freshSymbolsAcrossAllPhases ++= freshFieldInvs.map(_.func)
+
+    freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains.map { case (fvfDef, _, _) =>
+      fvfDef.fvf match {
+        case x: Var => x
+        case App(f: Function, _) => f
+      }
+    }
+
 //    freshSymbolsAcrossAllPhases ++= freshPredInvs.map(_.func)
 
     phase += 1
@@ -130,23 +131,46 @@ class FunctionData(val programFunction: ast.Function,
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = (
        freshFieldInvs.flatMap(_.definitionalAxioms)
 //    ++ freshPredInvs.flatMap(_.definitionalAxioms)
-    ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef) =>
-         (fvfDef match {
-            case fvfDef: SummarisingFvfDefinition => fvfDef.quantifiedValueDefinitions
-            case _ => fvfDef.valueDefinitions
-          }) ++ domDef
+    ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef, _qvars) =>
+          val qvars = _qvars filterNot arguments.contains
+
+           val (fvfDefTerms, domDefTerms) = fvfDef match {
+              case fvfDef: SummarisingFvfDefinition =>
+                (fvfDef.quantifiedValueDefinitions, domDef)
+              case fvfDef: QuantifiedChunkFvfDefinition =>
+                (fvfDef.valueDefinitions, domDef)
+              case fvfDef: SingletonChunkFvfDefinition =>
+                val unquantifiedValueDefs = fvfDef.valueDefinitions
+
+                val varsToQuantify =
+                  unquantifiedValueDefs.collect{case vd => vd.freeVariables filter qvars.contains}
+                                       .flatten
+
+                varsToQuantify match {
+                  case Seq() =>
+                    (unquantifiedValueDefs, domDef)
+                  case Seq(qv) =>
+                    val fvfDefTerms = fvfDef.quantifiedValueDefinitions(qv)
+                    val domDefTerms =
+                      /* TODO: The code here assumes that domDef == fvfDef.domainDefinitions, but
+                       *       this is not enforced.
+                       *       The whole design of FvfDefinition and its implementations should be
+                       *       reconsidered: e.g. separate the pure data groups/containers from the
+                       *       computation of definitionals axioms; is it really worth collecting
+                       *       fvfDef and domDef independently?
+                       */
+                      fvfDef.quantifiedDomainDefinitions(qv)
+
+                    (fvfDefTerms, domDefTerms)
+                  case _ =>
+                    sys.error(s"Expected at most one variable that needs to be quantified, but found $varsToQuantify")
+                }
+            }
+
+          fvfDefTerms ++ domDefTerms
        }
     ++ freshArps.map(_._2)
   )
-
-  private[this] def bindSymbols(innermostBody: Term): Term = {
-    val bindings: Map[Var, Term] = (
-         Map(formalResult -> limitedFunctionApplication)
-      ++ freshFvfsAndDomains.map { case (fvfDef, _) =>
-                  fvfDef.fvf -> App(fvfGenerators(fvfDef.field), arguments) })
-
-    Let(toMap(bindings), innermostBody)
-  }
 
   /*
    * Properties resulting from phase 1 (well-definedness checking)
@@ -167,7 +191,8 @@ class FunctionData(val programFunction: ast.Function,
 
       val pre = And(translatedPres)
       val innermostBody = And(generateNestedDefinitionalAxioms ++ List(Implies(pre, And(posts))))
-      val body = bindSymbols(innermostBody)
+      val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
+      val body = Let(toMap(bodyBindings), innermostBody)
 
       Some(Forall(arguments, body, Trigger(limitedFunctionApplication)))
     } else
@@ -217,7 +242,8 @@ class FunctionData(val programFunction: ast.Function,
       val pre = And(translatedPres)
       val nestedDefinitionalAxioms = generateNestedDefinitionalAxioms
       val innermostBody = And(nestedDefinitionalAxioms ++ List(Implies(pre, And(functionApplication === translatedBody))))
-      val body = bindSymbols(innermostBody)
+      val bodyBindings: Map[Var, Term] = Map(formalResult -> limitedFunctionApplication)
+      val body = Let(toMap(bodyBindings), innermostBody)
       val allTriggers = (
            Seq(Trigger(functionApplication))
         ++ predicateTriggers.values.map(pt => Trigger(Seq(triggerFunctionApplication, pt))))

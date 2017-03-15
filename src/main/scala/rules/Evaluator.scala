@@ -191,11 +191,11 @@ object evaluator extends EvaluationRules with Immutable {
                   val s2 = s1.copy(functionRecorder = fr1)
                   Q(s2, fvfLookup, v1)}
             case _ =>
-              quantifiedChunkSupporter.withValue(s1, s1.h, fa.field, Seq.empty, True(), tRcvr, pve, fa, v1)(fvfDef => {
+              quantifiedChunkSupporter.withValue(s1, s1.h, fa.field, True(), tRcvr, pve, fa, v1)(fvfDef => {
                 v1.decider.assume(fvfDef.quantifiedValueDefinitions)
                 val fvfLookup = Lookup(fa.field.name, fvfDef.fvf, tRcvr)
                 val fr2 = s1.functionRecorder.recordSnapshot(fa, v1.decider.pcs.branchConditions, fvfLookup)
-                                             .recordFvfAndDomain(fvfDef, Seq.empty)
+                                             .recordFvfAndDomain(fvfDef, Seq.empty, Nil)
                 val s2 = s1.copy(functionRecorder = fr2,
                                  fvfCache = if (Verifier.config.disableValueMapCaching()) s1.fvfCache else s1.fvfCache + ((fa.field, quantifiedChunks) -> fvfDef))
                 Q(s2, fvfLookup, v1)})}})
@@ -272,9 +272,11 @@ object evaluator extends EvaluationRules with Immutable {
              *       that are executed if a branch is dead */
             val (s2, t1, t2) = entries match {
               case Seq(entry) if entry.pathConditions.branchConditions.head == t0 =>
-                (entry.s, entry.data, partiallyAppliedFresh("$deadElse", s1.quantifiedVariables, e2.typ, v1))
+                val t2 = v1.decider.appliedFresh("$deadElse", v1.symbolConverter.toSort(e2.typ), s1.quantifiedVariables)
+                (entry.s, entry.data, t2)
               case Seq(entry) if entry.pathConditions.branchConditions.head == Not(t0) =>
-                (entry.s, partiallyAppliedFresh("$deadThen", s1.quantifiedVariables, e1.typ, v1), entry.data)
+                val t1 = v1.decider.appliedFresh("$deadThen", v1.symbolConverter.toSort(e1.typ), s1.quantifiedVariables)
+                (entry.s, t1, entry.data)
               case Seq(entry1, entry2) =>
                 (entry1.s.merge(entry2.s), entry1.data, entry2.data)
               case _ =>
@@ -530,7 +532,7 @@ object evaluator extends EvaluationRules with Immutable {
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
         } else {
-          val unknownValue = partiallyAppliedFresh("recunf", s.quantifiedVariables, eIn.typ, v)
+          val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.quantifiedVariables)
           Q(s, unknownValue, v)
         }
 
@@ -899,12 +901,12 @@ object evaluator extends EvaluationRules with Immutable {
     }
   }
 
-  private def partiallyAppliedFresh(id: String, appliedArgs: Seq[Term], result: ast.Type, v: Verifier) = {
-    val appliedSorts = appliedArgs.map(_.sort)
-    val func = v.decider.fresh(id, appliedSorts, v.symbolConverter.toSort(result))
-
-    App(func, appliedArgs)
-  }
+//  private def partiallyAppliedFresh(id: String, appliedArgs: Seq[Term], result: ast.Type, v: Verifier) = {
+//    val appliedSorts = appliedArgs.map(_.sort)
+//    val func = v.decider.fresh(id, appliedSorts, v.symbolConverter.toSort(result))
+//
+//    App(func, appliedArgs)
+//  }
 
   private def join(joinSort: Sort,
                    joinFunctionName: String,

@@ -54,6 +54,7 @@ trait Decider {
   def fresh(sort: Sort): Var
   def fresh(v: ast.AbstractLocalVar): Var
   def freshARP(id: String = "$k", upperBound: Term = FullPerm()): (Var, Term)
+  def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App
 
 /* [BRANCH-PARALLELISATION] */
 //  def freshFunctions: InsertionOrderedSet[FunctionDecl]
@@ -247,6 +248,13 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //      _freshMacros = _freshMacros :+ macroDecl /* [BRANCH-PARALLELISATION] */
 
       Macro(name, argSorts, body.sort)
+    }
+
+    def appliedFresh(id: String, sort: Sort, appliedArgs: Seq[Term]): App = {
+      val appliedSorts = appliedArgs.map(_.sort)
+      val func = fresh(id, appliedSorts, sort)
+
+      App(func, appliedArgs)
     }
 
     private def prover_fresh[F <: Function : ClassTag]

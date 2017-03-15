@@ -95,10 +95,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
     private def generateFunctionSymbolsAfterAnalysis: Iterable[Either[String, Function]] = (
          Seq(Left("Declaring symbols related to program functions (from program analysis)"))
       ++ functionData.values.flatMap(data =>
-               Seq(data.function, data.limitedFunction, data.statelessFunction)
-            ++ data.fvfGenerators.values
+            Seq(data.function, data.limitedFunction, data.statelessFunction)
          ).map(Right(_))
-        )
+    )
 
     def symbolsAfterAnalysis: Iterable[Function] =
       (generateFunctionSymbolsAfterAnalysis collect { case Right(f) => f }) ++ Seq(`?s`)

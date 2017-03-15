@@ -43,23 +43,7 @@ class DefaultMultisetsContributor(preambleReader: PreambleReader[String, String]
   /* Functionality */
 
   def analyze(program: ast.Program) {
-    var multisetTypes = InsertionOrderedSet[ast.MultisetType]()
-
-    program visit { case t: ast.Typed =>
-      /* Process the type itself and its type constituents, but ignore types
-       * that use type parameters. The assumption is that the latter are
-       * handled by the domain emitter.
-       */
-      t.typ :: ast.utility.Types.typeConstituents(t.typ) filter (_.isConcrete) foreach {
-        case s: ast.MultisetType =>
-          multisetTypes += s
-//        case s: ast.SeqType =>
-//          /* Sequences depend on multisets */
-//          multisetTypes += ast.MultisetType(s.elementType)
-        case _ =>
-          /* Ignore other types */
-      }
-    }
+    val multisetTypes = program.groundTypeInstances.collect{case s: ast.MultisetType => s}.to[InsertionOrderedSet]
 
     collectedSorts = multisetTypes map (st => symbolConverter.toSort(st).asInstanceOf[sorts.Multiset])
     collectedFunctionDecls = generateFunctionDecls

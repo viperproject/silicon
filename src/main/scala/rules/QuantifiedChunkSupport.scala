@@ -32,12 +32,44 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                               fct: Term,
                               condition: Term,
                               perms: Term,
-                              additionalArgs: Seq[Var],
+                              additionalInvArgs: Seq[Var],
                               v: Verifier)
                              : InverseFunction
 
-  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term, v: Verifier)
-                              : (Term, Option[SingletonChunkFvfDefinition])
+  /** Returns a FVF that represents a *single* heap location.
+    *
+    * Attention: don't use this method in a context where the receiver is indirectly quantified
+    * over! An example of such a situation is the following:
+    *
+    *   function f(x: Ref): Int
+    *     requires acc(x.f)
+    *
+    *   // client
+    *   inhale forall y in ys :: acc(y.f)
+    *   inhale forall y in ys :: f(y)
+    *
+    * Consuming the precondition of f(y) entails consuming acc(y.f), which yields a FVF that
+    * represents a single heap location (namely y.f). However, this FVF should actually represent
+    * a family of singleton heaps - one per possible instantiation of y - and hence, the FVF
+    * should depend on y.
+    * However, this method does not create - or rather, does not allow creating - singleton FVFs
+    * that depend on additional arguments.
+    *
+    * @param s Current state.
+    * @param field Field for which to create a FVF.
+    * @param rcvr Receiver (non-quantified!); `rcvr.field` denotes the single heap location
+    *             represented by the returned FVF.
+    * @param value Value of the single heap location. I.e. looking up `rcvr` in the returned FVF
+    *              will yield `value`.
+    * @param v Current verifier.
+    * @return The newly-created FVF.
+    */
+  def createSingletonFieldValueFunction(s: State,
+                                        field: ast.Field,
+                                        rcvr: Term,
+                                        value: Term,
+                                        v: Verifier)
+                                       : (Term, Option[SingletonChunkFvfDefinition])
 
   def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term], v: Verifier)
                       : Quantification
@@ -70,7 +102,6 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
   def withValue(s: State,
                 h: Heap,
                 field: ast.Field,
-                qvars: Seq[Var],
                 condition: Term,
                 receiver: Term,
                 pve: PartialVerificationError,
@@ -223,7 +254,6 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   def withValue(s: State,
                 h: Heap,
                 field: ast.Field,
-                qvars: Seq[Var],
                 condition: Term,
                 receiver: Term,
                 pve: PartialVerificationError,
@@ -238,7 +268,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
       case true =>
         val (quantifiedChunks, _) = splitHeap(h, field.name)
-        val fvfDef = summarizeChunks(quantifiedChunks, field, qvars, condition, receiver, false, v)
+        val additionalFvfArgs = s.functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+        val fvf = freshFVF(field, isChunkFvf = false, additionalFvfArgs, v)
+        val fvfDef = SummarisingFvfDefinition(field, fvf, receiver, quantifiedChunks)
 
         /* Optimisisations */
 
@@ -269,7 +301,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
             (_lookupRcvr, _fvfDef)
           } else */{
 //                if (config.disableQPCaching())
-            fvfDef.asInstanceOf[SummarisingFvfDefinition]
+            fvfDef
 //                else {
 //                  /* TODO: Caching needs to take the branch conditions into account! */
 //                  cacheLog.println(s"cached? ${withValueCache.contains(receiver, consideredCunks)}")
@@ -286,76 +318,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         Q(fvfDefToReturn)}
   }
 
-  private def summarizeChunks(chunks: Seq[QuantifiedFieldChunk],
-                              field: ast.Field,
-                              qvars: Seq[Var],
-                              condition: Term,
-                              receiver: Term,
-                              isChunkFvf: Boolean,
-                              v: Verifier)
-                             : FvfDefinition = {
-
-    Predef.assert(chunks.forall(_.name == field.name),
-                  s"Expected all chunks to be about field $field, but got ${chunks.mkString(", ")}")
-
-    val fvf = freshFVF(field, isChunkFvf, v)
-
-    if (isChunkFvf) {
-      if (qvars.isEmpty) {
-        SingletonChunkFvfDefinition(field, fvf, receiver, Right(chunks) /*, true*/)
-      } else
-        QuantifiedChunkFvfDefinition(field, fvf, qvars, condition, receiver, chunks /*, true*/)(v.triggerGenerator, v.axiomRewriter)
-    } else {
-//      val fvf = fresh(s"fvf#tot_${field.name}", sorts.Arrow(sorts.Ref, toSort(field.typ)))
-      SummarisingFvfDefinition(field, fvf, receiver, chunks)
-    }
-  }
-
-
   /* Manipulating quantified chunks */
-
-  /** Replaces all non-quantified chunks for `field` in `h` with a corresponding
-    * quantified chunk. That is, each chunk `x.field |-> v # p` will be replaced
-    * with a chunk `forall ?r :: r.field |-> fvf # ?r == x ? W : Z`, and the
-    * original value will be preserved by the assumption that `fvf(x) == v` (for
-    * a fresh field value function `fvf`, see `createFieldValueFunction`).
-    *
-    * `h` remains unchanged if it contains no non-quantified chunks for `field`.
-    *
-    * @param h A heap in which to quantify all chunks for `field`.
-    * @param field A field whose chunks in `h` are to be quantified.
-    * @return A pair `(h1, ts)` where `h1` is `h` except that all non-quantified
-    *         chunks for `field` have been replaced by corresponding quantified
-    *         chunks. `ts` is the set of assumptions axiomatising the fresh
-    *         field value function `fvf`.
-    */
-  def quantifyChunksForField(h: Heap, field: ast.Field, v: Verifier)
-                            : (Heap, Seq[SingletonChunkFvfDefinition]) = {
-
-    val (chunks, fvfDefOpts) =
-      h.values.map {
-        case ch: FieldChunk if ch.name == field.name =>
-          val (fvf, optFvfDef) = createFieldValueFunction(field, ch.rcvr, ch.snap, v)
-          val qch = createSingletonQuantifiedChunk(ch.rcvr, field.name, fvf, ch.perm)
-
-          (qch, optFvfDef)
-
-        case ch =>
-          (ch, None)
-      }.unzip
-
-    (Heap(chunks), fvfDefOpts.flatten.toSeq)
-  }
-
-  def quantifyHeapForFields(h: Heap, fields: Seq[ast.Field], v: Verifier)
-                           : (Heap, Seq[SingletonChunkFvfDefinition]) = {
-
-    fields.foldLeft((h, Seq[SingletonChunkFvfDefinition]())){case ((hAcc, fvfDefsAcc), field) =>
-      val (h1, fvfDef1) = quantifyChunksForField(hAcc, field, v)
-
-      (h1, fvfDefsAcc ++ fvfDef1)
-    }
-  }
 
   def splitSingleLocation(s: State,
                           h: Heap,
@@ -420,14 +383,25 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     var pNeeded = pInit
     var success = false
 
-    /* Using inverseReceiver instead of receiver yields axioms
+    /* TODO: Is the following comment this valid?
+     *
+     * Using inverseReceiver instead of receiver yields axioms
      * about the summarising fvf where the inverse function occurring in
      * inverseReceiver is part of the axiom trigger. This makes several
      * examples fail, including issue_0122.sil, because assertions in the program
      * that talk about concrete receivers will not use the inverse function, and
      * thus will not trigger the axioms that define the values of the fvf.
      */
-    val fvfDef = summarizeChunks(candidates, field, qvar.toSeq, Ite(condition, perms, NoPerm()), receiver, true, v)
+    val functionAxiomatizationArguments = s.functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+    val fvfDef =
+      if (qvar.isEmpty) {
+        val additionalFvfArgs = functionAxiomatizationArguments ++ (s.quantifiedVariables filter receiver.contains)
+        val fvf = freshFVF(field, isChunkFvf = true, additionalFvfArgs, v)
+        SingletonChunkFvfDefinition(field, fvf, receiver, Right(candidates) /*, true*/)(v.triggerGenerator, v.axiomRewriter)
+      } else {
+        val fvf = freshFVF(field, isChunkFvf = true, functionAxiomatizationArguments, v)
+        QuantifiedChunkFvfDefinition(field, fvf, qvar.toSeq, Ite(condition, perms, NoPerm()), receiver, candidates /*, true*/)(v.triggerGenerator, v.axiomRewriter)
+      }
 
     v.decider.prover.comment(s"Precomputing split data for $receiver.${field.name} # $perms")
 
@@ -593,18 +567,20 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
   /* Misc */
 
   /* ATTENTION: Never create an FVF without calling this method! */
-  private def freshFVF(field: ast.Field, isChunkFvf: Boolean, v: Verifier) = {
+  private def freshFVF(field: ast.Field, isChunkFvf: Boolean, appliedArgs: Seq[Term], v: Verifier)
+                      : Term = {
+
 //    bookkeeper.logfiles("fvfs").println(s"isChunkFvf = $isChunkFvf")
 
     val freshFvf =
       if (isChunkFvf) {
         val fvfSort = sorts.FieldValueFunction(v.symbolConverter.toSort(field.typ))
-        val freshFvf = v.decider.fresh("fvf#part", fvfSort)
+        val freshFvf = v.decider.appliedFresh("fvf#part", fvfSort, appliedArgs)
 
         freshFvf
       } else {
         val fvfSort = sorts.FieldValueFunction(v.symbolConverter.toSort(field.typ))
-        val freshFvf = v.decider.fresh("fvf#tot", fvfSort)
+        val freshFvf = v.decider.appliedFresh("fvf#tot", fvfSort, appliedArgs)
 
         freshFvf
       }
@@ -612,24 +588,33 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     freshFvf
   }
 
-  /* TODO: Rename such that it becomes obvious that the methods constructs a
-   *       *SingletonChunk*FvfDefinition
-   */
-  def createFieldValueFunction(field: ast.Field, rcvr: Term, value: Term, v: Verifier)
-                              : (Term, Option[SingletonChunkFvfDefinition]) =
+
+  /** @inheritdoc */
+  def createSingletonFieldValueFunction(s: State,
+                                        field: ast.Field,
+                                        rcvr: Term,
+                                        value: Term,
+                                        v: Verifier)
+                                       : (Term, Option[SingletonChunkFvfDefinition]) = {
+
+    val additionalFvfArgs = (
+         s.functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+      ++ s.quantifiedVariables filter rcvr.contains)
 
     value.sort match {
       case _: sorts.FieldValueFunction =>
-        /* The value is already a field value function, in which case we don't create a fresh one. */
-        (value, None)
+        sys.error("Seems that this code is reachable after all ...")
+//        /* The value is already a field value function, in which case we don't create a fresh one. */
+//        assert(additionalFvfArgs.isEmpty) /* TODO: How to proceed if non-empty? */
+//        (value, None)
 
       case _ =>
-        val fvf = freshFVF(field, true, v)
+        val fvf = freshFVF(field, isChunkFvf = true, additionalFvfArgs, v)
+        val fvfDef = SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))(v.triggerGenerator, v.axiomRewriter)
 
-        (fvf, Some(SingletonChunkFvfDefinition(field, fvf, rcvr, Left(value))))
+        (fvf, Some(fvfDef))
     }
-
-
+  }
 
   def domainDefinitionAxioms(field: ast.Field, qvar: Var, cond: Term, rcvr: Term, fvf: Term, inv: InverseFunction) = {
     val axioms = cond match {
@@ -721,7 +706,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     *                  `inv` to invert `fct` to `qvar`.
     * @param perms A permission term (containing `qvar`) that must denote non-none
     *              permission in order for `inv` to invert `fct` to `qvar`.
-    * @param additionalArgs Additional arguments on which `inv` depends.
+    * @param additionalInvArgs Additional arguments on which `inv` depends.
     * @return A tuple of
     *           1. the inverse function as a function of a single arguments (the
     *              `additionalArgs` have been fixed already)
@@ -731,14 +716,14 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                               fct: Term,
                               condition: Term,
                               perms: Term,
-                              additionalArgs: Seq[Var],
+                              additionalInvArgs: Seq[Var],
                               v: Verifier)
                              : InverseFunction = {
 
     Predef.assert(fct.sort == sorts.Ref, s"Expected ref-sorted term, but found $fct of sort ${fct.sort}")
 
-    val func = v.decider.fresh("inv", (additionalArgs map (_.sort)) :+ fct.sort, qvar.sort)
-    val inverseFunc = (t: Term) => App(func, additionalArgs :+ t)
+    val func = v.decider.fresh("inv", (additionalInvArgs map (_.sort)) :+ fct.sort, qvar.sort)
+    val inverseFunc = (t: Term) => App(func, additionalInvArgs :+ t)
     val invOFct: Term = inverseFunc(fct)
     val fctOfInv = fct.replace(qvar, inverseFunc(`?r`))
     val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
