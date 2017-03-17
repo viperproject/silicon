@@ -11,6 +11,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
+import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, Var}
 import viper.silicon.verifier.Verifier
@@ -117,13 +118,13 @@ package object utils {
 
     /** Note: be aware of Silver issue #95!*/
     def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =
-      program.transform(pre = {
+      program.transform({
         case e @ silver.ast.SeqContains(x, silver.ast.RangeSeq(a, b)) =>
           silver.ast.And(
             silver.ast.LeCmp(a, x)(e.pos),
             silver.ast.LtCmp(x, b)(e.pos)
           )(e.pos)
-      })(recursive = _ => true)
+      }, Traverse.TopDown)
 
     /** Aims to compute triggers for the given quantifier `forall` by successively trying
       * different strategies.
@@ -240,8 +241,8 @@ package object utils {
       Internal(offendingNode, FeatureUnsupported(offendingNode, message))
     }
 
-    def checkInhaleExhaleAssertions(root: PositionedNode): Seq[VerificationError] = {
-      def collectInhaleExhaleAssertions(root: PositionedNode): Seq[silver.ast.InhaleExhaleExp] =
+    def checkInhaleExhaleAssertions(root: ErrorNode): Seq[VerificationError] = {
+      def collectInhaleExhaleAssertions(root: ErrorNode): Seq[silver.ast.InhaleExhaleExp] =
         root.deepCollect{case ie: silver.ast.InhaleExhaleExp if !ie.isPure => ie}
 
       root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
