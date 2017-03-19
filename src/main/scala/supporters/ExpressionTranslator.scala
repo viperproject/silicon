@@ -7,7 +7,6 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.{Map, toMap}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SymbolConverter}
