@@ -7,13 +7,13 @@
 package viper.silicon.decider
 
 import scala.collection.mutable
+import viper.silver.ast.pretty.FastPrettyPrinterBase
 import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silver.ast.pretty.FastPrettyPrinterBase
 
-class TermToSMTLib2Converter()
+class TermToSMTLib2Converter
     extends FastPrettyPrinterBase
        with TermConverter[String, String, String]
        with StatefulComponent {
@@ -39,7 +39,7 @@ class TermToSMTLib2Converter()
     case sorts.Ref => "$Ref"
     case sorts.Seq(elementSort) => text("$Seq<") <> render(elementSort) <> ">"
     case sorts.Set(elementSort) => text("$Set<") <> render(elementSort) <> ">"
-    case sorts.Multiset(elementSort) => text("$Multiset<") <> render(elementSort) <> ">"
+    case sorts.Multiset(elementSort) => text("Multiset<") <> render(elementSort) <> ">"
     case sorts.UserSort(id) => sanitize(id)
 
     case sorts.Unit =>
@@ -95,11 +95,11 @@ class TermToSMTLib2Converter()
     case Ite(t0, t1, t2) =>
       renderNAryOp("ite", t0, t1, t2)
 
+    case x: Var =>
+      sanitize(x.id)
+
     case fapp: Application[_] =>
-      if (fapp.args.isEmpty)
-        sanitize(fapp.applicable.id)
-      else
-        parens(text(sanitize(fapp.applicable.id)) <+> ssep((fapp.args map render).to[collection.immutable.Seq], space))
+      renderApp(fapp.applicable.id.name, fapp.args, fapp.sort)
 
     /* Split axioms with more than one trigger set into multiple copies of the same
      * axiom, each with a single trigger. This can avoid incompletenesses due to Z3
@@ -139,7 +139,7 @@ class TermToSMTLib2Converter()
     case bop: CustomEquals => bop.p0.sort match {
       case _: sorts.Seq => renderBinaryOp("$Seq.equal", bop)
       case _: sorts.Set => renderBinaryOp("$Set.equal", bop)
-      case _: sorts.Multiset => renderBinaryOp("$Multiset.equal", bop)
+      case _: sorts.Multiset => renderApp("Multiset_equal", Seq(bop.p0, bop.p1), bop.sort)
       case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
     }
 
@@ -201,14 +201,14 @@ class TermToSMTLib2Converter()
 
     /* Multisets */
 
-    case SingletonMultiset(t0) => parens(text("$Multiset.singleton") <+> render(t0))
-    case bop: MultisetAdd => renderBinaryOp("$Multiset.unionone", bop)
-    case uop: MultisetCardinality => renderUnaryOp("$Multiset.card", uop)
-    case bop: MultisetDifference => renderBinaryOp("$Multiset.difference", bop)
-    case bop: MultisetIntersection => renderBinaryOp("$Multiset.intersection", bop)
-    case bop: MultisetUnion => renderBinaryOp("$Multiset.union", bop)
-    case bop: MultisetSubset => renderBinaryOp("$Multiset.subset", bop)
-    case bop: MultisetCount => renderBinaryOp("$Multiset.count", bop)
+    case uop: SingletonMultiset => renderApp("Multiset_singleton", Seq(uop.p), uop.sort)
+    case bop: MultisetAdd => renderApp("Multiset_unionone", Seq(bop.p0, bop.p1), bop.sort)
+    case uop: MultisetCardinality => renderApp("Multiset_card", Seq(uop.p), uop.sort)
+    case bop: MultisetDifference => renderApp("Multiset_difference", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: MultisetIntersection => renderApp("Multiset_intersection", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: MultisetUnion => renderApp("Multiset_union", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: MultisetSubset => renderApp("Multiset_subset", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: MultisetCount => renderApp("Multiset_count", Seq(bop.p0, bop.p1), bop.sort)
 
     /* Quantified Permissions */
 
@@ -279,6 +279,20 @@ class TermToSMTLib2Converter()
   protected def renderNAryOp(op: String, terms: Term*) =
     parens(text(op) <> nest(defaultIndent, group(line <> ssep((terms map render).to[collection.immutable.Seq], line))))
 
+  @inline
+  protected def renderApp(functionName: String, args: Seq[Term], outSort: Sort) = {
+    val inSorts = args map (_.sort)
+    val id = Identifier(functionName)
+
+    val docAppNoParens =
+      text(sanitize(functionName)) <+> ssep((args map render).to[collection.immutable.Seq], space)
+
+    if (args.nonEmpty)
+      parens(docAppNoParens)
+    else
+      parens(text("as") <+> docAppNoParens <+> render(outSort))
+  }
+
   protected def render(q: Quantifier): Cont = q match {
     case Forall => "forall"
     case Exists => "exists"
@@ -295,7 +309,7 @@ class TermToSMTLib2Converter()
     case Null() => "$Ref.null"
     case SeqNil(elementSort) => text("$Seq.empty<") <> render(elementSort) <> ">"
     case EmptySet(elementSort) => text("$Set.empty<") <> render(elementSort) <> ">"
-    case EmptyMultiset(elementSort) => text("$Multiset.empty<") <> render(elementSort) <> ">"
+    case EmptyMultiset(elementSort) => renderApp("Multiset_empty", Seq(), literal.sort)
   }
 
   protected def renderAsReal(t: Term): Cont =

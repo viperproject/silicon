@@ -57,7 +57,7 @@ class DefaultSymbolConverter extends SymbolConverter with Immutable {
 
     val inSorts = sorts.init
     val outSort = sorts.last
-    val id = toSortSpecificId(function.name, sorts)
+    val id = Identifier(function.name)
 
     terms.DomainFun(id, inSorts, outSort)
   }
