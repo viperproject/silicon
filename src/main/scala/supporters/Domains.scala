@@ -139,7 +139,7 @@ class DefaultDomainsTranslator(val symbolConverter: SymbolConverter)
        with ExpressionTranslator {
 
   def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): Term = {
-    translate(toSort, InsertionOrderedSet.empty)(ax.exp) match {
+    translate(toSort)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 

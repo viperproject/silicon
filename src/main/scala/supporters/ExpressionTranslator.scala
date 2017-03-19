@@ -7,7 +7,6 @@
 package viper.silicon.supporters
 
 import viper.silver.ast
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.functionSupporter
 import viper.silicon.state.{Identifier, SymbolConverter}
 import viper.silicon.state.terms._
@@ -21,12 +20,11 @@ trait ExpressionTranslator {
    *       was done before - but that is less efficient and creates lots of additional noise output
    *       in the prover log.
    */
-  protected def translate(toSort: ast.Type => Sort,
-                          qpFields: InsertionOrderedSet[ast.Field])
+  protected def translate(toSort: ast.Type => Sort)
                          (exp: ast.Exp)
                          : Term = {
 
-    val f = translate(toSort, qpFields) _
+    val f = translate(toSort) _
 
     def translateAnySetUnExp(exp: ast.AnySetUnExp,
                              setTerm: Term => Term,

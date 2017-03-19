@@ -77,8 +77,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
    * set, depending on which kind of translation is performed.
    * See public `translate` methods.
    */
-  override protected def translate(toSort: ast.Type => Sort,
-                                   qpFields: InsertionOrderedSet[ast.Field] = data.quantifiedFields)
+  override protected def translate(toSort: ast.Type => Sort)
                                   (e: ast.Exp)
                                   : Term =
 
@@ -106,7 +105,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
          * occurrence of 'x@i' is replaced by 'x', for all variables 'x@i' where the prefix
          * 'x' is bound by the surrounding quantifier.
          */
-        val tQuant = super.translate(symbolConverter.toSort, qpFields)(eQuant).asInstanceOf[Quantification]
+        val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
 
         tQuant.transform { case v: Var =>
@@ -134,7 +133,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         else
           fapp.copy(applicable = functionSupporter.limitedVersion(fun))
 
-      case _ => super.translate(symbolConverter.toSort, qpFields)(e)
+      case _ => super.translate(symbolConverter.toSort)(e)
     }
 
   def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, fname: String): Term =
