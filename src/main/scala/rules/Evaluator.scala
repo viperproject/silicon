@@ -463,7 +463,32 @@ object evaluator extends EvaluationRules with Immutable {
         val func = Verifier.program.findFunction(funcName)
         evals2(s, eArgs, Nil, _ => pve, v)((s1, tArgs, v1) => {
 //          bookkeeper.functionApplications += 1
-          val pre = func.pres map (ast.utility.Expressions.instantiateVariables(_, func.formalArgs, eArgs))
+          val pre = func.pres map (pre => {
+            /* Substitute actual for formal arguments in preconditions.
+             * However, doing this naively can result in invalid triggers.
+             * Consider the following example
+             *
+             *   function fun1(a: Int): Bool
+             *     requires forall b: Int {fun2(a, b)} ...
+             *
+             *   // client
+             *     assume fun1(x > y ? 1 : -1)
+             *
+             * where replacing `a` with `x > y ? 1 : -1` would yield an invalid trigger.
+             *
+             * For now, we simply remove all triggers that directly occur in the precondition.
+             * This is OK because the precondition is consumed (exhaled), and forall-triggers are
+             * therefore not relevant (and we don't yet support exists-triggers).
+             *
+             * However, this will not prevent prevent generating invalid triggers for quantifiers
+             * that only indirectly occur in the precondition, e.g. when unfolding a predicate
+             * instance in the precondition whose body contains a quantifier.
+             *
+             * See also https://bitbucket.org/viperproject/silicon/issues/276/.
+             */
+            val triggerFreePre = pre.transform{case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info)}()
+            ast.utility.Expressions.instantiateVariables(triggerFreePre, func.formalArgs, eArgs)
+          })
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)
           /* TODO: Does it matter that the above filterNot does not filter out quantified
            *       variables that are not "raw" function arguments, but instead are used
