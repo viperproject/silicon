@@ -115,8 +115,30 @@ package object utils {
       case Implies(t0, t1) => Implies(go(t0), go(t1))
       case Iff(t0, t1) => Iff(go(t0), go(t1))
       case Ite(t0, t1, t2) => Ite(go(t0), go(t1), go(t2))
-      case BuiltinEquals(t0, t1) => Equals(go(t0), go(t1))
-      case CustomEquals(t0, t1) => Equals(go(t0), go(t1))
+      case BuiltinEquals(t0, t1) =>
+        val t0New = go(t0)
+        val t1New = go(t1)
+        /* Rewriting equalities is potentially ambiguous: if the sort of the arguments of a
+         * built-in equality changes from a primitive to a non-primitive sort, e.g. from Int
+         * to Set[E], then users might or might not expect that the built-in equality is
+         * replaced by the sort-specific, custom equality.
+         *
+         * For now, such potentially ambiguous transformations are rejected by the following
+         * assertions.
+         */
+        assert(t0New.sort == t0.sort, s"Unexpected sort change: from ${t0.sort} to ${t0New.sort}")
+        BuiltinEquals(t0New, t1New)
+      case CustomEquals(t0, t1) =>
+        val t0New = go(t0)
+        val t1New = go(t1)
+        /* See comments for built-in equality.
+         *
+         * Difference here: instead of creating a new CustomEquality instance directly, the
+         * factory method Equals.apply could be used to create, depending on the new sort of the
+         * arguments, either a built-in or a custom equality.
+         */
+        assert(t0New.sort == t0.sort, s"Unexpected sort change: from ${t0.sort} to ${t0New.sort}")
+        CustomEquals(t0New, t1New)
       case Less(t0, t1) => Less(go(t0), go(t1))
       case AtMost(t0, t1) => AtMost(go(t0), go(t1))
       case Greater(t0, t1) => Greater(go(t0), go(t1))
