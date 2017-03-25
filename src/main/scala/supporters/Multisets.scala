@@ -6,22 +6,40 @@
 
 package viper.silicon.supporters
 
+import scala.reflect.{ClassTag, classTag}
 import viper.silver.ast
-import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
 
-trait MultisetsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
+class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term])
+    extends BuiltinDomainsContributor {
 
-/* TODO: Shares a lot of implementation with DefaultSequencesEmitter. Refactor! */
+  type BuiltinDomainType = ast.MultisetType
+  val builtinDomainTypeTag: ClassTag[BuiltinDomainType] = classTag[ast.MultisetType]
 
-class DefaultMultisetsContributor(domainTranslator: DomainsTranslator[Term])
-    extends MultisetsContributor[Sort, DomainFun, Term] {
+  val sourceResource: String = "/dafny_axioms/multisets.vpr"
+  def sourceDomainName: String = "$Multiset"
 
-  private val symbolConverter = new BuiltinDomainAwareSymbolConverter()
+  def targetSortFactory(argumentSorts: Iterable[Sort]): Sort = {
+    assert(argumentSorts.size == 1)
+    sorts.Multiset(argumentSorts.head)
+  }
+}
+
+abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
+  type BuiltinDomainType <: ast.GenericType
+  val builtinDomainTypeTag: ClassTag[BuiltinDomainType]
+
+  def sourceResource: String
+  def sourceDomainName: String
+  def domainTranslator: DomainsTranslator[Term]
+  def targetSortFactory(argumentSorts: Iterable[Sort]): Sort
+
+  protected val symbolConverter =
+    new BuiltinDomainAwareSymbolConverter(sourceDomainName, targetSortFactory)
 
   private var collectedSorts: InsertionOrderedSet[Sort] = InsertionOrderedSet.empty
   private var collectedFunctions = InsertionOrderedSet[DomainFun]()
@@ -40,39 +58,44 @@ class DefaultMultisetsContributor(domainTranslator: DomainsTranslator[Term])
 
   /* Functionality */
 
+  def computeGroundTypeInstances(program: ast.Program): InsertionOrderedSet[BuiltinDomainType] =
+    program.groundTypeInstances.collect {
+      case builtinDomainTypeTag(s) => s
+    }.to[InsertionOrderedSet]
+
   def analyze(program: ast.Program) {
-    val multisetTypes =
-      program.groundTypeInstances.collect{case s: ast.MultisetType => s}.to[InsertionOrderedSet]
+    val builtinDomainTypeInstances = computeGroundTypeInstances(program)
 
-    val multisetDomainProgram =
-      DefaultMultisetsContributor.loadProgram("/dafny_axioms/multisets.vpr")
+    val sourceProgram =
+      DefaultMultisetsContributor.loadProgram(sourceResource)
 
-    val multisetDomain = multisetDomainProgram.findDomain("$Multiset")
+    val sourceDomain = sourceProgram.findDomain(sourceDomainName)
 
-    val multisetDomainTypes =
-      multisetTypes map (mt =>
-        ast.DomainType(multisetDomain, Map(multisetDomain.typVars.head -> mt.elementType)))
+    val sourceDomainTypeInstances =
+      builtinDomainTypeInstances map (builtinTypeInstance =>
+        ast.DomainType(sourceDomain, sourceDomain.typVars.zip(builtinTypeInstance.typeArguments).toMap))
 
     /* For each necessary domain type, instantiate the corresponding domain */
-    val domainInstantiations =
-      multisetDomainTypes map (mdt => {
+    val sourceDomainInstantiations =
+      sourceDomainTypeInstances map (mdt => {
         /* TODO: Copied from DomainInstances.getInstanceMembers.
          *       Cannot directly use that because it filters according to which domain instances
-         *       are used in the program from which the multiset domain was loaded, whereas the
+         *       are used in the program from which the source domain was loaded, whereas the
          *       instances should be filtered according to which are used in the program under
          *       verification.
          */
-        val functions = multisetDomain.functions.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, multisetDomainProgram)).distinct
-        val axioms = multisetDomain.axioms.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, multisetDomainProgram)).distinct
+        val functions = sourceDomain.functions.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, sourceProgram)).distinct
+        val axioms = sourceDomain.axioms.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, sourceProgram)).distinct
 
-        multisetDomain.copy(_functions = functions, _axioms = axioms)(multisetDomain.pos, multisetDomain.info)
+        sourceDomain.copy(_functions = functions, _axioms = axioms)(sourceDomain.pos, sourceDomain.info)
       })
 
-    collectMultisetSorts(multisetDomainTypes)
-    collectDomainMembers(domainInstantiations)
+    collectSorts(sourceDomainTypeInstances)
+    collectFunctions(sourceDomainInstantiations)
+    collectAxioms(sourceDomainInstantiations)
   }
 
-  private def collectMultisetSorts(domainTypes: Iterable[ast.DomainType]) {
+  protected def collectSorts(domainTypes: Iterable[ast.DomainType]) {
     assert(domainTypes forall (_.isConcrete), "Expected only concrete domain types")
 
     domainTypes.foreach(domainType => {
@@ -81,23 +104,26 @@ class DefaultMultisetsContributor(domainTranslator: DomainsTranslator[Term])
     })
   }
 
-  private def collectDomainMembers(instantiatedDomains: Set[ast.Domain]) {
-    instantiatedDomains foreach (domain => {
-      domain.functions foreach (function =>
-        collectedFunctions += symbolConverter.toFunction(function))
-
-      domain.axioms foreach (axiom =>
-        collectedAxioms += translateAxiom(axiom))
-    })
+  protected def collectFunctions(domains: Set[ast.Domain]) {
+    domains foreach (
+      _.functions foreach (df =>
+        collectedFunctions += symbolConverter.toFunction(df)))
   }
 
-  private def translateAxiom(ax: ast.DomainAxiom): Term = {
+  protected def collectAxioms(domains: Set[ast.Domain]) {
+    domains foreach (
+      _.axioms foreach (ax =>
+        collectedAxioms += translateAxiom(ax)))
+  }
+
+  protected def translateAxiom(ax: ast.DomainAxiom): Term = {
     /* Use builtin equality instead of the type-specific one.
-     * Uses of custom equality functions, e.g. Multiset_equals, are preserved.
+     * Uses of custom equality functions, i.e. applications of the uninterpreted equality function,
+     * are preserved.
      */
     domainTranslator.translateAxiom(ax, symbolConverter.toSort).transform {
       case Equals(t1, t2) => BuiltinEquals(t1, t2)
-    }()
+    }(recursive = _ => true)
   }
 
   def sortsAfterAnalysis: InsertionOrderedSet[Sort/*sorts.Multiset*/] = collectedSorts
@@ -122,10 +148,14 @@ class DefaultMultisetsContributor(domainTranslator: DomainsTranslator[Term])
   def updateGlobalStateAfterAnalysis(): Unit = { /* Nothing to contribute*/ }
 }
 
-class BuiltinDomainAwareSymbolConverter extends DefaultSymbolConverter {
+class BuiltinDomainAwareSymbolConverter(sourceDomainName: String,
+                                        targetSortFactory: Iterable[Sort] => Sort)
+    extends DefaultSymbolConverter {
+
   override def toSort(typ: ast.Type): Sort = typ match {
-    case dt: ast.DomainType if dt.domainName == "$Multiset" =>
-      sorts.Multiset(toSort(dt.typVarsMap.values.head))
+    case dt: ast.DomainType if dt.domainName == sourceDomainName =>
+//      sorts.Multiset(toSort(dt.typVarsMap.values.head))
+      targetSortFactory(dt.typVarsMap.values map toSort)
     case other =>
       super.toSort(other)
   }

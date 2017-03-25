@@ -38,7 +38,7 @@ class TermToSMTLib2Converter
     case sorts.Snap => "$Snap"
     case sorts.Ref => "$Ref"
     case sorts.Seq(elementSort) => text("$Seq<") <> render(elementSort) <> ">"
-    case sorts.Set(elementSort) => text("$Set<") <> render(elementSort) <> ">"
+    case sorts.Set(elementSort) => text("Set<") <> render(elementSort) <> ">"
     case sorts.Multiset(elementSort) => text("Multiset<") <> render(elementSort) <> ">"
     case sorts.UserSort(id) => sanitize(id)
 
@@ -138,7 +138,7 @@ class TermToSMTLib2Converter
 
     case bop: CustomEquals => bop.p0.sort match {
       case _: sorts.Seq => renderBinaryOp("$Seq.equal", bop)
-      case _: sorts.Set => renderBinaryOp("$Set.equal", bop)
+      case _: sorts.Set => renderApp("Set_equal", Seq(bop.p0, bop.p1), bop.sort)
       case _: sorts.Multiset => renderApp("Multiset_equal", Seq(bop.p0, bop.p1), bop.sort)
       case sort => sys.error(s"Don't know how to translate equality between symbols $sort-typed terms")
     }
@@ -189,15 +189,15 @@ class TermToSMTLib2Converter
 
     /* Sets */
 
-    case SingletonSet(t0) => parens(text("$Set.singleton ") <+> render(t0))
-    case bop: SetAdd => renderBinaryOp("$Set.unionone", bop)
-    case uop: SetCardinality => renderUnaryOp("$Set.card", uop)
-    case bop: SetDifference => renderBinaryOp("$Set.difference", bop)
-    case bop: SetIntersection => renderBinaryOp("$Set.intersection", bop)
-    case bop: SetUnion => renderBinaryOp("$Set.union", bop)
-    case bop: SetIn => renderBinaryOp("$Set.in", bop)
-    case bop: SetSubset => renderBinaryOp("$Set.subset", bop)
-    case bop: SetDisjoint => renderBinaryOp("$Set.disjoint", bop)
+    case uop: SingletonSet => renderApp("Set_singleton", Seq(uop.p), uop.sort)
+    case bop: SetAdd => renderApp("Set_unionone", Seq(bop.p0, bop.p1), bop.sort)
+    case uop: SetCardinality => renderApp("Set_card", Seq(uop.p), uop.sort)
+    case bop: SetDifference => renderApp("Set_difference", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: SetIntersection => renderApp("Set_intersection", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: SetUnion => renderApp("Set_union", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: SetIn => renderApp("Set_in", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: SetSubset => renderApp("Set_subset", Seq(bop.p0, bop.p1), bop.sort)
+    case bop: SetDisjoint => renderApp("Set_disjoint", Seq(bop.p0, bop.p1), bop.sort)
 
     /* Multisets */
 
@@ -308,7 +308,7 @@ class TermToSMTLib2Converter
     case False() => "false"
     case Null() => "$Ref.null"
     case SeqNil(elementSort) => text("$Seq.empty<") <> render(elementSort) <> ">"
-    case EmptySet(elementSort) => text("$Set.empty<") <> render(elementSort) <> ">"
+    case EmptySet(elementSort) => renderApp("Set_empty", Seq(), literal.sort)
     case EmptyMultiset(elementSort) => renderApp("Multiset_empty", Seq(), literal.sort)
   }
 
