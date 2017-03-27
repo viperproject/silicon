@@ -150,19 +150,20 @@ private object utils {
    *       since he added a similar method to the parser that can be used to import Viper files.
    */
   def loadProgram(fromResource: String): ast.Program = {
-    val from = getClass.getResourceAsStream(fromResource)
-    assert(from != null, s"Cannot find $fromResource")
+    val fromStream = getClass.getResourceAsStream(fromResource)
+    val fromURL = getClass.getResource(fromResource)
 
-    val fromPath = java.nio.file.Paths.get(getClass.getResource(fromResource).toURI)
+    assert(fromStream != null && fromURL != null, s"Cannot find $fromResource")
 
-    val source = scala.io.Source.fromInputStream(from)
+    val fromPath = viper.silver.utility.Paths.pathFromResource(fromURL)
+    val source = scala.io.Source.fromInputStream(fromStream)
 
     val content =
       try {
         source.mkString
       } catch {
         case e@(_: RuntimeException | _: java.io.IOException) =>
-          sys.error(s"Could not read from $from. Exception: $e")
+          sys.error(s"Could not read from $fromStream. Exception: $e")
       } finally {
         source.close()
       }
