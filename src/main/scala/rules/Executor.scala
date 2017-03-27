@@ -117,7 +117,7 @@ object executor extends ExecutionRules with Immutable {
       case block @ cfg.LoopHeadBlock(invs, stmts) =>
         incomingEdgeKind match {
           case cfg.Kind.In =>
-            /* High-level steps:
+            /* We've reached a loop head block via an in-edge. Steps to perform:
              *   - Check loop invariant for self-framingness
              *   - Check that the loop guard is framed by the invariant
              *   - Exhale invariant of the target block
@@ -176,12 +176,14 @@ object executor extends ExecutionRules with Immutable {
                           v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
                           follows(s4, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
 
-          case cfg.Kind.Normal =>
+          case _ =>
+            /* We've reached a loop head block via an edge other than an in-edge: a normal edge or
+             * and out-edge. We consider this edge to be a back-edge and we break the cycle by
+             * attempting to re-establish the invariant.
+             */
             v.decider.prover.comment("Loop head block: Re-establish invariant")
             consumes(s, invs, e => LoopInvariantNotPreserved(e), v)((_, _, _) =>
               Success())
-          case _ =>
-            sys.error(s"Unexpected edge of kind $incomingEdgeKind leading to loop head block $block")
         }
 
       case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
