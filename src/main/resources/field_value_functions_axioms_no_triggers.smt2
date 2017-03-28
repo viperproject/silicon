@@ -13,10 +13,10 @@
 (assert (forall ((vs $FVF<$S$>) (ws $FVF<$S$>)) (!
     (implies
       (and
-        ($Set.equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
+        (Set_equal ($FVF.domain_$FLD$ vs) ($FVF.domain_$FLD$ ws))
         (forall ((x $Ref)) (!
           (implies
-            ($Set.in x ($FVF.domain_$FLD$ vs))
+            (Set_in x ($FVF.domain_$FLD$ vs))
             (= ($FVF.lookup_$FLD$ vs x) ($FVF.lookup_$FLD$ ws x)))
           :qid |qp.$FVF<$S$>-eq-inner|
           )))

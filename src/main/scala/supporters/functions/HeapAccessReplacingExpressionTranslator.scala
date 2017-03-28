@@ -20,8 +20,6 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     extends ExpressionTranslator
        with Logging {
 
-  private val toSort = (typ: ast.Type, _: Any) => symbolConverter.toSort(typ)
-
   private var program: ast.Program = _
   private var func: ast.Function = _
   private var data: FunctionData = _
@@ -47,7 +45,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
 
   private def translate(exp: ast.Exp): Term = {
     /* Attention: This method is reentrant (via private translate) */
-    translate(toSort)(exp)
+    translate(symbolConverter.toSort _)(exp)
   }
 
   def translatePostcondition(program: ast.Program,
@@ -59,7 +57,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.data = data
     this.failed = false
 
-    posts.map(p => translate(toSort)(p.whenInhaling))
+    posts.map(p => translate(symbolConverter.toSort _)(p.whenInhaling))
   }
 
   def translatePrecondition(program: ast.Program,
@@ -72,15 +70,14 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
     this.ignoreAccessPredicates = true
     this.failed = false
 
-    pres.map(p => translate(toSort)(p.whenExhaling))
+    pres.map(p => translate(symbolConverter.toSort _)(p.whenExhaling))
   }
 
   /* Attention: Expects some fields, e.g., `program` and `locToSnap`, to be
    * set, depending on which kind of translation is performed.
    * See public `translate` methods.
    */
-  override protected def translate(toSort: (ast.Type, Map[ast.TypeVar, ast.Type]) => Sort,
-                                   qpFields: InsertionOrderedSet[ast.Field] = data.quantifiedFields)
+  override protected def translate(toSort: ast.Type => Sort)
                                   (e: ast.Exp)
                                   : Term =
 
@@ -93,7 +90,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
       case v: ast.AbstractLocalVar =>
         data.formalArgs.get(v) match {
           case Some(t) => t
-          case None => Var(Identifier(v.name), toSort(v.typ, Map()))
+          case None => Var(Identifier(v.name), toSort(v.typ))
         }
 
       case eQuant: ast.QuantifiedExp =>
@@ -108,7 +105,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
          * occurrence of 'x@i' is replaced by 'x', for all variables 'x@i' where the prefix
          * 'x' is bound by the surrounding quantifier.
          */
-        val tQuant = super.translate(toSort, qpFields)(eQuant).asInstanceOf[Quantification]
+        val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
 
         tQuant.transform({ case v: Var =>
@@ -118,7 +115,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
           }
         })()
 
-      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ, Map()), data.programFunction.name)
+      case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
 
       case eFApp: ast.FuncApp =>
@@ -136,7 +133,7 @@ class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConvert
         else
           fapp.copy(applicable = functionSupporter.limitedVersion(fun))
 
-      case _ => super.translate(toSort, qpFields)(e)
+      case _ => super.translate(symbolConverter.toSort)(e)
     }
 
   def getOrFail[K <: ast.Positioned](map: Map[K, Term], key: K, sort: Sort, fname: String): Term =

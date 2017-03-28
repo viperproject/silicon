@@ -80,14 +80,14 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
   }
 
   def generateFunctionDecls: Iterable[PreambleBlock] = {
-    val setsTemplateFile = "/dafny_axioms/sets_declarations_dafny.smt2"
+    /* TODO: The predicate snap function axioms (see method generateAxioms) use set-contains
+     *       and set equality (for sort Snap only), but Nadja only emits the necessary set function
+     *       declarations, but no corresponding axioms. Looks like an oversight.
+     */
+    val setsTemplateFile = "/dafny_axioms/qpp_sets_declarations_dafny.smt2"
     val setsSort = sorts.Snap
     val substitutions = Map("$S$" -> termConverter.convert(setsSort))
     val setsDeclarations = preambleReader.readParametricPreamble(setsTemplateFile, substitutions)
-
-    /* TODO: Surprising - set declarations are instantiated for sort Snap, but the corresponding
-     *       set axioms aren't, see generateAxioms. Did Nadja mess something up here?
-     */
 
     val snapsTemplateFile = "/predicate_snap_functions_declarations.smt2"
 
@@ -101,7 +101,7 @@ class DefaultPredicateSnapFunctionsContributor(preambleReader: PreambleReader[St
         (s"$snapsTemplateFile [$id: $snapSort]", declarations)
       })
 
-    Seq((s"$setsTemplateFile [$setsSort", setsDeclarations)) ++ setsPreambleBlocks
+    Seq((s"$setsTemplateFile [$setsSort]", setsDeclarations)) ++ setsPreambleBlocks
   }
 
   def generateAxioms: Iterable[PreambleBlock] = {

@@ -550,8 +550,8 @@ object Times extends ((Term, Term) => Term) {
   import predef.{Zero, One}
 
   def apply(e0: Term, e1: Term) = (e0, e1) match {
-    case (t0, Zero) => Zero
-    case (Zero, t1) => Zero
+    case (_, Zero) => Zero
+    case (Zero, _) => Zero
     case (t0, One) => t0
     case (One, t1) => t1
     case (IntLiteral(n0), IntLiteral(n1)) => IntLiteral(n0 * n1)
@@ -759,9 +759,9 @@ object Equals extends ((Term, Term) => BooleanTerm) {
           (e0, e1) match {
             case (sw1: SortWrapper, sw2: SortWrapper) if sw1.t.sort != sw2.t.sort =>
               assert(false, s"Equality '(Snap) $e0 == (Snap) $e1' is not allowed")
-            case (c1: Combine, sw2: SortWrapper) =>
+            case (_: Combine, _: SortWrapper) =>
               assert(false, s"Equality '$e0 == (Snap) $e1' is not allowed")
-            case (sw1: SortWrapper, c2: Combine) =>
+            case (_: SortWrapper, _: Combine) =>
               assert(false, s"Equality '(Snap) $e0 == $e1' is not allowed")
             case _ => /* Ok */
           }
@@ -779,8 +779,7 @@ object Equals extends ((Term, Term) => BooleanTerm) {
 
 /* Represents built-in equality, e.g., '=' in SMT-LIB */
 class BuiltinEquals private[terms] (val p0: Term, val p1: Term) extends Equals
-    with StructuralEqualityBinaryOp[Term] {
-}
+    with StructuralEqualityBinaryOp[Term]
 
 object BuiltinEquals {
   def forPerm(t1: Term, t2: Term) = (t1, t2) match {
@@ -799,7 +798,10 @@ object BuiltinEquals {
 
 /* Custom equality that (potentially) needs to be axiomatised. */
 class CustomEquals private[terms] (val p0: Term, val p1: Term) extends Equals
-    with StructuralEqualityBinaryOp[Term]
+    with StructuralEqualityBinaryOp[Term] {
+
+  override val op = "==="
+}
 
 object CustomEquals {
   def apply(t1: Term, t2: Term) = new CustomEquals(t1, t2)
@@ -954,7 +956,7 @@ object IntPermTimes extends ((Term, Term) => Term) {
   import predef.{Zero, One}
 
   def apply(t0: Term, t1: Term) = (t0, t1) match {
-    case (Zero, t) => NoPerm()
+    case (Zero, _) => NoPerm()
     case (One, t) => t
     case (_, NoPerm()) => NoPerm()
     case (_, _) => new IntPermTimes(t0, t1)

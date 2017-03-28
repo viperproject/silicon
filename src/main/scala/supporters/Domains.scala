@@ -83,10 +83,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 
     instantiatedDomains foreach (domain => {
       domain.functions foreach (function => {
-        val inSorts = function.formalArgs map (a => symbolConverter.toSort(a.typ))
-        val outSort = symbolConverter.toSort(function.typ)
-        val id = symbolConverter.toSortSpecificId(function.name, inSorts :+ outSort)
-        val fct = terms.DomainFun(id, inSorts, outSort)
+        val fct = symbolConverter.toFunction(function)
 
         collectedFunctions += fct
 
@@ -99,7 +96,7 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
       })
 
       domain.axioms foreach (axiom => {
-        val tAx = domainTranslator.translateAxiom(axiom, Map.empty)
+        val tAx = domainTranslator.translateAxiom(axiom, symbolConverter.toSort)
         collectedAxioms += tAx
       })
     })
@@ -134,24 +131,15 @@ class DefaultDomainsContributor(symbolConverter: SymbolConverter,
 }
 
 trait DomainsTranslator[R] {
-  def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): R
+  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): R
 }
 
 class DefaultDomainsTranslator(val symbolConverter: SymbolConverter)
     extends DomainsTranslator[Term]
        with ExpressionTranslator {
 
-  def translateAxiom(ax: ast.DomainAxiom, typeVarMap: Map[ast.TypeVar, ast.Type]): Term = {
-    val toSort = (typ: ast.Type, localTypeVarMap: Map[ast.TypeVar, ast.Type]) => {
-      val concreteType = typ.substitute(localTypeVarMap).substitute(typeVarMap)
-
-      assert(concreteType.isConcrete,
-        s"Expected only concrete types, but found $concreteType (${concreteType.getClass.getName}})")
-
-      symbolConverter.toSort(concreteType)
-    }
-
-    translate(toSort, InsertionOrderedSet.empty)(ax.exp) match {
+  def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): Term = {
+    translate(toSort)(ax.exp) match {
       case terms.Quantification(q, vars, body, triggers, "") =>
         terms.Quantification(q, vars, body, triggers, s"prog.${ax.name}")
 

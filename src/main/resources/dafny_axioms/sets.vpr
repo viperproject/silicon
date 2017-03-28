@@ -1,0 +1,179 @@
+domain $Set[E] {
+  function Set_in(e: E, s: $Set[E]): Bool
+  function Set_card(s: $Set[E]): Int
+  function Set_empty(): $Set[E]
+  function Set_singleton(e: E): $Set[E]
+  function Set_unionone(s: $Set[E], e: E): $Set[E]
+  function Set_union(s1: $Set[E], s2: $Set[E]): $Set[E]
+  function Set_disjoint(s1: $Set[E], s2: $Set[E]): Bool
+  function Set_difference(s1: $Set[E], s2: $Set[E]): $Set[E]
+  function Set_intersection(s1: $Set[E], s2: $Set[E]): $Set[E]
+  function Set_subset(s1: $Set[E], s2: $Set[E]): Bool
+  function Set_equal(s1: $Set[E], s2: $Set[E]): Bool
+  
+  axiom card_non_negative {
+    forall s: $Set[E] :: {Set_card(s)}
+      0 <= Set_card(s)
+  }
+  
+  axiom in_empty_set {
+    forall e: E :: {Set_in(e, Set_empty())}
+      !Set_in(e, Set_empty())
+  }
+  
+  axiom empty_set_cardinality {
+    forall s: $Set[E] :: {Set_card(s)}
+         (Set_card(s) == 0 <==> s == Set_empty())
+      && (Set_card(s) != 0 ==> exists e: E :: Set_in(e, s))
+  }  
+
+  axiom in_singleton_set {
+    forall e: E :: {Set_singleton(e)}
+      Set_in(e, Set_singleton(e))
+  } 
+  
+  axiom in_singleton_set_equality {
+    forall e1: E, e2: E :: {Set_in(e1, Set_singleton(e2))}
+      Set_in(e1, Set_singleton(e2)) <==> e1 == e2
+  } 
+
+  axiom singleton_set_cardinality {
+    forall e: E :: {Set_card(Set_singleton(e))}
+      Set_card(Set_singleton(e)) == 1
+  } 
+
+  axiom in_unionone_same {
+    forall s: $Set[E], e: E :: {Set_unionone(s, e)}
+      Set_in(e, Set_unionone(s, e))
+  } 
+  
+  axiom in_unionone_other {
+    forall s: $Set[E], e1: E, e2: E :: {Set_in(e1, Set_unionone(s, e2))}
+           Set_in(e1, Set_unionone(s, e2))
+      <==> (e1 == e2 || Set_in(e1, s))
+  } 
+
+  axiom invariance_in_unionone {
+    forall s: $Set[E], e1: E, e2: E :: {Set_in(e1, s), Set_unionone(s, e2)}
+      Set_in(e1, s) ==> Set_in(e1, Set_unionone(s, e2))
+  } 
+
+  axiom unionone_cardinality_invariant {
+    forall s: $Set[E], e: E :: {Set_card(Set_unionone(s, e))}
+      Set_in(e, s) ==> Set_card(Set_unionone(s, e)) == Set_card(s)
+  } 
+
+  axiom unionone_cardinality_changed {
+    forall s: $Set[E], e: E :: {Set_card(Set_unionone(s, e)) }
+      !Set_in(e, s) ==> Set_card(Set_unionone(s, e)) == Set_card(s) + 1
+  } 
+
+  axiom in_union_in_one {
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, Set_union(s1, s2))}
+           Set_in(e, Set_union(s1, s2))
+      <==> (Set_in(e, s1) || Set_in(e, s2))
+  } 
+
+  axiom in_left_in_union {
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, s1), Set_union(s1, s2)}
+      Set_in(e, s1) ==> Set_in(e, Set_union(s1, s2))
+  } 
+
+  axiom in_right_in_union {
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, s2), Set_union(s1, s2)}
+      Set_in(e, s2) ==> Set_in(e, Set_union(s1, s2))
+  }
+
+  /* Commented because the trigger looks very weak */
+  // axiom disjoint_sets_difference_union {
+    // forall s1: $Set[E], s2: $Set[E] :: {Set_union(s1, s2)}
+          // Set_disjoint(s1, s2)
+      // ==>    Set_difference(Set_union(s1, s2), a) == b
+          // && Set_difference(Set_union(s1, s2), b) == a
+  // }   
+
+  axiom in_intersection_in_both {
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, Set_intersection(s1, s2))}
+           Set_in(e, Set_intersection(s1, s2))
+      <==> Set_in(e, s1) && Set_in(e, s2)
+  } 
+
+  axiom union_left_idempotency {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_union(s1, Set_union(s1, s2)) }
+      Set_union(s1, Set_union(s1, s2)) == Set_union(s1, s2)
+  }    
+
+  axiom union_right_idempotency {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_union(Set_union(s1, s2), s2)}
+      Set_union(Set_union(s1, s2), s2) == Set_union(s1, s2)
+  }
+
+  axiom intersection_left_idempotency {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_intersection(s1, Set_intersection(s1, s2))}
+      Set_intersection(s1, Set_intersection(s1, s2)) == Set_intersection(s1, s2)
+  } 
+  
+  axiom intersection_right_idempotency {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_intersection(Set_intersection(s1, s2), s2)}
+      Set_intersection(Set_intersection(s1, s2), s2) == Set_intersection(s1, s2)
+  }  
+
+  axiom cardinality_sums {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_card(Set_union(s1, s2))}
+                                       {Set_card(Set_intersection(s1, s2))}
+         Set_card(Set_union(s1, s2)) + Set_card(Set_intersection(s1, s2))
+      == Set_card(s1) + Set_card(s2)
+  }   
+
+  axiom in_difference {
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_in(e, Set_difference(s1, s2))}
+           Set_in(e, Set_difference(s1, s2))
+      <==> Set_in(e, s1) && !Set_in(e, s2)
+  }
+  
+  axiom not_in_difference {
+    forall s1: $Set[E], s2: $Set[E], e: E :: {Set_difference(s1, s2), Set_in(e, s2)}
+           Set_in(e, s2)
+      ==> !Set_in(e, Set_difference(s1, s2))
+  } 
+
+  axiom subset_definition {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_subset(s1, s2)}
+           Set_subset(s1, s2)
+      <==> forall e: E :: {Set_in(e, s1)}
+                          {Set_in(e, s2)}
+              Set_in(e, s1) ==> Set_in(e, s2)
+  } 
+
+  axiom equality_definition {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_equal(s1, s2)}
+           Set_equal(s1, s2)
+      <==> forall e: E :: {Set_in(e, s1)}
+                          {Set_in(e, s2)}
+              Set_in(e, s1) <==> Set_in(e, s2)
+  }   
+
+  axiom native_equality {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_equal(s1, s2)}
+      Set_equal(s1, s2) ==> s1 == s2
+  } 
+
+  axiom disjointness_definition {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_disjoint(s1, s2)}
+           Set_disjoint(s1, s2)
+      <==> forall e: E :: {Set_in(e, s1)}
+                          {Set_in(e, s2)}
+              !Set_in(e, s1) || !Set_in(e, s2)
+  }
+
+  axiom cardinality_difference {
+    forall s1: $Set[E], s2: $Set[E] :: {Set_card(Set_difference(s1, s2))}
+              Set_card(Set_difference(s1, s2))
+            + Set_card(Set_difference(s2, s1))
+            + Set_card(Set_intersection(s1, s2))
+         == Set_card(Set_union(s1, s2))
+      &&
+            Set_card(Set_difference(s1, s2))
+         == Set_card(s1) - Set_card(Set_intersection(s1, s2))
+  }
+}
