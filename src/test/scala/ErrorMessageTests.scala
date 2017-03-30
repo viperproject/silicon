@@ -1,6 +1,8 @@
-/**
-  * Created by simonfri on 11.01.2017.
-  */
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
 package viper.silicon.tests
 
 import java.nio.file.{Path, Paths}
