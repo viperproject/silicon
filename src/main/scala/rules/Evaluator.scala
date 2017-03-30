@@ -513,6 +513,9 @@ object evaluator extends EvaluationRules with Immutable {
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val s6 = if (s5.recordPossibleTriggers) s5.copy(possibleTriggers = s5.possibleTriggers + (fapp -> tFApp)) else s5
               QB(s6, tFApp, v3)})
+            /* TODO: The join-function is heap-independent, and it is not obvious how a
+             *       joined snapshot could be defined and represented
+             */
             })(join(v1.symbolConverter.toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, v1))(Q)})
 
       case ast.Unfolding(
@@ -850,9 +853,10 @@ object evaluator extends EvaluationRules with Immutable {
             s.possibleTriggers.get(fapp) map {
               case app @ App(fun: HeapDepFun, _) =>
                 app.copy(applicable = functionSupporter.limitedVersion(fun))
+              case app: App =>
+                app
               case other =>
-                sys.error(  s"Expected $fapp to map to an application of a heap-dependent function, "
-                          + s"but found $other")
+                sys.error(s"Expected $fapp to map to a function application, but found $other")
             }
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
