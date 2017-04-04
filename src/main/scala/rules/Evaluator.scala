@@ -569,10 +569,22 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.SeqContains(e0, e1) => evalBinOp(s, e1, e0, SeqIn, pve, v)(Q)
         /* Note the reversed order of the arguments! */
 
+      case ast.SeqIndex(e0, e1) =>
+        evals2(s, Seq(e0, e1), Nil, _ => pve, v)({case (s1, Seq(t0, t1), v1) =>
+          v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+            case true =>
+              v1.decider.assert(AtMost(t1, SeqLength(t0))) {
+                case true =>
+                  Q(s1, SeqAt(t0, t1), v1)
+                case false =>
+                  Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+            case false =>
+              Failure(pve dueTo SeqIndexNegative(e0, e1))
+          }})
+
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
       case ast.SeqDrop(e0, e1) => evalBinOp(s, e0, e1, SeqDrop, pve, v)(Q)
       case ast.SeqTake(e0, e1) => evalBinOp(s, e0, e1, SeqTake, pve, v)(Q)
-      case ast.SeqIndex(e0, e1) => evalBinOp(s, e0, e1, SeqAt, pve, v)(Q)
       case ast.SeqLength(e0) => eval(s, e0, pve, v)((s1, t0, v1) => Q(s1, SeqLength(t0), v1))
       case ast.EmptySeq(typ) => Q(s, SeqNil(v.symbolConverter.toSort(typ)), v)
       case ast.RangeSeq(e0, e1) => evalBinOp(s, e0, e1, SeqRanged, pve, v)(Q)
