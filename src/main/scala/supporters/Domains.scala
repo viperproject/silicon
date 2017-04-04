@@ -134,7 +134,7 @@ trait DomainsTranslator[R] {
   def translateAxiom(ax: ast.DomainAxiom, toSort: ast.Type => Sort): R
 }
 
-class DefaultDomainsTranslator(val symbolConverter: SymbolConverter)
+class DefaultDomainsTranslator()
     extends DomainsTranslator[Term]
        with ExpressionTranslator {
 

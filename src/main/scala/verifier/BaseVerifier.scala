@@ -41,7 +41,7 @@ abstract class BaseVerifier(val config: Config,
   val stateFormatter = new DefaultStateFormatter()
   val symbolConverter = new DefaultSymbolConverter()
   val termConverter = new TermToSMTLib2Converter(/*bookkeeper*/)
-  val domainTranslator = new DefaultDomainsTranslator(symbolConverter)
+  val domainTranslator = new DefaultDomainsTranslator()
   val identifierFactory = new DefaultIdentifierFactory(uniqueId)
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)

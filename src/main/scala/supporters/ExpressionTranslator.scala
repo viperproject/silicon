@@ -12,8 +12,6 @@ import viper.silicon.state.{Identifier, SymbolConverter}
 import viper.silicon.state.terms._
 
 trait ExpressionTranslator {
-  val symbolConverter: SymbolConverter
-
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
    *       reuse code because the code in DefaultEvaluator uses the state whereas this one here
    *       doesn't. Of course, one could just evaluate the domains using the DefaultEvaluator - which

@@ -513,6 +513,9 @@ object evaluator extends EvaluationRules with Immutable {
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val s6 = if (s5.recordPossibleTriggers) s5.copy(possibleTriggers = s5.possibleTriggers + (fapp -> tFApp)) else s5
               QB(s6, tFApp, v3)})
+            /* TODO: The join-function is heap-independent, and it is not obvious how a
+             *       joined snapshot could be defined and represented
+             */
             })(join(v1.symbolConverter.toSort(func.typ), s"joined_${func.name}", joinFunctionArgs, v1))(Q)})
 
       case ast.Unfolding(
@@ -566,10 +569,22 @@ object evaluator extends EvaluationRules with Immutable {
       case ast.SeqContains(e0, e1) => evalBinOp(s, e1, e0, SeqIn, pve, v)(Q)
         /* Note the reversed order of the arguments! */
 
+      case ast.SeqIndex(e0, e1) =>
+        evals2(s, Seq(e0, e1), Nil, _ => pve, v)({case (s1, Seq(t0, t1), v1) =>
+          v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
+            case true =>
+              v1.decider.assert(AtMost(t1, SeqLength(t0))) {
+                case true =>
+                  Q(s1, SeqAt(t0, t1), v1)
+                case false =>
+                  Failure(pve dueTo SeqIndexExceedsLength(e0, e1))}
+            case false =>
+              Failure(pve dueTo SeqIndexNegative(e0, e1))
+          }})
+
       case ast.SeqAppend(e0, e1) => evalBinOp(s, e0, e1, SeqAppend, pve, v)(Q)
       case ast.SeqDrop(e0, e1) => evalBinOp(s, e0, e1, SeqDrop, pve, v)(Q)
       case ast.SeqTake(e0, e1) => evalBinOp(s, e0, e1, SeqTake, pve, v)(Q)
-      case ast.SeqIndex(e0, e1) => evalBinOp(s, e0, e1, SeqAt, pve, v)(Q)
       case ast.SeqLength(e0) => eval(s, e0, pve, v)((s1, t0, v1) => Q(s1, SeqLength(t0), v1))
       case ast.EmptySeq(typ) => Q(s, SeqNil(v.symbolConverter.toSort(typ)), v)
       case ast.RangeSeq(e0, e1) => evalBinOp(s, e0, e1, SeqRanged, pve, v)(Q)
@@ -850,9 +865,10 @@ object evaluator extends EvaluationRules with Immutable {
             s.possibleTriggers.get(fapp) map {
               case app @ App(fun: HeapDepFun, _) =>
                 app.copy(applicable = functionSupporter.limitedVersion(fun))
+              case app: App =>
+                app
               case other =>
-                sys.error(  s"Expected $fapp to map to an application of a heap-dependent function, "
-                          + s"but found $other")
+                sys.error(s"Expected $fapp to map to a function application, but found $other")
             }
 
           (cachedTrigger, if (cachedTrigger.isDefined) None else Some(fapp))
