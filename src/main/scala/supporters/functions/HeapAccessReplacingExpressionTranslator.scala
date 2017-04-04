@@ -15,7 +15,7 @@ import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, Sy
 import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
 
-class HeapAccessReplacingExpressionTranslator(val symbolConverter: SymbolConverter,
+class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
        with Logging {
