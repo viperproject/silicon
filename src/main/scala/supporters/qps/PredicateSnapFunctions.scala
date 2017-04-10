@@ -10,7 +10,6 @@
 
 package viper.silicon.supporters.qps
 
-import viper.silicon.Config
 import viper.silicon.rules.PredicateInverseFunction
 import viper.silicon.utils.Counter
 import viper.silicon.state.terms.utils.BigPermSum
@@ -30,6 +29,12 @@ trait PsfDefinition {
 
 private[qps] object PsfDefinition {
 
+  private[qps] def argsToSnap(args: Seq[Term]): Term =
+    if (args.size == 1) {
+      args.head.convert(sorts.Snap)
+    } else {
+      args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
+    }
 
   @inline
   private[qps] def pointwiseSnapDefinition(predicate: ast.Predicate,
@@ -40,13 +45,10 @@ private[qps] object PsfDefinition {
                                            predInPsfDomain: Boolean)
                                            : Term = {
 
-    val argsSnap: Term = if (args.size == 1) {
-      args.head.convert(sorts.Snap)
-    } else {
-      args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-    }
-    Predef.assert(argsSnap.sort == sorts.Snap)
-    val qf =  Implies(
+    val argsSnap: Term = argsToSnap(args)
+
+    val qf =
+      Implies(
         And(
           PermLess(NoPerm(), sourceChunk.perm.replace(sourceChunk.formalVars, args)),
           if (predInPsfDomain)
@@ -54,7 +56,47 @@ private[qps] object PsfDefinition {
           else
             True()),
             PredicateLookup(predicate.name, psf, args, formalArgs) === PredicateLookup(predicate.name, sourceChunk.psf, args, formalArgs))
+
     qf
+  }
+
+  private[qps] def domainDefinitions(predicate: ast.Predicate,
+                                     psf: Var,
+                                     qvars: Seq[Var],
+                                     optCondition: Option[Term],
+                                     args: Seq[Term],
+                                     triggerGenerator: TriggerGenerator,
+                                     axiomRewriter: AxiomRewriter)
+                                    : Seq[Term] = {
+
+    if (qvars.isEmpty)
+      Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(argsToSnap(args))))
+    else {
+      val argsSnap: Term = argsToSnap(args)
+      val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
+
+      val condition = optCondition match {
+        case None => True()
+        case Some(_condition) => _condition
+      }
+
+      triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
+
+      val (triggers, extraVars) =
+        if (Verifier.config.disableISCTriggers())
+          (Nil, Nil)
+        else
+          triggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
+                          .getOrElse((Nil, Nil))
+
+      triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
+
+
+      val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")
+      val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
+
+      Seq(finalForall)
+    }
   }
 }
 
@@ -65,20 +107,35 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
                                        args: Seq[Term],
                                        formalArgs : Seq[Var],
                                        valueChoice: Either[Term, Seq[QuantifiedPredicateChunk]])
-  extends PsfDefinition {
+                                      (triggerGenerator: TriggerGenerator,
+                                       axiomRewriter: AxiomRewriter)
+    extends PsfDefinition {
+
   val snapDefinitions = valueChoice match {
     case Left(value) =>
       Seq(PredicateLookup(predicate.name, psf, args, formalArgs) === value)
     case Right(sourceChunks) =>
-      sourceChunks map (sourceChunk => PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, sourceChunk.formalVars, sourceChunk, false))
+      sourceChunks map (sourceChunk =>
+        PsfDefinition.pointwiseSnapDefinition(predicate, psf, args, sourceChunk.formalVars, sourceChunk, false))
   }
 
-  val argsSnap: Term = if (args.size == 1) {
-    args.head.convert(sorts.Snap)
-  } else {
-    args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-  }
-  val domainDefinitions = Seq(BuiltinEquals(PredicateDomain(predicate.name, psf), SingletonSet(argsSnap)))
+  def quantifiedSnapDefinitions(qv: Var) =
+    snapDefinitions map (vd => {
+      val lookupTerms = vd shallowCollect {case lk: PredicateLookup => Trigger(lk)}
+
+      Forall(
+        qv,
+        vd,
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else lookupTerms)
+    })
+
+  val argsSnap: Term = PsfDefinition.argsToSnap(args)
+
+  val domainDefinitions =
+    PsfDefinition.domainDefinitions(predicate, psf, Nil, None, args, triggerGenerator, axiomRewriter)
+
+  def quantifiedDomainDefinitions(qv: Var): Seq[Term] =
+    PsfDefinition.domainDefinitions(predicate, psf, Seq(qv), None, args, triggerGenerator, axiomRewriter)
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
@@ -137,32 +194,8 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
     }
   }
 
-  val domainDefinitions: Seq[Term] = {
-    val argsSnap: Term = if (args.size == 1) {
-      args.head.convert(sorts.Snap)
-    } else {
-      args.reduce((arg1:Term, arg2:Term) => Combine(arg1, arg2))
-    }
-    val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
-
-
-    triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
-
-    val (triggers, extraVars) =
-      if (Verifier.config.disableISCTriggers())
-        (Nil, Nil)
-      else
-        triggerGenerator.generateFirstTriggerGroup(qvars, argsInDomain :: And(argsInDomain, condition) :: Nil)
-                        .getOrElse((Nil, Nil))
-
-    triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
-
-
-    val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")
-    val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
-
-    Seq(finalForall)
-  }
+  val domainDefinitions: Seq[Term] =
+    PsfDefinition.domainDefinitions(predicate, psf, qvars, Some(condition), args, triggerGenerator, axiomRewriter)
 
   def domainDefinitions(inverseFunction: PredicateInverseFunction): Seq[Term] = {
     qvars match {

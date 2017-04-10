@@ -336,7 +336,9 @@ object consumer extends ConsumptionRules with Immutable {
               case Some((s3, h3, ch, psfDef)) =>
                 val psfDomain = if (s3.psfAsSnap) psfDef.domainDefinitions else Seq.empty
                 v2.decider.assume(psfDomain ++ psfDef.snapDefinitions)
-                val s4 = s3.copy(partiallyConsumedHeap = Some(h3))
+                val fr4 = s3.functionRecorder.recordPsfAndDomain(psfDef, psfDomain, s3.quantifiedVariables)
+                val s4 = s3.copy(partiallyConsumedHeap = Some(h3),
+                                 functionRecorder = fr4)
                 Q(s4, h3, ch.valueAt(tArgs), v2)
               case None => Failure(pve dueTo InsufficientPermission(pa))}}))
 

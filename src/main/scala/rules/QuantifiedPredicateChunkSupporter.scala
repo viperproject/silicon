@@ -285,7 +285,7 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
 
     if (isChunkPsf) {
       if (qvars.isEmpty) {
-        SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
+        SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)(v.triggerGenerator, v.axiomRewriter)
       } else
         QuantifiedChunkPsfDefinition(predicate, psf, qvars, condition, args, formalVars, chunks /*, true*/)(v.triggerGenerator, v.axiomRewriter)
     } else {
@@ -309,7 +309,7 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
     val psf = freshPSF(predicate, predicateSnapMap, isChunkPsf, v)
 
     if (isChunkPsf) {
-        SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)
+        SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Right(chunks) /*, true*/)(v.triggerGenerator, v.axiomRewriter)
     } else {
       SummarisingPsfDefinition(predicate, psf, args, formalVars, chunks)
     }
@@ -601,7 +601,9 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
 
       case _ =>
         val psf = freshPSF(predicate, predicateSnapMap, true, v)
-        (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))) )
+        val psfDef = SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))(v.triggerGenerator, v.axiomRewriter)
+
+        (psf, Some(psfDef))
     }
 
   def createSingletonPredicateSnapFunction(predicate: ast.Predicate,
@@ -618,7 +620,9 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
         (snap, None)
       case _ =>
         val psf = freshPSF(predicate, predicateSnapMap, true, v)
-        (psf, Some(SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))))
+        val psfDef = SingletonChunkPsfDefinition(predicate, psf, args, formalVars, Left(snap))(v.triggerGenerator, v.axiomRewriter)
+
+        (psf, Some(psfDef))
     }
 
   def injectivityAxiom(qvars: Seq[Var], condition: Term, perms: Term, args: Seq[Term], v: Verifier) = {
@@ -685,16 +689,17 @@ object quantifiedPredicateChunkSupporter extends QuantifiedPredicateChunkSupport
 
     val func = v.decider.fresh("inv", (additionalArgs ++ fct)map (_.sort), qvar.sort)
     val inverseFunc = (t: Seq[Term]) => App(func, additionalArgs ++ t)
-    val invOFct: Term = inverseFunc(fct)
+    val invOfFct: Term = inverseFunc(fct)
     val fctOfInv: Seq[Term] = fct map(_.replace(qvar, inverseFunc(formalVars)))
     val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
     val effectiveConditionInv = effectiveCondition.replace(qvar, inverseFunc(formalVars))
 
     val finalAxInvOfFct =
-      v.triggerGenerator.assembleQuantification(Forall,
+      v.triggerGenerator.assembleQuantification(
+        Forall,
         qvar :: Nil,
-        Implies(effectiveCondition, invOFct === qvar),
-        if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else /*fct ::*/ And(effectiveCondition, invOFct) :: Nil,
+        Implies(effectiveCondition, invOfFct === qvar),
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(fct) :: And(effectiveCondition, invOfFct) :: Nil,
         s"qp.${func.id}-exp",
         v.axiomRewriter)
 
