@@ -312,9 +312,9 @@ object producer extends ProductionRules with Immutable {
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
           Q(s1.copy(h = s1.h + chWand), v1))
 
-      case qpf @ ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
+      case ast.utility.QuantifiedPermissions.QPForall(qvar, cond, rcvr, field, perm, forall, _) =>
         val qid = s"prog.l${viper.silicon.utils.ast.sourceLine(forall)}"
-        val optTrigger = if (qpf.triggers.isEmpty) None else Some(qpf.triggers)
+        val optTrigger = if (forall.triggers.isEmpty) None else Some(forall.triggers)
         evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), Seq(rcvr, perm), optTrigger, qid, pve, v){
           case (s1, Seq(tQVar), Seq(tCond), Seq(tRcvr, tPerm), _, auxQuantResult, v1) =>
             val snap = sf(sorts.FieldValueFunction(v1.symbolConverter.toSort(field.typ)), v1)
@@ -395,16 +395,23 @@ object producer extends ProductionRules with Immutable {
         //create new quantified predicate chunk
         val predicate = Verifier.program.findPredicate(predname)
         val qid = s"prog.l${viper.silicon.utils.ast.sourceLine(forall)}"
-        evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain) , None, qid, pve, v) {
-          case (s1, Seq(tQVar), Seq(tCond), tArgsGain, _, Left(tAuxQuantNoTriggers), v1) =>
+        val optTrigger = if (forall.triggers.isEmpty) None else Some(forall.triggers)
+        evalQuantified(s, Forall, Seq(qvar.localVar), Seq(cond), args ++ Seq(gain), optTrigger, qid, pve, v) {
+          case (s1, Seq(tQVar), Seq(tCond), tArgsGain, _, auxQuantResult, v1) =>
             val (tArgs, Seq(tGain)) = tArgsGain.splitAt(args.size)
             val snap = sf(sorts.PredicateSnapFunction(s1.predicateSnapMap(predicate)), v1)
             val additionalInvFctArgs = s1.quantifiedVariables
             val gain = PermTimes(tGain, s1.permissionScalingFactor)
             val (ch, invFct) = quantifiedPredicateChunkSupporter.createQuantifiedPredicateChunk(tQVar, predicate, s1.predicateFormalVarMap(predicate), tArgs, snap, gain, tCond, additionalInvFctArgs, v1)
             v1.decider.prover.comment("Nested auxiliary terms")
-            v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars, /* The trigger generation code might have added quantified variables to invOfFct */
-                              triggers = invFct.invOfFct.triggers))
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                v1.decider.assume(tAuxQuantNoTriggers.copy(vars = invFct.invOfFct.vars,
+                                                           triggers = invFct.invOfFct.triggers))
+              case Right(tAuxQuants) =>
+                v1.decider.assume(tAuxQuants)
+            }
+            /* TODO: Reconsider choice of triggers */
             val gainNonNeg = Forall(invFct.invOfFct.vars, perms.IsNonNegative(tGain), invFct.invOfFct.triggers, s"$qid-perm")
             v1.decider.assume(gainNonNeg)
             v1.decider.prover.comment("Definitional axioms for inverse functions")
