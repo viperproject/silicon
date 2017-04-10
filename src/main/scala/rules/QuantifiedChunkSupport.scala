@@ -724,7 +724,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
 
     val func = v.decider.fresh("inv", (additionalInvArgs map (_.sort)) :+ fct.sort, qvar.sort)
     val inverseFunc = (t: Term) => App(func, additionalInvArgs :+ t)
-    val invOFct: Term = inverseFunc(fct)
+    val invOfFct: Term = inverseFunc(fct)
     val fctOfInv = fct.replace(qvar, inverseFunc(`?r`))
     val effectiveCondition = And(condition, PermLess(NoPerm(), perms))
     val effectiveConditionInv = effectiveCondition.replace(qvar, inverseFunc(`?r`))
@@ -733,8 +733,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
       v.triggerGenerator.assembleQuantification(
         Forall,
         qvar :: Nil,
-        Implies(effectiveCondition, invOFct === qvar),
-        if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else fct :: And(effectiveCondition, invOFct) :: Nil,
+        Implies(effectiveCondition, invOfFct === qvar),
+        if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else fct :: And(effectiveCondition, invOfFct) :: Nil,
         s"qp.${func.id}-exp",
         v.axiomRewriter)
 
