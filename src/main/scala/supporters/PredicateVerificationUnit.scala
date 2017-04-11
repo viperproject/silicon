@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import org.slf4s.Logger
+import ch.qos.logback.classic.Logger
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent

@@ -10,7 +10,7 @@ import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamW
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
 
-import org.slf4s.Logging
+import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
@@ -24,7 +24,7 @@ class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,
                     identifierFactory: IdentifierFactory)
     extends Prover
-       with Logging {
+       with LazyLogging {
 
   private var pushPopScopeDepth = 0
   private var lastTimeout: Int = -1
@@ -61,14 +61,14 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def createZ3Instance() = {
-    log.info(s"Starting Z3 at $z3Path")
+    logger.info(s"Starting Z3 at $z3Path")
 
     val userProvidedZ3Args: Array[String] = Verifier.config.z3Args.toOption match {
       case None =>
         Array()
 
       case Some(args) =>
-        log.info(s"Additional command-line arguments are $args")
+        logger.info(s"Additional command-line arguments are $args")
         args.split(' ').map(_.trim)
     }
 
@@ -354,7 +354,7 @@ class Z3ProverStdIO(uniqueId: String,
       if (result.toLowerCase != "success") comment(result)
 
       val warning = result.startsWith("WARNING")
-      if (warning) log.info(s"Z3: $result")
+      if (warning) logger.info(s"Z3: $result")
 
       repeat = warning
     }
