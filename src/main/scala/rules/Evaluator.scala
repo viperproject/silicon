@@ -502,14 +502,16 @@ object evaluator extends EvaluationRules with Immutable {
            */
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) => {
             val s3 = s2.copy(recordVisited = true,
-                             fvfAsSnap = true)
+                             fvfAsSnap = true,
+                             psfAsSnap = true)
             consumes(s3, pre, _ => pvePre, v2)((s4, snap, v3) => {
               val snap1 = snap.convert(sorts.Snap)
               val tFApp = App(v3.symbolConverter.toFunction(func), snap1 :: tArgs)
               val s5 = s4.copy(h = s2.h,
                                recordVisited = s2.recordVisited,
                                functionRecorder = s4.functionRecorder.recordSnapshot(fapp, v3.decider.pcs.branchConditions, snap1),
-                               fvfAsSnap = s2.fvfAsSnap)
+                               fvfAsSnap = s2.fvfAsSnap,
+                               psfAsSnap = s2.psfAsSnap)
               /* TODO: Necessary? Isn't tFApp already recorded by the outermost eval? */
               val s6 = if (s5.recordPossibleTriggers) s5.copy(possibleTriggers = s5.possibleTriggers + (fapp -> tFApp)) else s5
               QB(s6, tFApp, v3)})

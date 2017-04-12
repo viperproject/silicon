@@ -10,13 +10,14 @@
 
 package viper.silicon.supporters.qps
 
+import viper.silver.ast
+import viper.silicon.Map
 import viper.silicon.rules.PredicateInverseFunction
-import viper.silicon.utils.Counter
 import viper.silicon.state.terms.utils.BigPermSum
 import viper.silicon.state.QuantifiedPredicateChunk
 import viper.silicon.state.terms._
-import viper.silver.ast
 import viper.silicon.state.terms.sorts
+import viper.silicon.utils.Counter
 import viper.silicon.verifier.Verifier
 
 trait PsfDefinition {
@@ -63,7 +64,8 @@ private[qps] object PsfDefinition {
   private[qps] def domainDefinitions(predicate: ast.Predicate,
                                      psf: Var,
                                      qvars: Seq[Var],
-                                     optCondition: Option[Term],
+                                     optConditionalizedPerms: Option[Term],
+                                     optFurtherCondition: Option[Term],
                                      args: Seq[Term],
                                      triggerGenerator: TriggerGenerator,
                                      axiomRewriter: AxiomRewriter)
@@ -75,9 +77,14 @@ private[qps] object PsfDefinition {
       val argsSnap: Term = argsToSnap(args)
       val argsInDomain = SetIn(argsSnap, PredicateDomain(predicate.name, psf))
 
-      val condition = optCondition match {
+      var condition = optConditionalizedPerms match {
         case None => True()
-        case Some(_condition) => _condition
+        case Some(conditionalizedPerms) => PermLess(NoPerm(), conditionalizedPerms)
+      }
+
+      condition = optFurtherCondition match {
+        case None => condition
+        case Some(furtherCondition) => And(condition, furtherCondition)
       }
 
       triggerGenerator.setCustomIsForbiddenInTrigger(triggerGenerator.advancedIsForbiddenInTrigger)
@@ -92,7 +99,7 @@ private[qps] object PsfDefinition {
       triggerGenerator.setCustomIsForbiddenInTrigger(PartialFunction.empty)
 
 
-      val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, PermLess(NoPerm(), condition)), triggers, s"qp.$psf-dom")
+      val forall = Forall(qvars ++ extraVars, Iff(argsInDomain, condition), triggers, s"qp.$psf-dom")
       val finalForall = axiomRewriter.rewrite(forall).getOrElse(forall)
 
       Seq(finalForall)
@@ -132,10 +139,10 @@ case class SingletonChunkPsfDefinition(predicate: ast.Predicate,
   val argsSnap: Term = PsfDefinition.argsToSnap(args)
 
   val domainDefinitions =
-    PsfDefinition.domainDefinitions(predicate, psf, Nil, None, args, triggerGenerator, axiomRewriter)
+    PsfDefinition.domainDefinitions(predicate, psf, Nil, None, None, args, triggerGenerator, axiomRewriter)
 
   def quantifiedDomainDefinitions(qv: Var): Seq[Term] =
-    PsfDefinition.domainDefinitions(predicate, psf, Seq(qv), None, args, triggerGenerator, axiomRewriter)
+    PsfDefinition.domainDefinitions(predicate, psf, Seq(qv), None, None, args, triggerGenerator, axiomRewriter)
 }
 
 case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
@@ -195,24 +202,32 @@ case class QuantifiedChunkPsfDefinition(predicate: ast.Predicate,
   }
 
   val domainDefinitions: Seq[Term] =
-    PsfDefinition.domainDefinitions(predicate, psf, qvars, Some(condition), args, triggerGenerator, axiomRewriter)
+    PsfDefinition.domainDefinitions(predicate, psf, qvars, Some(condition), None, args, triggerGenerator, axiomRewriter)
 
   def domainDefinitions(inverseFunction: PredicateInverseFunction): Seq[Term] = {
     qvars match {
       case Seq(v) =>
-        val repl = (t: Term) => {
-            val newTerm: Term = t
-            for (i <- formalArgs.indices) {
-              newTerm.replace(args.apply(i), formalArgs.apply(i)).replace(v, inverseFunction(formalArgs))
-            }
-            newTerm
+        var formalQVars = Vector.empty[Var]
+        var invArgs = Vector.empty[Term]
+        var formalQVarConstraints = True(): Term
+
+        args.zip(formalArgs).foreach { case (a, x) =>
+          if (a.contains(v)) {
+            formalQVars = formalQVars :+ x
+            invArgs = invArgs :+ x
+          } else if (triggerGenerator.isForbiddenInTrigger(a)) {
+            formalQVars = formalQVars :+ x
+            formalQVarConstraints = And(formalQVarConstraints, x === a)
+            invArgs = invArgs :+ x
+          } else {
+            invArgs = invArgs :+ a
+          }
         }
-        domainDefinitions match {
-          case Seq(Forall(Seq(`v`), body, triggers, _)) =>
-            Seq(Forall(formalArgs, repl(body), triggers map (t => Trigger(t.p map repl)), s"qp.$psf-dom-${inverseFunction.func.id}"))
-          case others =>
-            others map repl
-        }
+
+        PsfDefinition.domainDefinitions(predicate, psf, formalQVars,
+                                        Some(condition.replace(v, inverseFunction(invArgs))),
+                                        Some(formalQVarConstraints), invArgs,
+                                        triggerGenerator, axiomRewriter)
 
       case _ =>
         sys.error(s"Unexpected sequence of qvars: $qvars")
