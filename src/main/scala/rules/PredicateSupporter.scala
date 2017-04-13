@@ -47,7 +47,8 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
     val s1 = s.copy(g = gIns,
-                    fvfAsSnap = true)
+                    fvfAsSnap = true,
+                    psfAsSnap = true)
               .scalePermissionFactor(tPerm)
     consume(s1, body, pve, v)((s2, snap, v1) => {
       val predTrigger = App(Verifier.predicateData(predicate).triggerFunction,
@@ -66,6 +67,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val ch = PredicateChunk(predicate.name, tArgs, snap.convert(sorts.Snap), tPerm)
         val s3 = s2.copy(g = s.g,
                          fvfAsSnap = s.fvfAsSnap,
+                         psfAsSnap = s.psfAsSnap,
                          permissionScalingFactor = s.permissionScalingFactor)
         chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) =>
           Q(s4.copy(h = h1), v2))
