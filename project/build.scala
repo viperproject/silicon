@@ -3,6 +3,7 @@ import Keys._
 import sbtassembly.AssemblyPlugin.autoImport._
 import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
+import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
 
 object SiliconBuild extends Build {
 
@@ -94,6 +95,7 @@ object SiliconBuild extends Build {
     }
 
     p.aggregate(common)
+    p.enablePlugins(JavaAppPackaging)
   }
 
   lazy val common = Project(
