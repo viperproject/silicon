@@ -7,13 +7,16 @@
 package viper.silicon
 
 import java.text.SimpleDateFormat
-import java.io.File
 import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
+
+import ch.qos.logback.classic.{Level, Logger}
+import com.typesafe.scalalogging.LazyLogging
+import org.slf4j.LoggerFactory
+
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.Try
-import org.slf4s.Logging
 import viper.silver.ast
 import viper.silver.verifier.{CliOptionError => SilCliOptionError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silver.frontend.SilFrontend
@@ -85,7 +88,7 @@ object Silicon {
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
-         with Logging {
+         with LazyLogging {
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -170,7 +173,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     //bookkeeping for Viper IVE
 //    verifier.bookkeeper.reportInitialProgress(program)
 
-    log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     config.inputFile = program.pos match {
       case sp: ast.AbstractSourcePosition => Some(sp.file)
@@ -294,9 +297,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 //      }
     }
 
-    failures foreach (f => logFailure(f, s => log.info(s)))
+    failures foreach (f => logFailure(f, s => logger.info(s)))
 
-    log.info("\nVerification finished in %s with %s error(s)".format(
+    logger.info("\nVerification finished in %s with %s error(s)".format(
         viper.silicon.common.format.formatMillisReadably(/*verifier.bookkeeper.*/elapsedMillis),
         failures.length))
 
@@ -315,12 +318,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def setLogLevelsFromConfig() {
-    val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
-    log4jlogger.setLevel(org.apache.log4j.Level.toLevel(config.logLevel()))
+    val logger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
+    logger.setLevel(Level.toLevel(config.logLevel()))
 
     config.logger.foreach { case (loggerName, level) =>
-      val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
-      log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
+      val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+      logger.setLevel(Level.toLevel(level))
     }
   }
 }

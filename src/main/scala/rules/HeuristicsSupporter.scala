@@ -6,7 +6,6 @@
 
 package viper.silicon.rules
 
-import org.slf4s.{LoggerFactory, Logging}
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.HeuristicsFailed
