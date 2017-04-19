@@ -575,7 +575,7 @@ object evaluator extends EvaluationRules with Immutable {
         evals2(s, Seq(e0, e1), Nil, _ => pve, v)({case (s1, Seq(t0, t1), v1) =>
           v1.decider.assert(AtLeast(t1, IntLiteral(0))) {
             case true =>
-              v1.decider.assert(AtMost(t1, SeqLength(t0))) {
+              v1.decider.assert(Less(t1, SeqLength(t0))) {
                 case true =>
                   Q(s1, SeqAt(t0, t1), v1)
                 case false =>
