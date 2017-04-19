@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters.functions
 
-import org.slf4s.Logging
+import com.typesafe.scalalogging.LazyLogging
 import viper.silver.ast
 import viper.silicon.Map
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -18,7 +18,7 @@ import viper.silicon.supporters.ExpressionTranslator
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
-       with Logging {
+       with LazyLogging {
 
   private var program: ast.Program = _
   private var func: ast.Function = _
@@ -142,7 +142,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         s.convert(sort)
       case None =>
         if (!failed && data.verificationFailures.isEmpty)
-          log.warn(s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname")
+          logger.warn(s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname")
 
         failed = true
 

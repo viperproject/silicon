@@ -6,7 +6,7 @@
 
 package viper.silicon.verifier
 
-import org.slf4s.Logger
+import ch.qos.logback.classic.Logger
 import viper.silicon.{Config, Map}
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
