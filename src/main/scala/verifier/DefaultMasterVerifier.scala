@@ -118,6 +118,11 @@ class DefaultMasterVerifier(config: Config)
       case forall: ast.Forall if forall.isPure => viper.silicon.utils.ast.autoTrigger(forall)
     }()
 
+    if(config.useCaching()) {
+      //fill in the entityHashes into the new AST
+      program.computeEntityHashes()
+    }
+
     if (config.printTranslatedProgram()) {
       println(program)
     }
