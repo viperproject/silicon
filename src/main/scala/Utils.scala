@@ -8,7 +8,7 @@ package viper.silicon
 
 import viper.silver
 import viper.silver.components.StatefulComponent
-import viper.silver.verifier.VerificationError
+import viper.silver.verifier.{VerificationError, errors}
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
 import viper.silver.ast.utility.Rewriter.Traverse
@@ -190,7 +190,7 @@ package object utils {
       ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
       ++ checkInhaleExhaleAssertions(program))
 
-    def createUnsupportedPermissionExpressionError(offendingNode: ErrorNode) = {
+    def createUnsupportedPermissionExpressionError(offendingNode: errors.ErrorNode) = {
       val message = s"Silicon doesn't support the permission expression $offendingNode."
 
       Internal(offendingNode, FeatureUnsupported(offendingNode, message))
@@ -260,7 +260,7 @@ package object utils {
 
     /* Unexpected nodes */
 
-    def createUnexpectedInhaleExhaleExpressionError(offendingNode: ErrorNode) = {
+    def createUnexpectedInhaleExhaleExpressionError(offendingNode: errors.ErrorNode) = {
       val explanation =
         "InhaleExhale-expressions should have been eliminated by calling expr.whenInhaling/Exhaling."
 
@@ -269,7 +269,7 @@ package object utils {
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
 
-    def createUnexpectedNodeDuringDomainTranslationError(offendingNode: ErrorNode) = {
+    def createUnexpectedNodeDuringDomainTranslationError(offendingNode: errors.ErrorNode) = {
       val explanation = "The expression should not occur in domain expressions."
       val stackTrace = new Throwable().getStackTrace
 
