@@ -276,11 +276,13 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   def comment(str: String) = {
-    val sanitisedStr =
-      str.replaceAll("\r", "")
-         .replaceAll("\n", "\n; ")
+    if(str != null) {
+      val sanitisedStr =
+        str.replaceAll("\r", "")
+          .replaceAll("\n", "\n; ")
 
-    logToFile("; " + sanitisedStr)
+      logToFile("; " + sanitisedStr)
+    }
   }
 
   def fresh(name: String, argSorts: Seq[Sort], resultSort: Sort) = {

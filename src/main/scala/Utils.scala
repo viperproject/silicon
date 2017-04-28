@@ -182,7 +182,7 @@ package object utils {
   }
 
   object consistency {
-    type PositionedNode = silver.ast.Node with silver.ast.Positioned
+    type PositionedNode = silver.ast.Node with silver.ast.Positioned with silver.ast.Infoed
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
