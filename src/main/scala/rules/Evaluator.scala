@@ -486,7 +486,7 @@ object evaluator extends EvaluationRules with Immutable {
              *
              * See also https://bitbucket.org/viperproject/silicon/issues/276/.
              */
-            val triggerFreePre = pre.transform{case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info)}()
+            val triggerFreePre = pre.transform{case q: ast.Forall => q.copy(triggers = Nil)(q.pos, q.info, q.errT)}
             ast.utility.Expressions.instantiateVariables(triggerFreePre, func.formalArgs, eArgs)
           })
           val joinFunctionArgs = tArgs //++ c2a.quantifiedVariables.filterNot(tArgs.contains)

@@ -1,0 +1,12 @@
+method main()
+{
+    var x:Int := 1
+    foo(x)
+}
+
+method foo(y:Int) 
+requires y + 2 < 1
+ensures true
+{
+
+}

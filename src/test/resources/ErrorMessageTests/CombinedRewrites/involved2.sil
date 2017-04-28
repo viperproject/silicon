@@ -1,0 +1,4 @@
+method main()
+{
+    assert( !true || (!!true && false) || (false || false) )
+}

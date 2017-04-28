@@ -1,0 +1,17 @@
+define m2 {
+    assert(i - (5 + 3) > 8 )
+}
+
+define m1 {
+    assert(11 - i > 0)
+    m2
+}
+
+method main()
+{
+    var i:Int := 10
+    //assert(true && f(i))
+    assert(1 + 1 == 2)
+    m1
+
+}

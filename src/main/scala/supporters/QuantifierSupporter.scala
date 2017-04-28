@@ -8,6 +8,7 @@ package viper.silicon.supporters
 
 import viper.silicon.state.terms.{App, HeapDepFun, Trigger}
 import viper.silicon.state.terms._
+import viper.silver.ast.utility.Rewriter.Traverse
 
 trait QuantifierSupporter {
   def autoTrigger(q: Quantification): Quantification
@@ -46,14 +47,14 @@ class DefaultQuantifierSupporter(triggerGenerator: TriggerGenerator) extends Qua
       triggers map (trigger => {
         val heapIndepTrigger =
           Trigger(
-            trigger.p map (_.transform {
+            trigger.p map (_.transform({
               case app @ App(_: HeapDepFun, args) if args.head != Unit =>
                 val s = subst.getOrElseUpdate(args.head, fresh("s", sorts.Snap))
                 app.copy(args = s +: args.tail)
               case fvf: Application[_] if fvf.sort.isInstanceOf[sorts.FieldValueFunction] =>
                 val s = subst.getOrElseUpdate(fvf, fresh("fvf", fvf.sort))
                 s
-            }(recursive = _ => true)))
+            })(_ => true)))
         val snaps = subst.values /* A (lazy) iterable*/
         subst = subst.empty      /* subst.clear() would also clear the lazy iterable snaps */
 

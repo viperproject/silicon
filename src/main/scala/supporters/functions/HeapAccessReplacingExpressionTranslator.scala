@@ -108,12 +108,12 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
 
-        tQuant.transform { case v: Var =>
+        tQuant.transform({ case v: Var =>
           v.id match {
             case sid: SuffixedIdentifier if names.contains(sid.prefix) => Var(SimpleIdentifier(sid.prefix), v.sort)
             case _ => v
           }
-        }()
+        })()
 
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)

@@ -11,6 +11,7 @@ import viper.silver.components.StatefulComponent
 import viper.silver.verifier.VerificationError
 import viper.silver.verifier.errors.Internal
 import viper.silver.verifier.reasons.{FeatureUnsupported, UnexpectedNode}
+import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, Var}
 import viper.silicon.verifier.Verifier
@@ -117,13 +118,13 @@ package object utils {
 
     /** Note: be aware of Silver issue #95!*/
     def rewriteRangeContains(program: silver.ast.Program): silver.ast.Program =
-      program.transform(pre = {
+      program.transform({
         case e @ silver.ast.SeqContains(x, silver.ast.RangeSeq(a, b)) =>
           silver.ast.And(
             silver.ast.LeCmp(a, x)(e.pos),
             silver.ast.LtCmp(x, b)(e.pos)
           )(e.pos)
-      })(recursive = _ => true)
+      }, Traverse.TopDown)
 
     /** Aims to compute triggers for the given quantifier `forall` by successively trying
       * different strategies.
@@ -182,20 +183,20 @@ package object utils {
   }
 
   object consistency {
-    type PositionedNode = silver.ast.Node with silver.ast.Positioned with silver.ast.Infoed
+    type ErrorNode = silver.ast.Node with silver.ast.Positioned with silver.ast.TransformableErrors
 
     def check(program: silver.ast.Program) = (
          checkPermissions(program)
       ++ program.members.flatMap(m => checkFieldAccessesInTriggers(m, program))
       ++ checkInhaleExhaleAssertions(program))
 
-    def createUnsupportedPermissionExpressionError(offendingNode: PositionedNode) = {
+    def createUnsupportedPermissionExpressionError(offendingNode: ErrorNode) = {
       val message = s"Silicon doesn't support the permission expression $offendingNode."
 
       Internal(offendingNode, FeatureUnsupported(offendingNode, message))
     }
 
-    def checkPermissions(root: PositionedNode): Seq[VerificationError] =
+    def checkPermissions(root: ErrorNode): Seq[VerificationError] =
       root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
         case eps: silver.ast.EpsilonPerm => createUnsupportedPermissionExpressionError(eps) +: errors.flatten
         case _ => errors.flatten
@@ -240,8 +241,8 @@ package object utils {
       Internal(offendingNode, FeatureUnsupported(offendingNode, message))
     }
 
-    def checkInhaleExhaleAssertions(root: PositionedNode): Seq[VerificationError] = {
-      def collectInhaleExhaleAssertions(root: PositionedNode): Seq[silver.ast.InhaleExhaleExp] =
+    def checkInhaleExhaleAssertions(root: ErrorNode): Seq[VerificationError] = {
+      def collectInhaleExhaleAssertions(root: ErrorNode): Seq[silver.ast.InhaleExhaleExp] =
         root.deepCollect{case ie: silver.ast.InhaleExhaleExp if !ie.isPure => ie}
 
       root.reduceTree[Seq[VerificationError]]((n, errors) => n match {
@@ -259,7 +260,7 @@ package object utils {
 
     /* Unexpected nodes */
 
-    def createUnexpectedInhaleExhaleExpressionError(offendingNode: PositionedNode) = {
+    def createUnexpectedInhaleExhaleExpressionError(offendingNode: ErrorNode) = {
       val explanation =
         "InhaleExhale-expressions should have been eliminated by calling expr.whenInhaling/Exhaling."
 
@@ -268,7 +269,7 @@ package object utils {
       Internal(offendingNode, UnexpectedNode(offendingNode, explanation, stackTrace))
     }
 
-    def createUnexpectedNodeDuringDomainTranslationError(offendingNode: PositionedNode) = {
+    def createUnexpectedNodeDuringDomainTranslationError(offendingNode: ErrorNode) = {
       val explanation = "The expression should not occur in domain expressions."
       val stackTrace = new Throwable().getStackTrace
 

@@ -1,0 +1,22 @@
+field f:Int
+
+method main()
+{
+    var a: Ref
+    var res: Int
+    a := new(f)
+    a.f := 5
+    exhale(acc(a.f, wildcard))
+    res := foo(a, 4)
+    
+    assert(a.f == res)
+}
+
+method foo(x: Ref, y: Int) returns (r1: Int)
+    requires acc(x.f) && x.f == 5
+    ensures r1 == y
+    ensures acc(x.f, wildcard) && x.f == r1
+{
+    r1 := y
+    x.f := r1
+}

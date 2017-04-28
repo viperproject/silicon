@@ -7,11 +7,13 @@
 package viper.silicon.state.terms
 
 import scala.reflect.ClassTag
-import viper.silver.ast.utility.Visitor
+import viper.silver.ast.utility.{ViperStrategy, Visitor}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.{Map, toMap}
 import viper.silicon.state
 import viper.silicon.state.{Identifier, MagicWandChunk}
+import viper.silver.ast.utility.Rewriter.Traverse.Traverse
+import viper.silver.ast.utility.Rewriter._
 
 
 sealed trait Node
@@ -259,9 +261,7 @@ sealed trait Term extends Node {
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
-               : this.type =
-
-    state.utils.transform[this.type](this, pre)(recursive, post)
+  : this.type =  state.utils.transform[this.type](this, pre)(recursive, post)
 
   def replace(original: Term, replacement: Term): Term =
     if (original == replacement)
@@ -276,14 +276,13 @@ sealed trait Term extends Node {
       this.transform{case t: T if replacements.contains(t) => replacements(t)}()
 
   def replace(originals: Seq[Term], replacements: Seq[Term]): Term = {
-//    assert(originals.length == replacements.length)
+    //    assert(originals.length == replacements.length)
 
     if (originals.isEmpty)
       this
     else
       this.replace(toMap(originals.zip(replacements)))
   }
-
   def contains(t: Term): Boolean = this.existsDefined{case `t` =>}
 
   lazy val freeVariables =
