@@ -91,17 +91,20 @@ class Z3ProverStdIO(uniqueId: String,
     start()
   }
 
+  // the statement input.close() does not always terminate (e.g. if there is data left to be read)
+  // therefore it makes sense to first kill the z3 process, because then the channel is closed from the other side first
+  // resulting in the close() method to terminate
   def stop() {
     this.synchronized {
       logfileWriter.flush()
       output.flush()
 
+      z3.destroyForcibly()
+      z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
+
       logfileWriter.close()
       input.close()
       output.close()
-
-      z3.destroyForcibly()
-      z3.waitFor(10, TimeUnit.SECONDS) /* Makes the current thread wait until the process has been shut down */
 
       termConverter.stop()
     }
