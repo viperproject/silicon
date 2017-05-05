@@ -209,15 +209,17 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
         case ee: ExecutionException =>
           /* If possible, report the real exception that has been wrapped in
-           * the ExecutionException. The wrapping is due to using a future.
+           * one or more ExecutionExceptions. The wrapping is due to using futures.
            */
-          val ex =
-            if (ee.getCause != null) ee.getCause
-            else ee
+          var cause: Throwable = ee
+          do {
+            cause = cause.getCause
+          } while (cause.isInstanceOf[ExecutionException])
 
+          handleThrowable(cause)
+
+        case ex: Exception =>
           handleThrowable(ex)
-
-        case ex: Exception => handleThrowable(ex)
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
