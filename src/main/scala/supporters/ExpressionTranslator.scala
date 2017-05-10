@@ -6,10 +6,10 @@
 
 package viper.silicon.supporters
 
-import viper.silver.ast
 import viper.silicon.rules.functionSupporter
-import viper.silicon.state.{Identifier, SymbolConverter}
+import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silver.ast
 
 trait ExpressionTranslator {
   /* TODO: Shares a lot of code with DefaultEvaluator. Unfortunately, it doesn't seem to be easy to
@@ -205,8 +205,8 @@ trait ExpressionTranslator {
              | _: ast.MagicWand
              | _: ast.FoldingGhostOp
              | _: ast.UnfoldingGhostOp
-             | _: ast.ApplyingGhostOp
-             | _: ast.PackagingGhostOp
+//             | _: ast.ApplyingGhostOp
+//             | _: ast.PackagingGhostOp
              =>
 
         sys.error(s"Found unexpected expression $exp (${exp.getClass.getName}})")

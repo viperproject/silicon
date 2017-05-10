@@ -6,9 +6,6 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -18,11 +15,14 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
+  import consumer._
   import evaluator._
   import producer._
-  import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
     ???
@@ -90,12 +90,11 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                  : VerificationResult = {
 
     val s1 = s.copy(exhaleExt = false)
-    val ghostFreeWand = wand.withoutGhostOperations
-    val es = ghostFreeWand.subexpressionsToEvaluate(Verifier.program)
+    val es = wand.subexpressionsToEvaluate(Verifier.program)
 
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
       val s3 = s2.copy(exhaleExt = s.exhaleExt)
-      Q(s3, MagicWandChunk(ghostFreeWand, s3.g.values, ts), v1)})
+      Q(s3, MagicWandChunk(wand, s3.g.values, ts), v1)})
   }
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
@@ -213,7 +212,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //  private var cnt = 0L
 //  private val packageLogger = LoggerFactory.getLogger("package")
 
-  def packageWand(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
+  def packageWand(s: State, wand: ast.MagicWand, proofScript: ast.Seqn, pve: PartialVerificationError, v: Verifier)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
@@ -300,8 +299,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
 //        say(s"done: produced LHS ${wand.left}")
 //        say(s"next: consume RHS ${wand.right}")
-        consume(s2, wand.right, pve, v2)((s3, _, v3) => {
-          val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
+        executor.execs(s2, proofScript.ss, v2)((proofScriptState, proofScriptVerifier) => {
+          consume(proofScriptState.copy(lhsHeap = Some(sLhs.h)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
+            val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
                            //h = s.h, /* Temporarily */
                            exhaleExt = false,
                            lhsHeap = None,
@@ -309,59 +309,59 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            consumedChunks = Stack(),
                            letBoundVars = Nil)
 
-//          say(s"done: consumed RHS ${wand.right}")
-//          say(s"next: create wand chunk")
-          val preMark = v3.decider.setPathConditionMark()
-          magicWandSupporter.createChunk(s4, wand, pve, v3)((s5, ch, v4) => {
-//            say(s"done: create wand chunk: $ch")
-            pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
-            magicWandChunk = ch
+            //          say(s"done: consumed RHS ${wand.right}")
+            //          say(s"next: create wand chunk")
+            val preMark = v3.decider.setPathConditionMark()
+            magicWandSupporter.createChunk(s4, wand, pve, v3)((s5, ch, v4) => {
+              //            say(s"done: create wand chunk: $ch")
+              pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
+              magicWandChunk = ch
               /* TODO: Assert that all produced chunks are identical (due to
                * branching, we might get here multiple times per package).
                */
 
-//            lnsay(s"-- reached local end of packageWand $myId --")
+              //            lnsay(s"-- reached local end of packageWand $myId --")
 
-//            lnsay(s"s3.consumedChunks:", 2)
-//            s3.consumedChunks.foreach(x => say(x.toString(), 3))
+              //            lnsay(s"s3.consumedChunks:", 2)
+              //            s3.consumedChunks.foreach(x => say(x.toString(), 3))
 
-            assert(s3.consumedChunks.length <= allConsumedChunks.length)
+              assert(s3.consumedChunks.length <= allConsumedChunks.length)
               /* s3.consumedChunks can have fewer layers due to infeasible execution paths,
                * as illustrated by test case wands/regression/folding_inc1.sil.
                * Hence the at-most comparison.
                */
 
-            val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
-              s3.consumedChunks.map(pairs => {
-                val cchs: MMap[Stack[Term], MList[BasicChunk]] = MMap()
+              val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
+                s3.consumedChunks.map(pairs => {
+                  val cchs: MMap[Stack[Term], MList[BasicChunk]] = MMap()
 
-                pairs.foreach {
-                  case (guards, chunk) => cchs.getOrElseUpdate(guards, MList()) += chunk
-                }
+                  pairs.foreach {
+                    case (guards, chunk) => cchs.getOrElseUpdate(guards, MList()) += chunk
+                  }
 
-                cchs
-              })
+                  cchs
+                })
 
-//            say(s"consumedChunks:", 2)
-//            consumedChunks.foreach(x => say(x.toString(), 3))
+              //            say(s"consumedChunks:", 2)
+              //            consumedChunks.foreach(x => say(x.toString(), 3))
 
-            assert(consumedChunks.length <= allConsumedChunks.length)
+              assert(consumedChunks.length <= allConsumedChunks.length)
               /* At-most comparison due to infeasible execution paths */
 
-            consumedChunks.zip(allConsumedChunks).foreach { case (cchs, allcchs) =>
-              cchs.foreach { case (guards, chunks) =>
-                allcchs.get(guards) match {
-                  case Some(chunks1) => assert(chunks1 == chunks)
-                  case None => allcchs(guards) = chunks
+              consumedChunks.zip(allConsumedChunks).foreach { case (cchs, allcchs) =>
+                cchs.foreach { case (guards, chunks) =>
+                  allcchs.get(guards) match {
+                    case Some(chunks1) => assert(chunks1 == chunks)
+                    case None => allcchs(guards) = chunks
+                  }
                 }
               }
-            }
 
-//            say(s"allConsumedChunks:", 2)
-//            allConsumedChunks.foreach(x => say(x.toString(), 3))
+              //            say(s"allConsumedChunks:", 2)
+              //            allConsumedChunks.foreach(x => say(x.toString(), 3))
 
-            finalStates :+= s5
-            Success()})})})})
+              finalStates :+= s5
+              Success()})})})})})
 
 //    cnt -= 1
 //    lnsay(s"[end packageWand $myId]")

@@ -6,22 +6,21 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.cfg
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.errors._
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons._
 import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.state.{FieldChunk, Heap, State, Store}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
+import viper.silicon.state.{FieldChunk, Heap, State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.{ast, cfg}
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.errors._
+import viper.silver.verifier.reasons._
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -383,6 +382,12 @@ object executor extends ExecutionRules with Immutable {
 //              SymbExLogger.currentLog().collapse(null, sepIdentifier)
               Q(s6, v3)})})})
 
+      case fold @ ast.Fold(accessPredicate) if s.exhaleExt => {
+        val pve = FoldFailed(fold)
+        magicWandSupporter.foldingPredicate(s.copy(h = s.h), accessPredicate, pve, v)((s1, _, v1) => {
+          Q(s1, v1)
+        })
+      }
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
@@ -395,6 +400,12 @@ object executor extends ExecutionRules with Immutable {
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
 
+      case unfold @ ast.Unfold(accessPredicate) if s.exhaleExt => {
+        val pve = UnfoldFailed(unfold)
+        magicWandSupporter.unfoldingPredicate(s.copy(h = s.h), accessPredicate, pve, v)((s1, _, v1) => {
+          Q(s1, v1)
+        })
+      }
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
@@ -407,22 +418,38 @@ object executor extends ExecutionRules with Immutable {
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))
 
-      case pckg @ ast.Package(wand) =>
+      case pckg @ ast.Package(wand, proofScript) =>
         val pve = PackageFailed(pckg)
-        val s1 = s.copy(reserveHeaps = Heap() :: s.h :: Nil,
-                        recordEffects = true,
-                        consumedChunks = Nil :: Nil,
-                        letBoundVars = Nil)
-        magicWandSupporter.packageWand(s1, wand, pve, v)((s2, chWand, v1) => {
-          assert(s2.reserveHeaps.length == 1) /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
-          val s3 = s2.copy(h = s2.reserveHeaps.head + chWand,
-                           exhaleExt = false,
-                           reserveHeaps = Nil,
-                           lhsHeap = None,
-                           recordEffects = false,
-                           consumedChunks = Stack(),
-                           letBoundVars = Nil)
-          Q(s3, v1)})
+        if (s.exhaleExt) {
+          magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
+            val hOps = s1.reserveHeaps.head + chWand
+            val s2 = s1.copy(exhaleExt = true,
+              reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
+              lhsHeap = None)
+            assert(s2.reserveHeaps.length == s.reserveHeaps.length)
+            assert(s2.consumedChunks.length == s.consumedChunks.length)
+            assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
+            val sEmp = s2.copy(h = Heap())
+            Q(sEmp, v1)
+          })
+        } else {
+          val s1 = s.copy(reserveHeaps = Heap() :: s.h :: Nil,
+            recordEffects = true,
+            consumedChunks = Nil :: Nil,
+            letBoundVars = Nil)
+          magicWandSupporter.packageWand(s1, wand, proofScript, pve, v)((s2, chWand, v1) => {
+            assert(s2.reserveHeaps.length == 1)
+            /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+            val s3 = s2.copy(h = s2.reserveHeaps.head + chWand,
+              exhaleExt = false,
+              reserveHeaps = Nil,
+              lhsHeap = None,
+              recordEffects = false,
+              consumedChunks = Stack(),
+              letBoundVars = Nil)
+            Q(s3, v1)
+          })
+        }
 
       case apply @ ast.Apply(e) =>
         /* TODO: Try to unify this code with that from DefaultConsumer/applying */
@@ -445,16 +472,39 @@ object executor extends ExecutionRules with Immutable {
 
         e match {
           case wand: ast.MagicWand =>
-            consume(s, wand, pve, v)((s1, _, v1) => {
-              QL(s1, s1.g, wand, v1)})
+            if (s.exhaleExt) {
+
+              magicWandSupporter.applyingWand(s.copy(h = s.h), s.g, wand, ast.And(wand.left, wand)(wand.left.pos, wand.left.info), pve, v)((s1, _, v1) => {
+                val s5 = s1.copy(g = s.g,
+                  lhsHeap = None)
+                val s6 = stateConsolidator.consolidate(s5, v1)
+                Q(s6, v1)
+              })
+            } else {
+              consume(s, wand, pve, v)((s1, _, v1) => {
+                QL(s1, s1.g, wand, v1)
+              })
+            }
 
           case x: ast.AbstractLocalVar =>
             val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            magicWandSupporter.getMatchingChunk(s.h, chWand, v) match {
-              case Some(ch) =>
-                QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.ghostFreeWand, v)
-              case None =>
-                Failure(pve dueTo NamedMagicWandChunkNotFound(x))}
+            if (s.exhaleExt) {
+              val wand = chWand.ghostFreeWand
+              magicWandSupporter.applyingWand(s.copy(h = s.h), s.g, wand, ast.And(wand, wand.left)(wand.left.pos, wand.left.info), pve, v)((s1, _, v1) => {
+                val s5 = s1.copy(g = s.g,
+                  lhsHeap = None)
+                val s6 = stateConsolidator.consolidate(s5, v1)
+                Q(s6, v1)
+              })
+            } else {
+              magicWandSupporter.getMatchingChunk(s.h, chWand, v) match {
+                case Some(ch) =>
+                  QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.ghostFreeWand, v)
+                case None =>
+                  Failure(pve dueTo NamedMagicWandChunkNotFound(x))
+              }
+            }
+
 
           case _ => sys.error(s"Expected a magic wand, but found node $e")}
 

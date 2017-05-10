@@ -6,18 +6,15 @@
 
 package viper.silicon.rules
 
-import org.slf4s.{LoggerFactory, Logging}
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.state._
+import viper.silicon.state._
+import viper.silicon.state.terms._
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.HeuristicsFailed
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silicon.interfaces._
-import viper.silicon.interfaces.state._
-import viper.silicon.state.terms._
-import viper.silicon.state._
-import viper.silicon.supporters.PredicateVerificationUnit
-import viper.silicon.verifier.Verifier
-import viper.silicon.{Config, Stack}
 
 object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
   import executor._
@@ -329,7 +326,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
     if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: packaging $wand")
       /* TODO: The next block is an exact copy of the corresponding case in the consumer. Reuse code! */
-      magicWandSupporter.packageWand(s.copy(h = h), wand, pve, v)((s1, chWand, v1) => {
+      magicWandSupporter.packageWand(s.copy(h = h), wand, ast.Seqn(Seq())(), pve, v)((s1, chWand, v1) => {
         val hOps = s1.reserveHeaps.head + chWand
         val s2 = s1.copy(exhaleExt = true,
                          reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
@@ -341,7 +338,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
         Q(sEmp, sEmp.h, v1)})
     } else {
 //      heuristicsLogger.debug(s"  reaction: package $wand")
-      val packageStmt = ast.Package(wand)()
+      val packageStmt = ast.Package(wand, ast.Seqn(Seq())())()
       exec(s.copy(h = h), packageStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
     }
