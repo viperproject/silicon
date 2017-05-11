@@ -50,7 +50,7 @@ class ErrorMessageTests extends FunSuite {
     val files = Seq("simple")
 
     val strat = ViperStrategy.Slim({
-      case a: Assert => Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r) => AssertFailed(a, r) }))
+      case a: Assert => Exhale(a.exp)(a.pos, a.info, ErrTrafo({ case ExhaleFailed(_, r, _) => AssertFailed(a, r) }))
       case o@And(f: FalseLit, right) => FalseLit()()
       case o@And(left, f: FalseLit) => FalseLit()()
     })
@@ -86,11 +86,11 @@ class ErrorMessageTests extends FunSuite {
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
         Seqn(Seq(
-          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo( { case AssertFailed(as, r) => LoopInvariantNotEstablished(as.exp, r) })),
+          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo( { case AssertFailed(as, r, _) => LoopInvariantNotEstablished(as.exp, r) })),
           If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
           Label("loop" + count, Seq(TrueLit()()))(w.pos, w.info),
           w.body,
-          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo({ case AssertFailed(as, r) => LoopInvariantNotPreserved(as.exp, r) })),
+          Assert(invars)(w.invs.head.pos, w.invs.head.info, ErrTrafo({ case AssertFailed(as, r, _) => LoopInvariantNotPreserved(as.exp, r) })),
           If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
           Label("skiploop" + count, Seq(TrueLit()()))(w.pos, w.info)
         ))()
@@ -148,11 +148,11 @@ class ErrorMessageTests extends FunSuite {
     }, Map.empty[Exp, Exp])
 
     val preError = (m: MethodCall) => ErrTrafo({
-      case ExhaleFailed(_, r) => PreconditionInCallFalse(m, r)
+      case ExhaleFailed(_, r, _) => PreconditionInCallFalse(m, r)
     })
 
     val postError = (x: Exp, m: Contracted) => ErrTrafo({
-      case InhaleFailed(_, r) => PostconditionViolated(x, m, r)
+      case InhaleFailed(_, r, _) => PostconditionViolated(x, m, r)
     })
 
     val strat = ViperStrategy.Ancestor({
