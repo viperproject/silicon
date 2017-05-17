@@ -7,6 +7,7 @@
 package viper.silicon.supporters
 
 import ch.qos.logback.classic.Logger
+import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
@@ -44,7 +45,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
 
-//      SymbExLogger.insertMember(method, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+      SymbExLogger.insertMember(method, null, v.decider.pcs)
 
       val pres = method.pres
       val posts = method.posts
@@ -75,10 +76,10 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             val s2a = s2.copy(oldHeaps = s2.oldHeaps + (Verifier.PRE_STATE_LABEL -> s2.h))
             (  executionFlowController.locally(s2a, v2)((s3, v3) => {
                   val s4 = s3.copy(h = Heap())
-//                 val impLog = new WellformednessCheckRecord(posts, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
-//                 val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+                  val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
+                  val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
                   produces(s4, freshSnap, posts, ContractNotWellformed, v3)((_, v4) => {
-//                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
+                    SymbExLogger.currentLog().collapse(null, sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {

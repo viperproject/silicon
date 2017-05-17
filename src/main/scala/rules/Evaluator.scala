@@ -10,7 +10,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
-import viper.silicon.{Map, TriggerSets}
+import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -84,9 +84,9 @@ object evaluator extends EvaluationRules with Immutable {
           (Q: (State, Term, Verifier) => VerificationResult)
           : VerificationResult = {
 
-//    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, s, v.decider.pcs))
     eval3(s, e, pve, v)((s1, t, v1) => {
-//      SymbExLogger.currentLog().collapse(e, sepIdentifier)
+      SymbExLogger.currentLog().collapse(e, sepIdentifier)
       Q(s1, t, v1)})
   }
 
