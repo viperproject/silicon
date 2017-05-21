@@ -6,15 +6,16 @@
 
 package viper.silicon.rules
 
-import scala.collection.mutable
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.{FieldChunk, PredicateChunk, State}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
-import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
+import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+
+import scala.collection.mutable
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -190,11 +191,14 @@ object producer extends ProductionRules with Immutable {
                          a: ast.Exp,
                          pve: PartialVerificationError,
                          v: Verifier)
-                        (Q: (State, Verifier) => VerificationResult)
+                        (continuation: (State, Verifier) => VerificationResult)
                         : VerificationResult = {
 
     v.logger.debug(s"\nPRODUCE ${viper.silicon.utils.ast.sourceLineColumn(a)}: $a")
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
+
+    val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
+      continuation(magicWandSupporter.moveToReserveHeap(state, s, verifier).copy(h=state.h), verifier)
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>

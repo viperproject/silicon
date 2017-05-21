@@ -211,9 +211,13 @@ object executor extends ExecutionRules with Immutable {
       Q(s1, v1)})
   }
 
-  def exec2(s: State, stmt: ast.Stmt, v: Verifier)
-          (Q: (State, Verifier) => VerificationResult)
+  def exec2(state: State, stmt: ast.Stmt, v: Verifier)
+          (continuation: (State, Verifier) => VerificationResult)
           : VerificationResult = {
+
+    val s = state.copy(h=magicWandSupporter.getEvalHeap(state))
+    val Q: (State, Verifier) => VerificationResult = (s, v) =>
+      continuation(magicWandSupporter.moveToReserveHeap(s, state, v), v)
 
     /* For debugging-purposes only */
     stmt match {
@@ -382,12 +386,6 @@ object executor extends ExecutionRules with Immutable {
 //              SymbExLogger.currentLog().collapse(null, sepIdentifier)
               Q(s6, v3)})})})
 
-      case fold @ ast.Fold(accessPredicate) if s.exhaleExt => {
-        val pve = FoldFailed(fold)
-        magicWandSupporter.foldingPredicate(s.copy(h = s.h), accessPredicate, pve, v)((s1, _, v1) => {
-          Q(s1, v1)
-        })
-      }
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
@@ -399,13 +397,6 @@ object executor extends ExecutionRules with Immutable {
                   predicateSupporter.fold(s2, predicate, tArgs, tPerm, pve, v2)(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
-
-      case unfold @ ast.Unfold(accessPredicate) if s.exhaleExt => {
-        val pve = UnfoldFailed(unfold)
-        magicWandSupporter.unfoldingPredicate(s.copy(h = s.h), accessPredicate, pve, v)((s1, _, v1) => {
-          Q(s1, v1)
-        })
-      }
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
@@ -418,7 +409,7 @@ object executor extends ExecutionRules with Immutable {
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))
 
-      case pckg @ ast.Package(wand, proofScript) =>
+      case pckg @ ast.Package(wand, proofScript) => {
         val pve = PackageFailed(pckg)
         if (s.exhaleExt) {
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
@@ -430,7 +421,7 @@ object executor extends ExecutionRules with Immutable {
             assert(s2.consumedChunks.length == s.consumedChunks.length)
             assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
             val sEmp = s2.copy(h = Heap())
-            Q(sEmp, v1)
+            continuation(sEmp, v1)
           })
         } else {
           val s1 = s.copy(reserveHeaps = Heap() :: s.h :: Nil,
@@ -449,9 +440,9 @@ object executor extends ExecutionRules with Immutable {
               letBoundVars = Nil)
             Q(s3, v1)
           })
-        }
+        }}
 
-      case apply @ ast.Apply(e) =>
+      case apply @ ast.Apply(e) => {
         /* TODO: Try to unify this code with that from DefaultConsumer/applying */
 
         val pve = ApplyFailed(apply)
@@ -462,8 +453,9 @@ object executor extends ExecutionRules with Immutable {
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          consume(s1.copy(g = g), wand.left, pve, v1)((s2, _, v2) => {
-            val s3 = s2.copy(lhsHeap = Some(s1.h))
+          val consumeState = s1.copy(g = g)
+          consume(consumeState, wand.left, pve, v1)((s2, _, v2) => {
+            val s3 = magicWandSupporter.moveToReserveHeap(s2, consumeState, v2).copy(lhsHeap = Some(s1.h))
             produce(s3, freshSnap, wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g,
                                lhsHeap = None)
@@ -471,32 +463,14 @@ object executor extends ExecutionRules with Immutable {
               Q(s6, v3)})})}
 
         e match {
-          case wand: ast.MagicWand =>
-            if (s.exhaleExt) {
+          case wand: ast.MagicWand => {
+            consume(s, wand, pve, v)((s1, _, v1) => {
+              QL(s1, s1.g, wand, v1)
+            })
+          }
 
-              magicWandSupporter.applyingWand(s.copy(h = s.h), s.g, wand, ast.And(wand.left, wand)(wand.left.pos, wand.left.info), pve, v)((s1, _, v1) => {
-                val s5 = s1.copy(g = s.g,
-                  lhsHeap = None)
-                val s6 = stateConsolidator.consolidate(s5, v1)
-                Q(s6, v1)
-              })
-            } else {
-              consume(s, wand, pve, v)((s1, _, v1) => {
-                QL(s1, s1.g, wand, v1)
-              })
-            }
-
-          case x: ast.AbstractLocalVar =>
+          case x: ast.AbstractLocalVar => {
             val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            if (s.exhaleExt) {
-              val wand = chWand.ghostFreeWand
-              magicWandSupporter.applyingWand(s.copy(h = s.h), s.g, wand, ast.And(wand, wand.left)(wand.left.pos, wand.left.info), pve, v)((s1, _, v1) => {
-                val s5 = s1.copy(g = s.g,
-                  lhsHeap = None)
-                val s6 = stateConsolidator.consolidate(s5, v1)
-                Q(s6, v1)
-              })
-            } else {
               magicWandSupporter.getMatchingChunk(s.h, chWand, v) match {
                 case Some(ch) =>
                   QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.ghostFreeWand, v)
@@ -506,7 +480,7 @@ object executor extends ExecutionRules with Immutable {
             }
 
 
-          case _ => sys.error(s"Expected a magic wand, but found node $e")}
+          case _ => sys.error(s"Expected a magic wand, but found node $e")}}
 
 
       /* These cases should not occur when working with the CFG-representation of the program. */

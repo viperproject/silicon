@@ -416,18 +416,6 @@ object consumer extends ConsumptionRules with Immutable {
           case _ => sys.error(s"Expected a magic wand, but found node $a")
         }
 
-      case ast.FoldingGhostOp(acc: ast.PredicateAccessPredicate, eIn) =>
-        heuristicsSupporter.tryOperation[Heap](s"folding $acc")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
-          magicWandSupporter.foldingPredicate(s1, acc, pve, v1)(QS)){case (s2, h2, v2) =>
-            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
-              Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
-
-      case ast.UnfoldingGhostOp(acc: ast.PredicateAccessPredicate, eIn) =>
-        heuristicsSupporter.tryOperation[Heap](s"unfolding $acc")(s, h, v)((s1, h1, v1, QS) => /* TODO: Why is h1 never used? */
-          magicWandSupporter.unfoldingPredicate(s1, acc, pve, v1)(QS)){case (s2, h2, v2) =>
-            consumeR(s2, h2, eIn, pve, v2)((s3, h3, _, v3) =>
-              Q(s3, h3, v3.decider.fresh(sorts.Snap), v3))}
-
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {
           Q(s1, h, t, v1)

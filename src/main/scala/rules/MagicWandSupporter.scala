@@ -12,12 +12,12 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.{IsNoAccess, IsNonNegative}
+import viper.silicon.state.terms.perms.IsNoAccess
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
+import viper.silver.verifier.reasons.InsufficientPermission
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   import consumer._
@@ -299,7 +299,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
 //        say(s"done: produced LHS ${wand.left}")
 //        say(s"next: consume RHS ${wand.right}")
-        executor.execs(s2, proofScript.ss, v2)((proofScriptState, proofScriptVerifier) => {
+        executor.exec(s2, proofScript.toCfg(), v2)((proofScriptState, proofScriptVerifier) => {
           consume(proofScriptState.copy(lhsHeap = Some(sLhs.h)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
             val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
                            //h = s.h, /* Temporarily */
@@ -469,141 +469,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     }
   }
 
-  def applyingWand(s: State, g: Store, wand: ast.MagicWand, lhsAndWand: ast.Exp, pve: PartialVerificationError, v: Verifier)
-                  (QI: (State, Heap, Verifier) => VerificationResult)
-                  : VerificationResult = {
-
-    assert(s.exhaleExt)
-    assert(s.reserveHeaps.head.values.isEmpty)
-
-    val s0 = s.copy(g = g,
-                    applyHeuristics = false)
-      /* Triggering heuristics, in particular, ghost operations (apply-/package-/(un)folding)
-       * during the first consumption of lhsAndWand doesn't work because the ghost operations
-       * potentially affect the reserve heaps, and not s.h. Since the latter is used by
-       * the second consumption of lhsAndWand, this might fail again. However, triggering
-       * heuristics in this situation won't help much, since only s.h is available during
-       * this consumption (but not the reserve heaps). Hence the second consumption is
-       * likely to fail anyway.
-       * Instead, the the whole invocation of applyingWand should be wrapped in a
-       * tryOperation. This will ensure that the effect of ghost operations triggered by
-       * heuristics are available to both consumes.
-       */
-
-    consume(s0.copy(h = Heap()), lhsAndWand, pve, v)((s1, _, v1) => { /* exhale_ext, s1.reserveHeaps = [σUsed', σOps', ...] */
-      val s2 = s1.copy(h = s1.reserveHeaps.head,
-                       reserveHeaps = Nil,
-                       exhaleExt = false)
-      consume(s2, lhsAndWand, pve, v1)((s3, _, v2) => { /* begin σUsed'.apply */
-        val s4 = s3.copy(lhsHeap = Some(s1.reserveHeaps.head))
-        produce(s4, freshSnap, wand.right, pve, v2)((s5, v3) => { /* end σUsed'.apply, σ3.h = σUsed'' */
-          val hOpsJoinUsed = stateConsolidator.merge(s.reserveHeaps(1), s5.h, v3)
-          val s6 = s5.copy(g = s.g,
-                           h = Heap(),
-                           reserveHeaps = Heap() +: hOpsJoinUsed +: s1.reserveHeaps.drop(2),
-                           exhaleExt = true,
-                           lhsHeap = s3.lhsHeap,
-                           applyHeuristics = s.applyHeuristics)
-          QI(s6, Heap(), v3)})})})
-  }
-
-  def unfoldingPredicate(s: State, acc: ast.PredicateAccessPredicate, pve: PartialVerificationError, v: Verifier)
-                        (QI: (State, Heap, Verifier) => VerificationResult)
-                        : VerificationResult = {
-
-    assert(s.exhaleExt)
-    assert(s.reserveHeaps.head.values.isEmpty)
-
-    val ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm) = acc
-    val predicate = Verifier.program.findPredicate(predicateName)
-
-    if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
-      val s0 = s.incCycleCounter(predicate)
-      eval(s0, ePerm, pve, v)((s1, tPerm, v1) =>
-        if (v1.decider.check(IsNonNegative(tPerm), Verifier.config.checkTimeout()))
-          evals(s1, eArgs, _ => pve, v1)((s2, tArgs, v2) => {
-            val sEmp = s2.copy(h = Heap())
-            consume(sEmp, acc, pve, v2)((s3, _, v3) => {/* exhale_ext, s3.reserveHeaps = [σUsed', σOps', ...] */
-              val s4 = s3.copy(h = s3.reserveHeaps.head,
-                               reserveHeaps = Nil,
-                               exhaleExt = false)
-              predicateSupporter.unfold(s4, predicate, tArgs, tPerm, pve, v3, pa)((s5, v4) => { /* s5.h = σUsed'' */
-                val hOpsJoinUsed = stateConsolidator.merge(s.reserveHeaps(1), s5.h, v4)
-                val s6 = s5.decCycleCounter(predicate)
-                           .copy(h = Heap(),
-                                 reserveHeaps = Heap() +: hOpsJoinUsed +: s3.reserveHeaps.drop(2),
-                                 exhaleExt = true)
-                QI(s6, Heap(), v4)})})})
-        else
-          Failure(pve dueTo NegativePermission(ePerm)))
-    } else {
-      Failure(pve dueTo InternalReason(acc, "Too many nested unfolding ghost operations."))
-    }
-  }
-
-  def foldingPredicate(s: State, acc: ast.PredicateAccessPredicate, pve: PartialVerificationError, v: Verifier)
-                      (QI: (State, Heap, Verifier) => VerificationResult)
-                      : VerificationResult = {
-
-    val ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm) = acc
-    val predicate = Verifier.program.findPredicate(predicateName)
-
-    if (s.cycles(predicate) < Verifier.config.recursivePredicateUnfoldings()) {
-      val s0 = s.incCycleCounter(predicate)
-      evals(s0, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-        eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-          v2.decider.assert(IsNonNegative(tPerm)) {
-            case true =>
-              foldingPredicate(s2, predicate, tArgs, tPerm, pve, v2, Some(pa))((s3, h1, v3) => { /* TODO: Why is h1 not used? */
-                val s4 = s3.decCycleCounter(predicate)
-                               .copy(h = Heap())
-                QI(s4, Heap(), v3)})
-          case false =>
-            Failure(pve dueTo NegativePermission(ePerm))}))
-    } else
-      Failure(pve dueTo InternalReason(acc, "Too many nested folding ghost operations."))
-  }
-
-  def foldingPredicate(s: State,
-                       predicate: ast.Predicate,
-                       tArgs: List[Term],
-                       tPerm: Term,
-                       pve: PartialVerificationError,
-                       v: Verifier,
-                       optPA: Option[ast.PredicateAccess] = None)
-                      (Q: (State, Heap, Verifier) => VerificationResult)
-                      : VerificationResult = {
-
-    assert(s.exhaleExt)
-    assert(s.reserveHeaps.head.values.isEmpty)
-
-    /* [2014-12-13 Malte] Changing the store doesn't interact well with the
-     * snapshot recorder, see the comment in PredicateSupporter.unfold.
-     * However, since folding cannot (yet) be used inside functions, we can
-     * still overwrite the binding of local variables in the store.
-     * An alternative would be to introduce fresh local variables, and to
-     * inject them into the predicate body. See commented code below.
-     *
-     * Note: If fresh local variables are introduced here, we should avoid
-     * introducing another sequence of local variables inside predicateSupporter.fold!
-     */
-    val gIns = Store(predicate.formalArgs map (_.localVar) zip tArgs)
-    val body = predicate.body.get /* Only non-abstract predicates can be folded */
-    val sEmp = s.copy(g = s.g + gIns,
-                      h = Heap())
-    consume(sEmp, body, pve, v)((s1, _, v1) => { /* exhale_ext, s1.reserveHeaps = [σUsed', σOps', ...] */
-      val s2 = s1.copy(g = s.g,
-                       h = s1.reserveHeaps.head,
-                       reserveHeaps = Nil,
-                       exhaleExt = false)
-      predicateSupporter.fold(s2, predicate, tArgs, tPerm, pve, v1)((s3, v2) => { /* s3.h = σUsed'' */
-        val hOpsJoinUsed = stateConsolidator.merge(s.reserveHeaps(1), s3.h, v2)
-        val s4 = s3.copy(h = Heap(),
-                         reserveHeaps = Heap() +: hOpsJoinUsed +: s1.reserveHeaps.drop(2),
-                         exhaleExt = true)
-        Q(s4, Heap(), v2)})})
-  }
-
   def transfer(s: State,
                name: String,
                args: Seq[Term],
@@ -665,6 +530,13 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     } else
       s.h
   }
+
+  def moveToReserveHeap(newState: State, originalState: State, v: Verifier): State =
+  if (newState.exhaleExt) {
+    val hOpsJoinUsed = stateConsolidator.merge(originalState.reserveHeaps(1), newState.h, v)
+    newState.copy(h = Heap(),
+        reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
+  } else newState
 
   def getMatchingChunk(h: Heap, chunk: MagicWandChunk, v: Verifier): Option[MagicWandChunk] = {
     val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }
