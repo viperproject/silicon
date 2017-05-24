@@ -7,14 +7,14 @@
 package viper.silicon.state
 
 import viper.silicon.common.Mergeable
-import viper.silver.ast
-import viper.silver.cfg.silver.SilverCfg
-import viper.silicon.{Map, Stack}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
+import viper.silicon.supporters.qps.{SummarisingFvfDefinition, SummarisingPsfDefinition}
+import viper.silicon.{Map, Stack}
+import viper.silver.ast
+import viper.silver.cfg.silver.SilverCfg
 
 final case class State(
          g: Store = Store(),
@@ -41,6 +41,7 @@ final case class State(
          permissionScalingFactor: Term = terms.FullPerm(),
 
          reserveHeaps: Stack[Heap] = Nil,
+         reserveCfgs: Stack[SilverCfg] = Stack(),
          exhaleExt: Boolean = false,
          lhsHeap: Option[Heap] = None, /* Used to interpret e in lhs(e) */
 
@@ -128,7 +129,7 @@ object State {
                  recordPossibleTriggers1, possibleTriggers1,
                  partiallyConsumedHeap1,
                  permissionScalingFactor1,
-                 reserveHeaps1, exhaleExt1, lhsHeap1,
+                 reserveHeaps1, reserveCfgs1, exhaleExt1, lhsHeap1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
                  recordEffects1, consumedChunks1, letBoundVars1,
                  qpFields1, fvfCache1, fvfPredicateCache1, fvfAsSnap1,
@@ -149,7 +150,7 @@ object State {
                      `recordPossibleTriggers1`, possibleTriggers2,
                      `partiallyConsumedHeap1`,
                      `permissionScalingFactor1`,
-                     `reserveHeaps1`, `exhaleExt1`, `lhsHeap1`,
+                     `reserveHeaps1`, `reserveCfgs1`, `exhaleExt1`, `lhsHeap1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
                      `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
                      `qpFields1`, fvfCache2, fvfPredicateCache2, `fvfAsSnap1`,

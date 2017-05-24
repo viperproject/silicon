@@ -102,7 +102,7 @@ object executor extends ExecutionRules with Immutable {
     block match {
       case cfg.StatementBlock(stmt) =>
         execs(s, stmt, v)((s1, v1) =>
-          follows(s1, s1.methodCfg.outEdges(block), IfFailed, v1)(Q))
+          follows(s1, magicWandSupporter.getOutEdges(s1, block), IfFailed, v1)(Q))
 
       case   _: cfg.PreconditionBlock[ast.Stmt, ast.Exp]
            | _: cfg.PostconditionBlock[ast.Stmt, ast.Exp] =>
@@ -188,7 +188,7 @@ object executor extends ExecutionRules with Immutable {
       case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
         val arps = vars map s.g.apply
         exec(s.setConstrainable(arps, true), body, v)((s1, v1) =>
-          follows(s1.setConstrainable(arps, false), s1.methodCfg.outEdges(block), Internal(_), v1)(Q))
+          follows(s1.setConstrainable(arps, false), magicWandSupporter.getOutEdges(s1, block), Internal(_), v1)(Q))
     }
   }
 
@@ -225,6 +225,8 @@ object executor extends ExecutionRules with Immutable {
       case _ =>
         v.logger.debug(s"\nEXECUTE ${viper.silicon.utils.ast.sourceLineColumn(stmt)}: $stmt")
         v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
+        if (s.reserveHeaps.nonEmpty)
+          v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
         v.decider.prover.comment("[exec]")
         v.decider.prover.comment(stmt.toString())
     }

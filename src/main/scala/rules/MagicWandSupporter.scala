@@ -16,6 +16,9 @@ import viper.silicon.state.terms.perms.IsNoAccess
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
+import viper.silver.ast.{Exp, Stmt}
+import viper.silver.cfg.Edge
+import viper.silver.cfg.silver.SilverCfg.SilverBlock
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 
@@ -271,6 +274,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     val r = executionFlowController.locally(sEmp, v)((s1, v1) => {
       produce(s1, freshSnap, wand.left, pve, v1)((sLhs, v2) => {
 
+        val proofScriptCfg = proofScript.toCfg()
 
         /* Expected shape of reserveHeaps is either
          *   [hEmp, hOuter]
@@ -281,6 +285,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         val s2 = sLhs.copy(g = s.g,
                            h = Heap(),
                            reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
+                           reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
                            lhsHeap = Some(sLhs.h),
                            recordEffects = true,
@@ -299,8 +304,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
 //        say(s"done: produced LHS ${wand.left}")
 //        say(s"next: consume RHS ${wand.right}")
-        executor.exec(s2, proofScript.toCfg(), v2)((proofScriptState, proofScriptVerifier) => {
-          consume(proofScriptState.copy(lhsHeap = Some(sLhs.h)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
+        executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
+          consume(proofScriptState.copy(lhsHeap = Some(sLhs.h), reserveCfgs = proofScriptState.reserveCfgs.drop(1)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
             val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
                            //h = s.h, /* Temporarily */
                            exhaleExt = false,
@@ -541,6 +546,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     newState.copy(h = Heap(),
         reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
   } else newState
+
+  def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =
+    if (s.exhaleExt)
+      s.reserveCfgs.head.outEdges(b)
+    else
+      s.methodCfg.outEdges(b)
 
   def getMatchingChunk(h: Heap, chunk: MagicWandChunk, v: Verifier): Option[MagicWandChunk] = {
     val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }
