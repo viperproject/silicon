@@ -217,7 +217,7 @@ object executor extends ExecutionRules with Immutable {
 
     val s = state.copy(h=magicWandSupporter.getExecutionHeap(state))
     val Q: (State, Verifier) => VerificationResult = (s, v) => {
-      continuation(magicWandSupporter.moveToReserveHeap(s, state, v), v)}
+      continuation(magicWandSupporter.moveToReserveHeap(s, v), v)}
 
     /* For debugging-purposes only */
     stmt match {
@@ -359,7 +359,7 @@ object executor extends ExecutionRules with Immutable {
               r && Q(s, v)
             } else
               consume(s, a, pve, v)((s1, _, v1) => {
-                val s2 = s1.copy(h = s.h)
+                val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
                 Q(s2, v1)})
         }
 
@@ -457,7 +457,7 @@ object executor extends ExecutionRules with Immutable {
            */
           val consumeState = s1.copy(g = g)
           consume(consumeState, wand.left, pve, v1)((s2, _, v2) => {
-            val s3 = magicWandSupporter.moveToReserveHeap(s2, consumeState, v2).copy(lhsHeap = Some(magicWandSupporter.getEvalHeap(s1)))
+            val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(lhsHeap = Some(magicWandSupporter.getEvalHeap(s1)))
             produce(s3, freshSnap, wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g,
                                lhsHeap = s1.lhsHeap)

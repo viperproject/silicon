@@ -540,9 +540,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     if (s.exhaleExt) s.reserveHeaps.head
     else s.h
 
-  def moveToReserveHeap(newState: State, originalState: State, v: Verifier): State =
+  def moveToReserveHeap(newState: State, v: Verifier): State =
   if (newState.exhaleExt) {
-    val hOpsJoinUsed = stateConsolidator.merge(originalState.reserveHeaps(1), newState.h, v)
+    val hOpsJoinUsed = stateConsolidator.merge(newState.reserveHeaps(1), newState.h, v)
     newState.copy(h = Heap(),
         reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
   } else newState
