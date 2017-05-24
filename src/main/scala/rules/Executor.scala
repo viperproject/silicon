@@ -15,12 +15,12 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.{FieldChunk, Heap, State, Store}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.{ast, cfg}
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
+import viper.silver.{ast, cfg}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -215,9 +215,9 @@ object executor extends ExecutionRules with Immutable {
           (continuation: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    val s = state.copy(h=magicWandSupporter.getEvalHeap(state))
-    val Q: (State, Verifier) => VerificationResult = (s, v) =>
-      continuation(magicWandSupporter.moveToReserveHeap(s, state, v), v)
+    val s = state.copy(h=magicWandSupporter.getExecutionHeap(state))
+    val Q: (State, Verifier) => VerificationResult = (s, v) => {
+      continuation(magicWandSupporter.moveToReserveHeap(s, state, v), v)}
 
     /* For debugging-purposes only */
     stmt match {
@@ -455,10 +455,10 @@ object executor extends ExecutionRules with Immutable {
            */
           val consumeState = s1.copy(g = g)
           consume(consumeState, wand.left, pve, v1)((s2, _, v2) => {
-            val s3 = magicWandSupporter.moveToReserveHeap(s2, consumeState, v2).copy(lhsHeap = Some(s1.h))
+            val s3 = magicWandSupporter.moveToReserveHeap(s2, consumeState, v2).copy(lhsHeap = Some(magicWandSupporter.getEvalHeap(s1)))
             produce(s3, freshSnap, wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g,
-                               lhsHeap = None)
+                               lhsHeap = s1.lhsHeap)
               val s6 = stateConsolidator.consolidate(s5, v3)
               Q(s6, v3)})})}
 

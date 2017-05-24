@@ -198,7 +198,7 @@ object producer extends ProductionRules with Immutable {
     v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
 
     val Q: (State, Verifier) => VerificationResult = (state, verifier) =>
-      continuation(magicWandSupporter.moveToReserveHeap(state, s, verifier).copy(h=state.h), verifier)
+      continuation(if (state.exhaleExt) state.copy(reserveHeaps = state.h +: state.reserveHeaps.drop(1)) else state, verifier)
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>

@@ -131,7 +131,8 @@ object evaluator extends EvaluationRules with Immutable {
               s2}
         else
           s2
-      val s4 = s3.copy(reserveHeaps = s.reserveHeaps,
+      val s4 = s3.copy(h = s.h,
+                       reserveHeaps = s.reserveHeaps,
                        exhaleExt = s.exhaleExt,
                        recordEffects = s.recordEffects)
       Q(s4, t, v1)})
