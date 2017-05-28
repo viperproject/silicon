@@ -62,7 +62,7 @@ class DefaultStateFormatter extends StateFormatter {
   }
 
   //Methods for SymbexLogger
-  def toJson(σ: State, π: PathConditionStack): String = {
+  def toJson(σ: State, π: Set[Term]): String = {
     val γStr = toJson(σ.g)
     val hStr = toJson(σ.h)
     val gStr = σ.oldHeaps.get(Verifier.PRE_STATE_LABEL) match {
@@ -85,9 +85,9 @@ class DefaultStateFormatter extends StateFormatter {
     if (values.isEmpty) "[]" else values.mkString("[\"", "\",\"", "\"]")
   }
 
-  private def toJson(π: PathConditionStack): String = {
+  private def toJson(π: Set[Term]): String = {
     /* Attention: Hides non-null and combine terms. */
-    val filteredPcs = π.branchConditions.filterNot {
+    val filteredPcs = π.filterNot {
       case c: BuiltinEquals if c.p0.isInstanceOf[Combine]
         || c.p1.isInstanceOf[Combine] => true
       case Not(BuiltinEquals(_, Null())) => true

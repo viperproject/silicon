@@ -783,7 +783,7 @@ sealed trait SymbolicRecord {
   // However, the recording happens to early such that the wrong
   // PathConditionStack Object is stored when using the PathConditionStack
   // TODO: Oops.
-  val pcs: PathConditionStack
+  val pcs: Set[Term]
   var subs = List[SymbolicRecord]()
 
   def toTypeString(): String
@@ -824,7 +824,7 @@ trait SequentialRecord extends SymbolicRecord
 class MethodRecord(v: ast.Method, s: State, p: PathConditionStack) extends MemberRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "method"
@@ -844,7 +844,7 @@ class MethodRecord(v: ast.Method, s: State, p: PathConditionStack) extends Membe
 class PredicateRecord(v: ast.Predicate, s: State, p: PathConditionStack) extends MemberRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "predicate"
@@ -864,7 +864,7 @@ class PredicateRecord(v: ast.Predicate, s: State, p: PathConditionStack) extends
 class FunctionRecord(v: ast.Function, s: State, p: PathConditionStack) extends MemberRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "function"
@@ -884,7 +884,7 @@ class FunctionRecord(v: ast.Function, s: State, p: PathConditionStack) extends M
 class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends SequentialRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "execute"
@@ -899,7 +899,7 @@ class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends Sequen
 class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends SequentialRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "evaluate"
@@ -914,7 +914,7 @@ class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequen
 class ProduceRecord(v: ast.Exp, s: State, p: PathConditionStack) extends SequentialRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "produce"
@@ -930,7 +930,7 @@ class ConsumeRecord(v: ast.Exp, s: State, p: PathConditionStack)
   extends SequentialRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "consume"
@@ -947,7 +947,7 @@ class WellformednessCheckRecord(v: Seq[ast.Exp], s: State, p: PathConditionStack
   val value = null
   val conditions = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "WellformednessCheck"
@@ -963,7 +963,7 @@ class IfThenElseRecord(v: ast.Exp, s: State, p: PathConditionStack)
   val value = v
   //meaningless since there is no directly usable if-then-else structure in the AST
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "IfThenElse"
@@ -1020,7 +1020,7 @@ class CondExpRecord(v: ast.Exp, s: State, p: PathConditionStack, env: String)
   extends MultiChildOrderedRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
   val environment = env
 
   def toTypeString(): String = {
@@ -1077,7 +1077,7 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
   extends MultiChildUnorderedRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
   val environment = env
 
   def toTypeString(): String = {
@@ -1129,7 +1129,7 @@ class GlobalBranchRecord(v: ast.Exp, s: State, p: PathConditionStack, env: Strin
 class CommentRecord(str: String, s: State, p: PathConditionStack) extends SequentialRecord {
   val value = null
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "Comment"
@@ -1160,7 +1160,7 @@ class MethodCallRecord(v: ast.MethodCall, s: State, p: PathConditionStack)
   extends MultiChildOrderedRecord {
   val value = v
   val state = s
-  val pcs = p
+  val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
     "MethodCall"

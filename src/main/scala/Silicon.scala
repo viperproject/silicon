@@ -347,21 +347,21 @@ class SiliconFrontend extends SilFrontend {
 
 object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
-    //try {
+    try {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
-//    } finally {
-//      siliconInstance.stop()
-//        /* TODO: This currently seems necessary to make sure that Z3 is terminated
-//         *       if Silicon is supposed to terminate prematurely because of a
-//         *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
-//         *       at the point where the TimeoutException is caught, but that doesn't
-//         *       seem to work. A few forum posts mentioned that Process.destroy
-//         *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
-//         *       the process to kill has no input/output data left in the
-//         *       corresponding streams.
-//         */
-//    }
+    } finally {
+        siliconInstance.stop()
+        /* TODO: This currently seems necessary to make sure that Z3 is terminated
+         *       if Silicon is supposed to terminate prematurely because of a
+         *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
+         *       at the point where the TimeoutException is caught, but that doesn't
+         *       seem to work. A few forum posts mentioned that Process.destroy
+         *       (ultimately used by Z3ProverStdIO) only works (i.e. terminates) if
+         *       the process to kill has no input/output data left in the
+         *       corresponding streams.
+         */
+    }
 
     val exitCode =
       if (   config.error.nonEmpty /* Handling command line options failed */
