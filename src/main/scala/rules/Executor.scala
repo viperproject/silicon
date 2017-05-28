@@ -128,7 +128,7 @@ object executor extends ExecutionRules with Immutable {
              */
 
             /* Havoc local variables that are assigned to in the loop body */
-            val wvs = s.methodCfg.writtenVars(block).filterNot(_.typ == ast.Wand)
+            val wvs = s.methodCfg.writtenVars(block)
               /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
@@ -245,18 +245,9 @@ object executor extends ExecutionRules with Immutable {
         Q(s.copy(g = s.g + (x -> t)), v)
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
-        x.typ match {
-          case ast.Wand =>
-            assert(rhs.isInstanceOf[ast.MagicWand], s"Expected magic wand but found $rhs (${rhs.getClass.getName}})")
-            val wand = rhs.asInstanceOf[ast.MagicWand]
-            val pve = LetWandFailed(ass)
-            magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
-              Q(s1.copy(g = s1.g + (x, MagicWandChunkTerm(chWand))), v1))
-          case _ =>
-            eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, v1) => {
-              val t = ssaifyRhs(tRhs, x.name, x.typ, v)
-              Q(s1.copy(g = s1.g + (x, t)), v1)})
-        }
+        eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, v1) => {
+          val t = ssaifyRhs(tRhs, x.name, x.typ, v)
+          Q(s1.copy(g = s1.g + (x, t)), v1)})
 
       /* Assignment for a field that contains quantified chunks */
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
@@ -470,17 +461,6 @@ object executor extends ExecutionRules with Immutable {
               QL(s1, s1.g, wand, v1)
             })
           }
-
-          case x: ast.AbstractLocalVar => {
-            val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-              magicWandSupporter.getMatchingChunk(s.h, chWand, v) match {
-                case Some(ch) =>
-                  QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.ghostFreeWand, v)
-                case None =>
-                  Failure(pve dueTo NamedMagicWandChunkNotFound(x))
-              }
-            }
-
 
           case _ => sys.error(s"Expected a magic wand, but found node $e")}}
 

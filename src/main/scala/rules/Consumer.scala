@@ -368,8 +368,8 @@ object consumer extends ConsumptionRules with Immutable {
       case _: ast.InhaleExhaleExp =>
         Failure(viper.silicon.utils.consistency.createUnexpectedInhaleExhaleExpressionError(a))
 
-      /* Handle wands or wand-typed variables */
-      case _ if a.typ == ast.Wand && magicWandSupporter.isDirectWand(a) =>
+      /* Handle wands */
+      case wand: ast.MagicWand =>
         def QL(s: State, h: Heap, chWand: MagicWandChunk, wand: ast.MagicWand, ve: VerificationError, v: Verifier) = {
           heuristicsSupporter.tryOperation[Heap, Term](s"consume wand $wand")(s, h, v)((s1, h1, v1, QS) => {
             val hs =
@@ -403,18 +403,9 @@ object consumer extends ConsumptionRules with Immutable {
               case _ => Failure(ve)}
           })(Q)
         }
-
-        a match {
-          case wand: ast.MagicWand =>
-            magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
-              val ve = pve dueTo MagicWandChunkNotFound(wand)
-              QL(s1, h, chWand, wand, ve, v1)})
-          case x: ast.AbstractLocalVar =>
-            val tWandChunk = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            val ve = pve dueTo NamedMagicWandChunkNotFound(x)
-            QL(s, h, tWandChunk, tWandChunk.ghostFreeWand, ve, v)
-          case _ => sys.error(s"Expected a magic wand, but found node $a")
-        }
+        magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) => {
+          val ve = pve dueTo MagicWandChunkNotFound(wand)
+          QL(s1, h, chWand, wand, ve, v1)})
 
       case _ =>
         evalAndAssert(s, a, pve, v)((s1, t, v1) => {

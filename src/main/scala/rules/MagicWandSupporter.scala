@@ -82,12 +82,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //    result
 //  }
 
-  def isDirectWand(exp: ast.Exp) = exp match {
-    case wand: ast.MagicWand => true
-    case v: ast.AbstractLocalVar => v.typ == ast.Wand
-    case _ => false
-  }
-
   def createChunk(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
