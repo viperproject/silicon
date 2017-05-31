@@ -236,7 +236,7 @@ object executor extends ExecutionRules with Immutable {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> s.h))
+        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
@@ -349,8 +349,8 @@ object executor extends ExecutionRules with Immutable {
                   Success())
               r && Q(s, v)
             } else
-              consume(s, a, pve, v)((s1, _, v1) => {
-                val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps)
+              consume(s.copy(recordEffects = false), a, pve, v)((s1, _, v1) => {
+                val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps, recordEffects = s.recordEffects)
                 Q(s2, v1)})
         }
 

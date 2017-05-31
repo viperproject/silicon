@@ -243,7 +243,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //    say("c.reserveHeaps:")
 //    s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
 
-    val stackSize = 3 + s.reserveHeaps.tail.size
+    val stackSize = 2 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
     var allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize - 1)(MMap())
       /* Record consumptions (transfers) from all heaps except the top-most (which is hUsed,
@@ -278,7 +278,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
          */
         val s2 = sLhs.copy(g = s.g,
                            h = Heap(),
-                           reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
+                           reserveHeaps = Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
                            lhsHeap = Some(sLhs.h),
@@ -400,7 +400,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
         assert(finalStates.map(_.reserveHeaps).map(_.length).toSet.size == 1)
         val joinedReserveHeaps: Stack[MList[Chunk]] = s.reserveHeaps.tail.map(h => MList() ++ h.values) /* [Remainder reserveHeaps] (match code above) */
-        assert(joinedReserveHeaps.length == allConsumedChunks.length - 2)
+        assert(joinedReserveHeaps.length == allConsumedChunks.length - 1)
 
 //        lnsay("Computing joined reserve heaps. Initial stack:")
 //        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
@@ -413,7 +413,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
          *     they've already been recorded as being consumed from another heap (lower in the stack).
          *   - hLHS is discarded after the packaging is done
          */
-        allConsumedChunks = allConsumedChunks.drop(2) /* TODO: Don't record irrelevant chunks in the first place */
+        allConsumedChunks = allConsumedChunks.tail /* TODO: Don't record irrelevant chunks in the first place */
         assert(allConsumedChunks.length == joinedReserveHeaps.length)
 
 //        lnsay("Matching joined reserve heaps (as shown) with consumed chunks minus top two layers:")
