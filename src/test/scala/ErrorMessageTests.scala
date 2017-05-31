@@ -27,7 +27,7 @@ class ErrorMessageTests extends FunSuite {
     backend.start()
 
     frontend.init(backend)
-    val fileName = "ErrorMessageTests\\test.sil"
+    val fileName = "ErrorMessageTests/test.sil"
 
     val testFile = getClass.getClassLoader.getResource(fileName)
     assert(testFile != null, s"File $fileName not found")
@@ -46,7 +46,7 @@ class ErrorMessageTests extends FunSuite {
   }
 
   test("MeetingExample") {
-    val filePrefix = "ErrorMessageTests\\MeetingExample\\"
+    val filePrefix = "ErrorMessageTests/MeetingExample/"
     val files = Seq("simple")
 
     val strat = ViperStrategy.Slim({
@@ -69,7 +69,7 @@ class ErrorMessageTests extends FunSuite {
   }
 
   test("WhileToIfGoto") {
-    val filePrefix = "ErrorMessageTests\\WhileToIfGoto\\"
+    val filePrefix = "ErrorMessageTests/WhileToIfGoto/"
     val files = Seq("simple"/*, "nested"*/)
 
     val frontend = new DummyFrontend
@@ -103,7 +103,7 @@ class ErrorMessageTests extends FunSuite {
   }
 
   test("CombinedRewrites") {
-    val filePrefix = "ErrorMessageTests\\CombinedRewrites\\"
+    val filePrefix = "ErrorMessageTests/CombinedRewrites/"
     val files = Seq("simple", "involved", "involved2")
 
     val frontend = new DummyFrontend
@@ -134,7 +134,7 @@ class ErrorMessageTests extends FunSuite {
 
   test("MethodInlining") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
-    val filePrefix = "ErrorMessageTests\\MethodInlining\\"
+    val filePrefix = "ErrorMessageTests/MethodInlining/"
     val files = Seq("simple" , "withArgs", "withArgsNRes", "withFields")
 
     val frontend = new DummyFrontend
