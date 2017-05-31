@@ -1,9 +1,3 @@
-/* TODO: add a type argument H to the SymbExLogger.
- * Importing the type variable H as it is done currently
- * results in having to cast the argument c at each creation
- * of a Record type, e.g. ConsumeRecord
- */
-
 package viper.silicon
 
 import java.io.File
