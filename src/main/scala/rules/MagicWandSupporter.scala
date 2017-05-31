@@ -541,6 +541,13 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
   } else newState
 
+  def replaceChunk(state: State, oldChunk: BasicChunk, newChunk: BasicChunk): State =
+  if (state.exhaleExt) {
+    val hOpsNew = state.h + newChunk
+    val hUsedNew = state.reserveHeaps.tail.head - oldChunk
+    state.copy(h = hOpsNew, reserveHeaps = hOpsNew +: hUsedNew +: state.reserveHeaps.drop(2))
+  } else state.copy(h = state.h - oldChunk + newChunk)
+
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =
     if (s.exhaleExt)
       s.reserveCfgs.head.outEdges(b)

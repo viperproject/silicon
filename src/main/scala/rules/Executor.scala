@@ -273,7 +273,7 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
             chunkSupporter.withChunk(s2, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              Q(s3.copy(h = s3.h - fc + FieldChunk(tRcvr, field.name, t, fc.perm)), v3)})))
+              Q(magicWandSupporter.replaceChunk(s3, fc, FieldChunk(tRcvr, field.name, t, fc.perm)), v3)})))
 
       case ast.NewStmt(x, fields) =>
         val tRcvr = v.decider.fresh(x)

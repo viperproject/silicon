@@ -6,15 +6,15 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNoAccess
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.InsufficientPermission
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
@@ -249,8 +249,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                (Q: (State, BasicChunk, Verifier) => VerificationResult)
                : VerificationResult =
 
-    withChunk(s, s.h, name, args, optPerms, locacc, pve, v)((s1, h1, ch, v1) =>
-      Q(s1.copy(h = h1), ch, v1))
+    withChunk(s, magicWandSupporter.getEvalHeap(s), name, args, optPerms, locacc, pve, v)((s1, _, ch, v1) =>
+      Q(s1, ch, v1))
 
   def getChunk(h: Heap, name: String, args: Seq[Term], v: Verifier): Option[BasicChunk] =
     getChunk(h.values, name, args, v)
