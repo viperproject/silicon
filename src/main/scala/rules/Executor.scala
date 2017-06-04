@@ -17,9 +17,10 @@ import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.state.{FieldChunk, Heap, State, Store}
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
+import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 
@@ -253,6 +254,12 @@ object executor extends ExecutionRules with Immutable {
               Q(s1.copy(g = s1.g + (x, t)), v1)})
         }
 
+      /* TODO: Encode assignments e1.f := e2 as
+       *         exhale acc(e1.f)
+       *         inhale acc(e1.f) && e1.f == e2
+       *       and benchmark possible performance effects.
+       */
+
       /* Assignment for a field that contains quantified chunks */
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs)
               if s.qpFields.contains(field) =>
@@ -260,15 +267,28 @@ object executor extends ExecutionRules with Immutable {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) => {
-            val hints = quantifiedChunkSupporter.extractHints(None, None, tRcvr)
+            val (relevantChunks, otherChunks) =
+              quantifiedChunkSupporter.splitHeap[QuantifiedFieldChunk](s2.h, field.name)
+            val hints = quantifiedChunkSupporter.extractHints(None, Seq(tRcvr))
             val chunkOrderHeuristics = quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
-            quantifiedChunkSupporter.splitSingleLocation(s2, s2.h, field, tRcvr, FullPerm(), chunkOrderHeuristics, v2) {
-              case Some((s3, h3, _, _)) =>
-                val (fvf, optFvfDef) = quantifiedChunkSupporter.createSingletonFieldValueFunction(s2, field, tRcvr, tRhs, v2)
-                optFvfDef.foreach(fvfDef => v2.decider.assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
-                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, FullPerm())
+            quantifiedChunkSupporter.removePermissions(
+              s2,
+              relevantChunks,
+              Seq(`?r`),
+              `?r` === tRcvr,
+              field,
+              FullPerm(),
+              chunkOrderHeuristics,
+              v2
+            ) {
+              case (true, s3, remainingChunks) =>
+                val h3 = Heap(remainingChunks ++ otherChunks)
+                val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s3, field, Seq(tRcvr), tRhs, v2)
+                v1.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+                v1.decider.assume(smValueDef)
+                val ch = quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), FullPerm(), sm)
                 Q(s3.copy(h = h3 + ch), v2)
-              case None =>
+              case (false, _, _) =>
                 Failure(pve dueTo InsufficientPermission(fa))}}))
 
       case ass @ ast.FieldAssign(fa @ ast.FieldAccess(eRcvr, field), rhs) =>
@@ -287,9 +307,10 @@ object executor extends ExecutionRules with Immutable {
           val p = FullPerm()
           val snap = v.decider.fresh(field.name, v.symbolConverter.toSort(field.typ))
           if (s.qpFields.contains(field)) {
-            val (fvf, optFvfDef) = quantifiedChunkSupporter.createSingletonFieldValueFunction(s, field, tRcvr, snap, v)
-            optFvfDef.foreach(fvfDef => v.decider.assume(fvfDef.domainDefinitions ++ fvfDef.valueDefinitions))
-            quantifiedChunkSupporter.createSingletonQuantifiedChunk(tRcvr, field.name, fvf, p)
+            val (sm, smValueDef) = quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(tRcvr), snap, v)
+            v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
+            v.decider.assume(smValueDef)
+            quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm)
           } else
             FieldChunk(tRcvr, field.name, snap, p)})
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
@@ -390,7 +411,6 @@ object executor extends ExecutionRules with Immutable {
             eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
               v2.decider.assert(IsNonNegative(tPerm)){
                 case true =>
-                  //handles both quantified and unquantified predicates
                   predicateSupporter.fold(s2, predicate, tArgs, tPerm, pve, v2)(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
@@ -402,7 +422,6 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
-                //handles both quantified and unquantified predicates
                 predicateSupporter.unfold(s2, predicate, tArgs, tPerm, pve, v2, pa)(Q)
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))

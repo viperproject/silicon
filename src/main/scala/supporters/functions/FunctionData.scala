@@ -11,7 +11,7 @@ import viper.silver.ast.utility.Functions
 import viper.silicon.{Config, Map, Stack, toMap}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.rules.{InverseFunction, PredicateInverseFunction, functionSupporter}
+import viper.silicon.rules.{SnapshotMapDefinition, InverseFunctions, functionSupporter}
 import viper.silicon.state.{IdentifierFactory, SymbolConverter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
@@ -84,15 +84,12 @@ class FunctionData(val programFunction: ast.Function,
   private[functions] var verificationFailures: Seq[FatalResult] = Vector.empty
   private[functions] var locToSnap: Map[ast.LocationAccess, Term] = Map.empty
   private[functions] var fappToSnap: Map[ast.FuncApp, Term] = Map.empty
-  private[this] var freshFvfsAndDomains: InsertionOrderedSet[(FvfDefinition, Seq[Term], Stack[Var])] = InsertionOrderedSet.empty
-  private[this] var freshPsfsAndDomains: InsertionOrderedSet[(PsfDefinition, Seq[Term], Stack[Var])] = InsertionOrderedSet.empty
-  private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunction] = InsertionOrderedSet.empty
-  private[this] var freshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = InsertionOrderedSet.empty
+  private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
+  private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
-  private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunction] = freshFieldInvs
-  private[functions] def getFreshPredInvs: InsertionOrderedSet[PredicateInverseFunction] = freshPredInvs
+  private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
   private[functions] def getFreshArps: InsertionOrderedSet[Var] = freshArps.map(_._1)
   private[functions] def getFreshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = freshSymbolsAcrossAllPhases
 
@@ -108,101 +105,26 @@ class FunctionData(val programFunction: ast.Function,
     locToSnap = mergedFunctionRecorder.locToSnap
     fappToSnap = mergedFunctionRecorder.fappToSnap
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
-    freshPsfsAndDomains = mergedFunctionRecorder.freshPsfsAndDomains
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
-    freshPredInvs = mergedFunctionRecorder.freshPredInvs
     freshArps = mergedFunctionRecorder.freshArps
 
     freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
 
-    freshSymbolsAcrossAllPhases ++= freshFieldInvs.map(_.func)
+    freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses)
 
-    freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains.map { case (fvfDef, _, _) =>
-      fvfDef.fvf match {
+    freshSymbolsAcrossAllPhases ++= freshFvfsAndDomains map (fvfDef =>
+      fvfDef.sm match {
         case x: Var => x
         case App(f: Function, _) => f
-      }
-    }
-
-    freshSymbolsAcrossAllPhases ++= freshPredInvs.map(_.func)
-
-    freshSymbolsAcrossAllPhases ++= freshPsfsAndDomains.map { case (psfDef, _, _) => psfDef.psf }
+        case other => sys.error(s"Unexpected SM $other of type ${other.getClass.getSimpleName}")
+      })
 
     phase += 1
   }
 
   private def generateNestedDefinitionalAxioms: InsertionOrderedSet[Term] = (
        freshFieldInvs.flatMap(_.definitionalAxioms)
-    ++ freshPredInvs.flatMap(_.definitionalAxioms)
-    ++ freshFvfsAndDomains.flatMap { case (fvfDef, domDef, _qvars) =>
-          val qvars = _qvars filterNot arguments.contains
-
-           val (fvfDefTerms, domDefTerms) = fvfDef match {
-              case fvfDef: SummarisingFvfDefinition =>
-                (fvfDef.quantifiedValueDefinitions, domDef)
-              case fvfDef: QuantifiedChunkFvfDefinition =>
-                (fvfDef.valueDefinitions, domDef)
-              case fvfDef: SingletonChunkFvfDefinition =>
-                val unquantifiedValueDefs = fvfDef.valueDefinitions
-
-                val varsToQuantify =
-                  unquantifiedValueDefs.collect{case vd => vd.freeVariables filter qvars.contains}
-                                       .flatten
-
-                varsToQuantify match {
-                  case Seq() =>
-                    (unquantifiedValueDefs, domDef)
-                  case Seq(qv) =>
-                    val fvfDefTerms = fvfDef.quantifiedValueDefinitions(qv)
-                    val domDefTerms =
-                      /* TODO: The code here assumes that domDef == fvfDef.domainDefinitions, but
-                       *       this is not enforced.
-                       *       The whole design of FvfDefinition and its implementations should be
-                       *       reconsidered: e.g. separate the pure data groups/containers from the
-                       *       computation of definitional axioms; is it really worth collecting
-                       *       fvfDef and domDef independently?
-                       */
-                      fvfDef.quantifiedDomainDefinitions(qv)
-
-                    (fvfDefTerms, domDefTerms)
-                  case _ =>
-                    sys.error(s"Expected at most one variable that needs to be quantified, but found $varsToQuantify")
-                }
-            }
-
-          fvfDefTerms ++ domDefTerms
-       }
-    ++ freshPsfsAndDomains.flatMap { case (psfDef, domDef, _qvars) =>
-          /* Exact copy of the code above (modulo minor changes) */
-          val qvars = _qvars filterNot arguments.contains
-
-          val (psfDefTerms, domDefTerms) = psfDef match {
-            case psfDef: SummarisingPsfDefinition =>
-              (psfDef.quantifiedSnapDefinitions, domDef)
-            case psfDef: QuantifiedChunkPsfDefinition =>
-              (psfDef.snapDefinitions, domDef)
-            case psfDef: SingletonChunkPsfDefinition =>
-              val unquantifiedValueDefs = psfDef.snapDefinitions
-
-              val varsToQuantify =
-                unquantifiedValueDefs.collect{case vd => vd.freeVariables filter qvars.contains}
-                                     .flatten
-
-              varsToQuantify match {
-                case Seq() =>
-                  (unquantifiedValueDefs, domDef)
-                case Seq(qv) =>
-                  val psfDefTerms = psfDef.quantifiedSnapDefinitions(qv)
-                  val domDefTerms = psfDef.quantifiedDomainDefinitions(qv)
-
-                  (psfDefTerms, domDefTerms)
-                case _ =>
-                  sys.error(s"Expected at most one variable that needs to be quantified, but found $varsToQuantify")
-              }
-          }
-
-          psfDefTerms ++ domDefTerms
-       }
+    ++ freshFvfsAndDomains.flatMap (fvfDef => fvfDef.domainDefinitions ++ fvfDef.valueDefinitions)
     ++ freshArps.map(_._2)
   )
 

@@ -261,7 +261,7 @@ sealed trait Term extends Node {
   def transform(pre: PartialFunction[Term, Term] = PartialFunction.empty)
                (recursive: Term => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[Term, Term] = PartialFunction.empty)
-  : this.type =  state.utils.transform[this.type](this, pre)(recursive, post)
+               : this.type =  state.utils.transform[this.type](this, pre)(recursive, post)
 
   def replace(original: Term, replacement: Term): Term =
     if (original == replacement)
@@ -1525,7 +1525,7 @@ class Combine(val p0: Term, val p1: Term) extends SnapshotTerm
   override val toString = s"($p0, $p1)"
 }
 
-object Combine {
+object Combine extends ((Term, Term) => Term) {
   def apply(t0: Term, t1: Term) = new Combine(t0.convert(sorts.Snap), t1.convert(sorts.Snap))
 
   def unapply(c: Combine) = Some((c.p0, c.p1))
@@ -1581,11 +1581,8 @@ case class Domain(field: String, fvf: Term) extends SetTerm /*with PossibleTrigg
 
 
 /* Quantified predicates */
-case class PredicateLookup(predname: String, psf: Term, args: Seq[Term], formalVars: Seq[Var]) extends Term {
+case class PredicateLookup(predname: String, psf: Term, args: Seq[Term]) extends Term {
   utils.assertSort(psf, "predicate snap function", "PredicateSnapFunction", _.isInstanceOf[sorts.PredicateSnapFunction])
-  for (i <- args.indices) {
-    utils.assertSort(args.apply(i), "predicate argument i", formalVars.apply(i).sort)
-  }
 
   val sort = psf.sort.asInstanceOf[sorts.PredicateSnapFunction].codomainSort
 }
@@ -1693,33 +1690,36 @@ object predef {
 /* Convenience functions */
 
 object perms {
-  def IsNonNegative(p: Term) =
+  def IsNonNegative(p: Term): Term =
     Or(p === NoPerm(), IsPositive(p))
       /* All basic static simplifications should be covered by Equals,
        * IsPositive and or
        */
 
-  def IsPositive(p: Term) = p match {
+  def IsPositive(p: Term): Term = p match {
     case _: NoPerm => False()
     case _: FullPerm | _: WildcardPerm => True()
     case fp: FractionPerm if fp.isDefinitelyPositive => True()
     case _ => PermLess(NoPerm(), p)
   }
 
-  def IsNoAccess(p: Term) = p match {
+  def IsNonPositive(p: Term): Term = p match {
     case _: NoPerm => True()
     case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False()
-      /* ATTENTION: This is only sound if both plus operands and the left minus operand are positive! */
+      /* ATTENTION: This is only sound if both plus operands and the left minus operand
+       * are positive!
+       * Consider removing IsNonPositive and using Not(IsPositive(...)) instead.
+       */
     case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))
   }
+
+  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
+    viper.silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
 }
 
 /* Utility functions */
 
 object utils {
-  def BigPermSum(it: Iterable[Term], f: Term => Term = t => t): Term =
-    viper.silicon.utils.mapReduceLeft(it, f, PermPlus, NoPerm())
-
   def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
     case _: WildcardPerm => false
     case v: Var => !constrainableARPs.contains(v)

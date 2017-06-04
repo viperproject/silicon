@@ -48,6 +48,7 @@ abstract class BaseVerifier(val config: Config,
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
 //  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
+  val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
 
   private val statefulSubcomponents = List[StatefulComponent](
 //    bookkeeper,

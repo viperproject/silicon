@@ -228,7 +228,7 @@ class TermToSMTLib2Converter
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
-    case PredicateLookup(id, psf, args, formalVars) =>
+    case PredicateLookup(id, psf, args) =>
       val snap: Term = if (args.size == 1) {
         args.head.convert(sorts.Snap)
       } else {

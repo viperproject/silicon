@@ -86,7 +86,7 @@ package object utils {
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case PredicateDomain(_, psf) => psf :: Nil
-    case PredicateLookup(_, psf, args, formalVars) => Seq(psf) ++ args ++ formalVars
+    case PredicateLookup(_, psf, args) => Seq(psf) ++ args
 
   }
 
@@ -193,7 +193,7 @@ package object utils {
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
 
       case PredicateDomain(p, psf) => PredicateDomain(p, go(psf))
-      case PredicateLookup(p, psf, args, formalVars) => PredicateLookup(p, go(psf), args map go,formalVars map go)
+      case PredicateLookup(p, psf, args) => PredicateLookup(p, go(psf), args map go)
 
     }
 
