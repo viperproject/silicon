@@ -16,49 +16,48 @@ import viper.silicon.state.State.OldHeaps
 import viper.silicon.state.terms.{Term, Var}
 import viper.silicon.supporters.functions.{FunctionRecorder, NoopFunctionRecorder}
 
-final case class State(
-                        g: Store = Store(),
-                        h: Heap = Heap(),
-                        oldHeaps: OldHeaps = Map.empty,
+final case class State(g: Store = Store(),
+                       h: Heap = Heap(),
+                       oldHeaps: OldHeaps = Map.empty,
 
-                        parallelizeBranches: Boolean = false,
+                       parallelizeBranches: Boolean = false,
 
-                        recordVisited: Boolean = false,
-                        visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
+                       recordVisited: Boolean = false,
+                       visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
 
-                        methodCfg: SilverCfg = null,
-                        invariantContexts: Stack[Heap] = Stack.empty,
+                       methodCfg: SilverCfg = null,
+                       invariantContexts: Stack[Heap] = Stack.empty,
 
-                        constrainableARPs: InsertionOrderedSet[Term] = InsertionOrderedSet.empty,
-                        quantifiedVariables: Stack[Var] = Nil,
-                        retrying: Boolean = false,
-                        underJoin: Boolean = false,
-                        functionRecorder: FunctionRecorder = NoopFunctionRecorder,
-                        recordPossibleTriggers: Boolean = false,
-                        possibleTriggers: Map[ast.Exp, Term] = Map(),
+                       constrainableARPs: InsertionOrderedSet[Term] = InsertionOrderedSet.empty,
+                       quantifiedVariables: Stack[Var] = Nil,
+                       retrying: Boolean = false,
+                       underJoin: Boolean = false,
+                       functionRecorder: FunctionRecorder = NoopFunctionRecorder,
+                       recordPossibleTriggers: Boolean = false,
+                       possibleTriggers: Map[ast.Exp, Term] = Map(),
 
-                        partiallyConsumedHeap: Option[Heap] = None,
-                        permissionScalingFactor: Term = terms.FullPerm(),
+                       partiallyConsumedHeap: Option[Heap] = None,
+                       permissionScalingFactor: Term = terms.FullPerm(),
 
-                        reserveHeaps: Stack[Heap] = Nil,
-                        exhaleExt: Boolean = false,
-                        lhsHeap: Option[Heap] = None, /* Used to interpret e in lhs(e) */
+                       reserveHeaps: Stack[Heap] = Nil,
+                       exhaleExt: Boolean = false,
+                       lhsHeap: Option[Heap] = None, /* Used to interpret e in lhs(e) */
 
-                        applyHeuristics: Boolean = false,
-                        heuristicsDepth: Int = 0,
-                        triggerAction: AnyRef = null,
+                       applyHeuristics: Boolean = false,
+                       heuristicsDepth: Int = 0,
+                       triggerAction: AnyRef = null,
 
-                        recordEffects: Boolean = false,
-                        consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
-                        letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
+                       recordEffects: Boolean = false,
+                       consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
+                       letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
-                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
-                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
-                        smCache: Map[Seq[QuantifiedChunk], (SnapshotMapDefinition, Term)] = Map.empty,
-                        smDomainNeeded: Boolean = false,
-                        /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
-                        predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
-                        predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
+                       qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
+                       qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
+                       smCache: Map[Seq[QuantifiedChunk], (SnapshotMapDefinition, Term)] = Map.empty,
+                       smDomainNeeded: Boolean = false,
+                       /* TODO: Isn't this data stable, i.e. fully known after a preprocessing step? If so, move it to the appropriate supporter. */
+                       predicateSnapMap: Map[ast.Predicate, terms.Sort] = Map.empty,
+                       predicateFormalVarMap: Map[ast.Predicate, Seq[terms.Var]] = Map.empty)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
