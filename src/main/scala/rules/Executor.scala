@@ -13,7 +13,7 @@ import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.verifier.errors._
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
-import viper.silicon.Stack
+import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -207,9 +207,9 @@ object executor extends ExecutionRules with Immutable {
   def exec(s: State, stmt: ast.Stmt, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
-//    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ExecuteRecord(stmt, s, v.decider.pcs))
     exec2(s, stmt, v)((s1, v1) => {
-//      SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
+      SymbExLogger.currentLog().collapse(stmt, sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -383,25 +383,25 @@ object executor extends ExecutionRules with Immutable {
         val meth = Verifier.program.findMethod(methodName)
         val pvefCall = (_: ast.Exp) =>  CallFailed(call)
         val pvefPre = (_: ast.Exp) =>  PreconditionInCallFalse(call)
-//        val mcLog = new MethodCallRecord(call, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
-//        val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
+        val mcLog = new MethodCallRecord(call, s, v.decider.pcs)
+        val sepIdentifier = SymbExLogger.currentLog().insert(mcLog)
         evals(s, eArgs, pvefCall, v)((s1, tArgs, v1) => {
-//          mcLog.finish_parameters()
+          mcLog.finish_parameters()
           val s2 = s1.copy(g = Store(meth.formalArgs.map(_.localVar).zip(tArgs)),
                            recordVisited = true)
           consumes(s2, meth.pres, pvefPre, v1)((s3, _, v2) => {
-//            mcLog.finish_precondition()
+            mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, pvefCall, v2)((s5, v3) => {
-//              mcLog.finish_postcondition()
+              mcLog.finish_postcondition()
               val gLhs = Store(lhs.zip(outs)
                               .map(p => (p._1, s5.g(p._2))).toMap)
               val s6 = s5.copy(g = s1.g + gLhs,
                                oldHeaps = s1.oldHeaps,
                                recordVisited = s1.recordVisited)
-//              SymbExLogger.currentLog().collapse(null, sepIdentifier)
+              SymbExLogger.currentLog().collapse(null, sepIdentifier)
               Q(s6, v3)})})})
 
       case fold @ ast.Fold(ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), ePerm)) =>

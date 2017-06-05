@@ -11,7 +11,7 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.reasons._
 import viper.silver.verifier.{PartialVerificationError, VerificationError}
-import viper.silicon.Stack
+import viper.silicon.{ConsumeRecord, GlobalBranchRecord, Stack, SymbExLogger}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -161,10 +161,10 @@ object consumer extends ConsumptionRules with Immutable {
       /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
        *       Globally the types match, but locally the type system does not know.
        */
-//      val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(a, s1, decider.pcs, c1.asInstanceOf[DefaultContext[ListBackedHeap]]))
+      val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(a, s1, v.decider.pcs))
 
       consumeTlc(s1, h0, a, pve, v1)((s2, h2, snap2, v2) => {
-//        SymbExLogger.currentLog().collapse(Ï†, SEP_identifier)
+        SymbExLogger.currentLog().collapse(a, SEP_identifier)
         QS(s2, h2, snap2, v2)})
     })(Q)
   }
@@ -188,42 +188,42 @@ object consumer extends ConsumptionRules with Immutable {
 
     val consumed = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
-//        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
-//        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-//        SymbExLogger.currentLog().initializeBranching()
+        val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "consume")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        SymbExLogger.currentLog().initializeBranching()
 
         evaluator.eval(s, e0, pve, v)((s1, t0, v1) => {
-//          impLog.finish_cond()
+          impLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
             (s2, v2) => consumeR(s2, h, a0, pve, v2)((s3, h3, snap3, v3) => {
               val res1 = Q(s3, h3, snap3, v3)
-//              impLog.finish_thnSubs()
-//              SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              impLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(impLog)
               res1}),
             (s2, v2) => {
               val res2 = Q(s2, h, Unit, v2)
-//              impLog.finish_elsSubs()
+              impLog.finish_elsSubs()
               res2})
-//          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
-//        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "consume")
-//        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-//        SymbExLogger.currentLog().initializeBranching()
+        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "consume")
+        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
+        SymbExLogger.currentLog().initializeBranching()
         eval(s, e0, pve, v)((s1, t0, v1) => {
-//          gbLog.finish_cond()
+          gbLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
             (s2, v2) => consumeR(s2, h, a1, pve, v2)((s3, h3, snap3, v3) => {
               val res1 = Q(s3, h3, snap3, v3)
-//              gbLog.finish_thnSubs()
-//              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+              gbLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
               res1}),
             (s2, v2) => consumeR(s2, h, a2, pve, v2)((s3, h3, snap3, v3) => {
               val res2 = Q(s3, h3, snap3, v3)
-//              gbLog.finish_elsSubs()
+              gbLog.finish_elsSubs()
               res2}))
-//          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer

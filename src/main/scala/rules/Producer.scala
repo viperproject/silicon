@@ -6,6 +6,8 @@
 
 package viper.silicon.rules
 
+import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
@@ -182,9 +184,9 @@ object producer extends ProductionRules with Immutable {
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
 
-//    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(s, a, decider.pcs, c.asInstanceOf[DefaultContext[ListBackedHeap]]))
+    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-//      SymbExLogger.currentLog().collapse(a, sepIdentifier)
+      SymbExLogger.currentLog().collapse(a, sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -201,17 +203,17 @@ object producer extends ProductionRules with Immutable {
 
     val produced = a match {
       case imp @ ast.Implies(e0, a0) if !a.isPure =>
-//        val impLog = new GlobalBranchRecord(imp, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
-//        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
-//        SymbExLogger.currentLog().initializeBranching()
+        val impLog = new GlobalBranchRecord(imp, s, v.decider.pcs, "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+        SymbExLogger.currentLog().initializeBranching()
 
         eval(s, e0, pve, v)((s1, t0, v1) => {
-//          impLog.finish_cond()
+          impLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
             (s2, v2) => produceR(s2, sf, a0, pve, v2)((s3, v3) => {
               val res1 = Q(s3, v3)
-//              impLog.finish_thnSubs()
-//              SymbExLogger.currentLog().prepareOtherBranch(impLog)
+              impLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(impLog)
               res1}),
             (s2, v2) => {
               v2.decider.assume(sf(sorts.Snap, v2) === Unit)
@@ -220,28 +222,28 @@ object producer extends ProductionRules with Immutable {
                  * already been used, e.g. in a snapshot equality such as `s0 == (s1, s2)`.
                  */
               val res2 = Q(s2,  v2)
-//              impLog.finish_elsSubs()
+              impLog.finish_elsSubs()
               res2})
-//          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case ite @ ast.CondExp(e0, a1, a2) if !a.isPure =>
-//        val gbLog = new GlobalBranchRecord(ite, σ, decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]], "produce")
-//        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-//        SymbExLogger.currentLog().initializeBranching()
+        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "produce")
+        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
+        SymbExLogger.currentLog().initializeBranching()
         eval(s, e0, pve, v)((s1, t0, v1) => {
-//          gbLog.finish_cond()
+          gbLog.finish_cond()
           val branch_res = branch(s1, t0, v1,
             (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
               val res1 = Q(s3, v3)
-//              gbLog.finish_thnSubs()
-//              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
+              gbLog.finish_thnSubs()
+              SymbExLogger.currentLog().prepareOtherBranch(gbLog)
               res1}),
             (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
               val res2 = Q(s3, v3)
-//              gbLog.finish_elsSubs()
+              gbLog.finish_elsSubs()
               res2}))
-//          SymbExLogger.currentLog().collapse(null, sepIdentifier)
+          SymbExLogger.currentLog().collapse(null, sepIdentifier)
           branch_res})
 
       case let: ast.Let if !let.isPure =>

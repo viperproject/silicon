@@ -330,10 +330,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
-    default = Some(Runtime.getRuntime.availableProcessors()),
+    // If the SymbEx Logger is enabled, only use one core.
+    default = Some(if (ideModeAdvanced()) 1 else Runtime.getRuntime.availableProcessors()),
     noshort = true,
     hidden = false
   )
+  conflicts(numberOfParallelVerifiers, ideModeAdvanced :: Nil)
 
   val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified.",

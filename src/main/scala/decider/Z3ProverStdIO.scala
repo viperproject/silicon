@@ -194,10 +194,9 @@ class Z3ProverStdIO(uniqueId: String,
 
   private def getModel(): Unit = {
     if (Verifier.config.ideModeAdvanced()) {
-      ???
-//      writeLine("(get-model)")
-//      val model = readModel().trim()
-//      println(model + "\r\n")
+      writeLine("(get-model)")
+      val model = readModel().trim()
+      println(model + "\r\n")
     }
   }
 

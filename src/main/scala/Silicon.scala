@@ -353,7 +353,7 @@ object SiliconRunner extends SiliconFrontend {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
     } finally {
-      siliconInstance.stop()
+        siliconInstance.stop()
         /* TODO: This currently seems necessary to make sure that Z3 is terminated
          *       if Silicon is supposed to terminate prematurely because of a
          *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
