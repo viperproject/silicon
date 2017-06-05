@@ -281,10 +281,10 @@ object evaluator extends EvaluationRules with Immutable {
              *       that are executed if a branch is dead */
             val (s2, t1, t2) = entries match {
               case Seq(entry) if entry.pathConditions.branchConditions.head == t0 =>
-                val t2 = v1.decider.appliedFresh("$deadElse", v1.symbolConverter.toSort(e2.typ), s1.quantifiedVariables)
+                val t2 = v1.decider.appliedFresh("$deadElse", v1.symbolConverter.toSort(e2.typ), s1.relevantQuantifiedVariables)
                 (entry.s, entry.data, t2)
               case Seq(entry) if entry.pathConditions.branchConditions.head == Not(t0) =>
-                val t1 = v1.decider.appliedFresh("$deadThen", v1.symbolConverter.toSort(e1.typ), s1.quantifiedVariables)
+                val t1 = v1.decider.appliedFresh("$deadThen", v1.symbolConverter.toSort(e1.typ), s1.relevantQuantifiedVariables)
                 (entry.s, t1, entry.data)
               case Seq(entry1, entry2) =>
                 (entry1.s.merge(entry2.s), entry1.data, entry2.data)
@@ -564,11 +564,11 @@ object evaluator extends EvaluationRules with Immutable {
                                           permissionScalingFactor = s6.permissionScalingFactor)
                                    .decCycleCounter(predicate)
                         eval(s9, eIn, pve, v5)(QB)})})
-                  })(join(v2.symbolConverter.toSort(eIn.typ), "joinedIn", s2.quantifiedVariables, v2))(Q)
+                  })(join(v2.symbolConverter.toSort(eIn.typ), "joinedIn", s2.relevantQuantifiedVariables, v2))(Q)
                 case false =>
                   Failure(pve dueTo NegativePermission(ePerm))}))
         } else {
-          val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.quantifiedVariables)
+          val unknownValue = v.decider.appliedFresh("recunf", v.symbolConverter.toSort(eIn.typ), s.relevantQuantifiedVariables)
           Q(s, unknownValue, v)
         }
 

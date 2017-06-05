@@ -340,7 +340,7 @@ object producer extends ProductionRules with Immutable {
                 permissions       = gain,
                 codomainQVars     = Seq(`?r`),
                 sm                = snap,
-                additionalInvArgs = s1.quantifiedVariables,
+                additionalInvArgs = s1.relevantQuantifiedVariables(Seq(tRcvr)),
                 v                 = v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {
@@ -419,7 +419,7 @@ object producer extends ProductionRules with Immutable {
                 permissions       = gain,
                 sm                = snap,
                 codomainQVars     = formalVars,
-                additionalInvArgs = s1.quantifiedVariables,
+                additionalInvArgs = s1.relevantQuantifiedVariables(tArgs),
                 v                 = v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {

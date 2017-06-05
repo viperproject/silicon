@@ -412,14 +412,9 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                            v: Verifier)
                           : (Term, Term) = {
 
-    val additionalSmArgs = (
-         s.functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
-      ++ s.quantifiedVariables.filter(x => arguments.exists(_.contains(x))))
-
+    val additionalSmArgs = s.relevantQuantifiedVariables(arguments)
     val sm = freshSnapshotMap(s, location, additionalSmArgs, v)
-
-    val smValueDef =
-      genericLookup(location, sm, arguments, v) === value
+    val smValueDef = genericLookup(location, sm, arguments, v) === value
 
     (sm, smValueDef)
   }

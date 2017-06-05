@@ -144,8 +144,7 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
 
     private def handleFunction(sInit: State, function: ast.Function): VerificationResult = {
       val data = functionData(function)
-      val s = sInit.copy(quantifiedVariables = sInit.quantifiedVariables ++ data.arguments,
-                         functionRecorder = ActualFunctionRecorder(data))
+      val s = sInit.copy(functionRecorder = ActualFunctionRecorder(data))
 
       /* Phase 1: Check well-definedness of the specifications */
       checkSpecificationWelldefinedness(s, function) match {

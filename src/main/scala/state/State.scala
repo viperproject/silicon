@@ -93,6 +93,17 @@ final case class State(g: Store = Store(),
   def preserveAfterLocalEvaluation(post: State): State =
     State.preserveAfterLocalEvaluation(this, post)
 
+  def relevantQuantifiedVariables(filterPredicate: Var => Boolean): Seq[Var] = (
+       functionRecorder.data.fold(Seq.empty[Var])(_.arguments)
+    ++ quantifiedVariables.filter(filterPredicate)
+  )
+
+  def relevantQuantifiedVariables(occurringIn: Seq[Term]): Seq[Var] =
+    relevantQuantifiedVariables(x => occurringIn.exists(_.contains(x)))
+
+  lazy val relevantQuantifiedVariables: Seq[Var] =
+    relevantQuantifiedVariables(_ => true)
+
   override val toString = s"${this.getClass.getSimpleName}(...)"
 }
 
