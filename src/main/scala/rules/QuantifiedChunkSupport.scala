@@ -49,6 +49,19 @@ class InverseFunctions(val condition: Term,
     qvarsToInverses.map {
       case (x, inv) => x -> App(inv, additionalArguments ++ arguments)
     }(collection.breakOut)
+
+  override lazy val toString: String = indentedToString("")
+
+  def indentedToString(linePrefix: String): String =
+      s"""$linePrefix${this.getClass.getSimpleName}@${System.identityHashCode(this)}
+         |$linePrefix  condition: $condition
+         |$linePrefix  invertibles: $invertibles
+         |$linePrefix  additionalArguments: $additionalArguments
+         |$linePrefix  axiomInversesOfInvertibles:
+         |$linePrefix    $axiomInversesOfInvertibles
+         |$linePrefix  axiomInvertiblesOfInverses
+         |$linePrefix    $axiomInvertiblesOfInverses
+       """.stripMargin
 }
 
 case class SnapshotMapDefinition(location: ast.Location,
