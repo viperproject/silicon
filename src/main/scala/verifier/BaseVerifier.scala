@@ -53,6 +53,7 @@ abstract class BaseVerifier(val config: Config,
   private val statefulSubcomponents = List[StatefulComponent](
 //    bookkeeper,
     decider,
+    termConverter,
     identifierFactory/*,
     quantifiedChunkSupporter,
     quantifiedPredicateChunkSupporter*/)

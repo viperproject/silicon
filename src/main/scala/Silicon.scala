@@ -8,18 +8,16 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
-
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.Try
 import viper.silver.ast
-import viper.silver.verifier.{CliOptionError => SilCliOptionError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
-import viper.silver.frontend.SilFrontend
+import viper.silver.verifier.{AbortedExceptionally => SilAbortedExceptionally, AbstractError => SilAbstractError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
 import viper.silicon.reporting.VerificationException
@@ -201,25 +199,28 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
         result = Some(convertFailures(failures))
       } catch {
+        /* TODO: Log thrown exception (using an appropriate logger) */
+
         case VerificationException(error) =>
           result = Some(SilFailure(error :: Nil))
 
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
 
-        case ee: ExecutionException =>
-          /* If possible, report the real exception that has been wrapped in
-           * one or more ExecutionExceptions. The wrapping is due to using futures.
-           */
-          var cause: Throwable = ee
-          do {
-            cause = cause.getCause
-          } while (cause.isInstanceOf[ExecutionException])
-
-          handleThrowable(cause)
-
         case ex: Exception =>
-          handleThrowable(ex)
+          val cause = ex match {
+            case ee: ExecutionException => reporting.getRootCause(ee)
+            case _ => ex
+          }
+
+          logger.info(cause.toString)
+
+          val failure = cause match {
+            case error: SilAbstractError => SilFailure(Seq(error))
+            case other => SilFailure(Seq(SilAbortedExceptionally(other)))
+          }
+
+          result = Some(failure)
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -229,20 +230,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
     }
-  }
-
-  private def handleThrowable(ex: Throwable) {
-//    config.logLevel().toUpperCase match {
-//      case "DEBUG" | "TRACE" | "ALL" => throw ex
-//      case _ =>
-//    }
-
-    throw ex
-
-//    val sw = new StringWriter()
-//    val pw = new PrintWriter(sw)
-//    ex.printStackTrace(pw)
-//    log.debug(ex.toString + "\n" + sw)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
@@ -349,9 +336,30 @@ class SiliconFrontend extends SilFrontend {
 
 object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
+    var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
+
     try {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
+
+      if (state >= TranslatorState.Verified && result == SilSuccess) {
+        exitCode = 1
+      }
+    } catch {
+      case ex: Exception =>
+        val cause = ex match {
+          case ee: ExecutionException => reporting.getRootCause(ee)
+          case _ => ex
+        }
+
+        logger.info(cause.toString)
+
+        val failure = cause match {
+          case error: SilAbstractError => SilFailure(Seq(error))
+          case other => SilFailure(Seq(SilAbortedExceptionally(other)))
+        }
+
+        logger.error(failure.toString)
     } finally {
         siliconInstance.stop()
         /* TODO: This currently seems necessary to make sure that Z3 is terminated
@@ -364,14 +372,6 @@ object SiliconRunner extends SiliconFrontend {
          *       corresponding streams.
          */
     }
-
-    val exitCode =
-      if (   config.error.nonEmpty /* Handling command line options failed */
-          || config.exit           /* Must terminate for some other reason */
-          || result != SilSuccess) /* Verification (includes parsing) failed */
-        1
-      else
-        0
 
     sys.exit(exitCode)
   }

@@ -9,7 +9,19 @@ package viper.silicon.reporting
 import viper.silver.ast
 import viper.silver.verifier.AbstractError
 
-case class Z3InteractionFailed(proverId: String, message: String) extends RuntimeException(message) with AbstractError {
+case class ExternalToolError(tool: String, message: String)
+    extends RuntimeException(message)
+       with AbstractError {
+
+  def pos = ast.NoPosition
+  def fullId = "external.tool.error"
+  def readableMessage = s"Problem with external tool $tool: $message"
+}
+
+case class Z3InteractionFailed(proverId: String, message: String)
+    extends RuntimeException(message)
+        with AbstractError {
+
   def pos = ast.NoPosition
   def fullId = "z3.interaction.failed"
   def readableMessage = s"Interaction with Z3 (instance $proverId) failed: $message"
