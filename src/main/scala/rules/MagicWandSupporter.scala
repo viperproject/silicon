@@ -25,7 +25,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
-    ???
+    sys.error("Implementation missing")
 //  {
 //    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
 //    var result: VerificationResult = Success()

@@ -214,9 +214,11 @@ class ErrorMessageTests extends FunSuite {
 }
 
 class DummyFrontend extends SilFrontend {
-  def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
+  def createVerifier(fullCmd: _root_.scala.Predef.String) =
+    sys.error("Implementation missing")
 
-  def configureVerifier(args: Seq[String]) = ???
+  def configureVerifier(args: Seq[String]) =
+    sys.error("Implementation missing")
 
   def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
     _verifier = None

@@ -77,6 +77,6 @@ class MemoryTests extends FlatSpec {
 }
 
 private class DummySilverFrontend extends SilFrontend {
-  def createVerifier(fullCmd: String) = ???
-  def configureVerifier(args: Seq[String]) = ???
+  def createVerifier(fullCmd: String) = sys.error("Implementation missing")
+  def configureVerifier(args: Seq[String]) = sys.error("Implementation missing")
 }

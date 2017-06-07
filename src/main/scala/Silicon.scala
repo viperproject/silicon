@@ -8,19 +8,20 @@ package viper.silicon
 
 import java.text.SimpleDateFormat
 import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
+
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
+
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
-import scala.util.Try
+import scala.util.{Left, Right, Try}
 import viper.silver.ast
 import viper.silver.verifier.{AbortedExceptionally => SilAbortedExceptionally, AbstractError => SilAbstractError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
-import viper.silicon.reporting.VerificationException
 import viper.silicon.verifier.DefaultMasterVerifier
 
 object Silicon {
@@ -201,26 +202,24 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       } catch {
         /* TODO: Log thrown exception (using an appropriate logger) */
 
-        case VerificationException(error) =>
-          result = Some(SilFailure(error :: Nil))
-
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
 
-        case ex: Exception =>
-          val cause = ex match {
-            case ee: ExecutionException => reporting.getRootCause(ee)
-            case _ => ex
+        case exception: Exception =>
+          reporting.exceptionToViperError(exception) match {
+            case Right((cause, failure)) =>
+              logger.info(cause.toString)
+              result = Some(failure)
+            case Left(error) =>
+              error match {
+                case _: NoClassDefFoundError =>
+                  logger.error(reporting.noClassDefFoundErrorMessage)
+                case _ =>
+                  /* Don't do anything special */
+              }
+
+              throw error
           }
-
-          logger.info(cause.toString)
-
-          val failure = cause match {
-            case error: SilAbstractError => SilFailure(Seq(error))
-            case other => SilFailure(Seq(SilAbortedExceptionally(other)))
-          }
-
-          result = Some(failure)
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -265,7 +264,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
              })
 
     if (config.showStatistics.isDefined) {
-      ???
+      sys.error("Implementation missing")
 //      val proverStats = verifier.decider.statistics()
 //
 //      verifier.bookkeeper.proverStatistics = proverStats
@@ -346,20 +345,21 @@ object SiliconRunner extends SiliconFrontend {
         exitCode = 1
       }
     } catch {
-      case ex: Exception =>
-        val cause = ex match {
-          case ee: ExecutionException => reporting.getRootCause(ee)
-          case _ => ex
+      case exception: Exception =>
+        reporting.exceptionToViperError(exception) match {
+          case Right((cause, failure)) =>
+            logger.info(cause.toString)
+            logger.error(failure.toString)
+          case Left(error) =>
+            error match {
+              case _: NoClassDefFoundError => logger.error(reporting.noClassDefFoundErrorMessage)
+              case _ => /* Don't do anything special */
+            }
+
+            throw error
         }
-
-        logger.info(cause.toString)
-
-        val failure = cause match {
-          case error: SilAbstractError => SilFailure(Seq(error))
-          case other => SilFailure(Seq(SilAbortedExceptionally(other)))
-        }
-
-        logger.error(failure.toString)
+      case error: NoClassDefFoundError =>
+        logger.error(reporting.noClassDefFoundErrorMessage)
     } finally {
         siliconInstance.stop()
         /* TODO: This currently seems necessary to make sure that Z3 is terminated

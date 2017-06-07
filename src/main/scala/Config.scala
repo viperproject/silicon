@@ -223,7 +223,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case UserValue(logfile) =>
       logfile.toLowerCase match {
         case "$infile" =>
-          ??? /* TODO: Reconsider: include suffix; prover started before infile is known */
+          sys.error("Implementation missing")
+//          /* TODO: Reconsider: include suffix; prover started before infile is known */
 //          inputFile.map(f =>
 //            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(z3LogFileExtension)).toPath
 //          ).getOrElse(defaultZ3LogFile)
