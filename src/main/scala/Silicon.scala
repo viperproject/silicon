@@ -7,18 +7,16 @@
 package viper.silicon
 
 import java.text.SimpleDateFormat
-import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
-
+import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
 import ch.qos.logback.classic.{Level, Logger}
 import com.typesafe.scalalogging.LazyLogging
 import org.slf4j.LoggerFactory
-
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
 import scala.util.{Left, Right, Try}
 import viper.silver.ast
-import viper.silver.verifier.{AbortedExceptionally => SilAbortedExceptionally, AbstractError => SilAbstractError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.Failure
