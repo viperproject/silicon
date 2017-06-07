@@ -243,7 +243,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //    say("c.reserveHeaps:")
 //    s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
 
-    val stackSize = 2 + s.reserveHeaps.tail.size
+    val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
     var allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize - 1)(MMap())
       /* Record consumptions (transfers) from all heaps except the top-most (which is hUsed,
@@ -278,7 +278,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
          */
         val s2 = sLhs.copy(g = s.g,
                            h = Heap(),
-                           reserveHeaps = Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
+                           reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
                            lhsHeap = Some(sLhs.h),
@@ -400,7 +400,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
         assert(finalStates.map(_.reserveHeaps).map(_.length).toSet.size == 1)
         val joinedReserveHeaps: Stack[MList[Chunk]] = s.reserveHeaps.tail.map(h => MList() ++ h.values) /* [Remainder reserveHeaps] (match code above) */
-        assert(joinedReserveHeaps.length == allConsumedChunks.length - 1)
+        assert(joinedReserveHeaps.length == allConsumedChunks.length - 2)
 
 //        lnsay("Computing joined reserve heaps. Initial stack:")
 //        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
@@ -413,7 +413,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
          *     they've already been recorded as being consumed from another heap (lower in the stack).
          *   - hLHS is discarded after the packaging is done
          */
-        allConsumedChunks = allConsumedChunks.tail /* TODO: Don't record irrelevant chunks in the first place */
+        allConsumedChunks = allConsumedChunks.drop(2) /* TODO: Don't record irrelevant chunks in the first place */
         assert(allConsumedChunks.length == joinedReserveHeaps.length)
 
 //        lnsay("Matching joined reserve heaps (as shown) with consumed chunks minus top two layers:")
@@ -525,7 +525,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
        * Since innermost assertions must be self-framing, combining hUsed and hOps
        * is sound.
        */
-      s.reserveHeaps.head + s.reserveHeaps.tail.head
+      s.reserveHeaps.head + s.reserveHeaps.tail.head + s.reserveHeaps.tail.tail.head
     } else
       s.h
   }
@@ -544,8 +544,11 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   def replaceChunk(state: State, oldChunk: BasicChunk, newChunk: BasicChunk): State =
   if (state.exhaleExt) {
     val hOpsNew = state.h + newChunk
-    val hUsedNew = state.reserveHeaps.tail.head - oldChunk
-    state.copy(h = hOpsNew, reserveHeaps = hOpsNew +: hUsedNew +: state.reserveHeaps.drop(2))
+    val reserveHeapsNew = if (state.reserveHeaps.tail.head.values.exists(_ == oldChunk))
+      (state.reserveHeaps.tail.head - oldChunk) +: state.reserveHeaps.drop(2)
+    else
+      state.reserveHeaps.tail.head +: (state.reserveHeaps.tail.tail.head - oldChunk) +: state.reserveHeaps.drop(3)
+    state.copy(h = hOpsNew, reserveHeaps = hOpsNew +: reserveHeapsNew)
   } else state.copy(h = state.h - oldChunk + newChunk)
 
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =
