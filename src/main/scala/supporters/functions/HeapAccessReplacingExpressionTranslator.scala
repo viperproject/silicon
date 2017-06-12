@@ -6,19 +6,18 @@
 
 package viper.silicon.supporters.functions
 
-import org.slf4s.Logging
-import viper.silver.ast
+import com.typesafe.scalalogging.LazyLogging
 import viper.silicon.Map
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.functionSupporter
-import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.state.terms._
+import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
 import viper.silicon.supporters.ExpressionTranslator
+import viper.silver.ast
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var)
     extends ExpressionTranslator
-       with Logging {
+       with LazyLogging {
 
   private var program: ast.Program = _
   private var func: ast.Function = _
@@ -108,12 +107,12 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         val tQuant = super.translate(symbolConverter.toSort)(eQuant).asInstanceOf[Quantification]
         val names = tQuant.vars.map(_.id.name)
 
-        tQuant.transform { case v: Var =>
+        tQuant.transform({ case v: Var =>
           v.id match {
             case sid: SuffixedIdentifier if names.contains(sid.prefix) => Var(SimpleIdentifier(sid.prefix), v.sort)
             case _ => v
           }
-        }()
+        })()
 
       case loc: ast.LocationAccess => getOrFail(data.locToSnap, loc, toSort(loc.typ), data.programFunction.name)
       case ast.Unfolding(_, eIn) => translate(toSort)(eIn)
@@ -142,7 +141,7 @@ class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
         s.convert(sort)
       case None =>
         if (!failed && data.verificationFailures.isEmpty)
-          log.warn(s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname")
+          logger.warn(s"Could not resolve $key (${key.pos}) during the axiomatisation of function $fname")
 
         failed = true
 

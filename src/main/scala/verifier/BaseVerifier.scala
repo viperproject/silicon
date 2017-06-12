@@ -6,15 +6,16 @@
 
 package viper.silicon.verifier
 
-import org.slf4s.{Logger, LoggerFactory}
-import viper.silver.components.StatefulComponent
-import viper.silicon.{utils, _}
+import ch.qos.logback.classic.Logger
+import org.slf4j.LoggerFactory
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
+import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
-import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.utils.Counter
+import viper.silicon.{utils, _}
+import viper.silver.components.StatefulComponent
 
 import scala.collection.mutable
 
@@ -29,7 +30,7 @@ abstract class BaseVerifier(val config: Config,
        with Verifier
        with DefaultDeciderProvider {
 
-  val logger: Logger = LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId")
+  val logger: Logger = LoggerFactory.getLogger(s"${this.getClass.getName}-$uniqueId").asInstanceOf[Logger]
 
   private val counters = mutable.Map[AnyRef, Counter]()
 
@@ -46,14 +47,13 @@ abstract class BaseVerifier(val config: Config,
   val triggerGenerator = new TriggerGenerator()
   val axiomRewriter = new AxiomRewriter(new utils.Counter()/*, bookkeeper.logfiles(s"axiomRewriter")*/, triggerGenerator)
   val quantifierSupporter = new DefaultQuantifierSupporter(triggerGenerator)
-//  protected val predSnapGenerator = new PredicateSnapGenerator(symbolConverter)
+  val snapshotSupporter = new DefaultSnapshotSupporter(symbolConverter)
 
   private val statefulSubcomponents = List[StatefulComponent](
 //    bookkeeper,
     decider,
-    identifierFactory/*,
-    quantifiedChunkSupporter,
-    quantifiedPredicateChunkSupporter*/)
+    termConverter,
+    identifierFactory)
 
   /* Lifetime */
 

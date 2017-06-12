@@ -1,0 +1,5 @@
+method main()
+{
+    var i:Bool
+    assert(false && i)
+}

@@ -6,9 +6,9 @@
 
 package viper.silicon.state
 
-import viper.silver.ast
-import viper.silicon.{Map, toMap}
 import viper.silicon.state.terms.Term
+import viper.silicon.{Map, toMap}
+import viper.silver.ast
 import viper.silver.ast.AbstractLocalVar
 
 trait Store {

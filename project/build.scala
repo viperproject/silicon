@@ -1,8 +1,9 @@
-import sbt._
-import Keys._
-import sbtassembly.AssemblyPlugin.autoImport._
-import de.oakgrove.SbtBrand.{BrandKeys, brandSettings, Val, BrandObject}
+import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
+import de.oakgrove.SbtBrand.{BrandKeys, Val, brandSettings}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
+import sbt.Keys._
+import sbt._
+import sbtassembly.AssemblyPlugin.autoImport._
 
 object SiliconBuild extends Build {
 
@@ -94,6 +95,7 @@ object SiliconBuild extends Build {
     }
 
     p.aggregate(common)
+    p.enablePlugins(JavaAppPackaging)
   }
 
   lazy val common = Project(
@@ -122,8 +124,9 @@ object SiliconBuild extends Build {
 
   object dependencies {
     lazy val logging = Seq(
-      "org.slf4s" %% "slf4s-api" % "1.7.12",
-      "org.slf4j" % "slf4j-log4j12" % "1.7.22")
+      "org.slf4j" % "slf4j-api" % "1.7.12",
+      "ch.qos.logback" % "logback-classic" % "1.1.7",
+      "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0")
 
     lazy val scallop = "org.rogach" %% "scallop" % "2.0.7"
     lazy val jgrapht = "org.jgrapht" % "jgrapht-core" % "0.9.1"

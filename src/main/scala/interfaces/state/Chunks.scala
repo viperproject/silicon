@@ -12,6 +12,8 @@ trait Chunk
 
 trait GenericPermissionChunk[CH <: GenericPermissionChunk[CH]] extends Chunk {
   val perm: Term
+
+  // TODO: Consider removing these three operations
   def +(perm: Term): CH
   def -(perm: Term): CH
   def \(perm: Term): CH

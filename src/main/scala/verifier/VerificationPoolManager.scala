@@ -8,12 +8,12 @@ package viper.silicon.verifier
 
 import java.util.concurrent._
 
-import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
+import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
 import viper.silicon.interfaces.VerificationResult
-import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
+import viper.silver.components.StatefulComponent
 
 class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent {
   private val numberOfSlaveVerifiers: Int = Verifier.config.numberOfParallelVerifiers()
@@ -66,12 +66,16 @@ class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent 
   }
 
   private def teardownSlaveVerifierPool(): Unit = {
-    slaveVerifiers foreach (_.stop())
+    if (slaveVerifiers != null) {
+      slaveVerifiers foreach (_.stop())
 
-    slaveVerifierExecutor.shutdown()
-    slaveVerifierExecutor.awaitTermination(10, TimeUnit.SECONDS)
+      slaveVerifierExecutor.shutdown()
+      slaveVerifierExecutor.awaitTermination(10, TimeUnit.SECONDS)
+    }
 
-    slaveVerifierPool.close()
+    if (slaveVerifierPool != null) {
+      slaveVerifierPool.close()
+    }
   }
 
   private object slaveVerifierPoolableObjectFactory extends BasePooledObjectFactory[SlaveVerifier] {

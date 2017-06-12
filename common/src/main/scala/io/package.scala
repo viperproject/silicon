@@ -6,11 +6,7 @@
 
 package viper.silicon.common
 
-import java.io.{
-    File => JFile,
-    PrintWriter => JPrintWriter,
-    BufferedWriter => JBufferedWriter,
-    FileWriter => JFileWriter}
+import java.io.{BufferedWriter => JBufferedWriter, File => JFile, FileWriter => JFileWriter, PrintWriter => JPrintWriter}
 import java.nio.file.{Files, Paths}
 
 import org.apache.commons.io.FilenameUtils

@@ -6,7 +6,7 @@
 
 package viper.silicon.interfaces.decider
 
-import viper.silicon.state.terms.{Term, Sort, Decl}
+import viper.silicon.state.terms.{Decl, Sort, Term}
 
 trait TermConverter[T, S, D] {
   def convert(term: Term): T

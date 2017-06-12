@@ -7,20 +7,22 @@
 package viper.silicon
 
 import java.text.SimpleDateFormat
-import java.io.File
-import java.util.concurrent.{Callable, ExecutionException, Executors, TimeUnit, TimeoutException}
+import java.util.concurrent.{Callable, Executors, TimeUnit, TimeoutException}
+
+import ch.qos.logback.classic.{Level, Logger}
+import com.typesafe.scalalogging.LazyLogging
+import org.slf4j.LoggerFactory
+import viper.silicon.common.config.Version
+import viper.silicon.interfaces.Failure
+import viper.silicon.verifier.DefaultMasterVerifier
+import viper.silver.ast
+import viper.silver.frontend.{SilFrontend, TranslatorState}
+import viper.silver.verifier.{DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
+
 import scala.collection.immutable
 import scala.language.postfixOps
 import scala.reflect.runtime.universe
-import scala.util.Try
-import org.slf4s.Logging
-import viper.silver.ast
-import viper.silver.verifier.{CliOptionError => SilCliOptionError, DefaultDependency => SilDefaultDependency, Failure => SilFailure, Success => SilSuccess, TimeoutOccurred => SilTimeoutOccurred, VerificationResult => SilVerificationResult, Verifier => SilVerifier}
-import viper.silver.frontend.SilFrontend
-import viper.silicon.common.config.Version
-import viper.silicon.interfaces.Failure
-import viper.silicon.reporting.VerificationException
-import viper.silicon.verifier.DefaultMasterVerifier
+import scala.util.{Left, Right, Try}
 
 object Silicon {
   private val brandingDataObjectName = "viper.silicon.brandingData"
@@ -85,7 +87,7 @@ object Silicon {
 
 class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       extends SilVerifier
-         with Logging {
+         with LazyLogging {
 
   val name: String = Silicon.name
   val version = Silicon.version
@@ -170,7 +172,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
     //bookkeeping for Viper IVE
 //    verifier.bookkeeper.reportInitialProgress(program)
 
-    log.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
+    logger.info(s"$name started ${new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z").format(System.currentTimeMillis())}")
 
     config.inputFile = program.pos match {
       case sp: ast.AbstractSourcePosition => Some(sp.file)
@@ -198,23 +200,26 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
         result = Some(convertFailures(failures))
       } catch {
-        case VerificationException(error) =>
-          result = Some(SilFailure(error :: Nil))
+        /* TODO: Log thrown exception (using an appropriate logger) */
 
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
 
-        case ee: ExecutionException =>
-          /* If possible, report the real exception that has been wrapped in
-           * the ExecutionException. The wrapping is due to using a future.
-           */
-          val ex =
-            if (ee.getCause != null) ee.getCause
-            else ee
+        case exception: Exception =>
+          reporting.exceptionToViperError(exception) match {
+            case Right((cause, failure)) =>
+              logger.info(cause.toString)
+              result = Some(failure)
+            case Left(error) =>
+              error match {
+                case _: NoClassDefFoundError =>
+                  logger.error(reporting.noClassDefFoundErrorMessage)
+                case _ =>
+                  /* Don't do anything special */
+              }
 
-          handleThrowable(ex)
-
-        case ex: Exception => handleThrowable(ex)
+              throw error
+          }
       } finally {
         /* http://docs.oracle.com/javase/7/docs/api/java/util/concurrent/ExecutorService.html */
         executor.shutdown()
@@ -224,20 +229,6 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
       assert(result.nonEmpty, "The result of the verification run wasn't stored appropriately")
       result.get
     }
-  }
-
-  private def handleThrowable(ex: Throwable) {
-//    config.logLevel().toUpperCase match {
-//      case "DEBUG" | "TRACE" | "ALL" => throw ex
-//      case _ =>
-//    }
-
-    throw ex
-
-//    val sw = new StringWriter()
-//    val pw = new PrintWriter(sw)
-//    ex.printStackTrace(pw)
-//    log.debug(ex.toString + "\n" + sw)
   }
 
   private def runVerifier(program: ast.Program): List[Failure] = {
@@ -273,7 +264,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
              })
 
     if (config.showStatistics.isDefined) {
-      ???
+      sys.error("Implementation missing")
 //      val proverStats = verifier.decider.statistics()
 //
 //      verifier.bookkeeper.proverStatistics = proverStats
@@ -294,9 +285,9 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 //      }
     }
 
-    failures foreach (f => logFailure(f, s => log.info(s)))
+    failures foreach (f => logFailure(f, s => logger.info(s)))
 
-    log.info("\nVerification finished in %s with %s error(s)".format(
+    logger.info("\nVerification finished in %s with %s error(s)".format(
         viper.silicon.common.format.formatMillisReadably(/*verifier.bookkeeper.*/elapsedMillis),
         failures.length))
 
@@ -315,12 +306,12 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def setLogLevelsFromConfig() {
-    val log4jlogger = org.apache.log4j.Logger.getLogger(this.getClass.getPackage.getName)
-    log4jlogger.setLevel(org.apache.log4j.Level.toLevel(config.logLevel()))
+    val logger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
+    logger.setLevel(Level.toLevel(config.logLevel()))
 
     config.logger.foreach { case (loggerName, level) =>
-      val log4jlogger = org.apache.log4j.Logger.getLogger(loggerName)
-      log4jlogger.setLevel(org.apache.log4j.Level.toLevel(level))
+      val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+      logger.setLevel(Level.toLevel(level))
     }
   }
 }
@@ -344,11 +335,33 @@ class SiliconFrontend extends SilFrontend {
 
 object SiliconRunner extends SiliconFrontend {
   def main(args: Array[String]) {
+    var exitCode = 1 /* Only 0 indicates no error - we're pessimistic here */
+
     try {
       execute(args)
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
+
+      if (state >= TranslatorState.Verified && result == SilSuccess) {
+        exitCode = 1
+      }
+    } catch {
+      case exception: Exception =>
+        reporting.exceptionToViperError(exception) match {
+          case Right((cause, failure)) =>
+            logger.info(cause.toString)
+            logger.error(failure.toString)
+          case Left(error) =>
+            error match {
+              case _: NoClassDefFoundError => logger.error(reporting.noClassDefFoundErrorMessage)
+              case _ => /* Don't do anything special */
+            }
+
+            throw error
+        }
+      case error: NoClassDefFoundError =>
+        logger.error(reporting.noClassDefFoundErrorMessage)
     } finally {
-      siliconInstance.stop()
+        siliconInstance.stop()
         /* TODO: This currently seems necessary to make sure that Z3 is terminated
          *       if Silicon is supposed to terminate prematurely because of a
          *       timeout (--timeout). I tried a few other things, e.g. verifier.stop()
@@ -359,14 +372,6 @@ object SiliconRunner extends SiliconFrontend {
          *       corresponding streams.
          */
     }
-
-    val exitCode =
-      if (   config.error.nonEmpty /* Handling command line options failed */
-          || config.exit           /* Must terminate for some other reason */
-          || result != SilSuccess) /* Verification (includes parsing) failed */
-        1
-      else
-        0
 
     sys.exit(exitCode)
   }

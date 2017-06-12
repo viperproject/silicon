@@ -6,12 +6,13 @@
 
 package viper.silicon.decider
 
-import scala.collection.mutable
-import viper.silver.ast.pretty.FastPrettyPrinterBase
-import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
+import viper.silver.ast.pretty.FastPrettyPrinterBase
+import viper.silver.components.StatefulComponent
+
+import scala.collection.mutable
 
 class TermToSMTLib2Converter
     extends FastPrettyPrinterBase
@@ -228,7 +229,7 @@ class TermToSMTLib2Converter
 
     case PredicateDomain(id, psf) => parens(text("$PSF.domain_") <> id <+> render(psf))
 
-    case PredicateLookup(id, psf, args, formalVars) =>
+    case PredicateLookup(id, psf, args) =>
       val snap: Term = if (args.size == 1) {
         args.head.convert(sorts.Snap)
       } else {

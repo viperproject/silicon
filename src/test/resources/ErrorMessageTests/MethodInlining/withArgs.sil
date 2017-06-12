@@ -1,0 +1,15 @@
+method main()
+{
+    var a: Int := 2
+    foo(a, 5)
+}
+
+method foo(x: Int, y: Int) 
+    requires true
+    requires x <= 2
+    requires x + y < y + x + 1
+    ensures true
+    ensures 2 == 1
+{
+
+}

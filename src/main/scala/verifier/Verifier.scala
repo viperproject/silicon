@@ -6,15 +6,15 @@
 
 package viper.silicon.verifier
 
-import org.slf4s.Logger
-import viper.silicon.{Config, Map}
+import ch.qos.logback.classic.Logger
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
+import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.state.{IdentifierFactory, SymbolConverter}
-import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator, Var}
-import viper.silicon.supporters.{PredicateData, QuantifierSupporter}
 import viper.silicon.supporters.functions.FunctionData
+import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSupporter}
 import viper.silicon.utils.Counter
+import viper.silicon.{Config, Map}
 import viper.silver.ast
 
 trait Verifier {
@@ -30,6 +30,7 @@ trait Verifier {
   def triggerGenerator: TriggerGenerator
   def axiomRewriter: AxiomRewriter
   def quantifierSupporter: QuantifierSupporter
+  def snapshotSupporter: SnapshotSupporter
 
   def verificationPoolManager: VerificationPoolManager
 }

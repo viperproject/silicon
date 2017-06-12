@@ -8,9 +8,11 @@ package viper.silicon
 
 import java.io.File
 import java.nio.file.{Path, Paths}
-import scala.util.Properties._
+
 import org.rogach.scallop._
 import viper.silver.frontend.SilFrontendConfig
+
+import scala.util.Properties._
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._
@@ -223,7 +225,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     case UserValue(logfile) =>
       logfile.toLowerCase match {
         case "$infile" =>
-          ??? /* TODO: Reconsider: include suffix; prover started before infile is known */
+          sys.error("Implementation missing")
+//          /* TODO: Reconsider: include suffix; prover started before infile is known */
 //          inputFile.map(f =>
 //            common.io.makeFilenameUnique(f.toFile, Some(new File(tempDirectory())), Some(z3LogFileExtension)).toPath
 //          ).getOrElse(defaultZ3LogFile)
@@ -330,10 +333,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),
-    default = Some(Runtime.getRuntime.availableProcessors()),
+    // If the SymbEx Logger is enabled, only use one core.
+    default = Some(if (ideModeAdvanced()) 1 else Runtime.getRuntime.availableProcessors()),
     noshort = true,
     hidden = false
   )
+  conflicts(numberOfParallelVerifiers, ideModeAdvanced :: Nil)
 
   val printTranslatedProgram = opt[Boolean]("printTranslatedProgram",
     descr ="Print the final program that is going to be verified.",

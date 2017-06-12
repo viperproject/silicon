@@ -1,0 +1,33 @@
+<!--
+  ~ This Source Code Form is subject to the terms of the Mozilla Public
+  ~ License, v. 2.0. If a copy of the MPL was not distributed with this
+  ~ file, You can obtain one at http://mozilla.org/MPL/2.0/.
+  -->
+
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <encoder>
+      <!-- <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n </pattern> -->
+      <pattern>%msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!--<appender name="FILE" class="ch.qos.logback.core.FileAppender">-->
+    <!--<file>testFile.log</file>-->
+    <!--<append>true</append>-->
+    <!--&lt;!&ndash; set immediateFlush to false for much higher logging throughput &ndash;&gt;-->
+    <!--<immediateFlush>true</immediateFlush>-->
+    <!--&lt;!&ndash; encoders are assigned the type-->
+         <!--ch.qos.logback.classic.encoder.PatternLayoutEncoder by default &ndash;&gt;-->
+    <!--<encoder>-->
+       <!--<pattern>%-4relative [%thread] %-5level %logger{35} - %msg%n</pattern>-->
+      <!--&lt;!&ndash;<pattern>%msg%n</pattern>&ndash;&gt;-->
+    <!--</encoder>-->
+  <!--</appender>-->
+
+  <root level="info">
+    <appender-ref ref="STDOUT" />
+  </root>
+</configuration>

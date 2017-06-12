@@ -1,6 +1,7 @@
-import java.io.{BufferedWriter, OutputStreamWriter, FileOutputStream}
-import scala.io.{BufferedSource, Source}
+import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
+
 import scala.collection.mutable
+import scala.io.{BufferedSource, Source}
 
 /* TODO: Add an option to move all Z3 declarations to the beginning of the output file.
  *       On the one hand, it is nice to have all of them at the beginning so that they

@@ -6,14 +6,14 @@
 
 package viper.silicon.supporters
 
-import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.common.collections.immutable.MultiMap._
-import viper.silicon.{Map, toMap}
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state.{SymbolConverter, terms}
 import viper.silicon.state.terms.{Distinct, DomainFun, Sort, Symbol, Term}
+import viper.silicon.state.{SymbolConverter, terms}
+import viper.silicon.toMap
+import viper.silver.ast
 
 trait DomainsContributor[SO, SY, AX, UA] extends PreambleContributor[SO, SY, AX] {
   def uniquenessAssumptionsAfterAnalysis: Iterable[UA]

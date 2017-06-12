@@ -6,21 +6,21 @@
 
 package viper.silicon.supporters
 
-import org.slf4s.Logger
+import ch.qos.logback.classic.Logger
+import viper.silicon.decider.Decider
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.rules.executionFlowController
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.state._
+import viper.silicon.state.terms._
+import viper.silicon.utils.freshSnap
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.{Map, SymbExLogger, toMap}
 import viper.silver.ast
 import viper.silver.ast.Program
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
-import viper.silicon.decider.Decider
-import viper.silicon.{Map, toMap}
-import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.state._
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms._
-import viper.silicon.interfaces._
-import viper.silicon.rules.executionFlowController
-import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.utils.freshSnap
 
 class PredicateData(predicate: ast.Predicate)
                    /* Note: Holding a reference to a fixed symbol converter (instead of going
@@ -88,7 +88,7 @@ trait DefaultPredicateVerificationUnitProvider extends VerifierComponent { v: Ve
       logger.debug("\n\n" + "-" * 10 + " PREDICATE " + predicate.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, predicate.name, "-" * 10))
 
-//      SymbExLogger.insertMember(predicate, Σ(Ø, Ø, Ø), decider.π, c.asInstanceOf[DefaultContext[ListBackedHeap]])
+      SymbExLogger.insertMember(predicate, null, v.decider.pcs)
 
       val ins = predicate.formalArgs.map(_.localVar)
       val s = sInit.copy(g = Store(ins.map(x => (x, decider.fresh(x)))),

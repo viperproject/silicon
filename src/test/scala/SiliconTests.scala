@@ -7,10 +7,11 @@
 package viper.silicon.tests
 
 import java.nio.file.Path
-import viper.silver.testing.{MissingOutput, UnexpectedOutput, LocatedAnnotation, SilSuite}
-import viper.silver.verifier.{Verifier,AbstractError,Success => SilSuccess, Failure => SilFailure, VerificationResult => SilVerificationResult}
-import viper.silicon.{Silicon, SiliconFrontend}
+
+import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
 import viper.silver.frontend.TranslatorState
+import viper.silver.testing.{LocatedAnnotation, MissingOutput, SilSuite, UnexpectedOutput}
+import viper.silver.verifier.{AbstractError, Verifier, Failure => SilFailure, Success => SilSuccess, VerificationResult => SilVerificationResult}
 
 class SiliconTests extends SilSuite {
   private val siliconTestDirectories = List("consistency")
@@ -24,9 +25,9 @@ class SiliconTests extends SilSuite {
     // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
     // SymbExLogger.reset() cleans the logging object (only relevant for verifying multiple
     // tests at once, e.g. with the 'test'-sbt-command.
-//    SymbExLogger.reset()
-//    SymbExLogger.filePath = files.head
-//    SymbExLogger.initUnitTestEngine()
+    SymbExLogger.reset()
+    SymbExLogger.filePath = files.head
+    SymbExLogger.initUnitTestEngine()
     val fe = new SiliconFrontend()//SiliconFrontendWithUnitTesting()
     fe.init(verifier)
     fe.reset(files.head)
@@ -53,19 +54,19 @@ class SiliconTests extends SilSuite {
   }
 }
 
-//class SiliconFrontendWithUnitTesting extends SiliconFrontend {
-//  /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
-//  override def result: SilVerificationResult = {
-//    if(_state < TranslatorState.Verified) super.result
-//    else{
-//      val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
-//      symbExLogUnitTestErrors match{
-//        case Nil => super.result
-//        case s1:Seq[AbstractError] => super.result match{
-//          case SilSuccess => SilFailure(s1)
-//          case SilFailure(s2) => SilFailure(s2 ++ s1)
-//        }
-//      }
-//    }
-//  }
-//}
+class SiliconFrontendWithUnitTesting extends SiliconFrontend {
+  /** Is overridden only to append SymbExLogging-UnitTesting-Errors to the Result. **/
+  override def result: SilVerificationResult = {
+    if(_state < TranslatorState.Verified) super.result
+    else{
+      val symbExLogUnitTestErrors = SymbExLogger.unitTestEngine.verify()
+      symbExLogUnitTestErrors match{
+        case Nil => super.result
+        case s1:Seq[AbstractError] => super.result match{
+          case SilSuccess => SilFailure(s1)
+          case SilFailure(s2) => SilFailure(s2 ++ s1)
+        }
+      }
+    }
+  }
+}

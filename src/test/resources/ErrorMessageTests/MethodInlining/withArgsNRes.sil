@@ -1,0 +1,19 @@
+method main()
+{
+    var a: Int := 2
+    var res1: Int
+    var res2: Int
+    res1, res2 := foo(a, 5)
+
+    assert(res2 == a)
+    assert(res1 == res2 + 5)
+}
+
+method foo(x: Int, y: Int) returns (r1: Int, r2: Int)
+    requires x >= 0 && y >= 0
+    ensures r2 == x
+    ensures r1 == r2 + y - 1
+{
+    r2 := x
+    r1 := r2 + y
+}

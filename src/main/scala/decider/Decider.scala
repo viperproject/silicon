@@ -6,11 +6,7 @@
 
 package viper.silicon.decider
 
-import scala.reflect.{ClassTag, classTag}
-import org.slf4s.Logger
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.DependencyNotFoundError
+import ch.qos.logback.classic.Logger
 import viper.silicon.Silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
@@ -18,6 +14,11 @@ import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silver.verifier.DependencyNotFoundError
+
+import scala.reflect.{ClassTag, classTag}
 
 /*
  * Interfaces
@@ -96,18 +97,8 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 //    }
 
     private def createProver(): Option[DependencyNotFoundError] = {
-      try {
-        z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
-        z3.start() /* Cannot query Z3 version otherwise */
-      } catch {
-        case e: java.io.IOException if e.getMessage.startsWith("Cannot run program") =>
-          val message = (
-            s"Could not execute Z3 at ${z3.z3Path}. Either place z3 in the path, or set "
-              + s"the environment variable ${Silicon.z3ExeEnvironmentVariable}, or run "
-              + s"Silicon with option --z3Exe")
-
-          return Some(DependencyNotFoundError(message))
-      }
+      z3 = new Z3ProverStdIO(uniqueId, termConverter, identifierFactory)
+      z3.start() /* Cannot query Z3 version otherwise */
 
       val z3Version = z3.z3Version()
       logger.info(s"Using Z3 $z3Version located at ${z3.z3Path}")

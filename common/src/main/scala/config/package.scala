@@ -6,8 +6,7 @@
 
 package viper.silicon.common
 
-import java.util.Comparator
-import java.util.Scanner
+import java.util.{Comparator, Scanner}
 
 package object config {
   def wildcardToRegex(str: String) =
