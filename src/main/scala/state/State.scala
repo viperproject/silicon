@@ -28,7 +28,7 @@ final case class State(g: Store = Store(),
                        methodCfg: SilverCfg = null,
                        invariantContexts: Stack[Heap] = Stack.empty,
 
-                       constrainableARPs: InsertionOrderedSet[Term] = InsertionOrderedSet.empty,
+                       constrainableARPs: InsertionOrderedSet[Var] = InsertionOrderedSet.empty,
                        quantifiedVariables: Stack[Var] = Nil,
                        retrying: Boolean = false,
                        underJoin: Boolean = false,
@@ -76,7 +76,7 @@ final case class State(g: Store = Store(),
 
   def cycles(m: ast.Member) = visited.count(_ == m)
 
-  def setConstrainable(arps: Seq[Term], constrainable: Boolean) = {
+  def setConstrainable(arps: Iterable[Var], constrainable: Boolean) = {
     val newConstrainableARPs =
       if (constrainable) constrainableARPs ++ arps
       else constrainableARPs -- arps
@@ -143,7 +143,7 @@ object State {
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
-                     `constrainableARPs1`,
+                     constrainableARPs2,
                      `quantifiedVariables1`,
                      `retrying1`,
                      `underJoin1`,
@@ -159,6 +159,7 @@ object State {
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val possibleTriggers3 = possibleTriggers1 ++ possibleTriggers2
+            val constrainableARPs3 = constrainableARPs1 ++ constrainableARPs2
 
             val smCache3 =
               viper.silicon.utils.conflictFreeUnion(smCache1, smCache2) match {
@@ -178,6 +179,7 @@ object State {
 
             s1.copy(functionRecorder = functionRecorder3,
                     possibleTriggers = possibleTriggers3,
+                    constrainableARPs = constrainableARPs3,
                     smCache = smCache3)
 
           case _ =>
@@ -189,7 +191,8 @@ object State {
   def preserveAfterLocalEvaluation(pre: State, post: State): State = {
     pre.copy(functionRecorder = post.functionRecorder,
              possibleTriggers = post.possibleTriggers,
-             smCache = post.smCache)
+             smCache = post.smCache,
+             constrainableARPs = post.constrainableARPs)
   }
 
   def conflictFreeUnionOrAbort[K, V](m1: Map[K, V], m2: Map[K, V]): Map[K,V] =

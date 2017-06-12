@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.HeuristicsFailed
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state.terms._
@@ -405,10 +406,10 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: folding ${predicate.name}(${tArgs.mkString(",")})")
-      magicWandSupporter.foldingPredicate(s.copy(h = h), predicate, tArgs, tPerm, pve, v)(Q)
+      magicWandSupporter.foldingPredicate(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)(Q)
     } else {
 //      heuristicsLogger.debug(s"  reaction: fold ${predicate.name}(${tArgs.mkString(",")})")
-      predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, pve, v)((s1, v1) =>
+      predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
         Q(s1, s1.h, v1))
     }
   }

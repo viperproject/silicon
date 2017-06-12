@@ -237,47 +237,47 @@ object consumer extends ConsumptionRules with Immutable {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), Seq(acc.perm, acc.loc.rcv), optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tRcvr), tTriggers, auxQuantResult, v1) =>
+            val inverseFunctions =
+              quantifiedChunkSupporter.getFreshInverseFunctions(
+                qvars,
+                And(tCond, IsPositive(tPerm)),
+                Seq(tRcvr),
+                Seq(`?r`),
+                s1.relevantQuantifiedVariables(Seq(tRcvr)),
+                v1)
+            val (effectiveTriggers, effectiveTriggersQVars) =
+              optTrigger match {
+                case Some(_) =>
+                  /* Explicit triggers were provided */
+                  (tTriggers, qvars)
+                case None =>
+                  /* No explicit triggers were provided and we resort to those from the inverse
+                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+                   * Note that the trigger generation code might have added quantified variables
+                   * to that axiom.
+                   */
+                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
+                   inverseFunctions.axiomInversesOfInvertibles.vars)
+              }
+            v1.decider.prover.comment("Nested auxiliary terms")
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                /* No explicit triggers provided */
+                v1.decider.assume(
+                  tAuxQuantNoTriggers.copy(
+                    vars = effectiveTriggersQVars,
+                    triggers = effectiveTriggers))
+
+              case Right(tAuxQuants) =>
+                /* Explicit triggers were provided. */
+                v1.decider.assume(tAuxQuants)
+            }
             v1.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(Some(tCond), Seq(tRcvr))
                 val chunkOrderHeuristics =
                   quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val loss = PermTimes(tPerm, s1.permissionScalingFactor)
-                val inverseFunctions =
-                  quantifiedChunkSupporter.getFreshInverseFunctions(
-                    qvars,
-                    And(tCond, IsPositive(tPerm)),
-                    Seq(tRcvr),
-                    Seq(`?r`),
-                    s1.relevantQuantifiedVariables(Seq(tRcvr)),
-                    v1)
-                val (effectiveTriggers, effectiveTriggersQVars) =
-                  optTrigger match {
-                    case Some(_) =>
-                      /* Explicit triggers were provided */
-                      (tTriggers, qvars)
-                    case None =>
-                      /* No explicit triggers were provided and we resort to those from the inverse
-                       * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
-                       * Note that the trigger generation code might have added quantified variables
-                       * to that axiom.
-                       */
-                      (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                       inverseFunctions.axiomInversesOfInvertibles.vars)
-                  }
-                v1.decider.prover.comment("Nested auxiliary terms")
-                auxQuantResult match {
-                  case Left(tAuxQuantNoTriggers) =>
-                    /* No explicit triggers provided */
-                    v1.decider.assume(
-                      tAuxQuantNoTriggers.copy(
-                        vars = effectiveTriggersQVars,
-                        triggers = effectiveTriggers))
-
-                  case Right(tAuxQuants) =>
-                    /* Explicit triggers were provided. */
-                    v1.decider.assume(tAuxQuants)
-                }
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
                 val receiverInjectivityCheck =
                   quantifiedChunkSupporter.injectivityAxiom(
@@ -327,7 +327,8 @@ object consumer extends ConsumptionRules with Immutable {
                         val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef)
                                                      .recordFieldInv(inverseFunctions)
                         val s3 = s2.copy(functionRecorder = fr3,
-                                         partiallyConsumedHeap = Some(h2))
+                                         partiallyConsumedHeap = Some(h2),
+                                         constrainableARPs = s.constrainableARPs)
                         Q(s3, h2, fvf.convert(sorts.Snap), v1)
                       case (false, _, _) =>
                         Failure(pve dueTo InsufficientPermission(acc.loc))}
@@ -351,47 +352,47 @@ object consumer extends ConsumptionRules with Immutable {
           else Some(forall.triggers)
         evalQuantified(s, Forall, forall.variables, Seq(cond), acc.perm +: acc.loc.args, optTrigger, qid, pve, v) {
           case (s1, qvars, Seq(tCond), Seq(tPerm, tArgs @ _*), tTriggers, auxQuantResult, v1) =>
+            val inverseFunctions =
+              quantifiedChunkSupporter.getFreshInverseFunctions(
+                qvars,
+                And(tCond, IsPositive(tPerm)),
+                tArgs,
+                formalVars,
+                s1.relevantQuantifiedVariables(tArgs),
+                v1)
+            val (effectiveTriggers, effectiveTriggersQVars) =
+              optTrigger match {
+                case Some(_) =>
+                  /* Explicit triggers were provided */
+                  (tTriggers, qvars)
+                case None =>
+                  /* No explicit triggers were provided and we resort to those from the inverse
+                   * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
+                   * Note that the trigger generation code might have added quantified variables
+                   * to that axiom.
+                   */
+                  (inverseFunctions.axiomInversesOfInvertibles.triggers,
+                   inverseFunctions.axiomInversesOfInvertibles.vars)
+              }
+            v1.decider.prover.comment("Nested auxiliary terms")
+            auxQuantResult match {
+              case Left(tAuxQuantNoTriggers) =>
+                /* No explicit triggers provided */
+                v1.decider.assume(
+                  tAuxQuantNoTriggers.copy(
+                    vars = effectiveTriggersQVars,
+                    triggers = effectiveTriggers))
+
+              case Right(tAuxQuants) =>
+                /* Explicit triggers were provided. */
+                v1.decider.assume(tAuxQuants)
+            }
             v1.decider.assert(Forall(qvars, Implies(tCond, perms.IsNonNegative(tPerm)), Nil)) {
               case true =>
                 val hints = quantifiedChunkSupporter.extractHints(Some(tCond), tArgs)
                 val chunkOrderHeuristics =
                   quantifiedChunkSupporter.hintBasedChunkOrderHeuristic(hints)
                 val loss = PermTimes(tPerm, s1.permissionScalingFactor)
-                val inverseFunctions =
-                  quantifiedChunkSupporter.getFreshInverseFunctions(
-                    qvars,
-                    And(tCond, IsPositive(tPerm)),
-                    tArgs,
-                    formalVars,
-                    s1.relevantQuantifiedVariables(tArgs),
-                    v1)
-                val (effectiveTriggers, effectiveTriggersQVars) =
-                  optTrigger match {
-                    case Some(_) =>
-                      /* Explicit triggers were provided */
-                      (tTriggers, qvars)
-                    case None =>
-                      /* No explicit triggers were provided and we resort to those from the inverse
-                       * function axiom inv-of-rcvr, i.e. from `inv(e(x)) = x`.
-                       * Note that the trigger generation code might have added quantified variables
-                       * to that axiom.
-                       */
-                      (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                       inverseFunctions.axiomInversesOfInvertibles.vars)
-                  }
-                v1.decider.prover.comment("Nested auxiliary terms")
-                auxQuantResult match {
-                  case Left(tAuxQuantNoTriggers) =>
-                    /* No explicit triggers provided */
-                    v1.decider.assume(
-                      tAuxQuantNoTriggers.copy(
-                        vars = effectiveTriggersQVars,
-                        triggers = effectiveTriggers))
-
-                  case Right(tAuxQuants) =>
-                    /* Explicit triggers were provided. */
-                    v1.decider.assume(tAuxQuants)
-                }
                 /* TODO: Can we omit/simplify the injectivity check in certain situations? */
                 val receiverInjectivityCheck =
                   quantifiedChunkSupporter.injectivityAxiom(
@@ -441,7 +442,8 @@ object consumer extends ConsumptionRules with Immutable {
                         val fr3 = s2.functionRecorder.recordFvfAndDomain(fvfDef)
                                                      .recordFieldInv(inverseFunctions)
                         val s3 = s2.copy(functionRecorder = fr3,
-                                         partiallyConsumedHeap = Some(h2))
+                                         partiallyConsumedHeap = Some(h2),
+                                         constrainableARPs = s.constrainableARPs)
                         Q(s3, h2, fvf.convert(sorts.Snap), v1)
                       case (false, _, _) =>
                         Failure(pve dueTo InsufficientPermission(acc.loc))}
@@ -466,7 +468,9 @@ object consumer extends ConsumptionRules with Immutable {
               None,
               pve,
               v2
-            )(Q)}))
+            )((s3, h3, snap, v3) => {
+              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs)
+              Q(s4, h3, snap, v3)})}))
 
       case ast.AccessPredicate(loc @ ast.PredicateAccess(eArgs, predname), ePerm)
               if s.qpPredicates.contains(Verifier.program.findPredicate(predname)) =>
@@ -487,7 +491,9 @@ object consumer extends ConsumptionRules with Immutable {
               None,
               pve,
               v2
-            )(Q)}))
+            )((s3, h3, snap, v3) => {
+              val s4 = s3.copy(constrainableARPs = s1.constrainableARPs)
+              Q(s4, h3, snap, v3)})}))
 
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
@@ -506,7 +512,8 @@ object consumer extends ConsumptionRules with Immutable {
               case true =>
                 val loss = PermTimes(tPerm, s2.permissionScalingFactor)
                 chunkSupporter.consume(s2, h, name, args, loss, pve, v2, locacc, Some(a))((s3, h1, snap1, v3) => {
-                  val s4 = s3.copy(partiallyConsumedHeap = Some(h1))
+                  val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
+                                   constrainableARPs = s.constrainableARPs)
                   Q(s4, h1, snap1, v3)})
               case false =>
                 Failure(pve dueTo NegativePermission(perm))}))
