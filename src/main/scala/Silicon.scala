@@ -206,7 +206,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
         case exception: Exception =>
           reporting.exceptionToViperError(exception) match {
             case Right((cause, failure)) =>
-              logger.info(cause.toString)
+              logger.info("An exception occurred:", cause)
               result = Some(failure)
             case Left(error) =>
               error match {
@@ -346,7 +346,7 @@ object SiliconRunner extends SiliconFrontend {
       case exception: Exception =>
         reporting.exceptionToViperError(exception) match {
           case Right((cause, failure)) =>
-            logger.info(cause.toString)
+            logger.info("An exception occurred:", cause)
             logger.error(failure.toString)
           case Left(error) =>
             error match {
