@@ -335,15 +335,17 @@ object producer extends ProductionRules with Immutable {
             val gain = PermTimes(tPerm, s1.permissionScalingFactor)
             val (ch, inverseFunctions) =
               quantifiedChunkSupporter.createQuantifiedChunk(
-                qvars             = qvars,
-                condition         = tCond,
-                location          = acc.loc.field,
-                arguments         = Seq(tRcvr),
-                permissions       = gain,
-                codomainQVars     = Seq(`?r`),
-                sm                = snap,
-                additionalInvArgs = s1.relevantQuantifiedVariables(Seq(tRcvr)),
-                v                 = v1)
+                qvars                = qvars,
+                condition            = tCond,
+                location             = acc.loc.field,
+                arguments            = Seq(tRcvr),
+                permissions          = gain,
+                codomainQVars        = Seq(`?r`),
+                sm                   = snap,
+                additionalInvArgs    = s1.relevantQuantifiedVariables(Seq(tRcvr)),
+                userProvidedTriggers = optTrigger.map(_ => tTriggers),
+                qidPrefix            = qid,
+                v                    = v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {
                 case Some(_) =>
@@ -414,15 +416,17 @@ object producer extends ProductionRules with Immutable {
             val gain = PermTimes(tPerm, s1.permissionScalingFactor)
             val (ch, inverseFunctions) =
               quantifiedChunkSupporter.createQuantifiedChunk(
-                qvars             = qvars,
-                condition         = tCond,
-                location          = predicate,
-                arguments         = tArgs,
-                permissions       = gain,
-                sm                = snap,
-                codomainQVars     = formalVars,
-                additionalInvArgs = s1.relevantQuantifiedVariables(tArgs),
-                v                 = v1)
+                qvars                = qvars,
+                condition            = tCond,
+                location             = predicate,
+                arguments            = tArgs,
+                permissions          = gain,
+                sm                   = snap,
+                codomainQVars        = formalVars,
+                additionalInvArgs    = s1.relevantQuantifiedVariables(tArgs),
+                userProvidedTriggers = optTrigger.map(_ => tTriggers),
+                qidPrefix            = qid,
+                v                    = v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {
                 case Some(_) =>
