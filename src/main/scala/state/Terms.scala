@@ -1702,7 +1702,7 @@ object perms {
   def IsNonPositive(p: Term): Term = p match {
     case _: NoPerm => True()
     case  _: PermPlus => False()
-       /* ATTENTION: This is only sound if both plus operands are positive!
+      /* ATTENTION: This is only sound if both plus operands are positive!
        * Consider removing IsNonPositive and using Not(IsPositive(...)) instead.
        */
     case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))

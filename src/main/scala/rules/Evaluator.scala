@@ -177,7 +177,7 @@ object evaluator extends EvaluationRules with Immutable {
          */
         val s1 =
           s.copy(functionRecorder = s.functionRecorder.recordArp(tVar, tConstraints))
-            .setConstrainable(Seq(tVar), true)
+           .setConstrainable(Seq(tVar), true)
         Q(s1, tVar, v)
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
@@ -564,7 +564,7 @@ object evaluator extends EvaluationRules with Immutable {
 //                          QB(tIn, c5))})
                     consume(s4, acc, pve, v3)((s5, snap, v4) => {
                       val s6 = s5.copy(functionRecorder = s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap),
-                        constrainableARPs = s1.constrainableARPs)
+                                       constrainableARPs = s1.constrainableARPs)
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
                          * to the function arguments and the predicate snapshot
@@ -777,7 +777,7 @@ object evaluator extends EvaluationRules with Immutable {
     } else
       eval(s.copy(h = h, partiallyConsumedHeap = None), e, pve, v)((s1, t, v1) => {
         val s2 = s1.copy(h = s.h,
-                         partiallyConsumedHeap = s.partiallyConsumedHeap)
+          partiallyConsumedHeap = s.partiallyConsumedHeap)
         Q(s2, t, v1)})
 
   def evalLocationAccess(s: State,

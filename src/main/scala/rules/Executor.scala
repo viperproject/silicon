@@ -189,7 +189,7 @@ object executor extends ExecutionRules with Immutable {
       case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
         val arps = vars map (s.g.apply(_).asInstanceOf[Var])
         exec(s.setConstrainable(arps, true), body, v)((s1, v1) =>
-          follows(s1.setConstrainable(arps, false), s1.methodCfg.outEdges(block), Internal(_), v1)(Q))
+          follows(s1.setConstrainable(arps, false), magicWandSupporter.getOutEdges(s1, block), Internal(_), v1)(Q))
     }
   }
 
@@ -237,7 +237,7 @@ object executor extends ExecutionRules with Immutable {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
+        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> s.h))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>

@@ -258,7 +258,7 @@ object consumer extends ConsumptionRules with Immutable {
                    * to that axiom.
                    */
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                    inverseFunctions.axiomInversesOfInvertibles.vars)
+                   inverseFunctions.axiomInversesOfInvertibles.vars)
               }
             v1.decider.prover.comment("Nested auxiliary terms")
             auxQuantResult match {
@@ -373,7 +373,7 @@ object consumer extends ConsumptionRules with Immutable {
                    * to that axiom.
                    */
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                    inverseFunctions.axiomInversesOfInvertibles.vars)
+                   inverseFunctions.axiomInversesOfInvertibles.vars)
               }
             v1.decider.prover.comment("Nested auxiliary terms")
             auxQuantResult match {
