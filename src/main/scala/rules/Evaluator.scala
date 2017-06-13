@@ -710,7 +710,6 @@ object evaluator extends EvaluationRules with Immutable {
 
     val tVars = localVars map (x => v.decider.fresh(x.name, v.symbolConverter.toSort(x.typ)))
     val gVars = Store(localVars zip tVars)
-    System.out.println(s"using eval quantified (${s.exhaleExt})")
     val s1 = s.copy(g = s.g + gVars,
                     quantifiedVariables = tVars ++ s.quantifiedVariables,
                     recordPossibleTriggers = true,
@@ -778,7 +777,7 @@ object evaluator extends EvaluationRules with Immutable {
     } else
       eval(s.copy(h = h, partiallyConsumedHeap = None), e, pve, v)((s1, t, v1) => {
         val s2 = s1.copy(h = s.h,
-          partiallyConsumedHeap = s.partiallyConsumedHeap)
+                         partiallyConsumedHeap = s.partiallyConsumedHeap)
         Q(s2, t, v1)})
 
   def evalLocationAccess(s: State,

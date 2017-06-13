@@ -50,7 +50,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
            pve: PartialVerificationError,
            v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
-  : VerificationResult = {
+          : VerificationResult = {
 
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)

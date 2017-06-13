@@ -392,6 +392,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
       val foldStmt = ast.Fold(acc)()
       exec(s.copy(h = h), foldStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
+//    }
   }
 
   def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
@@ -400,11 +401,12 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
                    : VerificationResult = {
     //if (s.exhaleExt) {
 //      heuristicsLogger.debug(s"  reaction: folding ${predicate.name}(${tArgs.mkString(",")})")
-      //magicWandSupporter.foldPredicate(s.copy(h = h), predicate, tArgs, tPerm, pve, v)(Q)
-    //} else {
+//      magicWandSupporter.foldingPredicate(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)(Q)
+//    } else {
 //      heuristicsLogger.debug(s"  reaction: fold ${predicate.name}(${tArgs.mkString(",")})")
     predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
         Q(s1, s1.h, v1))
+//    }
   }
 
   /* Helpers */
