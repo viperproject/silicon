@@ -1,7 +1,8 @@
-import java.io.{FileOutputStream, OutputStreamWriter, BufferedWriter}
+import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
 import java.text.DecimalFormat
-import scala.collection.immutable.{SortedSet, SortedMap}
-import scala.io.{Source, BufferedSource}
+
+import scala.collection.immutable.{SortedMap, SortedSet}
+import scala.io.{BufferedSource, Source}
 
 def collectStats(source: BufferedSource): (SortedSet[String], Seq[SortedMap[String, Double]]) = {
   val statsEntryPattern =

@@ -6,8 +6,9 @@
 
 package viper.silicon.state
 
-import scala.collection.mutable
 import viper.silicon.state.terms._
+
+import scala.collection.mutable
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the
@@ -67,7 +68,6 @@ package object utils {
     case and: And => and.ts
     case or: Or => or.ts
     case _: NoPerm | _: FullPerm => Nil
-    case wcp: WildcardPerm => List(wcp.v)
     case fp: FractionPerm => List(fp.n, fp.d)
     case ivp: IsValidPermVar => List(ivp.v)
     case irp: IsReadPermVar => List(irp.v, irp.ub)
@@ -86,7 +86,7 @@ package object utils {
     case Domain(_, fvf) => fvf :: Nil
     case Lookup(_, fvf, at) => fvf :: at :: Nil
     case PredicateDomain(_, psf) => psf :: Nil
-    case PredicateLookup(_, psf, args, formalVars) => Seq(psf) ++ args ++ formalVars
+    case PredicateLookup(_, psf, args) => Seq(psf) ++ args
 
   }
 
@@ -145,7 +145,6 @@ package object utils {
       case AtLeast(t0, t1) => AtLeast(go(t0), go(t1))
       case _: NoPerm | _: FullPerm  => term
       case FractionPerm(n, d) => FractionPerm(go(n), go(d))
-      case WildcardPerm(v) => WildcardPerm(go(v))
       case IsValidPermVar(v) => IsValidPermVar(go(v))
       case IsReadPermVar(v, ub) => IsReadPermVar(go(v), go(ub))
       case PermTimes(p0, p1) => PermTimes(go(p0), go(p1))
@@ -193,7 +192,7 @@ package object utils {
       case Lookup(f, fvf, at) => Lookup(f, go(fvf), go(at))
 
       case PredicateDomain(p, psf) => PredicateDomain(p, go(psf))
-      case PredicateLookup(p, psf, args, formalVars) => PredicateLookup(p, go(psf), args map go,formalVars map go)
+      case PredicateLookup(p, psf, args) => PredicateLookup(p, go(psf), args map go)
 
     }
 

@@ -12,7 +12,7 @@ import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.IsNoAccess
+import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -28,7 +28,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   import producer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
-    ???
+    sys.error("Implementation missing")
 //  {
 //    val wands = Visitor.deepCollect(List(root), Nodes.subnodes){case wand: ast.MagicWand => wand}
 //    var result: VerificationResult = Success()
@@ -143,7 +143,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     var sCurr = s
     var vCurr = v
 
-    while (heapsToVisit.nonEmpty && !v.decider.check(IsNoAccess(toLose), Verifier.config.checkTimeout())) {
+    while (heapsToVisit.nonEmpty && !v.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
       val h = heapsToVisit.head
       heapsToVisit = heapsToVisit.tail
 
@@ -158,7 +158,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       vCurr = v1
     }
 
-    if (vCurr.decider.check(IsNoAccess(toLose), Verifier.config.checkTimeout())) {
+    if (vCurr.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
       val tEqs =
         consumedChunks.flatten.sliding(2).map {
           case Array(ch1: BasicChunk, ch2: BasicChunk) => ch1.snap === ch2.snap
@@ -197,7 +197,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           else
             (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
         val h1 =
-          if (v.decider.check(IsNoAccess(pKeep), Verifier.config.checkTimeout())) h - ch
+          if (v.decider.check(IsNonPositive(pKeep), Verifier.config.checkTimeout())) h - ch
           else h - ch + (ch \ pKeep)
         val consumedChunk = ch \ pLost
         (s, h1, Some(consumedChunk), pToConsume, v)

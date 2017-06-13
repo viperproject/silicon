@@ -6,14 +6,13 @@
 
 package viper.silicon.tests
 
-import org.scalatest.FunSuite
-import org.scalatest.Matchers
+import org.scalatest.{FunSuite, Matchers}
 import viper.silicon.state.Identifier
-import DSL._
 import viper.silicon.state.terms._
+import viper.silicon.tests.DSL._
 
 class SimpleArithmeticTermSolverTests extends FunSuite with Matchers {
-  import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
+  import SimpleArithmeticSolver.{SolverResult, SolvingFailure, SolvingSuccess, solve}
 
   test("Pre-solving errors") {
     assert(solve(b, y, y).isInstanceOf[SolverResult])

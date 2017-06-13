@@ -1,7 +1,7 @@
-import java.io.{FileOutputStream, OutputStreamWriter, BufferedWriter}
+import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
+
 import scala.collection.mutable
-import scala.collection.immutable.SortedMap
-import scala.io.{Source, BufferedSource}
+import scala.io.{BufferedSource, Source}
 
 /* Declarations */
 

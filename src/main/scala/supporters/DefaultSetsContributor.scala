@@ -6,11 +6,12 @@
 
 package viper.silicon.supporters
 
-import scala.reflect.{ClassTag, classTag}
-import viper.silver.ast
-import viper.silver.ast.{Program, SetType}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.terms.{Sort, Term, sorts}
+import viper.silver.ast
+import viper.silver.ast.{Program, SetType}
+
+import scala.reflect.{ClassTag, classTag}
 
 class DefaultSetsContributor(val domainTranslator: DomainsTranslator[Term])
     extends BuiltinDomainsContributor {

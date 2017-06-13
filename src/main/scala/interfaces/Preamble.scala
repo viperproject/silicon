@@ -6,9 +6,9 @@
 
 package viper.silicon.interfaces
 
+import viper.silicon.interfaces.decider.ProverLike
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silicon.interfaces.decider.ProverLike
 
 trait PreambleReader[I, O] {
   def readPreamble(resource: I): Iterable[O]

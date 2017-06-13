@@ -6,10 +6,11 @@
 
 package viper.silicon.tests
 
-import org.scalatest.{Tag, FlatSpec}
 import java.nio.file.Paths
-import viper.silver.frontend.SilFrontend
+
+import org.scalatest.{FlatSpec, Tag}
 import viper.silicon.Silicon
+import viper.silver.frontend.SilFrontend
 
 /** This test is intended to benchmark the memory consumption of Silicon over
   * many runs in order to detect memory leaks. However, it is hard to tell
@@ -77,6 +78,6 @@ class MemoryTests extends FlatSpec {
 }
 
 private class DummySilverFrontend extends SilFrontend {
-  def createVerifier(fullCmd: String) = ???
-  def configureVerifier(args: Seq[String]) = ???
+  def createVerifier(fullCmd: String) = sys.error("Implementation missing")
+  def configureVerifier(args: Seq[String]) = sys.error("Implementation missing")
 }

@@ -6,13 +6,14 @@
 
 package viper.silicon.supporters.qps
 
-import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.{Config, Map}
-import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
+import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
+import viper.silicon.{Config, Map}
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 
@@ -45,9 +46,10 @@ class DefaultFieldValueFunctionsContributor(preambleReader: PreambleReader[Strin
   /* Functionality */
 
   def analyze(program: ast.Program) {
+    /* TODO: Use viper.silver.ast.utility.QuantifiedPermissions.quantifiedFields instead? */
     program visit {
-      case ast.utility.QuantifiedPermissions.QPForall(_, _, _, f, _, _, _) =>
-        collectedFields += f
+      case QuantifiedPermissionAssertion(_, _, acc: ast.FieldAccessPredicate) =>
+        collectedFields += acc.loc.field
     }
 
     collectedSorts = (
