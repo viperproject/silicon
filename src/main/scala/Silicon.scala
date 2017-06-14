@@ -197,25 +197,18 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
             future.get(config.timeout(), TimeUnit.SECONDS)
 
         result = Some(convertFailures(failures))
-      } catch {
-        /* TODO: Log thrown exception (using an appropriate logger) */
-
+      } catch { /* Catch exceptions thrown during verification (errors are not caught) */
         case _: TimeoutException =>
           result = Some(SilFailure(SilTimeoutOccurred(config.timeout(), "second(s)") :: Nil))
-
         case exception: Exception =>
+          /* An exception's root cause might be an error; the following code takes care of that */
           reporting.exceptionToViperError(exception) match {
             case Right((cause, failure)) =>
+              /* Exceptions are reported as regular verification failures */
               logger.info("An exception occurred:", cause)
               result = Some(failure)
             case Left(error) =>
-              error match {
-                case _: NoClassDefFoundError =>
-                  logger.error(reporting.noClassDefFoundErrorMessage)
-                case _ =>
-                  /* Don't do anything special */
-              }
-
+              /* Errors are rethrown (see also the try-catch block in object SiliconRunner) */
               throw error
           }
       } finally {
@@ -304,12 +297,20 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
   }
 
   private def setLogLevelsFromConfig() {
-    val logger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
-    logger.setLevel(Level.toLevel(config.logLevel()))
+    config.logLevel.toOption match {
+      case Some(levelString) => /* Set user-specified log level */
+        val level = Level.toLevel(levelString)
 
-    config.logger.foreach { case (loggerName, level) =>
-      val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
-      logger.setLevel(Level.toLevel(level))
+        SiliconRunner.logger.setLevel(level)
+
+        val logger = LoggerFactory.getLogger(this.getClass.getPackage.getName).asInstanceOf[Logger]
+        logger.setLevel(level)
+
+        config.logger.foreach { case (loggerName, loggerLevelString) =>
+          val logger = LoggerFactory.getLogger(loggerName).asInstanceOf[Logger]
+          logger.setLevel(Level.toLevel(loggerLevelString))
+        }
+      case None => /* Keep default log level from configuration file */
     }
   }
 }
@@ -342,22 +343,28 @@ object SiliconRunner extends SiliconFrontend {
       if (state >= TranslatorState.Verified && result == SilSuccess) {
         exitCode = 1
       }
-    } catch {
+    } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
       case exception: Exception =>
+        /* An exception's root cause might be an error; the following code takes care of that */
         reporting.exceptionToViperError(exception) match {
           case Right((cause, failure)) =>
-            logger.info("An exception occurred:", cause)
-            logger.error(failure.toString)
+            /* Report exceptions in a user-friendly way */
+            logger.info("An exception occurred:", cause) /* Report stack trace (if log level high enough) */
+            logger.error(failure.toString) /* Report Viper error message (on default log level) */
           case Left(error) =>
+            /* Errors are rethrown (see below); for particular ones, additional messages are reported */
             error match {
-              case _: NoClassDefFoundError => logger.error(reporting.noClassDefFoundErrorMessage)
-              case _ => /* Don't do anything special */
+              case _: NoClassDefFoundError =>
+                logger.error(reporting.noClassDefFoundErrorMessage, error)
+              case _ =>
+                /* Don't do anything special */
             }
 
             throw error
         }
       case error: NoClassDefFoundError =>
-        logger.error(reporting.noClassDefFoundErrorMessage)
+        /* Report NoClassDefFoundErrors with an additional message */
+        logger.error(reporting.noClassDefFoundErrorMessage, error)
     } finally {
         siliconInstance.stop()
         /* TODO: This currently seems necessary to make sure that Z3 is terminated

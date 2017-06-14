@@ -156,8 +156,8 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val logLevel = opt[String]("logLevel",
-    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
-    default = Some("WARN"),
+    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
+    default = None,
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(singleArgConverter(level => level.toUpperCase))
