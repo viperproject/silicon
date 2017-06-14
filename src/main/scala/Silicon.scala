@@ -341,7 +341,7 @@ object SiliconRunner extends SiliconFrontend {
         /* Will call SiliconFrontend.createVerifier and SiliconFrontend.configureVerifier */
 
       if (state >= TranslatorState.Verified && result == SilSuccess) {
-        exitCode = 1
+        exitCode = 0
       }
     } catch { /* Catch exceptions and errors thrown at any point of the execution of Silicon */
       case exception: Exception =>
