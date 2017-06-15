@@ -189,7 +189,7 @@ object executor extends ExecutionRules with Immutable {
         }
 
       case cfg.ConstrainingBlock(vars: Seq[ast.AbstractLocalVar @unchecked], body: SilverCfg) =>
-        val arps = vars map s.g.apply
+        val arps = vars map (s.g.apply(_).asInstanceOf[Var])
         exec(s.setConstrainable(arps, true), body, v)((s1, v1) =>
           follows(s1.setConstrainable(arps, false), s1.methodCfg.outEdges(block), Internal(_), v1)(Q))
     }
@@ -412,12 +412,13 @@ object executor extends ExecutionRules with Immutable {
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-            eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
-              v2.decider.assert(IsNonNegative(tPerm)){
-                case true =>
-                  predicateSupporter.fold(s2, predicate, tArgs, tPerm, pve, v2)(Q)
-                case false =>
-                  Failure(pve dueTo NegativePermission(ePerm))}))
+          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
+            v2.decider.assert(IsNonNegative(tPerm)){
+              case true =>
+                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
+                predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
+              case false =>
+                Failure(pve dueTo NegativePermission(ePerm))}))
 
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
@@ -426,7 +427,8 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, ePerm, pve, v1)((s2, tPerm, v2) =>
             v2.decider.assert(IsNonNegative(tPerm)){
               case true =>
-                predicateSupporter.unfold(s2, predicate, tArgs, tPerm, pve, v2, pa)(Q)
+                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
+                predicateSupporter.unfold(s2, predicate, tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))
 
@@ -500,10 +502,7 @@ object executor extends ExecutionRules with Immutable {
          /* Cheap (and likely to succeed) matches come first */
          rhs
 
-       case _ if    rhs.existsDefined { case t if v.triggerGenerator.isForbiddenInTrigger(t) => true }
-                 || rhs.isInstanceOf[WildcardPerm] /* Fixes issue #110 (somewhat indirectly) */
-            =>
-
+       case _ if rhs.existsDefined { case t if v.triggerGenerator.isForbiddenInTrigger(t) => true } =>
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
          v.decider.assume(t === rhs)
 

@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
@@ -20,6 +21,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
            predicate: ast.Predicate,
            tArgs: List[Term],
            tPerm: Term,
+           constrainableWildcards: InsertionOrderedSet[Var],
            pve: PartialVerificationError,
            v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
@@ -29,6 +31,7 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
              predicate: ast.Predicate,
              tArgs: List[Term],
              tPerm: Term,
+             constrainableWildcards: InsertionOrderedSet[Var],
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess /* TODO: Make optional */)
@@ -40,7 +43,13 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
   import consumer._
   import producer._
 
-  def fold(s: State, predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError, v: Verifier)
+  def fold(s: State,
+           predicate: ast.Predicate,
+           tArgs: List[Term],
+           tPerm: Term,
+           constrainableWildcards: InsertionOrderedSet[Var],
+           pve: PartialVerificationError,
+           v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
           : VerificationResult = {
 
@@ -49,10 +58,11 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true)
               .scalePermissionFactor(tPerm)
-    consume(s1, body, pve, v)((s2, snap, v1) => {
+    consume(s1, body, pve, v)((s1a, snap, v1) => {
       val predTrigger = App(Verifier.predicateData(predicate).triggerFunction,
                             snap.convert(terms.sorts.Snap) +: tArgs)
       v1.decider.assume(predTrigger)
+      val s2 = s1a.setConstrainable(constrainableWildcards, false)
       if (s2.qpPredicates.contains(predicate)) {
         val predSnap = snap.convert(s2.predicateSnapMap(predicate))
         val formalArgs = s2.predicateFormalVarMap(predicate)
@@ -83,6 +93,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
              predicate: ast.Predicate,
              tArgs: List[Term],
              tPerm: Term,
+             constrainableWildcards: InsertionOrderedSet[Var],
              pve: PartialVerificationError,
              v: Verifier,
              pa: ast.PredicateAccess)
@@ -106,6 +117,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         v
       )((s2, h2, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h2)
+                   .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction,
@@ -115,8 +127,8 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
       })
     } else {
       chunkSupporter.consume(s1, s1.h, predicate.name, tArgs, s1.permissionScalingFactor, pve, v, pa)((s2, h1, snap, v1) => {
-        val s3 = s2.copy(g = gIns,
-                         h = h1)
+        val s3 = s2.copy(g = gIns, h = h1)
+                   .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
           val predicateTrigger =
             App(Verifier.predicateData(predicate).triggerFunction, snap +: tArgs)
