@@ -237,7 +237,7 @@ object executor extends ExecutionRules with Immutable {
         execs(s, stmts, v)(Q)
 
       case ast.Label(name, _) =>
-        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> s.h))
+        val s1 = s.copy(oldHeaps = s.oldHeaps + (name -> magicWandSupporter.getEvalHeap(s)))
         Q(s1, v)
 
       case ast.LocalVarDeclStmt(decl) =>
@@ -429,8 +429,7 @@ object executor extends ExecutionRules with Immutable {
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
             val hOps = s1.reserveHeaps.head + chWand
             val s2 = s1.copy(exhaleExt = true,
-              reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
-              lhsHeap = None)
+              reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
             assert(s2.consumedChunks.length == s.consumedChunks.length)
             assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
@@ -448,7 +447,6 @@ object executor extends ExecutionRules with Immutable {
             val s3 = s2.copy(h = s2.reserveHeaps.head + chWand,
               exhaleExt = false,
               reserveHeaps = Nil,
-              lhsHeap = None,
               recordEffects = false,
               consumedChunks = Stack(),
               letBoundVars = Nil)
@@ -469,11 +467,10 @@ object executor extends ExecutionRules with Immutable {
            */
           val consumeState = s1.copy(g = g)
           consume(consumeState, wand.left, pve, v1)((s2, _, v2) => {
-            val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(lhsHeap = Some(magicWandSupporter.getEvalHeap(s1)))
+            val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produce(s3, freshSnap, wand.right, pve, v2)((s4, v3) => {
-              val s5 = s4.copy(g = s1.g,
-                               lhsHeap = s1.lhsHeap)
-              val s6 = stateConsolidator.consolidate(s5, v3)
+              val s5 = s4.copy(g = s1.g)
+              val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
               Q(s6, v3)})})}
 
         e match {

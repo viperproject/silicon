@@ -330,8 +330,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
       magicWandSupporter.packageWand(s.copy(h = h), wand, ast.Seqn(Seq())(), pve, v)((s1, chWand, v1) => {
         val hOps = s1.reserveHeaps.head + chWand
         val s2 = s1.copy(exhaleExt = true,
-                         reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail,
-                         lhsHeap = None)
+                         reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
         assert(s2.reserveHeaps.length == s.reserveHeaps.length)
         assert(s2.consumedChunks.length == s.consumedChunks.length)
         assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)

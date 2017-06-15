@@ -281,7 +281,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            reserveHeaps = Heap() +: Heap() +: sLhs.h +: s.reserveHeaps.tail, /* [State RHS] */
                            reserveCfgs = proofScriptCfg +: sLhs.reserveCfgs,
                            exhaleExt = true,
-                           lhsHeap = Some(sLhs.h),
+                           oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
                            recordEffects = true,
                            consumedChunks = Stack.fill(stackSize - 1)(Nil))
         /* s2.reserveHeaps is [hUsed, hOps, hLHS, ...], where hUsed and hOps are initially
@@ -299,12 +299,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //        say(s"done: produced LHS ${wand.left}")
 //        say(s"next: consume RHS ${wand.right}")
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
-          consume(proofScriptState.copy(lhsHeap = Some(sLhs.h), reserveCfgs = proofScriptState.reserveCfgs.drop(1)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
+          consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.drop(1)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
             val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
                            //h = s.h, /* Temporarily */
                            exhaleExt = false,
-                           lhsHeap = None,
                            recordEffects = false,
+                           oldHeaps = s.oldHeaps,
                            consumedChunks = Stack(),
                            letBoundVars = Nil)
 

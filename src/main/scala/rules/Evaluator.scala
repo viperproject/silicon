@@ -104,7 +104,10 @@ object evaluator extends EvaluationRules with Immutable {
         v.logger.debug(v.stateFormatter.format(s, v.decider.pcs))
         if (s.reserveHeaps.nonEmpty)
           v.logger.debug("hR = " + s.reserveHeaps.map(v.stateFormatter.format).mkString("", ",\n     ", ""))
-        s.lhsHeap.foreach(h => v.logger.debug("hLHS = " + v.stateFormatter.format(h)))
+        s.oldHeaps.get(Verifier.MAGIC_WAND_LHS_STATE_LABEL) match {
+          case Some(hLhs) =>   v.logger.debug("hLhs = " + v.stateFormatter.format(hLhs))
+          case None =>
+        }
         v.decider.prover.comment(s"[eval] $e")
     }
 
@@ -140,7 +143,6 @@ object evaluator extends EvaluationRules with Immutable {
   protected def eval2(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
                      (Q: (State, Term, Verifier) => VerificationResult)
                      : VerificationResult = {
-
     val resultTerm = e match {
       case _: ast.TrueLit => Q(s, True(), v)
       case _: ast.FalseLit => Q(s, False(), v)
@@ -246,9 +248,6 @@ object evaluator extends EvaluationRules with Immutable {
             Failure(pve dueTo LabelledStateNotReached(old))
           case Some(h) =>
             evalOld(s, h, e0, pve, v)(Q)}
-
-      case ast.ApplyOld(e0) =>
-        evalOld(s, s.lhsHeap.get, e0, pve, v)(Q)
 
       case ast.Let(x, e0, e1) =>
         eval(s, e0, pve, v)((s1, t0, v1) =>

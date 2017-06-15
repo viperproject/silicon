@@ -16,6 +16,7 @@ import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSup
 import viper.silicon.utils.Counter
 import viper.silicon.{Config, Map}
 import viper.silver.ast
+import viper.silver.parser.FastParser
 
 trait Verifier {
   def uniqueId: String
@@ -37,6 +38,7 @@ trait Verifier {
 
 object Verifier {
   val PRE_STATE_LABEL = "old"
+  val MAGIC_WAND_LHS_STATE_LABEL = FastParser.LHS_OLD_LABEL
 
   private var _config: Config = _
   def config: Config = _config
