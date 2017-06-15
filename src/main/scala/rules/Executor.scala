@@ -425,34 +425,27 @@ object executor extends ExecutionRules with Immutable {
 
       case pckg @ ast.Package(wand, proofScript, _) => {
         val pve = PackageFailed(pckg)
-        if (s.exhaleExt) {
           magicWandSupporter.packageWand(s, wand, proofScript, pve, v)((s1, chWand, v1) => {
             val hOps = s1.reserveHeaps.head + chWand
-            val s2 = s1.copy(exhaleExt = true,
-              reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
+            assert(s.exhaleExt || s1.reserveHeaps.length == 1)
+            val s2 = if (s.exhaleExt)
+              s1.copy(h = Heap(),
+                  exhaleExt = s.exhaleExt,
+                  reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
+            else
+              /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
+              s1.copy(h = hOps,
+                  exhaleExt = s.exhaleExt,
+                  reserveHeaps = Nil,
+                  recordEffects = false,
+                  consumedChunks = Stack(),
+                  letBoundVars = Nil)
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
             assert(s2.consumedChunks.length == s.consumedChunks.length)
-            assert(s2.consumedChunks.length == s2.reserveHeaps.length - 1)
-            val sEmp = s2.copy(h = Heap())
-            continuation(sEmp, v1)
+            assert(s2.consumedChunks.length == math.max(s2.reserveHeaps.length - 1, 0))
+            continuation(s2, v1)
           })
-        } else {
-          val s1 = s.copy(reserveHeaps = Heap() :: s.h :: Nil,
-            recordEffects = true,
-            consumedChunks = Nil :: Nil,
-            letBoundVars = Nil)
-          magicWandSupporter.packageWand(s1, wand, proofScript, pve, v)((s2, chWand, v1) => {
-            assert(s2.reserveHeaps.length == 1)
-            /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
-            val s3 = s2.copy(h = s2.reserveHeaps.head + chWand,
-              exhaleExt = false,
-              reserveHeaps = Nil,
-              recordEffects = false,
-              consumedChunks = Stack(),
-              letBoundVars = Nil)
-            Q(s3, v1)
-          })
-        }}
+      }
 
       case apply @ ast.Apply(e) => {
         /* TODO: Try to unify this code with that from DefaultConsumer/applying */

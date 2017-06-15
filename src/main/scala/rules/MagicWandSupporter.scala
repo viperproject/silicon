@@ -209,7 +209,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //  private var cnt = 0L
 //  private val packageLogger = LoggerFactory.getLogger("package")
 
-  def packageWand(s: State, wand: ast.MagicWand, proofScript: ast.Seqn, pve: PartialVerificationError, v: Verifier)
+  def packageWand(state: State, wand: ast.MagicWand, proofScript: ast.Seqn, pve: PartialVerificationError, v: Verifier)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
@@ -242,6 +242,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //    say(s"wand = $wand")
 //    say("c.reserveHeaps:")
 //    s.reserveHeaps.map(v.stateFormatter.format).foreach(str => say(str, 2))
+
+    val s = if (state.exhaleExt) state else
+      state.copy(reserveHeaps = Heap() :: state.h :: Nil,
+      recordEffects = true,
+      consumedChunks = Nil :: Nil,
+      letBoundVars = Nil)
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
