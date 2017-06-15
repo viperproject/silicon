@@ -886,7 +886,6 @@ sealed trait Permissions extends Term {
 
 case class NoPerm() extends Permissions { override val toString = "Z" }
 case class FullPerm() extends Permissions { override val toString = "W" }
-case class WildcardPerm(v: Var) extends Permissions { override val toString = v.toString }
 
 class FractionPerm(val n: Term, val d: Term)
     extends Permissions
@@ -1038,7 +1037,6 @@ object PermLess extends ((Term, Term) => Term) {
     (t0, t1) match {
       case _ if t0 == t1 => False()
       case (NoPerm(), FullPerm()) => True()
-      case (FullPerm(), _: WildcardPerm) => False()
 
       case (`t0`, Ite(tCond, tIf, tElse)) =>
         /* The pattern p0 < b ? p1 : p2 arises very often in the context of quantified permissions.
@@ -1698,16 +1696,15 @@ object perms {
 
   def IsPositive(p: Term): Term = p match {
     case _: NoPerm => False()
-    case _: FullPerm | _: WildcardPerm => True()
+    case _: FullPerm => True()
     case fp: FractionPerm if fp.isDefinitelyPositive => True()
     case _ => PermLess(NoPerm(), p)
   }
 
   def IsNonPositive(p: Term): Term = p match {
     case _: NoPerm => True()
-    case  _: PermPlus | PermMinus(_, _: WildcardPerm) => False()
-      /* ATTENTION: This is only sound if both plus operands and the left minus operand
-       * are positive!
+    case  _: PermPlus => False()
+      /* ATTENTION: This is only sound if both plus operands are positive!
        * Consider removing IsNonPositive and using Not(IsPositive(...)) instead.
        */
     case _ => Or(p === NoPerm(), PermLess(p, NoPerm()))
@@ -1720,8 +1717,7 @@ object perms {
 /* Utility functions */
 
 object utils {
-  def consumeExactRead(fp: Term, constrainableARPs: Set[Term]): Boolean = fp match {
-    case _: WildcardPerm => false
+  def consumeExactRead(fp: Term, constrainableARPs: InsertionOrderedSet[Var]): Boolean = fp match {
     case v: Var => !constrainableARPs.contains(v)
     case PermPlus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)
     case PermMinus(t0, t1) => consumeExactRead(t0, constrainableARPs) || consumeExactRead(t1, constrainableARPs)

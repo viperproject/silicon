@@ -163,8 +163,21 @@ object evaluator extends EvaluationRules with Immutable {
       case _: ast.WildcardPerm =>
         val (tVar, tConstraints) = v.decider.freshARP()
         v.decider.assume(tConstraints)
-        val s1 = s.copy(functionRecorder = s.functionRecorder.recordArp(tVar, tConstraints))
-        Q(s1, WildcardPerm(tVar), v)
+        /* TODO: Only record wildcards in State.constrainableARPs that are used in exhale
+         *       position. Currently, wildcards used in inhale position (only) may not be removed
+         *       from State.constrainableARPs (potentially inefficient, but should be sound).
+         *
+         *       Probably better in general: change evaluator signature such that, in addition to
+         *       the resulting term, further data about the evaluation process (e.g. a mapping
+         *       from expressions to terms, fresh wildcards, ...) is returned.
+         *
+         *       Alternative (for just wildcards): introduce WildcardPerm, extract them from the
+         *       term returned by eval, mark as constrainable on client-side (e.g. in consumer).
+         */
+        val s1 =
+          s.copy(functionRecorder = s.functionRecorder.recordArp(tVar, tConstraints))
+           .setConstrainable(Seq(tVar), true)
+        Q(s1, tVar, v)
 
       case fa: ast.FieldAccess if s.qpFields.contains(fa.field) =>
         eval(s, fa.rcv, pve, v)((s1, tRcvr, v1) => {
@@ -549,7 +562,8 @@ object evaluator extends EvaluationRules with Immutable {
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
                     consume(s4, acc, pve, v3)((s5, snap, v4) => {
-                      val s6 = s5.copy(functionRecorder = s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap))
+                      val s6 = s5.copy(functionRecorder = s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap),
+                                       constrainableARPs = s1.constrainableARPs)
                         /* Recording the unfolded predicate's snapshot is necessary in order to create the
                          * additional predicate-based trigger function applications because these are applied
                          * to the function arguments and the predicate snapshot
@@ -713,6 +727,7 @@ object evaluator extends EvaluationRules with Immutable {
             /* TODO: Is the Either really necessary?
              *       Wouldn't clients be able to perform the same differentiation by
              *       checking whether or not the `optTriggers` they passed in is None/Some?
+             *       Related: return Option[Seq[Trigger]]; return None instead of an empty sequence
              */
             val auxQuant =
               if (optTriggers.isEmpty)

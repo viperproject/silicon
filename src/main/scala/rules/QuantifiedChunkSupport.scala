@@ -114,6 +114,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                                invertibles: Seq[Term],
                                codomainQVars: Seq[Var],
                                additionalInvArgs: Seq[Var],
+                               userProvidedTriggers: Option[Seq[Trigger]],
+                               qidPrefix: String,
                                v: Verifier)
                               : InverseFunctions
 
@@ -172,6 +174,8 @@ trait QuantifiedChunkSupport extends SymbolicExecutionRules {
                             codomainQVars: Seq[Var],
                             sm: Term,
                             additionalInvArgs: Seq[Var],
+                            userProvidedTriggers: Option[Seq[Trigger]],
+                            qidPrefix: String,
                             v: Verifier)
                            : (QuantifiedChunk, InverseFunctions)
 
@@ -228,6 +232,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                             codomainQVars: Seq[Var],
                             sm: Term,
                             additionalInvArgs: Seq[Var],
+                            userProvidedTriggers: Option[Seq[Trigger]],
+                            qidPrefix: String,
                             v: Verifier)
                            : (QuantifiedChunk, InverseFunctions) = {
 
@@ -238,6 +244,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         arguments,
         codomainQVars,
         additionalInvArgs,
+        userProvidedTriggers,
+        qidPrefix,
         v)
 
     val qvarsToInversesOfCodomain = inverseFunctions.qvarsToInversesOf(codomainQVars)
@@ -743,6 +751,8 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                                invertibles: Seq[Term], /* fs := f_1(xs), ..., f_m(xs) */
                                codomainQVars: Seq[Var], /* rs := r_1, ..., r_m */
                                additionalInvArgs: Seq[Var],
+                               userProvidedTriggers: Option[Seq[Trigger]],
+                               qidPrefix: String,
                                v: Verifier)
                               : InverseFunctions = {
 
@@ -788,17 +798,25 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         condition,
         And(qvarsWithIndices map { case (qvar, idx) => inversesOfFcts(idx) === qvar }))
 
-    /* TODO: pass in and use a qidPrefix (as in other methods in this trait) */
-
     val axInvOfFct =
-      v.triggerGenerator.assembleQuantification(
-        Forall,
-        qvars,
-        axInvsOfFctsBody,
-        if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(invertibles) :: axInvsOfFctsBody :: Nil,
-        s"qp.invOfFct${v.counter(this).next()}",
-        v.axiomRewriter)
-
+      userProvidedTriggers match {
+        case None =>
+          /* No user-provided triggers; use trigger inference to create the quantifier */
+          v.triggerGenerator.assembleQuantification(
+            Forall,
+            qvars,
+            axInvsOfFctsBody,
+            if (Verifier.config.disableISCTriggers()) Nil: Seq[Term] else And(invertibles) :: axInvsOfFctsBody :: Nil,
+            s"$qidPrefix-invOfFct",
+            v.axiomRewriter)
+        case Some(triggers) =>
+          /* User-provided triggers; create quantifier directly */
+          Forall(
+            qvars,
+            axInvsOfFctsBody,
+            if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else triggers,
+            s"$qidPrefix-invOfFct")
+      }
 
     /* c(inv_1(rs), ..., inv_n(rs)) ==>
      *    f_1(inv_1(rs), ..., inv_n(rs)) == r_1
@@ -817,7 +835,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         codomainQVars,
         axFctsOfInvsBody,
         if (Verifier.config.disableISCTriggers()) Nil: Seq[Trigger] else Trigger(inversesOfCodomains) :: Nil,
-        s"qp.fctOfInv${v.counter(this).next()}",
+        s"$qidPrefix-fctOfInv",
         v.axiomRewriter)
 
     new InverseFunctions(
