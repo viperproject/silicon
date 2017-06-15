@@ -17,6 +17,7 @@ import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
@@ -297,7 +298,8 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
             chunkSupporter.withChunk(s2, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              Q(s3.copy(h = s3.h - fc + FieldChunk(tRcvr, field.name, t, fc.perm)), v3)})))
+              val fieldChunk = BasicChunk(FieldID(), field.name, Seq(tRcvr), fc.perm, t)
+              Q(s3.copy(h = s3.h - fc + fieldChunk), v3)})))
 
       case ast.NewStmt(x, fields) =>
         val tRcvr = v.decider.fresh(x)
@@ -311,8 +313,10 @@ object executor extends ExecutionRules with Immutable {
             v.decider.prover.comment("Definitional axioms for singleton-FVF's value")
             v.decider.assume(smValueDef)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm)
-          } else
-            FieldChunk(tRcvr, field.name, snap, p)})
+          } else {
+            BasicChunk(FieldID(), field.name, Seq(tRcvr), p, snap)
+          }
+        })
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
         val ts = viper.silicon.state.utils.computeReferenceDisjointnesses(s1, tRcvr)
           /* Calling computeReferenceDisjointnesses with the updated state σ1 ensures that

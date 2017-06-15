@@ -6,13 +6,14 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.VerificationResult
+import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
+import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
@@ -36,8 +37,8 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
 }
 
 object predicateSupporter extends PredicateSupportRules with Immutable {
-  import producer._
   import consumer._
+  import producer._
 
   def fold(s: State, predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError, v: Verifier)
           (Q: (State, Verifier) => VerificationResult)
@@ -68,7 +69,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = PredicateChunk(predicate.name, tArgs, snap.convert(sorts.Snap), tPerm)
+        val ch = BasicChunk(PredicateID(), predicate.name, tArgs, tPerm, snap.convert(sorts.Snap))
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)

@@ -6,64 +6,43 @@
 
 package viper.silicon.state
 
-import viper.silver.ast
 import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
+import viper.silicon.resources.{FieldID, PredicateID, ResourceID}
 import viper.silicon.rules.InverseFunctions
-import viper.silicon.state.terms.{Lookup, PermMinus, PermPlus, PredicateLookup, Term, Var, sorts}
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms._
+import viper.silver.ast
 
-sealed abstract class BasicChunk(val name: String,
-                                 val args: Seq[Term],
-                                 val snap: Term,
-                                 val perm: Term)
-    extends PermissionChunk {
 
-  type Self <: BasicChunk
+case class BasicChunk(resourceID: ResourceID,
+                      name: String,
+                      args: Seq[Term],
+                      perm: Term,
+                      snap: Term)
+  extends PermissionChunk {
 
-  assert(
-    perm.sort == sorts.Perm,
-    s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+  // TODO: needed?
+  assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
+  resourceID match {
+    case FieldID() => assert(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
+    case PredicateID() => assert(snap.sort == sorts.Snap,
+      s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+  }
 
-  def duplicate(name: String = name, snap: Term = snap, args: Seq[Term] = args, perm: Term = perm): Self
+  def duplicate(resourceID: ResourceID = resourceID, name: String = name, snap: Term = snap, args: Seq[Term] = args,
+                perm: Term = perm): BasicChunk = BasicChunk(resourceID, name, args, perm, snap)
 
-  def +(perm: Term): Self = duplicate(perm = PermPlus(this.perm, perm))
-  def -(perm: Term): Self = duplicate(perm = PermMinus(this.perm, perm))
-  def \(perm: Term): Self = duplicate(perm = perm)
-}
+  def +(perm: Term): BasicChunk = duplicate(perm = PermPlus(this.perm, perm))
+  def -(perm: Term): BasicChunk = duplicate(perm = PermMinus(this.perm, perm))
+  def \(perm: Term): BasicChunk = duplicate(perm = perm)
 
-case class FieldChunk(rcvr: Term,
-                      override val name: String,
-                      override val snap: Term,
-                      override val perm: Term)
-    extends BasicChunk(name, Seq(rcvr), snap, perm) {
+  override def toString = resourceID match {
+    case FieldID() =>
+      val rcvr = args.head
+      s"$rcvr.$name -> $snap # $perm"
+    case PredicateID() => s"$name($snap; ${args.mkString(",")}) # $perm"
+  }
 
-  type Self = FieldChunk
-
-  assert(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
-
-  @inline
-  final def duplicate(name: String = name, snap: Term = snap, args: Seq[Term] = Seq(rcvr), perm: Term = perm): FieldChunk =
-    copy(rcvr, name, snap, perm)
-
-  override def toString = s"$rcvr.$name -> $snap # $perm"
-}
-
-case class PredicateChunk(override val name: String,
-                          override val args: Seq[Term],
-                          override val snap: Term,
-                          override val perm: Term)
-    extends BasicChunk(name, args, snap, perm) {
-
-  type Self = PredicateChunk
-
-  assert(snap.sort == sorts.Snap,
-         s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
-
-  @inline
-  final def duplicate(name: String = name, snap: Term = snap, args: Seq[Term] = args, perm: Term = perm): PredicateChunk =
-    copy(name, args, snap, perm)
-
-  override def toString = s"$name($snap; ${args.mkString(",")}) # $perm"
 }
 
 sealed trait QuantifiedChunk extends PermissionChunk {
@@ -83,6 +62,7 @@ sealed trait QuantifiedChunk extends PermissionChunk {
                 hints: Seq[Term] = hints)
                : Self
 }
+
 
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that
  *       provide permissions to a single location and those providing permissions

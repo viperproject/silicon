@@ -12,6 +12,7 @@ import viper.silver.verifier.errors.HeuristicsFailed
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms._
 import viper.silicon.state._
 import viper.silicon.supporters.PredicateVerificationUnit
@@ -421,7 +422,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     val predicateChunks =
       allChunks.collect {
-        case ch: PredicateChunk =>
+        case ch: BasicChunk if ch.resourceID == PredicateID() =>
           val body = program.findPredicate(ch.name)
 
           if (body.existsDefined(f)) {
@@ -433,7 +434,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     val predicateAccesses =
       predicateChunks.flatMap {
-        case PredicateChunk(name, args, _, _) =>
+        case BasicChunk(PredicateID(), name, args, _, _) =>
           val reversedArgs: Seq[ast.Exp] = backtranslate(s.g.values, allChunks.toSeq, args, program)
 
           if (args.length == reversedArgs.length)
@@ -482,7 +483,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
                     /* Found a local variable v s.t. v |-> t */
                   .orElse(
                     chunks.collectFirst {
-                      case fc: FieldChunk if fc.snap == t =>
+                      case fc: BasicChunk if fc.resourceID == FieldID() && fc.snap == t =>
                         bindings.find(p => p._2 == fc.args.head)
                                 .map(_._1)
                                 .map(v => ast.FieldAccess(v, program.findField(fc.name))())

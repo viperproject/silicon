@@ -6,19 +6,19 @@
 
 package viper.silicon.rules
 
+import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.resources._
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state.terms.{App, _}
+import viper.silicon.state.{BasicChunk, State}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
-
-import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.state.{FieldChunk, PredicateChunk, State}
-import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.supporters.functions.NoopFunctionRecorder
-import viper.silicon.verifier.Verifier
+
+import scala.collection.mutable
 
 trait ProductionRules extends SymbolicExecutionRules {
 
@@ -266,7 +266,17 @@ object producer extends ProductionRules with Immutable {
             val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
             Q(s1.copy(h = s1.h + ch), v)
           } else {
-            val ch = FieldChunk(rcvr, field.name, snap, p)
+            val ch = BasicChunk(FieldID(), field.name, Seq(rcvr), p, snap)
+
+            val interpreter = new PropertyInterpreter(v, s.h.values)
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            resource.instanceProperties foreach {
+              interpreter.assumePathConditionForChunk(ch, _)
+            }
+            resource.staticProperties foreach {
+              interpreter.assumePathConditionForResource(ch.resourceID, _)
+            }
+
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
               Q(s1.copy(h = h1), v1))
           }
@@ -274,8 +284,9 @@ object producer extends ProductionRules with Immutable {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            v2.decider.assume(PermAtMost(NoPerm(), tPerm))
-            v2.decider.assume(Implies(IsPositive(tPerm), tRcvr !== Null()))
+            // TODO do that in quantified as well
+            //v2.decider.assume(PermAtMost(NoPerm(), tPerm))
+            //v2.decider.assume(Implies(IsPositive(tPerm), tRcvr !== Null()))
             val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, tRcvr, snap, gain, v2)(Q)}))
@@ -299,7 +310,18 @@ object producer extends ProductionRules with Immutable {
             Q(s1.copy(h = s1.h + ch), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
-            val ch = PredicateChunk(predicate.name, args, snap1, p)
+            val ch = BasicChunk(PredicateID(), predicate.name, args, p, snap1)
+
+            // TODO: same as for field, merge?
+            val interpreter = new PropertyInterpreter(v, s.h.values)
+            val resource = Resources.resourceDescriptions(ch.resourceID)
+            resource.instanceProperties foreach {
+              interpreter.assumePathConditionForChunk(ch, _)
+            }
+            resource.staticProperties foreach {
+              interpreter.assumePathConditionForResource(ch.resourceID, _)
+            }
+            // TODO: this produce really needed?
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
               if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder)
               v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
@@ -310,7 +332,8 @@ object producer extends ProductionRules with Immutable {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            v2.decider.assume(PermAtMost(NoPerm(), tPerm))
+            // TODO: assume same for quantified
+            //v2.decider.assume(PermAtMost(NoPerm(), tPerm))
             val snap = sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
                             .getOrElse(sorts.Snap), v2)

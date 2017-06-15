@@ -9,6 +9,7 @@ package viper.silicon.rules
 import scala.collection.mutable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
+import viper.silicon.resources.{PropertyInterpreter, Resources}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
@@ -26,7 +27,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   def consolidate(s: State, v: Verifier): State = {
     v.decider.prover.comment("[state consolidation]")
 
-    val (permissionChunks, otherChunk) = partition(s.h)
+    val (permissionChunks, otherChunks) = partition(s.h)
 
     var continue = false
 
@@ -45,14 +46,30 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       continue = snapEqs.nonEmpty
     } while(continue)
 
-    assumeValidPermissionAmounts(mergedChunks, v)
+    val interpreter = new PropertyInterpreter(v, mergedChunks)
+    Resources.resourceDescriptions foreach { case (id, desc) =>
+      v.decider.prover.comment(s"Assuming delayed properties for $desc")
+      desc.delayedProperties foreach {
+        interpreter.assumePathConditionForResource(id, _)
+      }
+    }
 
-    val referenceIneqs = computeUpperPermissionBoundAssumptions(mergedChunks, v)
+    // TODO somewhat inefficient
+    mergedChunks foreach {
+      case ch: BasicChunk =>
+        val resource = Resources.resourceDescriptions(ch.resourceID)
+        resource.instanceProperties foreach {
+          interpreter.assumePathConditionForChunk(ch, _)
+        }
+        resource.staticProperties foreach {
+          interpreter.assumePathConditionForResource(ch.resourceID, _)
+        }
+      case _ =>
+    }
 
-    v.decider.prover.comment("assuming upper bounds for field permissions")
-    v.decider.assume(referenceIneqs)
+    // TODO make quantified fields work
 
-    s.copy(h = Heap(mergedChunks ++ otherChunk))
+    s.copy(h = Heap(mergedChunks ++ otherChunks))
   }
 
   def consolidateIfRetrying(s: State, v: Verifier): State =
@@ -104,7 +121,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
         newChunk match {
           case ch2: BasicChunk =>
             chunkSupporter.getChunk(accMergedChunks, ch2.name, ch2.args, v) match {
-              case Some(ch1: BasicChunk) if ch1.getClass == ch2.getClass =>
+              case Some(ch1: BasicChunk) if ch1.resourceID == ch2.resourceID =>
                 val (tSnap, tSnapEq) = combineSnapshots(ch1.snap, ch2.snap, ch1.perm, ch2.perm, v)
                 val c3 = ch1.duplicate(perm = PermPlus(ch1.perm, ch2.perm), snap = tSnap)
 
@@ -150,7 +167,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     (tSnap, tSnapDef)
   }
-
+/*
   /* Compute assumptions capturing that a valid field permission amount cannot exceed write permission */
   private def computeUpperPermissionBoundAssumptions(chs: Seq[PermissionChunk], v: Verifier): List[Term] = {
 //    bookkeeper.objectDistinctnessComputations += 1
@@ -183,7 +200,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     for ((_, pairs) <- pairsPerField;
          Seq((rcvr1, perm1), (rcvr2, perm2)) <- pairs.combinations(2)) {
-
+      // TODO implement this check in API?
       if (   rcvr1 != rcvr2 /* Not essential for soundness, but avoids fruitless prover calls */
           && v.decider.check(PermLess(FullPerm(), PermPlus(perm1, perm2)), Verifier.config.checkTimeout())) {
 
@@ -207,13 +224,15 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     tAssumptions.result()
   }
-
+*/
+  /*
   private def assumeValidPermissionAmounts(chs: Seq[PermissionChunk], v: Verifier) {
     chs foreach {
       case fc: FieldChunk => v.decider.assume(PermAtMost(fc.perm, FullPerm()))
       case _=>
     }
   }
+  */
 
   @inline
   final private def partition(h: Heap): (Seq[PermissionChunk], Seq[Chunk]) = {
