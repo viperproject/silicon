@@ -59,7 +59,7 @@ class Z3ProverStdIO(uniqueId: String,
   }
 
   private def createZ3Instance() = {
-    logger.info(s"Starting Z3 at location '$z3Path'")
+    logger.debug(s"Starting Z3 at location '$z3Path'")
 
     val z3File = z3Path.toFile
 
@@ -74,7 +74,7 @@ class Z3ProverStdIO(uniqueId: String,
         Array()
 
       case Some(args) =>
-        logger.info(s"Additional command-line arguments are $args")
+        logger.debug(s"Additional command-line arguments are $args")
         args.split(' ').map(_.trim)
     }
 
@@ -366,7 +366,7 @@ class Z3ProverStdIO(uniqueId: String,
       if (result.toLowerCase != "success") comment(result)
 
       val warning = result.startsWith("WARNING")
-      if (warning) logger.info(s"Z3: $result")
+      if (warning) logger.warn(s"Z3 warning: $result")
 
       repeat = warning
     }

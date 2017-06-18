@@ -104,11 +104,13 @@ case class ActualFunctionRecorder(private val _data: FunctionData,
 
     val fvfs = freshFvfsAndDomains ++ other.freshFvfsAndDomains
     val fieldInvs = freshFieldInvs ++ other.freshFieldInvs
+    val arps = freshArps ++ other.freshArps
 
     copy(locToSnaps = lts,
          fappToSnaps = fts,
          freshFvfsAndDomains = fvfs,
-         freshFieldInvs = fieldInvs)
+         freshFieldInvs = fieldInvs,
+         freshArps = arps)
   }
 
   override lazy val toString = {

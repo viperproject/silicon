@@ -245,6 +245,8 @@ object consumer extends ConsumptionRules with Immutable {
                 Seq(tRcvr),
                 Seq(`?r`),
                 s1.relevantQuantifiedVariables(Seq(tRcvr)),
+                optTrigger.map(_ => tTriggers),
+                qid,
                 v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {
@@ -360,6 +362,8 @@ object consumer extends ConsumptionRules with Immutable {
                 tArgs,
                 formalVars,
                 s1.relevantQuantifiedVariables(tArgs),
+                optTrigger.map(_ => tTriggers),
+                qid,
                 v1)
             val (effectiveTriggers, effectiveTriggersQVars) =
               optTrigger match {

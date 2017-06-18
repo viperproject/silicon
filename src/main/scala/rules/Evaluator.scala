@@ -727,6 +727,7 @@ object evaluator extends EvaluationRules with Immutable {
             /* TODO: Is the Either really necessary?
              *       Wouldn't clients be able to perform the same differentiation by
              *       checking whether or not the `optTriggers` they passed in is None/Some?
+             *       Related: return Option[Seq[Trigger]]; return None instead of an empty sequence
              */
             val auxQuant =
               if (optTriggers.isEmpty)

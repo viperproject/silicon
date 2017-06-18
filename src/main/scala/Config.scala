@@ -9,7 +9,9 @@ package viper.silicon
 import java.io.File
 import java.nio.file.{Path, Paths}
 
+import ch.qos.logback.classic.Logger
 import org.rogach.scallop._
+import org.slf4j.LoggerFactory
 import viper.silver.frontend.SilFrontendConfig
 
 import scala.util.Properties._
@@ -158,8 +160,12 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   )
 
   val logLevel = opt[String]("logLevel",
-    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF (default: OFF)",
-    default = Some("WARN"),
+    descr = "One of the log levels ALL, TRACE, DEBUG, INFO, WARN, ERROR, OFF",
+    default = /* Default log level is that of the root logger (specified in Logback config file) */
+        Some(LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).asInstanceOf[Logger]
+                          .getLevel
+                          .toString
+                          .toUpperCase),
     noshort = true,
     hidden = Silicon.hideInternalOptions
   )(singleArgConverter(level => level.toUpperCase))
