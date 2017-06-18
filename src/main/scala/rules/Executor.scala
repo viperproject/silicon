@@ -356,9 +356,9 @@ object executor extends ExecutionRules with Immutable {
 
           /* "assert false" triggers a smoke check. If successful, we backtrack. */
           case _: ast.FalseLit =>
-            executionFlowController.tryOrFail0(s, v)((s1, v1, QS) => {
+            executionFlowController.tryOrFail0(s.copy(h = magicWandSupporter.getEvalHeap(s)), v)((s1, v1, QS) => {
               if (v1.decider.checkSmoke())
-                QS(s1, v1)
+                QS(s1.copy(h = s.h), v1)
               else
                 Failure(pve dueTo AssertionFalse(a))
               })((_, _) => Success())
@@ -370,7 +370,18 @@ object executor extends ExecutionRules with Immutable {
                   Success())
               r && Q(s, v)
             } else
-              consume(s.copy(recordEffects = false), a, pve, v)((s1, _, v1) => {
+              if (s.exhaleExt) {
+              val s1 = s.copy(recordEffects = true, consumedChunks = Stack.fill(s.consumedChunks.size)(Nil))
+              consume(s1, a, pve, v)((s2, _, v1) => {
+                val newlyConsumedChunks = s2.consumedChunks.foldLeft[Seq[(Stack[Term], BasicChunk)]](Nil)(_ ++ _)
+                val hOps = newlyConsumedChunks.foldLeft(s.reserveHeaps.head)((collected, consumedChunk) =>
+                  collected + consumedChunk._2)
+                val mergedConsumedChunks = s.consumedChunks.zip(s2.consumedChunks).map((consumedPair) =>
+                  consumedPair._2 ++ consumedPair._1)
+                Q(s2.copy(h = hOps, reserveHeaps = hOps +: s2.reserveHeaps.tail, recordEffects = s.recordEffects, consumedChunks = mergedConsumedChunks), v1)
+              })
+            } else
+              consume(s, a, pve, v)((s1, _, v1) => {
                 val s2 = s1.copy(h = s.h, reserveHeaps = s.reserveHeaps, recordEffects = s.recordEffects)
                 Q(s2, v1)})
         }
