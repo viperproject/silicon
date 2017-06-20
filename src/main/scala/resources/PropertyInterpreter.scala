@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silicon.resources
 
 import viper.silicon.interfaces.state.Chunk
@@ -5,22 +11,19 @@ import viper.silicon.state.{BasicChunk, terms}
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
 
-/**
-  * Created by Robin on 08.06.17.
-  */
 class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
 
-  // TODO: Licence
+  // TODO: do consuming - non-greedy consumption for non-quantified chunks: switch?
+  // TODO: Magic Wands
+  // TODO: small evalutation: syntactical chunk finding optimization, greedy vs non-greedy, old greedy vs new greedy
+  // python tool viper runner
+  // TODO: rec descr name
+
   // TODO: package structure
 
   // TODO: sanity checks: denominator != 0
-  // TODO: optimizations: IsPositive(perm), ...
   // TODO: handle missing ChunkVariable
   // TODO: multiple and/or expressions in a row
-
-  // TODO: syntactic check?
-
-  // TODO: heap == resourceChunks?
 
   private type PlaceholderMap = Map[ChunkPlaceholder, BasicChunk]
   private val resourceChunks = heap.flatMap {
@@ -29,28 +32,32 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
   }
   private var currentResourceID: Option[ResourceID] = None
 
-  def assumePathConditionForChunk(chunk: BasicChunk, expression: BooleanExpression): Unit = {
+  def buildPathConditionForChunk(chunk: BasicChunk, expression: BooleanExpression): terms.Term = {
     currentResourceID = Some(chunk.resourceID)
-    verifier.decider.assume(buildPathCondition(expression, Map(This() -> chunk)))
+    val pc = buildPathCondition(expression, Map(This() -> chunk))
     currentResourceID = None
+    pc
   }
 
-  def assumePathConditionForResource(resourceID: ResourceID, expression: BooleanExpression): Unit = {
+  def buildPathConditionForResource(resourceID: ResourceID, expression: BooleanExpression): terms.Term = {
     currentResourceID = Some(resourceID)
-    verifier.decider.assume(buildPathCondition(expression, Map.empty))
+    val pc = buildPathCondition(expression, Map.empty)
     currentResourceID = None
+    pc
   }
 
-  def assumePathConditionsForChunk(chunk: BasicChunk, expressions: Iterable[BooleanExpression]): Unit = {
+  def buildPathConditionsForChunk(chunk: BasicChunk, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
     currentResourceID = Some(chunk.resourceID)
-    verifier.decider.assume(expressions.map(buildPathCondition(_, Map(This() -> chunk))))
+    val pcs = expressions.map(buildPathCondition(_, Map(This() -> chunk)))
     currentResourceID = None
+    pcs
   }
 
-  def assumePathConditionsForResource(resourceID: ResourceID, expressions: Iterable[BooleanExpression]): Unit = {
+  def buildPathConditionsForResource(resourceID: ResourceID, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
     currentResourceID = Some(resourceID)
-    verifier.decider.assume(expressions.map(buildPathCondition(_, Map.empty)))
+    val pcs = expressions.map(buildPathCondition(_, Map.empty))
     currentResourceID = None
+    pcs
   }
 
   private def buildPathCondition(expression: PropertyExpression, placeholderMap: PlaceholderMap): Term = expression match {
@@ -62,9 +69,9 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
 
       // Boolean operators
     case Not(expr) => terms.Not(buildPathCondition(expr, placeholderMap))
-    case And(left, right) => buildBinary((t1, t2) => terms.And(Seq(t1, t2)), left, right, placeholderMap)
-    case Or(left, right) => buildBinary((t1, t2) => terms.Or(Seq(t1, t2)), left, right, placeholderMap)
-    case Implies(left, right) => buildBinary(terms.Implies, left, right, placeholderMap)
+    case And(left, right) => buildAnd(left, right, placeholderMap)
+    case Or(left, right) => buildOr(left, right, placeholderMap)
+    case Implies(left, right) => buildImplies(left, right, placeholderMap)
 
       // Universal operators
     case Equals(left, right) => buildEquals(left, right, placeholderMap)
@@ -74,7 +81,7 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
     case Plus(left, right) => buildBinary(terms.PermPlus, left, right, placeholderMap)
     case Minus(left, right) => buildBinary(terms.PermMinus, left, right, placeholderMap)
     case Times(left, right) => buildBinary(terms.PermTimes, left, right, placeholderMap)
-    case Div(left, right) => buildBinary(terms.Div, left, right, placeholderMap) // TODO: needed? What div to use?
+    case Div(left, right) => buildBinary(terms.Div, left, right, placeholderMap)
 
     case GreaterThanEquals(left, right) => buildBinary(terms.PermAtMost, right, left, placeholderMap)
     case GreaterThan(left, right) => buildBinary(terms.PermLess, right, left, placeholderMap)
@@ -104,20 +111,51 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
     case _ => terms.True()
   }
 
+  // Assures short-circuit evalutation of 'and'
+  private def buildAnd(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
+    buildPathCondition(left, pm) match {
+      case leftTerm @ terms.False() => leftTerm
+      case leftTerm @ _ => terms.And(leftTerm, buildPathCondition(right, pm))
+    }
+  }
+
+  private def buildOr(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
+    buildPathCondition(left, pm) match {
+      case leftTerm @ terms.True() => leftTerm
+      case leftTerm @ _ => terms.Or(leftTerm, buildPathCondition(right, pm))
+    }
+  }
+
+  private def buildImplies(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
+    buildPathCondition(left, pm) match {
+      case terms.False() => terms.True()
+      case leftTerm @ _ => terms.Implies(leftTerm, buildPathCondition(right, pm))
+    }
+  }
+
   private def buildEquals(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
     (left, right) match {
       case (Null(), Null()) => terms.True()
-      case (LocationAccess(cv1), LocationAccess(cv2)) =>
+      case (NameAccess(cv1), NameAccess(cv2)) =>
         val chunk1 = pm(cv1)
         val chunk2 = pm(cv2)
-        if (chunk1.name != chunk2.name || chunk1.args.size != chunk2.args.size) {
+        if (chunk1.name == chunk2.name) terms.True() else terms.False()
+      case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
+        val chunk1 = pm(cv1)
+        val chunk2 = pm(cv2)
+        if (chunk1.args.size != chunk2.args.size) {
+          // if arguments disagree, they can't be equal
           terms.False()
+        } else if (chunk1.args == chunk2.args) {
+          // if all arguments are the same, they are definitely equal
+          terms.True()
         } else {
+          // else return argument-wise equal
           chunk1.args.zip(chunk2.args).map{ case (t1, t2) => terms.Equals(t1, t2): terms.Term }.reduce((t1, t2) => terms.And(t1, t2))
         }
-      case (LocationAccess(cv), Null()) =>
+      case (ArgumentAccess(cv), Null()) =>
         pm(cv).args.map(terms.Equals(_, terms.Null()): terms.Term).reduce((t1, t2) => terms.And(t1, t2))
-      case (Null(), LocationAccess(cv)) =>
+      case (Null(), ArgumentAccess(cv)) =>
         pm(cv).args.map(terms.Equals(_, terms.Null()): terms.Term).reduce((t1, t2) => terms.And(t1, t2))
       case _ =>
         val leftTerm = buildPathCondition(left, pm)
@@ -133,17 +171,21 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
   private def buildNotEquals(left: PropertyExpression, right: PropertyExpression, pm: PlaceholderMap) = {
     (left, right) match {
       case (Null(), Null()) => terms.False()
-      case (LocationAccess(cv1), LocationAccess(cv2)) =>
+      case (NameAccess(cv1), NameAccess(cv2)) =>
         val chunk1 = pm(cv1)
         val chunk2 = pm(cv2)
-        if (chunk1.name != chunk2.name || chunk1.args.size != chunk2.args.size) {
+        if (chunk1.name != chunk2.name) terms.True() else terms.False()
+      case (ArgumentAccess(cv1), ArgumentAccess(cv2)) =>
+        val chunk1 = pm(cv1)
+        val chunk2 = pm(cv2)
+        if (chunk1.args.size != chunk2.args.size) {
           terms.True()
         } else {
           chunk1.args.zip(chunk2.args).map{ case (t1, t2) => t1 !== t2 }.reduce((t1, t2) => terms.Or(t1, t2))
         }
-      case (LocationAccess(cv), Null()) =>
+      case (ArgumentAccess(cv), Null()) =>
         pm(cv).args.map(terms.Null() !== _).reduce((t1, t2) => terms.And(t1, t2))
-      case (Null(), LocationAccess(cv)) =>
+      case (Null(), ArgumentAccess(cv)) =>
         pm(cv).args.map(terms.Null() !== _).reduce((t1, t2) => terms.And(t1, t2))
       case _ =>
         val leftTerm = buildPathCondition(left, pm)
@@ -170,7 +212,6 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
     builder(leftTerm, rightTerm)
   }
 
-  // TODO: optimize to not get pairs twice in different order
   private def buildForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression, pm: PlaceholderMap) = {
     val (chunkVariable, nextExpression) = chunkVariables match {
       case c :: Nil => (c, body)

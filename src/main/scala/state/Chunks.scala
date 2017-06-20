@@ -13,12 +13,11 @@ import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
 import viper.silver.ast
 
-
 case class BasicChunk(resourceID: ResourceID,
                       name: String,
                       args: Seq[Term],
-                      perm: Term,
-                      snap: Term)
+                      snap: Term,
+                      perm: Term)
   extends PermissionChunk {
 
   // TODO: needed?
@@ -29,8 +28,8 @@ case class BasicChunk(resourceID: ResourceID,
       s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
   }
 
-  def duplicate(resourceID: ResourceID = resourceID, name: String = name, snap: Term = snap, args: Seq[Term] = args,
-                perm: Term = perm): BasicChunk = BasicChunk(resourceID, name, args, perm, snap)
+  def duplicate(resourceID: ResourceID = resourceID, name: String = name, args: Seq[Term] = args, snap: Term = snap,
+                perm: Term = perm): BasicChunk = BasicChunk(resourceID, name, args, snap, perm)
 
   def +(perm: Term): BasicChunk = duplicate(perm = PermPlus(this.perm, perm))
   def -(perm: Term): BasicChunk = duplicate(perm = PermMinus(this.perm, perm))

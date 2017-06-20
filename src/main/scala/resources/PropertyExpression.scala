@@ -1,10 +1,17 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silicon.resources
 
 sealed abstract class PropertyExpression
 
 sealed abstract class EquatableExpression extends PropertyExpression
 sealed abstract class BooleanExpression extends EquatableExpression
-sealed abstract class LocationExpression extends EquatableExpression
+sealed abstract class NameExpresion extends EquatableExpression
+sealed abstract class ArgumentExpression extends EquatableExpression
 sealed abstract class PermissionExpression extends EquatableExpression
 sealed abstract class ValueExpression extends EquatableExpression
 
@@ -45,11 +52,14 @@ case class False() extends BooleanLiteral
 case class PermissionLiteral(numerator: BigInt, denominator: BigInt) extends PermissionExpression
 
 sealed abstract class ChunkPlaceholder(name: String) extends PropertyExpression
-case class ChunkVariable(name: String) extends ChunkPlaceholder(name)
+case class ChunkVariable(name: String) extends ChunkPlaceholder(name) {
+  assert(name.startsWith("c"))
+}
 case class This() extends ChunkPlaceholder(name = "this")
 
-case class LocationAccess(chunk: ChunkPlaceholder) extends LocationExpression
+case class NameAccess(chunk: ChunkPlaceholder) extends NameExpresion
+case class ArgumentAccess(chunk: ChunkPlaceholder) extends ArgumentExpression
 case class PermissionAccess(chunk: ChunkPlaceholder) extends PermissionExpression
 case class ValueAccess(chunk: ChunkPlaceholder) extends ValueExpression
 
-case class Null() extends LocationExpression
+case class Null() extends ArgumentExpression

@@ -6,15 +6,15 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.InsufficientPermission
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
@@ -156,6 +156,51 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
 //      }
   }
+
+  /*
+  private def consume2(s: State,
+                       h: Heap,
+                       name: String,
+                       args: Seq[Term],
+                       perms: Term,
+                       locacc: ast.LocationAccess,
+                       pve: PartialVerificationError,
+                       v: Verifier)
+                      (Q: (State, Heap, Option[BasicChunk], Verifier) => VerificationResult)
+  : VerificationResult = {
+    if (s.exhaleExt) {
+      /* TODO: Integrate magic wand's transferring consumption into the regular,
+       * (non-)exact consumption (the code following this if-branch)
+       */
+      magicWandSupporter.transfer(s, name, args, perms, locacc, pve, v)((s1, optCh, v1) =>
+        Q(s1, h, optCh, v1))
+    } else {
+      if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
+        var qNeeded = perms
+        var newHeap = s.h
+        var chunk: Option[BasicChunk] = None
+        s.h.values foreach {
+          case ch: BasicChunk if ch.name == name =>
+            // TODO only for fields
+            val qCurrent = Ite(Equals(ch.args.head, args.head), PermMin(ch.perm, qNeeded), NoPerm())
+            qNeeded = PermMinus(qNeeded, qCurrent)
+            newHeap = newHeap - (ch - qCurrent)
+            chunk = Some(ch)
+          case _ =>
+        }
+        // TODO
+        v.decider.assert(Equals(qNeeded, NoPerm())) {
+          case true => Q(s, newHeap, chunk, v)
+          case false => Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+        }
+      } else {
+        withChunk(s, h, name, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
+          v1.decider.assume(PermLess(perms, ch.perm))
+          Q(s1, h1 - ch + (ch - perms), Some(ch), v1)})
+      }
+    }
+  }
+*/
 
   def produce(s: State, h: Heap, ch: BasicChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult)

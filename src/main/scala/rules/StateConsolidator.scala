@@ -6,15 +6,16 @@
 
 package viper.silicon.rules
 
-import scala.collection.mutable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
 import viper.silicon.resources.{PropertyInterpreter, Resources}
+import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.state._
 import viper.silicon.verifier.Verifier
+
+import scala.collection.mutable
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
@@ -24,6 +25,7 @@ trait StateConsolidationRules extends SymbolicExecutionRules {
 }
 
 object stateConsolidator extends StateConsolidationRules with Immutable {
+  
   def consolidate(s: State, v: Verifier): State = {
     v.decider.prover.comment("[state consolidation]")
 
@@ -36,7 +38,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     var newChunks: Seq[PermissionChunk] = permissionChunks
 
     do {
-      val (_mergedChunks, _, snapEqs) = singleMerge(destChunks, newChunks, v)
+      val (_mergedChunks, _,  _, snapEqs) = singleMerge(destChunks, newChunks, v)
 
       snapEqs foreach v.decider.assume
 
@@ -49,25 +51,19 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     val interpreter = new PropertyInterpreter(v, mergedChunks)
     Resources.resourceDescriptions foreach { case (id, desc) =>
       v.decider.prover.comment(s"Assuming delayed properties for $desc")
-      desc.delayedProperties foreach {
-        interpreter.assumePathConditionForResource(id, _)
-      }
+      v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
     }
 
-    // TODO somewhat inefficient
     mergedChunks foreach {
       case ch: BasicChunk =>
         val resource = Resources.resourceDescriptions(ch.resourceID)
-        resource.instanceProperties foreach {
-          interpreter.assumePathConditionForChunk(ch, _)
-        }
-        resource.staticProperties foreach {
-          interpreter.assumePathConditionForResource(ch.resourceID, _)
-        }
+        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+        v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
       case _ =>
     }
 
-    // TODO make quantified fields work
+    // TODO: only here for quantified chunks
+    v.decider.assume(computeUpperPermissionBoundAssumptions(mergedChunks, v))
 
     s.copy(h = Heap(mergedChunks ++ otherChunks))
   }
@@ -77,82 +73,87 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     else s
 
   def merge(h: Heap, ch: PermissionChunk, v: Verifier): (Heap, Option[PermissionChunk]) = {
-    val (permissionChunks, otherChunk) = partition(h)
-    val (mergedChunks, matches, snapEqs) = singleMerge(permissionChunks, ch :: Nil, v)
-
-    v.decider.assume(snapEqs)
+    val (mergedChunks, matches) = mergeHeaps(h, Heap(Seq(ch)), v)
 
     val optMatch = ch match {
       case ch: PermissionChunk => matches.get(ch)
       case _ => None
     }
 
-    (Heap(mergedChunks ++ otherChunk), optMatch)
+    (mergedChunks, optMatch)
   }
 
   def merge(h: Heap, newH: Heap, v: Verifier): Heap = {
+    mergeHeaps(h, newH, v)._1
+  }
+
+  private def mergeHeaps(h: Heap, newH: Heap, v: Verifier): (Heap, Map[PermissionChunk, PermissionChunk]) = {
     val (permissionChunks, otherChunk) = partition(h)
     val (newPermissionChunks, newOtherChunk) = partition(newH)
-    val (mergedChunks, _, snapEqs) = singleMerge(permissionChunks, newPermissionChunks, v)
+    val (mergedChunks, combinedChunks,  matches, snapEqs) = singleMerge(permissionChunks, newPermissionChunks, v)
 
+    val interpreter = new PropertyInterpreter(v, mergedChunks)
+    combinedChunks foreach { ch =>
+      val resource = Resources.resourceDescriptions(ch.resourceID)
+      v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+      v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
+    }
     v.decider.assume(snapEqs)
 
-    Heap(mergedChunks ++ otherChunk ++ newOtherChunk)
+    (Heap(mergedChunks ++ otherChunk ++ newOtherChunk), matches)
   }
 
   private def singleMerge(destChunks: Seq[PermissionChunk], newChunks: Seq[PermissionChunk], v: Verifier)
-                         : (Seq[PermissionChunk], Map[PermissionChunk, PermissionChunk], InsertionOrderedSet[Term]) = {
+                         : (Seq[PermissionChunk], Seq[BasicChunk], Map[PermissionChunk, PermissionChunk],
+                            InsertionOrderedSet[Term]) = {
 
 //    bookkeeper.heapMergeIterations += 1
 
     /* TODO: Fix `matches` map - subsequent matches override previous matches! */
 
-    val (mergedChunks, matches, tSnaps) = {
-      val initial = (destChunks, Map[PermissionChunk, PermissionChunk](), InsertionOrderedSet[Term]())
+    val initial = (destChunks, Seq[BasicChunk](), Map[PermissionChunk, PermissionChunk](), InsertionOrderedSet[Term]())
 
-      newChunks.foldLeft(initial) { case ((accMergedChunks, accMatches, accSnapEqs), newChunk) =>
-        /* accMergedChunks: already merged chunks
-         * accMatches: records
-         * accSnapEqs: collected snapshot equalities
-         * newChunk: current chunk from the sequence of new chunks/of chunks to merge into the
-         *           sequence of destination chunks
-         */
+    newChunks.foldLeft(initial) { case ((accMergedChunks, accCombinedChunks, accMatches, accSnapEqs), newChunk) =>
+      /* accMergedChunks: already merged chunks
+       * accCombinedChunks: newly added chunks
+       * accMatches: records
+       * accSnapEqs: collected snapshot equalities
+       * newChunk: current chunk from the sequence of new chunks/of chunks to merge into the
+       *           sequence of destination chunks
+       */
 
-        newChunk match {
-          case ch2: BasicChunk =>
-            chunkSupporter.getChunk(accMergedChunks, ch2.name, ch2.args, v) match {
-              case Some(ch1: BasicChunk) if ch1.resourceID == ch2.resourceID =>
-                val (tSnap, tSnapEq) = combineSnapshots(ch1.snap, ch2.snap, ch1.perm, ch2.perm, v)
-                val c3 = ch1.duplicate(perm = PermPlus(ch1.perm, ch2.perm), snap = tSnap)
+      newChunk match {
+        case ch2: BasicChunk =>
+          chunkSupporter.getChunk(accMergedChunks, ch2.name, ch2.args, v) match {
+            case Some(ch1: BasicChunk) if ch1.resourceID == ch2.resourceID =>
+              val (tSnap, tSnapEq) = combineSnapshots(ch1.snap, ch2.snap, ch1.perm, ch2.perm, v)
+              val c3 = ch1.duplicate(perm = PermPlus(ch1.perm, ch2.perm), snap = tSnap)
 
-                (c3 +: accMergedChunks.filterNot(_ == ch1), accMatches + (ch1 -> ch2), accSnapEqs + tSnapEq)
+              (c3 +: accMergedChunks.filterNot(_ == ch1), c3 +: accCombinedChunks, accMatches + (ch1 -> ch2), accSnapEqs + tSnapEq)
 
-              case Some(ch1) =>
-                sys.error(
-                  s"""Chunks
-                     |  ch1 = $ch1
-                     |  ch2 = $ch2
-                     |of classes
-                     |  ch1 = ${ch1.getClass.getName},
-                     |  ch2 = ${ch2.getClass.getName}
-                     |were not expected to appear in heaps
-                     |  dest = $destChunks,
-                     |  new = $newChunks.""".stripMargin)
+            case Some(ch1) =>
+              sys.error(
+                s"""Chunks
+                   |  ch1 = $ch1
+                   |  ch2 = $ch2
+                   |of classes
+                   |  ch1 = ${ch1.getClass.getName},
+                   |  ch2 = ${ch2.getClass.getName}
+                   |were not expected to appear in heaps
+                   |  dest = $destChunks,
+                   |  new = $newChunks.""".stripMargin)
 
-              case None =>
-                (ch2 +: accMergedChunks, accMatches, accSnapEqs)
-            }
+            case None =>
+              (ch2 +: accMergedChunks, accCombinedChunks, accMatches, accSnapEqs)
+          }
 
-          case ch2: QuantifiedFieldChunk =>
-            (ch2 +: accMergedChunks, accMatches, accSnapEqs)
+        case ch2: QuantifiedFieldChunk =>
+          (ch2 +: accMergedChunks, accCombinedChunks, accMatches, accSnapEqs)
 
-          case ch2: QuantifiedPredicateChunk =>
-            (ch2 +: accMergedChunks, accMatches, accSnapEqs)
-        }
+        case ch2: QuantifiedPredicateChunk =>
+          (ch2 +: accMergedChunks, accCombinedChunks, accMatches, accSnapEqs)
       }
     }
-
-    (mergedChunks, matches, tSnaps)
   }
 
   private def combineSnapshots(t1: Term, t2: Term, p1: Term, p2: Term, v: Verifier): (Term, Term) = {
@@ -167,7 +168,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     (tSnap, tSnapDef)
   }
-/*
+
   /* Compute assumptions capturing that a valid field permission amount cannot exceed write permission */
   private def computeUpperPermissionBoundAssumptions(chs: Seq[PermissionChunk], v: Verifier): List[Term] = {
 //    bookkeeper.objectDistinctnessComputations += 1
@@ -186,8 +187,10 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 //    }
 
     chs foreach {
-      case FieldChunk(rcvr, fieldName, _, perm) =>
-        add(fieldName, rcvr, perm)
+/*
+      case BasicChunk(FieldID(), fieldName, args, _, perm) =>
+        add(fieldName, args.head, perm)
+*/
       case QuantifiedFieldChunk(fieldName, _, perm, _, _, Some(rcvr), _) =>
         /* Singleton quantified chunks are treated analogous to non-quantified chunks */
         add(fieldName, rcvr, perm.replace(`?r`, rcvr))
@@ -224,15 +227,6 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     tAssumptions.result()
   }
-*/
-  /*
-  private def assumeValidPermissionAmounts(chs: Seq[PermissionChunk], v: Verifier) {
-    chs foreach {
-      case fc: FieldChunk => v.decider.assume(PermAtMost(fc.perm, FullPerm()))
-      case _=>
-    }
-  }
-  */
 
   @inline
   final private def partition(h: Heap): (Seq[PermissionChunk], Seq[Chunk]) = {
@@ -246,4 +240,5 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     (permissionChunks, otherChunks)
   }
+
 }

@@ -7,7 +7,8 @@
 package viper.silicon.rules
 
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources._
+import viper.silicon.resources.{FieldID, PredicateID, PropertyInterpreter, Resources}
+import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
 import viper.silicon.state.{BasicChunk, State}
@@ -257,6 +258,8 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpFields.contains(field)) {
+            v.decider.assume(PermAtMost(NoPerm(), p))
+            v.decider.assume(Implies(IsPositive(p), rcvr !== Null()))
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, field, Seq(rcvr), snap, v)
             v.decider.prover.comment("Definitional axioms for singleton-SM's value")
@@ -266,16 +269,13 @@ object producer extends ProductionRules with Immutable {
             val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
             Q(s1.copy(h = s1.h + ch), v)
           } else {
-            val ch = BasicChunk(FieldID(), field.name, Seq(rcvr), p, snap)
+            val ch = BasicChunk(FieldID(), field.name, Seq(rcvr), snap, p)
 
             val interpreter = new PropertyInterpreter(v, s.h.values)
             val resource = Resources.resourceDescriptions(ch.resourceID)
-            resource.instanceProperties foreach {
-              interpreter.assumePathConditionForChunk(ch, _)
-            }
-            resource.staticProperties foreach {
-              interpreter.assumePathConditionForResource(ch.resourceID, _)
-            }
+
+            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
 
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
               Q(s1.copy(h = h1), v1))
@@ -284,13 +284,9 @@ object producer extends ProductionRules with Immutable {
 
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            // TODO do that in quantified as well
-            //v2.decider.assume(PermAtMost(NoPerm(), tPerm))
-            //v2.decider.assume(Implies(IsPositive(tPerm), tRcvr !== Null()))
             val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, tRcvr, snap, gain, v2)(Q)}))
-
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = Verifier.program.findPredicate(predicateName)
 
@@ -299,6 +295,7 @@ object producer extends ProductionRules with Immutable {
                        : VerificationResult = {
 
           if (s.qpPredicates.contains(predicate)) {
+            v.decider.assume(PermAtMost(NoPerm(), p))
             val formalArgs = s.predicateFormalVarMap(predicate)
             val (sm, smValueDef) =
               quantifiedChunkSupporter.singletonSnapshotMap(s, predicate, args, snap, v)
@@ -310,21 +307,18 @@ object producer extends ProductionRules with Immutable {
             Q(s1.copy(h = s1.h + ch), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
-            val ch = BasicChunk(PredicateID(), predicate.name, args, p, snap1)
+            val ch = BasicChunk(PredicateID(), predicate.name, args, snap1, p)
 
             // TODO: same as for field, merge?
             val interpreter = new PropertyInterpreter(v, s.h.values)
             val resource = Resources.resourceDescriptions(ch.resourceID)
-            resource.instanceProperties foreach {
-              interpreter.assumePathConditionForChunk(ch, _)
-            }
-            resource.staticProperties foreach {
-              interpreter.assumePathConditionForResource(ch.resourceID, _)
-            }
-            // TODO: this produce really needed?
+
+            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
+
             chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
               if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder)
-              v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
+                v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
               Q(s1.copy(h = h1), v1)
             })
           }
@@ -332,8 +326,6 @@ object producer extends ProductionRules with Immutable {
 
         evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
           eval(s1, perm, pve, v1)((s2, tPerm, v2) => {
-            // TODO: assume same for quantified
-            //v2.decider.assume(PermAtMost(NoPerm(), tPerm))
             val snap = sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
                             .getOrElse(sorts.Snap), v2)
