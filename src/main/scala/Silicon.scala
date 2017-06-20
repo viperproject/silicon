@@ -277,7 +277,7 @@ class Silicon(private var debugInfo: Seq[(String, Any)] = Nil)
 
     failures foreach (f => logFailure(f, s => logger.debug(s)))
 
-    logger.info("\nVerification finished in %s with %s error(s)".format(
+    logger.debug("Verification finished in %s with %s error(s)".format(
         viper.silicon.common.format.formatMillisReadably(/*verifier.bookkeeper.*/elapsedMillis),
         failures.length))
 
