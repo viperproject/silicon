@@ -13,7 +13,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.freshSnap
+import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silver.cfg.silver.SilverCfg
@@ -463,24 +463,25 @@ object executor extends ExecutionRules with Immutable {
 
         val pve = ApplyFailed(apply)
 
-        def QL(s1: State, g: Store, wand: ast.MagicWand, v1: Verifier) = {
+        def QL(s1: State, g: Store, wand: ast.MagicWand, wandSnap: MagicWandSnapshot, v1: Verifier) = {
           /* The lhs-heap is not s1.h, but rather the consumed portion only. However,
            * using s1.h should not be a problem as long as the heap that is used as
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
           val consumeState = s1.copy(g = g)
-          consume(consumeState, wand.left, pve, v1)((s2, _, v2) => {
+          consume(consumeState, wand.left, pve, v1)((s2, snap, v2) => {
+            magicWandSupporter.equateLhsSnapshots(snap, wandSnap.abstractLhs, v2)
             val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produce(s3, freshSnap, wand.right, pve, v2)((s4, v3) => {
-              val s5 = s4.copy(g = s1.g)
+            produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
+              val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
               val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
               Q(s6, v3)})})}
 
         e match {
           case wand: ast.MagicWand => {
-            consume(s, wand, pve, v)((s1, _, v1) => {
-              QL(s1, s1.g, wand, v1)
+            consume(s, wand, pve, v)((s1, snap, v1) => {
+              QL(s1, s1.g, wand, snap.asInstanceOf[MagicWandSnapshot], v1)
             })
           }
 

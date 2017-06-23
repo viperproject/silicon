@@ -147,7 +147,7 @@ object producer extends ProductionRules with Immutable {
           v.snapshotSupporter.createSnapshotPair(s, sf, a, viper.silicon.utils.ast.BigAnd(as.tail), v)
           /* TODO: Refactor createSnapshotPair s.t. it can be used with Seq[Exp],
            *       then remove use of BigAnd; for one it is not efficient since
-           *       the tail of the (decreasing list parameter Ï†s) is BigAnd-ed
+           *       the tail of the (decreasing list parameter as) is BigAnd-ed
            *       over and over again.
            */
 
@@ -319,8 +319,13 @@ object producer extends ProductionRules with Immutable {
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
       case wand: ast.MagicWand =>
-        magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
-          Q(s1.copy(h = s1.h + chWand), v1))
+        sf(sorts.Snap, v) match {
+          case MagicWandSnapshot(lhs, rhs) => magicWandSupporter.createChunk(s, wand, lhs, rhs, pve, v)((s1, chWand, v1) =>
+            Q(s1.copy(h = s1.h + chWand), v1))
+          case _ => magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
+            Q(s1.copy(h = s1.h + chWand), v1))
+        }
+
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
         val qid = s"qp.l${viper.silicon.utils.ast.sourceLine(forall)}${v.counter(this).next()}"

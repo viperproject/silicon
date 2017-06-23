@@ -172,7 +172,8 @@ case class QuantifiedPredicateChunk(name: String,
 
 case class MagicWandChunk(ghostFreeWand: ast.MagicWand,
                           bindings: Map[ast.AbstractLocalVar, Term],
-                          evaluatedTerms: Seq[Term])
+                          evaluatedTerms: Seq[Term],
+                          snap: MagicWandSnapshot)
     extends Chunk {
 
   override lazy val toString: String = {
@@ -181,6 +182,6 @@ case class MagicWandChunk(ghostFreeWand: ast.MagicWand,
       case other => other.toString
     }
 
-    s"wand@$pos[${evaluatedTerms.mkString(",")}]"
+    s"wand@$pos[$snap; ${evaluatedTerms.mkString(",")}]"
   }
 }

@@ -8,7 +8,7 @@ package viper.silicon.state.terms
 
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.state.{Identifier, MagicWandChunk}
-import viper.silicon.{Map, state, toMap}
+import viper.silicon.{Map, Stack, state, toMap}
 import viper.silver.ast.utility.Visitor
 
 import scala.reflect.ClassTag
@@ -1630,9 +1630,26 @@ object SortWrapper {
 
 /* Magic wands */
 
+case class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) extends Combine(abstractLhs, rhsSnapshot) {
+
+  utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
+  utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
+
+  override val toString = s"wand(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+
+  def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
+    assert(this.abstractLhs == other.abstractLhs)
+    val condition = And(branchConditions)
+    MagicWandSnapshot(this.abstractLhs, if (this.rhsSnapshot == other.rhsSnapshot)
+      this.rhsSnapshot
+    else
+      Ite(condition, other.rhsSnapshot, this.rhsSnapshot))
+  }
+}
+
 case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
   override val sort = sorts.Unit /* TODO: Does this make sense? */
-  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
+  override val toString = s"wandSnap@${chunk.ghostFreeWand.pos}}"
 }
 
 /* Other terms */

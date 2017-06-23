@@ -11,9 +11,9 @@ import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
-import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonPositive
-import viper.silicon.utils.freshSnap
+import viper.silicon.state.terms.{MagicWandSnapshot, _}
+import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.{Exp, Stmt}
@@ -82,7 +82,16 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //    result
 //  }
 
+  //TODO: needs to calculate a snapshot that preserves values from the lhs
   def createChunk(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
+                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+  : VerificationResult = createChunk(s, wand, None, pve, v)(Q)
+
+  def createChunk(s: State, wand: ast.MagicWand, abstractLhs: Term, rhsSnapshot: Term, pve: PartialVerificationError, v: Verifier)
+                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+  : VerificationResult = createChunk(s, wand, Some((abstractLhs, rhsSnapshot)), pve, v)(Q)
+
+  private def createChunk(s: State, wand: ast.MagicWand, possibleSnapshotPair: Option[(Term, Term)], pve: PartialVerificationError, v: Verifier)
                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
                  : VerificationResult = {
 
@@ -91,8 +100,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
       val s3 = s2.copy(exhaleExt = s.exhaleExt)
-      Q(s3, MagicWandChunk(wand, s3.g.values, ts), v1)})
-  }
+      val snapshotPair = possibleSnapshotPair.getOrElse((freshSnap(sorts.Snap, v), freshSnap(sorts.Snap, v)))
+      Q(s3, MagicWandChunk(wand, s3.g.values, ts, MagicWandSnapshot(snapshotPair._1, snapshotPair._2)), v1)
+  })}
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
    *       structure. Try to merge the two.
@@ -272,7 +282,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     var pcsFromHeapIndepExprs = Vector[RecordedPathConditions]()
 
     val r = executionFlowController.locally(sEmp, v)((s1, v1) => {
-      produce(s1, freshSnap, wand.left, pve, v1)((sLhs, v2) => {
+      val freshSnapRoot = freshSnap(sorts.Snap, v1)
+      produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
 
         val proofScriptCfg = proofScript.toCfg()
 
@@ -289,6 +300,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            exhaleExt = true,
                            oldHeaps = s.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> sLhs.h),
                            recordEffects = true,
+                           conservingSnapshotGeneration = s.conservingSnapshotGeneration,
                            consumedChunks = Stack.fill(stackSize - 1)(Nil))
         /* s2.reserveHeaps is [hUsed, hOps, hLHS, ...], where hUsed and hOps are initially
          * empty, and where the dots represent the heaps belonging to surrounding package/packaging
@@ -305,7 +317,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //        say(s"done: produced LHS ${wand.left}")
 //        say(s"next: consume RHS ${wand.right}")
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
-          consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.drop(1)), wand.right, pve, proofScriptVerifier)((s3, _, v3) => {
+          consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, pve, proofScriptVerifier)((s3, snap, v3) => {
             val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
                            //h = s.h, /* Temporarily */
                            exhaleExt = false,
@@ -317,10 +329,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             //          say(s"done: consumed RHS ${wand.right}")
             //          say(s"next: create wand chunk")
             val preMark = v3.decider.setPathConditionMark()
-            magicWandSupporter.createChunk(s4, wand, pve, v3)((s5, ch, v4) => {
+            magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
               //            say(s"done: create wand chunk: $ch")
               pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
-              magicWandChunk = ch
+              val mergedSnapshot = if (magicWandChunk != null) magicWandChunk.snap.merge(ch.snap, v.decider.pcs.branchConditions)
+              else ch.snap
+              magicWandChunk = ch.copy(snap = mergedSnapshot)
               /* TODO: Assert that all produced chunks are identical (due to
                * branching, we might get here multiple times per package).
                */
@@ -562,6 +576,14 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       s.reserveCfgs.head.outEdges(b)
     else
       s.methodCfg.outEdges(b)
+
+  def equateLhsSnapshots(actualLhs: Term, abstractLhs: Term, v: Verifier): Unit = actualLhs match {
+    case Combine(first, second) => {
+      equateLhsSnapshots(first, First(abstractLhs), v)
+      equateLhsSnapshots(second, Second(abstractLhs), v)
+    }
+    case _ => v.decider.assume(actualLhs === abstractLhs)
+  }
 
   def getMatchingChunk(h: Heap, chunk: MagicWandChunk, v: Verifier): Option[MagicWandChunk] = {
     val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }

@@ -8,7 +8,6 @@ package viper.silicon.supporters
 
 import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, True, Unit, sorts}
 import viper.silicon.state.{State, SymbolConverter}
-import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
@@ -124,7 +123,7 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
      * worth re-benchmarking from time to time.
      */
 
-    if (s.functionRecorder == NoopFunctionRecorder) {
+    if (!s.conservingSnapshotGeneration) {
       val snap0 = mkSnap(a0, Verifier.program, v)
       val snap1 = mkSnap(a1, Verifier.program, v)
 

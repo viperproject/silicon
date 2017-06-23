@@ -544,18 +544,18 @@ object consumer extends ConsumptionRules with Immutable {
                 case someChunk @ Some(ch) => (s2, someChunk, h2 - ch, v2)
                 case _ => (s2, None, h2, v2)
               }
-            ){case (s2, Some(ch), hs2, v2) =>
+            ){case (s2, Some(ch: MagicWandChunk), hs2, v2) =>
                 assert(s2.exhaleExt == s.exhaleExt)
                 if (s.exhaleExt) {
                   /* transfer: move ch into h = σUsed*/
                   assert(hs2.size == s.reserveHeaps.size)
                   val topReserveHeap = hs2.head + ch
                   val s3 = s2.copy(reserveHeaps = topReserveHeap +: hs2.tail)
-                  QS(s3, h /*+ ch*/, v2.decider.fresh(sorts.Snap), v2)
+                  QS(s3, h /*+ ch*/, ch.snap, v2)
                 } else {
                   assert(hs2.size == 1)
                   assert(s2.reserveHeaps == s.reserveHeaps)
-                  QS(s2, hs2.head, v2.decider.fresh(sorts.Snap), v2)
+                  QS(s2, hs2.head, ch.snap, v2)
                 }
 
               case _ => Failure(ve)}
