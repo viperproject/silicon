@@ -319,12 +319,9 @@ object producer extends ProductionRules with Immutable {
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
       case wand: ast.MagicWand =>
-        sf(sorts.Snap, v) match {
-          case MagicWandSnapshot(lhs, rhs) => magicWandSupporter.createChunk(s, wand, lhs, rhs, pve, v)((s1, chWand, v1) =>
-            Q(s1.copy(h = s1.h + chWand), v1))
-          case _ => magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
-            Q(s1.copy(h = s1.h + chWand), v1))
-        }
+        val snap = sf(sorts.Snap, v)
+        magicWandSupporter.createChunk(s, wand, First(snap), Second(snap), pve, v)((s1, chWand, v1) =>
+          Q(s1.copy(h = s1.h + chWand), v1))
 
 
       case QuantifiedPermissionAssertion(forall, cond, acc: ast.FieldAccessPredicate) =>
