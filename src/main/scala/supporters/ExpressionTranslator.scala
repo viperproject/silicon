@@ -193,6 +193,7 @@ trait ExpressionTranslator {
              | _: ast.FractionalPerm
              | _: ast.Result
              | _: ast.Unfolding
+             | _: ast.Applying
              | _: ast.InhaleExhaleExp
              | _: ast.PredicateAccess
              | _: ast.FuncApp

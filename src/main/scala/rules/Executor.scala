@@ -469,8 +469,7 @@ object executor extends ExecutionRules with Immutable {
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          val consumeState = s1.copy(g = g)
-          consume(consumeState, wand.left, pve, v1)((s2, snap, v2) => {
+          consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
             magicWandSupporter.equateLhsSnapshots(snap, wandSnap.abstractLhs, v2)
             val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
