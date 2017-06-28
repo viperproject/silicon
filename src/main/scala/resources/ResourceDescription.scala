@@ -6,7 +6,7 @@
 
 package viper.silicon.resources
 
-abstract class ResourceDescription {
+trait ResourceDescription {
 
   val instanceProperties: Seq[BooleanExpression]
   val staticProperties: Seq[BooleanExpression]
@@ -17,7 +17,7 @@ abstract class ResourceDescription {
 class PredicateDescription extends ResourceDescription {
 
   override val instanceProperties = Seq(permAtLeastZero)
-  override val staticProperties = Seq()
+  override val staticProperties = Seq[BooleanExpression]()
   override val delayedProperties = Seq(valNeqImpliesLocNeq)
 
   def permAtLeastZero: BooleanExpression = GreaterThanEquals(PermissionAccess(This()), PermissionLiteral(0, 1))
@@ -25,7 +25,7 @@ class PredicateDescription extends ResourceDescription {
   def valNeqImpliesLocNeq: BooleanExpression = {
     val c1 = ChunkVariable("c1")
     val c2 = ChunkVariable("c2")
-    val condition = And(Equals(NameAccess(c1), NameAccess(c2)), NotEquals(ValueAccess(c1), ValueAccess(c2)))
+    val condition = And(Equals(IdentifierAccess(c1), IdentifierAccess(c2)), NotEquals(ValueAccess(c1), ValueAccess(c2)))
     ForEach(Seq(c1, c2), Check(condition, NotEquals(ArgumentAccess(c1), ArgumentAccess(c2)), True()))
   }
 
@@ -45,13 +45,21 @@ class FieldDescription extends PredicateDescription {
   def permUpperBoundDiseq: BooleanExpression = {
     val c1 = ChunkVariable("c1")
     val c2 = ChunkVariable("c2")
-    val nameEq = Equals(NameAccess(c1), NameAccess(c2))
+    val nameEq = Equals(IdentifierAccess(c1), IdentifierAccess(c2))
     val perm1 = PermissionAccess(c1)
     val perm2 = PermissionAccess(c2)
     val greaterThan = GreaterThan(Plus(perm1, perm2), PermissionLiteral(1, 1))
     val neq = NotEquals(ArgumentAccess(c1), ArgumentAccess(c2))
     ForEach(Seq(c1, c2), Check(And(nameEq, greaterThan), neq, True()))
   }
+
+}
+
+class MagicWandDescription extends ResourceDescription {
+
+  override val instanceProperties = Seq[BooleanExpression]()
+  override val staticProperties = Seq[BooleanExpression]()
+  override val delayedProperties = Seq[BooleanExpression]()
 
 }
 

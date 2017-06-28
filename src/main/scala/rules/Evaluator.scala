@@ -419,7 +419,7 @@ object evaluator extends EvaluationRules with Immutable {
                     PermPlus(q, ch.perm.replace(formalArgs, args)))
               }
             } else {
-              val chs = h.values.collect { case ch: BasicChunk if ch.name == name => ch }
+              val chs = h.values.collect { case ch: BasicChunk if ch.id == BasicChunkIdentifier(name) => ch }
               val perm =
                 chs.foldLeft(NoPerm(): Term)((q, ch) => {
                   val argsPairWiseEqual = And(args.zip(ch.args).map{case (a1, a2) => a1 === a2})
@@ -453,7 +453,7 @@ object evaluator extends EvaluationRules with Immutable {
         }
         val s1 = s.copy(h = s.partiallyConsumedHeap.getOrElse(s.h))
         val locs = accessList.map(_.name)
-        val chs = s1.h.values.collect { case ch: BasicChunk if locs contains ch.name => ch }
+        val chs = s1.h.values.collect { case ch: BasicChunk if locs contains ch.id.name => ch }
         bindRcvrAndEvalBody(s1, chs, Seq.empty, v)((s2, ts, v1) => {
           val s3 = s2.copy(h = s.h, g = s.g)
           Q(s3, And(ts), v1)})

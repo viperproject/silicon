@@ -1634,7 +1634,7 @@ object SortWrapper {
 
 case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
   override val sort = sorts.Unit /* TODO: Does this make sense? */
-  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
+  override val toString = s"wand@${chunk.id.ghostFreeWand.pos}}"
 }
 
 /* Other terms */

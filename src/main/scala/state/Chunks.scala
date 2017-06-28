@@ -6,19 +6,24 @@
 
 package viper.silicon.state
 
-import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
-import viper.silicon.resources.{FieldID, PredicateID, ResourceID}
+import viper.silicon.interfaces.state._
+import viper.silicon.resources.{FieldID, MagicWandID, PredicateID, ResourceID}
 import viper.silicon.rules.InverseFunctions
-import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.verifier.Verifier
 import viper.silver.ast
 
+case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
+  override def toString = name
+}
+
 case class BasicChunk(resourceID: ResourceID,
-                      name: String,
+                      id: BasicChunkIdentifier,
                       args: Seq[Term],
                       snap: Term,
                       perm: Term)
-  extends PermissionChunk {
+  extends ResourceChunk with Permission with Value {
 
   // TODO: needed?
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
@@ -26,9 +31,13 @@ case class BasicChunk(resourceID: ResourceID,
     case FieldID() => assert(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
     case PredicateID() => assert(snap.sort == sorts.Snap,
       s"A predicate chunk's snapshot ($snap) is expected to be of sort Snap, but found ${snap.sort}")
+    case _ => assert(assertion = false, s"Resource ID has to be FieldID or PredicateID, but found $resourceID")
   }
 
-  def duplicate(resourceID: ResourceID = resourceID, name: String = name, args: Seq[Term] = args, snap: Term = snap,
+  def duplicate(resourceID: ResourceID = resourceID,
+                name: BasicChunkIdentifier = id,
+                args: Seq[Term] = args,
+                snap: Term = snap,
                 perm: Term = perm): BasicChunk = BasicChunk(resourceID, name, args, snap, perm)
 
   def +(perm: Term): BasicChunk = duplicate(perm = PermPlus(this.perm, perm))
@@ -36,10 +45,9 @@ case class BasicChunk(resourceID: ResourceID,
   def \(perm: Term): BasicChunk = duplicate(perm = perm)
 
   override def toString = resourceID match {
-    case FieldID() =>
-      val rcvr = args.head
-      s"$rcvr.$name -> $snap # $perm"
-    case PredicateID() => s"$name($snap; ${args.mkString(",")}) # $perm"
+    case FieldID() => s"${args.head}.$id -> $snap # $perm"
+    case PredicateID() => s"$id($snap; ${args.mkString(",")}) # $perm"
+    case _ => ""
   }
 
 }
@@ -149,17 +157,29 @@ case class QuantifiedPredicateChunk(name: String,
   }
 }
 
-case class MagicWandChunk(ghostFreeWand: ast.MagicWand,
+case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdentifer {
+
+  override def equals(obj: Any): Boolean = obj match {
+    case w: MagicWandIdentifier => ghostFreeWand.structurallyMatches(w.ghostFreeWand, Verifier.program)
+    case _ => false
+  }
+
+}
+
+case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, Term],
-                          evaluatedTerms: Seq[Term])
-    extends Chunk {
+                          args: Seq[Term])
+    extends Chunk with ResourceChunk {
+
+  override val resourceID = MagicWandID()
 
   override lazy val toString: String = {
-    val pos = ghostFreeWand.pos match {
+    val pos = id.ghostFreeWand.pos match {
       case rp: viper.silver.ast.HasLineColumn => s"${rp.line}:${rp.column}"
       case other => other.toString
     }
 
-    s"wand@$pos[${evaluatedTerms.mkString(",")}]"
+    s"wand@$pos[${args.mkString(",")}]"
   }
+
 }

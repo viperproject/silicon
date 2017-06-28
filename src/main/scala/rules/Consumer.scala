@@ -539,7 +539,7 @@ object consumer extends ConsumptionRules with Immutable {
              * TODO: Does context.partiallyConsumedHeap need to be updated after consuming chunks?
              */
             magicWandSupporter.doWithMultipleHeaps(s1, hs, v1)((s2, h2, v2) =>
-              magicWandSupporter.getMatchingChunk(h2, chWand, v2) match {
+              unifiedHeapSupporter.findMatchingChunk(h2.values, chWand, v2) match {
                 case someChunk @ Some(ch) => (s2, someChunk, h2 - ch, v2)
                 case _ => (s2, None, h2, v2)
               }
@@ -569,7 +569,7 @@ object consumer extends ConsumptionRules with Immutable {
           case x: ast.AbstractLocalVar =>
             val tWandChunk = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
             val ve = pve dueTo NamedMagicWandChunkNotFound(x)
-            QL(s, h, tWandChunk, tWandChunk.ghostFreeWand, ve, v)
+            QL(s, h, tWandChunk, tWandChunk.id.ghostFreeWand, ve, v)
           case _ => sys.error(s"Expected a magic wand, but found node $a")
         }
 
@@ -597,7 +597,7 @@ object consumer extends ConsumptionRules with Immutable {
             (_eWand, ast.And(_eWand.left, _eWand)(_eWand.left.pos, _eWand.left.info), s.g)
           case x: ast.AbstractLocalVar =>
             val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            val _eWand = chWand.ghostFreeWand
+            val _eWand = chWand.id.ghostFreeWand
             (_eWand, ast.And(_eWand.left, _eWand)(x.pos, x.info), Store(chWand.bindings))
               /* Note that wand reference x is most likely not bound in tChunk.bindings.
                * Since wands cannot be recursive, this shouldn't be a problem,

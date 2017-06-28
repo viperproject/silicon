@@ -298,7 +298,7 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
             chunkSupporter.withChunk(s2, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              val fieldChunk = BasicChunk(FieldID(), field.name, Seq(tRcvr), t, fc.perm)
+              val fieldChunk = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), t, fc.perm)
               Q(s3.copy(h = s3.h - fc + fieldChunk), v3)})))
 
       case ast.NewStmt(x, fields) =>
@@ -314,7 +314,7 @@ object executor extends ExecutionRules with Immutable {
             v.decider.assume(smValueDef)
             quantifiedChunkSupporter.createSingletonQuantifiedChunk(Seq(`?r`), field, Seq(tRcvr), p, sm)
           } else {
-            BasicChunk(FieldID(), field.name, Seq(tRcvr), snap, p)
+            BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), snap, p)
           }
         })
         val s1 = s.copy(g = s.g + (x, tRcvr), h = s.h + Heap(newChunks))
@@ -475,9 +475,9 @@ object executor extends ExecutionRules with Immutable {
 
           case x: ast.AbstractLocalVar =>
             val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            magicWandSupporter.getMatchingChunk(s.h, chWand, v) match {
+            unifiedHeapSupporter.findMatchingChunk(s.h.values, chWand, v) match {
               case Some(ch) =>
-                QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.ghostFreeWand, v)
+                QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.id.ghostFreeWand, v)
               case None =>
                 Failure(pve dueTo NamedMagicWandChunkNotFound(x))}
 

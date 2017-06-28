@@ -265,7 +265,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
         val structureMatcher = matchers.structure(wand, Verifier.program)
         val wandChunks = wandInstancesMatching(chunks, structureMatcher)
         val applyWandReactions = wandChunks flatMap {
-          case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
+          case ch if ok(ch.id.ghostFreeWand) => Some(applyWand(ch.id.ghostFreeWand, ch.bindings, pve) _)
           case _ => None
         }
 
@@ -283,7 +283,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
         /* HS1 (wands) */
         val wandChunks = wandInstancesMatching(chunks, locationMatcher)
         val applyWandReactions = wandChunks flatMap {
-          case ch if ok(ch.ghostFreeWand) => Some(applyWand(ch.ghostFreeWand, ch.bindings, pve) _)
+          case ch if ok(ch.id.ghostFreeWand) => Some(applyWand(ch.id.ghostFreeWand, ch.bindings, pve) _)
           case _ => None
         }
 
@@ -424,7 +424,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
     val predicateChunks =
       allChunks.collect {
         case ch: BasicChunk if ch.resourceID == PredicateID() =>
-          val body = program.findPredicate(ch.name)
+          val body = program.findPredicate(ch.id.name)
 
           if (body.existsDefined(f)) {
             Some(ch)
@@ -435,7 +435,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     val predicateAccesses =
       predicateChunks.flatMap {
-        case BasicChunk(PredicateID(), name, args, _, _) =>
+        case BasicChunk(PredicateID(), BasicChunkIdentifier(name), args, _, _) =>
           val reversedArgs: Seq[ast.Exp] = backtranslate(s.g.values, allChunks.toSeq, args, program)
 
           if (args.length == reversedArgs.length)
@@ -451,7 +451,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
     val wands =
       chunks.collect {
         case ch: MagicWandChunk =>
-          if (ch.ghostFreeWand.right.existsDefined(f)) {
+          if (ch.id.ghostFreeWand.right.existsDefined(f)) {
             Some(ch)
           } else {
             None
@@ -487,7 +487,7 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
                       case fc: BasicChunk if fc.resourceID == FieldID() && fc.snap == t =>
                         bindings.find(p => p._2 == fc.args.head)
                                 .map(_._1)
-                                .map(v => ast.FieldAccess(v, program.findField(fc.name))())
+                                .map(v => ast.FieldAccess(v, program.findField(fc.id.name))())
                     }.flatten)
                     /* Found a local variable v and a field f s.t. v.f |-> t */
       }

@@ -11,7 +11,7 @@ import viper.silicon.resources.{FieldID, PredicateID, PropertyInterpreter, Resou
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.{BasicChunk, State}
+import viper.silicon.state.{BasicChunk, BasicChunkIdentifier, State}
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
@@ -269,7 +269,7 @@ object producer extends ProductionRules with Immutable {
             val s1 = s.copy(functionRecorder = s.functionRecorder.recordFvfAndDomain(smDef))
             Q(s1.copy(h = s1.h + ch), v)
           } else {
-            val ch = BasicChunk(FieldID(), field.name, Seq(rcvr), snap, p)
+            val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
 
             val interpreter = new PropertyInterpreter(v, s.h.values)
             val resource = Resources.resourceDescriptions(ch.resourceID)
@@ -307,7 +307,7 @@ object producer extends ProductionRules with Immutable {
             Q(s1.copy(h = s1.h + ch), v)
           } else {
             val snap1 = snap.convert(sorts.Snap)
-            val ch = BasicChunk(PredicateID(), predicate.name, args, snap1, p)
+            val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
 
             // TODO: same as for field, merge?
             val interpreter = new PropertyInterpreter(v, s.h.values)

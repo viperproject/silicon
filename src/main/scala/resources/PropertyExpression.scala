@@ -10,7 +10,7 @@ sealed abstract class PropertyExpression
 
 sealed abstract class EquatableExpression extends PropertyExpression
 sealed abstract class BooleanExpression extends EquatableExpression
-sealed abstract class NameExpresion extends EquatableExpression
+sealed abstract class IdentifierExpression extends EquatableExpression
 sealed abstract class ArgumentExpression extends EquatableExpression
 sealed abstract class PermissionExpression extends EquatableExpression
 sealed abstract class ValueExpression extends EquatableExpression
@@ -57,7 +57,7 @@ case class ChunkVariable(name: String) extends ChunkPlaceholder(name) {
 }
 case class This() extends ChunkPlaceholder(name = "this")
 
-case class NameAccess(chunk: ChunkPlaceholder) extends NameExpresion
+case class IdentifierAccess(chunk: ChunkPlaceholder) extends IdentifierExpression
 case class ArgumentAccess(chunk: ChunkPlaceholder) extends ArgumentExpression
 case class PermissionAccess(chunk: ChunkPlaceholder) extends PermissionExpression
 case class ValueAccess(chunk: ChunkPlaceholder) extends ValueExpression

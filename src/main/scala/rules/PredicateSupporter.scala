@@ -79,7 +79,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef))
         Q(s3, v1)
       } else {
-        val ch = BasicChunk(PredicateID(), predicate.name, tArgs, snap.convert(sorts.Snap), tPerm)
+        val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), tArgs, snap.convert(sorts.Snap), tPerm)
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)

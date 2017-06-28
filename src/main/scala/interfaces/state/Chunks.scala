@@ -6,6 +6,7 @@
 
 package viper.silicon.interfaces.state
 
+import viper.silicon.resources.ResourceID
 import viper.silicon.state.terms.Term
 
 trait Chunk
@@ -24,3 +25,19 @@ trait GenericPermissionChunk[CH <: GenericPermissionChunk[CH]] extends Chunk {
  * with type parameters such as CH <: PermissionChunk[CH].
  */
 trait PermissionChunk extends GenericPermissionChunk[PermissionChunk]
+
+trait ChunkIdentifer
+
+trait ResourceChunk extends Chunk {
+  val resourceID: ResourceID
+  val id: ChunkIdentifer
+  val args: Iterable[Term]
+}
+
+trait Permission {
+  val perm: Term
+}
+
+trait Value {
+  val snap: Term
+}

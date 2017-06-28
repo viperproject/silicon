@@ -14,6 +14,7 @@ import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
+import viper.silicon.resources.{PropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsNonPositive}
@@ -96,7 +97,14 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
       val s3 = s2.copy(exhaleExt = s.exhaleExt)
-      Q(s3, MagicWandChunk(ghostFreeWand, s3.g.values, ts), v1)})
+      val newChunk = MagicWandChunk(MagicWandIdentifier(ghostFreeWand), s3.g.values, ts)
+/*
+      val interpreter = new PropertyInterpreter(v1, s3.h.values)
+      val resource = Resources.resourceDescriptions(newChunk.resourceID)
+      v1.decider.assume(interpreter.buildPathConditionsForChunk(newChunk, resource.instanceProperties))
+      v1.decider.assume(interpreter.buildPathConditionsForResource(newChunk.resourceID, resource.staticProperties))
+*/
+      Q(s3, newChunk, v1)})
   }
 
   /* TODO: doWithMultipleHeaps and consumeFromMultipleHeaps have a similar
@@ -194,7 +202,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                                     v: Verifier)
                                    : (State, Heap, Option[BasicChunk], Term, Verifier) = {
 
-    chunkSupporter.getChunk(h, name, args, v) match {
+    unifiedHeapSupporter.findChunk[BasicChunk](h.values, BasicChunkIdentifier(name), args, v) match {
       case Some(ch) =>
         val (pLost, pKeep, pToConsume) =
           if (v.decider.check(PermAtMost(pLoss, ch.perm), Verifier.config.checkTimeout()))
@@ -428,7 +436,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               var matched = false
 
               hR.transform {
-                case ch1: BasicChunk if ch1.args == ch.args && ch1.name == ch.name =>
+                case ch1: BasicChunk if ch1.args == ch.args && ch1.id == ch.id =>
                   matched = true
                   ch.duplicate(perm = PermMinus(ch1.perm, pLoss))
                 case ch1 => ch1
@@ -671,25 +679,4 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       s.h
   }
 
-  def getMatchingChunk(h: Heap, chunk: MagicWandChunk, v: Verifier): Option[MagicWandChunk] = {
-    val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }
-    mwChunks.find(ch => compareWandChunks(chunk, ch, v))
-  }
-
-  private def compareWandChunks(chWand1: MagicWandChunk,
-                                chWand2: MagicWandChunk,
-                                v: Verifier)
-                               : Boolean = {
-//    println(s"\n[compareWandChunks]")
-//    println(s"  chWand1 = ${chWand1.ghostFreeWand}")
-//    println(s"  chWand2 = ${chWand2.ghostFreeWand}")
-    var b = chWand1.ghostFreeWand.structurallyMatches(chWand2.ghostFreeWand, Verifier.program)
-//    println(s"  after structurallyMatches: b = $b")
-    b = b && chWand1.evaluatedTerms.length == chWand2.evaluatedTerms.length
-//    println(s"  after comparing evaluatedTerms.length's: b = $b")
-    b = b && v.decider.check(And(chWand1.evaluatedTerms zip chWand2.evaluatedTerms map (p => p._1 === p._2)), Verifier.config.checkTimeout())
-//    println(s"  after comparing evaluatedTerms: b = $b")
-
-    b
-  }
 }
