@@ -7,7 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.resources.{FieldID, PredicateID, PropertyInterpreter, Resources}
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms.{App, _}
@@ -270,14 +270,7 @@ object producer extends ProductionRules with Immutable {
             Q(s1.copy(h = s1.h + ch), v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
-
-            val interpreter = new PropertyInterpreter(v, s.h.values)
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-
-            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
-
-            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
+            unifiedHeapSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
               Q(s1.copy(h = h1), v1))
           }
         }
@@ -308,15 +301,7 @@ object producer extends ProductionRules with Immutable {
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
-
-            // TODO: same as for field, merge?
-            val interpreter = new PropertyInterpreter(v, s.h.values)
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-
-            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
-
-            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
+            unifiedHeapSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
               if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder)
                 v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
               Q(s1.copy(h = h1), v1)
@@ -334,7 +319,8 @@ object producer extends ProductionRules with Immutable {
 
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
-          Q(s1.copy(h = s1.h + chWand), v1))
+          unifiedHeapSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
+          Q(s2.copy(h = h2), v2)))
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.

@@ -32,10 +32,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult
 
-  def produce(s: State, h: Heap, ch: BasicChunk, v: Verifier)
-             (Q: (State, Heap, Verifier) => VerificationResult)
-             : VerificationResult
-
   /* TODO: withChunk wraps getChunk in tryOrFail - is it worth exposing getChunk at all, i.e. is there an external use case for it? */
 
   def withChunk(s: State,
@@ -226,15 +222,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           Q(s1, h1 - ch + (ch - perms), Some(ch.snap), v1)})
       }
     }
-  }
-
-  def produce(s: State, h: Heap, ch: BasicChunk, v: Verifier)
-             (Q: (State, Heap, Verifier) => VerificationResult)
-             : VerificationResult = {
-
-    val (h1, _) = stateConsolidator.merge(h, ch, v)
-
-    Q(s, h1, v)
   }
 
   /*

@@ -84,10 +84,10 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
   private def mergeHeaps(h: Heap, newH: Heap, v: Verifier): (Heap, Map[ResourceChunk, ResourceChunk]) = {
     val (resourceChunks, otherChunk) = partition(h)
     val (newResourceChunks, newOtherChunk) = partition(newH)
-    val (mergedChunks, combinedChunks,  matches, snapEqs) = singleMerge(resourceChunks, newResourceChunks, v)
+    val (mergedChunks, newlyAddedChunks,  matches, snapEqs) = singleMerge(resourceChunks, newResourceChunks, v)
 
     val interpreter = new PropertyInterpreter(v, mergedChunks)
-    combinedChunks foreach { ch =>
+    newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
       v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
@@ -95,39 +95,6 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     v.decider.assume(snapEqs)
 
     (Heap(mergedChunks ++ otherChunk ++ newOtherChunk), matches)
-  }
-
-  private def singleMerge2(destChunks: Seq[ResourceChunk], newChunks: Seq[ResourceChunk], v: Verifier)
-                         : (Seq[ResourceChunk], Seq[ResourceChunk], Map[ResourceChunk, ResourceChunk],
-                            InsertionOrderedSet[Term]) = {
-
-//    bookkeeper.heapMergeIterations += 1
-
-    /* TODO: Fix `matches` map - subsequent matches override previous matches! */
-
-    val initial = (destChunks, Seq[ResourceChunk](), Map[ResourceChunk, ResourceChunk](), InsertionOrderedSet[Term]())
-
-    newChunks.foldLeft(initial) { case ((accMergedChunks, accCombinedChunks, accMatches, accSnapEqs), nextChunk) =>
-      /* accMergedChunks: already merged chunks
-       * accCombinedChunks: newly added chunks
-       * accMatches: records
-       * accSnapEqs: collected snapshot equalities
-       * nextChunk: next chunk from the sequence of new chunks/of chunks to merge into the
-       *           sequence of destination chunks
-       */
-
-      unifiedHeapSupporter.findMatchingChunk(accMergedChunks, nextChunk, v) match {
-        case Some(ch) =>
-          mergeChunks(nextChunk, ch, v) match {
-            case Some((newChunk, snapEq)) =>
-              (newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accCombinedChunks, accMatches + (ch -> nextChunk), accSnapEqs + snapEq)
-            case None =>
-              (nextChunk +: accMergedChunks, nextChunk +: accCombinedChunks, accMatches, accSnapEqs)
-          }
-        case None =>
-          (nextChunk +: accMergedChunks, nextChunk +: accCombinedChunks, accMatches, accSnapEqs)
-      }
-    }
   }
 
   private def singleMerge(destChunks: Seq[ResourceChunk], newChunks: Seq[ResourceChunk], v: Verifier)
@@ -140,9 +107,9 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     val initial = (destChunks, Seq[ResourceChunk](), Map[ResourceChunk, ResourceChunk](), InsertionOrderedSet[Term]())
 
-    newChunks.foldLeft(initial) { case ((accMergedChunks, accCombinedChunks, accMatches, accSnapEqs), nextChunk) =>
+    newChunks.foldLeft(initial) { case ((accMergedChunks, accNewChunks, accMatches, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
-       * accCombinedChunks: newly added chunks
+       * accNewChunks: newly added chunks
        * accMatches: records
        * accSnapEqs: collected snapshot equalities
        * nextChunk: current chunk from the sequence of new chunks/of chunks to merge into the
@@ -151,16 +118,14 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
       unifiedHeapSupporter.findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
-          // For some reason this assignment is needed for all tests to pass
-          val opt = mergeChunks(ch, nextChunk, v)
-          opt match {
+          mergeChunks(ch, nextChunk, v) match {
             case Some((newChunk, snapEq)) =>
-              (newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accCombinedChunks, accMatches + (ch -> nextChunk), accSnapEqs + snapEq)
+              (newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accMatches + (ch -> nextChunk), accSnapEqs + snapEq)
             case None =>
-              (nextChunk +: accMergedChunks, nextChunk +: accCombinedChunks, accMatches, accSnapEqs)
+              (nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accMatches, accSnapEqs)
           }
         case None =>
-          (nextChunk +: accMergedChunks, nextChunk +: accCombinedChunks, accMatches, accSnapEqs)
+          (nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accMatches, accSnapEqs)
       }
     }
   }

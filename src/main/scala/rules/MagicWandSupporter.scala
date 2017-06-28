@@ -6,25 +6,24 @@
 
 package viper.silicon.rules
 
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
-import viper.silicon.resources.{PropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsNonPositive}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
+  import consumer._
   import evaluator._
   import producer._
-  import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
     sys.error("Implementation missing")
@@ -98,12 +97,6 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     evals(s1, es, _ => pve, v)((s2, ts, v1) => {
       val s3 = s2.copy(exhaleExt = s.exhaleExt)
       val newChunk = MagicWandChunk(MagicWandIdentifier(ghostFreeWand), s3.g.values, ts)
-/*
-      val interpreter = new PropertyInterpreter(v1, s3.h.values)
-      val resource = Resources.resourceDescriptions(newChunk.resourceID)
-      v1.decider.assume(interpreter.buildPathConditionsForChunk(newChunk, resource.instanceProperties))
-      v1.decider.assume(interpreter.buildPathConditionsForResource(newChunk.resourceID, resource.staticProperties))
-*/
       Q(s3, newChunk, v1)})
   }
 

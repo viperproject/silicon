@@ -6,25 +6,36 @@
 
 package viper.silicon.rules
 
+import viper.silicon.interfaces.VerificationResult
 import viper.silicon.interfaces.state.{Chunk, ChunkIdentifer, ResourceChunk}
 import viper.silicon.state.terms.{And, Term}
+import viper.silicon.state.{Heap, State}
 import viper.silicon.verifier.Verifier
 
-object unifiedHeapSupporter extends SymbolicExecutionRules with Immutable {
+trait UnifiedHeapSupportRules extends SymbolicExecutionRules {
+  def findChunk[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer, args: Iterable[Term], v: Verifier): Option[CH]
+  def findMatchingChunk[CH <: ResourceChunk](chunks: Iterable[Chunk], chunk: CH, v: Verifier): Option[CH]
+  def findChunksWithID[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH]
+
+  def produce(s: State, h: Heap, ch: ResourceChunk, v: Verifier)
+  (Q: (State, Heap, Verifier) => VerificationResult)
+    : VerificationResult
+}
+
+object unifiedHeapSupporter extends UnifiedHeapSupportRules with Immutable {
 
   def findChunk[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer, args: Iterable[Term], v: Verifier): Option[CH] = {
     val relevantChunks = findChunksWithID(chunks, id)
-    (findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)).asInstanceOf[Option[CH]]
+    findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)
   }
 
   def findMatchingChunk[CH <: ResourceChunk](chunks: Iterable[Chunk], chunk: CH, v: Verifier): Option[CH] = {
     findChunk(chunks, chunk.id, chunk.args, v)
   }
 
-  // TODO: change signature to ...(chunks: Iterable[ResourceChunk], ...) once everything is unified
-  def findChunksWithID(chunks: Iterable[Chunk], id: ChunkIdentifer) = {
+  def findChunksWithID[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH] = {
     chunks.flatMap {
-      case c: ResourceChunk if id == c.id => Some(c)
+      case c: ResourceChunk if id == c.id => Some(c.asInstanceOf[CH])
       case _ => None
     }
   }
@@ -36,6 +47,12 @@ object unifiedHeapSupporter extends SymbolicExecutionRules with Immutable {
       chunks find (ch =>
         args.size == ch.args.size &&
         v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout()))
+  }
+
+  def produce(s: State, h: Heap, ch: ResourceChunk, v: Verifier)
+             (Q: (State, Heap, Verifier) => VerificationResult) = {
+    val (h1, _) = stateConsolidator.merge(h, ch, v)
+    Q(s, h1, v)
   }
 
 }
