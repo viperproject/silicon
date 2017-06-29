@@ -593,13 +593,14 @@ object evaluator extends EvaluationRules with Immutable {
            * the given-heap while checking self-framingness of the wand is the heap
            * described by the left-hand side.
            */
-          consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
-            magicWandSupporter.equateLhsSnapshots(snap, wandSnap.abstractLhs, v2)
+          joiner.join[Term, Term](s1, v1)((sj, vj, QB) => {
+          consume(sj, wand.left, pve, vj)((s2, snap, v2) => {
+            v2.decider.assume(snap === wandSnap.abstractLhs)
             val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> s1.h))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
               val s6 = stateConsolidator.consolidate(s5, v3)
-              eval(s6, eIn, pve, v3)((s7, t, _) => Q(s.copy(functionRecorder = s7.functionRecorder), t, v))})})}
+              eval(s6, eIn, pve, v3)(QB)})})})(join(v1.symbolConverter.toSort(eIn.typ), "joinedIn", s1.relevantQuantifiedVariables, v1))(Q)}
 
         wand match {
           case wand: ast.MagicWand =>

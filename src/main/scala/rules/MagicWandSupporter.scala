@@ -561,29 +561,11 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
   } else newState
 
-  def replaceChunk(state: State, oldChunk: BasicChunk, newChunk: BasicChunk): State =
-  if (state.exhaleExt) {
-    val hOpsNew = state.h + newChunk
-    val reserveHeapsNew = if (state.reserveHeaps.tail.head.values.exists(_ == oldChunk))
-      (state.reserveHeaps.tail.head - oldChunk) +: state.reserveHeaps.drop(2)
-    else
-      state.reserveHeaps.tail.head +: (state.reserveHeaps.tail.tail.head - oldChunk) +: state.reserveHeaps.drop(3)
-    state.copy(h = hOpsNew, reserveHeaps = hOpsNew +: reserveHeapsNew)
-  } else state.copy(h = state.h - oldChunk + newChunk)
-
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =
     if (s.exhaleExt)
       s.reserveCfgs.head.outEdges(b)
     else
       s.methodCfg.outEdges(b)
-
-  def equateLhsSnapshots(actualLhs: Term, abstractLhs: Term, v: Verifier): Unit = actualLhs match {
-    case Combine(first, second) => {
-      equateLhsSnapshots(first, First(abstractLhs), v)
-      equateLhsSnapshots(second, Second(abstractLhs), v)
-    }
-    case _ => v.decider.assume(actualLhs === abstractLhs)
-  }
 
   def getMatchingChunk(h: Heap, chunk: MagicWandChunk, v: Verifier): Option[MagicWandChunk] = {
     val mwChunks = h.values.collect { case ch: MagicWandChunk => ch }

@@ -293,7 +293,7 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
             chunkSupporter.withChunk(s2, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              Q(magicWandSupporter.replaceChunk(s3, fc, FieldChunk(tRcvr, field.name, t, fc.perm)), v3)})))
+              Q(s3.copy(h = s3.h - fc + FieldChunk(tRcvr, field.name, t, fc.perm)), v3)})))
 
       case ast.NewStmt(x, fields) =>
         val tRcvr = v.decider.fresh(x)
@@ -470,7 +470,7 @@ object executor extends ExecutionRules with Immutable {
            * described by the left-hand side.
            */
           consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
-            magicWandSupporter.equateLhsSnapshots(snap, wandSnap.abstractLhs, v2)
+            v2.decider.assume(snap === wandSnap.abstractLhs)
             val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)

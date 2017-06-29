@@ -1635,7 +1635,7 @@ case class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) exten
   utils.assertSort(abstractLhs, "abstract lhs", sorts.Snap)
   utils.assertSort(rhsSnapshot, "rhs", sorts.Snap)
 
-  override val toString = s"wand(lhs = $abstractLhs, rhs = $rhsSnapshot)"
+  override val toString = s"wandSnap(lhs = $abstractLhs, rhs = $rhsSnapshot)"
 
   def merge(other: MagicWandSnapshot, branchConditions: Stack[Term]): MagicWandSnapshot = {
     assert(this.abstractLhs == other.abstractLhs)
@@ -1649,7 +1649,7 @@ case class MagicWandSnapshot(val abstractLhs: Term, val rhsSnapshot: Term) exten
 
 case class MagicWandChunkTerm(chunk: MagicWandChunk) extends Term {
   override val sort = sorts.Unit /* TODO: Does this make sense? */
-  override val toString = s"wandSnap@${chunk.ghostFreeWand.pos}}"
+  override val toString = s"wand@${chunk.ghostFreeWand.pos}}"
 }
 
 /* Other terms */
