@@ -488,6 +488,18 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     }
   }
 
+  def apply(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
+           (Q: (State, Verifier) => VerificationResult): VerificationResult = {
+        consume(s, wand, pve, v)((s1, snap, v1) => {
+          val wandSnap = snap.asInstanceOf[MagicWandSnapshot]
+          consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
+            v2.decider.assume(snap === wandSnap.abstractLhs)
+            val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
+              val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
+              val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
+              Q(s6, v3)})})})}
+
   def transfer(s: State,
                name: String,
                args: Seq[Term],

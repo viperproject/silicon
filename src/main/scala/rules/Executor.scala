@@ -13,7 +13,7 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.utils.{freshSnap, toSf}
+import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
 import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silver.cfg.silver.SilverCfg
@@ -441,12 +441,12 @@ object executor extends ExecutionRules with Immutable {
             assert(s.exhaleExt || s1.reserveHeaps.length == 1)
             val s2 = if (s.exhaleExt)
               s1.copy(h = Heap(),
-                  exhaleExt = s.exhaleExt,
+                  exhaleExt = true,
                   reserveHeaps = Heap() +: hOps +: s1.reserveHeaps.tail)
             else
               /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
               s1.copy(h = hOps,
-                  exhaleExt = s.exhaleExt,
+                  exhaleExt = false,
                   reserveHeaps = Nil,
                   recordEffects = false,
                   consumedChunks = Stack(),
@@ -458,34 +458,9 @@ object executor extends ExecutionRules with Immutable {
           })
       }
 
-      case apply @ ast.Apply(e) => {
-        /* TODO: Try to unify this code with that from DefaultConsumer/applying */
-
+      case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-
-        def QL(s1: State, g: Store, wand: ast.MagicWand, wandSnap: MagicWandSnapshot, v1: Verifier) = {
-          /* The lhs-heap is not s1.h, but rather the consumed portion only. However,
-           * using s1.h should not be a problem as long as the heap that is used as
-           * the given-heap while checking self-framingness of the wand is the heap
-           * described by the left-hand side.
-           */
-          consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
-            v2.decider.assume(snap === wandSnap.abstractLhs)
-            val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
-            produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
-              val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
-              val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
-              Q(s6, v3)})})}
-
-        e match {
-          case wand: ast.MagicWand => {
-            consume(s, wand, pve, v)((s1, snap, v1) => {
-              QL(s1, s1.g, wand, snap.asInstanceOf[MagicWandSnapshot], v1)
-            })
-          }
-
-          case _ => sys.error(s"Expected a magic wand, but found node $e")}}
-
+        magicWandSupporter.apply(s, e, pve, v)(Q)
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: ast.Goto

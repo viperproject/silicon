@@ -122,6 +122,10 @@ class DefaultSnapshotSupporter(symbolConverter: SymbolConverter) extends Snapsho
      * it takes 2min 20sec when only first/second datatypes are used. Might be
      * worth re-benchmarking from time to time.
      */
+    /* [2017-06-30 Nils] The performance difference seems to be negligible.
+     * Using only first/second datatypes causes all/issues/carbon/0122.sil to fail,
+     * though. Silicon produces the same output as Carbon in that case.
+     */
 
     if (!s.conservingSnapshotGeneration) {
       val snap0 = mkSnap(a0, Verifier.program, v)

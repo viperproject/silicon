@@ -587,28 +587,10 @@ object evaluator extends EvaluationRules with Immutable {
         }
 
       case ast.Applying(wand, eIn) =>
-        def QL(s1: State, g: Store, wand: ast.MagicWand, wandSnap: MagicWandSnapshot, v1: Verifier) = {
-          /* The lhs-heap is not s1.h, but rather the consumed portion only. However,
-           * using s1.h should not be a problem as long as the heap that is used as
-           * the given-heap while checking self-framingness of the wand is the heap
-           * described by the left-hand side.
-           */
-          joiner.join[Term, Term](s1, v1)((sj, vj, QB) => {
-          consume(sj, wand.left, pve, vj)((s2, snap, v2) => {
-            v2.decider.assume(snap === wandSnap.abstractLhs)
-            val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> s1.h))
-            produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
-              val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
-              val s6 = stateConsolidator.consolidate(s5, v3)
-              eval(s6, eIn, pve, v3)(QB)})})})(join(v1.symbolConverter.toSort(eIn.typ), "joinedIn", s1.relevantQuantifiedVariables, v1))(Q)}
-
-        wand match {
-          case wand: ast.MagicWand =>
-            consume(s, wand, pve, v)((s1, snap, v1) => {
-              QL(s1, s1.g, wand, snap.asInstanceOf[MagicWandSnapshot], v1)
-            })
-
-          case _ => sys.error(s"Expected a magic wand, but found node $e")}
+        joiner.join[Term, Term](s, v)((s1, v1, QB) =>
+          magicWandSupporter.apply(s1, wand, pve, v1)((s2, v2) => {
+            eval(s2, eIn, pve, v2)(QB)
+        }))(join(v.symbolConverter.toSort(eIn.typ), "joinedIn", s.relevantQuantifiedVariables, v))(Q)
 
       /* Sequences */
 
