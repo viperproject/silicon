@@ -503,12 +503,7 @@ object consumer extends ConsumptionRules with Immutable {
       case let: ast.Let if !let.isPure =>
         letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) => {
           val s2 = s1.copy(g = s1.g + g1)
-          val s3 =
-            if (s2.recordEffects)
-              s2.copy(letBoundVars = s2.letBoundVars ++ g1.values)
-            else
-              s2
-          consumeR(s3, h, body, pve, v1)(Q)})
+          consumeR(s2, h, body, pve, v1)(Q)})
 
       case ast.AccessPredicate(locacc, perm) =>
         eval(s, perm, pve, v)((s1, tPerm, v1) =>

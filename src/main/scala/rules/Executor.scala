@@ -449,8 +449,7 @@ object executor extends ExecutionRules with Immutable {
                   exhaleExt = false,
                   reserveHeaps = Nil,
                   recordEffects = false,
-                  consumedChunks = Stack(),
-                  letBoundVars = Nil)
+                  consumedChunks = Stack())
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
             assert(s2.consumedChunks.length == s.consumedChunks.length)
             assert(s2.consumedChunks.length == math.max(s2.reserveHeaps.length - 1, 0))

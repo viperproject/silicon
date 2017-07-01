@@ -256,8 +256,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = Heap() :: state.h :: Nil,
       recordEffects = true,
-      consumedChunks = Nil :: Nil,
-      letBoundVars = Nil)
+      consumedChunks = Nil :: Nil)
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
@@ -318,13 +317,11 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //        say(s"next: consume RHS ${wand.right}")
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
           consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, pve, proofScriptVerifier)((s3, snap, v3) => {
-            val s4 = s3.copy(g = s.g + Store(s3.letBoundVars),
-                           //h = s.h, /* Temporarily */
+            val s4 = s3.copy(//h = s.h, /* Temporarily */
                            exhaleExt = false,
                            recordEffects = false,
                            oldHeaps = s.oldHeaps,
-                           consumedChunks = Stack(),
-                           letBoundVars = Nil)
+                           consumedChunks = Stack())
 
             //          say(s"done: consumed RHS ${wand.right}")
             //          say(s"next: create wand chunk")

@@ -50,7 +50,6 @@ final case class State(g: Store = Store(),
 
                        recordEffects: Boolean = false,
                        consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] = Nil,
-                       letBoundVars: Seq[(ast.AbstractLocalVar, Term)] = Nil,
 
                        qpFields: InsertionOrderedSet[ast.Field] = InsertionOrderedSet.empty,
                        qpPredicates: InsertionOrderedSet[ast.Predicate] = InsertionOrderedSet.empty,
@@ -135,7 +134,7 @@ object State {
                  permissionScalingFactor1,
                  reserveHeaps1, reserveCfgs1, exhaleExt1,
                  applyHeuristics1, heuristicsDepth1, triggerAction1,
-                 recordEffects1, consumedChunks1, letBoundVars1,
+                 recordEffects1, consumedChunks1,
                  qpFields1, qpPredicates1, smCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1) =>
 
@@ -156,7 +155,7 @@ object State {
                      `permissionScalingFactor1`,
                      `reserveHeaps1`, `reserveCfgs1`, `exhaleExt1`,
                      `applyHeuristics1`, `heuristicsDepth1`, `triggerAction1`,
-                     `recordEffects1`, `consumedChunks1`, `letBoundVars1`,
+                     `recordEffects1`, `consumedChunks1`,
                      `qpFields1`, `qpPredicates1`, smCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`) =>
 
