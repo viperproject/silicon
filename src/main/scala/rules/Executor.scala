@@ -459,7 +459,7 @@ object executor extends ExecutionRules with Immutable {
 
       case apply @ ast.Apply(e) =>
         val pve = ApplyFailed(apply)
-        magicWandSupporter.apply(s, e, pve, v)(Q)
+        magicWandSupporter.applyWand(s, e, pve, v)(Q)
 
       /* These cases should not occur when working with the CFG-representation of the program. */
       case   _: ast.Goto

@@ -281,6 +281,13 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     var pcsFromHeapIndepExprs = Vector[RecordedPathConditions]()
 
     val r = executionFlowController.locally(sEmp, v)((s1, v1) => {
+      /* Using conservingSnapshotGeneration a snapshot (binary tree) will be
+       * constructed using First/Second datatypes, that preserves the original root.
+       * The leafs of this tree will later appear in the snapshot of the rhs at the
+       * appropriate places. Thus equating freshSnapRoot with the snapshot received
+       * from consuming the lhs when applying the wand preserves values from the lhs
+       * into the rhs.
+       */
       val freshSnapRoot = freshSnap(sorts.Snap, v1)
       produce(s1.copy(conservingSnapshotGeneration = true), toSf(freshSnapRoot), wand.left, pve, v1)((sLhs, v2) => {
 
@@ -485,13 +492,16 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     }
   }
 
-  def apply(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
+  def applyWand(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
            (Q: (State, Verifier) => VerificationResult): VerificationResult = {
         consume(s, wand, pve, v)((s1, snap, v1) => {
           val wandSnap = snap.asInstanceOf[MagicWandSnapshot]
           consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
+            /* It is assumed that snap and wandSnap.abstractLhs are structurally the same.
+             * Since a wand can only be applied once, equating the two snapshots is sound.
+             */
             v2.decider.assume(snap === wandSnap.abstractLhs)
-            val s3 = magicWandSupporter.moveToReserveHeap(s2, v2).copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
+            val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {
               val s5 = s4.copy(g = s1.g, conservingSnapshotGeneration = s3.conservingSnapshotGeneration)
               val s6 = stateConsolidator.consolidate(s5, v3).copy(oldHeaps = s1.oldHeaps)
@@ -543,18 +553,20 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
   def getEvalHeap(s: State): Heap = {
     if (s.exhaleExt) {
-      /* c.reserveHeaps = [hUsed, hOps, ...]
-       * After a ghost operation such as folding has been executed, hUsed is empty and
-       * hOps contains the chunks that were either transferred only newly produced by
-       * the ghost operation. Evaluating an expression, e.g. predicate arguments of
-       * a subsequent folding, thus potentially requires chunks from hOps.
+      /* s.reserveHeaps = [hUsed, hOps, sLhs, ...]
+       * After a proof script statement such as fold has been executed, hUsed is empty and
+       * hOps contains the chunks that were either transferred or newly produced by
+       * the statement. Evaluating an expression, e.g. predicate arguments of
+       * a subsequent fold, thus potentially requires chunks from hOps.
+       * Such an expression should also be able to rely on permissions gained from the lhs
+       * of the wand, i.e. chunks in sLhs.
        * On the other hand, once the innermost assertion of the RHS of a wand is
        * reached, permissions are transferred to hUsed, and expressions of the innermost
        * assertion therefore potentially require chunks from hUsed.
-       * Since innermost assertions must be self-framing, combining hUsed and hOps
+       * Since innermost assertions must be self-framing, combining hUsed, hOps and hLhs
        * is sound.
        */
-      s.reserveHeaps.head + s.reserveHeaps.tail.head + s.reserveHeaps.tail.tail.head
+      s.reserveHeaps.head + s.reserveHeaps(1) + s.reserveHeaps(2)
     } else
       s.h
   }
@@ -565,6 +577,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
   def moveToReserveHeap(newState: State, v: Verifier): State =
   if (newState.exhaleExt) {
+    /* newState.reserveHeaps = [hUsed, hOps, ...]
+     * During execution permissions are consumed or transferred from hOps and new
+     * ones are generated onto the state's heap. E.g. for a fold the body of a predicate
+     * is consumed from hOps and permissions for the predicate are added to the state's
+     * heap. After a statement is executed those permissions are transferred to hOps.
+     */
     val hOpsJoinUsed = stateConsolidator.merge(newState.reserveHeaps(1), newState.h, v)
     newState.copy(h = Heap(),
         reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
