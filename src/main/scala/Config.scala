@@ -334,6 +334,13 @@ class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
     hidden = Silicon.hideInternalOptions
   )
 
+  val enableMoreCompleteExhale = opt[Boolean]("enableMoreCompleteExhale",
+    descr = "Enable a more complete exhale version.",
+    default = Some(false),
+    noshort = true,
+    hidden = Silicon.hideInternalOptions
+  )
+
   val numberOfParallelVerifiers = opt[Int]("numberOfParallelVerifiers",
     descr = (  "Number of verifiers run in parallel. This number plus one is the number of provers "
              + s"run in parallel (default: ${Runtime.getRuntime.availableProcessors()}"),

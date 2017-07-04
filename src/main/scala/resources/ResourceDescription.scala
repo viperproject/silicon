@@ -14,7 +14,7 @@ trait ResourceDescription {
 
 }
 
-class PredicateDescription extends ResourceDescription {
+class BasicDescription extends ResourceDescription {
 
   override val instanceProperties = Seq(permAtLeastZero)
   override val staticProperties = Seq[BooleanExpression]()
@@ -31,7 +31,9 @@ class PredicateDescription extends ResourceDescription {
 
 }
 
-class FieldDescription extends PredicateDescription {
+class PredicateDescription extends BasicDescription
+
+class FieldDescription extends BasicDescription {
 
   override val instanceProperties = Seq(permAtLeastZero, permAtMostOne, permImpliesNonNull)
   override val delayedProperties = Seq(permUpperBoundDiseq, valNeqImpliesLocNeq)

@@ -11,7 +11,8 @@ import viper.silicon.interfaces.state._
 import viper.silicon.resources.{PropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.state.terms.perms.IsNonPositive
+import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
+import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
@@ -31,8 +32,6 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               optNode: Option[ast.Node with ast.Positioned] = None)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
              : VerificationResult
-
-  /* TODO: withChunk wraps getChunk in tryOrFail - is it worth exposing getChunk at all, i.e. is there an external use case for it? */
 
   def withChunk(s: State,
                 h: Heap,
@@ -105,7 +104,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              * branch, or that the permission amount to consume was zero.
              * Returning a fresh snapshot in these cases should not lose any information.
              */
-          QS(s2, h2, v2.decider.fresh(sorts.Snap), v2)
+            val fresh = v2.decider.fresh(sorts.Snap)
+            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh))
+            QS(s3, h2, fresh, v2)
         })
     })(Q)
   }
@@ -138,88 +139,137 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
          */
         magicWandSupporter.transfer(s, name, args, perms, locacc, pve, v)((s1, optCh, v1) =>
           Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
+      } else if (s.functionRecorder == NoopFunctionRecorder/*Verifier.config.enableMoreCompleteExhale()*/) {
+        consumeComplete(s, h, name, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {
+          Q(s1, h1, snap1, v1)
+        })
       } else {
-        if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-          withChunk(s, h, name, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
-            if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
-              Q(s1, h1 - ch, Some(ch.snap), v1)
-            else
-              Q(s1, h1 - ch + (ch - perms), Some(ch.snap), v1)})
-        } else {
-          withChunk(s, h, name, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
-            v1.decider.assume(PermLess(perms, ch.perm))
-            Q(s1, h1 - ch + (ch - perms), Some(ch.snap), v1)})
-        }
+        consumeGreedy(s, h, name, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {
+          Q(s1, h1, snap1, v1)
+        })
       }
 //      }
   }
 
-  private def consume2(s: State,
-                       h: Heap,
-                       name: String,
-                       args: Seq[Term],
-                       perms: Term,
-                       locacc: ast.LocationAccess,
-                       pve: PartialVerificationError,
-                       v: Verifier)
-                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+  private def consumeGreedy(s: State,
+                    h: Heap,
+                    name: String,
+                    args: Seq[Term],
+                    perms: Term,
+                    locacc: ast.LocationAccess,
+                    pve: PartialVerificationError,
+                    v: Verifier)
+                   (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
   : VerificationResult = {
-    if (s.exhaleExt) {
-      /* TODO: Integrate magic wand's transferring consumption into the regular,
-       * (non-)exact consumption (the code following this if-branch)
-       */
-      magicWandSupporter.transfer(s, name, args, perms, locacc, pve, v)((s1, optCh, v1) =>
-        Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
+    if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
+      withChunk(s, h, name, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
+        if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
+          Q(s1, h1 - ch, Some(ch.snap), v1)
+        else
+          Q(s1, h1 - ch + (ch - perms), Some(ch.snap), v1)
+      })
     } else {
-      if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-        val relevantChunks = ListBuffer[BasicChunk]()
-        val otherChunks = ListBuffer[Chunk]()
-        s.h.values foreach {
-          case c: BasicChunk if c.id.name == name => relevantChunks.append(c)
-          case ch => otherChunks.append(ch)
-        }
-        if (relevantChunks.isEmpty) {
-          Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
-        } else {
-          var qNeeded = perms
-          val newHeap = ListBuffer[BasicChunk]()
-          val equalities = ListBuffer[Term]()
-          val fresh = v.decider.fresh(relevantChunks.head.snap.sort)
-          relevantChunks foreach { ch =>
+      withChunk(s, h, name, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
+        v1.decider.assume(PermLess(perms, ch.perm))
+        Q(s1, h1 - ch + (ch - perms), Some(ch.snap), v1)
+      })
+    }
+  }
 
-            def setEqual(i1: Iterable[Term], i2: Iterable[Term]) = {
-              if (i1.size != i2.size) {
-                False()
-              } else {
-                And(i1.zip(i2).map { case (t1, t2) => Equals(t1, t2) })
-              }
-            }
+  private def consumeComplete(s: State,
+                   h: Heap,
+                   name: String,
+                   args: Seq[Term],
+                   perms: Term,
+                   locacc: ast.LocationAccess,
+                   pve: PartialVerificationError,
+                   v: Verifier)
+                  (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
+  : VerificationResult = {
+    val relevantChunks = ListBuffer[BasicChunk]()
+    val otherChunks = ListBuffer[Chunk]()
+    h.values foreach {
+      case c: BasicChunk if c.id.name == name => relevantChunks.append(c)
+      case ch => otherChunks.append(ch)
+    }
 
-            val eq = setEqual(ch.args, args)
-            val qCurrent = Ite(eq, PermMin(ch.perm, qNeeded), NoPerm())
-            val newChunk = ch - qCurrent
-            equalities.append(Implies(And(PermLess(NoPerm(), ch.perm), eq), Equals(fresh, newChunk.snap)))
-            qNeeded = PermMinus(qNeeded, qCurrent)
-            newHeap.append(newChunk)
-          }
+    if (relevantChunks.isEmpty) {
+      // if no permission is exhaled, return fresh snapshot
 
-          val interpreter = new PropertyInterpreter(v, newHeap)
-          newHeap foreach { ch =>
-            val resource = Resources.resourceDescriptions(ch.resourceID)
-            v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
-            v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
-          }
-          v.decider.assume(equalities)
-
-          v.decider.assert(Equals(qNeeded, NoPerm())) {
-            case true => Q(s, Heap(otherChunks ++ newHeap), Some(fresh), v)
-            case false => Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
-          }
-        }
+      if (v.decider.check(perms === NoPerm(), Verifier.config.checkTimeout())) {
+        Q(s, h, None, v)
       } else {
-        withChunk(s, h, name, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
-          v1.decider.assume(PermLess(perms, ch.perm))
-          Q(s1, h1 - ch + (ch - perms), Some(ch.snap), v1)})
+        Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+      }
+    } else {
+
+      def setEqual(i1: Iterable[Term], i2: Iterable[Term]) = {
+        if (i1.size != i2.size) {
+          False()
+        } else {
+          And(i1.zip(i2).map { case (t1, t2) => Equals(t1, t2) })
+        }
+      }
+
+      val consumeExact = terms.utils.consumeExactRead(perms, s.constrainableARPs)
+
+      var pNeeded = perms
+      var pSum: Term = NoPerm()
+      val newChunks = ListBuffer[BasicChunk]()
+      val equalities = ListBuffer[Term]()
+      val fresh = v.decider.fresh(relevantChunks.head.snap.sort)
+      var moreNeeded = true
+
+      // TODO: actual order heuristics
+      relevantChunks.sortWith((b1, _) => b1.args == args) foreach { ch =>
+        if (moreNeeded) {
+          val eq = setEqual(ch.args, args)
+          pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
+          val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
+          val pTakenMacro = v.decider.freshMacro("basic_pTaken", Seq(), pTakenBody)
+          val pTaken = App(pTakenMacro, Seq())
+          val newChunk = ch - pTaken
+          equalities.append(Implies(And(IsPositive(ch.perm), eq), fresh === newChunk.snap))
+          pNeeded = PermMinus(pNeeded, pTaken)
+
+          if (!v.decider.check(IsNonPositive(newChunk.perm), Verifier.config.splitTimeout())) {
+            newChunks.append(newChunk)
+          }
+
+          val toCheck = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
+          moreNeeded = !v.decider.check(toCheck, Verifier.config.splitTimeout())
+        } else {
+          newChunks.append(ch)
+        }
+      }
+
+      val allChunks = otherChunks ++ newChunks
+      val interpreter = new PropertyInterpreter(allChunks, v)
+      newChunks foreach { ch =>
+        val resource = Resources.resourceDescriptions(ch.resourceID)
+        v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
+        v.decider.assume(interpreter.buildPathConditionsForResource(ch.resourceID, resource.staticProperties))
+      }
+      v.decider.assume(equalities)
+
+      val newHeap = Heap(allChunks)
+      val s1 = s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(fresh))
+
+      if (!moreNeeded) {
+        if (!consumeExact) {
+          v.decider.assume(PermLess(perms, pSum))
+        }
+        Q(s1, newHeap, Some(fresh), v)
+      } else {
+        val toCheck = if (consumeExact) pNeeded === NoPerm() else IsPositive(pSum)
+        v.decider.assert(toCheck) {
+          case true =>
+            if (!consumeExact) {
+              v.decider.assume(PermLess(perms, pSum))
+            }
+            Q(s1, newHeap, Some(fresh), v)
+          case false => Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+        }
       }
     }
   }

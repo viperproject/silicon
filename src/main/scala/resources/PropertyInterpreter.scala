@@ -11,28 +11,17 @@ import viper.silicon.state.terms
 import viper.silicon.state.terms.Term
 import viper.silicon.verifier.Verifier
 
-import scala.collection.mutable.ListBuffer
+class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
-class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
-
-  // TODO: do consuming - non-greedy consumption for non-quantified chunks: switch?
-  // TODO: Magic Wands
   // TODO: small evalutation: syntactical chunk finding optimization, greedy vs non-greedy, old greedy vs new greedy
   // python tool viper runner
-  // TODO: rec descr name
-
-  // TODO: package structure
 
   // TODO: handle missing ChunkVariable
 
   private type PlaceholderMap = Map[ChunkPlaceholder, ResourceChunk]
-  private val unifiedChunks: Iterable[ResourceChunk] = {
-    val unifiedHeap = ListBuffer[ResourceChunk]()
-    heap foreach {
-      case c: ResourceChunk => unifiedHeap.append(c)
-      case _ =>
-    }
-    unifiedHeap
+  private val resourceChunks: Iterable[ResourceChunk] = heap.flatMap {
+    case c: ResourceChunk => Some(c)
+    case _ => None
   }
   private var currentResourceID: Option[ResourceID] = None
 
@@ -51,17 +40,11 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
   }
 
   def buildPathConditionsForChunk(chunk: ResourceChunk, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
-    currentResourceID = Some(chunk.resourceID)
-    val pcs = expressions.map(buildPathCondition(_, Map(This() -> chunk)))
-    currentResourceID = None
-    pcs
+    expressions.map(buildPathConditionForChunk(chunk, _))
   }
 
   def buildPathConditionsForResource(resourceID: ResourceID, expressions: Iterable[BooleanExpression]): Iterable[terms.Term] = {
-    currentResourceID = Some(resourceID)
-    val pcs = expressions.map(buildPathCondition(_, Map.empty))
-    currentResourceID = None
-    pcs
+    expressions.map(buildPathConditionForResource(resourceID, _))
   }
 
   private def buildPathCondition(expression: PropertyExpression, placeholderMap: PlaceholderMap): Term = expression match {
@@ -122,7 +105,7 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
 
       // The only missing cases are chunk expressions which only happen in accessors, and location expressions which
       // only happen in equality expressions and are treated separately
-    case _ => terms.True()
+    case _ => assert(assertion = false, "Invalid expression"); terms.True()
   }
 
   // Assures short-circuit evalutation of 'and'
@@ -223,7 +206,7 @@ class PropertyInterpreter(verifier: Verifier, heap: Iterable[Chunk]) {
       case c :: Nil => (c, body)
       case c :: tail => (c, ForEach(tail, body))
     }
-    terms.And(unifiedChunks.flatMap((chunk) => {
+    terms.And(resourceChunks.flatMap((chunk) => {
       // check that only chunks with the same resource type and only distinct tuples are handled
       if (chunk.resourceID == currentResourceID.get && !pm.values.exists(chunk == _)) {
         Some(buildPathCondition(nextExpression, pm + ((chunkVariable, chunk))))

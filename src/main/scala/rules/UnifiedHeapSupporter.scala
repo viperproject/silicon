@@ -51,8 +51,7 @@ object unifiedHeapSupporter extends UnifiedHeapSupportRules with Immutable {
 
   def produce(s: State, h: Heap, ch: ResourceChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult) = {
-    val (h1, _) = stateConsolidator.merge(h, ch, v)
-    Q(s, h1, v)
+    Q(s, stateConsolidator.merge(h, ch, v), v)
   }
 
 }

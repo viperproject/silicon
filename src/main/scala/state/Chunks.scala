@@ -169,7 +169,7 @@ case class MagicWandIdentifier(ghostFreeWand: ast.MagicWand) extends ChunkIdenti
 case class MagicWandChunk(id: MagicWandIdentifier,
                           bindings: Map[ast.AbstractLocalVar, Term],
                           args: Seq[Term])
-    extends Chunk with ResourceChunk {
+    extends ResourceChunk {
 
   override val resourceID = MagicWandID()
 

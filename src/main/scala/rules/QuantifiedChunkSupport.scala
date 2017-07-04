@@ -285,7 +285,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
     h.values foreach {
       case ch: QuantifiedChunk if ch.name == name =>
         relevantChunks +:= ch.asInstanceOf[CH]
-      case ch: BasicChunk if ch.id == name =>
+      case ch: BasicChunk if ch.id.name == name =>
         sys.error(
             s"I did not expect non-quantified chunks on the heap for resource $name, "
           + s"but found $ch")

@@ -20,7 +20,7 @@ import scala.collection.mutable
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State
   def consolidateIfRetrying(s: State, v: Verifier): State
-  def merge(h: Heap, ch: ResourceChunk, v: Verifier): (Heap, Option[ResourceChunk])
+  def merge(h: Heap, ch: ResourceChunk, v: Verifier): Heap
   def merge(h: Heap, newH: Heap, v: Verifier): Heap
 }
 
@@ -38,7 +38,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     var newChunks: Seq[ResourceChunk] = resourceChunks
 
     do {
-      val (_mergedChunks, _,  _, snapEqs) = singleMerge(destChunks, newChunks, v)
+      val (_mergedChunks, _, snapEqs) = singleMerge(destChunks, newChunks, v)
 
       snapEqs foreach v.decider.assume
 
@@ -50,9 +50,8 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
 
     val allChunks = mergedChunks ++ otherChunks
 
-    val interpreter = new PropertyInterpreter(v, allChunks)
+    val interpreter = new PropertyInterpreter(allChunks, v)
     Resources.resourceDescriptions foreach { case (id, desc) =>
-      v.decider.prover.comment(s"Assuming delayed properties for $desc")
       v.decider.assume(interpreter.buildPathConditionsForResource(id, desc.delayedProperties))
     }
 
@@ -64,7 +63,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
       case _ =>
     }
 
-    // TODO: only here for quantified chunks
+    // TODO: only here for singleton quantified chunks
     v.decider.assume(computeUpperPermissionBoundAssumptions(otherChunks, v))
 
     s.copy(h = Heap(allChunks))
@@ -74,19 +73,14 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     if (s.retrying) consolidate(s, v)
     else s
 
-  def merge(h: Heap, ch: ResourceChunk, v: Verifier): (Heap, Option[ResourceChunk]) = {
-    val (mergedChunks, matches) = mergeHeaps(h, Heap(Seq(ch)), v)
-    (mergedChunks, matches.get(ch))
-  }
+  def merge(h: Heap, ch: ResourceChunk, v: Verifier): Heap = merge(h, Heap(Seq(ch)), v)
 
-  def merge(h: Heap, newH: Heap, v: Verifier): Heap = mergeHeaps(h, newH, v)._1
-
-  private def mergeHeaps(h: Heap, newH: Heap, v: Verifier): (Heap, Map[ResourceChunk, ResourceChunk]) = {
-    val (resourceChunks, otherChunk) = partition(h)
+  def merge(h: Heap, newH: Heap, v: Verifier): Heap = {
+    val (resourceChunks, otherChunks) = partition(h)
     val (newResourceChunks, newOtherChunk) = partition(newH)
-    val (mergedChunks, newlyAddedChunks,  matches, snapEqs) = singleMerge(resourceChunks, newResourceChunks, v)
+    val (mergedChunks, newlyAddedChunks, snapEqs) = singleMerge(resourceChunks, newResourceChunks, v)
 
-    val interpreter = new PropertyInterpreter(v, mergedChunks)
+    val interpreter = new PropertyInterpreter(mergedChunks, v)
     newlyAddedChunks foreach { ch =>
       val resource = Resources.resourceDescriptions(ch.resourceID)
       v.decider.assume(interpreter.buildPathConditionsForChunk(ch, resource.instanceProperties))
@@ -94,23 +88,19 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
     }
     v.decider.assume(snapEqs)
 
-    (Heap(mergedChunks ++ otherChunk ++ newOtherChunk), matches)
+    Heap(mergedChunks ++ otherChunks ++ newOtherChunk)
   }
 
   private def singleMerge(destChunks: Seq[ResourceChunk], newChunks: Seq[ResourceChunk], v: Verifier)
-  : (Seq[ResourceChunk], Seq[ResourceChunk], Map[ResourceChunk, ResourceChunk],
-    InsertionOrderedSet[Term]) = {
+  : (Seq[ResourceChunk], Seq[ResourceChunk], InsertionOrderedSet[Term]) = {
 
     //    bookkeeper.heapMergeIterations += 1
 
-    /* TODO: Fix `matches` map - subsequent matches override previous matches! */
+    val initial = (destChunks, Seq[ResourceChunk](), InsertionOrderedSet[Term]())
 
-    val initial = (destChunks, Seq[ResourceChunk](), Map[ResourceChunk, ResourceChunk](), InsertionOrderedSet[Term]())
-
-    newChunks.foldLeft(initial) { case ((accMergedChunks, accNewChunks, accMatches, accSnapEqs), nextChunk) =>
+    newChunks.foldLeft(initial) { case ((accMergedChunks, accNewChunks, accSnapEqs), nextChunk) =>
       /* accMergedChunks: already merged chunks
        * accNewChunks: newly added chunks
-       * accMatches: records
        * accSnapEqs: collected snapshot equalities
        * nextChunk: current chunk from the sequence of new chunks/of chunks to merge into the
        *           sequence of destination chunks
@@ -120,12 +110,12 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
         case Some(ch) =>
           mergeChunks(ch, nextChunk, v) match {
             case Some((newChunk, snapEq)) =>
-              (newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accMatches + (ch -> nextChunk), accSnapEqs + snapEq)
+              (newChunk +: accMergedChunks.filterNot(_ == ch), newChunk +: accNewChunks, accSnapEqs + snapEq)
             case None =>
-              (nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accMatches, accSnapEqs)
+              (nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
           }
         case None =>
-          (nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accMatches, accSnapEqs)
+          (nextChunk +: accMergedChunks, nextChunk +: accNewChunks, accSnapEqs)
       }
     }
   }

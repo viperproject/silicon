@@ -6,17 +6,16 @@
 
 package viper.silicon.supporters.functions
 
-import viper.silver.ast
-import viper.silver.ast.utility.Functions
-import viper.silicon.{Config, Map, Stack, toMap}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.FatalResult
-import viper.silicon.rules.{SnapshotMapDefinition, InverseFunctions, functionSupporter}
-import viper.silicon.state.{IdentifierFactory, SymbolConverter}
+import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition, functionSupporter}
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef._
+import viper.silicon.state.{IdentifierFactory, SymbolConverter}
 import viper.silicon.supporters.PredicateData
-import viper.silicon.supporters.qps._
+import viper.silicon.{Config, Map, toMap}
+import viper.silver.ast
+import viper.silver.ast.utility.Functions
 
 /* TODO: Refactor FunctionData!
  *       Separate computations from "storing" the final results and sharing
@@ -87,6 +86,7 @@ class FunctionData(val programFunction: ast.Function,
   private[this] var freshFvfsAndDomains: InsertionOrderedSet[SnapshotMapDefinition] = InsertionOrderedSet.empty
   private[this] var freshFieldInvs: InsertionOrderedSet[InverseFunctions] = InsertionOrderedSet.empty
   private[this] var freshArps: InsertionOrderedSet[(Var, Term)] = InsertionOrderedSet.empty
+  private[this] var freshSnapshots: InsertionOrderedSet[Var] = InsertionOrderedSet.empty
   private[this] var freshSymbolsAcrossAllPhases: InsertionOrderedSet[Function] = InsertionOrderedSet.empty
 
   private[functions] def getFreshFieldInvs: InsertionOrderedSet[InverseFunctions] = freshFieldInvs
@@ -107,8 +107,11 @@ class FunctionData(val programFunction: ast.Function,
     freshFvfsAndDomains = mergedFunctionRecorder.freshFvfsAndDomains
     freshFieldInvs = mergedFunctionRecorder.freshFieldInvs
     freshArps = mergedFunctionRecorder.freshArps
+    freshSnapshots = mergedFunctionRecorder.freshSnapshots
 
     freshSymbolsAcrossAllPhases ++= freshArps.map(_._1)
+
+    freshSymbolsAcrossAllPhases ++= freshSnapshots
 
     freshSymbolsAcrossAllPhases ++= freshFieldInvs.flatMap(_.inverses)
 
