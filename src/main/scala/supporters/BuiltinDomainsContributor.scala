@@ -72,7 +72,7 @@ abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, Domai
         val functions = sourceDomain.functions.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, sourceProgram)).distinct
         val axioms = sourceDomain.axioms.map(ast.utility.DomainInstances.substitute(_, mdt.typVarsMap, sourceProgram)).distinct
 
-        sourceDomain.copy(_functions = functions, _axioms = axioms)(sourceDomain.pos, sourceDomain.info, sourceDomain.errT)
+        sourceDomain.copy(functions = functions, axioms = axioms)(sourceDomain.pos, sourceDomain.info, sourceDomain.errT)
       })
 
     collectSorts(sourceDomainTypeInstances)
