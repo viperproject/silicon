@@ -105,7 +105,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              * Returning a fresh snapshot in these cases should not lose any information.
              */
             val fresh = v2.decider.fresh(sorts.Snap)
-            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh))
+            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable.asInstanceOf[Function]))
             QS(s3, h2, fresh, v2)
         })
     })(Q)
@@ -139,7 +139,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
          */
         magicWandSupporter.transfer(s, name, args, perms, locacc, pve, v)((s1, optCh, v1) =>
           Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
-      } else if (s.functionRecorder == NoopFunctionRecorder/*Verifier.config.enableMoreCompleteExhale()*/) {
+      } else if (Verifier.config.enableMoreCompleteExhale()) {
         consumeComplete(s, h, name, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {
           Q(s1, h1, snap1, v1)
         })
@@ -217,7 +217,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       var pSum: Term = NoPerm()
       val newChunks = ListBuffer[BasicChunk]()
       val equalities = ListBuffer[Term]()
-      val fresh = v.decider.fresh(relevantChunks.head.snap.sort)
+      val sort = relevantChunks.head.snap.sort
+      val fresh = v.decider.appliedFresh("basic_fresh", sort, s.relevantQuantifiedVariables)
       var moreNeeded = true
 
       // TODO: actual order heuristics
@@ -253,7 +254,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       v.decider.assume(equalities)
 
       val newHeap = Heap(allChunks)
-      val s1 = s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(fresh))
+      // TODO: remove cast
+      val s1 = s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(fresh.applicable.asInstanceOf[Function]))
 
       if (!moreNeeded) {
         if (!consumeExact) {
@@ -361,5 +363,3 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       Q(s1.copy(h = h1), ch, v1))
 
 }
-
-private case class PermissionsConsumptionResult(consumedCompletely: Boolean)
