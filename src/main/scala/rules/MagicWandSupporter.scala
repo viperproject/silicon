@@ -500,6 +500,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             /* It is assumed that snap and wandSnap.abstractLhs are structurally the same.
              * Since a wand can only be applied once, equating the two snapshots is sound.
              */
+            assert(snap.sort == sorts.Snap, s"expected snapshot but found: $snap")
             v2.decider.assume(snap === wandSnap.abstractLhs)
             val s3 = s2.copy(oldHeaps = s1.oldHeaps + (Verifier.MAGIC_WAND_LHS_STATE_LABEL -> magicWandSupporter.getEvalHeap(s1)))
             produce(s3.copy(conservingSnapshotGeneration = true), toSf(wandSnap.rhsSnapshot), wand.right, pve, v2)((s4, v3) => {

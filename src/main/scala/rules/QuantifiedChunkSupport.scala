@@ -497,7 +497,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         val smDef = SnapshotMapDefinition(location, sm, smValueDefs, optSmDomainDef.toSeq)
         val s2 = s1.copy(partiallyConsumedHeap = Some(h1),
                          functionRecorder = s1.functionRecorder.recordFvfAndDomain(smDef))
-        val snap = genericLookup(location, sm, arguments, v)
+        val snap = genericLookup(location, sm, arguments, v).convert(sorts.Snap)
         Q(s2, h1, snap, v)
       case (false, _, _) =>
         Failure(pve dueTo InsufficientPermission(locationAccess))
