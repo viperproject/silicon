@@ -6,19 +6,18 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable
+import viper.silver.ast
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.verifier.reasons._
+import viper.silver.verifier.{PartialVerificationError, VerificationError}
+import viper.silicon.{ConsumeRecord, GlobalBranchRecord, Stack, SymbExLogger}
 import viper.silicon.interfaces.{Failure, VerificationResult}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsPositive
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ConsumeRecord, GlobalBranchRecord, Stack, SymbExLogger}
-import viper.silver.ast
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.verifier.reasons._
-import viper.silver.verifier.{PartialVerificationError, VerificationError}
-
-import scala.collection.mutable
 
 trait ConsumptionRules extends SymbolicExecutionRules {
 

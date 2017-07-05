@@ -6,8 +6,8 @@
 
 package viper.silicon.interfaces
 
-import viper.silicon.state.terms.Term
 import viper.silver.verifier.VerificationError
+import viper.silicon.state.terms.Term
 
 /*
  * Results

@@ -6,9 +6,9 @@
 
 package viper.silicon.interfaces.decider
 
+import viper.silver.components.StatefulComponent
 import viper.silicon.Map
 import viper.silicon.state.terms._
-import viper.silver.components.StatefulComponent
 
 sealed abstract class Result
 object Sat extends Result

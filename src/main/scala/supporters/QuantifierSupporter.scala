@@ -6,7 +6,7 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.state.terms.{App, HeapDepFun, Trigger, _}
+import viper.silicon.state.terms._
 
 trait QuantifierSupporter {
   def autoTrigger(q: Quantification): Quantification

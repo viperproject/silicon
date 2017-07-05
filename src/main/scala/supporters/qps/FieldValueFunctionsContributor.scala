@@ -6,14 +6,14 @@
 
 package viper.silicon.supporters.qps
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
-import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
-import viper.silicon.state.SymbolConverter
-import viper.silicon.state.terms.{SortDecl, sorts}
-import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Config, Map}
+import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
+import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
+import viper.silicon.state.SymbolConverter
+import viper.silicon.state.terms.{SortDecl, sorts}
 
 trait FieldValueFunctionsContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 

@@ -8,12 +8,12 @@ package viper.silicon.verifier
 
 import java.util.concurrent._
 
-import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
 import org.apache.commons.pool2.{BasePooledObjectFactory, ObjectPool, PoolUtils, PooledObject}
+import org.apache.commons.pool2.impl.{DefaultPooledObject, GenericObjectPool, GenericObjectPoolConfig}
 import viper.silicon.interfaces.VerificationResult
+import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.terms.{Decl, Term}
-import viper.silver.components.StatefulComponent
 
 class VerificationPoolManager(master: MasterVerifier) extends StatefulComponent {
   private val numberOfSlaveVerifiers: Int = Verifier.config.numberOfParallelVerifiers()

@@ -6,15 +6,15 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.state._
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,

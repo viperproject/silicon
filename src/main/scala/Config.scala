@@ -8,13 +8,11 @@ package viper.silicon
 
 import java.io.File
 import java.nio.file.{Path, Paths}
-
 import ch.qos.logback.classic.Logger
+import scala.util.Properties._
 import org.rogach.scallop._
 import org.slf4j.LoggerFactory
 import viper.silver.frontend.SilFrontendConfig
-
-import scala.util.Properties._
 
 class Config(args: Seq[String]) extends SilFrontendConfig(args, "Silicon") {
   import Config._

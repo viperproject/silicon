@@ -6,18 +6,17 @@
 
 package viper.silicon.decider
 
-import java.io._
+import java.io.{BufferedReader, BufferedWriter, InputStreamReader, OutputStreamWriter, PrintWriter}
 import java.nio.file.{Path, Paths}
 import java.util.concurrent.TimeUnit
-
 import com.typesafe.scalalogging.LazyLogging
+import viper.silicon.{Config, Map, toMap}
 import viper.silicon.common.config.Version
 import viper.silicon.interfaces.decider.{Prover, Sat, Unknown, Unsat}
 import viper.silicon.reporting.{ExternalToolError, Z3InteractionFailed}
 import viper.silicon.state.IdentifierFactory
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silicon.{Config, Map, toMap}
 
 class Z3ProverStdIO(uniqueId: String,
                     termConverter: TermToSMTLib2Converter,

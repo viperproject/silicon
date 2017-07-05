@@ -6,12 +6,12 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, True, Unit, sorts}
-import viper.silicon.state.{State, SymbolConverter}
-import viper.silicon.utils.toSf
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silicon.state.{State, SymbolConverter}
+import viper.silicon.state.terms.{Combine, First, Second, Sort, Term, True, Unit, sorts}
+import viper.silicon.utils.toSf
+import viper.silicon.verifier.Verifier
 
 trait SnapshotSupporter {
   def optimalSnapshotSort(a: ast.Exp, program: ast.Program): (Sort, Boolean)

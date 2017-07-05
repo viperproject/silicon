@@ -1,7 +1,6 @@
-import java.io.{BufferedWriter, FileOutputStream, OutputStreamWriter}
-
+import java.io.{FileOutputStream, OutputStreamWriter, BufferedWriter}
 import scala.collection.mutable
-import scala.io.{BufferedSource, Source}
+import scala.io.{Source, BufferedSource}
 
 /* Declarations */
 

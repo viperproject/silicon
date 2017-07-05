@@ -8,14 +8,14 @@ package viper.silicon.verifier
 
 import ch.qos.logback.classic.Logger
 import org.slf4j.LoggerFactory
+import viper.silver.components.StatefulComponent
+import viper.silicon.{utils, _}
 import viper.silicon.decider.{DefaultDeciderProvider, TermToSMTLib2Converter}
-import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state._
 import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters._
+import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.utils.Counter
-import viper.silicon.{utils, _}
-import viper.silver.components.StatefulComponent
 
 import scala.collection.mutable
 

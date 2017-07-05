@@ -7,11 +7,9 @@
 package viper.silicon.decider
 
 import java.io.FileNotFoundException
-
+import scala.io.Source
 import viper.silicon.interfaces.PreambleReader
 import viper.silicon.interfaces.decider.ProverLike
-
-import scala.io.Source
 
 class SMTLib2PreambleReader extends PreambleReader[String, String] {
   def readPreamble(resource: String): Iterable[String] = {

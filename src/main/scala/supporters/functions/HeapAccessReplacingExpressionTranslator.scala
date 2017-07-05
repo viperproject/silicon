@@ -7,12 +7,12 @@
 package viper.silicon.supporters.functions
 
 import com.typesafe.scalalogging.LazyLogging
+import viper.silver.ast
 import viper.silicon.Map
 import viper.silicon.rules.functionSupporter
-import viper.silicon.state.terms._
 import viper.silicon.state.{Identifier, SimpleIdentifier, SuffixedIdentifier, SymbolConverter}
+import viper.silicon.state.terms._
 import viper.silicon.supporters.ExpressionTranslator
-import viper.silver.ast
 
 class HeapAccessReplacingExpressionTranslator(symbolConverter: SymbolConverter,
                                               fresh: (String, Sort) => Var)

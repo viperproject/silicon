@@ -6,6 +6,7 @@
 
 package viper.silicon.rules
 
+import scala.reflect.ClassTag
 import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
@@ -13,13 +14,11 @@ import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.utils.consumeExactRead
-import viper.silicon.utils.notNothing.NotNothing
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
-
-import scala.reflect.ClassTag
+import viper.silicon.utils.notNothing.NotNothing
 
 class InverseFunctions(val condition: Term,
                        val invertibles: Seq[Term],

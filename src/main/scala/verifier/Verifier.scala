@@ -7,14 +7,14 @@
 package viper.silicon.verifier
 
 import ch.qos.logback.classic.Logger
+import viper.silicon.{Config, Map}
 import viper.silicon.decider.Decider
 import viper.silicon.reporting.StateFormatter
-import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.state.{IdentifierFactory, SymbolConverter}
-import viper.silicon.supporters.functions.FunctionData
+import viper.silicon.state.terms.{AxiomRewriter, TriggerGenerator}
 import viper.silicon.supporters.{PredicateData, QuantifierSupporter, SnapshotSupporter}
+import viper.silicon.supporters.functions.FunctionData
 import viper.silicon.utils.Counter
-import viper.silicon.{Config, Map}
 import viper.silver.ast
 import viper.silver.parser.FastParser
 

@@ -6,8 +6,8 @@
 
 package viper.silicon.state
 
-import viper.silicon.utils.Counter
 import viper.silver.components.StatefulComponent
+import viper.silicon.utils.Counter
 
 sealed trait Identifier {
   def name: String

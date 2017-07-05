@@ -7,7 +7,6 @@
 package viper.silicon.rules
 
 import java.util.concurrent._
-
 import viper.silicon.common.concurrency._
 import viper.silicon.interfaces.{Unreachable, VerificationResult}
 import viper.silicon.state.State

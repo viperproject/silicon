@@ -8,13 +8,13 @@ package viper.silicon.tests
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.FunSuite
+import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure => SilFailure}
 import viper.silicon.Silicon
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.errors._
-import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure => SilFailure}
 
 
 class ErrorMessageTests extends FunSuite {

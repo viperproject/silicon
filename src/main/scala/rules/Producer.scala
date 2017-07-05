@@ -6,19 +6,18 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.{Failure, VerificationResult}
-import viper.silicon.state.terms.perms.IsPositive
-import viper.silicon.state.terms.predef.`?r`
-import viper.silicon.state.terms.{App, _}
-import viper.silicon.state.{FieldChunk, PredicateChunk, State}
-import viper.silicon.supporters.functions.NoopFunctionRecorder
-import viper.silicon.verifier.Verifier
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
+import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
-
-import scala.collection.mutable
+import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.state.{FieldChunk, PredicateChunk, State}
+import viper.silicon.state.terms.{App, _}
+import viper.silicon.state.terms.perms.IsPositive
+import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.verifier.Verifier
 
 trait ProductionRules extends SymbolicExecutionRules {
 

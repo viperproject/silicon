@@ -6,8 +6,8 @@
 
 package viper.silicon.decider
 
-import viper.silicon.Stack
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.Stack
 import viper.silicon.state.terms.{And, Decl, Implies, Term, True}
 import viper.silicon.utils.Counter
 

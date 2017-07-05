@@ -8,8 +8,8 @@ package viper.silicon.reporting
 
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.terms._
 import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
 import viper.silver.ast.AbstractLocalVar
 

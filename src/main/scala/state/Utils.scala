@@ -6,9 +6,8 @@
 
 package viper.silicon.state
 
-import viper.silicon.state.terms._
-
 import scala.collection.mutable
+import viper.silicon.state.terms._
 
 package object utils {
   /** Note: the method accounts for `ref` occurring in `σ`, i.e. it will not generate the

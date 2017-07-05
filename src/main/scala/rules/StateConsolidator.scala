@@ -6,15 +6,14 @@
 
 package viper.silicon.rules
 
+import scala.collection.mutable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.state._
-import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms._
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.state._
 import viper.silicon.verifier.Verifier
-
-import scala.collection.mutable
 
 trait StateConsolidationRules extends SymbolicExecutionRules {
   def consolidate(s: State, v: Verifier): State

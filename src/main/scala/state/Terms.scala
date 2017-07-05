@@ -6,12 +6,11 @@
 
 package viper.silicon.state.terms
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.state.{Identifier, MagicWandChunk}
-import viper.silicon.{Map, Stack, state, toMap}
-import viper.silver.ast.utility.Visitor
-
 import scala.reflect.ClassTag
+import viper.silver.ast.utility.Visitor
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.{Map, Stack, state, toMap}
+import viper.silicon.state.{Identifier, MagicWandChunk}
 
 
 sealed trait Node

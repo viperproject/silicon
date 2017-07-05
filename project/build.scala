@@ -1,9 +1,9 @@
-import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
+import sbt._
+import Keys._
+import sbtassembly.AssemblyPlugin.autoImport._
 import de.oakgrove.SbtBrand.{BrandKeys, Val, brandSettings}
 import de.oakgrove.SbtHgId.{HgIdKeys, hgIdSettings}
-import sbt.Keys._
-import sbt._
-import sbtassembly.AssemblyPlugin.autoImport._
+import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
 
 object SiliconBuild extends Build {
 

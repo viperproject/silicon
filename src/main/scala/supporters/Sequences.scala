@@ -6,12 +6,12 @@
 
 package viper.silicon.supporters
 
+import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.interfaces.{PreambleContributor, PreambleReader}
+import viper.silicon.interfaces.decider.{ProverLike, TermConverter}
 import viper.silicon.state.SymbolConverter
 import viper.silicon.state.terms.{SortDecl, sorts}
-import viper.silver.ast
 
 trait SequencesContributor[SO, SY, AX] extends PreambleContributor[SO, SY, AX]
 

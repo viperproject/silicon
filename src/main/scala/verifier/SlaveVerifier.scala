@@ -6,8 +6,8 @@
 
 package viper.silicon.verifier
 
-import viper.silicon.supporters._
 import viper.silver.components.StatefulComponent
+import viper.silicon.supporters._
 
 class SlaveVerifier(master: MasterVerifier,
                     uniqueId: String)

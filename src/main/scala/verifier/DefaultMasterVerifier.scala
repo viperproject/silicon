@@ -9,6 +9,8 @@ package viper.silicon.verifier
 import java.text.SimpleDateFormat
 import java.util.concurrent._
 
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
@@ -20,8 +22,6 @@ import viper.silicon.supporters._
 import viper.silicon.supporters.functions.DefaultFunctionVerificationUnitProvider
 import viper.silicon.supporters.qps._
 import viper.silicon.utils.Counter
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)

@@ -6,12 +6,12 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.VerificationResult
-import viper.silicon.state.terms.Term
-import viper.silicon.state.{State, Store}
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
+import viper.silicon.interfaces.VerificationResult
+import viper.silicon.state.{State, Store}
+import viper.silicon.state.terms.Term
+import viper.silicon.verifier.Verifier
 
 trait LetSupportRules extends SymbolicExecutionRules {
   def handle[E <: ast.Exp]

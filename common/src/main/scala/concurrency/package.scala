@@ -7,7 +7,6 @@
 package viper.silicon.common
 
 import java.util.concurrent.{Callable, Future, TimeUnit}
-
 import scala.language.implicitConversions
 
 package object concurrency {

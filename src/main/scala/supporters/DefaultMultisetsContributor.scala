@@ -6,10 +6,9 @@
 
 package viper.silicon.supporters
 
-import viper.silicon.state.terms._
-import viper.silver.ast
-
 import scala.reflect.{ClassTag, classTag}
+import viper.silver.ast
+import viper.silicon.state.terms._
 
 class DefaultMultisetsContributor(val domainTranslator: DomainsTranslator[Term])
     extends BuiltinDomainsContributor {

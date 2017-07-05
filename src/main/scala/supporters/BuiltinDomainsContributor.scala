@@ -6,14 +6,13 @@
 
 package viper.silicon.supporters
 
+import scala.reflect.ClassTag
+import viper.silver.ast
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.PreambleContributor
 import viper.silicon.interfaces.decider.ProverLike
 import viper.silicon.state.DefaultSymbolConverter
 import viper.silicon.state.terms._
-import viper.silver.ast
-
-import scala.reflect.ClassTag
 
 abstract class BuiltinDomainsContributor extends PreambleContributor[Sort, DomainFun, Term] {
   type BuiltinDomainType <: ast.GenericType

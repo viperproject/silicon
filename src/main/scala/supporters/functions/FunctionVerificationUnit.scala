@@ -7,22 +7,22 @@
 package viper.silicon.supporters.functions
 
 import ch.qos.logback.classic.Logger
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.decider.Decider
-import viper.silicon.interfaces._
-import viper.silicon.interfaces.decider.ProverLike
-import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state._
-import viper.silicon.state.terms._
-import viper.silicon.state.terms.predef.`?s`
-import viper.silicon.utils.toSf
-import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silicon.{Map, SymbExLogger, toMap}
 import viper.silver.ast
 import viper.silver.ast.utility.Functions
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors.{ContractNotWellformed, FunctionNotWellformed, PostconditionViolated}
+import viper.silicon.{Map, SymbExLogger, toMap}
+import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.interfaces._
+import viper.silicon.state._
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.predef.`?s`
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.decider.Decider
+import viper.silicon.rules.{consumer, evaluator, executionFlowController, producer}
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.utils.toSf
 
 trait FunctionVerificationUnit[SO, SY, AX]
     extends VerifyingPreambleContributor[SO, SY, AX, ast.Function]
@@ -38,9 +38,9 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
       extends FunctionVerificationUnit[Sort, Function, Term]
          with StatefulComponent {
 
+    import producer._
     import consumer._
     import evaluator._
-    import producer._
 
     private var program: ast.Program = _
     private var functionData: Map[ast.Function, FunctionData] = Map.empty

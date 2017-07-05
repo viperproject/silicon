@@ -6,11 +6,11 @@
 
 package viper.silicon.state
 
+import viper.silver.ast
 import viper.silicon.interfaces.state.{Chunk, PermissionChunk}
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
-import viper.silver.ast
 
 sealed abstract class BasicChunk(val name: String,
                                  val args: Seq[Term],

@@ -6,13 +6,12 @@
 
 package viper.silicon.decider
 
+import scala.collection.mutable
+import viper.silver.ast.pretty.FastPrettyPrinterBase
+import viper.silver.components.StatefulComponent
 import viper.silicon.interfaces.decider.TermConverter
 import viper.silicon.state.Identifier
 import viper.silicon.state.terms._
-import viper.silver.ast.pretty.FastPrettyPrinterBase
-import viper.silver.components.StatefulComponent
-
-import scala.collection.mutable
 
 class TermToSMTLib2Converter
     extends FastPrettyPrinterBase

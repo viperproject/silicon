@@ -6,11 +6,10 @@
 
 package viper.silicon.tests
 
-import java.nio.file.Paths
-
 import org.scalatest.{FlatSpec, Tag}
-import viper.silicon.Silicon
+import java.nio.file.Paths
 import viper.silver.frontend.SilFrontend
+import viper.silicon.Silicon
 
 /** This test is intended to benchmark the memory consumption of Silicon over
   * many runs in order to detect memory leaks. However, it is hard to tell

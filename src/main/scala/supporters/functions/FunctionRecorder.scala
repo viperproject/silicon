@@ -6,13 +6,13 @@
 
 package viper.silicon.supporters.functions
 
-import viper.silicon.common.Mergeable
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.rules.{InverseFunctions, SnapshotMapDefinition}
-import viper.silicon.state.terms._
-import viper.silicon.{Map, Stack}
 import viper.silver.ast
 import viper.silver.ast.{FuncApp, LocationAccess}
+import viper.silicon.common.Mergeable
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.rules.{SnapshotMapDefinition, InverseFunctions}
+import viper.silicon.{Map, Stack}
+import viper.silicon.state.terms._
 
 trait FunctionRecorder extends Mergeable[FunctionRecorder] {
   def data: Option[FunctionData]

@@ -6,6 +6,13 @@
 
 package viper.silicon.rules
 
+import viper.silver.{ast, cfg}
+import viper.silver.cfg.silver.SilverCfg
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.verifier.errors._
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons._
+import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -15,13 +22,6 @@ import viper.silicon.state.terms.perms.IsNonNegative
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ExecuteRecord, MethodCallRecord, Stack, SymbExLogger}
-import viper.silver.cfg.silver.SilverCfg
-import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.errors._
-import viper.silver.verifier.reasons._
-import viper.silver.{ast, cfg}
 
 trait ExecutionRules extends SymbolicExecutionRules {
   def exec(s: State,
@@ -422,6 +422,7 @@ object executor extends ExecutionRules with Immutable {
                 predicateSupporter.fold(s2, predicate, tArgs, tPerm, wildcards, pve, v2)(Q)
               case false =>
                 Failure(pve dueTo NegativePermission(ePerm))}))
+
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)

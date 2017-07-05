@@ -7,7 +7,6 @@
 package viper.silicon
 
 import java.util.concurrent.ExecutionException
-
 import viper.silver.verifier.{AbortedExceptionally => VprAbortedExceptionally, AbstractError => VprAbstractError, Failure => VprFailure}
 
 package object reporting {

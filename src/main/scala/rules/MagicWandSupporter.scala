@@ -6,6 +6,9 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.InsufficientPermission
 import viper.silicon._
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -15,17 +18,14 @@ import viper.silicon.state.terms.perms.IsNonPositive
 import viper.silicon.state.terms.{MagicWandSnapshot, _}
 import viper.silicon.utils.{freshSnap, toSf}
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
 import viper.silver.ast.{Exp, Stmt}
 import viper.silver.cfg.Edge
 import viper.silver.cfg.silver.SilverCfg.SilverBlock
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.InsufficientPermission
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
-  import consumer._
   import evaluator._
   import producer._
+  import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
     sys.error("Implementation missing")
@@ -330,11 +330,11 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                            oldHeaps = s.oldHeaps,
                            consumedChunks = Stack())
 
-            //          say(s"done: consumed RHS ${wand.right}")
-            //          say(s"next: create wand chunk")
+//          say(s"done: consumed RHS ${wand.right}")
+//          say(s"next: create wand chunk")
             val preMark = v3.decider.setPathConditionMark()
             magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
-              //            say(s"done: create wand chunk: $ch")
+//            say(s"done: create wand chunk: $ch")
               pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
               val mergedSnapshot = if (magicWandChunk != null) magicWandChunk.snap.merge(ch.snap, v.decider.pcs.branchConditions)
               else ch.snap
@@ -343,10 +343,10 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                * branching, we might get here multiple times per package).
                */
 
-              //            lnsay(s"-- reached local end of packageWand $myId --")
+//            lnsay(s"-- reached local end of packageWand $myId --")
 
-              //            lnsay(s"s3.consumedChunks:", 2)
-              //            s3.consumedChunks.foreach(x => say(x.toString(), 3))
+//            lnsay(s"s3.consumedChunks:", 2)
+//            s3.consumedChunks.foreach(x => say(x.toString(), 3))
 
               assert(s3.consumedChunks.length <= allConsumedChunks.length)
               /* s3.consumedChunks can have fewer layers due to infeasible execution paths,
@@ -365,8 +365,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                   cchs
                 })
 
-              //            say(s"consumedChunks:", 2)
-              //            consumedChunks.foreach(x => say(x.toString(), 3))
+//            say(s"consumedChunks:", 2)
+//            consumedChunks.foreach(x => say(x.toString(), 3))
 
               assert(consumedChunks.length <= allConsumedChunks.length)
               /* At-most comparison due to infeasible execution paths */
@@ -380,8 +380,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                 }
               }
 
-              //            say(s"allConsumedChunks:", 2)
-              //            allConsumedChunks.foreach(x => say(x.toString(), 3))
+//            say(s"allConsumedChunks:", 2)
+//            allConsumedChunks.foreach(x => say(x.toString(), 3))
 
               finalStates :+= s5
               Success()})})})})})

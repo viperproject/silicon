@@ -6,13 +6,13 @@
 
 package  viper.silicon.supporters.qps
 
+import viper.silver.ast
+import viper.silver.ast.{Predicate, Program}
 import viper.silicon.Map
 import viper.silicon.state.terms.{Var, sorts}
 import viper.silicon.state.{Identifier, SymbolConverter, terms}
-import viper.silicon.supporters.SnapshotSupporter
-import viper.silver.ast
-import viper.silver.ast.{Predicate, Program}
 import viper.silver.components.StatefulComponent
+import viper.silicon.supporters.SnapshotSupporter
 
 class PredicateSnapGenerator(symbolConverter: SymbolConverter, snapshotSupporter: SnapshotSupporter)
     extends StatefulComponent {

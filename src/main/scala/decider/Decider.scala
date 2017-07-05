@@ -6,6 +6,10 @@
 
 package viper.silicon.decider
 
+import scala.reflect.{ClassTag, classTag}
+import viper.silver.ast
+import viper.silver.components.StatefulComponent
+import viper.silver.verifier.DependencyNotFoundError
 import ch.qos.logback.classic.Logger
 import viper.silicon.Silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
@@ -14,11 +18,6 @@ import viper.silicon.interfaces.decider.{Prover, Unsat}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.verifier.{Verifier, VerifierComponent}
-import viper.silver.ast
-import viper.silver.components.StatefulComponent
-import viper.silver.verifier.DependencyNotFoundError
-
-import scala.reflect.{ClassTag, classTag}
 
 /*
  * Interfaces

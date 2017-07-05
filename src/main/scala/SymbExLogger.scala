@@ -3,16 +3,15 @@ package viper.silicon
 import java.io.File
 import java.nio.file.{Files, Path, Paths}
 
+import scala.annotation.elidable
+import scala.annotation.elidable._
+import viper.silver.ast
+import viper.silver.verifier.AbstractError
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.reporting.DefaultStateFormatter
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silver.ast
-import viper.silver.verifier.AbstractError
-
-import scala.annotation.elidable
-import scala.annotation.elidable._
 
 /* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
  *       probably irrelevant for logging. I.e. it might be ok if these sets were

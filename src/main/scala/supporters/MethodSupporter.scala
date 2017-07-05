@@ -7,17 +7,17 @@
 package viper.silicon.supporters
 
 import ch.qos.logback.classic.Logger
-import viper.silicon.decider.Decider
-import viper.silicon.interfaces._
-import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
-import viper.silicon.state.State.OldHeaps
-import viper.silicon.state.{Heap, State, Store}
-import viper.silicon.utils.freshSnap
-import viper.silicon.verifier.{Verifier, VerifierComponent}
 import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
+import viper.silicon.interfaces._
+import viper.silicon.decider.Decider
+import viper.silicon.rules.{consumer, executionFlowController, executor, producer}
+import viper.silicon.state.{Heap, State, Store}
+import viper.silicon.state.State.OldHeaps
+import viper.silicon.verifier.{Verifier, VerifierComponent}
+import viper.silicon.utils.freshSnap
 
 /* TODO: Consider changing the DefaultMethodVerificationUnitProvider into a SymbolicExecutionRule */
 
@@ -28,9 +28,9 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
   def decider: Decider
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
-    import consumer._
     import executor._
     import producer._
+    import consumer._
 
     private var _units: Seq[ast.Method] = _
 

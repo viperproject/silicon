@@ -6,16 +6,16 @@
 
 package viper.silicon.rules
 
-import viper.silicon.common.collections.immutable.InsertionOrderedSet
-import viper.silicon.interfaces._
-import viper.silicon.interfaces.state._
-import viper.silicon.state._
-import viper.silicon.state.terms._
-import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.HeuristicsFailed
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.interfaces._
+import viper.silicon.interfaces.state._
+import viper.silicon.state.terms._
+import viper.silicon.state._
+import viper.silicon.verifier.Verifier
 
 object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
   import executor._
