@@ -6,7 +6,7 @@
 
 package viper.silicon.state.terms
 
-import viper.silver.ast.utility.{GenericArithmeticSolver, GenericAxiomRewriter, GenericTriggerGenerator}
+import viper.silver.ast.utility.{GenericArithmeticSolver, GenericTriggerGenerator, GenericAxiomRewriter}
 import viper.silicon.utils.Counter
 import viper.silicon.state.{Identifier, terms}
 

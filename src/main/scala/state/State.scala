@@ -6,10 +6,10 @@
 
 package viper.silicon.state
 
+import viper.silicon.common.Mergeable
 import viper.silver.ast
 import viper.silver.cfg.silver.SilverCfg
 import viper.silicon.{Map, Stack}
-import viper.silicon.common.Mergeable
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.rules.SnapshotMapDefinition
 import viper.silicon.state.State.OldHeaps

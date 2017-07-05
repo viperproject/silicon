@@ -7,6 +7,7 @@
 package viper.silicon.rules
 
 import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
+
 import scala.collection.mutable
 import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion

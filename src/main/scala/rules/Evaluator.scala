@@ -10,6 +10,7 @@ import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.errors.PreconditionInAppFalse
 import viper.silver.verifier.reasons._
+import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.state._
@@ -19,7 +20,6 @@ import viper.silicon.state.terms.perms.{BigPermSum, IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.verifier.Verifier
 import viper.silicon.utils.toSf
-import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -143,6 +143,7 @@ object evaluator extends EvaluationRules with Immutable {
   protected def eval2(s: State, e: ast.Exp, pve: PartialVerificationError, v: Verifier)
                      (Q: (State, Term, Verifier) => VerificationResult)
                      : VerificationResult = {
+
     val resultTerm = e match {
       case _: ast.TrueLit => Q(s, True(), v)
       case _: ast.FalseLit => Q(s, False(), v)

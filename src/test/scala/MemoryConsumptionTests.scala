@@ -6,7 +6,7 @@
 
 package viper.silicon.tests
 
-import org.scalatest.{FlatSpec, Tag}
+import org.scalatest.{Tag, FlatSpec}
 import java.nio.file.Paths
 import viper.silver.frontend.SilFrontend
 import viper.silicon.Silicon

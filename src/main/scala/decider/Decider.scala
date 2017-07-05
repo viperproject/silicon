@@ -6,11 +6,12 @@
 
 package viper.silicon.decider
 
+import ch.qos.logback.classic.Logger
+
 import scala.reflect.{ClassTag, classTag}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import ch.qos.logback.classic.Logger
 import viper.silicon.Silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._

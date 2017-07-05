@@ -12,7 +12,7 @@ import DSL._
 import viper.silicon.state.terms._
 
 class SimpleArithmeticTermSolverTests extends FunSuite with Matchers {
-  import SimpleArithmeticSolver.{solve, SolverResult, SolvingFailure, SolvingSuccess}
+  import SimpleArithmeticSolver.{solve, SolverResult, SolvingSuccess, SolvingFailure}
 
   test("Pre-solving errors") {
     assert(solve(b, y, y).isInstanceOf[SolverResult])
