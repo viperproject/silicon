@@ -447,10 +447,10 @@ object executor extends ExecutionRules with Immutable {
             else
               /* c1.reserveHeap is expected to be [σ.h'], i.e. the remainder of σ.h */
               s1.copy(h = hOps,
-                  exhaleExt = false,
-                  reserveHeaps = Nil,
-                  recordEffects = false,
-                  consumedChunks = Stack())
+                      exhaleExt = false,
+                      reserveHeaps = Nil,
+                      recordEffects = false,
+                      consumedChunks = Stack())
             assert(s2.reserveHeaps.length == s.reserveHeaps.length)
             assert(s2.consumedChunks.length == s.consumedChunks.length)
             assert(s2.consumedChunks.length == math.max(s2.reserveHeaps.length - 1, 0))

@@ -316,7 +316,7 @@ object producer extends ProductionRules with Immutable {
             v2.decider.assume(PermAtMost(NoPerm(), tPerm))
             val snap = sf(
               predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
-                .getOrElse(sorts.Snap), v2)
+                            .getOrElse(sorts.Snap), v2)
             val gain = PermTimes(tPerm, s2.permissionScalingFactor)
             addNewChunk(s2, tArgs, snap, gain, v2)(Q)}))
 
@@ -362,7 +362,7 @@ object producer extends ProductionRules with Immutable {
                    * to that axiom.
                    */
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                    inverseFunctions.axiomInversesOfInvertibles.vars)
+                   inverseFunctions.axiomInversesOfInvertibles.vars)
               }
 
             if (effectiveTriggers.isEmpty)
@@ -443,7 +443,7 @@ object producer extends ProductionRules with Immutable {
                    * to that axiom.
                    */
                   (inverseFunctions.axiomInversesOfInvertibles.triggers,
-                    inverseFunctions.axiomInversesOfInvertibles.vars)
+                   inverseFunctions.axiomInversesOfInvertibles.vars)
               }
             if (effectiveTriggers.isEmpty)
               v1.logger.warn(s"No triggers available for quantifier at ${forall.pos}")

@@ -351,61 +351,35 @@ object heuristicsSupporter extends SymbolicExecutionRules with Immutable {
 
     /* TODO: Test combination of applyWand-heuristic and wand references (wand w := ...) */
 
-    //if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: applying $wand")
-      //val lhsAndWand = ast.And(wand.left, wand)()
-      //magicWandSupporter.applyWand(s.copy(h = h), Store(bindings), wand, lhsAndWand, pve, v)(Q)
-    //} else {
-//      heuristicsLogger.debug(s"  reaction: apply $wand")
       val applyStmt = ast.Apply(wand)()
       exec(s.copy(g = Store(bindings), h = h), applyStmt, v)((s1, v1) => {
         Q(s1.copy(g = s.g), s1.h, v1)})
-    //}
   }
 
   def unfoldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
                      (s: State, h: Heap, v: Verifier)
                      (Q: (State, Heap, Verifier) => VerificationResult)
                      : VerificationResult = {
-
-    //if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: unfolding $acc")
-      //magicWandSupporter.unfoldPredicate(s.copy(h = h), acc, pve, v)(Q)
-    //} else {
-    //      heuristicsLogger.debug(s"  reaction: unfold $acc")
       val unfoldStmt = ast.Unfold(acc)()
       exec(s.copy(h = h), unfoldStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
-    //}
   }
 
   def foldPredicate(acc: ast.PredicateAccessPredicate, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
-    //if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: folding $acc")
-      //magicWandSupporter.foldPredicate(s.copy(h = h), acc, pve, v)(Q)
-    //} else {
-//      heuristicsLogger.debug(s"  reaction: fold $acc")
       val foldStmt = ast.Fold(acc)()
       exec(s.copy(h = h), foldStmt, v)((s1, v1) => {
         Q(s1, s1.h, v1)})
-//    }
   }
 
   def foldPredicate(predicate: ast.Predicate, tArgs: List[Term], tPerm: Term, pve: PartialVerificationError)
                    (s: State, h: Heap, v: Verifier)
                    (Q: (State, Heap, Verifier) => VerificationResult)
                    : VerificationResult = {
-    //if (s.exhaleExt) {
-//      heuristicsLogger.debug(s"  reaction: folding ${predicate.name}(${tArgs.mkString(",")})")
-//      magicWandSupporter.foldingPredicate(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)(Q)
-//    } else {
-//      heuristicsLogger.debug(s"  reaction: fold ${predicate.name}(${tArgs.mkString(",")})")
     predicateSupporter.fold(s.copy(h = h), predicate, tArgs, tPerm, InsertionOrderedSet.empty, pve, v)((s1, v1) =>
         Q(s1, s1.h, v1))
-//    }
   }
 
   /* Helpers */

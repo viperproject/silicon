@@ -83,17 +83,31 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //  }
 
   //TODO: needs to calculate a snapshot that preserves values from the lhs
-  def createChunk(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
-                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-  : VerificationResult = createChunk(s, wand, None, pve, v)(Q)
+  def createChunk(s: State,
+                  wand: ast.MagicWand,
+                  pve: PartialVerificationError,
+                  v: Verifier)
+                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                  : VerificationResult =
+    createChunk(s, wand, None, pve, v)(Q)
 
-  def createChunk(s: State, wand: ast.MagicWand, abstractLhs: Term, rhsSnapshot: Term, pve: PartialVerificationError, v: Verifier)
-                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-  : VerificationResult = createChunk(s, wand, Some((abstractLhs, rhsSnapshot)), pve, v)(Q)
+  def createChunk(s: State,
+                  wand: ast.MagicWand,
+                  abstractLhs: Term,
+                  rhsSnapshot: Term,
+                  pve: PartialVerificationError,
+                  v: Verifier)
+                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                  : VerificationResult =
+    createChunk(s, wand, Some((abstractLhs, rhsSnapshot)), pve, v)(Q)
 
-  private def createChunk(s: State, wand: ast.MagicWand, possibleSnapshotPair: Option[(Term, Term)], pve: PartialVerificationError, v: Verifier)
-                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-                 : VerificationResult = {
+  private def createChunk(s: State,
+                          wand: ast.MagicWand,
+                          possibleSnapshotPair: Option[(Term, Term)],
+                          pve: PartialVerificationError,
+                          v: Verifier)
+                          (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                          : VerificationResult = {
 
     val s1 = s.copy(exhaleExt = false)
     val es = wand.subexpressionsToEvaluate(Verifier.program)
@@ -219,9 +233,13 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //  private var cnt = 0L
 //  private val packageLogger = LoggerFactory.getLogger("package")
 
-  def packageWand(state: State, wand: ast.MagicWand, proofScript: ast.Seqn, pve: PartialVerificationError, v: Verifier)
-                 (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
-                 : VerificationResult = {
+  def packageWand(state: State,
+                  wand: ast.MagicWand,
+                  proofScript: ast.Seqn,
+                  pve: PartialVerificationError,
+                  v: Verifier)
+                  (Q: (State, MagicWandChunk, Verifier) => VerificationResult)
+                  : VerificationResult = {
 
     /* TODO: Logging code is very similar to that in HeuristicsSupporter. Unify. */
 
@@ -255,8 +273,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     val s = if (state.exhaleExt) state else
       state.copy(reserveHeaps = Heap() :: state.h :: Nil,
-      recordEffects = true,
-      consumedChunks = Nil :: Nil)
+                 recordEffects = true,
+                 consumedChunks = Nil :: Nil)
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
@@ -325,10 +343,10 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
         executor.exec(s2, proofScriptCfg, v2)((proofScriptState, proofScriptVerifier) => {
           consume(proofScriptState.copy(oldHeaps = s2.oldHeaps, reserveCfgs = proofScriptState.reserveCfgs.tail), wand.right, pve, proofScriptVerifier)((s3, snap, v3) => {
             val s4 = s3.copy(//h = s.h, /* Temporarily */
-                           exhaleExt = false,
-                           recordEffects = false,
-                           oldHeaps = s.oldHeaps,
-                           consumedChunks = Stack())
+                             exhaleExt = false,
+                             recordEffects = false,
+                             oldHeaps = s.oldHeaps,
+                             consumedChunks = Stack())
 
 //          say(s"done: consumed RHS ${wand.right}")
 //          say(s"next: create wand chunk")
@@ -336,8 +354,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             magicWandSupporter.createChunk(s4, wand, freshSnapRoot, snap, pve, v3)((s5, ch, v4) => {
 //            say(s"done: create wand chunk: $ch")
               pcsFromHeapIndepExprs :+= v4.decider.pcs.after(preMark)
-              val mergedSnapshot = if (magicWandChunk != null) magicWandChunk.snap.merge(ch.snap, v.decider.pcs.branchConditions)
-              else ch.snap
+              val mergedSnapshot =
+                if (magicWandChunk != null) magicWandChunk.snap.merge(ch.snap, v.decider.pcs.branchConditions)
+                else ch.snap
               magicWandChunk = ch.copy(snap = mergedSnapshot)
               /* TODO: Assert that all produced chunks are identical (due to
                * branching, we might get here multiple times per package).
@@ -492,8 +511,12 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     }
   }
 
-  def applyWand(s: State, wand: ast.MagicWand, pve: PartialVerificationError, v: Verifier)
-           (Q: (State, Verifier) => VerificationResult): VerificationResult = {
+  def applyWand(s: State,
+                wand: ast.MagicWand,
+                pve: PartialVerificationError,
+                v: Verifier)
+                (Q: (State, Verifier) => VerificationResult)
+                : VerificationResult = {
         consume(s, wand, pve, v)((s1, snap, v1) => {
           val wandSnap = snap.asInstanceOf[MagicWandSnapshot]
           consume(s1, wand.left, pve, v1)((s2, snap, v2) => {
@@ -577,17 +600,17 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     else s.h
 
   def moveToReserveHeap(newState: State, v: Verifier): State =
-  if (newState.exhaleExt) {
-    /* newState.reserveHeaps = [hUsed, hOps, ...]
-     * During execution permissions are consumed or transferred from hOps and new
-     * ones are generated onto the state's heap. E.g. for a fold the body of a predicate
-     * is consumed from hOps and permissions for the predicate are added to the state's
-     * heap. After a statement is executed those permissions are transferred to hOps.
-     */
-    val hOpsJoinUsed = stateConsolidator.merge(newState.reserveHeaps(1), newState.h, v)
-    newState.copy(h = Heap(),
-        reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
-  } else newState
+    if (newState.exhaleExt) {
+      /* newState.reserveHeaps = [hUsed, hOps, ...]
+       * During execution permissions are consumed or transferred from hOps and new
+       * ones are generated onto the state's heap. E.g. for a fold the body of a predicate
+       * is consumed from hOps and permissions for the predicate are added to the state's
+       * heap. After a statement is executed those permissions are transferred to hOps.
+       */
+      val hOpsJoinUsed = stateConsolidator.merge(newState.reserveHeaps(1), newState.h, v)
+      newState.copy(h = Heap(),
+          reserveHeaps = Heap() +: hOpsJoinUsed +: newState.reserveHeaps.drop(2))
+    } else newState
 
   def getOutEdges(s: State, b: SilverBlock): Seq[Edge[Stmt, Exp]] =
     if (s.exhaleExt)
