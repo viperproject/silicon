@@ -6,6 +6,9 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
+import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 import viper.silicon._
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
@@ -16,14 +19,11 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsNonPositive}
 import viper.silicon.utils.freshSnap
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
-import viper.silver.verifier.reasons.{InsufficientPermission, InternalReason, NegativePermission}
 
 object magicWandSupporter extends SymbolicExecutionRules with Immutable {
-  import consumer._
   import evaluator._
   import producer._
+  import consumer._
 
   def checkWandsAreSelfFraming(s: State, g: Store, oldHeap: Heap, root: ast.Member, v: Verifier): VerificationResult =
     sys.error("Implementation missing")
@@ -133,16 +133,16 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
   def consumeFromMultipleHeaps(s: State,
                                hs: Stack[Heap],
-                               name: String,
+                               id: ChunkIdentifer,
                                args: Seq[Term],
                                pLoss: Term,
                                locacc: ast.LocationAccess,
                                pve: PartialVerificationError,
                                v: Verifier)
-                              (Q: (State, Stack[Heap], Stack[Option[BasicChunk]], Verifier) => VerificationResult)
+                              (Q: (State, Stack[Heap], Stack[Option[ValueAndPermissionChunk]], Verifier) => VerificationResult)
                               : VerificationResult = {
 
-    val consumedChunks: Array[Option[BasicChunk]] = Array.fill(hs.length)(None)
+    val consumedChunks: Array[Option[ValueAndPermissionChunk]] = Array.fill(hs.length)(None)
     var toLose = pLoss
     var heapsToVisit = hs
     var visitedHeaps: List[Heap] = Nil
@@ -153,7 +153,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
       val h = heapsToVisit.head
       heapsToVisit = heapsToVisit.tail
 
-      val (s1, h1, optCh1, toLose1, v1) = consumeMaxPermissions(sCurr, h, name, args, toLose, vCurr)
+      val (s1, h1, optCh1, toLose1, v1) = consumeMaxPermissions(sCurr, h, id, args, toLose, vCurr)
 
       visitedHeaps = h1 :: visitedHeaps
 
@@ -167,7 +167,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
     if (vCurr.decider.check(IsNonPositive(toLose), Verifier.config.checkTimeout())) {
       val tEqs =
         consumedChunks.flatten.sliding(2).map {
-          case Array(ch1: BasicChunk, ch2: BasicChunk) => ch1.snap === ch2.snap
+          case Array(ch1: ValueAndPermissionChunk, ch2: ValueAndPermissionChunk) => ch1.snap === ch2.snap
           case _ => True()
         }
 
@@ -189,13 +189,13 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
    */
   private def consumeMaxPermissions(s: State,
                                     h: Heap,
-                                    name: String,
+                                    id: ChunkIdentifer,
                                     args: Seq[Term],
                                     pLoss: Term,
                                     v: Verifier)
-                                   : (State, Heap, Option[BasicChunk], Term, Verifier) = {
+                                   : (State, Heap, Option[ValueAndPermissionChunk], Term, Verifier) = {
 
-    unifiedHeapSupporter.findChunk[BasicChunk](h.values, BasicChunkIdentifier(name), args, v) match {
+    chunkSupporter.findChunk[ValueAndPermissionChunk](h.values, id, args, v) match {
       case Some(ch) =>
         val (pLost, pKeep, pToConsume) =
           if (v.decider.check(PermAtMost(pLoss, ch.perm), Verifier.config.checkTimeout()))
@@ -204,8 +204,8 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
             (ch.perm, NoPerm(), PermMinus(pLoss, ch.perm))
         val h1 =
           if (v.decider.check(IsNonPositive(pKeep), Verifier.config.checkTimeout())) h - ch
-          else h - ch + (ch \ pKeep)
-        val consumedChunk = ch \ pLost
+          else h - ch + ch.withPerm(pKeep)
+        val consumedChunk = ch.withPermAndValue(ch.snap, pLost)
         (s, h1, Some(consumedChunk), pToConsume, v)
 
       case None => (s, h, None, pLoss, v)
@@ -251,7 +251,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 
     val stackSize = 3 + s.reserveHeaps.tail.size
       /* IMPORTANT: Size matches structure of reserveHeaps at [State RHS] below */
-    var allConsumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] = Stack.fill(stackSize - 1)(MMap())
+    var allConsumedChunks: Stack[MMap[Stack[Term], MList[ValueAndPermissionChunk]]] = Stack.fill(stackSize - 1)(MMap())
       /* Record consumptions (transfers) from all heaps except the top-most (which is hUsed,
        * from which we never transfer from, only to)
        */
@@ -333,9 +333,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
                * Hence the at-most comparison.
                */
 
-            val consumedChunks: Stack[MMap[Stack[Term], MList[BasicChunk]]] =
+            val consumedChunks: Stack[MMap[Stack[Term], MList[ValueAndPermissionChunk]]] =
               s3.consumedChunks.map(pairs => {
-                val cchs: MMap[Stack[Term], MList[BasicChunk]] = MMap()
+                val cchs: MMap[Stack[Term], MList[ValueAndPermissionChunk]] = MMap()
 
                 pairs.foreach {
                   case (guards, chunk) => cchs.getOrElseUpdate(guards, MList()) += chunk
@@ -429,9 +429,9 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
               var matched = false
 
               hR.transform {
-                case ch1: BasicChunk if ch1.args == ch.args && ch1.id == ch.id =>
+                case ch1: ValueAndPermissionChunk if ch1.args == ch.args && ch1.id == ch.id =>
                   matched = true
-                  ch.duplicate(perm = PermMinus(ch1.perm, pLoss))
+                  ch.withPerm(PermMinus(ch1.perm, pLoss))
                 case ch1 => ch1
               }
 
@@ -449,7 +449,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
 //        joinedReserveHeaps.foreach(x => say(x.toString(), 2))
 
         assert(allConsumedChunks.length == s.consumedChunks.length)
-        val consumedChunks: Stack[Seq[(Stack[Term], BasicChunk)]] =
+        val consumedChunks: Stack[Seq[(Stack[Term], ValueAndPermissionChunk)]] =
           allConsumedChunks.zip(s.consumedChunks).map { case (allcchs, cchs) =>
             cchs ++ allcchs.toSeq.flatMap { case (guards, chunks) => chunks.map(ch => (guards, ch))}}
 
@@ -611,18 +611,18 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
   }
 
   def transfer(s: State,
-               name: String,
+               id: ChunkIdentifer,
                args: Seq[Term],
                perms: Term,
                locacc: ast.LocationAccess,
                pve: PartialVerificationError,
                v: Verifier)
-              (Q: (State, Option[BasicChunk], Verifier) => VerificationResult)
+              (Q: (State, Option[ValueAndPermissionChunk], Verifier) => VerificationResult)
               : VerificationResult = {
 
     assert(s.consumedChunks.length == s.reserveHeaps.tail.length)
 
-    magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, name, args, perms, locacc, pve, v)((s1, hs, chs, v1/*, pcr*/) => {
+    magicWandSupporter.consumeFromMultipleHeaps(s, s.reserveHeaps.tail, id, args, perms, locacc, pve, v)((s1, hs, chs, v1 /*, pcr*/) => {
       val s2 = s1.copy(reserveHeaps = s.reserveHeaps.head +: hs)
 
       val s3 =
@@ -630,7 +630,7 @@ object magicWandSupporter extends SymbolicExecutionRules with Immutable {
           assert(chs.length == s2.consumedChunks.length)
           val bcs = v1.decider.pcs.branchConditions
           val consumedChunks3 =
-            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], BasicChunk)]]()) {
+            chs.zip(s2.consumedChunks).foldLeft(Stack[Seq[(Stack[Term], ValueAndPermissionChunk)]]()) {
               case (accConsumedChunks, (optCh, consumed)) =>
                 optCh match {
                   case Some(ch) => ((bcs -> ch) +: consumed) :: accConsumedChunks

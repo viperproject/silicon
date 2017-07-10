@@ -296,9 +296,9 @@ object executor extends ExecutionRules with Immutable {
         val pve = AssignmentFailed(ass)
         eval(s, eRcvr, pve, v)((s1, tRcvr, v1) =>
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
-            chunkSupporter.withChunk(s2, field.name, Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
+            chunkSupporter.withChunk[BasicChunk](s2, BasicChunkIdentifier(field.name), Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              val fieldChunk = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(tRcvr), t, fc.perm)
+              val fieldChunk = fc.withValue(t)
               Q(s3.copy(h = s3.h - fc + fieldChunk), v3)})))
 
       case ast.NewStmt(x, fields) =>
@@ -475,7 +475,7 @@ object executor extends ExecutionRules with Immutable {
 
           case x: ast.AbstractLocalVar =>
             val chWand = s.g(x).asInstanceOf[MagicWandChunkTerm].chunk
-            unifiedHeapSupporter.findMatchingChunk(s.h.values, chWand, v) match {
+            chunkSupporter.findMatchingChunk(s.h.values, chWand, v) match {
               case Some(ch) =>
                 QL(s.copy(h = s.h - ch), Store(chWand.bindings), chWand.id.ghostFreeWand, v)
               case None =>

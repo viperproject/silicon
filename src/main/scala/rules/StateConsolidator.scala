@@ -106,7 +106,7 @@ object stateConsolidator extends StateConsolidationRules with Immutable {
        *           sequence of destination chunks
        */
 
-      unifiedHeapSupporter.findMatchingChunk(accMergedChunks, nextChunk, v) match {
+      chunkSupporter.findMatchingChunk(accMergedChunks, nextChunk, v) match {
         case Some(ch) =>
           mergeChunks(ch, nextChunk, v) match {
             case Some((newChunk, snapEq)) =>

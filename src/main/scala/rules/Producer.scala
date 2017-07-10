@@ -270,7 +270,7 @@ object producer extends ProductionRules with Immutable {
             Q(s1.copy(h = s1.h + ch), v)
           } else {
             val ch = BasicChunk(FieldID(), BasicChunkIdentifier(field.name), Seq(rcvr), snap, p)
-            unifiedHeapSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
+            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) =>
               Q(s1.copy(h = h1), v1))
           }
         }
@@ -301,7 +301,7 @@ object producer extends ProductionRules with Immutable {
           } else {
             val snap1 = snap.convert(sorts.Snap)
             val ch = BasicChunk(PredicateID(), BasicChunkIdentifier(predicate.name), args, snap1, p)
-            unifiedHeapSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
+            chunkSupporter.produce(s, s.h, ch, v)((s1, h1, v1) => {
               if (Verifier.config.enablePredicateTriggersOnInhale() && s1.functionRecorder == NoopFunctionRecorder)
                 v1.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: args))
               Q(s1.copy(h = h1), v1)
@@ -319,7 +319,7 @@ object producer extends ProductionRules with Immutable {
 
       case wand: ast.MagicWand =>
         magicWandSupporter.createChunk(s, wand, pve, v)((s1, chWand, v1) =>
-          unifiedHeapSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
+          chunkSupporter.produce(s1, s1.h, chWand, v1)((s2, h2, v2) =>
           Q(s2.copy(h = h2), v2)))
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer

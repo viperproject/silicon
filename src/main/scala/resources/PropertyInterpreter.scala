@@ -77,13 +77,13 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
       // Chunk accessors, only work for appropriate chunks
     case PermissionAccess(cv) => placeholderMap(cv) match {
-      case b: ResourceChunk with Permission => b.perm
+      case b: PermissionChunk => b.perm
       case _ =>
         assert(assertion = false, "Permission access of non-permission chunk")
         terms.NoPerm()
     }
     case ValueAccess(cv) => placeholderMap(cv) match {
-      case b: ResourceChunk with Value => b.snap
+      case b: ValueChunk => b.snap
       case _ =>
         assert(assertion = false, "Value access of non-value chunk")
         terms.NoPerm()

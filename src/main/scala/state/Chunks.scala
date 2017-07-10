@@ -23,7 +23,7 @@ case class BasicChunk(resourceID: ResourceID,
                       args: Seq[Term],
                       snap: Term,
                       perm: Term)
-  extends ResourceChunk with Permission with Value {
+  extends ValueAndPermissionChunk {
 
   // TODO: needed?
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
@@ -34,15 +34,9 @@ case class BasicChunk(resourceID: ResourceID,
     case _ => assert(assertion = false, s"Resource ID has to be FieldID or PredicateID, but found $resourceID")
   }
 
-  def duplicate(resourceID: ResourceID = resourceID,
-                name: BasicChunkIdentifier = id,
-                args: Seq[Term] = args,
-                snap: Term = snap,
-                perm: Term = perm): BasicChunk = BasicChunk(resourceID, name, args, snap, perm)
-
-  def +(perm: Term): BasicChunk = duplicate(perm = PermPlus(this.perm, perm))
-  def -(perm: Term): BasicChunk = duplicate(perm = PermMinus(this.perm, perm))
-  def \(perm: Term): BasicChunk = duplicate(perm = perm)
+  override def withPerm(newPerm: Term) = withPermAndValue(snap, newPerm)
+  override def withValue(newSnap: Term) = withPermAndValue(newSnap, perm)
+  override def withPermAndValue(newSnap: Term, newPerm: Term) = BasicChunk(resourceID, id, args, newSnap, newPerm)
 
   override def toString = resourceID match {
     case FieldID() => s"${args.head}.$id -> $snap # $perm"
@@ -52,7 +46,7 @@ case class BasicChunk(resourceID: ResourceID,
 
 }
 
-sealed trait QuantifiedChunk extends PermissionChunk {
+sealed trait QuantifiedChunk extends OldPermissionChunk {
   type Self <: QuantifiedChunk
 
   def name: String

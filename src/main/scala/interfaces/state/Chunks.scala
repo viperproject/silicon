@@ -24,7 +24,7 @@ trait GenericPermissionChunk[CH <: GenericPermissionChunk[CH]] extends Chunk {
  * the code (in particular, all consume and withChunk methods) to compile
  * with type parameters such as CH <: PermissionChunk[CH].
  */
-trait PermissionChunk extends GenericPermissionChunk[PermissionChunk]
+trait OldPermissionChunk extends GenericPermissionChunk[OldPermissionChunk]
 
 trait ChunkIdentifer
 
@@ -34,10 +34,16 @@ trait ResourceChunk extends Chunk {
   val args: Iterable[Term]
 }
 
-trait Permission {
+trait PermissionChunk extends ResourceChunk {
   val perm: Term
+  def withPerm(perm: Term): PermissionChunk
 }
 
-trait Value {
+trait ValueChunk extends ResourceChunk {
   val snap: Term
+  def withValue(snap: Term): ValueChunk
+}
+
+trait ValueAndPermissionChunk extends ResourceChunk with ValueChunk with PermissionChunk {
+  def withPermAndValue(snap: Term, perm: Term): ValueAndPermissionChunk
 }

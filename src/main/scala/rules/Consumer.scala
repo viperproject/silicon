@@ -515,7 +515,7 @@ object consumer extends ConsumptionRules with Immutable {
             v2.decider.assert(perms.IsNonNegative(tPerm)){
               case true =>
                 val loss = PermTimes(tPerm, s2.permissionScalingFactor)
-                chunkSupporter.consume(s2, h, name, args, loss, pve, v2, locacc, Some(a))((s3, h1, snap1, v3) => {
+                chunkSupporter.consume(s2, h, BasicChunkIdentifier(name), args, loss, pve, v2, locacc, Some(a))((s3, h1, snap1, v3) => {
                   val s4 = s3.copy(partiallyConsumedHeap = Some(h1),
                                    constrainableARPs = s.constrainableARPs)
                   Q(s4, h1, snap1, v3)})
@@ -539,7 +539,7 @@ object consumer extends ConsumptionRules with Immutable {
              * TODO: Does context.partiallyConsumedHeap need to be updated after consuming chunks?
              */
             magicWandSupporter.doWithMultipleHeaps(s1, hs, v1)((s2, h2, v2) =>
-              unifiedHeapSupporter.findMatchingChunk(h2.values, chWand, v2) match {
+              chunkSupporter.findMatchingChunk(h2.values, chWand, v2) match {
                 case someChunk @ Some(ch) => (s2, someChunk, h2 - ch, v2)
                 case _ => (s2, None, h2, v2)
               }

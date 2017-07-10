@@ -83,7 +83,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val s3 = s2.copy(g = s.g,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)
-        unifiedHeapSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) =>
+        chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) =>
           Q(s4.copy(h = h1), v2))
       }
     })
@@ -126,7 +126,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
           Q(s4.copy(g = s.g), v2)})
       })
     } else {
-      chunkSupporter.consume(s1, s1.h, predicate.name, tArgs, s1.permissionScalingFactor, pve, v, pa)((s2, h1, snap, v1) => {
+      chunkSupporter.consume(s1, s1.h, BasicChunkIdentifier(predicate.name), tArgs, s1.permissionScalingFactor, pve, v, pa)((s2, h1, snap, v1) => {
         val s3 = s2.copy(g = gIns, h = h1)
                    .setConstrainable(constrainableWildcards, false)
         produce(s3, toSf(snap), body, pve, v1)((s4, v2) => {
