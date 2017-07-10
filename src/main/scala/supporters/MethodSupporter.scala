@@ -57,7 +57,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
       val g = Store(   ins.map(x => (x, decider.fresh(x)))
                     ++ outs.map(x => (x, decider.fresh(x)))
-                    ++ method.locals.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
+                    ++ method.scopedDecls.collect { case l: ast.LocalVarDecl => l }.map(_.localVar).map(x => (x, decider.fresh(x))))
 
       val s = sInit.copy(g = g,
                          h = Heap(),
