@@ -20,6 +20,13 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
   }
   private var currentResourceID: Option[ResourceID] = None
 
+  /**
+    * Builds a term for the path conditions out of the expression. If <code>expression</code> contains a
+    * <code>ForEach(...)</code> clause, it iterates over all chunks with the same ResourceID as <code>chunk</code>.
+    * @param chunk the chunk used for the <code>This()</code> placeholder
+    * @param expression an expression potentially containing <code>This()</code>
+    * @return the corresponding term
+    */
   def buildPathConditionForChunk(chunk: ResourceChunk, expression: BooleanExpression): terms.Term = {
     currentResourceID = Some(chunk.resourceID)
     val pc = buildPathCondition(expression, Map(This() -> chunk))
@@ -27,6 +34,13 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
     pc
   }
 
+  /**
+    * Builds a term for the path conditions out of the expression. If <code>expression</code> contains a
+    * <code>ForEach(...)</code> clause, it iterates over all chunks with ResourceID <code>resourceID</code>.
+    * @param resourceID a resource ID
+    * @param expression an expression <b>not</b> containing <code>This()</code>
+    * @return the corresponding term
+    */
   def buildPathConditionForResource(resourceID: ResourceID, expression: BooleanExpression): terms.Term = {
     currentResourceID = Some(resourceID)
     val pc = buildPathCondition(expression, Map.empty)
@@ -75,15 +89,13 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
       case b: DefaultChunk => b.perm
       case _ =>
         // TODO: this will be removed once magic wands have snapshots
-        assert(assertion = false, "Permission access of non-permission chunk")
-        terms.NoPerm()
+        sys.error("Permission access of non-permission chunk")
     }
     case ValueAccess(cv) => placeholderMap(cv) match {
       case b: DefaultChunk => b.snap
       case _ =>
         // TODO: this will be remvoed once magic wands have snapshots
-        assert(assertion = false, "Value access of non-value chunk")
-        terms.NoPerm()
+        sys.error("Value access of non-value chunk")
     }
 
       // decider / heap interaction
@@ -102,8 +114,7 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
       // The only missing cases are chunk expressions which only happen in accessors, and location expressions which
       // only happen in equality expressions and are treated separately
-      // TODO: what is the best way to throw an error here?
-    case _ => assert(assertion = false, "Invalid expression"); terms.True()
+    case e => sys.error( s"An expression of type ${e.getClass} is not allowed here.")
   }
 
   // Assures short-circuit evalutation of 'and'

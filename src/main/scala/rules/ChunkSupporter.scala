@@ -404,7 +404,10 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     withChunk[CH](s, s.h, id, args, optPerms, locacc, pve, v)((s1, h1, ch, v1) =>
       Q(s1.copy(h = h1), ch, v1))
 
-  // Just like withChunk, but calls the continuation with None if the permission value is NoPerm
+  /**
+    * Just like withChunk, but calls the continuation with <code>None</code> if the permission value is
+    * <code>NoPerm()</code>.
+    */
   def withChunkIfPerm[CH <: DefaultChunk: ClassTag]
   (s: State,
    h: Heap,
