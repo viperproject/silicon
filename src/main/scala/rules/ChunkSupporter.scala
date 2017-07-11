@@ -137,8 +137,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     }
   }
 
-  private def findChunkLiterally[CH <: ResourceChunk](chunks: Iterable[CH], args: Iterable[Term]) =
+  private def findChunkLiterally[CH <: ResourceChunk](chunks: Iterable[CH], args: Iterable[Term]) = {
     chunks find (ch => ch.args == args)
+  }
 
   private def findChunkWithProver[CH <: ResourceChunk](chunks: Iterable[CH], args: Iterable[Term], v: Verifier) = {
       chunks find (ch =>

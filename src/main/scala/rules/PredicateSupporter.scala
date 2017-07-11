@@ -6,15 +6,15 @@
 
 package viper.silicon.rules
 
+import viper.silver.ast
+import viper.silver.verifier.PartialVerificationError
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces.VerificationResult
 import viper.silicon.resources.PredicateID
 import viper.silicon.state._
 import viper.silicon.state.terms._
-import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
-import viper.silver.ast
-import viper.silver.verifier.PartialVerificationError
+import viper.silicon.utils.toSf
 
 trait PredicateSupportRules extends SymbolicExecutionRules {
   def fold(s: State,
@@ -40,8 +40,8 @@ trait PredicateSupportRules extends SymbolicExecutionRules {
 }
 
 object predicateSupporter extends PredicateSupportRules with Immutable {
-  import consumer._
   import producer._
+  import consumer._
 
   def fold(s: State,
            predicate: ast.Predicate,

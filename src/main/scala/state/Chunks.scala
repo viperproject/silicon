@@ -62,7 +62,6 @@ sealed trait QuantifiedChunk extends PermissionChunk {
                : Self
 }
 
-
 /* TODO: Instead of using the singletonRcvr to differentiate between QP chunks that
  *       provide permissions to a single location and those providing permissions
  *       to potentially multiple locations, consider using regular, non-quantified
