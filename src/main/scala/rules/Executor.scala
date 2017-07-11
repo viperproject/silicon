@@ -298,7 +298,7 @@ object executor extends ExecutionRules with Immutable {
           eval(s1, rhs, pve, v1)((s2, tRhs, v2) =>
             chunkSupporter.withChunk[BasicChunk](s2, BasicChunkIdentifier(field.name), Seq(tRcvr), Some(FullPerm()), fa, pve, v2)((s3, fc, v3) => {
               val t = ssaifyRhs(tRhs, field.name, field.typ, v3)
-              val fieldChunk = fc.withValue(t)
+              val fieldChunk = fc.withSnap(t)
               Q(s3.copy(h = s3.h - fc + fieldChunk), v3)})))
 
       case ast.NewStmt(x, fields) =>

@@ -13,11 +13,6 @@ import viper.silicon.verifier.Verifier
 
 class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
-  // TODO: small evalutation: syntactical chunk finding optimization, greedy vs non-greedy, old greedy vs new greedy
-  // python tool viper runner
-
-  // TODO: handle missing ChunkVariable
-
   private type PlaceholderMap = Map[ChunkPlaceholder, ResourceChunk]
   private val resourceChunks: Iterable[ResourceChunk] = heap.flatMap {
     case c: ResourceChunk => Some(c)
@@ -77,14 +72,16 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
       // Chunk accessors, only work for appropriate chunks
     case PermissionAccess(cv) => placeholderMap(cv) match {
-      case b: PermissionChunk => b.perm
+      case b: DefaultChunk => b.perm
       case _ =>
+        // TODO: this will be removed once magic wands have snapshots
         assert(assertion = false, "Permission access of non-permission chunk")
         terms.NoPerm()
     }
     case ValueAccess(cv) => placeholderMap(cv) match {
-      case b: ValueChunk => b.snap
+      case b: DefaultChunk => b.snap
       case _ =>
+        // TODO: this will be remvoed once magic wands have snapshots
         assert(assertion = false, "Value access of non-value chunk")
         terms.NoPerm()
     }

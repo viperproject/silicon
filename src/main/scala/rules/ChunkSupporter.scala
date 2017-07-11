@@ -47,7 +47,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: PermissionChunk]
+  def withChunk[CH <: DefaultChunk]
                (s: State,
                 h: Heap,
                 id: ChunkIdentifer,
@@ -69,7 +69,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: PermissionChunk]
+  def withChunk[CH <: DefaultChunk]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
@@ -80,7 +80,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunkIfPerm[CH <: PermissionChunk]
+  def withChunkIfPerm[CH <: DefaultChunk]
                      (s: State,
                       h: Heap,
                       id: ChunkIdentifer,
@@ -167,7 +167,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     )(Q)
   }
 
-  def withChunk[CH <: PermissionChunk]
+  def withChunk[CH <: DefaultChunk]
                (s: State,
                h: Heap,
                id: ChunkIdentifer,
@@ -213,7 +213,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     withChunk[CH](s, s.h, id, args, locacc, pve, v)((s1, h1, ch, v1) =>
       Q(s1.copy(h = h1), ch, v1))
 
-  def withChunk[CH <: PermissionChunk]
+  def withChunk[CH <: DefaultChunk]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
@@ -228,7 +228,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       Q(s1.copy(h = h1), ch, v1))
 
   // Just like withChunk, but calls the continuation with None if the permission value is NoPerm
-  def withChunkIfPerm[CH <: PermissionChunk]
+  def withChunkIfPerm[CH <: DefaultChunk]
                      (s: State,
                       h: Heap,
                       id: ChunkIdentifer,
@@ -344,25 +344,25 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
     if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-      withChunkIfPerm[ValueAndPermissionChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
+      withChunkIfPerm[DefaultChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
         optCh match {
           case Some(ch) =>
             if (v1.decider.check (IsNonPositive (PermMinus (ch.perm, perms) ), Verifier.config.checkTimeout () ) )
               Q (s1, h1 - ch, Some (ch.snap), v1)
             else
-              Q (s1, h1 - ch + ch.withPerm (PermMinus (ch.perm, perms) ), Some (ch.snap), v1)
+              Q (s1, h1 - ch + ch.withPerm(PermMinus (ch.perm, perms)), Some (ch.snap), v1)
           case None =>
             Q(s1, h1, None, v1)
         }
       })/*
-      withChunk[ValueAndPermissionChunk](s, h, id, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
+      withChunk[DefaultChunk](s, h, id, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
         if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
           Q(s1, h1 - ch, Some(ch.snap), v1)
         else
           Q(s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some(ch.snap), v1)
       })*/
     } else {
-      withChunk[ValueAndPermissionChunk](s, h, id, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
+      withChunk[DefaultChunk](s, h, id, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
         v1.decider.assume(PermLess(perms, ch.perm))
         Q(s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some(ch.snap), v1)
       })
@@ -379,10 +379,10 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                               v: Verifier)
                              (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                              : VerificationResult = {
-    val relevantChunks = ListBuffer[ValueAndPermissionChunk]()
+    val relevantChunks = ListBuffer[DefaultChunk]()
     val otherChunks = ListBuffer[Chunk]()
     h.values foreach {
-      case c: ValueAndPermissionChunk if c.id == id => relevantChunks.append(c)
+      case c: DefaultChunk if c.id == id => relevantChunks.append(c)
       case ch => otherChunks.append(ch)
     }
 
@@ -407,15 +407,15 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
       var pNeeded = perms
       var pSum: Term = NoPerm()
-      val newChunks = ListBuffer[ValueAndPermissionChunk]()
+      val newChunks = ListBuffer[DefaultChunk]()
       val equalities = ListBuffer[Term]()
 
-      val definitiveAlias = findChunk[ValueAndPermissionChunk](relevantChunks, id, args, v)
+      val definitiveAlias = findChunk[DefaultChunk](relevantChunks, id, args, v)
       val (snap, fresh) = definitiveAlias match {
         case Some(alias) => (alias.snap, None)
         case None =>
           val sort = relevantChunks.head.snap.sort
-          val f = v.decider.appliedFresh("basic_fresh", sort, s.relevantQuantifiedVariables)
+          val f = v.decider.appliedFresh("complete_fresh", sort, s.relevantQuantifiedVariables)
           (f, Some(f))
       }
       var moreNeeded = true
@@ -426,9 +426,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           val eq = setEqual(ch.args, args)
           pSum = PermPlus(pSum, Ite(eq, ch.perm, NoPerm()))
           val pTakenBody = Ite(eq, PermMin(ch.perm, pNeeded), NoPerm())
-          val pTakenMacro = v.decider.freshMacro("basic_pTaken", Seq(), pTakenBody)
+          val pTakenMacro = v.decider.freshMacro("complete_pTaken", Seq(), pTakenBody)
           val pTaken = App(pTakenMacro, Seq())
-          val newChunk = ch.withPermAndValue(ch.snap, PermMinus(ch.perm, pTaken))
+          val newChunk = ch.withSnap(ch.snap).withPerm(PermMinus(ch.perm, pTaken))
           equalities.append(Implies(And(IsPositive(ch.perm), eq), snap === newChunk.snap))
           pNeeded = PermMinus(pNeeded, pTaken)
 

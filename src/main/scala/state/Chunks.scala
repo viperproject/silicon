@@ -23,9 +23,8 @@ case class BasicChunk(resourceID: ResourceID,
                       args: Seq[Term],
                       snap: Term,
                       perm: Term)
-  extends ValueAndPermissionChunk {
+  extends DefaultChunk {
 
-  // TODO: needed?
   assert(perm.sort == sorts.Perm, s"Permissions $perm must be of sort Perm, but found ${perm.sort}")
   resourceID match {
     case FieldID() => assert(snap.sort != sorts.Snap, s"A field chunk's value ($snap) is not expected to be of sort Snap")
@@ -34,9 +33,8 @@ case class BasicChunk(resourceID: ResourceID,
     case _ => assert(assertion = false, s"Resource ID has to be FieldID or PredicateID, but found $resourceID")
   }
 
-  override def withPerm(newPerm: Term) = withPermAndValue(snap, newPerm)
-  override def withValue(newSnap: Term) = withPermAndValue(newSnap, perm)
-  override def withPermAndValue(newSnap: Term, newPerm: Term) = BasicChunk(resourceID, id, args, newSnap, newPerm)
+  override def withPerm(newPerm: Term) = BasicChunk(resourceID, id, args, snap, newPerm)
+  override def withSnap(newSnap: Term) = BasicChunk(resourceID, id, args, newSnap, perm)
 
   override def toString = resourceID match {
     case FieldID() => s"${args.head}.$id -> $snap # $perm"
@@ -46,7 +44,7 @@ case class BasicChunk(resourceID: ResourceID,
 
 }
 
-sealed trait QuantifiedChunk extends OldPermissionChunk {
+sealed trait QuantifiedChunk extends PermissionChunk {
   type Self <: QuantifiedChunk
 
   def name: String
