@@ -7,7 +7,7 @@
 package viper.silicon.state
 
 import viper.silicon.interfaces.state._
-import viper.silicon.resources.{FieldID, MagicWandID, PredicateID, ResourceID}
+import viper.silicon.resources._
 import viper.silicon.rules.InverseFunctions
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
@@ -18,7 +18,7 @@ case class BasicChunkIdentifier(name: String) extends ChunkIdentifer {
   override def toString = name
 }
 
-case class BasicChunk(resourceID: ResourceID,
+case class BasicChunk(resourceID: BaseID,
                       id: BasicChunkIdentifier,
                       args: Seq[Term],
                       snap: Term,

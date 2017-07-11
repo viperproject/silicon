@@ -15,19 +15,24 @@ sealed abstract class ArgumentExpression extends EquatableExpression
 sealed abstract class PermissionExpression extends EquatableExpression
 sealed abstract class ValueExpression extends EquatableExpression
 
-// TODO to string
-
-// TODO different checks analogous to if then else?
 case class Check(condition: BooleanExpression, thenDo: BooleanExpression, otherwise: BooleanExpression) extends BooleanExpression
-// TODO check for at least 1 argument, all different, etc.
+
 // Foreach c1, c2 iterates over all DISTINCT pairs of chunks
-case class ForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression) extends BooleanExpression
+case class ForEach(chunkVariables: Seq[ChunkVariable], body: BooleanExpression) extends BooleanExpression {
+  assert(chunkVariables.nonEmpty, "Cannot quantify over no variable.")
+  assert(chunkVariables.distinct.size == chunkVariables.size, "Cannot quantify over non-distinct variables.")
+}
 
 case class PermissionIfThenElse(condition: BooleanExpression, thenDo: PermissionExpression, otherwise: PermissionExpression) extends PermissionExpression
 case class ValueIfThenElse(condition: ValueExpression, thenDo: ValueExpression, otherwise: ValueExpression) extends ValueExpression
 
-// TODO only set equal things of same type
-case class Equals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression
+case class Equals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression {
+  assert(left.isInstanceOf[BooleanExpression] == right.isInstanceOf[BooleanExpression])
+  assert(left.isInstanceOf[IdentifierExpression] == right.isInstanceOf[IdentifierExpression])
+  assert(left.isInstanceOf[ArgumentExpression] == right.isInstanceOf[ArgumentExpression])
+  assert(left.isInstanceOf[PermissionExpression] == right.isInstanceOf[PermissionExpression])
+  assert(left.isInstanceOf[ValueExpression] == right.isInstanceOf[ValueExpression])
+}
 case class NotEquals(left: EquatableExpression, right: EquatableExpression) extends BooleanExpression
 
 case class GreaterThan(left: PermissionExpression, right: PermissionExpression) extends BooleanExpression

@@ -14,7 +14,7 @@ trait ResourceDescription {
 
 }
 
-class BasicDescription extends ResourceDescription {
+abstract class BasicDescription extends ResourceDescription {
 
   override val instanceProperties = Seq(permAtLeastZero)
   override val staticProperties = Seq[BooleanExpression]()

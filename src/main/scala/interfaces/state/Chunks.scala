@@ -34,7 +34,7 @@ trait ResourceChunk extends Chunk {
   val args: Iterable[Term]
 }
 
-// TODO: will be merged with ResourceChunk, once magic wands have snapshots
+// TODO: will be merged with ResourceChunk and become NonQuantifiedChunk, once magic wands have snapshots
 trait DefaultChunk extends ResourceChunk {
   val perm: Term
   val snap: Term

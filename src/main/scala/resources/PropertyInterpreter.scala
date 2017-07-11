@@ -102,6 +102,7 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
       // The only missing cases are chunk expressions which only happen in accessors, and location expressions which
       // only happen in equality expressions and are treated separately
+      // TODO: what is the best way to throw an error here?
     case _ => assert(assertion = false, "Invalid expression"); terms.True()
   }
 
@@ -186,8 +187,8 @@ class PropertyInterpreter(heap: Iterable[Chunk], verifier: Verifier) {
 
   private def buildPermissionLiteral(numerator: BigInt, denominator: BigInt): Term = {
     (numerator, denominator) match {
-      case (n, _) if n == 0 => terms.NoPerm()
-      case (n, d) if n == d => terms.FullPerm()
+      case (n, d) if n == 0 && d != 0 => terms.NoPerm()
+      case (n, d) if n == d && d != 0 => terms.FullPerm()
       case (n, d) => terms.FractionPerm(terms.IntLiteral(n), terms.IntLiteral(d))
     }
   }

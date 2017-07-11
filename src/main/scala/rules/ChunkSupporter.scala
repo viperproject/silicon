@@ -18,6 +18,7 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons.InsufficientPermission
 
 import scala.collection.mutable.ListBuffer
+import scala.reflect.ClassTag
 
 trait ChunkSupportRules extends SymbolicExecutionRules {
   def consume(s: State,
@@ -36,7 +37,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
              (Q: (State, Heap, Verifier) => VerificationResult)
               : VerificationResult
 
-  def withChunk[CH <: ResourceChunk]
+  def withChunk[CH <: ResourceChunk: ClassTag]
                (s: State,
                 h: Heap,
                 id: ChunkIdentifer,
@@ -47,7 +48,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: DefaultChunk]
+  def withChunk[CH <: DefaultChunk: ClassTag]
                (s: State,
                 h: Heap,
                 id: ChunkIdentifer,
@@ -59,7 +60,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, Heap, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: ResourceChunk]
+  def withChunk[CH <: ResourceChunk: ClassTag]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
@@ -69,7 +70,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunk[CH <: DefaultChunk]
+  def withChunk[CH <: DefaultChunk: ClassTag]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
@@ -80,7 +81,7 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
 
-  def withChunkIfPerm[CH <: DefaultChunk]
+  def withChunkIfPerm[CH <: DefaultChunk: ClassTag]
                      (s: State,
                       h: Heap,
                       id: ChunkIdentifer,
@@ -92,44 +93,46 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                      (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
                      : VerificationResult
 
-  def findChunk[CH <: ResourceChunk]
+  def findChunk[CH <: ResourceChunk: ClassTag]
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],
                 v: Verifier)
                 : Option[CH]
 
-  def findMatchingChunk[CH <: ResourceChunk]
+  def findMatchingChunk[CH <: ResourceChunk: ClassTag]
                        (chunks: Iterable[Chunk],
                         chunk: CH,
                         v: Verifier)
                         : Option[CH]
 
-  def findChunksWithID[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH]
+  def findChunksWithID[CH <: ResourceChunk: ClassTag]
+                      (chunks: Iterable[Chunk],
+                       id: ChunkIdentifer)
+                       : Iterable[CH]
 
 }
 
 object chunkSupporter extends ChunkSupportRules with Immutable {
 
-  def findChunk[CH <: ResourceChunk]
+  def findChunk[CH <: ResourceChunk: ClassTag]
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],
                 v: Verifier)
                 : Option[CH] = {
-    val relevantChunks = findChunksWithID(chunks, id)
+    val relevantChunks = findChunksWithID[CH](chunks, id)
     findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)
   }
 
-  def findMatchingChunk[CH <: ResourceChunk](chunks: Iterable[Chunk], chunk: CH, v: Verifier): Option[CH] = {
-    findChunk(chunks, chunk.id, chunk.args, v)
-    // TODO: use collectFirst
-    // TODO: class tag
+  def findMatchingChunk[CH <: ResourceChunk: ClassTag]
+                       (chunks: Iterable[Chunk], chunk: CH, v: Verifier): Option[CH] = {
+    findChunk[CH](chunks, chunk.id, chunk.args, v)
   }
 
-  def findChunksWithID[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH] = {
+  def findChunksWithID[CH <: ResourceChunk: ClassTag](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH] = {
     chunks.flatMap {
-      case c: ResourceChunk if id == c.id => Some(c.asInstanceOf[CH])
+      case c: CH if id == c.id => Some(c)
       case _ => None
     }
   }
@@ -143,7 +146,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         v.decider.check(And(ch.args zip args map (x => x._1 === x._2)), Verifier.config.checkTimeout()))
   }
 
-  def withChunk[CH <: ResourceChunk]
+  def withChunk[CH <: ResourceChunk: ClassTag]
                (s: State,
                 h: Heap,
                 id: ChunkIdentifer,
@@ -167,7 +170,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     )(Q)
   }
 
-  def withChunk[CH <: DefaultChunk]
+  def withChunk[CH <: DefaultChunk: ClassTag]
                (s: State,
                h: Heap,
                id: ChunkIdentifer,
@@ -200,7 +203,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       })
   }
 
-  def withChunk[CH <: ResourceChunk]
+  def withChunk[CH <: ResourceChunk: ClassTag]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
@@ -213,7 +216,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     withChunk[CH](s, s.h, id, args, locacc, pve, v)((s1, h1, ch, v1) =>
       Q(s1.copy(h = h1), ch, v1))
 
-  def withChunk[CH <: DefaultChunk]
+  def withChunk[CH <: DefaultChunk: ClassTag]
                (s: State,
                 id: ChunkIdentifer,
                 args: Seq[Term],
@@ -228,7 +231,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       Q(s1.copy(h = h1), ch, v1))
 
   // Just like withChunk, but calls the continuation with None if the permission value is NoPerm
-  def withChunkIfPerm[CH <: DefaultChunk]
+  def withChunkIfPerm[CH <: DefaultChunk: ClassTag]
                      (s: State,
                       h: Heap,
                       id: ChunkIdentifer,
@@ -296,9 +299,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              * Returning a fresh snapshot in these cases should not lose any information.
              */
             val fresh = v2.decider.fresh(sorts.Snap)
-            // TODO: remove cast
-            val applicable = fresh.applicable.asInstanceOf[Function]
-            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(applicable))
+            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable))
             QS(s3, h2, fresh, v2)
         })
     })(Q)
@@ -321,7 +322,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
        */
       magicWandSupporter.transfer(s, id, args, perms, locacc, pve, v)((s1, optCh, v1) =>
         Q(s1, h, optCh.flatMap(ch => Some(ch.snap)), v1))
-    } else if (false && Verifier.config.enableMoreCompleteExhale()) {
+    } else if (Verifier.config.enableMoreCompleteExhale()) {
       consumeComplete(s, h, id, args, perms, locacc, pve, v)((s1, h1, snap1, v1) => {
         Q(s1, h1, snap1, v1)
       })
@@ -330,7 +331,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         Q(s1, h1, snap1, v1)
       })
     }
-    //      }
   }
 
   private def consumeGreedy(s: State,
@@ -347,20 +347,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       withChunkIfPerm[DefaultChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
         optCh match {
           case Some(ch) =>
-            if (v1.decider.check (IsNonPositive (PermMinus (ch.perm, perms) ), Verifier.config.checkTimeout () ) )
+            if (v1.decider.check (IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout () ) )
               Q (s1, h1 - ch, Some (ch.snap), v1)
             else
-              Q (s1, h1 - ch + ch.withPerm(PermMinus (ch.perm, perms)), Some (ch.snap), v1)
+              Q (s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some (ch.snap), v1)
           case None =>
             Q(s1, h1, None, v1)
         }
-      })/*
-      withChunk[DefaultChunk](s, h, id, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
-        if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
-          Q(s1, h1 - ch, Some(ch.snap), v1)
-        else
-          Q(s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some(ch.snap), v1)
-      })*/
+      })
     } else {
       withChunk[DefaultChunk](s, h, id, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
         v1.decider.assume(PermLess(perms, ch.perm))
@@ -420,7 +414,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       }
       var moreNeeded = true
 
-      // TODO: actual order heuristics
       relevantChunks.sortWith((b1, _) => b1.args == args) foreach { ch =>
         if (moreNeeded) {
           val eq = setEqual(ch.args, args)

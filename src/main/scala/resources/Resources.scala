@@ -17,7 +17,8 @@ object Resources {
 }
 
 sealed abstract class ResourceID
+sealed abstract class BaseID extends ResourceID
 
-case class PredicateID() extends ResourceID
-case class FieldID() extends ResourceID
+case class PredicateID() extends BaseID
+case class FieldID() extends BaseID
 case class MagicWandID() extends ResourceID
