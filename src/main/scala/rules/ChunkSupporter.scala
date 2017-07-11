@@ -6,13 +6,12 @@
 
 package viper.silicon.rules
 
-import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.interfaces.state._
+import viper.silicon.interfaces.{Failure, Success, VerificationResult}
 import viper.silicon.resources.{PropertyInterpreter, Resources}
-import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
-import viper.silicon.state.terms._
 import viper.silicon.state._
-import viper.silicon.supporters.functions.NoopFunctionRecorder
+import viper.silicon.state.terms._
+import viper.silicon.state.terms.perms.{IsNonPositive, IsPositive}
 import viper.silicon.verifier.Verifier
 import viper.silver.ast
 import viper.silver.verifier.PartialVerificationError
@@ -31,11 +30,11 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
               locacc: ast.LocationAccess,
               optNode: Option[ast.Node with ast.Positioned] = None)
              (Q: (State, Heap, Term, Verifier) => VerificationResult)
-  : VerificationResult
+             : VerificationResult
 
   def produce(s: State, h: Heap, ch: ResourceChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult)
-  : VerificationResult
+              : VerificationResult
 
   def withChunk[CH <: ResourceChunk]
                (s: State,
@@ -80,19 +79,31 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
                 v: Verifier)
                (Q: (State, CH, Verifier) => VerificationResult)
                : VerificationResult
+
+  def withChunkIfPerm[CH <: PermissionChunk]
+                     (s: State,
+                      h: Heap,
+                      id: ChunkIdentifer,
+                      args: Seq[Term],
+                      perms: Term,
+                      locacc: ast.LocationAccess,
+                      pve: PartialVerificationError,
+                      v: Verifier)
+                     (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
+                     : VerificationResult
 
   def findChunk[CH <: ResourceChunk]
                (chunks: Iterable[Chunk],
                 id: ChunkIdentifer,
                 args: Iterable[Term],
                 v: Verifier)
-               : Option[CH]
+                : Option[CH]
 
   def findMatchingChunk[CH <: ResourceChunk]
                        (chunks: Iterable[Chunk],
                         chunk: CH,
                         v: Verifier)
-                       : Option[CH]
+                        : Option[CH]
 
   def findChunksWithID[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer): Iterable[CH]
 
@@ -100,7 +111,12 @@ trait ChunkSupportRules extends SymbolicExecutionRules {
 
 object chunkSupporter extends ChunkSupportRules with Immutable {
 
-  def findChunk[CH <: ResourceChunk](chunks: Iterable[Chunk], id: ChunkIdentifer, args: Iterable[Term], v: Verifier): Option[CH] = {
+  def findChunk[CH <: ResourceChunk]
+               (chunks: Iterable[Chunk],
+                id: ChunkIdentifer,
+                args: Iterable[Term],
+                v: Verifier)
+                : Option[CH] = {
     val relevantChunks = findChunksWithID(chunks, id)
     findChunkLiterally(relevantChunks, args) orElse findChunkWithProver(relevantChunks, args, v)
   }
@@ -151,41 +167,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
     )(Q)
   }
 
-  def maybeWithChunk[CH <: PermissionChunk]
-          (s: State,
-           h: Heap,
-           id: ChunkIdentifer,
-           args: Seq[Term],
-           perms: Term,
-           locacc: ast.LocationAccess,
-           pve: PartialVerificationError,
-           v: Verifier)
-          (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
-          : VerificationResult = {
-
-    executionFlowController.tryOrFail2[Heap, Option[CH]](s.copy(h = h), v)((s1, v1, QS) =>
-      findChunk[CH](s1.h.values, id, args, v1) match {
-        case Some(ch) =>
-          val permCheck = PermAtMost(perms, ch.perm)
-          v1.decider.assert(permCheck) {
-            case true =>
-              v1.decider.assume(permCheck)
-              QS(s1.copy(h = s.h), s1.h, Some(ch), v1)
-            case false =>
-              Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
-          }
-
-        case None =>
-          if (v1.decider.checkSmoke())
-            Success() /* TODO: Mark branch as dead? */
-          /*else if (s1.retrying && v1.decider.check(perms === NoPerm(), Verifier.config.checkTimeout()))
-            QS(s1.copy(h = s.h), s1.h, None, v1)*/
-          else
-            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}
-    )(Q)
-  }
-
-  /*
   def withChunk[CH <: PermissionChunk]
                (s: State,
                h: Heap,
@@ -218,42 +199,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         }
       })
   }
-*/
-
-  def withChunk[CH <: PermissionChunk]
-                (s: State,
-                 h: Heap,
-                 id: ChunkIdentifer,
-                args: Seq[Term],
-                optPerms: Option[Term],
-                locacc: ast.LocationAccess,
-                pve: PartialVerificationError,
-                v: Verifier)
-               (Q: (State, Heap, CH, Verifier) => VerificationResult)
-               : VerificationResult = {
-
-    executionFlowController.tryOrFail2[Heap, CH](s.copy(h = h), v)((s1, v1, QS) =>
-      withChunk[CH](s1, s1.h, id, args, locacc, pve, v1)((s2, h2, ch, v2) => {
-        val permCheck = optPerms match {
-          case Some(p) => PermAtMost(p, ch.perm)
-          case None => ch.perm !== NoPerm()
-        }
-
-        //        if (!isKnownToBeTrue(permCheck)) {
-        //          val writer = bookkeeper.logfiles("withChunk")
-        //          writer.println(permCheck)
-        //        }
-
-        v2.decider.assert(permCheck) {
-          case true =>
-            v2.decider.assume(permCheck)
-            QS(s2.copy(h = s.h), h2, ch, v2)
-          case false =>
-            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
-        }
-      })
-    )(Q)
-  }
 
   def withChunk[CH <: ResourceChunk]
                (s: State,
@@ -281,6 +226,41 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
     withChunk[CH](s, s.h, id, args, optPerms, locacc, pve, v)((s1, h1, ch, v1) =>
       Q(s1.copy(h = h1), ch, v1))
+
+  // Just like withChunk, but calls the continuation with None if the permission value is NoPerm
+  def withChunkIfPerm[CH <: PermissionChunk]
+                     (s: State,
+                      h: Heap,
+                      id: ChunkIdentifer,
+                      args: Seq[Term],
+                      perms: Term,
+                      locacc: ast.LocationAccess,
+                      pve: PartialVerificationError,
+                      v: Verifier)
+                     (Q: (State, Heap, Option[CH], Verifier) => VerificationResult)
+                     : VerificationResult = {
+
+    executionFlowController.tryOrFail2[Heap, Option[CH]](s.copy(h = h), v)((s1, v1, QS) =>
+      findChunk[CH](s1.h.values, id, args, v1) match {
+        case Some(ch) =>
+          val permCheck = PermAtMost(perms, ch.perm)
+          v1.decider.assert(permCheck) {
+            case true =>
+              v1.decider.assume(permCheck)
+              QS(s1.copy(h = s.h), s1.h, Some(ch), v1)
+            case false =>
+              Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)
+          }
+
+        case None =>
+          if (v1.decider.checkSmoke())
+            Success() /* TODO: Mark branch as dead? */
+          else if (s1.retrying && v1.decider.check(perms === NoPerm(), Verifier.config.checkTimeout()))
+            QS(s1.copy(h = s.h), s1.h, None, v1)
+          else
+            Failure(pve dueTo InsufficientPermission(locacc)).withLoad(args)}
+    )(Q)
+  }
 
   def produce(s: State, h: Heap, ch: ResourceChunk, v: Verifier)
              (Q: (State, Heap, Verifier) => VerificationResult) = {
@@ -316,7 +296,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
              * Returning a fresh snapshot in these cases should not lose any information.
              */
             val fresh = v2.decider.fresh(sorts.Snap)
-            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(fresh.applicable.asInstanceOf[Function]))
+            // TODO: remove cast
+            val applicable = fresh.applicable.asInstanceOf[Function]
+            val s3 = s2.copy(functionRecorder = s2.functionRecorder.recordFreshSnapshot(applicable))
             QS(s3, h2, fresh, v2)
         })
     })(Q)
@@ -333,17 +315,6 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
 
-    /* [2016-05-27 Malte] Performing this check slows down the verification quite
-     * a bit (from 4 minutes down to 5 minutes, for the whole test suite). Only
-     * checking the property on-failure (within decider.withChunk) is likely to
-     * perform better.
-     */
-    //      if (decider.check(σ, perms === NoPerm(), config.checkTimeout())) {
-    //        /* Don't try looking for a chunk (which might fail) if zero permissions are
-    //         * to be consumed.
-    //         */
-    //        Q(h, None, c)
-    //      } else {
     if (s.exhaleExt) {
       /* TODO: Integrate magic wand's transferring consumption into the regular,
        * (non-)exact consumption (the code following this if-branch)
@@ -373,7 +344,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
     if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-      /*maybeWithChunk[ValueAndPermissionChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
+      /*withChunkIfPerm[ValueAndPermissionChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
         optCh match {
           case Some(ch) =>
             if (v1.decider.check (IsNonPositive (PermMinus (ch.perm, perms) ), Verifier.config.checkTimeout () ) )
@@ -483,7 +454,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
       val newHeap = Heap(allChunks)
       // TODO: remove cast
-      val sOpt = fresh.map(f => s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(f.applicable.asInstanceOf[Function])))
+      val sOpt = fresh.map { f =>
+        s.copy(functionRecorder = s.functionRecorder.recordFreshSnapshot(f.applicable.asInstanceOf[Function]))
+      }
       val s1 = sOpt.getOrElse(s)
 
       if (!moreNeeded) {
