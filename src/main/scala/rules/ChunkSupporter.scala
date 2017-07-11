@@ -344,7 +344,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                            (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                            : VerificationResult = {
     if (terms.utils.consumeExactRead(perms, s.constrainableARPs)) {
-      /*withChunkIfPerm[ValueAndPermissionChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
+      withChunkIfPerm[ValueAndPermissionChunk](s, h, id, args, perms, locacc, pve, v)((s1, h1, optCh, v1) => {
         optCh match {
           case Some(ch) =>
             if (v1.decider.check (IsNonPositive (PermMinus (ch.perm, perms) ), Verifier.config.checkTimeout () ) )
@@ -354,13 +354,13 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           case None =>
             Q(s1, h1, None, v1)
         }
-      })*/
+      })/*
       withChunk[ValueAndPermissionChunk](s, h, id, args, Some(perms), locacc, pve, v)((s1, h1, ch, v1) => {
         if (v1.decider.check(IsNonPositive(PermMinus(ch.perm, perms)), Verifier.config.checkTimeout()))
           Q(s1, h1 - ch, Some(ch.snap), v1)
         else
           Q(s1, h1 - ch + ch.withPerm(PermMinus(ch.perm, perms)), Some(ch.snap), v1)
-      })
+      })*/
     } else {
       withChunk[ValueAndPermissionChunk](s, h, id, args, None, locacc, pve, v)((s1, h1, ch, v1) => {
         v1.decider.assume(PermLess(perms, ch.perm))
